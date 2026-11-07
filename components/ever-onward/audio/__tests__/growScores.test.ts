@@ -41,7 +41,7 @@ describe("Grow scores", () => {
     expect(UNEASE).not.toBe(GROW_UNEASE);
   });
 
-  it("cues buzz, ribbon, flutter and bloom as the machines move", () => {
+  it("cues buzz, ribbon and bloom as the machines move", () => {
     const before = newRun(growUniverse, {});
     const cues = GROW_UI.audio.cuesBetween!;
     const withRes = (r: Record<string, number>) => ({
@@ -51,8 +51,11 @@ describe("Grow scores", () => {
     expect(cues(before, before)).toEqual([]);
     expect(cues(before, withRes({ pbWilts: 1 }))).toEqual(["buzz"]);
     expect(cues(before, withRes({ pbRare: 1 }))).toEqual(["bloom"]);
-    expect(cues(before, withRes({ frFairs: 1 }))).toEqual(["ribbon"]);
-    expect(cues(before, withRes({ mgFlights: 1 }))).toEqual(["flutter"]);
+    expect(cues(before, withRes({ pkEntries: 1 }))).toEqual(["ribbon"]);
+    expect(cues(before, withRes({ pkSplits: 1 }))).toEqual(["buzz"]);
+    expect(cues(before, withRes({ mkDays: 1 }))).toEqual(["bloom"]);
+    expect(cues(before, withRes({ bmBlights: 1 }))).toEqual(["buzz"]);
+    expect(cues(before, withRes({ bmHealed: 1 }))).toEqual(["bloom"]);
     expect(cues(before, withRes({ potStage: 1 }))).toEqual(["bloom"]);
   });
 });

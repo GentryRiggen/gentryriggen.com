@@ -24,18 +24,24 @@ jest.setTimeout(180_000);
  * M16 went from 5.1 to 6.6 of 8, nothing fails its gate any more and the
  * total is the real score, 82.0. The floor is that minus 1.
  *
- * Pollination (1.32.0) replaced the bee dance with flower beds, honey and
- * winter. The yard itself scores as before, but the bots now leave the yard
- * at a different moment, and the farm's leftover harvest (a lottery: 21M on
- * main, 0.6M now) changes how the world opens. The world's water tension
- * gate is the one that tips. It is listed below until the world is retuned
- * after Gentry's playtest of the bees; the uncapped floor is today's 79.6
- * minus 1.
+ * Pollination (1.32.0) and the farm's harvest day (Dials, Not Buttons) left
+ * the world's gates at the mercy of the farm's leftover harvest (a lottery:
+ * 0.5M to 17M, so the world opened with 470 to 3400 green). "The Whole
+ * World" replaced the which-biome-next choice and the seed migration with
+ * the water mix and the blight, and the world now opens the same way however
+ * the farm ended (a fixed opening green, plus at most a tenth for a full
+ * barn). Every gate passes with nothing listed: the score is 80.2 and the
+ * floor is that minus 1. The seed vault costs 80M (it was 46M): the
+ * realistic run is 2.0 h, the bottom of its band.
+ *
+ * The farm review retune (a pumpkin that pays by size, a forecast worth
+ * waiting for, luck 0.8) scores 81.1; the vault costs 110M so the run stays
+ * at 2.0 h. The floor is that minus 1.
  */
 const GATE_CAP = 59;
-const UNCAPPED_FLOOR = 78.6;
-/** Gates allowed to fail for now (see above), by their label prefix. */
-const KNOWN_GATE_MISSES: readonly string[] = ["M9 Tension (world)"];
+const UNCAPPED_FLOOR = 80.1;
+/** Gates allowed to fail for now, by their label prefix. None today. */
+const KNOWN_GATE_MISSES: readonly string[] = [];
 /**
  * M16 phases allowed to fail their gate, but not to get any worse. None
  * today: every phase passes.
@@ -102,9 +108,7 @@ describe("Make It Grow engagement scorecard", () => {
 
   it("takes 2 to 3 hours for the realistic bot", () => {
     const hours = card.runs.realisticFinish! / HOUR;
-    // 1.91 h since pollination (the bot tends the bees very well); back to
-    // 2 when the world is retuned (see UNCAPPED_FLOOR).
-    expect(hours).toBeGreaterThanOrEqual(1.9);
+    expect(hours).toBeGreaterThanOrEqual(2);
     expect(hours).toBeLessThanOrEqual(3);
   });
 

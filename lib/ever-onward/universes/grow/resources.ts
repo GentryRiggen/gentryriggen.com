@@ -29,16 +29,13 @@ export const MANUAL_RESOURCES = ["seeds", "harvest", "green", "care"] as const;
  * gifts).
  */
 export function carryOver(from: number, amount: number): number {
-  if (from >= 2)
-    // The last seed starts small and calm: a flock still in the air at the
-    // world's end is a few taps' worth of care, however big the world's income.
-    return Math.min(
-      TUNING.migration.carryCap,
-      Math.floor(amount * TUNING.migration.greenToCare)
-    );
-  const rate =
-    from === 0 ? TUNING.farm.seedsToHarvest : TUNING.world.harvestToGreen;
-  return Math.floor(amount * rate);
+  if (from === 0) return Math.floor(amount * TUNING.farm.seedsToHarvest);
+  // A payout still flowing when the farm ends is a lottery in size, so it is
+  // capped: the world opens the same way however the farm ended.
+  return Math.min(
+    TUNING.world.carryCap,
+    Math.floor(amount * TUNING.world.harvestToGreen)
+  );
 }
 
 /** How much of the one pot is grown, 0 to 100. */
@@ -132,46 +129,70 @@ export const RESOURCES: readonly ResourceDef[] = [
     "pbPaused",
     "pbRng",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
-  // The farm's market: the crop in the ground, how long it still sprouts,
-  // the wave of demand (angle, speed), a wobble per crop, the agent's clock,
-  // times replanted, and the market's own random stream.
+  // The harvest day: clock and day count, what is in the field (crop index,
+  // planted or not, when), the soil (0 to 1), the last crop harvested, each
+  // crop's wave and luck for the coming day, the last day's result, a payout
+  // flowing in, and the towns' own random stream.
   ...[
+    "mkReady",
     "mkCrop",
-    "mkSprout",
+    "mkField",
+    "mkPlantAt",
+    "mkDay",
+    "mkDays",
     "mkAngle",
-    "mkSpeed",
-    "mkWobble0",
-    "mkWobble1",
-    "mkWobble2",
+    "mkBase0",
+    "mkBase1",
+    "mkBase2",
+    "mkLuck0",
+    "mkLuck1",
+    "mkLuck2",
+    "mkSoil",
+    "mkLast",
     "mkAgentTime",
     "mkPlants",
     "mkRng",
+    "mkResAt",
+    "mkResMood",
+    "mkResCrop",
+    "mkResBest",
+    "mkResDemand",
+    "mkResBestDemand",
+    "mkResGrown",
+    "mkResPays",
+    "mkResSoilBefore",
+    "mkResSoilAfter",
+    "mkEarned",
+    "mkPending",
+    "mkSurgeRate",
+    "mkPaused",
+    "mkPay",
+    "mkPayDay",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
-  // The county fair: stage (0 waiting, 1 open, 2 judging), clocks, the three
-  // pumpkins on offer (size and shine), fairs finished, a payout flowing in,
-  // the last entry, and the fair's own random stream.
+  // The prize pumpkin: size step, stage (2 judging), the judging clock, the
+  // size entered, entries, splits and feedings, the last outcome (what, how
+  // big, when, what it paid, who entered), a payout flowing in and its own
+  // random stream.
   ...[
-    "frStage",
-    "frTime",
-    "frJudge",
-    "frSize0",
-    "frSize1",
-    "frSize2",
-    "frShine0",
-    "frShine1",
-    "frShine2",
-    "frShown",
-    "frFairs",
-    "frPending",
-    "frSurgeRate",
-    "frEarned",
-    "frPicked",
-    "frPlace",
-    "frLastPays",
-    "frBy",
-    "frIncome",
-    "frRng",
-    "frPaused",
+    "pkStep",
+    "pkStage",
+    "pkJudge",
+    "pkEnterStep",
+    "pkUsed",
+    "pkEntries",
+    "pkSplits",
+    "pkFed",
+    "pkOutcome",
+    "pkOutStep",
+    "pkOutAt",
+    "pkLastPays",
+    "pkBy",
+    "pkIncome",
+    "pkEarned",
+    "pkPending",
+    "pkSurgeRate",
+    "pkRng",
+    "pkPaused",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Know-how for the farm and the world, and the seconds of festival left
   // and festivals held.
@@ -192,69 +213,57 @@ export const RESOURCES: readonly ResourceDef[] = [
     label: id,
     phases: HIDDEN,
   })),
-  // The farm's seed bank: the share kept back (a step), the seed in the bank
-  // and how many times the share was changed.
-  ...["sbStep", "sbStock", "sbChanges"].map((id): ResourceDef => ({
-    id,
-    label: id,
+  // The green world's mix: each biome's slider (0 to 10 points), how much of
+  // the planet each covers (0 to 1), how far the green has reached, each
+  // biome's rot (0 to 1), blights and heals so far (when, and which biome),
+  // and times a slider was moved.
+  ...[0, 1, 2, 3].map((i): ResourceDef => ({
+    id: `bmWant${i}`,
+    label: `bmWant${i}`,
+    initial: TUNING.world.startMix[i],
     phases: HIDDEN,
   })),
-  // The green world: the biome that is spreading (an index), how much of
-  // the planet each one covers (0 to 1), a settle timer and times switched.
   ...[
-    "bmActive",
+    ...[0, 1, 2, 3].map((i) => `bmBlight${i}`),
     "bmForest",
     "bmJungle",
     "bmMeadow",
     "bmWetland",
-    "bmSettle",
+    "bmCover",
+    "bmBlights",
+    "bmBlightAt",
+    "bmBlightWho",
+    "bmHealed",
+    "bmHealedAt",
+    "bmHealedWho",
     "bmSwitches",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
-  // Seed migration: stage (0 gathering, 1 ready, 2 flying), clocks, the
-  // destination, the day's weather and how green each region is, flights
-  // landed, green flowing in, the last flight, and the flocks' own stream.
+  // The old window box: where the blind is aimed (0 to 4) and where it is
+  // now (0 to 1), the soil's moisture, the sky (an index), its clock and how
+  // many times it has changed, how
+  // long the pot has grown well, the leaf's mood last seen (0 perky, 1 curl,
+  // 2 dry, 3 droop, 4 soggy), the last thrive and last wilt (run time, and
+  // which), how many times each has happened, dial moves, the pot's stage
+  // (0 soil to 3 bloom, the bloom sound reads it), and its own random stream.
   ...[
-    "mgStage",
-    "mgTime",
-    "mgFly",
-    "mgDest",
-    "mgRoll0",
-    "mgRoll1",
-    "mgRoll2",
-    "mgRoll3",
-    "mgRoll4",
-    "mgGreen0",
-    "mgGreen1",
-    "mgGreen2",
-    "mgGreen3",
-    "mgGreen4",
-    "mgShown",
-    "mgFlights",
-    "mgPending",
-    "mgSurgeRate",
-    "mgEarned",
-    "mgLastPays",
-    "mgBy",
-    "mgRng",
-    "mgPaused",
-  ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
-  // The old window box: stage (0 resting, 1 wanting), clocks, what the pot
-  // wants, how many wants it has shown, answers given, the last answer (what
-  // was chosen, what was wanted, what it paid, who gave it), care earned from
-  // answers, the pot's stage (0 soil to 3 bloom, the bloom sound reads it),
-  // and the pot's own random stream.
-  ...[
-    "wbStage",
-    "wbTime",
-    "wbWant",
-    "wbShown",
-    "wbTends",
-    "wbLastChoice",
-    "wbLastWant",
-    "wbLastPays",
-    "wbBy",
+    "wbAim",
+    "wbLight",
+    "wbMoist",
+    "wbSky",
+    "wbSkyTime",
+    "wbSkyLen",
+    "wbSkies",
+    "wbGood",
+    "wbLeaf",
+    "wbLeafAt",
+    "wbThriveAt",
+    "wbThrives",
+    "wbWiltAt",
+    "wbWiltKind",
+    "wbWilts",
+    "wbMoves",
     "wbRng",
-    "wbPaused",
+    "wbReady",
     "potStage",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // Kept for the scene's flourish; never shown as a number.

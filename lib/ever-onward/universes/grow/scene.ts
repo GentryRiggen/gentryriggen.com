@@ -1,12 +1,34 @@
 import type { RunState } from "../../engine/types";
 import {
   BIOMES,
-  activeBiome,
   biomeShare,
+  blightOf,
+  justBlighted,
+  justHealed,
   worldCover,
   type Biome,
 } from "./biomes";
-import { bestCrop, cropPrice, plantedCrop, type Crop } from "./market";
+import {
+  FIELD_CROPS,
+  grownNow,
+  harvestDays,
+  isDayShowing,
+  isFieldPlanted,
+  lastDay,
+  plantedCrop,
+  secondsToHarvest,
+  soilOf,
+  type FieldCrop,
+} from "./market";
+import {
+  isDayFree,
+  isOutcomeShowing,
+  isPumpkinOpen,
+  lastPumpkin,
+  pumpkinEvents,
+  pumpkinStep,
+  isJudging,
+} from "./pumpkin";
 import { FULL_GROWTH, PHASE_IDS, type GrowPhaseId } from "./resources";
 import { seasonOf, type Season } from "./seasons";
 import {
@@ -27,17 +49,23 @@ import {
 import { isDry, waterLevel } from "./water";
 import { FORK_IDS, forkSide } from "./forks";
 import { isFestivalOn, isProjectDone } from "./knowhow";
-import { bankGain } from "./tick";
 import { TUNING } from "./tuning";
 import { visitorHereFlag } from "../../engine/engine";
 import { RETURN_VISITOR_ID } from "./visitors";
 import {
+  DEEP_POT_ID,
   LANTERN_ID,
-  MUSIC_BOX_ID,
-  WATERING_CAN_ID,
+  leafOf,
+  lightOf,
+  momentOf,
   potGrowth,
   potStage,
+  skyOf,
+  sunOnPot,
+  type LeafMood,
+  type PotMoment,
   type PotStage,
+  type SkyId,
 } from "./windowbox";
 
 /** The few numbers the picture needs; the scene redraws only when they change. */
@@ -55,30 +83,31 @@ export interface GrowSceneInfo {
   storage: number;
   /** Farm: tractors, glasshouses and seed drones, and the crop planted. */
   machines: number;
-  crop: Crop;
-  /** World: how much of the planet is green, and each biome's share (tenths). */
+  crop: FieldCrop;
+  /** World: how much of the planet is green, and each biome's share (twentieths). */
   cover: number;
   forest: number;
   jungle: number;
   meadow: number;
   wetland: number;
-  /** World: the biome that is spreading. */
-  biome: Biome;
+  /** World: each biome's rot in tenths, "forest|jungle|meadow|wetland" ("0|0|0|0" when healthy). */
+  blight: string;
+  /** World: the rot has just shown, or the world has just healed (a few seconds each). */
+  blightNew: boolean;
+  healed: boolean;
+  /** World: how full the planet's water is, 0 to 10 (rivers, wetlands and cracks read it). */
+  worldWater: number;
   /** World: how much of the globe is green, in twentieths (the pull-back picture). */
   greenFraction: number;
   /** World: river bends, clouds drifting, and flocks of seed birds in the picture. */
   rivers: number;
   clouds: number;
   flocks: number;
-  /** World: a migrating flock has landed at least once (a V of birds in the sky). */
-  migrated: boolean;
   /** World: how much of the old roads and towns the picture still draws (0 to 1 in tenths). Drawn only, never shown as a number or a label. */
   roadsLeft: number;
   townsLeft: number;
   /** This part's fork: 0 not chosen, 1 the first side, 2 the second. */
   fork: number;
-  /** Farm: how full the seed bank is, 0 (empty) to 3. */
-  bank: number;
   /** Farm and world: which know-how projects are done (bit 0, 1 and 2). */
   projects: number;
   /** Farm and world: a festival is on. */
@@ -116,7 +145,30 @@ export interface GrowSceneInfo {
   crossPair: number;
   /** Hungry bees are flying away (winter, no honey). */
   leaving: boolean;
-  /** Farm: fields in the picture, tractors, glasshouses, wells, and how well the planted crop matches what the towns want (0 to 1 in tenths). */
+  /**
+   * Farm: how grown the crop is (0 an empty field, 1 a sprout, 2 young, 3
+   * growing, 4 ready), the soil (0 worn out and pale to 4 dark and rich),
+   * the cart on its way (0 far off to 4 at the gate), and the last harvest
+   * day's mood ("cheer", "droop", "beans" or "empty") while the scene shows
+   * it, with a count that changes with every harvest day.
+   */
+  cropStage: number;
+  soil: number;
+  cart: number;
+  dayMood: string;
+  dayN: number;
+  /**
+   * Farm: the prize pumpkin, flat: whether the fair is open, its size step
+   * (0 to 5), whether today's feeding or entry is free, and what to show
+   * ("", "judging:<step>", "blue:<step>", "red:<step>", "green:<step>" or
+   * "split:<step>") with a count that changes on every ribbon or split.
+   */
+  pumpkinOpen: boolean;
+  pumpkinStep: number;
+  pumpkinFree: boolean;
+  pumpkinShow: string;
+  pumpkinN: number;
+  /** Farm: fields in the picture, tractors, glasshouses, wells, and how many harvest days have been held (tenths of a town's windows). */
   fields: number;
   tractors: number;
   greenhouses: number;
@@ -129,8 +181,16 @@ export interface GrowSceneInfo {
   growth: number;
   /** Seed phase: soil, sprout, bud or bloom. */
   potStage: PotStage;
-  /** Seed phase: the sky has gone from dusk to night (a quarter grown). */
-  isNight: boolean;
+  /** Seed phase: the weather outside (it changes how much sun is right). */
+  sky: SkyId;
+  /** Seed phase: how the leaves look (the player reads these). */
+  leaf: LeafMood;
+  /** Seed phase: how far the blind is open, 0 to 8 eighths (it slides). */
+  light: number;
+  /** Seed phase: how hard the sun lands on the pot, 0 (none) to 3 (fierce). */
+  glare: number;
+  /** Seed phase: a thrive, or a dry or soggy spell, the scene is showing. */
+  moment: PotMoment;
   /** Seed phase: the light is left on in the window. */
   windowLit: boolean;
   /** Seed phase: someone came back and is at the window. */
@@ -139,9 +199,10 @@ export interface GrowSceneInfo {
   trellis: boolean;
   chime: boolean;
   dew: boolean;
-  can: boolean;
-  musicBox: boolean;
+  catcher: boolean;
   sunnySill: boolean;
+  /** Seed phase: how many deeper pots (the pot sits in a bigger tray). */
+  deepPot: number;
 }
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
@@ -160,21 +221,29 @@ function seedInfo(
 ): Pick<
   GrowSceneInfo,
   | "potStage"
-  | "isNight"
+  | "sky"
+  | "leaf"
+  | "light"
+  | "glare"
+  | "moment"
   | "windowLit"
   | "visitorHere"
   | "trellis"
   | "chime"
   | "dew"
-  | "can"
-  | "musicBox"
+  | "catcher"
   | "sunnySill"
+  | "deepPot"
 > {
   const has = (id: string) => isSeed && owned(run, id) > 0;
   const grown = isSeed ? potGrowth(run) : 0;
   return {
     potStage: isSeed ? potStage(run) : "soil",
-    isNight: isSeed && grown >= 0.25,
+    sky: isSeed ? (skyOf(run).id as SkyId) : "cloud",
+    leaf: isSeed ? leafOf(run) : "perky",
+    light: isSeed ? Math.round(lightOf(run) * 8) : 0,
+    glare: isSeed ? Math.min(3, Math.floor(sunOnPot(run) / 0.3)) : 0,
+    moment: isSeed ? momentOf(run) : "",
     // The robot leaves a light on near the end, and the lantern keeps one.
     windowLit: has(LANTERN_ID) || (isSeed && grown >= 0.85),
     visitorHere:
@@ -182,9 +251,9 @@ function seedInfo(
     trellis: has("trellis"),
     chime: has("wind-chime"),
     dew: has("dew-collector"),
-    can: has(WATERING_CAN_ID),
-    musicBox: has(MUSIC_BOX_ID),
+    catcher: has("sun-catcher"),
     sunnySill: has("sunny-sill"),
+    deepPot: isSeed ? Math.min(3, owned(run, DEEP_POT_ID)) : 0,
   };
 }
 
@@ -262,6 +331,75 @@ function pollenInfo(run: RunState, isYard: boolean) {
   };
 }
 
+/** How grown the planted crop is, in the five steps the picture draws. */
+function cropStageOf(run: RunState): number {
+  if (!isFieldPlanted(run)) return 0;
+  const g = grownNow(run);
+  return g < 0.2 ? 1 : g < 0.55 ? 2 : g < 1 ? 3 : 4;
+}
+
+/** The pumpkin's flat "what to show" string (see GrowSceneInfo). */
+function pumpkinShowOf(run: RunState): string {
+  if (isJudging(run))
+    return `judging:${Math.round(run.resources.pkEnterStep ?? 0)}`;
+  if (!isOutcomeShowing(run)) return "";
+  const { outcome, step } = lastPumpkin(run);
+  return outcome === "none" ? "" : `${outcome}:${step}`;
+}
+
+/** Harvest day, soil and the prize pumpkin; bare outside the farm. */
+function farmDayInfo(
+  run: RunState,
+  isFarm: boolean
+): Pick<
+  GrowSceneInfo,
+  | "cropStage"
+  | "soil"
+  | "cart"
+  | "dayMood"
+  | "dayN"
+  | "pumpkinOpen"
+  | "pumpkinStep"
+  | "pumpkinFree"
+  | "pumpkinShow"
+  | "pumpkinN"
+> {
+  if (!isFarm)
+    return {
+      cropStage: 0,
+      soil: 0,
+      cart: 0,
+      dayMood: "",
+      dayN: 0,
+      pumpkinOpen: false,
+      pumpkinStep: 0,
+      pumpkinFree: false,
+      pumpkinShow: "",
+      pumpkinN: 0,
+    };
+  const showing = isDayShowing(run);
+  const open = isPumpkinOpen(run);
+  return {
+    cropStage: cropStageOf(run),
+    soil: Math.round(soilOf(run) * 4),
+    // The cart rolls in over the last stretch of the day.
+    cart: Math.min(
+      4,
+      Math.max(
+        0,
+        Math.floor((1 - secondsToHarvest(run) / TUNING.market.cartSeconds) * 4)
+      )
+    ),
+    dayMood: showing ? lastDay(run).mood : "",
+    dayN: harvestDays(run),
+    pumpkinOpen: open,
+    pumpkinStep: open ? pumpkinStep(run) : 0,
+    pumpkinFree: open && isDayFree(run),
+    pumpkinShow: open ? pumpkinShowOf(run) : "",
+    pumpkinN: pumpkinEvents(run),
+  };
+}
+
 /** The farm's extra numbers; zeros outside the farm. */
 function farmInfo(
   run: RunState,
@@ -275,6 +413,16 @@ function farmInfo(
   | "silos"
   | "agent"
   | "townFed"
+  | "cropStage"
+  | "soil"
+  | "cart"
+  | "dayMood"
+  | "dayN"
+  | "pumpkinOpen"
+  | "pumpkinStep"
+  | "pumpkinFree"
+  | "pumpkinShow"
+  | "pumpkinN"
 > {
   const n = (id: string) => (isFarm ? owned(run, id) : 0);
   return {
@@ -284,9 +432,8 @@ function farmInfo(
     wells: n("well"),
     silos: n("silo"),
     agent: n("market-agent") > 0,
-    townFed: isFarm
-      ? tenths(cropPrice(run, plantedCrop(run)) / cropPrice(run, bestCrop(run)))
-      : 0,
+    townFed: isFarm ? tenths(harvestDays(run) / 16) : 0,
+    ...farmDayInfo(run, isFarm),
   };
 }
 
@@ -301,16 +448,19 @@ function worldInfo(
   | "jungle"
   | "meadow"
   | "wetland"
-  | "biome"
+  | "blight"
+  | "blightNew"
+  | "healed"
+  | "worldWater"
   | "greenFraction"
   | "rivers"
   | "clouds"
   | "flocks"
-  | "migrated"
   | "roadsLeft"
   | "townsLeft"
 > {
-  const share = (b: Biome) => (isWorld ? tenths(biomeShare(run, b)) : 0);
+  const share = (b: Biome) =>
+    isWorld ? Math.round(biomeShare(run, b) * 20) : 0;
   const cover = isWorld ? worldCover(run) : 0;
   const n = (id: string) => (isWorld ? owned(run, id) : 0);
   return {
@@ -318,22 +468,26 @@ function worldInfo(
     rivers: Math.min(6, n("river-bend")),
     clouds: isWorld ? 2 + Math.min(4, n("cloud-seeder")) : 0,
     flocks: Math.min(5, n("sky-seeder")),
-    migrated: isWorld && (run.resources.mgFlights ?? 0) > 0,
     // Roads go quiet first, towns a little later; both are only drawn.
     roadsLeft: isWorld ? tenths(1 - (cover - 0.05) / 0.7) : 0,
     townsLeft: isWorld ? tenths(1 - (cover - 0.15) / 0.7) : 0,
-    cover: isWorld ? tenths(worldCover(run)) : 0,
+    cover: isWorld ? Math.round(worldCover(run) * 20) : 0,
     forest: share(BIOMES[0]),
     jungle: share(BIOMES[1]),
     meadow: share(BIOMES[2]),
     wetland: share(BIOMES[3]),
-    biome: isWorld ? activeBiome(run) : "forest",
+    blight: BIOMES.map((b) =>
+      isWorld ? Math.round(blightOf(run, b) * 10) : 0
+    ).join("|"),
+    blightNew: isWorld && justBlighted(run),
+    healed: isWorld && justHealed(run),
+    worldWater: isWorld ? tenths(waterLevel(run)) : 0,
   };
 }
 
 const PROJECT_IDS: readonly (readonly string[])[] = [
   [],
-  ["drip-lines", "cold-store", "hybrid-seed"],
+  ["drip-lines", "compost-heap", "hybrid-seed"],
   ["rain-gauges", "tree-nursery", "wildlife-corridors"],
   [],
 ];
@@ -344,12 +498,6 @@ function projectBits(run: RunState, phase: number): number {
     (bits, id, bit) => bits | (isProjectDone(run, id) ? 1 << bit : 0),
     0
   );
-}
-
-/** The seed bank as sacks in the barn: none, a few, a pile, a stack. */
-function bankTier(run: RunState): number {
-  const share = bankGain(run) / TUNING.farm.bank.maxGain;
-  return share <= 0.02 ? 0 : share < 0.2 ? 1 : share < 0.45 ? 2 : 3;
 }
 
 export function sceneInfo(run: RunState): GrowSceneInfo {
@@ -368,7 +516,7 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
         : i === 2
           ? owned(run, "planting-rover") + owned(run, "sky-seeder")
           : 0,
-    crop: i === 1 ? plantedCrop(run) : "tomato",
+    crop: i === 1 ? plantedCrop(run) : FIELD_CROPS[0],
     ...worldInfo(run, i === 2),
     storage:
       i === 0
@@ -387,7 +535,6 @@ export function sceneInfo(run: RunState): GrowSceneInfo {
       const side = forkSide(run, FORK_IDS[i]);
       return side === null ? 0 : side + 1;
     })(),
-    bank: i === 1 ? bankTier(run) : 0,
     projects: projectBits(run, i),
     festival: (i === 1 || i === 2) && isFestivalOn(run),
     ended: ENDERS[i] !== "" && owned(run, ENDERS[i]) > 0,

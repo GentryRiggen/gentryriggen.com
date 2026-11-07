@@ -1,53 +1,33 @@
 import { SeedForkArt } from "./TradeoffArt";
 import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
-import type { PotStage } from "@/lib/ever-onward/universes/grow/windowbox";
-import { POT, SEED_CAN, SEED_DEW, SEED_LANTERN, SEED_MUSIC } from "./anchors";
+import type {
+  LeafMood,
+  PotStage,
+} from "@/lib/ever-onward/universes/grow/windowbox";
+import { POT, SEED_CATCHER, SEED_DEW, SEED_LANTERN } from "./anchors";
 import { SEED_CHIME, SEED_TRELLIS, SILL_Y } from "./anchors";
-
-const STARS: readonly (readonly [number, number, number])[] = [
-  [112, 38, 0],
-  [138, 62, 1],
-  [160, 34, 2],
-  [186, 70, 0],
-  [214, 40, 1],
-  [236, 78, 2],
-  [262, 36, 0],
-  [284, 82, 1],
-  [124, 96, 2],
-  [248, 104, 0],
-];
-const TWINKLE = ["lm-twinkle", "lm-twinkle-b", "lm-twinkle-c"] as const;
+import {
+  Blind,
+  LeafPlant,
+  PotMoment,
+  ShadeWash,
+  SoilState,
+  SunBeam,
+  WeatherOutside,
+  skyColors,
+  soilColor,
+} from "./WindowBoxArt";
 
 /** The quiet world outside: soft green hills, rooftops grown over with moss. */
-function Outside({ night }: { night: boolean }) {
-  const far = night ? "#1c4a3c" : "#4a8a58";
-  const mid = night ? "#14392f" : "#3a7549";
-  const near = night ? "#0e2a24" : "#2c5f3b";
-  const moss = night ? "#2e6b52" : "#6fae6e";
+function Outside({ info }: { info: GrowSceneInfo }) {
+  const far = "#4a8a58";
+  const mid = "#3a7549";
+  const near = "#2c5f3b";
+  const moss = "#6fae6e";
   return (
-    <g>
+    <g clipPath="url(#gb-window)">
       <rect x="100" y="24" width="200" height="162" fill="url(#gs-sky)" />
-      {night &&
-        STARS.map(([x, y, k]) => (
-          <rect
-            key={`${x}-${y}`}
-            x={x}
-            y={y}
-            width="2"
-            height="2"
-            fill="#fff4cf"
-            className={k === 0 ? "" : TWINKLE[k]}
-          />
-        ))}
-      {night ? (
-        <g>
-          <circle cx="262" cy="62" r="11" fill="#fff4cf" fillOpacity="0.14" />
-          <circle cx="262" cy="62" r="7" fill="#fff4cf" />
-          <circle cx="259" cy="60" r="2" fill="#e6dcb0" />
-        </g>
-      ) : (
-        <circle cx="150" cy="130" r="12" fill="#ffd9a0" fillOpacity="0.8" />
-      )}
+      <WeatherOutside sky={info.sky} />
       <rect x="100" y="132" width="40" height="8" fill={far} />
       <rect x="140" y="124" width="60" height="16" fill={far} />
       <rect x="200" y="130" width="50" height="10" fill={far} />
@@ -64,51 +44,6 @@ function Outside({ night }: { night: boolean }) {
       <rect x="254" y="122" width="16" height="4" fill={moss} />
       <rect x="196" y="138" width="10" height="8" fill={near} />
       <rect x="194" y="136" width="14" height="4" fill={moss} />
-      {night ? (
-        <g aria-hidden="true">
-          {/* Something in the far hills opens its eyes, now and then. */}
-          <g className="gg-peek" fill="#ffe14d">
-            <rect x="171" y="146" width="2" height="1" />
-            <rect x="176" y="146" width="2" height="1" />
-          </g>
-          <g fill="#d8f56a">
-            <rect x="120" y="150" width="2" height="2" className="gg-firefly" />
-            <rect
-              x="214"
-              y="160"
-              width="2"
-              height="2"
-              className="gg-firefly-b"
-            />
-            <rect
-              x="268"
-              y="146"
-              width="2"
-              height="2"
-              className="gg-firefly-c"
-            />
-          </g>
-        </g>
-      ) : (
-        <g className="gw-drift" aria-hidden="true">
-          <rect
-            x="190"
-            y="60"
-            width="34"
-            height="7"
-            fill="#f7d3c0"
-            fillOpacity="0.7"
-          />
-          <rect
-            x="200"
-            y="55"
-            width="16"
-            height="6"
-            fill="#f7d3c0"
-            fillOpacity="0.7"
-          />
-        </g>
-      )}
     </g>
   );
 }
@@ -143,83 +78,16 @@ export function Robot() {
 }
 
 /** The plant: a thread of green, then a bud, then the flower. */
-export function Plant({ stage, growth }: { stage: PotStage; growth: number }) {
-  const h = stage === "soil" ? 0 : Math.round(8 + growth * 0.5);
-  const top = POT.y - h;
-  return (
-    <g>
-      {stage === "bloom" && (
-        <circle cx={POT.x} cy={top} r="34" fill="url(#gs-bloom)" />
-      )}
-      {stage === "soil" && (
-        <rect x={POT.x - 2} y={POT.y - 3} width="4" height="3" fill="#5a3a22" />
-      )}
-      <g className={stage === "soil" ? undefined : "gg-sway"}>
-        {stage !== "soil" && (
-          <rect x={POT.x - 1} y={top} width="3" height={h} fill="#3f9d3a" />
-        )}
-        {stage !== "soil" && (
-          <g fill="#58bf4f">
-            <rect x={POT.x - 12} y={POT.y - h * 0.4} width="11" height="5" />
-            <rect x={POT.x + 2} y={POT.y - h * 0.62} width="12" height="5" />
-            {h > 30 && (
-              <rect x={POT.x - 11} y={POT.y - h * 0.82} width="10" height="4" />
-            )}
-          </g>
-        )}
-        {stage === "bud" && (
-          <g>
-            <rect
-              x={POT.x - 4}
-              y={top - 8}
-              width="9"
-              height="10"
-              fill="#e879a8"
-            />
-            <rect
-              x={POT.x - 3}
-              y={top - 10}
-              width="7"
-              height="3"
-              fill="#f9a8c9"
-            />
-          </g>
-        )}
-        {stage === "bloom" && (
-          <g>
-            <rect
-              x={POT.x - 12}
-              y={top - 12}
-              width="25"
-              height="22"
-              fill="#fb7185"
-            />
-            <rect
-              x={POT.x - 16}
-              y={top - 7}
-              width="33"
-              height="12"
-              fill="#fda4af"
-            />
-            <rect
-              x={POT.x - 8}
-              y={top - 17}
-              width="17"
-              height="8"
-              fill="#fda4af"
-            />
-            <rect
-              x={POT.x - 4}
-              y={top - 7}
-              width="9"
-              height="9"
-              fill="#fde047"
-            />
-          </g>
-        )}
-      </g>
-    </g>
-  );
+export function Plant({
+  stage,
+  growth,
+  leaf = "perky",
+}: {
+  stage: PotStage;
+  growth: number;
+  leaf?: LeafMood;
+}) {
+  return <LeafPlant stage={stage} growth={growth} leaf={leaf} />;
 }
 
 /** The grown-up and the little one they hold up to the sill. */
@@ -296,29 +164,39 @@ function Things({ info }: { info: GrowSceneInfo }) {
           />
         </g>
       )}
-      {info.can && (
-        <g>
+      {info.catcher && (
+        <g aria-hidden="true" data-testid="eo-sun-catcher">
           <rect
-            x={SEED_CAN.x}
-            y={SEED_CAN.y}
-            width="14"
-            height="9"
-            fill="#6fa3c7"
+            x={SEED_CATCHER.x}
+            y="24"
+            width="1"
+            height="22"
+            fill="#9aa6bb"
           />
           <rect
-            x={SEED_CAN.x + 14}
-            y={SEED_CAN.y + 1}
-            width="7"
-            height="3"
-            fill="#6fa3c7"
+            x={SEED_CATCHER.x - 4}
+            y={SEED_CATCHER.y - 10}
+            width="9"
+            height="12"
+            fill="#d8f1ff"
+            fillOpacity="0.9"
+            className="gb-glint"
           />
           <rect
-            x={SEED_CAN.x - 3}
-            y={SEED_CAN.y + 1}
-            width="3"
-            height="7"
-            fill="#4f7fa3"
+            x={SEED_CATCHER.x - 2}
+            y={SEED_CATCHER.y - 14}
+            width="5"
+            height="5"
+            fill="#ffffff"
+            className="lm-twinkle-b"
           />
+          <g className="gb-rainbow" fillOpacity="0.6">
+            <rect x="178" y={SILL_Y - 6} width="8" height="4" fill="#ff6b6b" />
+            <rect x="186" y={SILL_Y - 6} width="8" height="4" fill="#ffd43b" />
+            <rect x="194" y={SILL_Y - 6} width="8" height="4" fill="#69db7c" />
+            <rect x="202" y={SILL_Y - 6} width="8" height="4" fill="#4dabf7" />
+            <rect x="210" y={SILL_Y - 6} width="8" height="4" fill="#b197fc" />
+          </g>
         </g>
       )}
       {info.dew && (
@@ -346,68 +224,6 @@ function Things({ info }: { info: GrowSceneInfo }) {
             height="3"
             fill="#e0f3ff"
           />
-        </g>
-      )}
-      {info.musicBox && (
-        <g>
-          <rect
-            x={SEED_MUSIC.x}
-            y={SEED_MUSIC.y}
-            width="22"
-            height="8"
-            fill="#9a6a3c"
-          />
-          <rect
-            x={SEED_MUSIC.x}
-            y={SEED_MUSIC.y - 3}
-            width="22"
-            height="3"
-            fill="#b5834a"
-          />
-          <rect
-            x={SEED_MUSIC.x + 22}
-            y={SEED_MUSIC.y + 1}
-            width="4"
-            height="2"
-            fill="#d9c27a"
-            className="gg-rotor"
-          />
-          <g fill="#f8f4e8" aria-hidden="true">
-            <g className="gg-note">
-              <rect
-                x={SEED_MUSIC.x + 6}
-                y={SEED_MUSIC.y - 10}
-                width="3"
-                height="3"
-              />
-              <rect
-                x={SEED_MUSIC.x + 8}
-                y={SEED_MUSIC.y - 16}
-                width="1"
-                height="6"
-              />
-            </g>
-            <g className="gg-note-b">
-              <rect
-                x={SEED_MUSIC.x + 14}
-                y={SEED_MUSIC.y - 9}
-                width="3"
-                height="3"
-              />
-              <rect
-                x={SEED_MUSIC.x + 16}
-                y={SEED_MUSIC.y - 15}
-                width="1"
-                height="6"
-              />
-              <rect
-                x={SEED_MUSIC.x + 16}
-                y={SEED_MUSIC.y - 15}
-                width="3"
-                height="1"
-              />
-            </g>
-          </g>
         </g>
       )}
       {info.chime && (
@@ -463,20 +279,26 @@ function Things({ info }: { info: GrowSceneInfo }) {
 }
 
 /**
- * The Last Seed: one quiet window at night, one small pot on the sill, and a
- * light left on. Everything outside is green and still. When someone comes
- * back, they stand at the window with a little one.
+ * The Old Window Box: one quiet window, one small pot on the sill, and one
+ * dial: the blind. Light pours in as it opens, and the weather outside (rain,
+ * cloud, bright sun, a hot spell) changes how much the pot can take. The
+ * leaves tell how it is doing. When someone comes back, they stand at the
+ * window with a little one.
  */
 export default function SeedLayer({ info }: { info: GrowSceneInfo }) {
-  const night = info.isNight;
   const lit = info.windowLit;
+  const [skyTop, skyBottom] = skyColors(info.sky);
+  const isThriving = info.moment === "thrive";
   return (
     <g>
       <defs>
         <linearGradient id="gs-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={night ? "#070b1f" : "#3b3170"} />
-          <stop offset="1" stopColor={night ? "#1b2a52" : "#e9a07a"} />
+          <stop offset="0" stopColor={skyTop} />
+          <stop offset="1" stopColor={skyBottom} />
         </linearGradient>
+        <clipPath id="gb-window">
+          <rect x="100" y="24" width="200" height="162" />
+        </clipPath>
         <radialGradient id="gs-lamp" cx="50%" cy="50%" r="50%">
           <stop offset="0" stopColor="#ffd87a" stopOpacity="0.6" />
           <stop offset="1" stopColor="#ffd87a" stopOpacity="0" />
@@ -486,43 +308,24 @@ export default function SeedLayer({ info }: { info: GrowSceneInfo }) {
           <stop offset="1" stopColor="#fda4af" stopOpacity="0" />
         </radialGradient>
       </defs>
-      <rect
-        x="-1200"
-        y="-1200"
-        width="2800"
-        height="2700"
-        fill={night ? "#17122a" : "#2b1f33"}
-      />
-      <rect
-        x="-1200"
-        y="212"
-        width="2800"
-        height="1400"
-        fill={night ? "#120e22" : "#221828"}
-      />
-      <Outside night={night} />
+      <rect x="-1200" y="-1200" width="2800" height="2700" fill="#3a2a40" />
+      <rect x="-1200" y="212" width="2800" height="1400" fill="#2c2032" />
+      <Outside info={info} />
+      <g clipPath="url(#gb-window)">
+        <Blind light={info.light} />
+      </g>
       <rect x="92" y="16" width="216" height="8" fill="#6b4423" />
       <rect x="92" y="16" width="8" height="176" fill="#6b4423" />
       <rect x="300" y="16" width="8" height="176" fill="#6b4423" />
       <rect x="92" y="16" width="216" height="3" fill="#8a5a34" />
-      <rect
-        x="82"
-        y="14"
-        width="30"
-        height="108"
-        fill={night ? "#6b3342" : "#8a3b4a"}
-      />
-      <rect
-        x="288"
-        y="14"
-        width="30"
-        height="108"
-        fill={night ? "#6b3342" : "#8a3b4a"}
-      />
+      <rect x="82" y="14" width="30" height="108" fill="#8a3b4a" />
+      <rect x="288" y="14" width="30" height="108" fill="#8a3b4a" />
       <rect x="82" y="14" width="30" height="4" fill="#9a6a3c" />
       <rect x="288" y="14" width="30" height="4" fill="#9a6a3c" />
       <rect x="74" y={SILL_Y} width="252" height="12" fill="#a06a3c" />
       <rect x="74" y={SILL_Y + 12} width="252" height="6" fill="#6b4423" />
+      <ShadeWash light={info.light} />
+      <SunBeam glare={info.glare} sky={info.sky} />
       <Things info={info} />
       <g>
         <rect
@@ -544,10 +347,34 @@ export default function SeedLayer({ info }: { info: GrowSceneInfo }) {
           y={POT.y - 3}
           width="34"
           height="3"
-          fill="#3b2412"
+          fill={soilColor(info.leaf)}
         />
       </g>
-      <Plant stage={info.potStage} growth={info.growth} />
+      {info.deepPot > 0 && (
+        <g aria-hidden="true" data-testid="eo-deep-pot">
+          <rect
+            x={POT.x - 22 - info.deepPot * 3}
+            y={SILL_Y - 3 - info.deepPot * 3}
+            width={44 + info.deepPot * 6}
+            height={3 + info.deepPot * 3}
+            fill="#a8532e"
+          />
+          <rect
+            x={POT.x - 22 - info.deepPot * 3}
+            y={SILL_Y - 3 - info.deepPot * 3}
+            width={44 + info.deepPot * 6}
+            height="2"
+            fill="#d9774a"
+          />
+        </g>
+      )}
+      <SoilState leaf={info.leaf} />
+      <LeafPlant
+        stage={info.potStage}
+        growth={info.growth}
+        leaf={info.leaf}
+        isThriving={isThriving}
+      />
       <Robot />
       {lit && (
         <circle
@@ -558,35 +385,11 @@ export default function SeedLayer({ info }: { info: GrowSceneInfo }) {
           className="gs-glow pointer-events-none"
         />
       )}
-      {lit && night && (
-        <g className="gg-moth" aria-hidden="true">
-          <g className="gg-flap">
-            <rect
-              x={SEED_LANTERN.x + 8}
-              y={SEED_LANTERN.y - 8}
-              width="2"
-              height="2"
-              fill="#d8cbb0"
-            />
-            <rect
-              x={SEED_LANTERN.x + 11}
-              y={SEED_LANTERN.y - 8}
-              width="2"
-              height="2"
-              fill="#d8cbb0"
-            />
-            <rect
-              x={SEED_LANTERN.x + 10}
-              y={SEED_LANTERN.y - 8}
-              width="1"
-              height="3"
-              fill="#6b5a40"
-            />
-          </g>
-        </g>
-      )}
       {info.visitorHere && <Visitors />}
       <SeedForkArt info={info} />
+      {info.moment !== "" && (
+        <PotMoment key={info.moment} moment={info.moment} />
+      )}
     </g>
   );
 }

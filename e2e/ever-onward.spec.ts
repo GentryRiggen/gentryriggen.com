@@ -77,6 +77,109 @@ test.describe("Ever Onward", () => {
     await expect(panel.getByTestId("eo-bees-honey")).toContainText("Honey");
   });
 
+  test("the old window box turns the blind, and the picture shows the light and the leaves", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-3-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("eo-windowbox");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("eo-windowbox-leaves")).toBeVisible();
+    await expect(panel.getByTestId("eo-windowbox-sky")).toBeVisible();
+    await expect(page.getByTestId("eo-leaves")).toBeAttached();
+    const blind = page.getByTestId("eo-blind");
+    await expect(blind).toBeAttached();
+    // The blind takes a few seconds to open all the way.
+    await panel.getByRole("button", { name: "More sun" }).click();
+    await panel.getByRole("button", { name: "More sun" }).click();
+    await expect(blind).toHaveAttribute("data-light", "8", { timeout: 20_000 });
+    await expect(
+      panel.getByRole("button", { name: "More sun" })
+    ).toHaveAttribute("aria-disabled", "true");
+    await panel.getByRole("button", { name: "More shade" }).click();
+    await panel.getByRole("button", { name: "More shade" }).click();
+    await expect(blind).toHaveAttribute("data-light", "0", { timeout: 20_000 });
+    await expect(
+      panel.getByRole("button", { name: "More shade" })
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("the farm plants for harvest day and tends a prize pumpkin in the panels and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-1-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    await expect(page.getByTestId("eo-farm-day")).toBeAttached();
+    await expect(page.getByTestId("eo-field-0")).toBeAttached();
+    await expect(page.getByTestId("eo-prize-pumpkin")).toBeAttached();
+    const market = page.getByTestId("lm-market");
+    await expect(market).toBeVisible();
+    await expect(market.getByRole("radio")).toHaveCount(4);
+    await expect(market.getByTestId("lm-soil")).toContainText("Soil");
+    const pumpkin = page.getByTestId("lm-pumpkin");
+    await expect(pumpkin).toBeVisible();
+    await expect(pumpkin.getByTestId("lm-pumpkin-feed")).toContainText(
+      "Chance it splits"
+    );
+    // Planting puts a crop in the ground, in the panel and in the picture.
+    await market.getByRole("radio", { name: "Corn" }).click();
+    await expect(market).toHaveAttribute("data-planted", "corn");
+    await expect(page.getByTestId("eo-field-0")).not.toHaveAttribute(
+      "data-stage",
+      "0"
+    );
+  });
+
+  test("the world mixes biomes with sliders and the picture shows the water", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const globe = page.getByTestId("lm-globe");
+    await expect(globe).toBeAttached();
+    await expect(globe).toHaveAttribute("data-water", /\d+/);
+    const mix = page.getByTestId("lm-biomes");
+    await expect(mix).toBeVisible();
+    await expect(mix.getByTestId("lm-biomes-jungle")).toBeVisible();
+    const jungle = mix.getByTestId("lm-biomes-jungle");
+    const before = Number(await jungle.getAttribute("data-points"));
+    await mix.getByTestId("lm-mix-more-jungle").click();
+    await expect(jungle).toHaveAttribute("data-points", String(before + 1));
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

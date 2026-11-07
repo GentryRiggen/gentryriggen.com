@@ -1,5 +1,11 @@
 import type { RunState, StoryMessage } from "../../../engine/types";
-import { biomeShare, switchesSoFar, worldCover } from "../biomes";
+import {
+  biomeShare,
+  blightsSoFar,
+  healsSoFar,
+  switchesSoFar,
+  worldCover,
+} from "../biomes";
 import { PHASE_WORLD } from "../resources";
 import { phaseTime } from "../seasons";
 import { isDry } from "../water";
@@ -37,7 +43,7 @@ export const world: StoryMessage[] = [
     id: "world-choice",
     phase: PHASE_WORLD,
     when: (run) => after(run, 1),
-    text: "The birds are ready to carry seeds. Forest, jungle, meadow or wetland: each is good at something different, and you can change your mind whenever you like.",
+    text: "The birds are ready to carry seeds. Forest, jungle, meadow or wetland: each is good at something different. Slide each one up or down to say how much of the world it should get.",
   },
   {
     id: "world-time-1",
@@ -79,7 +85,7 @@ export const world: StoryMessage[] = [
     id: "world-meadow",
     phase: PHASE_WORLD,
     when: (run) => biomeShare(run, "meadow") >= 0.05,
-    text: "Meadow grass rolls out in long waves, and the bees send a thank-you card by air mail. Migrating birds will carry more seeds now.",
+    text: "Meadow grass rolls out in long waves, and the bees send a thank-you card by air mail. All the green spreads a little faster now.",
   },
   {
     id: "world-rover",
@@ -109,7 +115,19 @@ export const world: StoryMessage[] = [
     id: "world-switch",
     phase: PHASE_WORLD,
     when: (run) => switchesSoFar(run) >= 1,
-    text: "You point the birds somewhere new. A newly chosen biome takes a moment to settle in, and then it spreads like it has always lived there.",
+    text: "You slide the mix a little. The land does not jump: it drifts toward it, one patch at a time, as if it had always meant to.",
+  },
+  {
+    id: "world-blight",
+    phase: PHASE_WORLD,
+    when: (run) => blightsSoFar(run) >= 1,
+    text: "A grey-brown rot creeps through the part of the world that has too much of one thing. The trees wilt, and the birds go elsewhere.",
+  },
+  {
+    id: "world-healed",
+    phase: PHASE_WORLD,
+    when: (run) => healsSoFar(run) >= 1,
+    text: "The rot lets go, and a green wave rolls back across the land from the edges. The robot writes down: variety, very good. It underlines it twice.",
   },
   {
     id: "world-cover-1",
@@ -237,6 +255,18 @@ export const world: StoryMessage[] = [
     // The vault card is on offer: sky seeders and a mostly green world.
     when: (run) => owned(run, "sky-seeder") >= 2 && covered(run, 0.8),
     text: "The seed vault plans are ready. One seed from everything, kept safe for later, in case anyone wants to start again.",
+  },
+  {
+    id: "world-time-18",
+    phase: PHASE_WORLD,
+    when: (run) => after(run, 29),
+    text: "A heron stands in a shallow new pond that was a car park last week, and looks entirely at home. The robot gives it a small, formal bow.",
+  },
+  {
+    id: "world-time-19",
+    phase: PHASE_WORLD,
+    when: (run) => after(run, 31),
+    text: "The clouds have taken to rolling in from the sea in neat rows, as if they had been told where to go. The rain is soft, and on time.",
   },
   {
     id: "world-time-17",

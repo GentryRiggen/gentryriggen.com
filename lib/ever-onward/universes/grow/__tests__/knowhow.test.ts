@@ -21,7 +21,7 @@ import {
   knowhowOf,
   knowhowPerSecond,
 } from "../knowhow";
-import { bankStock } from "../seedbank";
+import { soilOf } from "../market";
 import { incomePerSecond } from "../tick";
 import { TUNING } from "../tuning";
 import { waterCapacity } from "../water";
@@ -105,7 +105,7 @@ describe("projects", () => {
     const world = tick(def, partWith(2), 0.1);
     expect(shownProjects(def, farm).map((p) => p.id)).toEqual([
       "drip-lines",
-      "cold-store",
+      "compost-heap",
       "hybrid-seed",
     ]);
     expect(shownProjects(def, world).map((p) => p.id)).toEqual([
@@ -132,15 +132,29 @@ describe("projects", () => {
     );
   });
 
-  it("a cold store makes the seed bank's seed last twice as long", () => {
+  it("a leaf-mould heap makes the soil wear half as much when a crop repeats", () => {
     const farm = tick(def, partWith(1), 0.1);
-    const stocked: RunState = {
-      ...farm,
-      resources: { ...farm.resources, sbStep: 0, sbStock: 1000 },
+    const held = (run: RunState): number => {
+      // The same crop twice: plant it, hold a harvest day, plant it, hold another.
+      let r: RunState = {
+        ...run,
+        resources: {
+          ...run.resources,
+          mkSoil: 0.8,
+          mkLast: 2,
+          mkCrop: 1,
+          mkField: 1,
+          mkPlantAt: 0,
+          mkDay: TUNING.market.daySeconds - 0.5,
+        },
+      };
+      r = tick(def, r, 1);
+      return soilOf(r);
     };
-    const plain = bankStock(tick(def, stocked, 1));
-    const stored = bankStock(tick(def, start(stocked, "cold-store"), 1));
-    expect(1000 - stored).toBeCloseTo((1000 - plain) * K.coldStoreSpoil, 6);
+    const plain = 0.8 - held(farm);
+    const heaped = 0.8 - held(start(farm, "compost-heap"));
+    expect(plain).toBeCloseTo(TUNING.soil.wear, 6);
+    expect(heaped).toBeCloseTo(plain * K.heapWear, 6);
   });
 
   it("hybrid seed and wildlife corridors double the pay", () => {

@@ -1195,7 +1195,7 @@ then projects, a knob for the grid, and a deeper Weather Desk.
 - `engine/decisions.ts` reads the player who taps when it helps. A decision
   is a meaningful buy, a project started, or an action the universe tags in
   `UniverseDef.decisionActions`: oil, nets, routes, crews, watering, the
-  streetlights in Light; bees, crops, biomes, pumpkins, flock and pot in
+  streetlights in Light; bees, crops, biomes, pumpkins and pot in
   Grow. Claims (rush, flare), fixes (balance, correct, steer) and collects
   (haul, pick, harvest) never count, and neither do story lines.
 - The first 2 minutes of a phase are not scored. Band: longest gap <= 90 s,

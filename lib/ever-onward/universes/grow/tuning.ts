@@ -136,21 +136,6 @@ export const TUNING = {
     droneRate: 580,
     /** Leftover seeds become this much harvest when the farm opens. */
     seedsToHarvest: 0.004,
-    /** The seed bank: keep a share of income as seed, grow richer harvests. */
-    bank: {
-      /** Shares that can be kept back: none, a quarter, half. */
-      shares: [0, 0.25, 0.5] as readonly number[],
-      /** The most the bank can add to every harvest (a fraction). */
-      maxGain: 2.5,
-      /** Seconds of farm income in the bank for half of that. */
-      halfSeconds: 100,
-      /** Share of the bank that spoils each second. */
-      spoilPerSecond: 1 / 240,
-      /** The bank opens with this many scarecrows. */
-      opensAtScarecrows: 2,
-      /** Taps a second counted when the bank is weighed against the farm. */
-      referenceTaps: 2,
-    },
     /** The farm's thirsty fields: a bigger tank, more thirst, and wells. */
     water: {
       baseCapacity: 40,
@@ -166,58 +151,116 @@ export const TUNING = {
       thirstPerHelper: 0.045,
     },
   },
-  /** The county fair: a pumpkin to enter about every two minutes. */
-  fair: {
-    /** Seconds before the first fair, then between fairs. */
-    firstWaitSeconds: 45,
-    waitSeconds: 110,
-    /** The judges take this long to walk the row. */
-    judgeSeconds: 5,
-    /** Seconds of farm income a ribbon pays: blue, red, garden. */
-    placeSeconds: [24, 11, 5],
-    /** The chance of a blue ribbon: a floor, plus this much times quality. */
-    blueBase: 0.05,
-    blueSlope: 0.75,
+  /**
+   * The farm's harvest day: the towns send a cart every `daySeconds`. What
+   * the planted crop pays depends on what the towns want ON THAT DAY, and
+   * the forecast of it firms up as the day comes closer.
+   */
+  market: {
+    /** Seconds between harvest days. */
+    daySeconds: 110,
+    /** A crop needs this long in the ground to be fully grown. */
+    growSeconds: 60,
+    /** What a crop that has only just gone in pays (full grown: 1). */
+    growFloor: 0.5,
+    /** How far the slow wave of demand swings from the usual price. */
+    swing: 0.4,
+    /** Seconds for the wave to go all the way round. */
+    periodSeconds: 900,
+    /** The wave also jumps about by up to this many radians each day. */
+    angleJitter: 0.9,
+    /** Each day's luck: demand moves by up to this much, per crop. */
+    luck: 0.8,
+    /** Luck never sinks a crop's demand below this share of the usual price. */
+    demandFloor: 0.3,
+    /** Beans pay a steady share of the usual price and rest the soil. */
+    beanDemand: 0.75,
+    /** What the fields pay between harvest days, against the old market. */
+    fieldBase: 1.5,
+    /** A bare field pays this much, and a grown crop this much more. */
+    bareShare: 0.65,
+    growShare: 0.1,
+    /** What a harvest day pays: this share of a day of farm pay, times demand. */
+    daySharePay: 0.8,
+    /** Taps a second counted when a day of farm pay is worked out. */
+    referenceTaps: 2,
+    /** The day's pay flows in over this many seconds. */
+    surgeSeconds: 4,
+    /** The cart starts rolling in this many seconds before harvest day. */
+    cartSeconds: 40,
+    /** How long the scene shows a harvest day's cheer or droop. */
+    showSeconds: 9,
+    /** A pay this close to the best the day offered counts as a match. */
+    matchShare: 0.93,
+    /** A crop that sold under this share of the usual price droops. */
+    droopBelow: 0.85,
+    /** The market agent plants this far into each day. */
+    agentAt: 55,
+  },
+  /** The soil: wears when a crop is repeated, rests after beans. */
+  soil: {
+    /** A fresh farm's soil (0 worn out, 1 rich). */
+    start: 0.6,
+    /** Growing the same crop twice takes this much from the soil. */
+    wear: 0.22,
+    /** A bean harvest gives this much back. */
+    rest: 0.3,
+    /** Yield at worn out soil, and the most a rich soil adds. */
+    floor: 0.8,
+    reach: 0.4,
+  },
+  /** The prize pumpkin: feed it, risk it, enter it on a harvest day. */
+  pumpkin: {
+    /** Steps from a seedling (0) to a giant (the last). */
+    steps: 5,
+    /** Feeding costs this many seconds of farm pay, from each step. */
+    feedSeconds: [6, 9, 13, 22, 38] as readonly number[],
+    /** The chance it splits when fed from each step. */
+    splitChance: [0.04, 0.1, 0.2, 0.35, 0.5] as readonly number[],
+    /** The chance of a blue ribbon at each step. */
+    blueChance: [0.02, 0.06, 0.14, 0.28, 0.44, 0.62] as readonly number[],
     /** Of the rest, this share is a red ribbon. */
     redShare: 0.6,
-    /** The fair helper enters a waiting fair after this long, at this share. */
-    handDelay: 30,
-    handShare: 0.5,
-    /** A payout flows into the harvest over this many seconds. */
+    /** Seconds of farm pay each ribbon is worth for a full-size pumpkin: blue, red, garden. */
+    ribbonSeconds: [430, 143, 43] as readonly number[],
+    /**
+     * How much of that a ribbon pays at each size, seedling first: a small
+     * pumpkin's ribbons are worth little, so waiting and feeding is the bet.
+     */
+    sizePay: [0.2, 0.38, 0.62, 0.95, 1.2, 2] as readonly number[],
+    /** The judges take this long to walk the row. */
+    judgeSeconds: 5,
+    /** A ribbon's pay flows in over this many seconds. */
     surgeSeconds: 4,
-    /** Fairs finished (or the first glasshouse) before the fair helper turns up. */
-    handAfterFairs: 5,
-    /** How much of a pumpkin's quality is its size (the rest is shine). */
-    sizeWeight: 0.6,
-  },
-  /** The market: three towns ask for crops, and the asks drift. */
-  market: {
-    /** How far a wave of demand swings from the usual price. */
-    swing: 0.4,
-    /** Seconds for the demand to go all the way round. */
-    periodSeconds: 330,
-    /** Wobble on each crop: step size, pull back to zero, and its limit. */
-    wobbleStep: 0.05,
-    wobblePull: 0.02,
-    wobbleMax: 0.08,
-    /** The wave's speed wanders by this, between 0.7 and 1.3 of usual. */
-    speedStep: 0.04,
-    speedPull: 0.02,
-    /** A newly planted crop pays this share of the price while it sprouts. */
-    sproutSeconds: 20,
-    sproutFloor: 0.5,
-    /** The market agent looks this often, and only moves for this gain. */
-    agentSeconds: 90,
-    agentMargin: 1.25,
-    /** A player moves once the best crop pays this much more. */
-    playerMargin: 1.15,
+    /** The pumpkin helper enters it this far into a day, at this share. */
+    handDelay: 20,
+    handShare: 0.5,
+    /** Harvest days held before the pumpkin helper turns up. */
+    handAfterDays: 6,
+    /** How long the scene shows a ribbon or a split. */
+    showSeconds: 10,
   },
   /** The green world: biomes spread over the map, with rivers and clouds. */
   world: {
-    /** Leftover farm harvest becomes this much green when the world opens. */
+    /**
+     * The world opens with this much green however the farm ended (the
+     * farm's leftover harvest was a lottery that decided how the world began).
+     * A well-stocked barn adds up to `openingLeftover` more, no further than
+     * `openingLeftoverFull` harvest.
+     */
+    /**
+     * Careful: 1500 until 56c03642, 1800 since. The world is tuned so a
+     * player who tends it lands a little over the scorecard's 2.0 h length
+     * floor, so any change here moves the finish (re-run the scorecard).
+     */
+    openingGreen: 1800,
+    /** A payout still flowing when the farm ends turns into green at this rate, up to a cap. */
     harvestToGreen: 0.0002,
+    carryCap: 150,
+    openingLeftover: 0.1,
+    openingLeftoverFull: 8_000_000,
     /** Green per second from each helper, before bonuses. */
-    windbreakRate: 30,
+    windbreakRate: 36,
     roverRate: 225,
     seederRate: 1800,
     /** The planet's weather: its own tank, rivers, clouds and thirst. */
@@ -228,87 +271,133 @@ export const TUNING = {
       riverSeep: 0.3,
       /** Each cloud seeder adds this share to what the rain gives. */
       cloudRain: 0.25,
-      rainMax: 1.2,
+      rainMax: 2.8,
+      /** The planet's rain swings harder than a yard's: long dry and rainy spells. */
+      outlookWobble: 0.14,
       thirst: 0.4,
       thirstPerHelper: 0.02,
-      /** Extra thirst of a fully grown jungle (scaled by its perk curve). */
-      jungleThirst: 3,
+      /** Thirst of a jungle covering the whole planet; it grows with the square of its share. */
+      jungleThirst: 56,
       /** Wetland: extra tank and a gentle seep, at a fully grown wetland. */
       wetlandCapacity: 160,
       wetlandSeep: 0.4,
     },
-    /** Share of the planet a biome gains per second while it spreads. */
+    /** Share of the planet the green reaches per second, before helpers. */
     spreadBase: 1 / 3200,
     spreadPerRover: 0.00004,
     spreadPerSeeder: 0.00008,
-    /** A newly chosen biome spreads at this share of the speed while it settles. */
-    settleSeconds: 15,
-    settleFloor: 0.5,
+    /**
+     * The mix sliders: a biome's share moves toward its slider's goal at this
+     * much of the planet per second, so changing your mind takes a minute or so.
+     */
+    shiftPerSecond: 0.004,
     /**
      * What a fully grown biome adds to green income: a fraction on top of
      * 1. Every biome's gain flattens as it covers more, so a second biome
      * soon beats a bigger first one.
      */
     greenPer: { forest: 0.8, jungle: 1.8, meadow: 0.35, wetland: 0.2 },
-    /** Meadow: extra migration seeds at a fully grown meadow (a fraction). */
-    meadowSeeds: 1.5,
-    /** How much a bot values a unit of migration seeds, and of stored water. */
-    seedsWeight: 0.55,
-    waterWeight: 1,
+    /** Meadow: how much faster the green spreads at a fully grown meadow. */
+    meadowSpread: 1.5,
+    /** The mix a fresh world starts with (half forest, a little of the rest), as slider points. */
+    startMix: [6, 5, 5, 4] as readonly number[],
+    /** Slider points a biome can hold, 0 to this. */
+    maxPoints: 10,
+    /**
+     * Blight: a biome that covers more than `blightAt` of the planet starts to
+     * rot. The rot climbs by `blightRise` a second (more the further past the
+     * line), eases by `blightHeal` once the biome is back under, and takes up
+     * to `blightCut` of that biome's green.
+     */
+    blightAt: 0.42,
+    /** The land counts as at least this green when sizing a biome's share of it. */
+    blightMinCover: 0.15,
+    /** The mix plate shows when the tank is under this much with a jungle past `thirstyJungle`. */
+    lowTank: 0.45,
+    thirstyJungle: 0.2,
+    blightRise: 0.01,
+    blightExtra: 2.5,
+    blightHeal: 0.02,
+    blightCut: 0.85,
+    /** Rot shows from this much; healing from this much shows the wave. */
+    blightShows: 0.08,
+    /** Seconds the HEALED wave and the first rot flash show for. */
+    healShowSeconds: 7,
+    /** A dry world sheds this share of the planet a second (jungle most). */
+    dryErode: 0.002,
+    dryThirst: { forest: 0.35, jungle: 1, meadow: 0.25, wetland: 0 },
     /** The planet counts as green enough for a vault at this cover. */
     vaultCover: 0.7,
-    /** A player switches when another biome is this much better. */
-    playerMargin: 1.1,
   },
-  /** Seed migration: a flock of birds to send somewhere about every two minutes. */
-  migration: {
-    /** Seconds before the first flock, then between flocks. */
-    firstWaitSeconds: 45,
-    waitSeconds: 110,
-    /** The day's weather in a region is a number between these. */
-    weatherLow: 0.6,
-    weatherHigh: 1.4,
-    /** A fully green region welcomes this much less (a share). */
-    greenCut: 0.5,
-    /** Each landing greens a region by this much (0 to 1). */
-    greenStep: 0.25,
-    /** The flock leader sends a waiting flock after this long, at this share. */
-    leaderDelay: 30,
-    leaderShare: 0.5,
-    /** Flights landed before the flock leader turns up. */
-    leaderAfterFlights: 2,
-    /** A landing flows into the green over this many seconds. */
-    surgeSeconds: 4,
-    /** A landing still flowing when the world ends becomes this much care. */
-    greenToCare: 0.00005,
-    /** The most care a flock in flight at the world's end can hand the seed. */
-    carryCap: 5,
-  },
-  /** The old window box: the last pot, and what it asks for. */
+  /**
+   * The old window box: one pot, and one quiet choice, how much sun it gets.
+   * More sun grows it faster and dries the soil out; shade is slow and keeps
+   * it moist. The sky changes how much sun is right, and the leaves tell.
+   */
   windowbox: {
     /** Care per second from a wind chime and from a dew collector. */
     chimeRate: 3,
     dewRate: 20,
+    /** Care per second from a sun-catcher (between the chime and the dew). */
+    catcherRate: 7,
     /** A window lantern makes each unit of care grow the pot this much more. */
     lanternBoost: 1,
-    /** Growth (of 100) each unit of care adds to the pot. */
-    growthPerCare: 0.00003,
+    /** Growth (of 100) the pot adds a second just from the light, at a pace of 1. */
+    lightGrowth: 0.031,
+    /** Growth (of 100) each unit of care adds to the pot, at a pace of 1. */
+    growthPerCare: 0.0002,
     /** The pot is a sprout from this share grown, and a bud from this one. */
     sproutAt: 0.015,
     budAt: 0.6,
-    /** Seconds before the first want, and between one answer and the next. */
-    firstWantSeconds: 15,
-    restSeconds: 25,
-    /** The right answer pays this many seconds of tending, any other this. */
-    matchSeconds: 12,
-    otherSeconds: 4,
-    /** Each watering can adds this share to every answer. */
-    canPer: 0.5,
-    /** The music box answers after this long, for this share of a right one. */
-    boxDelay: 30,
-    boxShare: 0.5,
-    /** Answers by hand before the music box is offered. */
-    boxAfterTends: 4,
+    /** The blind has this many places (0 drawn, the last wide open). */
+    steps: 3,
+    startAim: 1,
+    /** Seconds the blind takes to move one place. */
+    moveSeconds: 4,
+    startMoist: 0.55,
+    /** Each deeper pot makes the soil change this share as fast (a slower dial). */
+    deepPer: 0.72,
+    /** Soil moisture lost each second, for each unit of sun on the pot. */
+    evap: 0.04,
+    /**
+     * The sky, in the order it can come. `sun` is how strong the light is
+     * outside; `wet` is moisture the soil gains each second from the air.
+     */
+    skies: [
+      { id: "rain", sun: 0.35, wet: 0.019 },
+      { id: "cloud", sun: 0.7, wet: 0.012 },
+      { id: "bright", sun: 1.2, wet: 0.012 },
+      { id: "heat", sun: 1.9, wet: 0.012 },
+    ] as readonly { id: string; sun: number; wet: number }[],
+    /** The sky changes after this many seconds, plus up to `skySpan` more. */
+    skyMin: 45,
+    skySpan: 45,
+    /**
+     * The leaves curl (a warning) below `curlBelow` and droop above
+     * `droopAbove`. Past `dryBelow` or `soggyAbove` they have gone crisp or
+     * floppy, and growth slows the further it goes.
+     */
+    curlBelow: 0.35,
+    droopAbove: 0.75,
+    dryBelow: 0.2,
+    soggyAbove: 0.9,
+    /** Sun on the pot at which growth stops getting faster. */
+    sunFull: 0.8,
+    /** Share of the pace sun alone gives with no light at all. */
+    sunFloor: 0.1,
+    /** Share of the pace left when the soil is bone dry or flooded. */
+    moistFloor: 0.1,
+    /** The pace (times the care rate): the worst and the best. */
+    paceMin: 0.15,
+    paceMax: 1.5,
+    /** The sun's effect on growth must be at least this for the pot to thrive. */
+    thriveSun: 0.7,
+    /** Seconds of good growing in a row that make the pot thrive. */
+    thriveAfter: 8,
+    /** Seconds before the pot can thrive again after it has. */
+    thriveRest: 25,
+    /** Seconds the scene shows a thrive or a wilt. */
+    momentSeconds: 4.5,
   },
   /** Know-how (farm and world): projects and festivals both want it. */
   knowhow: {
@@ -325,8 +414,8 @@ export const TUNING = {
     /** Drip lines and rain gauges. */
     tankMult: 2,
     thirstMult: 0.5,
-    /** The cold store: the seed bank's seed spoils this much as fast. */
-    coldStoreSpoil: 0.5,
+    /** The compost heap: the soil wears this much as fast when a crop repeats. */
+    heapWear: 0.5,
     /** Hybrid seed (farm) and wildlife corridors (world). */
     hybridMult: 2,
     corridorMult: 2,
@@ -362,8 +451,8 @@ export const TUNING = {
     },
     seed: {
       cost: 15,
-      /** Morning sun: answers to the pot pay this much more. */
-      sunTap: 3,
+      /** Morning sun: the pot grows this much faster from the light itself. */
+      sunGrowth: 4.5,
       /** Night-light: trellis, chime and dew pay this much more. */
       nightHelpers: 2.5,
     },

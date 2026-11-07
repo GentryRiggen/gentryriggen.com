@@ -1,7 +1,10 @@
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { newRun } from "@/lib/ever-onward/engine/engine";
-import { spreadActionId } from "@/lib/ever-onward/universes/grow/biomes";
+import {
+  lessActionId,
+  moreActionId,
+} from "@/lib/ever-onward/universes/grow/biomes";
 import { growUniverse as def } from "@/lib/ever-onward/universes/grow";
 import BiomePanel from "../BiomePanel";
 
@@ -15,39 +18,52 @@ describe("BiomePanel", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("is a radio group with the spreading biome checked and one tab stop", () => {
+  it("shows a slider for every biome with its plus and its minus", () => {
     render(<BiomePanel def={def} run={world()} onAct={jest.fn()} />);
-    expect(
-      screen.getByRole("radiogroup", { name: "Which kind of green to spread" })
-    ).toBeInTheDocument();
-    const radios = screen.getAllByRole("radio");
-    expect(radios).toHaveLength(4);
-    expect(screen.getByRole("radio", { name: "Forest" })).toHaveAttribute(
-      "aria-checked",
-      "true"
-    );
-    expect(radios.filter((r) => r.tabIndex === 0)).toHaveLength(1);
-    radios.forEach((r) => expect(r).not.toBeDisabled());
+    for (const biome of ["forest", "jungle", "meadow", "wetland"]) {
+      expect(screen.getByTestId(`lm-biomes-${biome}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`lm-mix-more-${biome}`)).toBeInTheDocument();
+      expect(screen.getByTestId(`lm-mix-less-${biome}`)).toBeInTheDocument();
+    }
+    expect(screen.getByText(/Water in the tank/)).toBeInTheDocument();
   });
 
-  it("chooses a biome by click and moves focus with arrows without choosing", async () => {
+  it("moves a slider by click, one point each press", async () => {
     const onAct = jest.fn();
     render(<BiomePanel def={def} run={world()} onAct={onAct} />);
-    const forest = screen.getByRole("radio", { name: "Forest" });
-    act(() => forest.focus());
-    await userEvent.keyboard("{ArrowRight}");
-    expect(document.activeElement).toBe(
-      screen.getByRole("radio", { name: "Jungle" })
+    await userEvent.click(screen.getByTestId("lm-mix-more-jungle"));
+    expect(onAct).toHaveBeenCalledWith(moreActionId("jungle"));
+    await userEvent.click(screen.getByTestId("lm-mix-less-forest"));
+    expect(onAct).toHaveBeenCalledWith(lessActionId("forest"));
+    expect(onAct).toHaveBeenCalledTimes(2);
+  });
+
+  it("says what each kind costs and never which is best", () => {
+    render(<BiomePanel def={def} run={world()} onAct={jest.fn()} />);
+    expect(screen.getByText(/drinks the most water/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/best|recommended/i);
+    // No printed threshold and no cure: the player finds the line.
+    expect(document.body.textContent).not.toMatch(
+      /\d+% of the world|spread it out|cure/i
     );
-    expect(onAct).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole("radio", { name: "Meadow" }));
-    expect(onAct).toHaveBeenCalledWith(spreadActionId("meadow"));
-    await userEvent.click(forest);
-    expect(onAct).toHaveBeenCalledTimes(1);
+  });
+
+  it("flags a blight in its row and in the result line", () => {
+    const run = world();
+    run.resources.bmBlight1 = 0.7;
+    render(<BiomePanel def={def} run={run} onAct={jest.fn()} />);
+    expect(screen.getByTestId("lm-biomes-jungle")).toHaveAttribute(
+      "data-sick",
+      "true"
+    );
+    expect(screen.getByText("BLIGHT")).toBeInTheDocument();
+    expect(screen.getByTestId("lm-biomes-result")).toHaveTextContent(
+      /Blight in the jungle/
+    );
   });
 
   it("keeps a status line", () => {
     render(<BiomePanel def={def} run={world()} onAct={jest.fn()} />);
-    expect(screen.getByRole("status")).toHaveTextContent(/Forest is spreading/);
+    expect(screen.getByText(/The world is \d+% green/)).toBeInTheDocument();
   });
 });
