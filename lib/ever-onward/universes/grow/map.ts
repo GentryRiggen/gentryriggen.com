@@ -412,9 +412,9 @@ export const GROW_MAP: MapDef = {
       },
     },
     {
-      text: "Windy hills: taps worth 15% more, everything 3% slower",
+      text: "Windy hills: taps worth 25% more, everything 3% slower",
       apply: (r) => {
-        mul(r, "tapMult", 1.15);
+        mul(r, "tapMult", 1.25);
         mul(r, "speed", 0.97);
       },
     },
