@@ -230,9 +230,9 @@ export const CUTSCENES: Readonly<Record<string, readonly CutsceneFrame[]>> = {
 
 export const TIPS: Readonly<Record<string, readonly string[]>> = {
   [PHASE_FRIEND]: [
-    "A friendship bracelet opens the bank: set smiles aside and later laughs grow bigger.",
-    "Jokes pay when you tap. Kindness pays while you rest. Pick the way you like.",
-    "Set aside about a quarter at first, and ease off when next door is near.",
+    "A friendship bracelet opens what you do together: jokes, games, or just listening.",
+    "Whatever you keep doing wears thin. Change it up and it comes back.",
+    "Watch the friend's face. It only hints at what they need, and it gets surer the longer you look.",
   ],
   [PHASE_TOWN]: [
     "Start a parade when the cheer meter is cool. It pays double for a while.",

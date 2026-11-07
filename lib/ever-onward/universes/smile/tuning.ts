@@ -24,15 +24,33 @@ export const TUNING = {
   /** Leftover currency carried into the next phase (friend, town, world). */
   carry: [0.002, 0.00003, 0] as readonly number[],
   /**
-   * The friendship bank (friend): keep a share of the smiles back and the
-   * friendship grows, so every later laugh is bigger. It fades a little.
+   * What you do together (friend). Three things to do, by index: jokes, games
+   * (the puppy's fetch lives here) and listening. Each pays smiles now (`pay`)
+   * and builds a bond (`bondRate`) that makes every laugh bigger. Whatever you
+   * keep doing wears thin (`wearSeconds` to fully worn, `wearDepth` of the pay
+   * lost) and recovers while you do something else. The friend needs one of the
+   * three at a time (`dwell` seconds each); their face hints at it (`firmAt`
+   * seconds in, the hint is right `hintRight` of the time). Right pays
+   * `rightMult`, wrong `wrongMult`.
    */
-  bond: {
-    shares: [0, 0.25, 0.5] as readonly number[],
-    maxGain: 2.5,
-    halfSeconds: 100,
-    fadePerSecond: 1 / 240,
-    referenceTaps: 2,
+  together: {
+    pay: [1.8, 1.1, 0] as readonly number[],
+    bondRate: [0, 0.005, 0.02] as readonly number[],
+    wearSeconds: [40, 70, 100] as readonly number[],
+    recoverSeconds: 60,
+    wearDepth: 0.5,
+    thinAt: 0.8,
+    switchSeconds: 5,
+    switchPay: 0.35,
+    maxGain: 2.2,
+    fadePerSecond: 1 / 200,
+    rightMult: 1.5,
+    wrongMult: 0.7,
+    dwell: [45, 90] as readonly number[],
+    firmAt: [0, 10, 25] as readonly number[],
+    hintRight: [0.45, 0.75, 0.95] as readonly number[],
+    burstSeconds: 8,
+    showSeconds: 4,
   },
   /**
    * The cheer meter (town and world): taps and parades heat it, rest cools
@@ -67,7 +85,7 @@ export const TUNING = {
   },
   /** Forks: one either-or choice per phase (prices are before costScale). */
   forks: {
-    friend: { cost: 60, jokesTap: 4, jokesBond: 0.6, kindHelpers: 1.2 },
+    friend: { cost: 60, jokesTap: 4, jokesBond: 0.65, kindHelpers: 1.2 },
     town: {
       cost: 3000,
       clownTap: 3,
@@ -96,7 +114,5 @@ export const TUNING = {
     kettleAfterAnswers: 4,
     benchBoost: 1,
   },
-  /** The puppy's ball: rest between throws, and seconds of laugh a throw pays. */
-  fetch: { restSeconds: 30, seconds: 15 },
   headStartSeconds: 20,
 } as const;

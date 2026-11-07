@@ -6113,7 +6113,328 @@ html:has(.jim-app) body {
   animation: ms-glow 3.6s ease-in-out infinite;
 }
 
+/* ---- What you do together (Make Everyone Smile, the friend): ms-t- ---- */
+/* They lit up: a flash, a sun, rings, sparks and a shout. */
+@keyframes ms-t-flash {
+  0% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-t-flash {
+  animation: ms-t-flash 1.2s ease-out forwards;
+}
+
+@keyframes ms-t-sun {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+.ms-t-sun {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-sun 3.6s ease-out forwards;
+}
+
+@keyframes ms-t-ring {
+  0% {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4.6);
+    opacity: 0;
+  }
+}
+.ms-t-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-ring 1.4s ease-out 2 both;
+}
+
+@keyframes ms-t-spark {
+  0% {
+    transform: translate(0, 0) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--ms-dx, 0), var(--ms-dy, 0)) scale(0.3);
+    opacity: 0;
+  }
+}
+.ms-t-spark {
+  animation: ms-t-spark 1.3s ease-out 3 both;
+}
+.ms-t-spark-0 {
+  --ms-dx: 112px;
+  --ms-dy: 0px;
+  animation-delay: 0s;
+}
+.ms-t-spark-1 {
+  --ms-dx: 98px;
+  --ms-dy: -56px;
+  animation-delay: 0.08s;
+}
+.ms-t-spark-2 {
+  --ms-dx: 56px;
+  --ms-dy: -98px;
+  animation-delay: 0.16s;
+}
+.ms-t-spark-3 {
+  --ms-dx: 0px;
+  --ms-dy: -112px;
+  animation-delay: 0s;
+}
+.ms-t-spark-4 {
+  --ms-dx: -56px;
+  --ms-dy: -98px;
+  animation-delay: 0.08s;
+}
+.ms-t-spark-5 {
+  --ms-dx: -98px;
+  --ms-dy: -56px;
+  animation-delay: 0.16s;
+}
+.ms-t-spark-6 {
+  --ms-dx: -112px;
+  --ms-dy: 0px;
+  animation-delay: 0s;
+}
+.ms-t-spark-7 {
+  --ms-dx: -98px;
+  --ms-dy: 32px;
+  animation-delay: 0.08s;
+}
+.ms-t-spark-8 {
+  --ms-dx: -56px;
+  --ms-dy: 64px;
+  animation-delay: 0.16s;
+}
+.ms-t-spark-9 {
+  --ms-dx: 0px;
+  --ms-dy: 70px;
+  animation-delay: 0s;
+}
+.ms-t-spark-10 {
+  --ms-dx: 56px;
+  --ms-dy: 64px;
+  animation-delay: 0.08s;
+}
+.ms-t-spark-11 {
+  --ms-dx: 98px;
+  --ms-dy: 32px;
+  animation-delay: 0.16s;
+}
+
+@keyframes ms-t-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  12% {
+    transform: scale(1.3);
+  }
+  22% {
+    transform: scale(1);
+  }
+  85% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(-6px);
+    opacity: 0;
+  }
+}
+.ms-t-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-shout 3.8s ease-out forwards;
+}
+
+/* A sigh: the friend slumps, a little grey cloud drifts in and drizzles. */
+@keyframes ms-t-slump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  18%,
+  80% {
+    transform: translateY(4px);
+  }
+}
+.ms-t-slump {
+  animation: ms-t-slump 3.8s ease-in-out forwards;
+}
+
+@keyframes ms-t-cloud {
+  0% {
+    transform: translate(-14px, 6px) scale(0.4);
+    opacity: 0;
+  }
+  22% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.95;
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(8px, -4px) scale(1.05);
+    opacity: 0;
+  }
+}
+.ms-t-cloud {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-cloud 3.8s ease-out forwards;
+}
+
+@keyframes ms-t-drop {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(32px);
+    opacity: 0;
+  }
+}
+.ms-t-drop {
+  animation: ms-t-drop 1.1s ease-in 3 both;
+}
+
+@keyframes ms-t-grey {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 0.28;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-t-grey {
+  animation: ms-t-grey 3.8s ease-out forwards;
+}
+
+/* What you are doing together, going on all the time. */
+@keyframes ms-t-pop {
+  0%,
+  100% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+.ms-t-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-pop 2.4s ease-out infinite;
+}
+
+@keyframes ms-t-fetch {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(40px, -40px);
+  }
+  100% {
+    transform: translate(80px, 0);
+  }
+}
+.ms-t-fetch {
+  animation: ms-t-fetch 2s ease-in-out infinite;
+}
+
+@keyframes ms-t-heart {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+}
+.ms-t-heart {
+  animation: ms-t-heart 2.8s ease-out infinite;
+}
+
+@keyframes ms-t-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ms-t-pulse {
+  animation: ms-t-pulse 0.9s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ms-t-flash,
+  .ms-t-sun,
+  .ms-t-ring,
+  .ms-t-spark,
+  .ms-t-shout,
+  .ms-t-slump,
+  .ms-t-cloud,
+  .ms-t-drop,
+  .ms-t-grey,
+  .ms-t-pop,
+  .ms-t-fetch,
+  .ms-t-heart,
+  .ms-t-pulse {
+    animation: none;
+  }
+
+  .ms-t-flash,
+  .ms-t-sun,
+  .ms-t-ring,
+  .ms-t-spark,
+  .ms-t-drop,
+  .ms-t-grey,
+  .ms-t-heart {
+    opacity: 0;
+  }
+
   .ms-bob,
   .ms-bob-b,
   .ms-sway,

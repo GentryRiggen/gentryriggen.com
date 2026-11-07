@@ -1,7 +1,5 @@
 import { visitorHereFlag } from "../../engine/engine";
 import type { RunState } from "../../engine/types";
-import { bondGain } from "./tick";
-import { isBallReady } from "./fetch";
 import { forkSide } from "./forks";
 import { isParadeOn, isProjectDone } from "./knowhow";
 import { isTired, meterQuarters } from "./meter";
@@ -13,8 +11,18 @@ import {
   type TrustStage,
 } from "./quiet";
 import { PHASE_IDS, type SmilePhaseId } from "./resources";
+import {
+  activityOf,
+  bondOf,
+  hintOf,
+  hintStage,
+  isSwitching,
+  isTogetherOpen,
+  justLit,
+  justSighed,
+  wearOf,
+} from "./together";
 import { RETURN_VISITOR_ID } from "./visitors";
-import { TUNING } from "./tuning";
 
 /** The few numbers the picture needs; the scene redraws only when they change. */
 export interface SmileSceneInfo {
@@ -40,9 +48,23 @@ export interface SmileSceneInfo {
   tired: boolean;
   /** Which know-how projects are done (bit 0, 1 and 2). */
   projects: number;
-  /** Friend: the bank's tier (0 to 3), and the puppy waits with a ball. */
+  /** Friend: the bond's tier (0 to 3). */
   bond: number;
-  ball: boolean;
+  /**
+   * Friend, once what you do together is open: what you are doing (0 jokes, 1
+   * games, 2 listening), the change is under way, what the face hints at (-1
+   * nothing yet) and how sure it is (0 to 2), how worn thin the activity is in
+   * quarters (0 to 4), and the two big moments (lit up, sighed; a sigh is
+   * about being worn thin when `sighThin`).
+   */
+  doing: number;
+  switching: boolean;
+  hint: number;
+  sure: number;
+  thin: number;
+  lit: boolean;
+  sigh: boolean;
+  sighThin: boolean;
   /** Quiet: whole percent of trust (steps of 5), and the face's stage. */
   trust: number;
   face: TrustStage;
@@ -111,11 +133,41 @@ const PROJECT_IDS: readonly (readonly string[])[] = [
 
 const level = (run: RunState, id: string): number => (id ? owned(run, id) : 0);
 
-/** The bank's tier: empty, a little, a good deal, nearly full. */
+/** The bond's tier: empty, a little, a good deal, nearly full. */
 function bondTier(run: RunState): number {
   if (run.phase !== 0) return 0;
-  const gain = bondGain(run) / TUNING.bond.maxGain;
-  return gain >= 0.6 ? 3 : gain >= 0.3 ? 2 : gain >= 0.05 ? 1 : 0;
+  const bond = bondOf(run);
+  return bond >= 0.6 ? 3 : bond >= 0.3 ? 2 : bond >= 0.05 ? 1 : 0;
+}
+
+function togetherInfo(
+  run: RunState
+): Pick<
+  SmileSceneInfo,
+  "doing" | "switching" | "hint" | "sure" | "thin" | "lit" | "sigh" | "sighThin"
+> {
+  if (!isTogetherOpen(run))
+    return {
+      doing: 0,
+      switching: false,
+      hint: -1,
+      sure: 0,
+      thin: 0,
+      lit: false,
+      sigh: false,
+      sighThin: false,
+    };
+  const act = activityOf(run);
+  return {
+    doing: act,
+    switching: isSwitching(run),
+    hint: hintOf(run),
+    sure: hintStage(run),
+    thin: Math.round(wearOf(run, act) * 4),
+    lit: justLit(run),
+    sigh: justSighed(run),
+    sighThin: (run.resources.tgSighWhy ?? 0) === 0,
+  };
 }
 
 export function sceneInfo(run: RunState): SmileSceneInfo {
@@ -145,7 +197,7 @@ export function sceneInfo(run: RunState): SmileSceneInfo {
       0
     ),
     bond: bondTier(run),
-    ball: isBallReady(run),
+    ...togetherInfo(run),
     trust: p === 3 ? Math.round(trust * 20) * 5 : 0,
     face: p === 3 ? trustStage(run) : TRUST_STAGES[0],
     wanting: p === 3 && isWanting(run),

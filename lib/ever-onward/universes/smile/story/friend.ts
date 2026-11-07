@@ -1,5 +1,5 @@
 import type { RunState, StoryMessage } from "../../../engine/types";
-import { bondChanges } from "../bond";
+import { togetherChanges } from "../together";
 import { PHASE_FRIEND } from "../resources";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
@@ -47,8 +47,8 @@ export const friend: StoryMessage[] = [
   {
     id: "friend-bond",
     phase: PHASE_FRIEND,
-    when: (run) => bondChanges(run) >= 1,
-    text: "Some smiles are for laughing at, and some are for keeping. The robot puts a few in a jar to grow, the way you plant a bean.",
+    when: (run) => togetherChanges(run) >= 1,
+    text: "Some days the friend wants a laugh, and some days a game, and some days only someone to sit and listen. The robot learns to watch their face. It does not always guess right, and the friend does not mind.",
   },
   {
     id: "friend-fork",

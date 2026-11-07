@@ -76,12 +76,34 @@ export const RESOURCES: readonly ResourceDef[] = [
   ...hidden(["mtHeat", "mtTired"]),
   // The parade: seconds left and parades held.
   ...hidden(["pdLeft", "pdCount"]),
-  // The puppy's ball: stage (0 away, 1 ready), the clock and throws made.
-  ...hidden(["ftStage", "ftTime", "ftThrows"]),
   // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).
   ...hidden(["fkFriend", "fkTown", "fkWorld", "fkQuiet"]),
-  // The friendship bank: the share kept (a step), what is in it, times changed.
-  ...hidden(["bdStep", "bdStock", "bdChanges"]),
+  // What you do together: the activity, the one being switched to and the
+  // seconds left, wear per activity, the bond, the friend's need and its
+  // clock, three hints, the random stream, and the big moments' clocks.
+  ...hidden([
+    "tgAct",
+    "tgNext",
+    "tgSwitch",
+    "tgWear0",
+    "tgWear1",
+    "tgWear2",
+    "tgBond",
+    "tgNeed",
+    "tgSince",
+    "tgLeft",
+    "tgH0",
+    "tgH1",
+    "tgH2",
+    "tgRng",
+    "tgPaused",
+    "tgChanges",
+    "tgLitAt",
+    "tgLits",
+    "tgSighAt",
+    "tgSighWhy",
+    "tgSighs",
+  ]),
   // The friend's wants: stage (0 resting, 1 wanting), the clock, the want,
   // answers given, the last answer (right or not), and care for the last one.
   ...hidden([

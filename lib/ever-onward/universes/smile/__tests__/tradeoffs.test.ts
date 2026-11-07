@@ -1,13 +1,10 @@
 import {
   canPerformAction,
-  newRun,
   performAction,
   startProject,
   tick,
 } from "../../../engine/engine";
 import type { RunState } from "../../../engine/types";
-import { BOND_SHARES, bondActionId, bondStock } from "../bond";
-import { FETCH_ACTION_ID, isBallReady } from "../fetch";
 import {
   PARADE_ACTION_ID,
   isParadeOn,
@@ -27,56 +24,7 @@ const advance = (run: RunState, seconds: number, step = 1): RunState => {
   return next;
 };
 
-/** A friend run with a bracelet and a few helpers, ready to set smiles aside. */
-function bankRun(): RunState {
-  const run = newRun(def);
-  return {
-    ...run,
-    owned: { balloon: 3, puppy: 2, bracelet: 1 },
-    resources: { ...run.resources, smiles: 0 },
-  };
-}
-
 describe("Smile trade-offs", () => {
-  describe("spend now or invest: the friendship bank", () => {
-    it("pays less now and more later the more you set aside", () => {
-      const after = (step: number) => {
-        let run = performAction(def, bankRun(), bondActionId(step));
-        run = advance(run, 600);
-        return {
-          smiles: run.resources.smiles,
-          perTap: manualPerTap(run),
-          stock: bondStock(run),
-        };
-      };
-      const none = after(0);
-      const quarter = after(1);
-      const half = after(2);
-      // Early on, setting smiles aside leaves fewer to spend.
-      const early = (step: number) =>
-        advance(performAction(def, bankRun(), bondActionId(step)), 30).resources
-          .smiles;
-      expect(early(2)).toBeLessThan(early(1));
-      expect(early(1)).toBeLessThan(early(0));
-      // Later, the bank makes every laugh bigger than a plain friendship.
-      expect(none.stock).toBe(0);
-      expect(quarter.stock).toBeGreaterThan(0);
-      expect(half.stock).toBeGreaterThan(quarter.stock);
-      expect(quarter.perTap).toBeGreaterThan(0);
-    });
-
-    it("is open only with the bracelet, and never loses what you set aside by switching", () => {
-      const closed = { ...bankRun(), owned: { balloon: 3, puppy: 2 } };
-      expect(canPerformAction(def, closed, bondActionId(1))).toBe(false);
-      expect(BOND_SHARES).toEqual([0, 0.25, 0.5]);
-      let run = performAction(def, bankRun(), bondActionId(2));
-      run = advance(run, 120);
-      const stock = bondStock(run);
-      run = performAction(def, run, bondActionId(0));
-      expect(bondStock(run)).toBeGreaterThanOrEqual(stock * 0.95);
-    });
-  });
-
   describe("one currency, two sinks: know-how", () => {
     function townRun(): RunState {
       const start = runAtPhaseStart(1);
@@ -182,22 +130,6 @@ describe("Smile trade-offs", () => {
         resources: { ...run.resources, knowhow: 500, mtHeat: 0.9 },
       };
       expect(canPerformAction(def, run, PARADE_ACTION_ID)).toBe(false);
-    });
-  });
-
-  describe("fetch: a claim that never expires", () => {
-    it("brings the ball back after a rest, and a throw pays a burst of smiles", () => {
-      const run = newRun(def);
-      let next: RunState = { ...run, owned: { balloon: 2, puppy: 1 } };
-      expect(isBallReady(next)).toBe(false);
-      next = advance(next, TUNING.fetch.restSeconds + 1);
-      expect(isBallReady(next)).toBe(true);
-      next = advance(next, 600);
-      expect(isBallReady(next)).toBe(true);
-      const before = next.resources.smiles;
-      const after = performAction(def, next, FETCH_ACTION_ID);
-      expect(after.resources.smiles).toBeGreaterThan(before);
-      expect(isBallReady(after)).toBe(false);
     });
   });
 

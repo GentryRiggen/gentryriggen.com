@@ -187,7 +187,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "puppy",
     name: "A wagging puppy",
     description:
-      "It tumbles over its own paws and the friend laughs out loud. It also fetches, if you throw the ball.",
+      "It tumbles over its own paws and the friend laughs out loud. It is also very good at games, once there are games to play.",
     phase: PHASE_FRIEND,
     currency: "smiles",
     baseCost: 630,
@@ -198,13 +198,13 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       id: "bracelet",
       name: "A friendship bracelet",
       description:
-        "Made of three colors of string. It opens the friendship bank: set some smiles aside as time together, and every later laugh grows bigger.",
+        "Made of three colors of string. It opens what you do together: jokes, games or just listening, and the friend's face shows what they need next.",
       phase: PHASE_FRIEND,
       currency: "smiles",
       baseCost: 270,
       gate: has("puppy", 1),
     },
-    () => "Opens the friendship bank\nSave smiles now, bigger laughs later"
+    () => "Opens what you do together\nJokes, games or listening"
   ),
   line({
     id: "lemonade",

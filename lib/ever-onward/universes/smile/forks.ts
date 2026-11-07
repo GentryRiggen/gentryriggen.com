@@ -71,7 +71,7 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "Tell jokes",
         blurb: `Knock knock! Every tap you make pays ${times(T.friend.jokesTap)} as much. The jokes are good ones, and some are even new.`,
-        catchLine: `Laughs fade fast, so the friendship bank grows ${less(T.friend.jokesBond)} less.`,
+        catchLine: `Laughs fade fast, so the bond you build together grows ${less(T.friend.jokesBond)} less.`,
       },
       {
         name: "Be kind",
@@ -219,7 +219,7 @@ export const forkHelperMult = (run: RunState): number =>
           ? pick(run, "quiet", 1, T.quiet.silenceHelpers)
           : 1;
 
-/** How much the friendship bank gives of what it would (jokes fade fast). */
+/** How much the bond gives of what it would (jokes fade fast). */
 export const forkBondMult = (run: RunState): number =>
   pick(run, "friend", T.friend.jokesBond, 1);
 

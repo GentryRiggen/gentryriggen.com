@@ -180,6 +180,37 @@ test.describe("Ever Onward", () => {
     await expect(jungle).toHaveAttribute("data-points", String(before + 1));
   });
 
+  test("what you do together: three activities, the friend's face hint and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make Everyone Smile" })
+      .click();
+    await page.getByTestId("eo-jump-smile-0-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("ms-together");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("ms-together-face")).toContainText(
+      "Their face looks like it wants"
+    );
+    await expect(page.getByTestId("eo-together-scene")).toBeAttached();
+    await expect(page.getByTestId("eo-face-hint")).toBeAttached();
+    for (const i of [0, 1, 2]) {
+      await expect(panel.getByTestId(`ms-together-${i}`)).toContainText("+ ");
+    }
+    await panel.getByRole("radio", { name: "Just listen" }).click();
+    await expect(panel).toHaveAttribute("data-switching", "yes");
+    await expect(page.getByTestId("eo-together-scene")).toBeAttached();
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

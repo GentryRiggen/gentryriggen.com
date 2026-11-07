@@ -6,12 +6,11 @@ import { FORKS } from "@/lib/ever-onward/universes/smile/forks";
 import { runAtPhaseStart } from "@/lib/ever-onward/universes/smile/__tests__/fixtures";
 import { areSmileScoresValid } from "../../../audio/smileScores";
 import { SMILE_UI } from "../../../universes/smile";
-import BondPanel from "../BondPanel";
 import CheerMeter from "../CheerMeter";
-import FetchPanel from "../FetchPanel";
 import FriendPanel from "../FriendPanel";
 import KnowHowPanel from "../KnowHowPanel";
 import SmileForkPanel from "../SmileForkPanel";
+import TogetherPanel from "../TogetherPanel";
 
 const advance = (run: RunState, seconds: number): RunState => {
   let next = run;
@@ -55,31 +54,29 @@ describe("Smile panels", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("offers the friendship bank only with the bracelet, as a radio group", () => {
+  it("offers what you do together only with the bracelet, as a radio group that shows the + and the - and never a best", () => {
     const onAct = jest.fn();
     const closed = withOwned(runAtPhaseStart(0), { puppy: 1 });
     const { container, rerender } = render(
-      <BondPanel def={def} run={closed} onAct={onAct} />
+      <TogetherPanel def={def} run={closed} onAct={onAct} />
     );
     expect(container).toBeEmptyDOMElement();
-    rerender(
-      <BondPanel
-        def={def}
-        run={withOwned(closed, { bracelet: 1 })}
-        onAct={onAct}
-      />
-    );
+    const open = advance(withOwned(closed, { bracelet: 1 }), 2);
+    rerender(<TogetherPanel def={def} run={open} onAct={onAct} />);
     expect(screen.getAllByRole("radio")).toHaveLength(3);
-    fireEvent.click(screen.getByTestId("ms-bond-1"));
-    expect(onAct).toHaveBeenCalledWith("bond-1");
-  });
-
-  it("throws the ball when the puppy brings it back", () => {
-    const onAct = jest.fn();
-    const run = advance(withOwned(runAtPhaseStart(0), { puppy: 1 }), 40);
-    render(<FetchPanel def={def} run={run} onAct={onAct} />);
-    fireEvent.click(screen.getByTestId("ms-fetch-throw"));
-    expect(onAct).toHaveBeenCalledWith("fetch-throw");
+    for (const i of [0, 1, 2]) {
+      const card = screen.getByTestId(`ms-together-${i}`);
+      expect(card).toHaveTextContent("+ ");
+      expect(card).toHaveTextContent("− ");
+    }
+    expect(screen.getByTestId("ms-together").textContent).not.toMatch(
+      /best|recommend/i
+    );
+    expect(screen.getByTestId("ms-together-face")).toHaveTextContent(
+      "Their face looks like it wants"
+    );
+    fireEvent.click(screen.getByTestId("ms-together-1"));
+    expect(onAct).toHaveBeenCalledWith("tg-1");
   });
 
   it("shows the cheer meter in the town and the world only", () => {

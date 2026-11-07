@@ -1,13 +1,22 @@
 import { genericBots, type BotSet } from "../../engine/bots";
-import { shownProjects, upgradeCost } from "../../engine/engine";
+import { shownProjects } from "../../engine/engine";
 import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
-import { bondActionId, bondStep } from "./bond";
 import { currentFork, forkActionId, type ForkSide } from "./forks";
 import { PARADE_ACTION_ID, knowhowOf, paradeCost } from "./knowhow";
-import { FETCH_ACTION_ID, isBallReady } from "./fetch";
 import { heatOf } from "./meter";
 import { currentWant, isWanting, tendActionId, tendsSoFar } from "./quiet";
+import {
+  ACTIVITY_COUNT,
+  activityOf,
+  hintOf,
+  hintStage,
+  isSwitching,
+  isTogetherOpen,
+  togetherActionId,
+  wearOf,
+} from "./together";
+import { TUNING } from "./tuning";
 import { smileUniverse } from ".";
 
 type Actions = NonNullable<Strategy["actions"]>;
@@ -48,35 +57,49 @@ export const takesFork =
     return available.includes(id) ? [id] : [];
   };
 
-/** Share of the next door's price in hand at which smiles stop being set aside. */
-const DOOR_NEAR_SHARE = 0.25;
-
 /**
- * Sets a quarter of every smile aside while the next door is far off, and
- * laughs it all once a good part of its price is in hand.
+ * Does what the face says once it is leaning or sure, and otherwise stays
+ * with what it is doing (unless that is worn thin, then it tries the next
+ * thing along). Looks every `window` seconds, the way a player glances up.
  */
-export const bondPolicy =
+export const readsFace =
   (window = 10): Actions =>
   (run, available) => {
-    if (run.phase !== 0 || !isWindowStart(run, window)) return [];
-    const door = smileUniverse.upgrades.find((u) => u.id === "next-door");
-    const isNear =
-      !!door &&
-      run.revealed.includes(door.id) &&
-      (run.resources.smiles ?? 0) >= DOOR_NEAR_SHARE * upgradeCost(run, door);
-    const want = isNear ? 0 : 1;
-    const id = bondActionId(want);
-    return bondStep(run) !== want && available.includes(id) ? [id] : [];
+    if (!isTogetherOpen(run) || isSwitching(run) || !isWindowStart(run, window))
+      return [];
+    const act = activityOf(run);
+    const wantsHint = hintStage(run) >= 1 && hintOf(run) !== act;
+    const isThin = wearOf(run, act) >= TUNING.together.thinAt;
+    const target = wantsHint
+      ? hintOf(run)
+      : isThin
+        ? (act + 1) % ACTIVITY_COUNT
+        : act;
+    const id = togetherActionId(target);
+    return target !== act && available.includes(id) ? [id] : [];
   };
 
-/** Sets this step on the first look and never changes it. */
-export const keepsBond =
-  (step: number): Actions =>
+/** Does one thing for good (jokes, games or listening) and never changes. */
+export const keepsDoing =
+  (activity: number): Actions =>
   (run, available) => {
-    const id = bondActionId(step);
-    return run.phase === 0 && bondStep(run) !== step && available.includes(id)
+    const id = togetherActionId(activity);
+    return isTogetherOpen(run) &&
+      activityOf(run) !== activity &&
+      !isSwitching(run) &&
+      available.includes(id)
       ? [id]
       : [];
+  };
+
+/** Goes round jokes, games and listening, changing every `seconds`. */
+export const rotatesEvery =
+  (seconds: number): Actions =>
+  (run, available) => {
+    if (!isTogetherOpen(run) || isSwitching(run)) return [];
+    const target = Math.floor(run.time / seconds) % ACTIVITY_COUNT;
+    const id = togetherActionId(target);
+    return target !== activityOf(run) && available.includes(id) ? [id] : [];
   };
 
 /**
@@ -111,19 +134,13 @@ export const answersFriend =
     return available.includes(id) ? [id] : [];
   };
 
-/** Throws the ball whenever the puppy brings it back. */
-export const throwsBall: Actions = (run, available) =>
-  isBallReady(run) && available.includes(FETCH_ACTION_ID)
-    ? [FETCH_ACTION_ID]
-    : [];
-
 /** Both choices at once, so a bot can pick and follow in the same step. */
 const alongside =
   (...all: Actions[]): Actions =>
   (run, available) =>
     all.flatMap((a) => a(run, available));
 
-/** A strategy that plays the fork, the bank, the parade and the friend. */
+/** A strategy that plays the fork, the face, the parade and the friend. */
 export function smilePlayer(
   base: Strategy,
   options: { skipEvery?: number; window?: number; side?: ForkSide } = {}
@@ -134,8 +151,7 @@ export function smilePlayer(
     actions: alongside(
       takesFork(options.side),
       holdsParade,
-      throwsBall,
-      bondPolicy(window),
+      readsFace(window),
       answersFriend({ skipEvery: options.skipEvery })
     ),
   };
@@ -151,11 +167,11 @@ export function smileBots(): BotSet {
   });
   const naiveCrowd = {
     ...hard(base.tapper),
-    actions: alongside(takesFork(), holdsParade, bondPolicy(10)),
+    actions: alongside(takesFork(), holdsParade, readsFace(10)),
   };
   const carefulCrowd = {
     ...easesOnHeat(hard(base.tapper)),
-    actions: alongside(takesFork(), holdsParade, bondPolicy(10)),
+    actions: alongside(takesFork(), holdsParade, readsFace(10)),
   };
   return {
     tapper,

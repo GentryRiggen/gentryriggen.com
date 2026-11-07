@@ -13,7 +13,13 @@ export function captionFor(info: SmileSceneInfo): string {
           : "A friend on a step, a little less sad",
         ...(info.a > 0 ? [plural(info.a, "balloon bunch")] : []),
         ...(info.b > 0 ? [plural(info.b, "puppy")] : []),
-        ...(info.ball ? ["the puppy has the ball"] : []),
+        ...(info.hint >= 0
+          ? [
+              ["telling jokes", "playing a game", "listening"][info.doing],
+              ...(info.lit ? ["they lit up"] : []),
+              ...(info.sigh ? ["a little sigh"] : []),
+            ]
+          : []),
       ].join(" · ");
     case "town":
       return [

@@ -1,7 +1,5 @@
 import { projectDoneFlag, projectSeenFlag } from "../../engine/engine";
 import type { ConsumableDef, RunState } from "../../engine/types";
-import { BOND_ACTION_IDS, isBondOpen } from "./bond";
-import { FETCH_ACTION_ID, isBallReady } from "./fetch";
 import {
   FORK_ACTION_IDS,
   currentFork,
@@ -21,6 +19,17 @@ import { hasMeter, heatOf, withoutHeat } from "./meter";
 import { QUIET_ACTION_IDS, isWanting } from "./quiet";
 import { PHASE_IDS } from "./resources";
 import { isSameSceneInfo, sceneInfo } from "./scene";
+import {
+  TOGETHER_ACTION_IDS,
+  activityOf,
+  hintOf,
+  hintStage,
+  isSwitching,
+  isTogetherOpen,
+  wearOf,
+  withoutTogether,
+} from "./together";
+import { TUNING } from "./tuning";
 
 /** A project is on offer and not yet done. */
 function hasOpenProject(run: RunState): boolean {
@@ -33,14 +42,27 @@ function hasOpenProject(run: RunState): boolean {
   );
 }
 
+/**
+ * True when the face has firmed up on something other than what you are
+ * doing, or what you are doing has worn thin: a moment to choose again.
+ */
+function needsALook(run: RunState): boolean {
+  if (!isTogetherOpen(run) || isSwitching(run)) return false;
+  const act = activityOf(run);
+  return (
+    (hintStage(run) >= 1 && hintOf(run) !== act) ||
+    wearOf(run, act) >= TUNING.together.thinAt
+  );
+}
+
 /** Systems asking for the player's attention: the tap, the choice, the crowd. */
 export function smilePlates(run: RunState): string[] {
   const plates = ["tap"];
   const fork = currentFork(run);
   if (isForkOpen(run, fork.id) && !isForkChosen(run, fork.id))
     plates.push("fork");
-  if (isBondOpen(run)) plates.push("bond");
-  if (isBallReady(run)) plates.push("fetch");
+  if (isTogetherOpen(run)) plates.push("together");
+  if (needsALook(run)) plates.push("face");
   if (hasMeter(run) && heatOf(run) >= 0.6) plates.push("meter");
   if (
     isParadeOpen(run) &&
@@ -57,19 +79,19 @@ export function smilePlates(run: RunState): string[] {
 /** The plates that count as tended while the player acts on them. */
 export const SMILE_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> =
   {
-    fetch: [FETCH_ACTION_ID],
+    face: TOGETHER_ACTION_IDS,
     friend: QUIET_ACTION_IDS,
     fork: FORK_ACTION_IDS,
     parade: [PARADE_ACTION_ID],
   };
 
 /**
- * Real choices, for the decision-gap metric: which fork, how much to set
- * aside, when to hold a parade, how to answer a friend. Tapping is not.
+ * Real choices, for the decision-gap metric: which fork, what to do
+ * together, when to hold a parade, how to answer a friend. Tapping is not.
  */
 export const SMILE_DECISION_ACTIONS: readonly string[] = [
   ...FORK_ACTION_IDS,
-  ...BOND_ACTION_IDS,
+  ...TOGETHER_ACTION_IDS,
   PARADE_ACTION_ID,
   ...QUIET_ACTION_IDS,
 ];
@@ -84,8 +106,12 @@ export const SMILE_CONSUMABLES: readonly ConsumableDef[] = [
   },
 ];
 
-/** Income probes read the crowd rested: being worn out is not a smaller town. */
+/**
+ * Income probes read the crowd rested and the friend at plain pay: being worn
+ * out, or listening for a while, is not a smaller town.
+ */
 export function smileIncomeView(run: RunState): RunState {
+  if (run.phase === 0) return withoutTogether(run);
   return hasMeter(run) ? withoutHeat(run) : run;
 }
 
