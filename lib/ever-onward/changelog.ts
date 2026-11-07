@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.32.0",
+    date: "2026-11-07",
+    title: "Bees and flower beds",
+    highlights: [
+      "In Make It Grow's backyard, the bee dance is gone. Now you plant flower beds (clover, sunflowers, lavender and an apple tree) and decide how many bees work each one",
+      "Every bed gives something different: clover makes honey fast, sunflowers make the garden ripen faster, lavender calms the bees, and the apple tree pays big in autumn",
+      "Work a bed too hard and it wilts! The bees fly home and you have to plant it again. Watch the bloom bar",
+      "Two healthy beds side by side can cross into a rare flower that makes the garden ripen faster for good",
+      "Honey sells for seeds (best in winter), but the hive eats honey in winter. Run out and some bees fly away until spring",
+      "The flower beds, the bees, wilting, rare flowers and hungry winters all play out in the garden picture",
+    ],
+  },
+  {
     version: "1.31.1",
     date: "2026-11-03",
     title: "Every card says what it changes",

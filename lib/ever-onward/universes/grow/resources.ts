@@ -60,6 +60,12 @@ export const RESOURCES: readonly ResourceDef[] = [
     purpose: "Pick it to turn it into seeds.",
   },
   {
+    id: "honey",
+    label: "Honey",
+    phases: [PHASE_YARD],
+    purpose: "Sell it, or keep it for winter.",
+  },
+  {
     id: "harvest",
     label: "Harvest",
     phases: [PHASE_FARM],
@@ -99,25 +105,32 @@ export const RESOURCES: readonly ResourceDef[] = [
   },
   { id: "wtRng", label: "Water stream", phases: HIDDEN },
   { id: "wtDry", label: "Tank ran dry", phases: HIDDEN },
-  // The bee dances: stage (0 foraging, 1 dancing), the clock, the dance
-  // (angle and length), how many danced and followed, a pollination flowing
-  // in, the last follow, and the bees' own random stream.
+  // Pollination (bees.ts): each bed's planting, bees and bloom, when it
+  // last wilted, the bees gone in a hungry winter, the rare flowers and the
+  // crosses' own random stream.
   ...[
-    "beStage",
-    "beTime",
-    "beAngle",
-    "beLen",
-    "beDances",
-    "beFollows",
-    "bePending",
-    "beSurgeRate",
-    "beEarned",
-    "bePicked",
-    "beHinted",
-    "beLastPays",
-    "beBy",
-    "bePaused",
-    "beRng",
+    ...[0, 1, 2, 3].flatMap((i) => [
+      `pbPlanted${i}`,
+      `pbBees${i}`,
+      `pbBloom${i}`,
+      `pbWiltAt${i}`,
+    ]),
+    "pbWilts",
+    "pbLastWilt",
+    "pbGone",
+    "pbLeft",
+    "pbLeftAt",
+    "pbRare",
+    "pbCrossAt",
+    "pbCrossPair",
+    "pbCrossPays",
+    "pbPlants",
+    "pbMoves",
+    "pbSales",
+    "pbLastSale",
+    "pbHoneyMade",
+    "pbPaused",
+    "pbRng",
   ].map((id): ResourceDef => ({ id, label: id, phases: HIDDEN })),
   // The farm's market: the crop in the ground, how long it still sprouts,
   // the wave of demand (angle, speed), a wobble per crop, the agent's clock,

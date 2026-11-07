@@ -21,6 +21,69 @@ async function startGame(page: Page) {
 }
 
 test.describe("Ever Onward", () => {
+  test("Test mode jumps into any part and leaves the real game alone", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-2-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "The Whole World"
+    );
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-test-speed-20").click();
+    await page.getByTestId("eo-test-exit").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveCount(0);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "The Coast"
+    );
+    const saved = await page.evaluate(() =>
+      window.localStorage.getItem("ever-onward:save")
+    );
+    expect(saved).not.toContain('"grow"');
+  });
+
+  test("the backyard's bees work flower beds in the panel and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-0-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    await expect(page.getByTestId("eo-pollen")).toBeAttached();
+    await expect(page.getByTestId("eo-flower-bed-0")).toBeAttached();
+    const panel = page.getByTestId("eo-bees");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("eo-bed-0")).toBeVisible();
+    await expect(panel.getByTestId("eo-bees-honey")).toContainText("Honey");
+  });
+
+  test("players without the owner mark see no Test mode", async ({ page }) => {
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await expect(page.getByTestId("lm-menu")).toBeVisible();
+    await expect(page.getByTestId("eo-test-mode")).toHaveCount(0);
+  });
+
   test(
     "the start screen shows first and Enter opens the hub",
     {

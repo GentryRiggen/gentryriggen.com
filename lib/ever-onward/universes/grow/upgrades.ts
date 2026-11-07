@@ -13,10 +13,9 @@ import {
 import {
   BEE_KEEPER_ID,
   BEES_OPEN_FLAG,
-  dancesSoFar,
-  keeperPays,
-  keeperShown,
+  beesKept,
   openBees,
+  wiltsSoFar,
 } from "./bees";
 import { worldCover } from "./biomes";
 import {
@@ -184,7 +183,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     badge: "NEW ABILITY",
     name: "A bee hive",
     description:
-      "The bees visit every flower, so things ripen three times as fast as a sprinkler manages.",
+      "Three bees to send to the flower beds you plant. Each bed gives something different, and each tires if the bees work it too hard.",
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 700,
@@ -195,14 +194,14 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       owned(run, "sprinkler") >= 5 && forkSide(run, "yard") === 0,
     onBuy: openBees,
     effectPreview: (run) =>
-      ratePreview(run, "bee-hive", "Produce/sec", incomePerSecond),
+      `Bees in the garden ${beesKept(run)} → ${beesKept(run) + TUNING.pollen.beesPerHive}. ${ratePreview(run, "bee-hive", "Produce/sec", incomePerSecond)}`,
   },
   {
     id: BEE_KEEPER_ID,
     badge: "NEW ABILITY",
     name: "A bee keeper",
     description:
-      "A friendly person in a veil who reads the dance when you are busy. Your own follow still pays more.",
+      "A friendly person in a veil with a smoker. Calm bees are gentle, so every flower bed tires more slowly.",
     phases: [PHASE_YARD],
     currency: "seeds",
     baseCost: 1800,
@@ -210,11 +209,12 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     // A bonus helper, not income: bots buy the garden first.
     priority: -1,
     kind: "mechanic",
-    // Halfway through the dances' life: after the bees have danced twice.
+    // Once tired beds are a worry: the first wilt, or three beds planted.
     visibleWhen: (run) =>
-      run.flags[BEES_OPEN_FLAG] === true && keeperShown(run),
-    effectPreview: (run) =>
-      `Follows the bees for you after a wait: about ${num(Math.floor(keeperPays(run, incomePerSecond(run))))} seeds (dances so far: ${dancesSoFar(run)})`,
+      run.flags[BEES_OPEN_FLAG] === true &&
+      (wiltsSoFar(run) >= 1 || (run.resources.pbPlants ?? 0) >= 3),
+    effectPreview: () =>
+      `Flower bed wear 100% → ${Math.round(TUNING.pollen.keeperWear * 100)}%`,
   },
   {
     id: "garden-hose",

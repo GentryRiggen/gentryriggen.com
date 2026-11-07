@@ -9,7 +9,21 @@ import {
 import { bestCrop, cropPrice, plantedCrop, type Crop } from "./market";
 import { FULL_GROWTH, PHASE_IDS, type GrowPhaseId } from "./resources";
 import { seasonOf, type Season } from "./seasons";
-import { BEE_KEEPER_ID } from "./bees";
+import {
+  BEDS,
+  BEE_KEEPER_ID,
+  beesHome,
+  beesOn,
+  bloomOf,
+  honeyOf,
+  isBeesOpen,
+  isLeaving,
+  isPlanted,
+  justCrossed,
+  justWilted,
+  rareCount,
+  winterNeeds,
+} from "./bees";
 import { isDry, waterLevel } from "./water";
 import { FORK_IDS, forkSide } from "./forks";
 import { isFestivalOn, isProjectDone } from "./knowhow";
@@ -87,6 +101,21 @@ export interface GrowSceneInfo {
   barrow: boolean;
   tea: boolean;
   keeper: boolean;
+  /**
+   * Yard pollination, flat so the picture's equality check stays cheap: one
+   * "planted:bees:bloom-tenths:wilting" group per bed, joined by "|", or ""
+   * before the first hive. Bees are capped at 6 a bed for drawing.
+   */
+  flowerBeds: string;
+  /** Bees resting at the hives (drawn, up to 6). */
+  beesIdle: number;
+  /** Honey jars on the shelf, 0 to 6 (6: a winter's worth or more). */
+  honeyJars: number;
+  /** Rare flowers grown, and the pair crossing right now (-1: none). */
+  rare: number;
+  crossPair: number;
+  /** Hungry bees are flying away (winter, no honey). */
+  leaving: boolean;
   /** Farm: fields in the picture, tractors, glasshouses, wells, and how well the planted crop matches what the towns want (0 to 1 in tenths). */
   fields: number;
   tractors: number;
@@ -177,6 +206,12 @@ function yardInfo(
   | "barrow"
   | "tea"
   | "keeper"
+  | "flowerBeds"
+  | "beesIdle"
+  | "honeyJars"
+  | "rare"
+  | "crossPair"
+  | "leaving"
 > {
   const has = (id: string) => isYard && owned(run, id) > 0;
   const n = (id: string) => (isYard ? owned(run, id) : 0);
@@ -195,6 +230,35 @@ function yardInfo(
     barrow: has("wheelbarrow"),
     tea: has("compost-tea"),
     keeper: has(BEE_KEEPER_ID),
+    ...pollenInfo(run, isYard),
+  };
+}
+
+function pollenInfo(run: RunState, isYard: boolean) {
+  if (!isYard || !isBeesOpen(run))
+    return {
+      flowerBeds: "",
+      beesIdle: 0,
+      honeyJars: 0,
+      rare: 0,
+      crossPair: -1,
+      leaving: false,
+    };
+  const need = Math.max(1, winterNeeds(run));
+  return {
+    flowerBeds: BEDS.map((_, i) =>
+      [
+        isPlanted(run, i) ? 1 : 0,
+        Math.min(6, beesOn(run, i)),
+        Math.round(bloomOf(run, i) * 10),
+        justWilted(run, i) ? 1 : 0,
+      ].join(":")
+    ).join("|"),
+    beesIdle: Math.min(6, beesHome(run)),
+    honeyJars: Math.min(6, Math.round((honeyOf(run) / need) * 6)),
+    rare: rareCount(run),
+    crossPair: justCrossed(run) ? (run.resources.pbCrossPair ?? 0) : -1,
+    leaving: isLeaving(run),
   };
 }
 

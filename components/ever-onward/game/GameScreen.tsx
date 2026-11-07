@@ -47,7 +47,7 @@ import EmberDialog from "./EmberDialog";
 import EmberPanel from "./EmberPanel";
 import EmberTip from "./EmberTip";
 import EndingOverlay from "./EndingOverlay";
-import MenuDialog from "./MenuDialog";
+import MenuDialog, { type MenuTestMode } from "./MenuDialog";
 import PhaseCutscene from "./PhaseCutscene";
 import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
@@ -99,6 +99,8 @@ interface GameScreenProps {
   currentSave: SaveData;
   onReplaceSave: (save: SaveData) => void;
   onDismissOverlay: () => void;
+  /** Present for the owner only: Test mode in the Menu. */
+  testMode?: MenuTestMode;
 }
 
 export default function GameScreen({
@@ -118,6 +120,7 @@ export default function GameScreen({
   currentSave,
   onReplaceSave,
   onDismissOverlay,
+  testMode,
 }: GameScreenProps) {
   const { run } = universe;
   useEverOnwardAudio(def, run);
@@ -493,6 +496,16 @@ export default function GameScreen({
               <span className="sr-only">
                 , Part {run.phase + 1} of {def.phases.length}
               </span>
+              {testMode && (testMode.speed != null || testMode.isJumping) && (
+                <span
+                  data-testid="eo-test-badge"
+                  className="ml-2 bg-fuchsia-700 px-1 text-fuchsia-50"
+                >
+                  {testMode.isJumping
+                    ? "Getting there…"
+                    : `Test ${testMode.speed}×`}
+                </span>
+              )}
             </p>
             <RetroHeading as="h1" className="mt-2 text-base sm:text-lg">
               {phase.title}
@@ -659,11 +672,12 @@ export default function GameScreen({
           def={def}
           run={run}
           currentSave={currentSave}
-          isBackupDisabled={overlay !== null}
+          isBackupDisabled={overlay !== null || testMode?.speed != null}
           onLeave={onLeave}
           onReplaceSave={onReplaceSave}
           onStartOver={onStartOver}
           onClose={handleCloseMenu}
+          testMode={testMode}
         />
       )}
 

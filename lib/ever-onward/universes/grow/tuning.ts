@@ -78,26 +78,54 @@ export const TUNING = {
     /** The harvest plate lights up at this many seconds of basket work. */
     ripeFor: 25,
   },
-  /** The bee dances: a decision about every two minutes, never a timer. */
-  bees: {
-    /** Seconds of foraging before the first dance, then between dances. */
-    firstForageSeconds: 40,
-    forageSeconds: 100,
-    /** Seconds of ripening a followed best patch is worth. */
-    bestSeconds: 12,
-    /** A patch the dance does not point at pays this share of the best. */
-    otherShare: 0.4,
-    /** The bee keeper follows a waiting dance after this long. */
-    keeperDelay: 30,
-    /** What the keeper's follow pays, as a share of the best patch. */
-    keeperShare: 0.45,
-    /** A payout flows into the seeds over this many seconds. */
-    surgeSeconds: 4,
-    /** Dances before the bee keeper turns up. */
-    keeperAfterDances: 2,
-    /** Dance wobble: degrees and length, around the true patch. */
-    angleJitter: 14,
-    lengthJitter: 0.06,
+  /** The backyard's pollination (bees.ts): beds, bees, honey and winter. */
+  pollen: {
+    /** Bees each hive brings. */
+    beesPerHive: 3,
+    /** A freshly planted bed starts at this bloom. */
+    plantBloom: 0.8,
+    /** A worn-out bed's bees still work at this share (full bloom: 1). */
+    yieldFloor: 0.4,
+    /** Each working lavender bee multiplies other beds' wear by this. */
+    lavenderCalm: 0.88,
+    /** The bee keeper's smoke: every bed wears this much as fast. */
+    keeperWear: 0.7,
+    /** Spring regrows beds this much faster. */
+    springRegrow: 1.4,
+    /** Summer: bees work this much harder (honey and sunflowers). */
+    summerYield: 1.25,
+    /** Honey per clover bee per second at full bloom. */
+    cloverHoney: 0.12,
+    /** Honey per apple bee per second, outside autumn and in it. */
+    appleHoney: 0.02,
+    appleAutumnHoney: 0.4,
+    /** Ripening added per sunflower bee (0.06 = 6%). */
+    sunflowerRipen: 0.03,
+    /** Ripening added per apple bee in autumn. */
+    appleAutumnRipen: 0.04,
+    /** Honey each bee eats per second in winter. */
+    winterEat: 0.016,
+    /** With no honey in winter, a bee leaves every this many seconds. */
+    leaveSeconds: 4,
+    /** In the warm seasons, a lost bee comes back every this many seconds. */
+    returnSeconds: 20,
+    /** One honey sells for this many seconds of ripening, times the season. */
+    honeySeconds: 1.5,
+    honeyPrice: { spring: 0.8, summer: 0.7, autumn: 1, winter: 1.8 },
+    /** Both neighbours must be at least this healthy to cross. */
+    crossBloom: 0.6,
+    /** Chance per second of a cross at full bloom on both. */
+    crossRate: 0.006,
+    /** A cross pays this many seconds of ripening at once. */
+    crossBurstSeconds: 10,
+    /** Every rare flower makes the garden ripen this much faster. */
+    rareRipen: 0.06,
+    rareMax: 6,
+    /** A bed this many seconds from wilting asks for attention. */
+    warnSeconds: 20,
+    /** How long the scene shows a wilt and a cross. */
+    wiltShowSeconds: 6,
+    crossShowSeconds: 6,
   },
   /** The farm: helpers by tier, its own water and the towns' market. */
   farm: {

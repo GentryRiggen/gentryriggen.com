@@ -1,7 +1,7 @@
 import type { RunState } from "../../engine/types";
 import { visitorHereFlag } from "../../engine/engine";
 import { MANUAL_RESOURCES } from "./resources";
-import { tickBees } from "./bees";
+import { pollenRipenMult, tickBees } from "./bees";
 import { greenMult, tickBiomes } from "./biomes";
 import { tickFair } from "./fair";
 import { phaseBoost, tickKnowhow } from "./knowhow";
@@ -110,7 +110,9 @@ export function manualPerTap(run: RunState): number {
     season *
     market *
     biomes *
-    (run.phase === 2 ? phaseBoost(run) : 1)
+    (run.phase === 2 ? phaseBoost(run) : 1) *
+    // The bees pollinate what you plant too.
+    pollenRipenMult(run)
   );
 }
 
@@ -156,6 +158,7 @@ export function incomePerSecond(run: RunState): number {
         stacked(owned(run, "bee-hive")) * y.hiveRate) *
       scaleMult(run) *
       ripenMult(run) *
+      pollenRipenMult(run) *
       speed(run) *
       waterFactor(run) *
       seasonBoost(run, "grow")

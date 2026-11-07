@@ -73,12 +73,12 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "Ask the bees",
         blurb:
-          "Ladybirds, hoverflies and a hive of bees. They take a little while to turn up, and then bee hives, the bee dance, the keeper and the orchard's full harvest all open up.",
+          "Ladybirds, hoverflies and a hive of bees. They take a little while to turn up, and then bee hives, flower beds, the keeper and the orchard's full harvest all open up.",
         catchLine: "It takes time, and the sprinklers stay as they are.",
       },
       {
         name: "Bug spray",
-        blurb: `The bugs go at once and every sprinkler ripens ${times(T.yard.sprayRipen)} as much. The bees go too, so there are no hives and no dances, and the orchard sets only ${times(T.yard.sprayOrchard)}.`,
+        blurb: `The bugs go at once and every sprinkler ripens ${times(T.yard.sprayRipen)} as much. The bees go too, so there are no hives and no flower beds, and the orchard sets only ${times(T.yard.sprayOrchard)}.`,
         catchLine: "No bees, ever. Not one.",
       },
     ],
@@ -207,7 +207,7 @@ export const FORK_IDS: readonly ForkId[] = FORKS.map((f) => f.id);
 
 // ------------------------------------------------------------------- effects
 
-/** Bee hives, the dance and the keeper need the bees (not the spray). */
+/** Bee hives, flower beds and the keeper need the bees (not the spray). */
 export const beesWelcome = (run: RunState): boolean =>
   forkSide(run, "yard") !== 1;
 

@@ -28,6 +28,8 @@ import type {
 } from "@/lib/ever-onward/engine/types";
 import { everOnwardSynth } from "../audio/everOnwardSynth";
 import { getPlayableUniverse } from "@/lib/ever-onward/universes";
+import type { JumpPoint } from "@/lib/ever-onward/test/jump";
+import type { TestSpeed } from "@/lib/ever-onward/test/tester";
 
 /** The sim and the readouts update this often; CSS handles smooth motion. */
 const STEP_SECONDS = 0.1;
@@ -57,6 +59,11 @@ const isMilestone = (before: RunState, after: RunState): boolean =>
 /** Marks a run whose intro moment has not been seen (a brand new run). */
 const isFresh = (universe: UniverseSave): boolean =>
   universe.run.time === 0 && universe.run.taps === 0;
+
+/** A test run (owner only): never saved, and the clock can run fast. */
+export interface TestState {
+  speed: TestSpeed;
+}
 
 export interface GameApi {
   /** Null until the save has been read on the client. */
@@ -91,6 +98,15 @@ export interface GameApi {
   replaceSave(next: SaveData): void;
   /** Writes the save now (before a reload, for example). */
   saveNow(): void;
+  /** Set while a test run is open (Test mode, owner only). */
+  test: TestState | null;
+  /** True while a jump is being played out. */
+  isJumping: boolean;
+  /** Opens a throwaway test run of part `phase` of a universe at `point`. */
+  jumpTo(universeId: string, phase: number, point: JumpPoint): void;
+  setTestSpeed(speed: TestSpeed): void;
+  /** Leaves the test run and puts the real save back, untouched. */
+  exitTest(): void;
 }
 
 export function useGame(): GameApi {
@@ -105,6 +121,12 @@ export function useGame(): GameApi {
   const [endingDone, setEndingDone] = useState(false);
   /** The ending screen waits a few seconds so the last moment can play out. */
   const [endingBeatDone, setEndingBeatDone] = useState(false);
+  const [test, setTest] = useState<TestState | null>(null);
+  const isTestRef = useRef(false);
+  const speedRef = useRef<number>(1);
+  /** The universe the real game had open when the first jump was made. */
+  const realActiveRef = useRef<string | null>(null);
+  const [isJumping, setIsJumping] = useState(false);
 
   const def = activeId ? (getPlayableUniverse(activeId) ?? null) : null;
   const universe = save && activeId ? (save.universes[activeId] ?? null) : null;
@@ -119,7 +141,8 @@ export function useGame(): GameApi {
 
   const persist = useCallback(() => {
     const current = saveRef.current;
-    if (isNewerSaveRef.current) return;
+    // A test run is never written: the real save stays exactly as it was.
+    if (isNewerSaveRef.current || isTestRef.current) return;
     if (!current || current === writtenRef.current) return;
     if (writeSave(current)) writtenRef.current = current;
   }, []);
@@ -171,7 +194,22 @@ export function useGame(): GameApi {
     [replaceUniverse]
   );
 
+  /** Ends a test run: the real save comes back from storage, untouched. */
+  const restoreReal = useCallback((): SaveData | null => {
+    if (!isTestRef.current) return null;
+    const { save: real } = loadSave();
+    isTestRef.current = false;
+    speedRef.current = 1;
+    saveRef.current = real;
+    writtenRef.current = real;
+    setSave(real);
+    setTest(null);
+    return real;
+  }, []);
+
   const leave = useCallback(() => {
+    restoreReal();
+    realActiveRef.current = null;
     // Popping the game's history entry runs the popstate handler below.
     if (window.history.state?.[GAME_HISTORY_KEY]) {
       window.history.back();
@@ -179,18 +217,20 @@ export function useGame(): GameApi {
     }
     persist();
     setActiveId(null);
-  }, [persist]);
+  }, [persist, restoreReal]);
 
   // Browser Back (or Forward off the game's entry) returns to the hub.
   useEffect(() => {
     if (!activeId) return;
     const handlePopState = () => {
+      restoreReal();
+      realActiveRef.current = null;
       persist();
       setActiveId(null);
     };
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [activeId, persist]);
+  }, [activeId, persist, restoreReal]);
 
   const run = universe?.run ?? null;
   const overlay: Overlay = !run
@@ -232,7 +272,14 @@ export function useGame(): GameApi {
       const dt = pending;
       pending = 0;
       if (!current || !saveRef.current) return;
-      const nextRun = tick(def, current.run, dt);
+      // A fast test clock is played in steps the engine accepts (1s at most).
+      let nextRun = current.run;
+      let left = dt * speedRef.current;
+      while (left > 0 && !nextRun.complete) {
+        const slice = Math.min(1, left);
+        nextRun = tick(def, nextRun, slice);
+        left -= slice;
+      }
       if (nextRun === current.run) return;
       commit({
         ...saveRef.current,
@@ -418,6 +465,80 @@ export function useGame(): GameApi {
     else if (run) setSeenTransitions(run.transitions.length);
   }, [overlay, run]);
 
+  const jumpTo = useCallback(
+    (universeId: string, phase: number, point: JumpPoint) => {
+      const target = getPlayableUniverse(universeId);
+      if (!target || !saveRef.current || isJumping) return;
+      if (!isTestRef.current) {
+        persist();
+        realActiveRef.current = activeId;
+      }
+      setIsJumping(true);
+      // Let "Getting there…" paint before the bot plays the run out.
+      window.setTimeout(() => {
+        void import("@/lib/ever-onward/test/bots")
+          .then(({ jumpTo: playTo }) => {
+            const run = playTo(universeId, phase, point);
+            const current = saveRef.current;
+            if (!run || !current) return;
+            isTestRef.current = true;
+            speedRef.current = speedRef.current || 1;
+            const existing = current.universes[universeId];
+            const universe: UniverseSave = {
+              ...(existing ?? newUniverseSave(target)),
+              run,
+            };
+            commit({
+              ...current,
+              universes: { ...current.universes, [universeId]: universe },
+            });
+            setTest((t) => t ?? { speed: 1 });
+            // "Start" plays the part's intro; the others drop straight in.
+            const seen = run.transitions.length;
+            setSeenTransitions(
+              point === "start" ? (phase === 0 ? -1 : seen - 1) : seen
+            );
+            setEndingDone(false);
+            setEndingBeatDone(false);
+            if (!activeId)
+              window.history.pushState({ [GAME_HISTORY_KEY]: universeId }, "");
+            setActiveId(universeId);
+          })
+          .finally(() => setIsJumping(false));
+      }, 30);
+    },
+    [activeId, commit, isJumping, persist]
+  );
+
+  const setTestSpeed = useCallback((speed: TestSpeed) => {
+    if (!isTestRef.current) return;
+    speedRef.current = speed;
+    setTest({ speed });
+  }, []);
+
+  const exitTest = useCallback(() => {
+    const real = restoreReal();
+    if (!real) return;
+    const back = realActiveRef.current;
+    realActiveRef.current = null;
+    const backDef = back ? getPlayableUniverse(back) : undefined;
+    const backSave = back ? real.universes[back] : undefined;
+    if (back && backDef && backSave) {
+      const ready = sanitize(backDef, backSave);
+      saveRef.current = {
+        ...real,
+        universes: { ...real.universes, [back]: ready },
+      };
+      setSave(saveRef.current);
+      setSeenTransitions(ready.run.transitions.length);
+      setEndingDone(ready.run.complete);
+      setEndingBeatDone(ready.run.complete);
+      setActiveId(back);
+    } else {
+      leave();
+    }
+  }, [leave, restoreReal]);
+
   return {
     save,
     recovered,
@@ -440,5 +561,10 @@ export function useGame(): GameApi {
     startOver: startOverRun,
     replaceSave,
     saveNow: persist,
+    test,
+    isJumping,
+    jumpTo,
+    setTestSpeed,
+    exitTest,
   };
 }
