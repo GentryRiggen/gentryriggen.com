@@ -16,7 +16,9 @@ import {
   PLAYABLE_UNIVERSES,
   type LockedUniverse,
 } from "@/lib/ever-onward/universes";
+import type { JumpPoint } from "@/lib/ever-onward/test/jump";
 import { uiFor } from "./universes";
+import TestModePanel from "./game/TestModePanel";
 import MusicToggle from "./audio/MusicToggle";
 import PixelSprite from "./start/PixelSprite";
 import RetroLabel from "./start/RetroLabel";
@@ -33,6 +35,13 @@ interface HubProps {
   save: SaveData;
   isRecovered: boolean;
   onPlay: (id: string) => void;
+  /** Present for the owner only: jump into any universe, locked or not. */
+  testMode?: HubTestMode;
+}
+
+export interface HubTestMode {
+  isJumping: boolean;
+  onJump: (universeId: string, phase: number, point: JumpPoint) => void;
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
@@ -218,7 +227,7 @@ function readLast(): string | null {
   }
 }
 
-export default function Hub({ save, isRecovered, onPlay }: HubProps) {
+export default function Hub({ save, isRecovered, onPlay, testMode }: HubProps) {
   const storedLast = useSyncExternalStore(subscribeNever, readLast, () => null);
   const [justPlayed, setJustPlayed] = useState<string | null>(null);
   const lastId = justPlayed ?? storedLast;
@@ -287,6 +296,26 @@ export default function Hub({ save, isRecovered, onPlay }: HubProps) {
             <LockedCard key={locked.id} locked={locked} />
           ))}
         </ul>
+        {testMode && (
+          <details
+            data-testid="eo-hub-test"
+            className="bg-[#02030a]/85 p-3 text-slate-100"
+          >
+            <summary
+              className={`min-h-11 cursor-pointer touch-manipulation py-3 font-mono text-sm text-fuchsia-200 ${retroFocusClass}`}
+            >
+              Test mode: jump into any universe
+            </summary>
+            <TestModePanel
+              currentId={PLAYABLE_UNIVERSES[0].id}
+              speed={null}
+              isJumping={testMode.isJumping}
+              onJump={testMode.onJump}
+              onSpeed={() => {}}
+              onExit={() => {}}
+            />
+          </details>
+        )}
         <p className="self-center bg-[#02030a]/75 px-3 py-1 text-center font-mono text-xs text-slate-200">
           More universes on the way. Your game saves on this device.
         </p>
