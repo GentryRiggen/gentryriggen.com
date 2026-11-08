@@ -4337,6 +4337,8 @@ html:has(.jim-app) body {
   .bh-lamp-pop,
   .bh-lights-ring,
   .bh-wind,
+  .bh-beam-drop,
+  .bh-whip,
   .bh-creak,
   .bh-glow,
   .bh-note {
@@ -4788,6 +4790,49 @@ html:has(.jim-app) body {
 }
 .bh-wind {
   animation: bh-wind 1.8s linear infinite;
+}
+
+/* ---- Build It Higher: the sky's wind, tie-down, drop, snap and climb ---- */
+.bh-beam-drop,
+.bh-whip {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes bh-beam-drop {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(34px, 250px) rotate(900deg);
+    opacity: 0;
+  }
+}
+.bh-beam-drop {
+  animation: bh-beam-drop 2.4s ease-in forwards;
+}
+
+@keyframes bh-whip {
+  0%,
+  100% {
+    transform: rotate(-24deg) scale(1.1);
+  }
+  25% {
+    transform: rotate(30deg) scale(0.9);
+  }
+  50% {
+    transform: rotate(-18deg) scale(1.2);
+  }
+  75% {
+    transform: rotate(20deg) scale(1);
+  }
+}
+.bh-whip {
+  animation: bh-whip 0.5s ease-in-out 5 both;
 }
 
 /* ---- Ever Onward intro films (components/ever-onward/game/film) ---- */

@@ -3,7 +3,7 @@ import type { RunState, StoryMessage } from "../../../engine/types";
 import { forkSide } from "../forks";
 import { owned } from "../lines";
 import { PHASE_SKY } from "../resources";
-import { swayOf } from "../sway";
+import { dropsSoFar, gustsSoFar, ncWins, snapsSoFar } from "../sky";
 
 const arrives = (id: string) => (run: RunState) =>
   run.flags[visitorHereFlag(id)] === true;
@@ -23,8 +23,38 @@ export const sky: StoryMessage[] = [
   {
     id: "sky-lean",
     phase: PHASE_SKY,
-    when: (run) => swayOf(run) >= 0.45,
-    text: "Up here the tower sways like a tall tree. It is a bit like being rocked to sleep, and a bit not.",
+    when: (run) => gustsSoFar(run) >= 1,
+    text: "The first gust comes through and the tower sways like a tall tree. It is a bit like being rocked to sleep, and a bit not.",
+  },
+  {
+    id: "sky-dropped",
+    phase: PHASE_SKY,
+    when: (run) => dropsSoFar(run) >= 1,
+    text: "A beam slips out of the hook and falls a very long way. The robot watches it go, and then it climbs down to fetch another.",
+  },
+  {
+    id: "sky-snapped",
+    phase: PHASE_SKY,
+    when: (run) => snapsSoFar(run) >= 1,
+    text: "The cable snaps with a crack like a whip and flies off into the clouds. The robot ties on a new one, and pulls it a little less tight.",
+  },
+  {
+    id: "sky-badge",
+    phase: PHASE_SKY,
+    when: (run) => ncWins(run) >= 1,
+    text: "A whole minute with no crane, just the robot and its two hands. It gets a small gold badge for that, and it wears it very high up.",
+  },
+  {
+    id: "sky-badges",
+    phase: PHASE_SKY,
+    when: (run) => ncWins(run) >= 2,
+    text: "Two gold badges now, side by side. The tower pays a little more for each one, as if it were proud of the robot, which it might be.",
+  },
+  {
+    id: "sky-weathered",
+    phase: PHASE_SKY,
+    when: (run) => gustsSoFar(run) >= 14,
+    text: "Fourteen gusts have come and gone. The tower still stands, a little scuffed, and the clouds below look the same as ever.",
   },
   {
     id: "sky-shadow",

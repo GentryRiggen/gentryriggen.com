@@ -69,6 +69,13 @@ function swayPreview(run: RunState, id: string): string {
     const less = Math.round((1 - now / was) * 100);
     return `The tower leans ${less}% less\nLean amount ×${round(was)} → ×${round(now)}\nA leaning tower tumbles sooner`;
   }
+  if (run.phase === 2) {
+    const floor = TUNING.sky.calmFloor;
+    const was = Math.max(floor, leanCalm(run));
+    const now = Math.max(floor, leanCalm(after));
+    const less = Math.round((1 - now / was) * 100);
+    return `Gusts drop and snap ${less}% less\nRisk ×${round(was)} → ×${round(now)}\nA gust on a tight cable still snaps it`;
+  }
   const before = swayCalm(run);
   const next = swayCalm(after);
   const slower = before > 0 ? Math.round((1 - next / before) * 100) : 0;
@@ -318,7 +325,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "damper",
     name: "A tuned damper",
     description:
-      "A huge steel ball hung inside the tower. It swings against the wind, so the tower sways more slowly.",
+      "A huge steel ball hung inside the tower. It swings against the wind, so a gust drops fewer beams and snaps fewer cables.",
     phases: [PHASE_SKY],
     currency: "beams",
     baseCost: 1500,
@@ -346,7 +353,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "ballast-ring",
     name: "A ring of ballast",
     description:
-      "Round weights hung from the lower floors, like a skirt. The tower sways half as fast.",
+      "Round weights hung from the lower floors, like a skirt. A gust drops and snaps half as much.",
     phases: [PHASE_SKY],
     currency: "beams",
     baseCost: 25000,

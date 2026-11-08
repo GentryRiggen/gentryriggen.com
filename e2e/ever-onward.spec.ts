@@ -179,6 +179,66 @@ test.describe("Ever Onward", () => {
       /[2-3]/
     );
   });
+  test("the sky's forecast, cable strain, tie-down and no-crane climb work in the panels and the picture", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Build It Higher" })
+      .click();
+    await page.getByTestId("eo-jump-higher-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    await expect(page.getByTestId("bh-steady")).toHaveCount(0);
+    // The forecast sits in the panel, and the sky is drawn under it.
+    const wind = page.getByTestId("bh-wind");
+    await expect(wind).toBeVisible();
+    await expect(wind.getByTestId("bh-forecast-0")).toHaveText("Calm sky");
+    await expect(page.getByTestId("sk-storm")).toBeAttached();
+    // The cable's strain is a dial with a card for each step.
+    const strain = page.getByTestId("bh-strain");
+    await expect(strain).toBeVisible();
+    await strain.getByTestId("bh-strain-3").click();
+    await expect(strain.getByTestId("bh-strain-3")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    await expect(page.getByTestId("sk-cables")).toHaveAttribute(
+      "data-strain",
+      "3",
+      { timeout: 10_000 }
+    );
+    // Tying down clamps the tower on with a TIED DOWN banner.
+    await wind.getByTestId("bh-tie").click();
+    await expect(page.getByTestId("sk-straps")).toBeAttached();
+    await expect(page.getByTestId("hs-moment-text")).toHaveText("TIED DOWN", {
+      timeout: 10_000,
+    });
+    await expect(wind).toHaveAttribute("data-tie", "tied");
+    await wind.getByTestId("bh-tie").click();
+    await expect(wind).toHaveAttribute("data-tie", "free", { timeout: 10_000 });
+    // The no-crane climb turns the crane off, and can be given up.
+    const climb = page.getByTestId("bh-nocrane");
+    await expect(climb).toBeVisible();
+    await climb.getByTestId("bh-nocrane-start").click();
+    await expect(page.getByTestId("sk-nocrane")).toHaveAttribute(
+      "data-on",
+      "1"
+    );
+    await climb.getByTestId("bh-nocrane-stop").click();
+    await expect(page.getByTestId("sk-nocrane")).toHaveAttribute(
+      "data-on",
+      "0"
+    );
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

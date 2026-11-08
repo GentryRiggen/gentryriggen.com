@@ -15,13 +15,19 @@ import {
   BANK_ACTION_ID,
   paceActionId,
 } from "@/lib/ever-onward/universes/higher/playroom";
-import { STEADY_ACTION_ID } from "@/lib/ever-onward/universes/higher/sway";
+import {
+  NC_START_ACTION_ID,
+  TIE_ACTION_ID,
+  strainActionId,
+} from "@/lib/ever-onward/universes/higher/sky";
 import DeliveryPanel from "../DeliveryPanel";
 import FootingPanel from "../FootingPanel";
 import ForkPanel from "../ForkPanel";
 import KnowHowPanel from "../KnowHowPanel";
 import PlayroomPanel from "../PlayroomPanel";
-import SwayPanel from "../SwayPanel";
+import WindPanel from "../WindPanel";
+import StrainPanel from "../StrainPanel";
+import NoCranePanel from "../NoCranePanel";
 import CrewPanel from "../CrewPanel";
 import ShadowPanel from "../ShadowPanel";
 import TownPanel from "../TownPanel";
@@ -270,44 +276,79 @@ describe("the town's panels", () => {
   });
 });
 
-describe("SwayPanel", () => {
-  const sky = (extra: Record<string, number> = {}): RunState => {
+describe("the sky's panels", () => {
+  const sky = (extra: Record<string, number> = {}, cranes = 2): RunState => {
     const run = runAtPhaseStart(2);
-    return {
-      ...run,
-      owned: { ...run.owned, "sky-crew": 3 },
-      resources: { ...run.resources, ...extra },
-    };
+    const open = tick(
+      def,
+      { ...run, owned: { ...run.owned, "sky-crew": 3, "cloud-crane": cranes } },
+      0.1
+    );
+    return { ...open, resources: { ...open.resources, ...extra } };
   };
 
-  it("steadies a leaning tower on a click in the sky", async () => {
+  it("show the forecast in three steps, and tie down on a click", async () => {
     const onAct = jest.fn();
-    render(<SwayPanel def={def} run={sky({ sway: 0.8 })} onAct={onAct} />);
-    expect(screen.getByTestId("bh-sway")).toHaveAttribute(
-      "data-state",
-      "wobbling"
+    render(<WindPanel def={def} run={sky({ skWx: 1 })} onAct={onAct} />);
+    expect(screen.getByTestId("bh-wind")).toHaveAttribute("data-forecast", "1");
+    expect(screen.getByTestId("bh-forecast-0")).toHaveTextContent("Calm sky");
+    expect(screen.getByTestId("bh-forecast-1")).toHaveAttribute(
+      "aria-current",
+      "step"
     );
-    await userEvent.click(screen.getByTestId("bh-steady"));
-    expect(onAct).toHaveBeenCalledWith(STEADY_ACTION_ID);
+    expect(screen.getByTestId("bh-forecast-2")).toHaveTextContent(
+      "Gust coming!"
+    );
+    expect(screen.getByTestId("bh-tie")).toHaveTextContent(/Earns nothing/);
+    await userEvent.click(screen.getByTestId("bh-tie"));
+    expect(onAct).toHaveBeenCalledWith(TIE_ACTION_ID);
   });
 
-  it("renders nothing in the playroom or the town, which have the build pace instead", () => {
-    for (const run of [playroom(3), town({ sway: 0.8 })]) {
-      const { container } = render(
-        <SwayPanel def={def} run={run} onAct={jest.fn()} />
-      );
-      expect(container).toBeEmptyDOMElement();
-    }
+  it("count down a sure gust and say how strong it is", () => {
+    const run = sky({
+      skWx: 2,
+      skWxAt: runAtPhaseStart(2).time + 6,
+      skStrong: 1,
+    });
+    render(<WindPanel def={def} run={run} onAct={jest.fn()} />);
+    expect(screen.getByTestId("bh-forecast-note")).toHaveTextContent(
+      /strong gust in \d+ sec/
+    );
   });
 
-  it("says the tower is standing straight, and the button waits", async () => {
+  it("give each strain a card with its pay and its snaps, and never say which is best", async () => {
     const onAct = jest.fn();
-    render(<SwayPanel def={def} run={sky()} onAct={onAct} />);
-    const button = screen.getByTestId("bh-steady");
-    expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(button).toHaveTextContent("Standing straight");
-    await userEvent.click(button);
-    expect(onAct).not.toHaveBeenCalled();
+    render(<StrainPanel def={def} run={sky()} onAct={onAct} />);
+    for (let i = 0; i < 4; i += 1)
+      expect(screen.getByTestId(`bh-strain-${i}`)).toHaveTextContent(/beams/);
+    expect(screen.getByTestId("bh-strain")).not.toHaveTextContent(
+      /best|recommend|should/i
+    );
+    await userEvent.click(screen.getByTestId("bh-strain-3"));
+    expect(onAct).toHaveBeenCalledWith(strainActionId(3));
+  });
+
+  it("open the no-crane climb with the first cloud crane", async () => {
+    const none = render(
+      <NoCranePanel def={def} run={sky({}, 0)} onAct={jest.fn()} />
+    );
+    expect(none.container).toBeEmptyDOMElement();
+    none.unmount();
+    const onAct = jest.fn();
+    render(<NoCranePanel def={def} run={sky()} onAct={onAct} />);
+    await userEvent.click(screen.getByTestId("bh-nocrane-start"));
+    expect(onAct).toHaveBeenCalledWith(NC_START_ACTION_ID);
+  });
+
+  it("render nothing in the playroom or the town", () => {
+    for (const Panel of [WindPanel, StrainPanel, NoCranePanel])
+      for (const run of [playroom(3), town()]) {
+        const { container, unmount } = render(
+          <Panel def={def} run={run} onAct={jest.fn()} />
+        );
+        expect(container).toBeEmptyDOMElement();
+        unmount();
+      }
   });
 });
 

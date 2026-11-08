@@ -8,6 +8,7 @@ import { KNOWHOW, dockMult } from "./knowhow";
 import { HELPER_LINES, owned, res } from "./lines";
 import { MANUAL_RESOURCES } from "./resources";
 import { playroomLean, softenTumbles } from "./playroom";
+import { spareCable } from "./sky";
 import { relieveSway, swayOf } from "./sway";
 import { TUNING } from "./tuning";
 
@@ -66,8 +67,8 @@ export const LOADS: readonly (readonly [LoadDef, LoadDef, LoadDef])[] = [
   [
     { name: "A bundle of beams", note: "Beams to spend right now." },
     {
-      name: "A steadying cable",
-      note: "Straightens the tower and brings a few beams.",
+      name: "A spare cable",
+      note: "A few beams, and a minute of fewer drops and snaps.",
     },
     {
       name: "An anchor bolt",
@@ -118,7 +119,12 @@ function loadWorth(run: RunState, option: number, value: number): number {
   if (option === 1)
     return (
       (D.poleSeconds +
-        21 * (run.phase === 0 ? playroomLean(run) : swayOf(run))) *
+        21 *
+          (run.phase === 0
+            ? playroomLean(run)
+            : run.phase === 2
+              ? 0.4
+              : swayOf(run))) *
       Math.max(1, loadMult(run))
     );
   if (run.phase === 1) return 30 * loadMult(run);
@@ -149,7 +155,7 @@ export function loadPaysText(
   if (run.phase !== 3 && option === 2)
     return `+${pays} into the ${run.phase === 0 ? "base" : "anchors"}`;
   const word = MANUAL_RESOURCES[run.phase];
-  return `+${pays} ${word}${option === 1 && run.phase === 0 ? " and softer tumbles" : option === 1 && run.phase !== 3 ? " and a straighter tower" : ""}`;
+  return `+${pays} ${word}${option === 1 && run.phase === 0 ? " and softer tumbles" : option === 1 && run.phase === 2 ? " and fewer snaps and drops" : option === 1 && run.phase === 1 ? " and a straighter tower" : ""}`;
 }
 
 /** Places the load. */
@@ -164,6 +170,7 @@ export function placeLoad(run: RunState, option: number, value: number): void {
     const key = MANUAL_RESOURCES[run.phase];
     run.resources[key] = res(run, key) + pays;
     if (option === 1 && run.phase === 0) softenTumbles(run);
+    else if (option === 1 && run.phase === 2) spareCable(run);
     else if (option === 1) relieveSway(run, TUNING.sway.poleRelief);
   }
   run.resources.dlStage = 0;

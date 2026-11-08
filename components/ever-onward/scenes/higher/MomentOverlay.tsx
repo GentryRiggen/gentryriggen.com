@@ -75,6 +75,59 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
         edge: "border-amber-200",
       });
   }
+  if (info.phase === "sky") {
+    if (info.wx === 2 && !info.gust)
+      moments.push({
+        key: `coming-${info.gusts}`,
+        text: info.strong ? "STRONG GUST COMING!" : "GUST COMING!",
+        banner: info.strong
+          ? "bg-rose-700 text-rose-50 border-rose-200"
+          : "bg-slate-600 text-slate-50 border-slate-200",
+        edge: info.strong ? "border-rose-500" : "",
+      });
+    if (info.gust)
+      moments.push({
+        key: `gust-${info.gusts}`,
+        text: info.strong ? "STRONG GUST!" : "GUST!",
+        banner: "bg-sky-200 text-sky-950 border-white",
+        edge: "border-sky-100",
+      });
+    if (info.tied)
+      moments.push({
+        key: `tied-${info.ties}`,
+        text: "TIED DOWN",
+        banner: "bg-yellow-400 text-yellow-950 border-yellow-100",
+        edge: "border-yellow-200",
+      });
+    if (info.dropped)
+      moments.push({
+        key: `drop-${info.drops}`,
+        text: "DROPPED!",
+        banner: "bg-orange-600 text-orange-50 border-orange-200",
+        edge: "border-orange-400",
+      });
+    if (info.snapped)
+      moments.push({
+        key: `snap-${info.snaps}`,
+        text: "SNAP!",
+        banner: "bg-red-700 text-red-50 border-red-200",
+        edge: "border-red-500",
+      });
+    if (info.ncLost)
+      moments.push({
+        key: `nclost-${info.ncFailed}`,
+        text: "CLIMB ENDED",
+        banner: "bg-slate-700 text-slate-50 border-slate-300",
+        edge: "",
+      });
+    if (info.ncWon)
+      moments.push({
+        key: `ncwin-${info.badges}`,
+        text: "MADE IT!",
+        banner: "bg-amber-400 text-amber-950 border-yellow-100",
+        edge: "border-yellow-300",
+      });
+  }
   return moments;
 }
 

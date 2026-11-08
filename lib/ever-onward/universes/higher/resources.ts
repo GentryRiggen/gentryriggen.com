@@ -138,6 +138,49 @@ export const RESOURCES: readonly ResourceDef[] = [
     "tfHatOff",
     "tfHatOn",
   ]),
+  // The sky's dials: the cable's strain (set and where it is), the forecast
+  // and when it next moves, the gust blowing until, the tie-down state and
+  // when it changes, the load on the hook, drops and snaps (with when), the
+  // no-crane climb and its badges, and a die of its own.
+  ...hidden(
+    [
+      "skStrain",
+      "skEff",
+      "skChanges",
+      "skWx",
+      "skWxAt",
+      "skGustUntil",
+      "skGustHit",
+      "skStrong",
+      "skGusts",
+      "skTie",
+      "skTieAt",
+      "skTiedAt",
+      "skTies",
+      "skHook",
+      "skStallUntil",
+      "skRestringUntil",
+      "skSoftUntil",
+      "skDrops",
+      "skDropAt",
+      "skDropN",
+      "skSnaps",
+      "skSnapAt",
+      "skNc",
+      "skNcUntil",
+      "skNcTries",
+      "skNcWins",
+      "skNcWinAt",
+      "skNcFails",
+      "skRestUntil",
+      "skNcFailAt",
+      "skRng",
+    ],
+    {
+      skStrain: TUNING.sky.startStrain,
+      skEff: TUNING.sky.startStrain,
+    }
+  ),
   // Overtime: seconds left and times held.
   ...hidden(["otLeft", "otCount"]),
   // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).

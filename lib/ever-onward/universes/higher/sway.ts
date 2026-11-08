@@ -1,38 +1,25 @@
-import type { ActionDef, ConsumableDef, RunState } from "../../engine/types";
+import type { ConsumableDef, RunState } from "../../engine/types";
 import { gainOf as footingGain } from "./footing";
 import { swayForkMult } from "./forks";
 import { knowhowSwayMult } from "./knowhow";
-import {
-  BRACE_IDS,
-  STEADY_ONEOFF_IDS,
-  helperLevels,
-  owned,
-  res,
-} from "./lines";
-import { PHASE_SKY } from "./resources";
+import { BRACE_IDS, STEADY_ONEOFF_IDS, owned, res } from "./lines";
 import { TUNING } from "./tuning";
 
 /**
- * Sway: the managed risk. A taller tower leans a little more every second,
- * and a leaning tower slows its crew down (to half at the very worst, never
- * to nothing, and nothing is ever knocked down). One press of Steady puts it
- * right. Braces, a good footing, hard hats and the fork's side all slow the
- * lean, so a well-built tower hardly needs the button.
+ * Sway: the town's lean, which slows its crew (to half at the very worst,
+ * never to nothing, and nothing is ever knocked down). Its level follows the
+ * build pace (town.ts). Braces, a good footing, hard hats and the fork's side
+ * calm it, and the same calm (`leanCalm`) makes the sky's gusts and cables
+ * less dangerous (sky.ts).
  */
 
 const S = TUNING.sway;
 
-export const STEADY_ACTION_ID = "steady";
-
 /**
- * Sway belongs to the town and the sky. The playroom has no button for it:
- * its lean comes from the build pace (playroom.ts).
+ * Sway belongs to the town. The playroom's lean comes from the build pace
+ * (playroom.ts) and the sky has wind and cable strain instead (sky.ts).
  */
-export const hasSway = (run: RunState): boolean =>
-  run.phase === 1 || run.phase === 2;
-
-/** Steady is a button of the sky; the town sets its lean with the build pace. */
-const hasSteady = (run: RunState): boolean => run.phase === 2;
+export const hasSway = (run: RunState): boolean => run.phase === 1;
 
 /** How far the tower leans, 0 (upright) to 1. */
 export const swayOf = (run: RunState): number =>
@@ -68,34 +55,6 @@ export function leanCalm(run: RunState): number {
 export const swayCalm = (run: RunState): number =>
   hasSway(run) ? leanCalm(run) : 1;
 
-/** Share of the whole scale the tower sways per second. */
-export function swayPerSecond(run: RunState): number {
-  if (!hasSway(run)) return 0;
-  return (
-    S.rise[run.phase] * (1 + S.perLevel * helperLevels(run)) * swayCalm(run)
-  );
-}
-
-/** How strongly the tower rights itself: braces and a fort pull it upright. */
-export function swayRelax(run: RunState): number {
-  if (!hasSway(run)) return 0;
-  return (
-    S.relax *
-    (owned(run, BRACE_IDS[run.phase]) +
-      (owned(run, STEADY_ONEOFF_IDS[run.phase]) > 0 ? 2 : 0))
-  );
-}
-
-export function tickSway(run: RunState, dt: number): void {
-  // The town's lean follows the build pace (town.ts), not this slow climb.
-  if (!hasSway(run) || run.phase === 1) return;
-  const sway = swayOf(run);
-  run.resources.sway = Math.min(
-    1,
-    Math.max(0, sway + (swayPerSecond(run) - swayRelax(run) * sway) * dt)
-  );
-}
-
 /** A steadying pole from a delivery: takes some of the sway away. */
 export function relieveSway(run: RunState, share: number): void {
   run.resources.sway = Math.max(0, swayOf(run) * (1 - share));
@@ -103,37 +62,6 @@ export function relieveSway(run: RunState, share: number): void {
   if (run.phase === 1)
     run.resources.twPoleUntil = run.time + TUNING.town.poleSeconds;
 }
-
-const WORDS = [undefined, "bricks", "beams"] as const;
-const TOWERS = [undefined, "tower", "tower"] as const;
-
-/** Press to set the tower right. Free, and never a loss. */
-export const STEADY_ACTION: ActionDef = {
-  id: STEADY_ACTION_ID,
-  phases: [PHASE_SKY],
-  isInline: true,
-  visibleWhen: (run) => hasSteady(run) && helperLevels(run) >= 2,
-  describe: (run) => {
-    const sway = swayOf(run);
-    return {
-      label: sway < S.steadyAt ? "Standing straight" : "Steady the tower",
-      detail:
-        sway < S.steadyAt
-          ? `The ${TOWERS[run.phase]} is upright, and the ${WORDS[run.phase]} flow.`
-          : `The ${TOWERS[run.phase]} is leaning. Steady it and the crew works at full speed.`,
-      isBlocked: sway < S.steadyAt,
-      hint:
-        sway >= 0.7
-          ? { text: "wobbling!", tone: "bad" }
-          : sway >= S.from
-            ? { text: "leaning", tone: "neutral" }
-            : undefined,
-    };
-  },
-  perform: (run) => {
-    run.resources.sway = 0;
-  },
-};
 
 /** The tower's lean is the one watched number (0 is a wobble). */
 export const SWAY_CONSUMABLE: ConsumableDef = {

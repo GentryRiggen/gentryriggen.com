@@ -20,9 +20,13 @@ jest.setTimeout(180_000);
  * about a point and a half: the town reads busier on the reveal and decision
  * metrics, and a player who never touches the dials is a little further
  * behind (idle / eager 1.8x). 82.3 is the town's 82.6 minus a margin.
+ *
+ * The Sky's wind, cable strain and no-crane climb cost another point and a
+ * half (more reveal and log events, idle / eager 1.95x, one decision gap near
+ * minute 6). 80.8 is the sky's 81.1 minus a margin; gates stay uncapped.
  */
 const GATE_CAP = 59;
-const UNCAPPED_FLOOR = 82.3;
+const UNCAPPED_FLOOR = 80.8;
 
 const HOUR = 3600;
 

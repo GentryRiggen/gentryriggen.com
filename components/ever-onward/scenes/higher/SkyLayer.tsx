@@ -1,5 +1,17 @@
 import type { HigherSceneInfo } from "@/lib/ever-onward/universes/higher";
 import Px, { Bird } from "./Px";
+import {
+  Badges,
+  DropFx,
+  GustSweep,
+  NoCraneFx,
+  SnapFx,
+  Storm,
+  Straps,
+} from "./SkyMoments";
+
+/** Cable colours from slack to humming. */
+const CABLE = ["#9fb4c8", "#e6eef8", "#ffb86b", "#ff5a4d"] as const;
 
 const CLOUD_Y = 232;
 const TX = 200;
@@ -58,6 +70,7 @@ export default function SkyLayer({ info }: { info: HigherSceneInfo }) {
         </g>
       )}
       <circle cx="330" cy="104" r="16" fill="#fff3b0" />
+      <Storm info={info} />
       {/* the town, small and in the shade, under the clouds */}
       <Px x={-1200} y={262} w={2800} h={60} c="#2c4a36" />
       {[30, 74, 118, 262, 308, 350].map((x, i) => (
@@ -93,9 +106,9 @@ export default function SkyLayer({ info }: { info: HigherSceneInfo }) {
       {info.fork === 2 && (
         <Px x={0} y={238} w={400} h={26} c="#fff3b0" o={0.18} />
       )}
-      {/* the tower, leaning and wobbling when it needs steadying */}
+      {/* the tower, swaying in a gust */}
       <g transform={`rotate(${info.lean * 0.5} ${TX} ${CLOUD_Y})`}>
-        <g className={info.lean >= 3 ? "bh-wobble" : undefined}>
+        <g className={info.gust || info.lean >= 3 ? "bh-wobble" : undefined}>
           <polygon
             points={`${TX - 20},${CLOUD_Y} ${TX + 20},${CLOUD_Y} ${TX + 12},${top} ${TX - 12},${top}`}
             fill={alloy > 0 ? "#b9c8d6" : "#8c97a8"}
@@ -243,7 +256,11 @@ export default function SkyLayer({ info }: { info: HigherSceneInfo }) {
       </g>
       {/* cables spinning up into the dark: one shimmering group for all of them */}
       {cables > 0 && (
-        <g className="bh-hum">
+        <g
+          data-testid="sk-cables"
+          data-strain={info.strain}
+          className={info.strain >= 3 ? "bh-quake" : "bh-hum"}
+        >
           {Array.from({ length: cables }, (_, i) => (
             <Px
               key={i}
@@ -251,7 +268,7 @@ export default function SkyLayer({ info }: { info: HigherSceneInfo }) {
               y={-40}
               w={info.projects & 4 ? 2 : 1}
               h={top + 40}
-              c="#e6eef8"
+              c={CABLE[info.strain]}
               o={0.8}
             />
           ))}
@@ -267,7 +284,13 @@ export default function SkyLayer({ info }: { info: HigherSceneInfo }) {
       )}
       {cranes > 0 &&
         Array.from({ length: cranes }, (_, i) => (
-          <CloudCrane key={i} x={[78, 318, 40][i]} n={i} />
+          <g
+            key={i}
+            opacity={info.noCrane ? 0.3 : 1}
+            className={info.gust ? "bh-wobble" : undefined}
+          >
+            <CloudCrane x={[78, 318, 40][i]} n={i} />
+          </g>
         ))}
       {/* geese have to fly round the tower now */}
       <g className="bh-fly-b">
@@ -275,6 +298,12 @@ export default function SkyLayer({ info }: { info: HigherSceneInfo }) {
         <Bird x={12} y={126} c="#f2f2f2" />
         <Bird x={24} y={120} c="#f2f2f2" />
       </g>
+      <Straps info={info} top={top} base={CLOUD_Y} />
+      <Badges info={info} top={top} />
+      <NoCraneFx info={info} top={top} />
+      <DropFx info={info} top={top} />
+      <SnapFx info={info} top={top} />
+      <GustSweep info={info} />
       {info.loadHere && (
         <g className="bh-pulse">
           <Px x={TX + 48} y={CLOUD_Y - 10} w={16} h={12} c="#c8a165" />

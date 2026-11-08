@@ -9,6 +9,18 @@ import {
   dayNow,
 } from "./town";
 import { banksSoFar, playroomResultLine, tumblesSoFar } from "./playroom";
+import {
+  dropLine,
+  dropsSoFar,
+  ncFails,
+  ncWins,
+  noCraneFailLine,
+  noCraneWinLine,
+  snapLine,
+  snapsSoFar,
+  tieLine,
+  tiesSoFar,
+} from "./sky";
 
 /** What goes in Build It Higher's running log. */
 export const HIGHER_EVENTS: readonly EventSource[] = [
@@ -37,6 +49,11 @@ export const HIGHER_EVENTS: readonly EventSource[] = [
     count: daysSoFar,
     line: (run) => `${dayNow(run).name}. ${dayNow(run).note}`,
   },
+  { id: "sky-drop", count: dropsSoFar, line: dropLine },
+  { id: "sky-snap", count: snapsSoFar, line: snapLine },
+  { id: "sky-tie", count: tiesSoFar, line: tieLine },
+  { id: "sky-nocrane-win", count: ncWins, line: noCraneWinLine },
+  { id: "sky-nocrane-fail", count: ncFails, line: noCraneFailLine },
   {
     id: "playroom-bank",
     count: banksSoFar,

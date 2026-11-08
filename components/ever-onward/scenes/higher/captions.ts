@@ -45,7 +45,16 @@ export function captionFor(info: HigherSceneInfo): string {
       return [
         "Above the clouds",
         ...(own["sky-crew"] ? [count(own["sky-crew"], "crew")] : []),
-        ...lean,
+        ...(info.noCrane ? ["no crane"] : []),
+        ...(info.tie >= 1 ? ["tied down"] : []),
+        ...(info.gust
+          ? ["gust blowing"]
+          : info.wx === 2
+            ? ["gust coming"]
+            : info.wx === 1
+              ? ["clouds gathering"]
+              : []),
+        ...(info.badges > 0 ? [count(info.badges, "badge")] : []),
       ].join(" · ");
     default:
       return info.visitorHere

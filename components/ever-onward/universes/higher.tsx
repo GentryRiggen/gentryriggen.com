@@ -18,7 +18,9 @@ import HigherEndingArt from "../game/higher/HigherEndingArt";
 import KnowHowPanel from "../game/higher/KnowHowPanel";
 import StarIcon from "../game/higher/StarIcon";
 import PlayroomPanel from "../game/higher/PlayroomPanel";
-import SwayPanel from "../game/higher/SwayPanel";
+import WindPanel from "../game/higher/WindPanel";
+import StrainPanel from "../game/higher/StrainPanel";
+import NoCranePanel from "../game/higher/NoCranePanel";
 import TownPanel from "../game/higher/TownPanel";
 import CrewPanel from "../game/higher/CrewPanel";
 import ShadowPanel from "../game/higher/ShadowPanel";
@@ -60,16 +62,19 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   if (rose("pcTumbles")) cues.push("buzz");
   if (rose("tfSwaps")) cues.push("arrive");
   if (rose("twBuys")) cues.push("chime");
+  if (rose("skDrops") || rose("skSnaps")) cues.push("buzz");
+  if (rose("skTies") || rose("skNcWins")) cues.push("chime");
   return cues;
 }
 
 /** The Build It Higher screens: scene, panels, ending, sounds. */
 export const HIGHER_UI: UniverseUi = {
   Scene: HigherScene,
-  primaryPanels: [PlayroomPanel, TownPanel, SwayPanel],
+  primaryPanels: [PlayroomPanel, TownPanel, WindPanel, StrainPanel],
   panels: [
     CrewPanel,
     ShadowPanel,
+    NoCranePanel,
     ForkPanel,
     FootingPanel,
     KnowHowPanel,

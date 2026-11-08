@@ -4,12 +4,12 @@ import { FOOTING_ACTIONS } from "./footing";
 import { FORK_ACTIONS } from "./forks";
 import { OVERTIME_ACTIONS } from "./knowhow";
 import { PACE_ACTIONS, bankAction } from "./playroom";
-import { STEADY_ACTION } from "./sway";
+import { SKY_ACTIONS } from "./sky";
 import { TOWN_ACTIONS } from "./town";
 import { tendingValue } from "./tick";
 
 export const HIGHER_ACTIONS: readonly ActionDef[] = [
-  STEADY_ACTION,
+  ...SKY_ACTIONS,
   ...PACE_ACTIONS,
   ...TOWN_ACTIONS,
   bankAction(tendingValue),

@@ -8,7 +8,8 @@ import { stepDown } from "./descent";
 import { res } from "./lines";
 import { paceMult, tickPlayroom, wakeTower } from "./playroom";
 import { MANUAL_RESOURCES, RETURN_VISITOR_ID } from "./resources";
-import { swayFactor, tickSway } from "./sway";
+import { hoisted, skyPay, tickSky } from "./sky";
+import { swayFactor } from "./sway";
 import { tickTown, townPay, townTap } from "./town";
 
 export { stacked } from "./income";
@@ -23,6 +24,7 @@ function netIncome(run: RunState): number {
     grossIncome(run) *
     swayFactor(run) *
     paceMult(run) *
+    skyPay(run) *
     townPay(run) *
     (1 + gainOf(run))
   );
@@ -32,7 +34,11 @@ function netIncome(run: RunState): number {
 function netTap(run: RunState): number {
   return run.phase > 2
     ? grossTap(run)
-    : grossTap(run) * paceMult(run) * townTap(run) * (1 + gainOf(run));
+    : grossTap(run) *
+        paceMult(run) *
+        townTap(run) *
+        skyPay(run) *
+        (1 + gainOf(run));
 }
 
 /** The phase's main resource per second from helpers alone (the kept share out). */
@@ -54,12 +60,14 @@ function earn(run: RunState, amount: number): void {
   }
   const key = MANUAL_RESOURCES[run.phase];
   run.resources[key] = res(run, key) + amount;
+  // In the sky what was just hoisted hangs on the hook, where a gust can take it.
+  if (run.phase === 2) hoisted(run, amount);
 }
 
 export function tickHigher(run: RunState, dt: number): void {
   if (run.phase <= 2) {
     tickTown(run, dt);
-    tickSway(run, dt);
+    tickSky(run, dt);
     tickPlayroom(run, dt);
     const kept = netIncome(run) * savedShare(run);
     earn(run, incomePerSecond(run) * dt);

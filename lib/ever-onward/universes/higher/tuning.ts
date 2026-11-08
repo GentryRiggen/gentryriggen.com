@@ -36,8 +36,8 @@ export const TUNING = {
     hum: 16,
   } as Readonly<Record<string, number>>,
   /**
-   * Sway: a tall tower leans, and the crew slows when it does. Never a loss:
-   * pay drops to half at the worst, and one press of Steady puts it right.
+   * Sway: how a tall tower leans, and its calm (braces, footing, projects).
+   * The town and the sky both read the calm; only the town leans.
    */
   sway: {
     /** Share of the whole scale a tower sways per second, by phase. */
@@ -56,8 +56,6 @@ export const TUNING = {
     /** Sway starts costing pay above this, down to `floor` at 1. */
     from: 0.5,
     floor: 0.55,
-    /** The steady button works above this. */
-    steadyAt: 0.15,
     /** Hard hats and wind tunnels: sway builds this much as fast. */
     projectMult: 0.5,
     /** A cushion fort or a cable damper: sway builds this much as fast. */
@@ -86,7 +84,7 @@ export const TUNING = {
     /** The pace a fresh playroom starts at (index into `paces`). */
     startPace: 1,
     /** The pace dial moves one step every this many seconds. */
-    settleSeconds: 2,
+    settleSeconds: 3,
     /** The lean eases toward its target; this many seconds to close the gap. */
     leanSeconds: 4,
     /** The tower only stacks (and can only tumble) this long after a tap. */
@@ -187,6 +185,70 @@ export const TUNING = {
     lightUpkeep: 0.05,
     /** The lights-on moment shows this long. */
     lightsShowSeconds: 5,
+  },
+  /**
+   * The Sky's three dials (sky.ts): a forecast you bet on (wind), the cable's
+   * strain, and the optional no-crane climb. Pace is merged into strain here:
+   * two dials that both trade speed for a loss would only be one.
+   */
+  sky: {
+    /** The sky's own pay before strain (keeps the part's length). */
+    base: 0.89,
+    /**
+     * Slack to humming: pay, then the chance per second of a snap in calm
+     * air, and per second of a snap and of a drop while a gust blows.
+     */
+    strains: [
+      { name: "Slack", pay: 0.85, calm: 0, snap: 0.005, drop: 0.02 },
+      { name: "Taut", pay: 1, calm: 0.0004, snap: 0.02, drop: 0.05 },
+      { name: "Tight", pay: 1.2, calm: 0.002, snap: 0.08, drop: 0.13 },
+      { name: "Humming", pay: 1.4, calm: 0.006, snap: 0.2, drop: 0.2 },
+    ] as readonly {
+      name: string;
+      pay: number;
+      calm: number;
+      snap: number;
+      drop: number;
+    }[],
+    startStrain: 1,
+    /** The dial moves one step every this many seconds. */
+    settleSeconds: 2.5,
+    /** The forecast moves a step this often: calm, clouds, then a sure gust. */
+    stepSeconds: 8,
+    /** From a calm sky, clouds gather; from clouds, a sure gust (else it clears). */
+    cloudChance: 0.25,
+    gustChance: 0.6,
+    /** After a gust the sky stays clear for a while: clouds gather this much less often. */
+    spellSeconds: 30,
+    spellMult: 0.2,
+    /** A gust blows this long, and is light or strong (known once it is sure). */
+    gustSeconds: 4,
+    strongChance: 0.5,
+    lightMult: 0.25,
+    strongMult: 3,
+    /** The load on the hook is the last this many seconds of hoisting. */
+    hookSeconds: 36,
+    /** After a drop the crew spends this long fetching it; after a snap, restringing. */
+    stallSeconds: 3,
+    restringSeconds: 5,
+    /** Tying down and untying each take this long, and the crane earns nothing. */
+    tieSeconds: 2,
+    untieSeconds: 2,
+    /** Braces and ballast never calm the risks below this share. */
+    calmFloor: 0.25,
+    /** The no-crane climb: how long, how much the pay drops to, and the prize. */
+    ncSeconds: 65,
+    ncPay: 0.25,
+    ncBonus: 0.2,
+    ncMax: 4,
+    /** A climb that fails leaves the crew resting this long, earning nothing. */
+    ncFailSeconds: 14,
+    /** A spare cable (a delivery) halves the risks for this long. */
+    softSeconds: 60,
+    /** The scene shows a drop, a snap, a tie or a win for this long. */
+    showSeconds: 4,
+    /** The wind plate lights when clouds gather. */
+    plateAt: 1,
   },
   /** Foundations: the spend-now-or-invest choice of the first three parts. */
   footing: {

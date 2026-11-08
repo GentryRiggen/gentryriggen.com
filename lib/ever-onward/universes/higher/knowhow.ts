@@ -193,11 +193,11 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_SKY,
     name: "A wind tunnel",
     description:
-      "A tiny tower in a tube of wind teaches the big one how to lean into a gust. It sways half as fast.",
+      "A tiny tower in a tube of wind teaches the big one how to lean into a gust. Gusts drop and snap half as much.",
     tradeOff: "Know-how spent here is not there for a night shift.",
     costs: cost(K.costs[0]),
     revealWhen: (run) => owned(run, "damper") >= 1,
-    effectPreview: () => `The tower sways ${asFast(TUNING.sway.projectMult)}`,
+    effectPreview: () => "Gusts drop and snap half as much",
     botValue: 0.3,
   },
   {

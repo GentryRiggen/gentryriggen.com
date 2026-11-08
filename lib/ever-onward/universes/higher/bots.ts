@@ -25,7 +25,8 @@ import {
   toddlerStage,
   tumbleChanceFor,
 } from "./playroom";
-import { STEADY_ACTION_ID, leanCalm, swayOf } from "./sway";
+import { leanCalm } from "./sway";
+import { playsSky, type SkyStyle } from "./skybots";
 import { tendingValue } from "./tick";
 import {
   HATS,
@@ -70,17 +71,6 @@ export const takesFork =
     );
     return available.includes(id) ? [id] : [];
   };
-
-/** Presses Steady once the tower leans this far, looking every `window` seconds. */
-export const steadiesAt =
-  (threshold: number, window = 1): Actions =>
-  (run, available) =>
-    run.phase === 2 &&
-    swayOf(run) >= threshold &&
-    isWindowStart(run, window) &&
-    available.includes(STEADY_ACTION_ID)
-      ? [STEADY_ACTION_ID]
-      : [];
 
 /**
  * How a bot plays the Playroom's dials. `pace` is a fixed step, or "reads":
@@ -412,7 +402,7 @@ export const holdsOvertime: Actions = (run, available) => {
     : [];
 };
 
-/** Runs several choices at once, so a bot can pick and steady in one step. */
+/** Runs several choices at once, so a bot can pick and tie down in one step. */
 export const together =
   (...parts: Actions[]): Actions =>
   (run, available) =>
@@ -447,6 +437,15 @@ const TOWN_SET_AND_LEAVE: TownStyle = {
 /** A player who rushes with the fast foremen and never lights a lamp. */
 const TOWN_GREEDY: TownStyle = { pace: 2, crew: [1, 3, 5], lights: "never" };
 
+/** A player who reads the forecast: eases the cable, ties down and tries the climb when it pays. */
+const SKY_READS: SkyStyle = { strain: "reads", tie: "reads", crane: "reads" };
+
+/** A player who never touches the sky's dials. */
+const SKY_IGNORES: SkyStyle = { strain: 1, tie: "never", crane: "never" };
+
+/** A player who pulls the cable tight and hopes. */
+const SKY_GREEDY: SkyStyle = { strain: 3, tie: "never", crane: "never" };
+
 /** A player who never touches the dials. */
 const IGNORES: PlayroomStyle = { pace: 1, bank: "never" };
 
@@ -457,25 +456,25 @@ const GREEDY: PlayroomStyle = { pace: 3, bank: 3 };
 export function higherBots(): BotSet {
   const base = genericBots(higherUniverse);
   const hands = (
-    steady: number,
     window: number,
     load: number,
     dials: PlayroomStyle = READS,
-    town: TownStyle = TOWN_ADJUSTS
+    town: TownStyle = TOWN_ADJUSTS,
+    sky: SkyStyle = SKY_READS
   ): Actions =>
     together(
       takesFork(),
-      steadiesAt(steady, window),
       playsPlayroom(dials, window),
       playsTown(town, window),
+      playsSky(sky, window),
       placesLoad(load),
       footingPolicy(1, Math.max(window, 10)),
       holdsOvertime
     );
-  const tapper = site(base.tapper, hands(0.8, 1, 1));
+  const tapper = site(base.tapper, hands(1, 1));
   return {
     tapper,
-    realistic: site(base.realistic, hands(0.75, 5, 15)),
+    realistic: site(base.realistic, hands(5, 15)),
     idle: {
       ...base.idle,
       projects: "best",
@@ -483,13 +482,16 @@ export function higherBots(): BotSet {
       actions: together(takesFork(1), playsTown(TOWN_SET_AND_LEAVE, 30)),
       greetAfter: Infinity,
     },
-    dawdler: site(base.dawdler, hands(0.9, 60, 60)),
+    dawdler: site(base.dawdler, hands(60, 60)),
     skill: Object.fromEntries(
       [0, 1, 2].map((phase) => [
         phase,
         {
-          naive: site(base.tapper, hands(0.97, 1, 1, GREEDY, TOWN_GREEDY)),
-          careful: site(base.tapper, hands(0.7, 1, 1)),
+          naive: site(
+            base.tapper,
+            hands(1, 1, GREEDY, TOWN_GREEDY, SKY_GREEDY)
+          ),
+          careful: site(base.tapper, hands(1, 1)),
         },
       ])
     ),
@@ -501,9 +503,9 @@ export function higherBots(): BotSet {
             base.tapper,
             together(
               takesFork(),
-              steadiesAt(0.8),
               playsPlayroom(IGNORES),
               playsTown(TOWN_IGNORES),
+              playsSky(SKY_IGNORES),
               footingPolicy(1, 10)
             )
           ),
@@ -511,7 +513,8 @@ export function higherBots(): BotSet {
         },
       ])
     ),
-    naiveOil: site(base.tapper, hands(0.97, 1, 1, GREEDY, TOWN_GREEDY)),
+    naiveOil: site(base.tapper, hands(1, 1, GREEDY, TOWN_GREEDY, SKY_GREEDY)),
     cheapskateOil: tapper,
   };
 }
+export { playsSky, type SkyStyle } from "./skybots";

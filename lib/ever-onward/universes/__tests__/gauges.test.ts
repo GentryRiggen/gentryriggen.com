@@ -73,6 +73,15 @@ describe("HUD gauges", () => {
       status: "WOBBLY",
       isCritical: true,
     });
+    const high = newRun(higherUniverse);
+    high.phase = 2;
+    high.owned["sky-crew"] = 3;
+    high.resources.skWx = 2;
+    expect(higherUniverse.gauge?.(high)).toMatchObject({
+      label: "WIND",
+      display: "GUST COMING!",
+      isCritical: true,
+    });
     run.phase = 3;
     expect(higherUniverse.gauge?.(run)).toBeNull();
   });

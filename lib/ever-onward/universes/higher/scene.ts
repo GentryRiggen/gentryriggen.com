@@ -19,6 +19,26 @@ import {
   toddlerStage,
   tumblesSoFar,
 } from "./playroom";
+import {
+  dropsSoFar,
+  forecastOf,
+  gustsSoFar,
+  isBlowing,
+  isNoCrane,
+  isSkyOpen,
+  isStrongGust,
+  justDropped,
+  justNcFailed,
+  justNcWon,
+  justSnapped,
+  justTied,
+  ncFails,
+  ncWins,
+  snapsSoFar,
+  strainNow,
+  tiesSoFar,
+  tieState,
+} from "./sky";
 import { swayOf } from "./sway";
 import {
   DAYS,
@@ -88,6 +108,33 @@ export interface HigherSceneInfo {
   /** Today's day and tomorrow's (an index into the days: quiet, market, night, windy, festival). */
   day: number;
   tomorrow: number;
+  /** The sky's forecast: 0 calm, 1 clouds gathering, 2 a sure gust. */
+  wx: number;
+  /** A gust is blowing, and how many have blown. */
+  gust: boolean;
+  gusts: number;
+  /** The gust that is sure (or blowing) is a strong one. */
+  strong: boolean;
+  /** The cable's strain, 0 (slack) to 3 (humming). */
+  strain: number;
+  /** The tie-down: 0 free, 1 tying, 2 tied, 3 untying. */
+  tie: number;
+  /** The tower was just tied down, and how many times it has been. */
+  tied: boolean;
+  ties: number;
+  /** A beam was just dropped, and how many have been. */
+  dropped: boolean;
+  drops: number;
+  /** The cable just snapped, and how many times it has. */
+  snapped: boolean;
+  snaps: number;
+  /** The crane is off for the no-crane climb. */
+  noCrane: boolean;
+  /** A no-crane climb was just won or lost, how many badges, and how many fails. */
+  ncWon: boolean;
+  ncLost: boolean;
+  badges: number;
+  ncFailed: number;
   /** How much footing there is, 0 (none) to 3. */
   footing: number;
   /** The share of income kept back (0, 1 or 2). */
@@ -105,6 +152,8 @@ export interface HigherSceneInfo {
   /** The kid is on the grass. */
   visitorHere: boolean;
 }
+
+const TIE_STATES = ["free", "tying", "tied", "untying"] as const;
 
 const PROJECT_IDS: readonly (readonly string[])[] = [
   [],
@@ -164,6 +213,26 @@ export function sceneInfo(run: RunState): HigherSceneInfo {
     lights: lightsSoFar(run),
     day: isTownOpen(run) ? DAYS.indexOf(dayNow(run)) : 0,
     tomorrow: isTownOpen(run) ? DAYS.indexOf(dayNext(run)) : 0,
+    wx: forecastOf(run),
+    gust: isBlowing(run),
+    gusts: gustsSoFar(run),
+    strong:
+      run.phase === 2 &&
+      (forecastOf(run) === 2 || isBlowing(run)) &&
+      isStrongGust(run),
+    strain: run.phase === 2 && isSkyOpen(run) ? Math.round(strainNow(run)) : 1,
+    tie: TIE_STATES.indexOf(tieState(run)),
+    tied: justTied(run),
+    ties: tiesSoFar(run),
+    dropped: justDropped(run),
+    drops: dropsSoFar(run),
+    snapped: justSnapped(run),
+    snaps: snapsSoFar(run),
+    noCrane: isNoCrane(run),
+    ncWon: run.phase === 2 && justNcWon(run),
+    ncLost: run.phase === 2 && justNcFailed(run),
+    badges: run.phase === 2 ? ncWins(run) : 0,
+    ncFailed: ncFails(run),
     footing: Math.min(3, Math.round(gainOf(run) * 2)),
     keeps: run.phase <= 2 ? footingStep(run) : 0,
     projects: PROJECT_IDS[run.phase].reduce(

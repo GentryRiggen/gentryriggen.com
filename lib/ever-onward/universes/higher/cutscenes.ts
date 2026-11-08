@@ -274,9 +274,9 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "Foundations pay off later, floors pay off now. A quarter is a good start.",
   ],
   [PHASE_SKY]: [
-    "A damper and a good anchor keep the tower from swaying.",
+    "The sky shows the wind before it comes. Tie down for a strong gust, and ease the cable for a light one.",
     "A space elevator pays more. Cloud terraces let the light through.",
-    "Place each delivery where it helps most: stuff now, a straighter tower, or anchors for later.",
+    "Place each delivery where it helps most: stuff now, a spare cable, or anchors for later.",
   ],
   [PHASE_TOP]: [
     "Lamps, songbirds and a tune all help the steps come easier.",

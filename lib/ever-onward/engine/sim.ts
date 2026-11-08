@@ -155,7 +155,7 @@ function incomeOf(def: UniverseDef, run: RunState, tps: number): Income {
   const probe = def.incomeView?.(run) ?? run;
   const diff =
     (tick(def, probe, 1).resources[main] ?? 0) - (probe.resources[main] ?? 0);
-  const manual = manualGain(def, run) * tps;
+  const manual = manualGain(def, probe) * tps;
   const upkeep = diff < 0 ? 0 : upkeepRate(def, run, main);
   return {
     auto: Math.max(0, diff),
@@ -174,7 +174,10 @@ export function tapAndAuto(
   def: UniverseDef,
   run: RunState
 ): { tap: number; auto: number } {
-  return { tap: manualGain(def, run), auto: incomeOf(def, run, 0).auto };
+  return {
+    tap: manualGain(def, def.incomeView?.(run) ?? run),
+    auto: incomeOf(def, run, 0).auto,
+  };
 }
 
 /** Seconds of play looked ahead when judging what a purchase really does. */

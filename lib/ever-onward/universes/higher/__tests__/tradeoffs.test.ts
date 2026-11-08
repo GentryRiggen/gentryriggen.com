@@ -15,7 +15,7 @@ import {
   placesLoad,
   playsPlayroom,
   playsTown,
-  steadiesAt,
+  playsSky,
   together,
 } from "../bots";
 import {
@@ -40,7 +40,7 @@ import {
   type ForkSide,
 } from "../forks";
 import { OVERTIME_ACTION_ID, isOvertimeOn, knowhowOf } from "../knowhow";
-import { STEADY_ACTION_ID, swayFactor, swayOf } from "../sway";
+import { swayFactor, swayOf } from "../sway";
 import { leanTarget, paceActionId, tumbleChance } from "../playroom";
 import { incomePerSecond } from "../tick";
 import { TUNING } from "../tuning";
@@ -63,7 +63,7 @@ function phaseMinutes(sides: readonly ForkSide[], footing: number): number[] {
       ...base,
       actions: together(
         pick,
-        steadiesAt(0.75, 5),
+        playsSky({ strain: "reads", tie: "reads", crane: "reads" }, 5),
         playsPlayroom({ pace: 2, bank: "reads" }, 5),
         playsTown({ pace: "plan", crew: "adjusts", lights: "adjusts" }, 5),
         placesLoad(15),
@@ -245,7 +245,7 @@ describe("Build It Higher trade-offs", () => {
     });
   });
 
-  describe("sway (a managed risk, never a punishment)", () => {
+  describe("sway (the town's lean, never a punishment)", () => {
     it("never takes more than half of the pay, however long it is left", () => {
       const base = runAtPhaseStart(1);
       const wobbling = withResources(base, { sway: 1 });
@@ -267,23 +267,10 @@ describe("Build It Higher trade-offs", () => {
       expect(lean(0)).toBeLessThan(0.2);
     });
 
-    it("has no Steady button in the playroom or the town, where the build pace sets the lean", () => {
-      for (const phase of [0, 1]) {
-        const run = {
-          ...runAtPhaseStart(phase),
-          owned: { bear: 4, mason: 4 },
-        } as RunState;
-        expect(canPerformAction(def, run, STEADY_ACTION_ID)).toBe(false);
-      }
-    });
-
-    it("still has Steady in the sky", () => {
-      const base = runAtPhaseStart(2);
-      const run = withResources(
-        { ...base, owned: { "sky-crew": 3 } } as RunState,
-        { sway: 0.8 }
+    it("has no Steady button anywhere: the playroom and town have the build pace, the sky its wind and cable", () => {
+      expect((def.actions ?? []).some((action) => action.id === "steady")).toBe(
+        false
       );
-      expect(canPerformAction(def, run, STEADY_ACTION_ID)).toBe(true);
     });
 
     it("leans less once the town's tower is braced", () => {
