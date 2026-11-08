@@ -14,7 +14,9 @@ import { TUNING } from "./tuning";
  * stay calm, so the forecast is a bet. A gust drops a loose load (the last
  * stretch of hoisting) and the crew spends a moment fetching it. Tying down
  * keeps the load safe, but the crane earns nothing while tied, and tying down
- * and untying each take a moment.
+ * and untying each take a moment (the straps come off by themselves once the
+ * gust has passed). A strong gust drops a loose load at any cable strain, so
+ * only a tie-down keeps it for sure.
  *
  * The cable's strain: slack to humming. A tighter cable hoists faster and
  * snaps more often, and a gust on a tight cable snaps it far more often. A
@@ -208,13 +210,27 @@ export const snapInGust = (strain: number, calm: number, power = 1): number =>
     ) * power
   );
 
+/**
+ * What a strong gust drops a loose load at any strain, a second (a Slack
+ * cable only softens it). Braces and ballast calm it like the rest.
+ */
+export const gustFloor = (run: RunState): number =>
+  isStrongGust(run) ? K.strongDropRate : 0;
+
 /** Chance that a gust (all of it) drops a loose load at this strain. */
-export const dropInGust = (strain: number, calm: number, power = 1): number =>
+export const dropInGust = (
+  strain: number,
+  calm: number,
+  power = 1,
+  floor = 0
+): number =>
   chanceInGust(
     perSecond(
       blendAt(strain, (i) => STRAINS[i].drop),
       calm
-    ) * power
+    ) *
+      power +
+      perSecond(floor, calm)
   );
 
 /** Chance per second that the cable snaps in calm air. */
@@ -470,6 +486,16 @@ function tickTie(run: RunState): void {
     r.skTiedAt = run.time;
     r.skTies = tiesSoFar(run) + 1;
   } else if (state === 3 && run.time >= res(run, "skTieAt")) r.skTie = 0;
+  else if (
+    state === 2 &&
+    res(run, "skGustUntil") > res(run, "skTiedAt") &&
+    run.time >= res(run, "skGustUntil")
+  ) {
+    // The gust that was tied against has passed: the straps come off by
+    // themselves (taking the same moment as untying), so a tie is one click.
+    r.skTie = 3;
+    r.skTieAt = run.time + K.untieSeconds;
+  }
 }
 
 /** Runs the sky for `dt` seconds. */
@@ -511,11 +537,12 @@ export function tickSky(run: RunState, dt: number): void {
       snap(run);
     } else if (
       roll(run) <
-      perSecond(
+      (perSecond(
         blendAt(strain, (i) => STRAINS[i].drop),
         calm
       ) *
-        power *
+        power +
+        perSecond(gustFloor(run), calm)) *
         dt
     ) {
       r.skGustHit = 1;
@@ -590,7 +617,7 @@ export const SKY_ACTIONS: readonly ActionDef[] = [
         label: state === "tied" ? "Untie" : "Tie down",
         detail:
           state === "tied"
-            ? `Let the crane go again. Untying takes ${K.untieSeconds} sec and earns nothing.`
+            ? `Let the crane go again. Untying takes ${K.untieSeconds} sec and earns nothing. The straps also come off by themselves once a gust has passed.`
             : `A gust cannot drop a beam or snap a cable. The crane earns nothing while tied, and tying takes ${K.tieSeconds} sec.`,
         isBlocked: state === "tying" || state === "untying" || isNoCrane(run),
       };
@@ -656,7 +683,7 @@ export const SKY_CONSUMABLE: ConsumableDef = {
       forecastOf(run) === 2 || isBlowing(run)
         ? snapInGust(strainNow(run), calm) +
           (1 - snapInGust(strainNow(run), calm)) *
-            dropInGust(strainNow(run), calm)
+            dropInGust(strainNow(run), calm, 1, gustFloor(run))
         : forecastOf(run) === 1
           ? 0.35 * snapInGust(strainNow(run), calm)
           : 0;

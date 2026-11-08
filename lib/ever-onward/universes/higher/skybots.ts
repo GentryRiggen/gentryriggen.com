@@ -9,6 +9,7 @@ import {
   ncBonusMult,
   dropInGust,
   forecastOf,
+  gustFloor,
   gustPower,
   gustInExact,
   isBlowing,
@@ -75,7 +76,7 @@ function rideCost(
 ): number {
   const calm = riskCalm(run);
   const snap = snapInGust(s, calm, power);
-  const drop = dropInGust(s, calm, power);
+  const drop = dropInGust(s, calm, power, gustFloor(run));
   const unit = pay(run, base);
   const load = pay(run, s) * K.hookSeconds;
   const lost =

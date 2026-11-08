@@ -129,6 +129,19 @@ describe("tying down", () => {
     expect(incomePerSecond(run)).toBeGreaterThan(0);
   });
 
+  it("takes the straps off by itself once the gust has passed, and not before", () => {
+    let run = until(sky(), (r) => forecastOf(r) === 2);
+    run = performAction(def, run, TIE_ACTION_ID);
+    run = until(run, (r) => tieState(r) === "tied", 10);
+    run = until(run, (r) => isBlowing(r), 20);
+    expect(tieState(run)).toBe("tied");
+    run = until(run, (r) => !isBlowing(r), 20);
+    run = until(run, (r) => tieState(r) !== "tied", 5);
+    expect(["untying", "free"]).toContain(tieState(run));
+    run = until(run, (r) => tieState(r) === "free", 10);
+    expect(incomePerSecond(run)).toBeGreaterThan(0);
+  });
+
   it("keeps a tied tower safe in a gust, and a loose one can lose its load", () => {
     const outcome = (tied: boolean, seed: number): number => {
       let run = {
@@ -382,6 +395,26 @@ describe("a gust moves the best answer: the simulator plays the sky", () => {
       for (const [name, secs] of plans)
         expect([name, secs > best * 1.05]).toEqual([name, true]);
     }
+  });
+
+  it("makes tying down earn its keep: the reader ties sometimes, and never tying loses by 5%", () => {
+    // Reader plays a whole stretch and counts its ties.
+    let ties = 0;
+    const cost = upgradeCost(start(), end!);
+    for (let seed = 1; seed <= SEEDS; seed += 1) {
+      let run: RunState = {
+        ...start(),
+        rng: seed * 7919 + 1,
+        resources: { ...start().resources, beams: cost - LEFT * rate },
+      };
+      const s = playsSky(reads, 1);
+      for (let t = 0; run.resources.beams < cost && t < 6000; t += 0.5)
+        run = step(run, s);
+      ties += run.resources.skTies ?? 0;
+    }
+    expect(ties / SEEDS).toBeGreaterThanOrEqual(1);
+    const never = seconds({ strain: "reads", tie: "never", crane: "reads" });
+    expect([never, never > best * 1.05]).toEqual([never, true]);
   });
 
   it("beats tying at the sure gust every time and tying at the first clouds", () => {

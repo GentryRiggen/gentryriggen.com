@@ -203,7 +203,7 @@ export const TUNING = {
    */
   sky: {
     /** The sky's own pay before strain (keeps the part's length). */
-    base: 0.95,
+    base: 0.96,
     /**
      * Slack to humming: pay, how much of it is left while clouds gather (a
      * tight cable hums in the wind and hoists slowly), then the chance per
@@ -262,6 +262,8 @@ export const TUNING = {
     strongChance: 0.5,
     lightMult: 0.25,
     strongMult: 3,
+    /** A strong gust also pulls a loose load free at any strain, this chance a second (only a tie-down stops it). */
+    strongDropRate: 1,
     /** The load on the hook is the last this many seconds of hoisting. */
     hookSeconds: 36,
     /** After a drop the crew spends this long fetching it; after a snap, restringing. */
@@ -381,7 +383,7 @@ export const TUNING = {
   /** The way down: quiet turns into steps, steps into the ground. */
   top: {
     /** Share of the descent (of 100) each unit of quiet adds. */
-    descentPerQuiet: 0.000018,
+    descentPerQuiet: 0.000015,
     /** A block lantern makes each unit of quiet count this much more. */
     lanternBoost: 1,
   },
