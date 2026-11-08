@@ -18,6 +18,14 @@ function townLine(info: SmileSceneInfo): string {
   return `${day} · lemonade is ${PRICE_NAMES[info.price]}`;
 }
 
+const SEAT_CAPTION = [
+  "far end of the bench",
+  "a long way along",
+  "halfway along",
+  "one seat away",
+  "side by side",
+] as const;
+
 /** The one line that says what the picture is showing. */
 export function captionFor(info: SmileSceneInfo): string {
   switch (info.phase) {
@@ -59,7 +67,7 @@ export function captionFor(info: SmileSceneInfo): string {
     default:
       return info.visitorHere
         ? "One small, real smile"
-        : `Two on a bench · ${info.trust}% trust${info.wanting ? " · the friend wants something" : ""}`;
+        : `Two on a bench · ${SEAT_CAPTION[info.seat]} · ${info.trust}% trust${info.away ? " · they moved away" : ""}`;
   }
 }
 

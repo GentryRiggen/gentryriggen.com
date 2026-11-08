@@ -154,7 +154,7 @@ describe("Make Everyone Smile skeleton", () => {
         ),
       };
       const loaded = reconcileRun(def, trimmed);
-      for (const id of ["fkFriend", "tgBond", "wsDays", "pdLeft", "qtStage"])
+      for (const id of ["fkFriend", "tgBond", "wsDays", "pdLeft", "qbSeat"])
         expect(loaded.resources[id]).toBe(0);
       const later = simulate(def, {
         strategy: smileBots().tapper,

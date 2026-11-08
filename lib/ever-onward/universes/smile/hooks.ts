@@ -14,7 +14,13 @@ import {
   knowhowOf,
   paradeCost,
 } from "./knowhow";
-import { QUIET_ACTION_IDS, isWanting } from "./quiet";
+import {
+  QUIET_ACTION_IDS,
+  canScootBack,
+  canScootCloser,
+  isQuietOpen,
+  tellOf,
+} from "./quiet";
 import { PHASE_IDS } from "./resources";
 import { isSameSceneInfo, sceneInfo } from "./scene";
 import {
@@ -79,6 +85,17 @@ function needsALook(run: RunState): boolean {
   );
 }
 
+/**
+ * True when the friend's body says it is a moment to move: ready for a seat
+ * closer, or uneasy where you sit.
+ */
+function needsABenchLook(run: RunState): boolean {
+  const tell = tellOf(run);
+  return (
+    (tell === 3 && canScootCloser(run)) || (tell === 0 && canScootBack(run))
+  );
+}
+
 /** Systems asking for the player's attention: the tap, the choice, the crowd. */
 export function smilePlates(run: RunState): string[] {
   const plates = ["tap"];
@@ -118,7 +135,7 @@ export function smilePlates(run: RunState): string[] {
   )
     plates.push("parade");
   if (hasOpenProject(run)) plates.push("project");
-  if (run.phase === 3 && isWanting(run)) plates.push("friend");
+  if (isQuietOpen(run) && needsABenchLook(run)) plates.push("friend");
   return plates;
 }
 

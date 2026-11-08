@@ -4,7 +4,13 @@ import { bestProject, type Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
 import { currentFork, forkActionId, type ForkSide } from "./forks";
 import { PARADE_ACTION_ID, knowhowOf, paradeCost } from "./knowhow";
-import { currentWant, isWanting, tendActionId, tendsSoFar } from "./quiet";
+import {
+  BACK_ACTION_ID,
+  CLOSER_ACTION_ID,
+  isQuietOpen,
+  isTruckNear,
+  tellOf,
+} from "./quiet";
 import {
   ACTIVITY_COUNT,
   activityOf,
@@ -58,9 +64,6 @@ import {
 import { smileUniverse } from ".";
 
 type Actions = NonNullable<Strategy["actions"]>;
-
-/** A choice the bot lets go to the helper after this long (a kettle). */
-const SKIP_DELAY = 45;
 
 /** Both choices at once, so a bot can pick and follow in the same step. */
 const alongside =
@@ -389,26 +392,31 @@ export const minesTown =
     )(run, available);
 
 /**
- * Answers what the friend wants. One want in every `skipEvery`th goes to the
- * kettle instead (or after SKIP_DELAY).
+ * Reads the friend on the bench every `window` seconds: scoots back when they
+ * pull away or a truck is near, and scoots closer when they lean in.
  */
-export const answersFriend =
-  (options: { skipEvery?: number } = {}): Actions =>
+export const readsBench =
+  (window = 10): Actions =>
   (run, available) => {
-    if (run.phase !== 3 || !isWanting(run)) return [];
-    const { skipEvery } = options;
-    if (
-      skipEvery &&
-      tendsSoFar(run) % skipEvery === skipEvery - 1 &&
-      (run.resources.qtTime ?? 0) < SKIP_DELAY
-    )
-      return [];
-    const id = tendActionId(currentWant(run));
+    if (!isQuietOpen(run) || !isWindowStart(run, window)) return [];
+    const tell = tellOf(run);
+    const id =
+      tell === 0 || (isTruckNear(run) && tell < 3)
+        ? BACK_ACTION_ID
+        : tell === 3 && !isTruckNear(run)
+          ? CLOSER_ACTION_ID
+          : "";
     return available.includes(id) ? [id] : [];
   };
 
+/** Scoots closer the moment it is allowed, whatever the friend's body says. */
+export const scootsAsFastAsAllowed: Actions = (run, available) =>
+  isQuietOpen(run) && available.includes(CLOSER_ACTION_ID)
+    ? [CLOSER_ACTION_ID]
+    : [];
+
 /**
- * A player at the loudspeakers: the fork, the face, the town and the friend as
+ * A player at the loudspeakers: the fork, the face, the town and the bench as
  * usual, a dial policy and a taste in projects. The scorecard's skill pair and
  * the dominance tests are built from this.
  */
@@ -426,7 +434,7 @@ export function worldPlayer(
       readsFace(10),
       minesTown(),
       dial,
-      answersFriend()
+      readsBench(5)
     ),
   };
 }
@@ -440,10 +448,18 @@ const worldHands = (
   dial: followsTheDay({ base: 2, floor: 0.4, window }),
 });
 
-/** A strategy that plays the fork, the face, the dial, the parade and the friend. */
+/**
+ * How often a player glances at the bench: the bench is the whole last part,
+ * so it gets looked at much more than the other dials (a careless player
+ * still only looks every minute).
+ */
+const benchWindow = (window: number): number =>
+  window >= 60 ? 60 : window >= 20 ? 12 : 8;
+
+/** A strategy that plays the fork, the face, the dial, the parade and the bench. */
 export function smilePlayer(
   base: Strategy,
-  options: { skipEvery?: number; window?: number; side?: ForkSide } = {}
+  options: { window?: number; side?: ForkSide } = {}
 ): Strategy {
   const window = options.window ?? 12;
   const hands = worldHands(Math.max(window, 10));
@@ -456,7 +472,7 @@ export function smilePlayer(
       readsFace(window),
       minesTown(Math.max(window, 10)),
       hands.dial,
-      answersFriend({ skipEvery: options.skipEvery })
+      readsBench(benchWindow(window))
     ),
   };
 }
@@ -496,14 +512,14 @@ export function smileBots(): BotSet {
   };
   return {
     tapper,
-    realistic: smilePlayer(base.realistic, { skipEvery: 6, window: 20 }),
+    realistic: smilePlayer(base.realistic, { window: 20 }),
     idle: {
       ...base.idle,
       projects: takesProjects("income"),
       actions: takesFork(1),
       greetAfter: Infinity,
     },
-    dawdler: smilePlayer(base.dawdler, { skipEvery: 2, window: 60 }),
+    dawdler: smilePlayer(base.dawdler, { window: 60 }),
     skill: {
       1: { naive: naiveCrowd, careful: carefulCrowd },
       2: { naive: naiveCrowd, careful: carefulCrowd },

@@ -2,15 +2,7 @@ import { ownsAtLeast } from "../../engine/goal";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
 import { streetRise } from "./town";
-import {
-  BENCH_ID,
-  KETTLE_ID,
-  hasKettle,
-  kettleShown,
-  tendsSoFar,
-  trustFraction,
-  trustMult,
-} from "./quiet";
+import { BENCH_ID, trustFraction, trustMult } from "./quiet";
 import {
   PHASE_FRIEND,
   PHASE_IDS,
@@ -425,8 +417,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   scale({
     id: "long-silence",
     name: "A long silence",
-    description:
-      "Some things do not need saying. Every moment, and every answer, is worth more.",
+    description: "Some things do not need saying. Every moment is worth more.",
     phase: PHASE_QUIET,
     currency: "patience",
     baseCost: 450,
@@ -465,22 +456,6 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   }),
   once(
     {
-      id: KETTLE_ID,
-      name: "A kettle on the stove",
-      description:
-        "It pours a cup when you are busy, after a pause. Your own answer is still better.",
-      phase: PHASE_QUIET,
-      currency: "patience",
-      baseCost: 250,
-      gate: (run) => kettleShown(run),
-    },
-    (run) =>
-      hasKettle(run)
-        ? "Answers a waiting friend for you"
-        : `Answers a waiting friend for you after a pause (answers so far: ${tendsSoFar(run)})`
-  ),
-  once(
-    {
       id: BENCH_ID,
       name: "Room on the bench",
       description:
@@ -512,14 +487,11 @@ export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => {
   );
   return {
     ...u,
-    badge:
-      u.id === KETTLE_ID
-        ? "NEW ABILITY"
-        : CHAPTER_EFFECTS[u.id]
-          ? u.id === "set-down"
-            ? "LAST STEP"
-            : "NEXT CHAPTER"
-          : u.badge,
+    badge: CHAPTER_EFFECTS[u.id]
+      ? u.id === "set-down"
+        ? "LAST STEP"
+        : "NEXT CHAPTER"
+      : u.badge,
     effectPreview:
       u.effectPreview ??
       (CHAPTER_EFFECTS[u.id] ? () => CHAPTER_EFFECTS[u.id] : undefined),

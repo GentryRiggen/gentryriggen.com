@@ -139,13 +139,13 @@ export const FORKS: readonly ForkDef[] = [
     sides: [
       {
         name: "A few words",
-        blurb: `Every answer you give pays ${times(T.quiet.wordsTap)} as much, and every word is a small gift.`,
+        blurb: `Sitting closer pays ${times(T.quiet.wordsClose)} as much trust, and every word is a small gift.`,
         catchLine: "You have to be there. The helpers pay as they always did.",
       },
       {
         name: "Just sit",
         blurb: `You stop talking and keep the bench warm. Tea, blanket and rain all pay ${times(T.quiet.silenceHelpers)} as much.`,
-        catchLine: "Your own answers pay as they always did.",
+        catchLine: "Your own words pay as they always did.",
       },
     ],
   },
@@ -203,9 +203,11 @@ export const forkTapMult = (run: RunState): number =>
     ? pick(run, "friend", T.friend.jokesTap, 1)
     : PHASE_IDS[run.phase] === PHASE_TOWN
       ? pick(run, "town", T.town.clownTap, 1)
-      : PHASE_IDS[run.phase] === PHASE_QUIET
-        ? pick(run, "quiet", T.quiet.wordsTap, 1)
-        : 1;
+      : 1;
+
+/** How much more sitting closer builds trust (a few words make a bench seat warmer). */
+export const forkCloseMult = (run: RunState): number =>
+  pick(run, "quiet", T.quiet.wordsClose, 1);
 
 /** How much more every helper pays with the chosen side. */
 export const forkHelperMult = (run: RunState): number =>

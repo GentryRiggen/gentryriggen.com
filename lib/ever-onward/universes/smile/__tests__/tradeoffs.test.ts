@@ -12,7 +12,6 @@ import {
   knowhowOf,
   paradeCost,
 } from "../knowhow";
-import { currentWant, isWanting, tendActionId, tendsSoFar } from "../quiet";
 import { incomePerSecond, manualPerTap } from "../tick";
 import { TUNING } from "../tuning";
 import { def, runAtPhaseStart } from "./fixtures";
@@ -69,27 +68,6 @@ describe("Smile trade-offs", () => {
       const on = performAction(def, run, PARADE_ACTION_ID);
       expect(incomePerSecond(on)).toBeGreaterThan(incomePerSecond(run) * 1.4);
       expect(manualPerTap(on)).toBeGreaterThan(manualPerTap(run) * 1.4);
-    });
-  });
-
-  describe("the friend on the bench: nothing is ever wrong", () => {
-    it("pays for every answer, the fitting one most", () => {
-      const start = runAtPhaseStart(3);
-      let run = advance(
-        { ...start, resources: { ...start.resources, qtTends: 1 } },
-        40
-      );
-      expect(isWanting(run)).toBe(true);
-      const right = currentWant(run);
-      const wrong = (right + 1) % 3;
-      const pay = (choice: number) =>
-        performAction(def, run, tendActionId(choice)).resources.patience -
-        run.resources.patience;
-      expect(pay(wrong)).toBeGreaterThan(0);
-      expect(pay(right)).toBeGreaterThan(pay(wrong));
-      run = performAction(def, run, tendActionId(right));
-      expect(tendsSoFar(run)).toBe(2);
-      expect(isWanting(run)).toBe(false);
     });
   });
 });

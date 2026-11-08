@@ -166,15 +166,25 @@ export const RESOURCES: readonly ResourceDef[] = [
     "tgSighWhy",
     "tgSighs",
   ]),
-  // The friend's wants: stage (0 resting, 1 wanting), the clock, the want,
-  // answers given, the last answer (right or not), and care for the last one.
+  // The bench: the seat, the seat being scooted to and the seconds left, the
+  // seconds they stay at the far end, seconds sat somewhere uncomfortable, what
+  // is happening (and its age, and the seconds to the next), the random stream
+  // and mood phase, and the big moments' clocks and counts.
   ...hidden([
-    "qtStage",
-    "qtTime",
-    "qtWant",
-    "qtTends",
-    "qtLastRight",
-    "qtLastPays",
-    "qtPaused",
+    "qbSeat",
+    "qbTo",
+    "qbMove",
+    "qbAway",
+    "qbCrowd",
+    "qbEv",
+    "qbEvT",
+    "qbNext",
+    "qbRng",
+    "qbPhase",
+    "qbLandAt",
+    "qbLands",
+    "qbPullAt",
+    "qbPulls",
+    "qbPullWhy",
   ]),
 ];

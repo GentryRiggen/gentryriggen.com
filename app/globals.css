@@ -6879,3 +6879,163 @@ html:has(.jim-app) body {
     opacity: 0;
   }
 }
+
+/* ---- The bench (Make Everyone Smile, the quiet): qb- ---- */
+/* A banner band across the whole strip, then the word itself. */
+@keyframes ms-qb-band {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  78% {
+    opacity: 0.88;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-qb-band {
+  animation: ms-qb-band 4s ease-out forwards;
+}
+
+/* A warm wash for a step that landed, a cool one for a pull-away. */
+@keyframes ms-qb-wash {
+  0% {
+    opacity: 0;
+  }
+  14%,
+  60% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-qb-wash {
+  animation: ms-qb-wash 3.6s ease-out forwards;
+}
+
+/* Hearts rise between the two of you. */
+@keyframes ms-qb-rise {
+  0% {
+    transform: translateY(8px) scale(0.5);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-64px) scale(1.4);
+    opacity: 0;
+  }
+}
+.ms-qb-rise {
+  animation: ms-qb-rise 2.2s ease-out 2 both;
+}
+
+/* A truck crosses the road, rumbling. */
+@keyframes ms-qb-truck {
+  0% {
+    transform: translateX(-260px);
+  }
+  100% {
+    transform: translateX(760px);
+  }
+}
+.ms-qb-truck {
+  animation: ms-qb-truck 7.5s linear forwards;
+}
+
+@keyframes ms-qb-rumble {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(1.5px, -1px);
+  }
+  75% {
+    transform: translate(-1.5px, 1px);
+  }
+}
+.ms-qb-rumble {
+  animation: ms-qb-rumble 0.18s linear infinite;
+}
+
+/* A bird flies in and lands on the back of the bench. */
+@keyframes ms-qb-bird {
+  0% {
+    transform: translate(-260px, -90px);
+  }
+  70% {
+    transform: translate(-30px, -30px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.ms-qb-bird {
+  animation: ms-qb-bird 2.8s ease-out both;
+}
+
+/* They glance over, and look away again. */
+@keyframes ms-qb-glance {
+  0%,
+  45% {
+    transform: translateX(0);
+  }
+  55%,
+  100% {
+    transform: translateX(-2px);
+  }
+}
+.ms-qb-glance {
+  animation: ms-qb-glance 2.4s steps(1) infinite;
+}
+
+/* A pull-away: a quick shudder before the scoot. */
+@keyframes ms-qb-shudder {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+}
+.ms-qb-shudder {
+  animation: ms-qb-shudder 0.5s ease-out 2;
+}
+
+.ms-qb-rise,
+.ms-qb-glance,
+.ms-qb-shudder,
+.ms-qb-bird {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-qb-band,
+  .ms-qb-wash,
+  .ms-qb-rise,
+  .ms-qb-truck,
+  .ms-qb-rumble,
+  .ms-qb-bird,
+  .ms-qb-glance,
+  .ms-qb-shudder {
+    animation: none;
+  }
+
+  .ms-qb-wash,
+  .ms-qb-rise {
+    opacity: 0;
+  }
+
+  .ms-qb-truck {
+    transform: translateX(300px);
+  }
+}

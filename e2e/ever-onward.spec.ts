@@ -212,6 +212,43 @@ test.describe("Ever Onward", () => {
     await expect(page.getByTestId("eo-together-scene")).toBeAttached();
   });
 
+  test("the quiet: sit closer, read the bench and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make Everyone Smile" })
+      .click();
+    await page.getByTestId("eo-jump-smile-3-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("ms-bench");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("ms-bench-tell")).toContainText(/\w/);
+    for (const id of ["ms-bench-closer", "ms-bench-back"]) {
+      await expect(panel.getByTestId(id)).toContainText("+ ");
+      await expect(panel.getByTestId(id)).toContainText("− ");
+    }
+    await expect(page.getByTestId("eo-bench-scene")).toBeAttached();
+    await expect(page.getByTestId("eo-bench-friend")).toBeAttached();
+    // Whatever seat the jump landed on, scoot back one: it takes a moment,
+    // and the robot is already on its way.
+    const seat = Number(await panel.getAttribute("data-seat"));
+    expect(seat).toBeGreaterThan(0);
+    await panel.getByTestId("ms-bench-back").click();
+    await expect(panel).toHaveAttribute("data-moving", "yes");
+    await expect(page.getByTestId("eo-bench-robot")).toHaveAttribute(
+      "data-at",
+      String(seat - 1)
+    );
+  });
+
   test("the town: lemonade stand price, parade route floats and the picture", async ({
     page,
   }) => {

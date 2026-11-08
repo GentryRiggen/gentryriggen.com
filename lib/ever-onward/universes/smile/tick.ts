@@ -2,7 +2,7 @@ import { visitorHereFlag } from "../../engine/engine";
 import type { RunState } from "../../engine/types";
 import { forkHelperMult, forkTapMult } from "./forks";
 import { isParadeOn, phaseBoost, tickKnowhow } from "./knowhow";
-import { addPatience, isQuietOpen, tickQuiet } from "./quiet";
+import { addPatience, tickQuiet } from "./quiet";
 import { MANUAL_RESOURCES } from "./resources";
 import { tickTown } from "./town";
 import { TUNING } from "./tuning";
@@ -117,10 +117,6 @@ export function incomePerSecond(run: RunState): number {
   return base * phaseBoost(run) * worldPay(run) * signMult(run);
 }
 
-/** What a second of tending is worth: the helpers plus one tap. */
-export const tendingValue = (run: RunState): number =>
-  incomePerSecond(run) + manualPerTap(run);
-
 /** Earned patience also builds trust, which is all the last part asks for. */
 function earn(run: RunState, amount: number): void {
   if (run.phase === 3) {
@@ -136,7 +132,7 @@ export function tickSmile(run: RunState, dt: number): void {
   tickKnowhow(run, dt);
   tickTown(run, dt);
   tickWorld(run, dt, isParadeOn(run));
-  if (isQuietOpen(run)) tickQuiet(run, dt, () => tendingValue(run));
+  tickQuiet(run, dt);
 }
 
 export function manualSmile(run: RunState): void {

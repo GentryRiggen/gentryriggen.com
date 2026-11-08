@@ -2376,8 +2376,8 @@
   },
   "smile/cut-quiet-end": {
     "file": "/ever-onward/voice/smile/cut-quiet-end.mp3",
-    "hash": "9fb5feca1351",
-    "durationGuess": 23
+    "hash": "2460417187f8",
+    "durationGuess": 28
   },
   "smile/friend-hello": {
     "file": "/ever-onward/voice/smile/friend-hello.mp3",
@@ -2829,10 +2829,15 @@
     "hash": "799a0aa406cf",
     "durationGuess": 9
   },
-  "smile/quiet-answer": {
-    "file": "/ever-onward/voice/smile/quiet-answer.mp3",
-    "hash": "f3dbcd1facf0",
-    "durationGuess": 10
+  "smile/quiet-closer": {
+    "file": "/ever-onward/voice/smile/quiet-closer.mp3",
+    "hash": "d756212da830",
+    "durationGuess": 11
+  },
+  "smile/quiet-toosoon": {
+    "file": "/ever-onward/voice/smile/quiet-toosoon.mp3",
+    "hash": "102fcf8a9e85",
+    "durationGuess": 15
   },
   "smile/quiet-silence": {
     "file": "/ever-onward/voice/smile/quiet-silence.mp3",
@@ -2892,11 +2897,6 @@
   "smile/quiet-truth": {
     "file": "/ever-onward/voice/smile/quiet-truth.mp3",
     "hash": "1fda46bcf17f",
-    "durationGuess": 12
-  },
-  "smile/quiet-kettle": {
-    "file": "/ever-onward/voice/smile/quiet-kettle.mp3",
-    "hash": "73e9d731ddbd",
     "durationGuess": 12
   },
   "smile/quiet-flicker": {

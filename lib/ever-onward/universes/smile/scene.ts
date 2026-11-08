@@ -4,7 +4,17 @@ import { forkSide } from "./forks";
 import { isParadeOn, isProjectDone } from "./knowhow";
 import {
   TRUST_STAGES,
-  isWanting,
+  eventLook,
+  isAway,
+  isMoving as isScooting,
+  justLanded,
+  justPulled,
+  landCount,
+  movingTo as scootingTo,
+  pullCount,
+  pullWhy,
+  seatOf,
+  tellOf,
   trustFraction,
   trustStage,
   type TrustStage,
@@ -134,8 +144,22 @@ export interface SmileSceneInfo {
   /** Quiet: whole percent of trust (steps of 5), and the face's stage. */
   trust: number;
   face: TrustStage;
-  /** Quiet: the friend wants something, and the kettle is on. */
-  wanting: boolean;
+  /**
+   * Quiet bench: the seat you sit at (0 the far end to 4 side by side), the
+   * seat you are scooting to (-1 not moving), their body language (0 pulling
+   * away to 3 leaning in), they sit at the far end after pulling away, what is
+   * happening ("", "bird", "snack", "warn", "truck"), and the two big moments
+   * (stepped closer, pulled away: the running count while it shows, else 0;
+   * a pull is about staying when it turned when `pullStayed`).
+   */
+  seat: number;
+  scoot: number;
+  tell: number;
+  away: boolean;
+  happening: string;
+  landKey: number;
+  pullKey: number;
+  pullStayed: boolean;
   /** Quiet: someone smiled. */
   visitorHere: boolean;
 }
@@ -183,7 +207,7 @@ const IDS: readonly (readonly string[])[] = [
     "rain",
     "candle",
     "long-silence",
-    "kettle",
+    "",
     "room-on-bench",
     "",
     "",
@@ -343,6 +367,42 @@ function worldInfo(
   };
 }
 
+function benchInfo(
+  run: RunState
+): Pick<
+  SmileSceneInfo,
+  | "seat"
+  | "scoot"
+  | "tell"
+  | "away"
+  | "happening"
+  | "landKey"
+  | "pullKey"
+  | "pullStayed"
+> {
+  if (run.phase !== 3)
+    return {
+      seat: 0,
+      scoot: -1,
+      tell: 1,
+      away: false,
+      happening: "",
+      landKey: 0,
+      pullKey: 0,
+      pullStayed: false,
+    };
+  return {
+    seat: seatOf(run),
+    scoot: isScooting(run) ? scootingTo(run) : -1,
+    tell: tellOf(run),
+    away: isAway(run),
+    happening: eventLook(run),
+    landKey: justLanded(run) ? landCount(run) : 0,
+    pullKey: justPulled(run) ? pullCount(run) : 0,
+    pullStayed: pullWhy(run) === 1,
+  };
+}
+
 export function sceneInfo(run: RunState): SmileSceneInfo {
   const p = Math.max(0, Math.min(3, run.phase));
   const phase = PHASE_IDS[p];
@@ -373,7 +433,7 @@ export function sceneInfo(run: RunState): SmileSceneInfo {
     ...togetherInfo(run),
     trust: p === 3 ? Math.round(trust * 20) * 5 : 0,
     face: p === 3 ? trustStage(run) : TRUST_STAGES[0],
-    wanting: p === 3 && isWanting(run),
+    ...benchInfo(run),
     visitorHere: run.flags[visitorHereFlag(RETURN_VISITOR_ID)] === true,
   };
 }

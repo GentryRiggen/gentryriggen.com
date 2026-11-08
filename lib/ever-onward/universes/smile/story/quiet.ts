@@ -1,7 +1,7 @@
 import { visitorHereFlag } from "../../../engine/engine";
 import type { RunState, StoryMessage } from "../../../engine/types";
 import { PHASE_QUIET } from "../resources";
-import { tendsSoFar, trustFraction } from "../quiet";
+import { landCount, pullCount, trustFraction } from "../quiet";
 import { RETURN_VISITOR_ID } from "../visitors";
 import { hasKept, keptOf } from "../world";
 
@@ -48,10 +48,16 @@ export const quiet: StoryMessage[] = [
     text: "A cup of tea, held in both hands. The steam curls up like a slow sentence. Neither of them finishes it.",
   },
   {
-    id: "quiet-answer",
+    id: "quiet-closer",
     phase: PHASE_QUIET,
-    when: (run) => tendsSoFar(run) >= 1,
-    text: "The person shifts a little along the bench. It is not much. The robot has never been so pleased with an inch.",
+    when: (run) => landCount(run) >= 1,
+    text: "The robot shuffles one seat closer, and the person lets it. It is not much. The robot has never been so pleased with a seat.",
+  },
+  {
+    id: "quiet-toosoon",
+    phase: PHASE_QUIET,
+    when: (run) => pullCount(run) >= 1,
+    text: "Too close, too soon. The person slides to the far end of the bench, and the robot does not follow. It just stays where it is, and waits, and does not mind at all.",
   },
   {
     id: "quiet-silence",
@@ -124,12 +130,6 @@ export const quiet: StoryMessage[] = [
     phase: PHASE_QUIET,
     when: trusted(0.2),
     text: '"Bad day?" the robot says. It was going to say something cheerful, and found it could not. The person nods. That is all. It seems to be enough.',
-  },
-  {
-    id: "quiet-kettle",
-    phase: PHASE_QUIET,
-    when: (run) => owned(run, "kettle") >= 1,
-    text: "The kettle on the stove sings a tiny, sleepy song and pours a cup without being asked. Even the kettle has worked out that nobody needs hurrying.",
   },
   {
     id: "quiet-flicker",

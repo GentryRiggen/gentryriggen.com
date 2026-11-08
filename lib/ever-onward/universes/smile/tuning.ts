@@ -189,19 +189,49 @@ export const TUNING = {
       boxPaint: 0.6,
       boxHeal: 0.0008,
     },
-    quiet: { cost: 15, wordsTap: 4, silenceHelpers: 1.8 },
+    quiet: { cost: 15, wordsClose: 3.4, silenceHelpers: 1.3 },
   },
-  /** The friend's wants in the quiet. */
+  /**
+   * The bench in the quiet: how fast patience turns into trust, what sitting
+   * closer adds, and the friend's readiness (openness) that moves the right
+   * moment around.
+   */
   quiet: {
-    growthPerPatience: 1.12e-5,
-    firstWaitSeconds: 15,
-    restSeconds: 25,
-    matchSeconds: 12,
-    otherSeconds: 4,
-    kettleDelay: 30,
-    kettleShare: 0.5,
-    kettleAfterAnswers: 4,
+    growthPerPatience: 8e-5,
+    /** The bench: a part of the bar owned from the start (Room on the bench). */
     benchBoost: 1,
+    /** Seats of closeness: 0 is the far end, `seats` is side by side. */
+    seats: 4,
+    /** Seconds to scoot one seat, either way. */
+    stepSeconds: 2.5,
+    /** Extra trust per patience at the closest seat (a share of the base). */
+    closeGain: 2.5,
+    /** Openness needed to sit at each seat (seat 0 needs none). */
+    comfort: [0, 0.12, 0.24, 0.36, 0.48],
+    /** Openness from nothing at all, and from each share of trust. */
+    openBase: 0.1,
+    openFromTrust: 0.72,
+    /** How far the slow wander of their mood goes either way. */
+    wander: 0.05,
+    /** Seconds sat somewhere they are not comfortable before they pull away. */
+    crowdSeconds: 4,
+    /** Trust lost when they pull away (a share of what there is, at least the floor, of 100), and how long they stay at the far end. */
+    pullShare: 0.05,
+    pullFloor: 0.3,
+    awaySeconds: 7,
+    /** Seconds between things happening on the bench (min, max). */
+    eventGap: [20, 36],
+    /** A bird lands: openness lift, and how fast it settles (seconds). */
+    bird: { lift: 0.2, settle: 12 },
+    /** They share a snack: openness lift, and how long it lasts (seconds). */
+    snack: { lift: 0.16, seconds: 18 },
+    /** A noisy truck: seconds of warning, openness drop, seconds held and to fade. */
+    truck: { warn: 3.5, drop: 0.34, hold: 6, fade: 4 },
+    /** How far over the next seat's comfort reads as "ready", and as "not yet". */
+    readyMargin: 0.07,
+    farMargin: 0.16,
+    /** How long a big moment shows (seconds). */
+    showSeconds: 4,
   },
   headStartSeconds: 20,
 } as const;

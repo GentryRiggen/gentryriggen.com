@@ -245,8 +245,8 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "Some projects are cheap in grins and cost real smiles. How many you keep shapes The Quiet.",
   ],
   [PHASE_QUIET]: [
-    "Watch the friend. The clue says what they want, and the right answer helps most.",
-    "Every answer helps a little, so answer kindly and do not worry.",
-    "Tea, a blanket and the sound of rain all help, even while you wait.",
+    "Sitting closer builds trust faster, but only when the friend is ready for it.",
+    "Watch their body: arms folded and looking away means not yet, leaning your way means come closer.",
+    "Things on the bench change their mood: a bird, a snack, a noisy truck. If they pull away, give them room.",
   ],
 };

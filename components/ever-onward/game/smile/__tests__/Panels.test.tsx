@@ -7,7 +7,7 @@ import { runAtPhaseStart } from "@/lib/ever-onward/universes/smile/__tests__/fix
 import { areSmileScoresValid } from "../../../audio/smileScores";
 import { SMILE_UI } from "../../../universes/smile";
 import SpeakersPanel from "../SpeakersPanel";
-import FriendPanel from "../FriendPanel";
+import BenchPanel from "../BenchPanel";
 import KnowHowPanel from "../KnowHowPanel";
 import SmileForkPanel from "../SmileForkPanel";
 import TogetherPanel from "../TogetherPanel";
@@ -160,17 +160,24 @@ describe("Smile panels", () => {
     expect(onAct).toHaveBeenCalledWith("parade-start");
   });
 
-  it("lets you sit with the friend: three answers, none of them wrong", () => {
+  it("puts the bench in two buttons, each with a plus and a minus, and no hints at the answer", () => {
     const onAct = jest.fn();
-    const run = advance(runAtPhaseStart(3), 40);
-    render(<FriendPanel def={def} run={run} onAct={onAct} />);
-    expect(screen.getByTestId("ms-friend")).toHaveAttribute(
-      "data-wanting",
-      "true"
+    const run = advance(runAtPhaseStart(3), 2);
+    render(<BenchPanel def={def} run={run} onAct={onAct} />);
+    expect(screen.getByTestId("ms-bench")).toHaveAttribute("data-seat", "0");
+    expect(screen.getAllByRole("button")).toHaveLength(2);
+    for (const id of ["ms-bench-closer", "ms-bench-back"]) {
+      expect(screen.getByTestId(id)).toHaveTextContent("+ ");
+      expect(screen.getByTestId(id)).toHaveTextContent("− ");
+    }
+    expect(screen.getByTestId("ms-bench").textContent).not.toMatch(
+      /best|recommend|ready now/i
     );
-    expect(screen.getAllByRole("button")).toHaveLength(3);
-    fireEvent.click(screen.getByTestId("ms-friend-tea"));
-    expect(onAct).toHaveBeenCalledWith("quiet-2");
+    expect(screen.getByTestId("ms-bench-tell")).toHaveTextContent(/\w/);
+    fireEvent.click(screen.getByTestId("ms-bench-closer"));
+    expect(onAct).toHaveBeenCalledWith("bench-closer");
+    fireEvent.click(screen.getByTestId("ms-bench-back"));
+    expect(onAct).not.toHaveBeenCalledWith("bench-back");
   });
 
   it("has music for every part and a title theme", () => {
