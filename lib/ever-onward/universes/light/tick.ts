@@ -20,7 +20,13 @@ import {
   tollPay,
   trafficShare,
 } from "./toll";
-import { noteBuy, tankerDeal, tickTanker } from "./tanker";
+import {
+  isTankerIn,
+  noteBuy,
+  oilHabit,
+  tankerDeal,
+  tickTanker,
+} from "./tanker";
 import { tickFund } from "./fund";
 import { hasFork, windRamp } from "./forkState";
 import { overdriveBoost, overdriveStrain, tickOverdrive } from "./overdrive";
@@ -297,12 +303,20 @@ export function buyBarrel(run: RunState): void {
   const wasDark = run.resources.oil <= 0;
   run.resources.oil += oil;
   run.resources.coins -= oil * run.resources.oilPrice;
-  noteBuy(run, wasDark);
+  noteBuy(run, wasDark, oil / tankCapacity(run));
 }
+
+/** What a barrel really costs you: the market price, as your buying habit pays it. */
+export const habitOilCost = (run: RunState): number =>
+  marketOilPrice(run) * oilHabit(run);
 
 /** The oil market's own price, before any tanker's deal (a save from before reads today's). */
 export const marketOilPrice = (run: RunState): number =>
   res(run, "oilBase") > 0 ? res(run, "oilBase") : res(run, "oilPrice");
+
+/** A tank nearly empty means a rush order: the oil costs more than it would if you had ordered ahead. */
+export const rushFactor = (run: RunState): number =>
+  res(run, "oil") < tankCapacity(run) * C.rushBelow ? C.rushMult : 1;
 
 function driftOilPrice(run: RunState, dt: number): void {
   const calm = run.mods.calm ?? 0;
@@ -312,8 +326,11 @@ function driftOilPrice(run: RunState, dt: number): void {
   const pull = (C.oilMean - before) * C.oilPull * dt;
   const base = Math.min(C.oilMax, Math.max(C.oilMin, before + pull + wobble));
   run.resources.oilBase = base;
-  // A tanker in port sells below the market until it sails on.
-  run.resources.oilPrice = base * tankerDeal(run);
+  // A tanker in port sells below the market until it sails on; an almost
+  // empty tank can only be filled by a rush order, which costs more.
+  run.resources.oilPrice = isTankerIn(run)
+    ? base * tankerDeal(run)
+    : base * rushFactor(run);
   const slope = (base - before) / dt;
   run.resources.oilTrend +=
     (slope - run.resources.oilTrend) * Math.min(1, dt / C.trendSeconds);

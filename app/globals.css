@@ -6210,20 +6210,20 @@ html:has(.jim-app) body {
 
 @keyframes lc-huff {
   0%,
-  37% {
+  35% {
     opacity: 0;
     transform: translateY(4px) scale(0.5);
   }
-  41% {
+  40% {
     opacity: 1;
-    transform: translateY(0) scale(1.2);
+    transform: translateY(0) scale(1.25);
   }
   45%,
-  64% {
+  84% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
-  70%,
+  90%,
   100% {
     opacity: 0;
     transform: translateY(-4px) scale(1);
@@ -6233,6 +6233,64 @@ html:has(.jim-app) body {
   transform-box: fill-box;
   transform-origin: bottom center;
   animation: lc-huff 14s ease-out infinite;
+}
+
+/* A full quay: a golden glow, coins raining down and a shout. */
+@keyframes lc-full-glow {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+.lc-full-glow {
+  animation: lc-full-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes lc-rain-coin {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(58px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(66px) scale(0.8);
+  }
+}
+.lc-rain-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-rain-coin 2.7s ease-in infinite;
+}
+
+@keyframes lc-full-shout {
+  0%,
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.lc-full-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-full-shout 1.6s ease-in-out infinite;
 }
 
 /* The tanker sails in, glowing. */
@@ -6448,10 +6506,15 @@ html:has(.jim-app) body {
   .lc-sputter,
   .lc-shout,
   .lc-ring,
-  .lc-relit-flash {
+  .lc-relit-flash,
+  .lc-full-glow,
+  .lc-rain-coin,
+  .lc-full-shout {
     animation: none;
   }
-  /* What would flash or fly stays out of the picture. */
+  /* What would flash or fly stays out of the picture (huffs and falling coins too). */
+  .lc-huff,
+  .lc-rain-coin,
   .lc-barrel,
   .lc-ring,
   .lc-relit-flash,

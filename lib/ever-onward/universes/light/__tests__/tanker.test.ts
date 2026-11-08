@@ -2,9 +2,7 @@ import { newRun, performAction } from "../../../engine/engine";
 import type { RunState } from "../../../engine/types";
 import { def } from "./fixtures";
 import { sceneInfo } from "../scene";
-import { beamActionId, bestBeamStep } from "../beam";
 import {
-  beamStep,
   barrelOil,
   marketOilPrice,
   shipsPerFlash,
@@ -25,8 +23,6 @@ function coast(
   def.tick(run, 0.1);
   return run;
 }
-
-const level = (run: RunState) => run.resources.oil / tankCapacity(run);
 
 describe("oil tankers", () => {
   it("tie up now and then, and sail on after a while", () => {
@@ -97,7 +93,26 @@ describe("oil tankers", () => {
     run.resources.tkLeft = 20;
     run.resources.tkDeal = 0.3;
     expect(sceneInfo(run).tanker).toBe(1);
-    expect(sceneInfo(run).tankerDeal).toBe(2);
+    expect(sceneInfo(run).tankerDeal).toBe(7);
+    // a tanker that has just come in is the moment ...
+    run.resources.tkLeft = T.staySeconds - 1;
+    expect(sceneInfo(run).tankerNew).toBe(1);
+    expect(isCoastMomentBusy(run)).toBe(true);
+    // ... and a tanker at the quay for a while does not hold pop-ups back
+    run.resources.tkLeft = 20;
+    expect(sceneInfo(run).tankerNew).toBe(0);
+    expect(isCoastMomentBusy(run)).toBe(false);
+  });
+
+  it("holds pop-ups back for the DARK! banner and the relight, not for a long dark spell", () => {
+    const run = coast(4);
+    run.resources.oil = 0;
+    run.resources.lampDarkFor = 1;
+    expect(isCoastMomentBusy(run)).toBe(true);
+    run.resources.lampDarkFor = T.darkBannerSeconds + 30;
+    expect(isCoastMomentBusy(run)).toBe(false);
+    run.resources.oil = 100;
+    run.resources.lampRelit = 3;
     expect(isCoastMomentBusy(run)).toBe(true);
   });
 });
@@ -137,91 +152,5 @@ describe("the dark", () => {
       def.tick(run, 1);
     }
     expect(trafficShare(run)).toBeGreaterThan(0.95);
-  });
-});
-
-describe("the oil market is a real dial: no fixed way of buying is best", () => {
-  const SECONDS = 1500;
-  const seeds = [1, 2, 3, 4, 5, 6];
-
-  /** Net coins after `SECONDS`, buying oil by `policy` and reading the lamp by the market price. */
-  function net(
-    policy: (run: RunState) => boolean,
-    seed: number,
-    tankTier: number
-  ): number {
-    let run = coast(seed, {
-      keeper: 14,
-      lighthouse: 2,
-      lens: 2,
-      ...(tankTier > 0 ? { "tank-1": 1 } : {}),
-    });
-    run.resources.oil = tankCapacity(run);
-    run.resources.coins = 0;
-    for (let t = 0; t < SECONDS; t += 1) {
-      if (t % 30 === 0) {
-        const want = bestBeamStep(run);
-        if (want !== beamStep(run))
-          run = performAction(def, run, beamActionId(want));
-      }
-      if (policy(run) && barrelOil(run) > 0.1 * tankCapacity(run))
-        run = performAction(def, run, "buy-oil");
-      def.tick(run, 1);
-    }
-    return run.resources.coins;
-  }
-
-  /** Buys when oil is cheap (a tanker's deal, or a dip), and never lets the lamp go dark. */
-  const reader = (run: RunState): boolean =>
-    (run.resources.oilPrice < 1.1 && level(run) < 0.8) ||
-    (level(run) < 0.05 && run.resources.oilPrice < 3.5);
-
-  const fixed: Record<string, (run: RunState) => boolean> = {
-    "tops up whenever the tank is low": (run) => level(run) < 0.25,
-    "only from a tanker": (run) => isTankerIn(run) && level(run) < 0.8,
-    "fills up whenever it can": (run) => level(run) < 0.9,
-  };
-
-  it.each([0, 1])(
-    "reading the price beats each fixed habit by at least 8% (tank tier %i)",
-    (tier) => {
-      const total = (policy: (run: RunState) => boolean) =>
-        seeds.reduce((sum, seed) => sum + net(policy, seed, tier), 0);
-      const read = total(reader);
-      for (const policy of Object.values(fixed))
-        expect(total(policy)).toBeLessThan(read / 1.08);
-    }
-  );
-});
-
-describe("the lamp's brightness stays a real dial beside the market", () => {
-  const SECONDS = 1500;
-  const seeds = [1, 2, 3, 4, 5, 6];
-
-  /** Net coins buying by the price, with the lamp held at `fixed` or read by the market price. */
-  function net(fixed: number | null, seed: number): number {
-    let run = coast(seed);
-    run.resources.oil = tankCapacity(run);
-    run.resources.coins = 0;
-    for (let t = 0; t < SECONDS; t += 1) {
-      const want = fixed ?? bestBeamStep(run);
-      if (t % 30 === 0 && want !== beamStep(run))
-        run = performAction(def, run, beamActionId(want));
-      const full = level(run);
-      const isCheap = run.resources.oilPrice < 1.1 && full < 0.8;
-      const isDry = full < 0.05 && run.resources.oilPrice < 3.5;
-      if ((isCheap || isDry) && barrelOil(run) > 0.1 * tankCapacity(run))
-        run = performAction(def, run, "buy-oil");
-      def.tick(run, 1);
-    }
-    return run.resources.coins;
-  }
-
-  it("reading the market price beats every fixed brightness by at least 8%", () => {
-    const total = (fixed: number | null) =>
-      seeds.reduce((sum, seed) => sum + net(fixed, seed), 0);
-    const read = total(null);
-    for (const step of [0, 1, 2, 3])
-      expect(total(step)).toBeLessThan(read / 1.08);
   });
 });

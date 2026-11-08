@@ -9,7 +9,6 @@ import {
   isLampsOpen,
   knowhowAtStep,
   lampStep,
-  goingRate,
   supplyMW,
   tankCapacity,
 } from "./tick";
@@ -44,14 +43,8 @@ import {
   growingCount,
   thirstyCount,
 } from "./garden";
-import {
-  TOLL_STEPS,
-  bestTollStep,
-  tollActionId,
-  tollEarning,
-  tollLockLeft,
-  tollStep,
-} from "./toll";
+import { tollActionId, tollLockLeft, tollStep } from "./toll";
+import { bestTollStep, tollNet } from "./tollRead";
 import { isTankerIn } from "./tanker";
 import {
   POST_BUILD,
@@ -272,13 +265,10 @@ const setsToll =
     if (skipEvery && window % skipEvery === skipEvery - 1) return [];
     if (onlyEvery && window % onlyEvery !== 0) return [];
     if (tollLockLeft(run) > 0) return [];
-    const rate = goingRate(run);
-    const want = step ?? bestTollStep(rate);
+    const want = step ?? bestTollStep(run);
     const now = tollStep(run);
     if (want === now) return [];
-    const gain =
-      tollEarning(TOLL_STEPS[want].pay, rate) /
-      Math.max(tollEarning(TOLL_STEPS[now].pay, rate), 1e-6);
+    const gain = tollNet(run, want) / Math.max(tollNet(run, now), 1e-6);
     if (step === undefined && gain < TOLL_SWITCH_GAIN) return [];
     const id = tollActionId(want);
     return available.includes(id) ? [id] : [];

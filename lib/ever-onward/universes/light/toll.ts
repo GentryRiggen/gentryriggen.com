@@ -66,20 +66,6 @@ export const trafficShare = (run: RunState): number =>
     ? 1
     : clamp(run.resources.hbTraffic, 0, 1);
 
-/** The tolls that earn the most per ship-trip at `rate`: pay times the share. */
-export const tollEarning = (pay: number, rate: number): number =>
-  pay * shipShare(pay, rate);
-
-/** The step that earns the most when the going rate is `rate` and traffic has settled. */
-export function bestTollStep(rate: number): number {
-  let best = 0;
-  TOLL_STEPS.forEach((s, i) => {
-    if (tollEarning(s.pay, rate) > tollEarning(TOLL_STEPS[best].pay, rate))
-      best = i;
-  });
-  return best;
-}
-
 /** Sets the toll; the sign then takes a while to repaint. */
 export function setToll(run: RunState, step: number): void {
   const next = clamp(Math.round(step), 0, TOLL_STEPS.length - 1);
@@ -107,9 +93,26 @@ export const TOLL_ACTIONS: readonly ActionDef[] = TOLL_STEPS.map((step, i) => ({
 
 // ------------------------------------------------------------ The rival
 
+/**
+ * A stable stream start for a run's starting seed: a full-width integer hash
+ * (no two seeds share a stream, unlike masking a bit), never zero.
+ */
+export function harborSeed(seed: number): number {
+  let h = Math.imul((seed | 0) ^ 0x4a17b3, 0x9e3779b1);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  h ^= h >>> 16;
+  return h === 0 ? 1 : h;
+}
+
+/** Fixes the harbor world's stream when a run begins (before the player's taps move run.rng). */
+export function startHarbor(run: RunState): void {
+  run.resources.hbSeed = harborSeed(run.rng);
+}
+
 /** The harbor world's own random stream (rival tolls, tanker visits). */
 export function drawHarbor(run: RunState): number {
-  if (!run.resources.hbSeed) run.resources.hbSeed = (run.rng ^ 0x4a17b3) | 1;
+  if (!run.resources.hbSeed) run.resources.hbSeed = harborSeed(run.rng);
   const stream = { rng: run.resources.hbSeed | 0 };
   const value = nextRandom(stream);
   run.resources.hbSeed = stream.rng;
@@ -161,6 +164,12 @@ export function tickHarbor(
   r.tollLock = Math.max(0, res(run, "tollLock") - dt);
   const rate = rivalToll(run) * growth * (isStorm ? H.stormRate : 1);
   r.hbRate = rate;
+  // Until the desk opens there is no sign to change, so the traffic is not
+  // allowed to drop (nobody can answer a rival they cannot see yet).
+  if (!isTollOpen(run)) {
+    r.hbTraffic = 1;
+    return;
+  }
   const want = trafficTarget(run, rate) * (isDark ? H.darkTraffic : 1);
   const seconds = isDark ? H.darkFollowSeconds : H.followSeconds;
   const now = trafficShare(run);

@@ -164,7 +164,9 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "hbRate", label: "Going rate", phases: HIDDEN },
   { id: "hbSeed", label: "Harbor random stream", phases: HIDDEN },
   // Oil tankers and the lamp's moments (The Coast), read by tanker.ts
-  { id: "oilBase", label: "Oil market price", initial: 2, phases: HIDDEN },
+  // 0 until the market has moved: a save from before reads the saved price.
+  { id: "oilBase", label: "Oil market price", phases: HIDDEN },
+  { id: "oilHabit", label: "What you pay against the market", phases: HIDDEN },
   { id: "tkLeft", label: "Tanker in port, seconds left", phases: HIDDEN },
   { id: "tkDeal", label: "Tanker price, share of market", phases: HIDDEN },
   { id: "tkCooldown", label: "Next tanker", phases: HIDDEN },

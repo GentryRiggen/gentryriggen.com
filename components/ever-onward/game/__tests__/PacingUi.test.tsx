@@ -131,8 +131,8 @@ describe("the lamp panel (oil and brightness together)", () => {
     expect(radios.map((r) => r.textContent)).toEqual([
       expect.stringMatching(/Dim.*ships x0.5.*oil x0.3.*tank lasts/),
       expect.stringMatching(/Normal.*ships x1.*oil x1.*tank lasts/),
-      expect.stringMatching(/Bright.*ships x1.8.*oil x2.5.*tank lasts/),
-      expect.stringMatching(/Blazing.*ships x2.5.*oil x5.*tank lasts/),
+      expect.stringMatching(/Bright.*ships x1.7.*oil x3.5.*tank lasts/),
+      expect.stringMatching(/Blazing.*ships x2.5.*oil x10.*tank lasts/),
     ]);
     expect(radios[1]).toHaveAttribute("aria-checked", "true");
     // no step is ever marked as the best one

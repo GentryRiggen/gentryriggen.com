@@ -24,12 +24,16 @@ const pct = (n: number): string => `${Math.round(n * 100)}%`;
 /** Little coin stacks, taller for each step. */
 const STACK = ["h-1", "h-2", "h-3", "h-4", "h-5"] as const;
 
+/** How many of five little boats would choose your harbor (a rough look, never a number to multiply). */
+const boatsFor = (share: number): number => Math.round(Math.min(1, share) * 5);
+
 /**
  * The harbor desk: the coast's price you set. Every card shows the plus (what
- * each ship pays) and the minus (the share of ships that would pick your
- * harbor at the going rate, once the traffic settles). The traffic follows
- * your sign slowly, and the sign takes a while to repaint, so a change is a
- * commitment. The rival harbor's sign and the ships choosing you are on show.
+ * each ship pays) and the minus (how many of five boats would pick your
+ * harbor at the going rate, once the traffic settles: a rough look, not a
+ * number to multiply). Every ship that comes burns the same oil whatever it
+ * pays, and the ones you turn away burn none. The traffic follows your sign
+ * slowly, and the sign takes a while to repaint, so a change is a commitment.
  */
 function HarborPanel({ def, run, onAct }: PanelProps) {
   const active = tollStep(run);
@@ -83,7 +87,7 @@ function HarborPanel({ def, run, onAct }: PanelProps) {
               role="radio"
               aria-checked={checked}
               aria-disabled={!checked && !doable}
-              aria-label={`${step.label}: each ship pays x${step.pay}, ${pct(share)} of ships would pick your harbor`}
+              aria-label={`${step.label}: each ship pays x${step.pay}, about ${boatsFor(share)} of 5 boats would pick your harbor`}
               data-testid={`lm-toll-${i}`}
               onClick={() => {
                 if (!checked && doable) onAct(tollActionId(i));
@@ -102,13 +106,29 @@ function HarborPanel({ def, run, onAct }: PanelProps) {
               <span className="block font-mono text-xs leading-tight font-bold normal-case tabular-nums">
                 pays x{step.pay}
               </span>
-              <span className="block font-mono text-[10px] leading-tight normal-case tabular-nums">
-                {pct(share)} come
+              <span
+                className="flex gap-0.5 text-[10px] leading-none"
+                aria-hidden="true"
+                data-testid={`lm-toll-boats-${i}`}
+                data-boats={boatsFor(share)}
+              >
+                {Array.from({ length: 5 }, (_, boat) => (
+                  <span
+                    key={boat}
+                    className={boat < boatsFor(share) ? "" : "opacity-25"}
+                  >
+                    ⛵
+                  </span>
+                ))}
               </span>
             </button>
           );
         })}
       </div>
+      <p className="font-mono text-xs text-slate-300">
+        Every ship that comes burns the same oil, whatever it pays. Ships you
+        turn away burn none.
+      </p>
       <p
         data-testid="lm-harbor-lock"
         className="font-mono text-xs text-slate-300"

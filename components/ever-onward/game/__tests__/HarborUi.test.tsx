@@ -36,8 +36,18 @@ describe("HarborPanel", () => {
     render(<HarborPanel def={def} run={coastRun(5)} onAct={jest.fn()} />);
     for (const radio of screen.getAllByRole("radio")) {
       expect(radio.textContent).toMatch(/pays x[\d.]+/);
-      expect(radio.textContent).toMatch(/\d+% come/);
+      // the minus is a rough count of boats, never a percentage to multiply
+      expect(radio.textContent).not.toMatch(/\d+%/);
     }
+    const boats = [0, 1, 2, 3, 4].map((i) =>
+      Number(screen.getByTestId(`lm-toll-boats-${i}`).dataset.boats)
+    );
+    for (let i = 1; i < boats.length; i += 1)
+      expect(boats[i]).toBeLessThanOrEqual(boats[i - 1]);
+    expect(boats[0]).toBeGreaterThan(boats[4]);
+    expect(screen.getByTestId("lm-harbor")).toHaveTextContent(
+      "burns the same oil, whatever it pays"
+    );
     const text = screen.getByTestId("lm-harbor").textContent ?? "";
     expect(text).not.toMatch(/best|recommend|should|raise|lower/i);
     expect(screen.getByTestId("lm-harbor-traffic")).toHaveTextContent("100%");

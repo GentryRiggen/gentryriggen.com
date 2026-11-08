@@ -94,7 +94,7 @@ test.describe("Ever Onward", () => {
     await expect(harbor).toBeVisible();
     await expect(harbor.getByRole("radio")).toHaveCount(5);
     await expect(harbor.getByTestId("lm-harbor-rival")).toContainText("x");
-    await expect(harbor.getByTestId("lm-toll-0")).toContainText("come");
+    await expect(harbor.getByTestId("lm-toll-boats-0")).toBeAttached();
     // The lamp panel keeps its brightness knob beside the oil market, and
     // never says which step is best.
     const lamp = page.getByTestId("lm-lamp");

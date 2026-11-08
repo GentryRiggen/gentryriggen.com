@@ -36,6 +36,14 @@ export const tankerVisits = (run: RunState): number => res(run, "tkVisits");
 export const tankerBuys = (run: RunState): number => res(run, "tkBuys");
 export const darkSpells = (run: RunState): number => res(run, "lampDarks");
 
+/**
+ * What you tend to pay for oil, as a share of the market price (1 until you
+ * have bought some): a tanker-filler runs well under 1, a buyer who waits
+ * until empty well over. The lamp and the toll weigh their oil with it.
+ */
+export const oilHabit = (run: RunState): number =>
+  res(run, "oilHabit") > 0 ? res(run, "oilHabit") : 1;
+
 /** Seconds the barrels keep rolling into the tanks after a buy. */
 export const barrelsRolling = (run: RunState): boolean =>
   res(run, "barrelLeft") > 0;
@@ -53,9 +61,22 @@ export const isRelit = (run: RunState): boolean => res(run, "lampRelit") > 0;
 
 /**
  * Starts the barrels rolling (a buy calls this), and the beam bursting if the
- * lamp was dark when the oil came (`wasDark`, read before the oil is added).
+ * lamp was dark when the oil came (`wasDark`, read before the oil is added);
+ * `tankShare` is how much of a tank the buy filled.
  */
-export function noteBuy(run: RunState, wasDark: boolean): void {
+export function noteBuy(
+  run: RunState,
+  wasDark: boolean,
+  tankShare: number
+): void {
+  // What you really pay against the market, remembered: each tank's worth
+  // moves it part of the way (a tanker's deal pulls it down, a rush order up).
+  const market = res(run, "oilBase") > 0 ? res(run, "oilBase") : 0;
+  if (market > 0) {
+    const ratio = res(run, "oilPrice") / market;
+    const share = Math.min(1, Math.max(0, tankShare)) * T.habitMemory;
+    run.resources.oilHabit = oilHabit(run) + (ratio - oilHabit(run)) * share;
+  }
   run.resources.barrelLeft = T.barrelSeconds;
   if (wasDark) {
     run.resources.lampDarkFor = 0;
@@ -100,9 +121,15 @@ export const tankerLine = (run: RunState): string | null =>
     ? `A tanker is in with cheap oil, ${Math.round((1 - tankerDeal(run)) * 100)}% off. It sails on soon.`
     : null;
 
+/** A tanker has just come in: its first few seconds are the big moment. */
+export const isTankerArriving = (run: RunState): boolean =>
+  isTankerIn(run) && res(run, "tkLeft") > T.staySeconds - T.arrivalSeconds;
+
 /**
- * A big moment is on in the picture (a tanker at the quay, the lamp dark or
- * just lit again), so pop-ups over the scene wait.
+ * A big moment is on in the picture (the "DARK!" banner, the relight burst
+ * or a tanker just arriving), so pop-ups over the scene wait. The long
+ * stretches after (a dark lamp, a tanker at the quay) do not hold them.
  */
 export const isCoastMomentBusy = (run: RunState): boolean =>
-  run.phase === 0 && (isTankerIn(run) || isLampDark(run) || isRelit(run));
+  run.phase === 0 &&
+  (isTankerArriving(run) || isDarkBanner(run) || isRelit(run));

@@ -5,6 +5,7 @@ import {
   isRelit,
   isTankerIn,
   barrelsRolling,
+  isTankerArriving,
   tankerDeal,
 } from "./tanker";
 import {
@@ -199,8 +200,10 @@ export interface LightSceneInfo {
   traffic: number;
   /** 1 while a tanker is tied up with cheap oil. */
   tanker: number;
-  /** How good the tanker's deal is: 0 none, 1 good, 2 great. */
+  /** The tanker's deal as tens of percent off the market (0 none, 3 = about 30% off). */
   tankerDeal: number;
+  /** 1 for the first seconds a tanker is in: the "cheap oil" shout. */
+  tankerNew: number;
   /** 1 for a few seconds after oil is bought: barrels roll into the tanks. */
   barrels: number;
   /** 1 for the first seconds of a dry spell: the lamp has gone dark. */
@@ -371,7 +374,10 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     tollStep: tollStep(run),
     traffic: Math.round(clamp01(trafficShare(run)) * 10),
     tanker: isTankerIn(run) ? 1 : 0,
-    tankerDeal: isTankerIn(run) ? (tankerDeal(run) <= 0.38 ? 2 : 1) : 0,
+    tankerDeal: isTankerIn(run)
+      ? Math.max(0, Math.round((1 - tankerDeal(run)) * 10))
+      : 0,
+    tankerNew: isTankerArriving(run) ? 1 : 0,
     barrels: run.phase === 0 && barrelsRolling(run) ? 1 : 0,
     darkBanner: run.phase === 0 && isDarkBanner(run) ? 1 : 0,
     relit: run.phase === 0 && isRelit(run) ? 1 : 0,

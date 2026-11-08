@@ -7,6 +7,7 @@ import {
   PHASE_SKY,
 } from "./resources";
 import { CUTSCENES, TIPS } from "./cutscenes";
+import { startHarbor } from "./toll";
 import { TUNING } from "./tuning";
 import { syncDisplay } from "./tick";
 import { closeFund } from "./fund";
@@ -29,6 +30,7 @@ export const PHASES: readonly PhaseDef[] = [
       "flash the light. Each flash guides ships home, and ships pay coins",
     isDone: (run) => run.resources.lighthouses >= COAST_LIGHTHOUSES,
     onEnter: (run) => {
+      startHarbor(run);
       run.resources.coins += 40 * headStart(run);
       syncDisplay(run);
     },

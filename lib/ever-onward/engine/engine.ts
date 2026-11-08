@@ -691,7 +691,7 @@ function validLog(log: unknown): LogEntry[] {
 /**
  * A save from before an upgrade's cap was lowered may own more levels than
  * now exist. Clamp them, and when the run is still in that upgrade's phase
- * give back what the extra levels cost (at today's prices, in its currency),
+ * give back what the extra levels cost (at the prices they were bought at, in its currency),
  * so nobody loses what they paid for. Out of its phase the currency no
  * longer matters, so the levels are only clamped.
  */
@@ -705,7 +705,7 @@ function clampToMaxLevels(def: UniverseDef, run: RunState): void {
       for (let level = max; level < Math.floor(owned); level += 1)
         refund += upgradeCost(
           { ...run, owned: { [upgrade.id]: level } },
-          upgrade
+          { ...upgrade, costGrowth: upgrade.refundGrowth ?? upgrade.costGrowth }
         );
       const before = run.resources[upgrade.currency] ?? 0;
       if (Number.isFinite(refund) && refund > 0)

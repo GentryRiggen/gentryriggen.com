@@ -15,6 +15,7 @@ import {
   isOilCheap,
   isOilDear,
   marketOilPrice,
+  rushFactor,
   tankCapacity,
 } from "@/lib/ever-onward/universes/light/tick";
 import {
@@ -114,6 +115,7 @@ function LampPanel({ def, run, onAct }: PanelProps) {
           }
         >
           {price.toFixed(2)} each {isTanker ? "tanker" : `${arrow} ${priceTag}`}
+          {!isTanker && rushFactor(run) > 1 ? " · rush order" : ""}
         </span>
       </p>
       {/* The button has its own full-width row and a fixed height, so it

@@ -118,8 +118,8 @@ export const TUNING = {
       steps: [
         { label: "Dim", pay: 0.5, burn: 0.3 },
         { label: "Normal", pay: 1, burn: 1 },
-        { label: "Bright", pay: 1.8, burn: 2.5 },
-        { label: "Blazing", pay: 2.5, burn: 5 },
+        { label: "Bright", pay: 1.7, burn: 3.5 },
+        { label: "Blazing", pay: 2.5, burn: 10 },
       ] as readonly { label: string; pay: number; burn: number }[],
     },
     /** Ships one flash guides at each lens level, the keepers' flashes too. */
@@ -130,7 +130,7 @@ export const TUNING = {
     /** Each training step multiplies every keeper's flashes. */
     trainingSteps: [2, 2, 2] as readonly number[],
     /** Oil burned per coin of fare a keeper's ship pays, at the Normal step. */
-    burnPerShip: 0.25,
+    burnPerShip: 0.22,
     stormTapBonus: 3,
     /** Ships still come in a storm at this share; shutters and glass raise it (glass: ships shelter and more come). */
     stormPassive: [0.2, 1, 1.5] as readonly number[],
@@ -139,21 +139,24 @@ export const TUNING = {
     stormGapSpread: 150,
     /** A dry lamp is dark: this share of the ships still find the harbor (so nobody is ever stuck). */
     dimLamp: 0.25,
-    oilMean: 2,
-    oilMin: 0.3,
-    oilMax: 6,
-    oilWobble: 1.0,
-    oilPull: 0.006,
+    oilMean: 1.2,
+    oilMin: 0.15,
+    oilMax: 6.5,
+    oilWobble: 0.55,
+    oilPull: 0.0012,
     trendSeconds: 6,
     tankBase: 40,
     tankPerTier: 80,
     /** Seconds of full-tilt burn a tank holds, and what each tank upgrade adds. */
-    tankSeconds: 100,
-    tankSecondsPerTier: 200,
+    tankSeconds: 150,
+    tankSecondsPerTier: 250,
     tankTapsPerSecond: 3,
+    /** Under this share of a full tank the oil is a rush order: it costs this many times more. */
+    rushBelow: 0.12,
+    rushMult: 1.2,
     cheapPrice: 1.4,
     dearPrice: 2.8,
-    wickSaving: 0.6,
+    wickSaving: 0.66,
     /** Each dock building makes every ship pay this much more. */
     dockBonus: 1.5,
     /** The oil merchant orders a full tank whenever the tank falls under this share. */
@@ -214,11 +217,15 @@ export const TUNING = {
      */
     tanker: {
       firstSeconds: 80,
-      gapMin: 110,
+      gapMin: 130,
       gapSpread: 200,
       staySeconds: 35,
-      dealMin: 0.28,
-      dealMax: 0.55,
+      /** Each tank's worth of oil bought moves what you remember paying this share of the way. */
+      habitMemory: 0.5,
+      /** A tanker's first seconds in port are the moment that holds pop-ups back. */
+      arrivalSeconds: 6,
+      dealMin: 0.3,
+      dealMax: 0.8,
       /** Barrels roll into the tanks this long after a buy. */
       barrelSeconds: 4,
       /** The relit beam bursts for this long. */

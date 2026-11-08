@@ -299,17 +299,17 @@ function RescueBoats() {
  * the caption, so every ship sails in the upper part of the sea (y 200-250).
  */
 const HARBOR_SLOTS = [
-  { row: 214, dock: 214, delay: "[animation-delay:0s]" },
-  { row: 232, dock: 236, delay: "[animation-delay:-2.4s]" },
-  { row: 246, dock: 222, delay: "[animation-delay:-4.8s]" },
-  { row: 206, dock: 248, delay: "[animation-delay:-7.1s]" },
-  { row: 224, dock: 256, delay: "[animation-delay:-9.5s]" },
-  { row: 240, dock: 244, delay: "[animation-delay:-11.8s]" },
+  { row: 214, dock: 232, delay: "[animation-delay:0s]" },
+  { row: 232, dock: 254, delay: "[animation-delay:-2.4s]" },
+  { row: 246, dock: 240, delay: "[animation-delay:-4.8s]" },
+  { row: 206, dock: 266, delay: "[animation-delay:-7.1s]" },
+  { row: 224, dock: 276, delay: "[animation-delay:-9.5s]" },
+  { row: 240, dock: 262, delay: "[animation-delay:-11.8s]" },
 ] as const;
 /** Where ships turn away (the sea road to the rival, x). */
-const SHIP_X = 250;
+const SHIP_X = 268;
 /** Ships are drawn this much bigger than the old drifters, to read on a phone. */
-const SHIP_SIZE = 1.45;
+const SHIP_SIZE = 1.7;
 
 const shipScale = (row: number): number =>
   (0.55 + (row - 200) / 110) * SHIP_SIZE;
@@ -373,13 +373,17 @@ function DockShip({
 /** A ship that did not: it sails up to the quay, huffs at the sign and goes on to the rival. */
 function PassShip({
   slot,
+  step,
   isTalker,
   isDark,
 }: {
   slot: (typeof HARBOR_SLOTS)[number];
+  step: number;
   isTalker: boolean;
   isDark: boolean;
 }) {
+  // Every ship that turns away says so; at a high toll every other one spells it out.
+  const isLoud = step >= 3 && isTalker;
   return (
     <g
       data-testid="lm-ship-pass"
@@ -395,44 +399,40 @@ function PassShip({
         </g>
         {!isDark && (
           <g
-            transform={`translate(0 ${-30 * shipScale(slot.row) - 14}) scale(1.5)`}
+            transform={`translate(0 ${-30 * shipScale(slot.row) - 14}) scale(1.7)`}
           >
             <g className={`lc-huff ${slot.delay}`}>
-              {isTalker ? (
-                <>
+              {/* a red "no" badge over every ship that turns away */}
+              <circle r="7" fill="#d62828" stroke="#fff7e0" strokeWidth="1.6" />
+              <path
+                d="M-3.2 -3.2 L3.2 3.2 M3.2 -3.2 L-3.2 3.2"
+                stroke="#fff7e0"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+              {isLoud && (
+                <g transform="translate(0 -12)">
                   <rect
-                    x="-37"
-                    y="-11"
-                    width="74"
-                    height="13"
+                    x="-40"
+                    y="-12"
+                    width="80"
+                    height="15"
                     rx="2"
                     fill="#fff7e0"
-                    stroke="#7a1d1d"
-                    strokeWidth="1.2"
+                    stroke="#b91c1c"
+                    strokeWidth="1.6"
                   />
-                  <polygon points="-3,2 3,2 0,7" fill="#fff7e0" />
+                  <polygon points="-3,3 3,3 0,8" fill="#fff7e0" />
                   <text
-                    y="-1.5"
+                    y="-1"
                     textAnchor="middle"
                     fontSize="7"
-                    fill="#9b1c1c"
+                    fill="#b91c1c"
                     className="font-[family-name:var(--font-eo-pixel)]"
                   >
                     TOO PRICEY!
                   </text>
-                </>
-              ) : (
-                <text
-                  textAnchor="middle"
-                  fontSize="11"
-                  fill="#ff6b6b"
-                  stroke="#2b0a0a"
-                  strokeWidth="2.5"
-                  paintOrder="stroke"
-                  className="font-[family-name:var(--font-eo-pixel)]"
-                >
-                  !?
-                </text>
+                </g>
               )}
             </g>
           </g>
@@ -457,91 +457,181 @@ function RivalHarbor() {
   );
 }
 
-/** The toll sign on the quay: a stack of coins that grows with the toll. */
+/** The sign's face and words, one for each toll (a cool blue for cheap, a hot red for greedy). */
+const SIGN_FACE = [
+  "#1d6b46",
+  "#24508a",
+  "#8a6a0b",
+  "#b45309",
+  "#a31d1d",
+] as const;
+const SIGN_WORDS = ["LOW", "USUAL", "HIGH", "STEEP", "GREEDY"] as const;
+
+/**
+ * The toll sign on the quay, big enough to read on a phone: a painted board
+ * on a post, with the toll in words and a stack of coins that grows with it.
+ */
 function TollSign({ step }: { step: number }) {
   return (
     <g
       data-testid="lm-toll-sign"
       data-step={step}
-      transform="translate(194 252)"
+      transform="translate(188 268)"
     >
       <g className="lm-pop-svg" key={step}>
-        <rect x="-1.5" y="-18" width="3" height="20" fill="#8a5a2b" />
-        <rect
-          x="-12"
-          y="-30"
-          width="24"
-          height="13"
-          fill="#2a3350"
-          stroke="#ffd76a"
-          strokeWidth="1.2"
-        />
-        {Array.from({ length: step + 1 }, (_, i) => (
+        <rect x="-2" y="-30" width="4" height="32" fill="#8a5a2b" />
+        <g transform="translate(0 -30) scale(1.65)">
           <rect
-            key={i}
-            x={-9 + i * 4}
-            y={-26 + (4 - i) * 0.6}
-            width="3"
-            height={4 + i * 1.5}
-            fill="#ffd54a"
+            x="-21"
+            y="-21"
+            width="42"
+            height="23"
+            rx="1.5"
+            fill={SIGN_FACE[step]}
+            stroke="#ffd76a"
+            strokeWidth="1.5"
           />
-        ))}
+          <text
+            y="-14"
+            textAnchor="middle"
+            fontSize="7"
+            fill="#fff7d6"
+            className="font-[family-name:var(--font-eo-pixel)]"
+          >
+            {SIGN_WORDS[step]}
+          </text>
+          {Array.from({ length: step + 1 }, (_, i) => (
+            <circle
+              key={i}
+              cx={-14 + i * 7}
+              cy="-3"
+              r={2.3 + i * 0.5}
+              fill="#ffd54a"
+              stroke="#7a4a00"
+              strokeWidth="0.8"
+            />
+          ))}
+        </g>
       </g>
     </g>
   );
 }
 
-/** The tanker: it sails in glowing, with a deal on a tag, and barrels ready to roll. */
+/** A full quay: a golden glow, coins raining down and a shout. */
+function FullHarbor() {
+  const coins = [
+    { x: 206, delay: "[animation-delay:0s]" },
+    { x: 222, delay: "[animation-delay:0.45s]" },
+    { x: 238, delay: "[animation-delay:0.9s]" },
+    { x: 252, delay: "[animation-delay:1.35s]" },
+    { x: 214, delay: "[animation-delay:1.8s]" },
+    { x: 246, delay: "[animation-delay:2.25s]" },
+  ];
+  return (
+    <g data-testid="lm-full-harbor" aria-hidden="true">
+      <ellipse
+        cx="234"
+        cy="228"
+        rx="72"
+        ry="32"
+        fill="#ffd54a"
+        className="lc-full-glow"
+      />
+      {coins.map((c) => (
+        <g key={c.x} transform={`translate(${c.x} 170)`}>
+          <g className={`lc-rain-coin ${c.delay}`}>
+            <circle r="6" fill="#ffd54a" stroke="#7a4a00" strokeWidth="1.5" />
+            <circle r="2.6" fill="none" stroke="#b8860b" strokeWidth="1.2" />
+          </g>
+        </g>
+      ))}
+      <text
+        x="236"
+        y="178"
+        textAnchor="middle"
+        fontSize="14"
+        fill="#fff3a0"
+        stroke="#7a4a00"
+        strokeWidth="4.5"
+        paintOrder="stroke"
+        className="lc-full-shout font-[family-name:var(--font-eo-pixel)]"
+      >
+        FULL HARBOR!
+      </text>
+    </g>
+  );
+}
+
+/** The tanker: it sails in with a deal on a tag, its hull and tanks clear against the glow. */
 function Tanker({ deal }: { deal: number }) {
   return (
     <g
       data-testid="lm-tanker-scene"
       data-deal={deal}
-      transform="translate(84 238)"
+      transform="translate(62 244)"
     >
       <g className="lc-tanker-in">
-        <circle r="58" cy="-14" fill="url(#lm-lamp)" className="lc-glow" />
-        <g transform="scale(1.7)">
+        <ellipse
+          rx="62"
+          ry="22"
+          cy="-6"
+          fill="url(#lm-lamp)"
+          className="lc-glow"
+        />
+        <g transform="scale(2.1)">
           <g className="lm-bob">
-            <path d="M-20 -3 L20 -3 L14 6 L-14 6 Z" fill="#7a2f2b" />
-            <rect x="-20" y="-5" width="40" height="2.4" fill="#c0602a" />
-            {[-11, -3.5, 4, 11.5].map((x) => (
+            <path
+              d="M-22 -3 L22 -3 L15 7 L-15 7 Z"
+              fill="#8f2f2a"
+              stroke="#ffd2a0"
+              strokeWidth="1"
+            />
+            <rect x="-22" y="-5.5" width="44" height="3" fill="#e0742f" />
+            {[-12, -4, 4, 12].map((x) => (
               <rect
                 key={x}
-                x={x - 3}
-                y="-12"
-                width="6.5"
-                height="7"
-                fill="#c0602a"
-                stroke="#ffb347"
-                strokeWidth="0.7"
+                x={x - 3.4}
+                y="-13"
+                width="7"
+                height="7.5"
+                fill="#e0742f"
+                stroke="#ffe2b0"
+                strokeWidth="0.8"
               />
             ))}
-            <rect x="12" y="-16" width="8" height="11" fill="#e9e4d6" />
-            <rect x="13.5" y="-14" width="5" height="3" fill="#ffd76a" />
-            <line x1="-18" y1="-5" x2="-18" y2="-20" stroke="#e9e4d6" />
-            <polygon points="-18,-20 -9,-17 -18,-14" fill="#5ee08a" />
+            <rect
+              x="13"
+              y="-17"
+              width="9"
+              height="12"
+              fill="#f4efe0"
+              stroke="#2a3350"
+              strokeWidth="0.6"
+            />
+            <rect x="14.5" y="-15" width="6" height="3.5" fill="#ffd76a" />
+            <line x1="-19" y1="-5.5" x2="-19" y2="-22" stroke="#f4efe0" />
+            <polygon points="-19,-22 -9,-19 -19,-16" fill="#5ee08a" />
           </g>
         </g>
-        <g transform="translate(-22 -50) scale(1.6)">
+        <g transform="translate(-4 -58) scale(1.7)">
           <rect
-            x="-14"
-            y="-8"
-            width="28"
-            height="11"
+            x="-17"
+            y="-9"
+            width="34"
+            height="12"
             rx="2"
             fill="#103a22"
             stroke="#5ee08a"
-            strokeWidth="1.2"
+            strokeWidth="1.3"
           />
           <text
             y="0"
             textAnchor="middle"
-            fontSize="8.5"
+            fontSize="9"
             fill="#baffcf"
             className="font-[family-name:var(--font-eo-pixel)]"
           >
-            {deal >= 2 ? "-70%" : "-50%"}
+            {`-${deal * 10}%`}
           </text>
         </g>
       </g>
@@ -549,31 +639,36 @@ function Tanker({ deal }: { deal: number }) {
   );
 }
 
-/** Barrels hop across the water from the tanker into the depot's tanks. */
+/** Barrels hop across the water from the tanker into the depot's tanks, with splashes. */
 function Barrels() {
-  const delays = [
-    "[animation-delay:0s]",
-    "[animation-delay:0.3s]",
-    "[animation-delay:0.6s]",
-    "[animation-delay:0.9s]",
-    "[animation-delay:1.2s]",
-    "[animation-delay:1.5s]",
+  const barrels = [
+    { delay: "[animation-delay:0s]", dy: 0 },
+    { delay: "[animation-delay:0.2s]", dy: 6 },
+    { delay: "[animation-delay:0.4s]", dy: -5 },
+    { delay: "[animation-delay:0.6s]", dy: 8 },
+    { delay: "[animation-delay:0.8s]", dy: -2 },
+    { delay: "[animation-delay:1s]", dy: 5 },
+    { delay: "[animation-delay:1.2s]", dy: -6 },
+    { delay: "[animation-delay:1.4s]", dy: 2 },
   ];
   return (
-    <g data-testid="lm-barrels" transform="translate(62 214) scale(1.5)">
-      {delays.map((delay) => (
-        <g key={delay} className={`lc-barrel ${delay}`}>
-          <rect
-            x="-4.5"
-            y="-6"
-            width="9"
-            height="11"
-            rx="2"
-            fill="#c0602a"
-            stroke="#ffb347"
-            strokeWidth="1"
-          />
-          <rect x="-4.5" y="-3" width="9" height="1.4" fill="#ffb347" />
+    <g data-testid="lm-barrels" transform="translate(70 226) scale(2.2)">
+      {barrels.map(({ delay, dy }) => (
+        <g key={delay} transform={`translate(0 ${dy})`}>
+          <g className={`lc-barrel ${delay}`}>
+            <rect
+              x="-4.5"
+              y="-6"
+              width="9"
+              height="11"
+              rx="2"
+              fill="#e0742f"
+              stroke="#ffe2b0"
+              strokeWidth="1.1"
+            />
+            <rect x="-4.5" y="-3.5" width="9" height="1.5" fill="#ffe2b0" />
+            <rect x="-4.5" y="1" width="9" height="1.5" fill="#ffe2b0" />
+          </g>
         </g>
       ))}
     </g>
@@ -651,7 +746,8 @@ function bannerFor(info: LightSceneInfo): Banner | null {
       stroke: "#7a4a00",
       testId: "lm-banner-relit",
     };
-  if (info.tanker > 0)
+  // The shout is for the first seconds; after that the tag on the edge says it.
+  if (info.tankerNew > 0)
     return {
       text: "CHEAP OIL!",
       fill: "#9dffbf",
@@ -751,8 +847,11 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
   const length = (220 + 110 * info.beam) * burst;
   const windows = keeperWindows(info.keepers);
   const farCount = Math.min(FAR_LIGHTHOUSES, Math.max(0, info.lighthouses - 1));
-  const ships = visibleShips(info);
+  // With the desk open the whole fleet is on the water, so a toll that turns
+  // ships away (or fills the quay) is a crowd you can count.
+  const ships = info.tollOpen > 0 ? HARBOR_SLOTS.length : visibleShips(info);
   const docking = Math.round((info.traffic / 10) * ships);
+  const isFull = info.tollOpen > 0 && docking >= HARBOR_SLOTS.length && !isDry;
   const banner = bannerFor(info);
 
   return (
@@ -833,6 +932,7 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
               <PassShip
                 key={`p${i}`}
                 slot={HARBOR_SLOTS[i]}
+                step={info.tollStep}
                 isTalker={i === docking}
                 isDark={isDry}
               />
@@ -849,13 +949,12 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
           />
         ))
       )}
+      {isFull && <FullHarbor />}
       {info.trainTier >= 3 && <RescueBoats />}
       <Reef />
       {info.tollOpen > 0 && <TollSign step={info.tollStep} />}
       {/* the main lighthouse, its rock and the keepers' cottage */}
       <Depot info={info} />
-      {info.tanker > 0 && <Tanker deal={info.tankerDeal} />}
-      {info.barrels > 0 && <Barrels />}
       <path
         d="M52 300 Q66 256 92 249 L140 249 Q166 258 178 300 Z"
         fill="#10172b"
@@ -887,6 +986,8 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
           fill={i < windows ? "#ffd76a" : "#3a3f52"}
         />
       ))}
+      {info.tanker > 0 && <Tanker deal={info.tankerDeal} />}
+      {info.barrels > 0 && <Barrels />}
       <Crew keepers={Math.min(10, info.keepers)} drills={info.trainTier} />
       <rect x="97" y="130" width="26" height="5" fill="#2b2f3d" />
       <rect x="103" y="114" width="14" height="16" fill="#ffd76a" />
@@ -992,6 +1093,28 @@ export default function CoastLayer({ info }: { info: LightSceneInfo }) {
         >
           {banner.text}
         </text>
+      )}
+      {info.tanker > 0 && info.tankerNew === 0 && (
+        <g data-testid="lm-cheap-tag" transform="translate(300 14)">
+          <rect
+            width="92"
+            height="20"
+            rx="3"
+            fill="#103a22"
+            stroke="#5ee08a"
+            strokeWidth="1.6"
+          />
+          <text
+            x="46"
+            y="14"
+            textAnchor="middle"
+            fontSize="10"
+            fill="#baffcf"
+            className="font-[family-name:var(--font-eo-pixel)]"
+          >
+            CHEAP OIL
+          </text>
+        </g>
       )}
       <ForkArt info={info} />
       {/* storm: rain and lightning (the darker sky is drawn behind the ships) */}

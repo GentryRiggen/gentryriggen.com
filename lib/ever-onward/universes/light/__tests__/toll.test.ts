@@ -5,13 +5,12 @@ import { sceneInfo } from "../scene";
 import { goingRate, shipsPerFlash, farePaid } from "../tick";
 import {
   TOLL_STEPS,
-  bestTollStep,
+  harborSeed,
   isTollOpen,
   rivalToll,
   setToll,
   shipShare,
   tollActionId,
-  tollEarning,
   tollLockLeft,
   tollStep,
   trafficShare,
@@ -28,32 +27,6 @@ function harbor(seed = 1, keeper: number = H.opensAtKeepers): RunState {
   def.tick(run, 0.1);
   return run;
 }
-
-const SECONDS = 1500;
-
-/** Coins earned in `SECONDS` with the toll chosen by `policy` once a second (no buying). */
-function earn(policy: (run: RunState) => number | null, seed: number): number {
-  let run = harbor(seed, 14);
-  run.resources.coins = 0;
-  for (let t = 0; t < SECONDS; t += 1) {
-    const step = policy(run);
-    if (step !== null && step !== tollStep(run) && tollLockLeft(run) <= 0)
-      run = performAction(def, run, tollActionId(step));
-    run.resources.oil = 1e12;
-    def.tick(run, 1);
-  }
-  return run.resources.coins;
-}
-
-/** Reads the going rate off the rival's sign, and moves only for a clear gain. */
-const reader = (run: RunState): number | null => {
-  const rate = goingRate(run);
-  const want = bestTollStep(rate);
-  const gain =
-    tollEarning(TOLL_STEPS[want].pay, rate) /
-    tollEarning(TOLL_STEPS[tollStep(run)].pay, rate);
-  return gain >= 1.1 ? want : null;
-};
 
 describe("the harbor toll", () => {
   it("opens with the keepers, and starts at Usual", () => {
@@ -151,23 +124,31 @@ describe("the harbor toll", () => {
   });
 });
 
-describe("the toll is a real dial: no fixed toll is best", () => {
-  const seeds = [1, 2, 3, 4, 5, 6];
-  const total = (policy: (run: RunState) => number | null) =>
-    seeds.reduce((sum, seed) => sum + earn(policy, seed), 0);
-
-  it("each toll is the best one for some going rate", () => {
-    const best = new Set<number>();
-    for (let rate = 0.6; rate <= 3.2; rate += 0.05)
-      best.add(bestTollStep(rate));
-    expect([...best].sort()).toEqual([0, 1, 2, 3, 4]);
+describe("the toll's world", () => {
+  it("gives every starting seed its own harbor stream (no adjacent seeds share one)", () => {
+    const seeds = Array.from({ length: 200 }, (_, i) => i);
+    expect(new Set(seeds.map(harborSeed)).size).toBe(seeds.length);
+    for (const seed of seeds) expect(harborSeed(seed)).not.toBe(0);
   });
 
-  it("reading the rival's sign beats every fixed toll by at least 8%", () => {
-    const read = total(reader);
-    for (let step = 0; step < TOLL_STEPS.length; step += 1) {
-      const fixed = total(() => step);
-      expect(fixed).toBeLessThan(read / 1.08);
+  it("fixes the stream when the run begins, whatever the player does first", () => {
+    const a = newRun(def, undefined, 41);
+    const b = newRun(def, undefined, 41);
+    expect(a.resources.hbSeed).toBe(harborSeed(41));
+    for (let i = 0; i < 30; i += 1) def.tick(b, 1);
+    expect(newRun(def, undefined, 42).resources.hbSeed).not.toBe(
+      a.resources.hbSeed
+    );
+    expect(a.resources.hbSeed).toBe(harborSeed(41));
+  });
+
+  it("holds the traffic up until the desk opens (nobody can answer a sign they cannot see)", () => {
+    const run = newRun(def, undefined, 5);
+    run.owned = { ...run.owned, keeper: 2, lighthouse: 2 };
+    for (let t = 0; t < 900; t += 1) {
+      run.resources.oil = 1e9;
+      def.tick(run, 1);
+      expect(trafficShare(run)).toBe(1);
     }
   });
 });

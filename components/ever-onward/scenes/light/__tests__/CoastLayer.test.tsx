@@ -18,10 +18,10 @@ function view(change: Partial<LightSceneInfo>) {
 
 describe("the coast scene", () => {
   it("sends the ships that choose the harbor to the quay, and the rest on to the rival", () => {
-    // three ships on the water (two plus one lens): half the traffic is two of them
-    view({ traffic: 5 });
-    expect(screen.getAllByTestId("lm-ship-dock")).toHaveLength(2);
-    expect(screen.getAllByTestId("lm-ship-pass")).toHaveLength(1);
+    // the whole fleet of six is on the water: half the traffic is three of them
+    view({ traffic: 5, tollStep: 3 });
+    expect(screen.getAllByTestId("lm-ship-dock")).toHaveLength(3);
+    expect(screen.getAllByTestId("lm-ship-pass")).toHaveLength(3);
     expect(screen.getByText("TOO PRICEY!")).toBeInTheDocument();
   });
 
@@ -33,6 +33,16 @@ describe("the coast scene", () => {
     expect(screen.queryAllByTestId("lm-ship-dock")).toHaveLength(0);
   });
 
+  it("turns ships away in a crowd at a high toll, and a full harbor gets its coin moment", () => {
+    const high = view({ traffic: 1, tollStep: 4 });
+    expect(screen.getAllByTestId("lm-ship-pass")).toHaveLength(5);
+    expect(screen.queryByTestId("lm-full-harbor")).toBeNull();
+    high.unmount();
+    view({ traffic: 10, tollStep: 0 });
+    expect(screen.getAllByTestId("lm-ship-dock")).toHaveLength(6);
+    expect(screen.getByTestId("lm-full-harbor")).toBeInTheDocument();
+  });
+
   it("shows the toll on the quay's sign", () => {
     view({ tollStep: 3 });
     expect(screen.getByTestId("lm-toll-sign")).toHaveAttribute(
@@ -42,21 +52,34 @@ describe("the coast scene", () => {
   });
 
   it("shows one banner at a time: the dark outranks the relight, and both outrank the tanker", () => {
-    const both = view({ tanker: 1, tankerDeal: 1, darkBanner: 1, relit: 1 });
+    const both = view({
+      tanker: 1,
+      tankerNew: 1,
+      tankerDeal: 5,
+      darkBanner: 1,
+      relit: 1,
+    });
     expect(screen.getByTestId("lm-banner-dark")).toBeInTheDocument();
     expect(screen.queryByTestId("lm-banner-relit")).toBeNull();
     expect(screen.queryByTestId("lm-banner-cheap")).toBeNull();
     both.unmount();
-    const relit = view({ tanker: 1, tankerDeal: 1, relit: 1 });
+    const relit = view({ tanker: 1, tankerNew: 1, tankerDeal: 5, relit: 1 });
     expect(screen.getByTestId("lm-banner-relit")).toBeInTheDocument();
     expect(screen.queryByTestId("lm-banner-cheap")).toBeNull();
     relit.unmount();
-    view({ tanker: 1, tankerDeal: 2 });
+    view({ tanker: 1, tankerNew: 1, tankerDeal: 7 });
     expect(screen.getByTestId("lm-banner-cheap")).toBeInTheDocument();
     expect(screen.getByTestId("lm-tanker-scene")).toHaveAttribute(
       "data-deal",
-      "2"
+      "7"
     );
+  });
+
+  it("shouts CHEAP OIL for the first seconds only, then keeps a small tag on the edge", () => {
+    view({ tanker: 1, tankerNew: 0, tankerDeal: 5 });
+    expect(screen.queryByTestId("lm-banner-cheap")).toBeNull();
+    expect(screen.getByTestId("lm-cheap-tag")).toBeInTheDocument();
+    expect(screen.getByTestId("lm-tanker-scene")).toBeInTheDocument();
   });
 
   it("rolls barrels into the tanks and fills the tank in the picture", () => {

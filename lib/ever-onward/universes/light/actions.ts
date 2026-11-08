@@ -133,8 +133,9 @@ const BUY_OIL: ActionDef = {
   // could buy; the oil is exactly what that paid for.
   perform: (run, paid) => {
     const wasDark = run.resources.oil <= 0;
-    run.resources.oil += paid / Math.max(run.resources.oilPrice, 0.01);
-    noteBuy(run, wasDark);
+    const oil = paid / Math.max(run.resources.oilPrice, 0.01);
+    run.resources.oil += oil;
+    noteBuy(run, wasDark, oil / tankCapacity(run));
   },
 };
 
