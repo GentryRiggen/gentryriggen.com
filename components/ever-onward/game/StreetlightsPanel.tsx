@@ -5,6 +5,7 @@ import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import {
   LAMP_STEPS,
   lampActionId,
+  rushWords,
 } from "@/lib/ever-onward/universes/light/lamps";
 import { short } from "@/lib/ever-onward/universes/light/preview";
 import {
@@ -12,6 +13,7 @@ import {
   isLampsOpen,
   knowhowPerSecond,
   lampLockLeft,
+  lampChosen,
   lampStep,
   powerPerSecond,
   supplyMW,
@@ -65,7 +67,8 @@ function numbersByStep(
  * A real radio group (arrow keys, one tab stop); nothing is ever lost.
  */
 function StreetlightsPanel({ def, run, onAct }: PanelProps) {
-  const active = lampStep(run);
+  const active = lampChosen(run);
+  const settled = lampStep(run);
   const { radioProps } = useRoving(LAMP_STEPS.length, active);
   const isOpen = isLampsOpen(run) && !run.complete;
   const power = isOpen ? round(powerPerSecond(run)) : 0;
@@ -77,17 +80,17 @@ function StreetlightsPanel({ def, run, onAct }: PanelProps) {
   const rows = useMemo(
     () =>
       numbersByStep(
-        active,
+        settled,
         power,
         knowhow,
         supply,
         demandKey.split("|").map(Number)
       ),
-    [active, power, knowhow, supply, demandKey]
+    [settled, power, knowhow, supply, demandKey]
   );
   if (!isOpen) return null;
 
-  const now = rows[active];
+  const now = rows[settled];
   const hasChosen = (run.resources.lampChanges ?? 0) > 0;
 
   return (
@@ -160,9 +163,7 @@ function StreetlightsPanel({ def, run, onAct }: PanelProps) {
                   {Math.floor(at.cities)}{" "}
                   {Math.floor(at.cities) === 1 ? "town" : "towns"} lit
                 </span>
-                <span className="block">
-                  rush hits {Math.round(STEPS[i].peak * 100)}%
-                </span>
+                <span className="block">{rushWords(STEPS[i].peak)}</span>
               </span>
             </button>
           );

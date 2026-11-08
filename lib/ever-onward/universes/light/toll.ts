@@ -108,6 +108,9 @@ export function harborSeed(seed: number): number {
 /** Fixes the harbor world's stream when a run begins (before the player's taps move run.rng). */
 export function startHarbor(run: RunState): void {
   run.resources.hbSeed = harborSeed(run.rng);
+  // The night's grid and weather draw from the starting seed too, so when
+  // the player happens to open them cannot change the evenings they get.
+  run.resources.nightSeed = harborSeed(run.rng ^ 0x1f3d5b79);
 }
 
 /** The harbor world's own random stream (rival tolls, tanker visits). */

@@ -119,30 +119,105 @@ const DARK_ORDER = [4, 7, 2, 9, 0, 5, 3, 8, 1, 6] as const;
 export const isDistrictDark = (district: number, dark: number): boolean =>
   DARK_ORDER.indexOf(district as never) < dark;
 
-/** A tenth of the picture's width, darkened, for each district that is out. */
+/** Where the planet's rim is at a given x (the houses of a district sit on it). */
+const rimY = (x: number): number =>
+  PLANET.cy - Math.sqrt(PLANET.r ** 2 - (x - PLANET.cx) ** 2);
+
+/** Three house silhouettes at these offsets from a district's middle. */
+const HOUSE_OFFSETS = [-14, 0, 14] as const;
+
+/**
+ * A tenth of the picture's width, darkened, for each district that is out:
+ * the houses on its rim go black with a red cross over them, a white flash
+ * snaps the lights off, and a red edge keeps it shouting.
+ */
 function DarkBands({ dark }: { dark: number }) {
   const width = 400 / DISTRICTS;
   return (
-    <g data-testid="lm-dark-bands" clipPath="url(#ln-planet-clip)">
+    <g data-testid="lm-dark-bands">
       <defs>
         <clipPath id="ln-planet-clip">
           <circle cx={PLANET.cx} cy={PLANET.cy} r={PLANET.r} />
         </clipPath>
       </defs>
+      <g clipPath="url(#ln-planet-clip)">
+        {Array.from({ length: DISTRICTS }, (_, d) =>
+          isDistrictDark(d, dark) ? (
+            <g key={d} data-district={d}>
+              <rect
+                x={d * width}
+                y="120"
+                width={width + 0.5}
+                height="170"
+                fill="#010208"
+                fillOpacity="0.88"
+                className="ln-band"
+              />
+              <rect
+                x={d * width}
+                y="120"
+                width={width + 0.5}
+                height="170"
+                fill="#ffffff"
+                className="ln-cut"
+              />
+              <rect
+                x={d * width}
+                y="120"
+                width="2.4"
+                height="170"
+                fill="#ff4a3a"
+                fillOpacity="0.85"
+              />
+              <rect
+                x={(d + 1) * width - 2.4}
+                y="120"
+                width="2.4"
+                height="170"
+                fill="#ff4a3a"
+                fillOpacity="0.85"
+              />
+            </g>
+          ) : null
+        )}
+      </g>
+      {/* the houses that went dark, black against the rim with a red cross */}
       {Array.from({ length: DISTRICTS }, (_, d) =>
-        isDistrictDark(d, dark) ? (
-          <rect
-            key={d}
-            data-district={d}
-            x={d * width}
-            y="120"
-            width={width + 0.5}
-            height="170"
-            fill="#02030a"
-            fillOpacity="0.72"
-            className="ln-band"
-          />
-        ) : null
+        isDistrictDark(d, dark)
+          ? HOUSE_OFFSETS.map((dx) => {
+              const x = d * width + width / 2 + dx;
+              const y = rimY(x) + 5;
+              return (
+                <g
+                  key={`${d}-${dx}`}
+                  data-testid="lm-dark-house"
+                  className="ln-band"
+                  transform={`translate(${fmt(x)} ${fmt(y)}) scale(1.7)`}
+                >
+                  <rect
+                    x="-5"
+                    y="-8"
+                    width="10"
+                    height="8"
+                    fill="#05060f"
+                    stroke="#ff4a3a"
+                    strokeWidth="1.2"
+                  />
+                  <polygon
+                    points="-6.5,-8 0,-14 6.5,-8"
+                    fill="#05060f"
+                    stroke="#ff4a3a"
+                    strokeWidth="1.2"
+                  />
+                  <path
+                    d="M-3 -6 L3 -1 M3 -6 L-3 -1"
+                    stroke="#ff4a3a"
+                    strokeWidth="1.5"
+                  />
+                </g>
+              );
+            })
+          : null
       )}
     </g>
   );
@@ -389,29 +464,32 @@ function Town({
 function StormStrike() {
   return (
     <g data-testid="lm-storm-strike">
+      <circle r="46" cy="-40" fill="#fff6a8" className="ln-warm" />
       <polygon
         className="ln-bolt"
-        points="-9,-190 10,-124 -1,-124 12,-60 -17,-108 -2,-108"
+        points="-16,-210 20,-210 3,-150 26,-150 -16,-62 -8,-122 -28,-122"
         fill="#fff6a8"
         stroke="#ff9a3d"
-        strokeWidth="2.4"
+        strokeWidth="5"
+        strokeLinejoin="round"
       />
-      {/* the pole leans and the wire drops, spitting */}
+      {/* the pole leans and the fat wire drops, spitting */}
       <g className="ln-pole">
-        <rect x="-5" y="-38" width="3.4" height="38" fill="#c9a66b" />
+        <rect x="-6" y="-44" width="5.5" height="44" fill="#c9a66b" />
       </g>
       <path
         className="ln-wire"
-        d="M-2.6 -36 q-9 12 -3 21 t6 15"
+        d="M-3 -42 q-14 14 -4 25 t8 17"
         fill="none"
         stroke="#ff7a3d"
-        strokeWidth="2.6"
+        strokeWidth="5"
+        strokeLinecap="round"
       />
       <g fill="#fff3a0">
-        <rect className="ln-spark-a" x="-6" y="-6" width="3.6" height="3.6" />
-        <rect className="ln-spark-b" x="0" y="-6" width="3.6" height="3.6" />
-        <rect className="ln-spark-c" x="-3" y="-9" width="3" height="3" />
-        <rect className="ln-spark-d" x="3" y="-3" width="3" height="3" />
+        <rect className="ln-spark-a" x="-8" y="-8" width="5.5" height="5.5" />
+        <rect className="ln-spark-b" x="0" y="-8" width="5.5" height="5.5" />
+        <rect className="ln-spark-c" x="-4" y="-13" width="4.5" height="4.5" />
+        <rect className="ln-spark-d" x="5" y="-4" width="4.5" height="4.5" />
       </g>
     </g>
   );
@@ -432,10 +510,11 @@ function StormHeld() {
       />
       <polygon
         className="ln-bolt"
-        points="-9,-190 10,-124 -1,-124 12,-84 -17,-112 -2,-112"
+        points="-16,-210 20,-210 3,-150 26,-150 -16,-84 -8,-122 -28,-122"
         fill="#d8f2ff"
         stroke="#4ab8ff"
-        strokeWidth="2.4"
+        strokeWidth="5"
+        strokeLinejoin="round"
       />
     </g>
   );
@@ -444,24 +523,34 @@ function StormHeld() {
 // ----------------------------------------------------------------- batteries
 
 /** The bank stands in the band under the towns, wires dropping into it. */
-const BANK = { top: 202, cellW: 15, cellH: 26, gap: 4, segments: 4 } as const;
+const BANK = { top: 198, cellH: 40, gap: 6 } as const;
+/** The bank is about this wide whatever its size, so one cell is a big, readable block. */
+const BANK_WIDTH = 200;
+/** A cell is at least this wide and at most this wide. */
+const CELL_MIN = 22;
+const CELL_MAX = 64;
 /** Where the feeder wires leave the ring below the towns. */
 const FEED_FROM = 192;
 const FEED_X = [96, 200, 304] as const;
 
 /** A row of battery cells that fill by day and drain at the rush. */
 function Bank({ info }: { info: LightSceneInfo }) {
-  const cells = Math.min(12, info.batteries);
+  const cells = Math.min(8, info.batteries);
   if (cells <= 0) return null;
-  const total = cells * BANK.segments;
+  const cellW = Math.min(
+    CELL_MAX,
+    Math.max(CELL_MIN, BANK_WIDTH / cells - BANK.gap)
+  );
+  const segments = Math.max(4, Math.ceil(8 / cells));
+  const total = cells * segments;
   const lit = Math.round(info.charge * total);
   const colour =
     info.flow === 2 ? "#ff9a3d" : info.flow === 1 ? "#b6ff5a" : "#ffe27a";
   const anim =
     info.flow === 2 ? "ln-drain" : info.flow === 1 ? "ln-charge" : "";
-  const stride = BANK.cellW + BANK.gap;
+  const stride = cellW + BANK.gap;
   const x0 = PLANET.cx - (cells * stride - BANK.gap) / 2;
-  const segH = (BANK.cellH - 4) / BANK.segments;
+  const segH = (BANK.cellH - 4) / segments;
   const feed =
     info.flow === 2
       ? "ln-spark ln-spark-fast"
@@ -508,20 +597,20 @@ function Bank({ info }: { info: LightSceneInfo }) {
       {Array.from({ length: cells }, (_, i) => (
         <g key={i} transform={`translate(${fmt(x0 + i * stride)} ${BANK.top})`}>
           <rect
-            width={BANK.cellW}
+            width={cellW}
             height={BANK.cellH}
             fill="#0a1020"
             stroke={colour}
             strokeWidth="1.4"
           />
-          {Array.from({ length: BANK.segments }, (_, k) => {
-            const isOn = i * BANK.segments + k < lit;
+          {Array.from({ length: segments }, (_, k) => {
+            const isOn = i * segments + k < lit;
             return (
               <rect
                 key={k}
                 x="2"
                 y={BANK.cellH - 2 - (k + 1) * segH + 0.8}
-                width={BANK.cellW - 4}
+                width={cellW - 4}
                 height={segH - 1.4}
                 fill={isOn ? colour : "#1b2440"}
                 className={
@@ -540,8 +629,8 @@ function Bank({ info }: { info: LightSceneInfo }) {
             points="190,196 203,196 198,206 207,206 192,224 196,212 188,212"
             fill="#b6ff5a"
             stroke="#10260a"
-            strokeWidth="1.2"
-            transform="translate(0 -26)"
+            strokeWidth="1.6"
+            transform="translate(-6 -34) scale(1.4)"
           />
         </g>
       )}
@@ -552,7 +641,8 @@ function Bank({ info }: { info: LightSceneInfo }) {
 // -------------------------------------------------------------------- the rest
 
 interface Banner {
-  text: string;
+  /** The shout, one line or two (two words stack, so they can be big on a phone). */
+  lines: readonly string[];
   fill: string;
   stroke: string;
   testId: string;
@@ -562,33 +652,65 @@ interface Banner {
 function bannerFor(info: LightSceneInfo): Banner | null {
   if (info.gridBanner === 2)
     return {
-      text: "BLACKOUT!",
+      lines: ["BLACKOUT!"],
       fill: "#ff6b6b",
       stroke: "#2b0a0a",
       testId: "lm-banner-blackout",
     };
   if (info.stormHit > 0 && info.stormHeld === 0)
     return {
-      text: "LINE DOWN!",
+      lines: ["LINE", "DOWN!"],
       fill: "#ffb347",
       stroke: "#2b1400",
       testId: "lm-banner-linedown",
     };
   if (info.stormHit > 0)
     return {
-      text: "STORM HELD!",
+      lines: ["STORM", "HELD!"],
       fill: "#9be8ff",
       stroke: "#06243a",
       testId: "lm-banner-held",
     };
   if (info.gridBanner === 1)
     return {
-      text: "LIT ALL NIGHT!",
+      lines: ["LIT ALL", "NIGHT!"],
       fill: "#fff3a0",
       stroke: "#7a4a00",
       testId: "lm-banner-lit",
     };
   return null;
+}
+
+/** The pixel font is about this many times as wide as it is tall. */
+const SHOUT_WIDTH = 1.45;
+/** A shout fills this much of the picture's width, at most. */
+const SHOUT_FILL = 340;
+
+/** A big shout over the picture: as large as fits, stacked in lines. */
+function BannerText({ banner }: { banner: Banner }) {
+  const longest = Math.max(...banner.lines.map((line) => line.length));
+  const size = Math.min(46, SHOUT_FILL / (longest * SHOUT_WIDTH));
+  return (
+    <text
+      data-testid={banner.testId}
+      x="200"
+      y="78"
+      textAnchor="middle"
+      fontSize={fmt(size)}
+      fill={banner.fill}
+      stroke={banner.stroke}
+      strokeWidth="9"
+      paintOrder="stroke"
+      className="lc-shout font-[family-name:var(--font-eo-pixel)]"
+      aria-label={banner.lines.join(" ")}
+    >
+      {banner.lines.map((line, i) => (
+        <tspan key={line} x="200" dy={i === 0 ? 0 : fmt(size * 1.15)}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
 }
 
 /** Everything the grid and the crews add on top of the night's art. */
@@ -676,23 +798,7 @@ export default function NightGridEffects({ info }: { info: LightSceneInfo }) {
           />
         </g>
       )}
-      {banner && (
-        <text
-          data-testid={banner.testId}
-          x="200"
-          y="40"
-          textAnchor="middle"
-          fontSize={banner.text.length > 11 ? 15 : 18}
-          fill={banner.fill}
-          stroke={banner.stroke}
-          strokeWidth="6"
-          paintOrder="stroke"
-          className="lc-shout font-[family-name:var(--font-eo-pixel)]"
-          key={banner.testId}
-        >
-          {banner.text}
-        </text>
-      )}
+      {banner && <BannerText banner={banner} key={banner.testId} />}
     </g>
   );
 }

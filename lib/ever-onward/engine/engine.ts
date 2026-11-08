@@ -89,6 +89,7 @@ function settle(def: UniverseDef, run: RunState): void {
 function pendingCount(def: UniverseDef, run: RunState): number {
   return def.upgrades.filter(
     (u) =>
+      !u.hasOwnSlot &&
       isVisible(def, run, u) &&
       !isMaxed(run, u) &&
       upgradeLevel(run, u.id) === 0
@@ -103,12 +104,12 @@ function revealUpgrades(def: UniverseDef, run: RunState): void {
   const limit = def.maxVisible ?? Infinity;
   let pending = limit === Infinity ? 0 : pendingCount(def, run);
   for (const upgrade of def.upgrades) {
-    if (pending >= limit) return;
+    if (pending >= limit && !upgrade.hasOwnSlot) continue;
     if (!isInPhase(def, run, upgrade) || run.revealed.includes(upgrade.id))
       continue;
     if (upgrade.visibleWhen && !upgrade.visibleWhen(run)) continue;
     run.revealed.push(upgrade.id);
-    pending += 1;
+    if (!upgrade.hasOwnSlot) pending += 1;
   }
 }
 

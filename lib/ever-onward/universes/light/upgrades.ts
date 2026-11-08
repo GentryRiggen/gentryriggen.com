@@ -487,7 +487,7 @@ const BATTERY_STATS = [
   },
   {
     label: "A hot rush met",
-    read: (run: RunState) => rushCover(run, 2) * 100,
+    read: (run: RunState) => rushCover(run, 2, 1) * 100,
     suffix: "%",
   },
 ];
@@ -524,14 +524,21 @@ const BATTERY_STEPS = chain({
   steps: BATTERY_NAMES.map(([name, description], i) => ({
     name,
     description,
-    // Shows once the plants are within reach of filling it.
+    // Shows once the plants are within reach of it (a bank far too big for
+    // the plants never fills, and leaves them charging all day).
     showWhen: (run: RunState) =>
       i === 0
         ? isGridOpen(run)
-        : supplyMW(run) * 14 >= TUNING.grid.batteryHolds[i],
+        : supplyMW(run) * TUNING.grid.showBankSeconds >=
+          TUNING.grid.batteryHolds[i],
     badge: i === 0 ? "NEW ABILITY" : undefined,
   })),
-});
+}).map((battery) => ({
+  ...battery,
+  // The bank has to keep up with the plants all night, so the shop never
+  // crowds its next step out behind other cards.
+  hasOwnSlot: true,
+}));
 
 const nightUpgrades: UpgradeDef[] = [
   {

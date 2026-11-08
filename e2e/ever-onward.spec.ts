@@ -127,22 +127,35 @@ test.describe("Ever Onward", () => {
       timeout: 60_000,
     });
     // The grid panel: the day, tonight's rush and what carries it. It shows
-    // the numbers and never says which streetlights to pick.
+    // what you would see (how big tonight looks, how full the bank is) and
+    // never both sides of a sum, nor which streetlights to pick.
     const grid = page.getByTestId("lm-grid");
     await expect(grid).toBeVisible();
     await expect(grid.getByTestId("lm-day-strip")).toBeAttached();
     await expect(grid.getByTestId("lm-grid-tonight")).toContainText(/evening/);
+    await expect(grid.getByTestId("lm-grid-bars")).toBeAttached();
     await expect(grid.getByTestId("lm-grid-batteries")).toBeVisible();
-    await expect(grid).not.toContainText(/best|recommend/i);
+    await expect(grid).not.toContainText(/best|recommend|asks|holds/i);
+    await expect(grid).not.toContainText(/\d+(\.\d)? s\b/);
+    const lamps = page.getByTestId("lm-lamps");
+    await expect(lamps).not.toContainText(/rush hits \d/i);
     // The crews: each on a post; a tap sends one, and it spends time on the road.
     const crews = page.getByTestId("lm-crews");
     await expect(crews).toBeVisible();
-    // The test mode's player has already posted its crews; send crew 2 to
-    // whichever of building and the school it is not at.
-    const crew = page.getByTestId("lm-crew-1");
+    await expect(crews).toContainText(/sandbags and wages/);
+    // The test mode's player has already posted its crews; send a crew that is
+    // not committed to a storm watch to whichever of building and the school
+    // it is not at.
+    let crewId = 1;
+    if (
+      (await page.getByTestId("lm-crew-1").getAttribute("data-committed")) ===
+      "true"
+    )
+      crewId = 0;
+    const crew = page.getByTestId(`lm-crew-${crewId}`);
     const at = await crew.getAttribute("data-post");
     const other = at === "0" ? 1 : 0;
-    await crews.getByTestId(`lm-crew-1-post-${other}`).click();
+    await crews.getByTestId(`lm-crew-${crewId}-post-${other}`).click();
     await expect(crew).toHaveAttribute("data-moving", "true");
     await expect(crew).toHaveAttribute("data-post", String(other));
     // The picture: the sky's clock, the battery bank and the crews at their posts.

@@ -59,6 +59,9 @@ export const isDarkBanner = (run: RunState): boolean =>
 /** The beam bursts for a few seconds after the lamp is lit again. */
 export const isRelit = (run: RunState): boolean => res(run, "lampRelit") > 0;
 
+/** The banner is up, or has only just gone: narration still waits for it. */
+const isRelitHeld = (run: RunState): boolean => res(run, "lampRelitHold") > 0;
+
 /**
  * Starts the barrels rolling (a buy calls this), and the beam bursting if the
  * lamp was dark when the oil came (`wasDark`, read before the oil is added);
@@ -81,6 +84,7 @@ export function noteBuy(
   if (wasDark) {
     run.resources.lampDarkFor = 0;
     run.resources.lampRelit = T.relitSeconds;
+    run.resources.lampRelitHold = T.relitHoldSeconds;
   }
   if (isTankerIn(run)) run.resources.tkBuys = tankerBuys(run) + 1;
 }
@@ -93,6 +97,7 @@ export function tickTanker(run: RunState, dt: number, isOpen: boolean): void {
   const r = run.resources;
   r.barrelLeft = Math.max(0, res(run, "barrelLeft") - dt);
   r.lampRelit = Math.max(0, res(run, "lampRelit") - dt);
+  r.lampRelitHold = Math.max(0, res(run, "lampRelitHold") - dt);
   // The lamp running dry, and being lit again.
   if (r.oil <= 0) {
     if (res(run, "lampDarkFor") <= 0) r.lampDarks = darkSpells(run) + 1;
@@ -100,6 +105,7 @@ export function tickTanker(run: RunState, dt: number, isOpen: boolean): void {
   } else if (res(run, "lampDarkFor") > 0) {
     r.lampDarkFor = 0;
     r.lampRelit = T.relitSeconds;
+    r.lampRelitHold = T.relitHoldSeconds;
   }
   if (!isOpen) return;
   if (r.tkLeft > 0) {
@@ -127,9 +133,9 @@ export const isTankerArriving = (run: RunState): boolean =>
 
 /**
  * A big moment is on in the picture (the "DARK!" banner, the relight burst
- * or a tanker just arriving), so pop-ups over the scene wait. The long
+ * and a few seconds after it, or a tanker just arriving), so pop-ups over the scene wait. The long
  * stretches after (a dark lamp, a tanker at the quay) do not hold them.
  */
 export const isCoastMomentBusy = (run: RunState): boolean =>
   run.phase === 0 &&
-  (isTankerArriving(run) || isDarkBanner(run) || isRelit(run));
+  (isTankerArriving(run) || isDarkBanner(run) || isRelitHeld(run));

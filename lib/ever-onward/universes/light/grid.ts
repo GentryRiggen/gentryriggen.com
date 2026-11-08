@@ -3,7 +3,13 @@ import { nextRandom } from "../../engine/rng";
 import type { RunState } from "../../engine/types";
 import { hasFork, windRamp } from "./forkState";
 import { isOverdriveOn } from "./overdrive";
-import { isGridInPlay, lampEffect, supplyMW, tier } from "./tick";
+import {
+  isGridInPlay,
+  lampEffect,
+  returnLampsHome,
+  supplyMW,
+  tier,
+} from "./tick";
 import { TUNING } from "./tuning";
 
 /**
@@ -164,9 +170,17 @@ export function batteryFlow(run: RunState): 0 | 1 | 2 {
 export const isGridGlowing = (run: RunState): boolean =>
   isGridOpen(run) && lastEvening(run) === 1;
 
-/** A big moment is on in the picture, so pop-ups over the scene wait. */
+/**
+ * A big moment is on in the picture, so pop-ups over the scene wait: the
+ * banner, and the first few seconds of the dark (the houses snapping out).
+ * Not the whole time some district is still waiting to come back.
+ */
 export const isGridMomentBusy = (run: RunState): boolean =>
-  run.phase === 1 && (gridBanner(run) > 0 || districtsDark(run) > 0);
+  run.phase === 1 &&
+  (gridBanner(run) > 0 ||
+    (isRushNow(run) &&
+      districtsDark(run) > 0 &&
+      gridClock(run) < G.rushAt + G.snapSeconds));
 
 /** Power the lit night pays: a slice of income. */
 export const litBonus = (run: RunState, income: number): number =>
@@ -185,6 +199,12 @@ export interface RushOutcome {
   shed: number;
   /** The share of the rush's extra power the batteries cover. */
   covered: number;
+  /**
+   * Seconds of the whole grid's pay lost to the dark: the districts the
+   * rush puts out (they stay out once out) while it lasts, and half the
+   * time they take to come back.
+   */
+  darkSeconds: number;
   /** MW-seconds the batteries give back. */
   used: number;
   /** True when no district goes dark. */
@@ -200,7 +220,13 @@ export function rushOutcome(
   charge = Math.max(0, charge - G.reserveShare * batteryCapacity(run));
   const plants = supplyMW(run);
   if (plants <= 0 || excess <= 0)
-    return { shed: 0, covered: 1, used: 0, isLit: true };
+    return {
+      shed: 0,
+      covered: 1,
+      darkSeconds: 0,
+      used: 0,
+      isLit: true,
+    };
   const need = plants * excess;
   const give = Math.min(need, rushCarry(run));
   const seconds = G.rushSeconds;
@@ -211,17 +237,34 @@ export function rushOutcome(
   const shed =
     (shedWhile * lastsFor + shedAfter * (seconds - lastsFor)) / seconds;
   const isLit = give >= need - 1e-9 && lastsFor >= seconds - 1e-9;
-  return { shed, covered: Math.min(1, used / (need * seconds)), used, isLit };
+  // The tick puts out whole districts and never lights one again mid-rush.
+  const whole = (share: number): number =>
+    Math.ceil(share * G.districts - 1e-9) / G.districts;
+  const early = whole(shedWhile);
+  const late =
+    lastsFor < seconds - 1e-9 ? Math.max(early, whole(shedAfter)) : early;
+  const darkSeconds = isLit
+    ? 0
+    : early * lastsFor +
+      late * (seconds - lastsFor) +
+      (late * G.recoverySeconds) / 2;
+  return {
+    shed,
+    covered: Math.min(1, used / (need * seconds)),
+    darkSeconds,
+    used,
+    isLit,
+  };
 }
 
-/** The share of a rush of this size (at the streetlights as they are) the batteries meet, 0..1. */
-export function rushCover(run: RunState, level: number): number {
+/**
+ * The share of a rush of this size the batteries could meet on a full day's
+ * charge, with the streetlights at `lampPeak` (the usual brightness by
+ * default, so a card reads the same whatever they are set to).
+ */
+export function rushCover(run: RunState, level: number, lampPeak = 1): number {
   const stored = Math.min(batteryCapacity(run), dailyChargeRoom(run));
-  return rushOutcome(
-    run,
-    rushExcessAt(run, level, lampEffect(run).peak),
-    stored
-  ).covered;
+  return rushOutcome(run, rushExcessAt(run, level, lampPeak), stored).covered;
 }
 
 /** What the batteries will hold when the rush begins, if they keep charging. */
@@ -243,6 +286,7 @@ export function bestLampForTonight(run: RunState): number {
   const steps = TUNING.lamps.steps;
   const charge = chargeAtRush(run);
   const window = G.rushSeconds + G.lampLockSeconds + 3;
+  const bonusSeconds = litBonus(run, 1);
   let best = steps.length - 1;
   let bestValue = -Infinity;
   for (let step = steps.length - 1; step >= 0; step -= 1) {
@@ -251,13 +295,10 @@ export function bestLampForTonight(run: RunState): number {
       rushExcessAt(run, eveningLevel(run), steps[step].peak),
       charge
     );
-    const dark = outcome.shed * (G.rushSeconds + G.recoverySeconds / 2);
-    const bonus = outcome.isLit
-      ? G.litSeconds *
-        (hasProject(run, "rush-pricing") ? TUNING.projects.rushPay : 1) *
-        (hasProject(run, "lamplighters") ? TUNING.projects.lampLitPay : 1)
-      : 0;
-    const value = steps[step].pay * (window - dark) + bonus;
+    // The lit night's bonus is paid at the step's own pay, like the tick does.
+    const value =
+      steps[step].pay *
+      (window - outcome.darkSeconds + (outcome.isLit ? bonusSeconds : 0));
     if (value > bestValue + 1e-9) {
       bestValue = value;
       best = step;
@@ -291,14 +332,8 @@ export function expectedEveningFactor(run: RunState): number {
   let factor = 0;
   G.excess.forEach((_, level) => {
     const outcome = rushOutcome(run, rushExcessAt(run, level, lamp), stored);
-    const bonus = outcome.isLit
-      ? G.litSeconds *
-        (hasProject(run, "rush-pricing") ? TUNING.projects.rushPay : 1) *
-        (hasProject(run, "lamplighters") ? TUNING.projects.lampLitPay : 1)
-      : 0;
-    const dark = outcome.isLit
-      ? 0
-      : outcome.shed * (G.rushSeconds + G.recoverySeconds / 2);
+    const bonus = outcome.isLit ? litBonus(run, 1) : 0;
+    const dark = outcome.darkSeconds;
     const losses = (outcome.used * (1 / G.efficiency - 1)) / plants;
     factor += G.odds[level] * (1 + (bonus - dark - losses) / G.daySeconds);
   });
@@ -332,7 +367,7 @@ function drawEvening(run: RunState): void {
 /** Starts the day clock the first time the grid is open. */
 function begin(run: RunState): void {
   const r = run.resources;
-  r.pgSeed = run.rng ^ SEED_MIX;
+  r.pgSeed = (res(run, "nightSeed") || run.rng) ^ SEED_MIX;
   r.pgClock = G.firstClock;
   r.pgDays = 0;
   r.pgStarted = 1;
@@ -401,8 +436,10 @@ export function tickGrid(
   }
 
   if (wasRush) {
-    // The rush is over: a lit night pays, a dark one takes a while to mend.
+    // The rush is over: a lit night pays, a dark one takes a while to mend,
+    // and tonight's streetlights go back to what they were.
     r.pgRush = 0;
+    returnLampsHome(run);
     if (res(run, "pgDark") <= 0) {
       const pay = litBonus(run, income());
       r.power = res(run, "power") + pay;

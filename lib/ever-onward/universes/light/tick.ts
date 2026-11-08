@@ -10,6 +10,7 @@ import {
   TOTAL_LIGHTS,
   TOTAL_STARS,
 } from "./resources";
+import { REMOVED_NIGHT_COSTS, REMOVED_NIGHT_SCALE } from "./costs";
 import { TUNING } from "./tuning";
 import { tickProbes } from "./probes";
 import { tickGarden } from "./garden";
@@ -445,17 +446,70 @@ export const lampEffect = (run: RunState) =>
 export const lampLockLeft = (run: RunState): number =>
   Math.max(0, res(run, "lampLock"));
 
+/** The step the streetlights are settling to (the one shown as picked). */
+export const lampChosen = (run: RunState): number => {
+  const next = Math.round(res(run, "lampNext"));
+  return next > 0 && next <= LAMPS.steps.length ? next - 1 : lampStep(run);
+};
+
 /**
- * Sets the brightness (the streetlights' radio buttons). A new setting
- * takes a few seconds to settle, and the streetlights cannot change again
- * until it has: a choice is a commitment.
+ * Picks a brightness (the streetlights' radio buttons). The cities only
+ * follow it once it has settled, a few seconds later, and the streetlights
+ * cannot change again until then: a choice is a commitment, so changing your
+ * mind at the last minute costs the time it takes. A change made from dusk
+ * to the end of the rush is for tonight: the lights go back to what they
+ * were once the rush is over (see `returnLampsHome`).
  */
 export function setLamps(run: RunState, step: number): void {
   const next = Math.min(LAMPS.steps.length - 1, Math.max(0, Math.round(step)));
-  if (next === lampStep(run) || lampLockLeft(run) > 0) return;
-  run.resources.lamps = next;
+  if (next === lampChosen(run) || lampLockLeft(run) > 0) return;
+  const clock = res(run, "pgClock");
+  const isEvening =
+    res(run, "pgStarted") > 0 &&
+    clock >= TUNING.grid.duskAt &&
+    clock < TUNING.grid.rushAt + TUNING.grid.rushSeconds;
+  if (!isEvening) run.resources.lampHome = 0;
+  else if (res(run, "lampHome") <= 0)
+    run.resources.lampHome = lampChosen(run) + 1;
+  run.resources.lampNext = next + 1;
   run.resources.lampChanges = res(run, "lampChanges") + 1;
   run.resources.lampLock = TUNING.grid.lampLockSeconds;
+}
+
+/** The rush is over: tonight's lights settle back to what they were. */
+export function returnLampsHome(run: RunState): void {
+  const home = Math.round(res(run, "lampHome")) - 1;
+  run.resources.lampHome = 0;
+  if (home < 0 || home === lampChosen(run)) return;
+  run.resources.lampNext = home + 1;
+  run.resources.lampLock = Math.max(
+    res(run, "lampLock"),
+    TUNING.grid.lampLockSeconds
+  );
+}
+
+/** Counts the settling down, and lets the cities follow once it is done. */
+function settleLamps(run: RunState, dt: number): void {
+  const left = Math.max(0, res(run, "lampLock") - dt);
+  run.resources.lampLock = left;
+  if (left > 0 || res(run, "lampNext") <= 0) return;
+  run.resources.lamps = lampChosen(run);
+  run.resources.lampNext = 0;
+}
+
+/**
+ * A save from before the batteries owns the cut load balancer and smart
+ * grid: while it is in the night, pay back what they cost (at the prices
+ * they were bought at) and take them off the books, once.
+ */
+function refundRemovedUpgrades(run: RunState): void {
+  for (const [id, cost] of Object.entries(REMOVED_NIGHT_COSTS)) {
+    const levels = Math.floor(run.owned[id] ?? 0);
+    if (levels <= 0) continue;
+    run.resources.power =
+      res(run, "power") + cost * REMOVED_NIGHT_SCALE * levels;
+    delete run.owned[id];
+  }
 }
 
 /** Demand at a given brightness (for the knob's "lights up the rest" hint). */
@@ -532,8 +586,9 @@ export const powerPerSecond = (run: RunState): number =>
  * puts districts out (see grid.ts).
  */
 function tickNight(run: RunState, dt: number): void {
+  refundRemovedUpgrades(run);
   tickCrews(run, dt);
-  run.resources.lampLock = Math.max(0, res(run, "lampLock") - dt);
+  settleLamps(run, dt);
   tickWeather(run, dt, () => incomePerSecond(run));
   const gridMult = tickGrid(run, dt, () => incomePerSecond(run));
   const supply = supplyMW(run);

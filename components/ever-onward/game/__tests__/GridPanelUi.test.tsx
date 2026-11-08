@@ -53,8 +53,23 @@ describe("GridPanel", () => {
       /Tonight's rush: a mild evening, in/
     );
     expect(screen.getByTestId("lm-grid-plants")).toHaveTextContent(/MW/);
-    expect(screen.getByTestId("lm-grid-lines")).toHaveTextContent(/MW/);
-    expect(screen.getByTestId("lm-grid-batteries")).toHaveTextContent(/s/);
+    expect(screen.getByTestId("lm-grid-lines")).toHaveTextContent(/built/);
+    expect(screen.getByTestId("lm-grid-batteries")).toHaveTextContent(
+      /full|empty|half|low/
+    );
+    expect(screen.getByTestId("lm-grid-bars")).toHaveAttribute(
+      "data-level",
+      "0"
+    );
+  });
+
+  it("shows how big tonight looks, never both sides of the sum", () => {
+    const run = nightRun({ "batt-1": 1, "batt-2": 1 }, { pgCharge: 150 });
+    render(<GridPanel def={def} run={run} onAct={jest.fn()} />);
+    const text = screen.getByTestId("lm-grid").textContent ?? "";
+    // no seconds of grid asked for, and none held: no matching units to compare
+    expect(text).not.toMatch(/\d+(\.\d)? s\b/);
+    expect(text).not.toMatch(/asks|holds|% of the plants/i);
   });
 
   it("never says which streetlights to pick", () => {

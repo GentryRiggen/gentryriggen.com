@@ -21,7 +21,9 @@ import {
   isBeamOpen,
   calmSkyIncomePerSecond,
   resolvePerSecond,
+  incomePerSecond,
 } from "./tick";
+import { short } from "./preview";
 import { TUNING } from "./tuning";
 import { LAMP_ACTIONS } from "./lamps";
 import { BEAM_ACTIONS } from "./beam";
@@ -38,6 +40,8 @@ import {
   isWeatherOpen,
   postOf,
   setPost,
+  moveFee,
+  isCommitted,
 } from "./weather";
 import { TOLL_ACTIONS } from "./toll";
 import { noteBuy } from "./tanker";
@@ -265,13 +269,22 @@ const CREW_POSTS: readonly ActionDef[] = Array.from(
         (post < POST_WATCH || isWeatherOpen(run)),
       describe: (run) => ({
         label: `Crew ${crew + 1}: ${postName(post)}`,
-        detail:
-          postOf(run, crew) === post
+        detail: isCommitted(run, crew)
+          ? "On watch until the storm lands."
+          : postOf(run, crew) === post
             ? "Already there."
-            : "It spends a little while on the road first.",
-        isBlocked: postOf(run, crew) === post,
+            : post >= POST_WATCH
+              ? `The road takes ${TUNING.grid.moveSeconds} s, and the sandbags and wages cost about ${short(moveFee(incomePerSecond(run)))} power.`
+              : `The road takes ${TUNING.grid.moveSeconds} s, and nothing else.`,
+        isBlocked: postOf(run, crew) === post || isCommitted(run, crew),
       }),
-      perform: (run) => setPost(run, crew, post),
+      perform: (run) => {
+        if (postOf(run, crew) === post || isCommitted(run, crew)) return;
+        // Going out on storm duty costs sandbags and wages; coming home is free.
+        const fee = post >= POST_WATCH ? moveFee(incomePerSecond(run)) : 0;
+        run.resources.power = Math.max(0, (run.resources.power ?? 0) - fee);
+        setPost(run, crew, post);
+      },
     }))
 ).flat();
 

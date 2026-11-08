@@ -3,12 +3,13 @@ import {
   newRun,
   performAction,
   reconcileRun,
+  tick,
 } from "../../../engine/engine";
 import { simulate, type Strategy } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import { def } from "./fixtures";
 import { lightBots } from "../bots";
-import { LAMP_STEPS, lampActionId } from "../lamps";
+import { LAMP_STEPS, lampActionId, rushWords } from "../lamps";
 import { rushExcessAt } from "../grid";
 import { TUNING } from "../tuning";
 import {
@@ -16,6 +17,7 @@ import {
   isLampsOpen,
   knowhowPerSecond,
   lampEffect,
+  lampChosen,
   lampStep,
   powerPerSecond,
 } from "../tick";
@@ -44,8 +46,13 @@ describe("the streetlights", () => {
   });
 
   it("trades pay against know-how, the evening rush and the towns' demand", () => {
-    const at = (step: number) =>
-      performAction(def, nightRun(), lampActionId(step));
+    const at = (step: number) => {
+      let run = performAction(def, nightRun(), lampActionId(step));
+      // the cities follow once the change has settled
+      for (let t = 0; t < TUNING.grid.lampLockSeconds + 1; t += 1)
+        run = tick(def, run, 1);
+      return run;
+    };
     const soft = at(0);
     const dazzling = at(3);
     const bright = nightRun();
@@ -82,7 +89,7 @@ describe("the streetlights", () => {
         );
         const id = lampActionId(step);
         return isLampsOpen(run) &&
-          lampStep(run) !== step &&
+          lampChosen(run) !== step &&
           available.includes(id)
           ? [...others, id]
           : others;
@@ -113,8 +120,11 @@ describe("the streetlights", () => {
       // 1.25 until the Coast's dials: a different Coast leaves the night a
       // different random start (the worst step reads 1.18 to 1.30 of the
       // policy), so the line moved to 1.35. The brightest step is still no
-      // trap, and the knob still pays (the test above).
-      expect(Math.max(...fixed)).toBeLessThanOrEqual(policy * 1.35);
+      // trap, and the knob still pays (the test above). The knob is a bigger
+      // deal now (a lit night pays for the brightness it was met at, and the
+      // evening rush follows the streetlights), so a step held all night is
+      // slower, up to about half again, and still finishes.
+      expect(Math.max(...fixed)).toBeLessThanOrEqual(policy * 1.6);
     });
   });
 });
@@ -133,12 +143,13 @@ describe("the streetlights' words", () => {
       expect(step.note).toContain(
         `towns want ${diff(t.demand)} ${t.demand < 1 ? "less" : "more"}`
       );
-      expect(step.note).toContain(
-        `the evening rush hits ${diff(t.peak)} ${t.peak < 1 ? "less" : "harder"}`
-      );
+      expect(step.note).toContain(rushWords(t.peak));
+      expect(step.note).not.toMatch(/rush hits \d/);
     });
     expect(LAMP_STEPS[0].note).toContain("2x as fast");
     expect(LAMP_STEPS[3].note).toContain("50% as fast");
-    expect(LAMP_STEPS[3].note).toContain("Pays 125%");
+    expect(LAMP_STEPS[3].note).toContain(
+      `Pays ${Math.round(steps[3].pay * 100)}%`
+    );
   });
 });

@@ -6,7 +6,7 @@ export const TUNING = {
    * again (and added forks, the fund and overdrive), so the whole run is
    * priced up to stay about two hours.
    */
-  costScale: { coast: 1, night: 28, sky: 9.5, last: 4.6 } as Record<
+  costScale: { coast: 1, night: 135, sky: 9.5, last: 4.6 } as Record<
     string,
     number
   >,
@@ -230,6 +230,8 @@ export const TUNING = {
       barrelSeconds: 4,
       /** The relit beam bursts for this long. */
       relitSeconds: 5,
+      /** Narration waits this much longer, so a story card never covers "LIT AGAIN!". */
+      relitHoldSeconds: 8,
       /** "DARK!" shows this long. */
       darkBannerSeconds: 6,
     },
@@ -315,7 +317,7 @@ export const TUNING = {
     /** The first evenings are gentle: mild, then usual. */
     gentleEvenings: 2,
     /** While the batteries are not full, this share of the plants' power goes into them. */
-    chargeShare: 0.22,
+    chargeShare: 0.3,
     /** Share of the power that goes into a battery that comes back out. */
     efficiency: 0.8,
     /**
@@ -326,6 +328,8 @@ export const TUNING = {
     batteryHolds: [
       100, 270, 730, 1970, 5310, 14350, 38740, 104600,
     ] as readonly number[],
+    /** A bank step shows once the plants make this many seconds' worth of what it holds. */
+    showBankSeconds: 40,
     /** Batteries keep this share back at the rush, so they never run to nothing. */
     reserveShare: 0.04,
     /** The lines let the batteries give back this much of the plants' power, and more per line. */
@@ -335,14 +339,18 @@ export const TUNING = {
     districts: 10,
     recoverySeconds: 24,
     /** Surviving the rush pays this many seconds of income, and know-how. */
-    litSeconds: 40,
+    litSeconds: 200,
     litKnowhow: 2,
     /** The banners last this long. */
     bannerSeconds: 6,
+    /** Pop-ups wait this long into a rush for the houses to snap dark. */
+    snapSeconds: 5,
     /** A change of streetlights (or a crew's move) takes this long. */
     lampLockSeconds: 8,
     /** Crews: how long a move to a new post takes. */
-    moveSeconds: 9,
+    moveSeconds: 6,
+    /** Going out on storm duty costs sandbags and wages, in seconds of what the cities pay (coming home is free). */
+    moveFeeSeconds: 30,
     /** Co-op and rush pricing make the rush this much bigger. */
     coopPeak: 1.12,
     pricingPeak: 1.1,
@@ -423,10 +431,10 @@ export const TUNING = {
    */
   lamps: {
     steps: [
-      { pay: 0.8, demand: 0.88, peak: 0.5, knowhow: 2 },
-      { pay: 0.9, demand: 0.94, peak: 0.75, knowhow: 1.4 },
+      { pay: 0.6, demand: 0.88, peak: 0.45, knowhow: 2 },
+      { pay: 0.8, demand: 0.94, peak: 0.7, knowhow: 1.4 },
       { pay: 1, demand: 1, peak: 1, knowhow: 1 },
-      { pay: 1.25, demand: 1.06, peak: 1.5, knowhow: 0.5 },
+      { pay: 1.6, demand: 1.06, peak: 1.6, knowhow: 0.5 },
     ] as readonly {
       pay: number;
       demand: number;
@@ -444,7 +452,7 @@ export const TUNING = {
     /** Crews to start with; the storm-crews buy adds one. */
     base: 2,
     /** Each building crew adds this share to the power cities pay. */
-    buildBoost: 0.1,
+    buildBoost: 0.4,
     /** Each crew at the school adds this share to the know-how a second. */
     schoolBoost: 0.6,
   },
@@ -472,11 +480,19 @@ export const TUNING = {
     /** Chances are drawn as random ** skew, so one town is usually likely. */
     skew: 1.3,
     /** Seconds of income a storm pays when it lands on a ready crew. */
-    bonusSeconds: 60,
+    bonusSeconds: 220,
+    /**
+     * Every front is small, ordinary or big (shown with the forecast): the
+     * bonus is this many times as much, and this often.
+     */
+    sizes: [0.5, 1, 2] as readonly number[],
+    sizeOdds: [0.3, 0.4, 0.3] as readonly number[],
+    /** What a storm on each town pays, against the usual: Rivertown is big, Harbor small. */
+    townWorth: [1.6, 1, 0.6] as readonly number[],
     /** A crew that has only just arrived earns this share of the bonus. */
     unreadyShare: 0.3,
     /** Seconds a crew takes to get ready, and to fix a dark town. */
-    readySeconds: 60,
+    readySeconds: 45,
     fixSeconds: 12,
     /** Spare parts: crews get ready and fix in this share of the time. */
     sparePartsFactor: 0.5,

@@ -35,12 +35,12 @@ export const COSTS: Record<string, number> = {
   // Batteries: about half what the plants of their size cost, per second held.
   "batt-1": 38,
   "batt-2": 100,
-  "batt-3": 34,
-  "batt-4": 129,
-  "batt-5": 454,
-  "batt-6": 2000,
-  "batt-7": 10900,
-  "batt-8": 41000,
+  "batt-3": 17,
+  "batt-4": 65,
+  "batt-5": 227,
+  "batt-6": 350,
+  "batt-7": 1900,
+  "batt-8": 5500,
   "relay-1": 3740,
   "relay-2": 12000,
   "relay-3": 20000,
@@ -86,4 +86,16 @@ export const COSTS: Record<string, number> = {
   "letgo-moon": 187,
   "letgo-sun": 275,
   "letgo-night": 241,
+};
+
+/**
+ * Upgrades that were cut (the grid's load balancer and smart grid went when
+ * the batteries came) and what they cost before the night's costScale, which
+ * was `REMOVED_NIGHT_SCALE` when they were bought. A save that owns one is
+ * paid back what it paid, whatever the night's prices are now.
+ */
+export const REMOVED_NIGHT_SCALE = 28;
+export const REMOVED_NIGHT_COSTS: Readonly<Record<string, number>> = {
+  "grid-1": 9600,
+  "grid-2": 9000,
 };

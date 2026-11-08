@@ -8,7 +8,7 @@ import {
   beamStep,
   isLampsOpen,
   knowhowAtStep,
-  lampStep,
+  lampChosen,
   supplyMW,
   tankCapacity,
 } from "./tick";
@@ -53,11 +53,17 @@ import {
   chanceOf,
   crewCount,
   crewPostActionId,
+  crewsAt,
+  crewsPosted,
+  isCommitted,
   forecastStep,
   frontsSoFar,
   isWeatherOpen,
   postOf,
   readyAtLandfall,
+  sizeMult,
+  stormSize,
+  townWorth,
   readyShare,
   secondsToLandfall,
   weatherStage,
@@ -155,15 +161,22 @@ const looksAfterThings =
     return picks;
   };
 
+/** How sure the forecast must be before a crew is sent at each step (the last step takes any that pays). */
+const SURE_ENOUGH = [60, 45, 0] as const;
+
 /**
- * Posts the crews. By default they build; with a project waiting only on
- * know-how they learn; and in a storm forecast the ones worth it go to the
- * likeliest towns. A crew on watch is a crew not building, so a bot weighs
- * what a town is worth (its chance, how ready a crew would be, the bonus and
- * the outage it saves) against the building it gives up while it is away.
- * A bot with real attention misses now and then: it skips every `skipEvery`th
- * front (counted by the desk, so the sim stays deterministic), and `onlyEvery`
- * makes a distracted player tend just one front in so many.
+ * Posts the crews. By default they build (a player who `learns` sends the last
+ * crew to the school while a project waits only on know-how: building pays
+ * more, so the bots' crews keep at it); and in a storm forecast the ones worth it go to the
+ * likeliest towns. A crew sent to watch is committed until the storm lands
+ * and builds nothing meanwhile, so a bot waits for a forecast sure enough for
+ * the step (an early guess is a keepsake), then weighs what the town is worth
+ * (its chance, how ready a crew would be, the bonus, the storm's size, the
+ * town's worth and the outage it saves) against the building it gives up and
+ * the road it pays for. A bot with real attention misses now and then: it
+ * skips every `skipEvery`th front (counted by the desk, so the sim stays
+ * deterministic), and `onlyEvery` makes a distracted player tend just one
+ * front in so many.
  */
 export const tendsCrews =
   (
@@ -173,6 +186,7 @@ export const tendsCrews =
       watches?: boolean;
       learns?: boolean;
       fromStep?: number;
+      sureEnough?: readonly number[];
     } = {}
   ): OilChoice =>
   (run, available) => {
@@ -187,51 +201,79 @@ export const tendsCrews =
     // know-how, and stays until it is done (no flip-flopping).
     const schoolCrew = crews - 1;
     const isLearning =
-      options.learns !== false &&
+      options.learns === true &&
       wantsKnowhow(run, 120, {
         hasOverdrive: false,
         isStaying: postOf(run, schoolCrew) === POST_SCHOOL,
       });
+    const committed = Array.from({ length: crews }, (_, c) => c).filter((c) =>
+      isCommitted(run, c)
+    );
     const wanted: number[] = [];
+    const step = forecastStep(run);
     if (
       options.watches !== false &&
       !isInattentive &&
       isWeatherOpen(run) &&
       weatherStage(run) === "forecast" &&
-      forecastStep(run) >= (options.fromStep ?? WATCH_FROM_STEP)
+      step >= (options.fromStep ?? WATCH_FROM_STEP)
     ) {
       const left = secondsToLandfall(run);
+      const sure = (options.sureEnough ?? SURE_ENOUGH)[step - 1] ?? 0;
       const worth = (town: number): number =>
         (chanceOf(run, town) / 100) *
-          (readyShare(readyAtLandfall(run, town, true)) * W.bonusSeconds +
+          (readyShare(readyAtLandfall(run, town, crewsAt(run, town) === 0)) *
+            W.bonusSeconds *
+            sizeMult(stormSize(run)) *
+            townWorth(town) +
             W.outageShare * W.outageSeconds) -
-        TUNING.crews.buildBoost * (left + 2 * TUNING.grid.moveSeconds);
+        TUNING.crews.buildBoost * (left + 2 * TUNING.grid.moveSeconds) -
+        // sandbags and wages for going out (a crew already there has paid)
+        (crewsPosted(run, POST_WATCH + town) > 0
+          ? 0
+          : TUNING.grid.moveFeeSeconds);
+      const room = crews - 1 - committed.length;
       [0, 1, 2]
+        .filter((town) => chanceOf(run, town) >= sure)
         .sort((a, b) => worth(b) - worth(a))
         .forEach((town) => {
-          if (wanted.length < crews - 1 && worth(town) > 0)
+          if (wanted.length < room && worth(town) > 0)
             wanted.push(POST_WATCH + town);
         });
     }
-    // Crews already on a wanted post stay; the others fill the rest.
+    // Crews already on a wanted post stay. The others fill the rest: the one
+    // at the school first (it is not building anyway), then the highest
+    // builder, so the first crew keeps the building going.
     const posts: number[] = Array.from({ length: crews }, (_, c) =>
       postOf(run, c)
     );
     const baseOf = (crew: number): number =>
       crew === schoolCrew && isLearning ? POST_SCHOOL : POST_BUILD;
     const open = [...wanted];
-    const taken = new Set<number>();
+    const taken = new Set<number>(committed);
     posts.forEach((post, c) => {
+      if (taken.has(c)) return;
       const at = open.indexOf(post);
       if (at >= 0) {
         open.splice(at, 1);
         taken.add(c);
       }
     });
+    const isIdle = (crew: number): boolean =>
+      posts[crew] === POST_SCHOOL || baseOf(crew) === POST_SCHOOL;
+    const free = posts
+      .map((_, c) => c)
+      .filter((c) => !taken.has(c))
+      .sort((a, b) => Number(isIdle(b)) - Number(isIdle(a)) || b - a);
+    const sent = new Map<number, number>();
+    free.forEach((crew) => {
+      const target = open.shift();
+      if (target !== undefined) sent.set(crew, target);
+    });
     const picks: string[] = [];
     posts.forEach((post, c) => {
       if (taken.has(c)) return;
-      const target = open.shift() ?? baseOf(c);
+      const target = sent.get(c) ?? baseOf(c);
       if (target === post) return;
       const id = crewPostActionId(c, target);
       if (available.includes(id)) picks.push(id);
@@ -395,7 +437,7 @@ export const setsLamps =
       finishing !== undefined && options.fixed === undefined
         ? finishing
         : reading;
-    if (want === lampStep(run)) return [];
+    if (want === lampChosen(run)) return [];
     const id = lampActionId(want);
     return available.includes(id) ? [id] : [];
   };
@@ -470,7 +512,7 @@ function wantsKnowhow(
       (run.resources.knowhow ?? 0);
     // Once dimmed for it, stay dimmed until it is done (no flip-flopping
     // while the power dips for a purchase).
-    const isDimmed = options.isStaying ?? lampStep(run) === 0;
+    const isDimmed = options.isStaying ?? lampChosen(run) === 0;
     return (
       (powerOk || isDimmed) &&
       missing > 0 &&
@@ -618,10 +660,13 @@ const lastPhaseActions: OilChoice = (run, available) => [
   ...(available.includes("flash-lamp") ? ["flash-lamp"] : []),
 ];
 
-/** The cover of a usual evening with the streetlights as they stand at their brightest-but-one. */
-function usualCover(run: RunState): number {
+/**
+ * How much of an evening's rush of this size (0 mild to 3 scorching, with the
+ * streetlights at this peak) the batteries could meet on a full day's charge.
+ */
+function eveningCover(run: RunState, level: number, lampPeak: number): number {
   const stored = Math.min(batteryCapacity(run), dailyChargeRoom(run));
-  return rushOutcome(run, rushExcessAt(run, 1, 1), stored).covered;
+  return rushOutcome(run, rushExcessAt(run, level, lampPeak), stored).covered;
 }
 
 /** The shop order when nothing says otherwise: priority, then the cheapest. */
@@ -639,27 +684,22 @@ const isBattery = (id: string): boolean => id.startsWith("batt-");
 
 /**
  * Buys by the shop's usual order, but keeps the batteries in step with the
- * plants: when a usual evening's rush is less than `target` met, a battery
- * comes first, and when it is far short the bot saves up for one instead of
- * buying another plant (which would only make the rush bigger).
+ * plants: when a rush of `level` (a hot evening by default) is less than
+ * `target` met with the streetlights at `lampPeak`, a battery comes first. It
+ * never waits for one with money in hand: a plant bought meanwhile pays for
+ * the next battery sooner. A `target` of 0 never puts a battery first.
  */
 export const buysBatteries =
-  (target = 0.9) =>
+  (target = 0.9, level = 2, lampPeak = 1) =>
   (run: RunState, affordable: UpgradeDef[]): UpgradeDef | undefined => {
     if (run.phase !== 1 || !isGridOpen(run))
       return cheapestFirst(run, affordable);
-    const cover = usualCover(run);
-    if (cover >= target) return cheapestFirst(run, affordable);
+    if (eveningCover(run, level, lampPeak) >= target)
+      return cheapestFirst(run, affordable);
     const batteries = affordable
       .filter((u) => isBattery(u.id))
       .sort((a, b) => upgradeCost(run, a) - upgradeCost(run, b));
-    if (batteries.length > 0) return batteries[0];
-    const isSaving =
-      cover < target * 0.6 &&
-      visibleUpgrades(lightUniverse, run).some(
-        (u) => isBattery(u.id) && !isMaxed(run, u)
-      );
-    return isSaving ? undefined : cheapestFirst(run, affordable);
+    return batteries.length > 0 ? batteries[0] : cheapestFirst(run, affordable);
   };
 
 const withOil = (

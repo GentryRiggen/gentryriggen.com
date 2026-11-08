@@ -33,6 +33,7 @@ import {
 import { lampActionId } from "../lamps";
 import {
   lampEffect,
+  lampChosen,
   lampLockLeft,
   lampStep,
   powerPerSecond,
@@ -274,14 +275,18 @@ describe("batteries and the rush", () => {
       expect(rushExcessAt(run, 2, steps[i].peak)).toBeGreaterThan(
         rushExcessAt(run, 2, steps[i - 1].peak)
       );
-    // a change takes a few seconds to settle, and cannot be undone sooner
+    // a change takes a few seconds to settle: the cities follow it only then,
+    // and it cannot be undone sooner
     const dim = performAction(def, run, lampActionId(0));
-    expect(lampStep(dim)).toBe(0);
+    expect(lampChosen(dim)).toBe(0);
+    expect(lampStep(dim)).toBe(2);
+    expect(lampEffect(dim).peak).toBe(steps[2].peak);
     expect(lampLockLeft(dim)).toBe(G.lampLockSeconds);
     expect(canPerformAction(def, dim, lampActionId(3))).toBe(false);
     const settled = play(dim, G.lampLockSeconds + 1);
+    expect(lampStep(settled)).toBe(0);
+    expect(lampEffect(settled).peak).toBe(steps[0].peak);
     expect(canPerformAction(def, settled, lampActionId(3))).toBe(true);
-    expect(lampEffect(dim).peak).toBe(steps[0].peak);
   });
 
   it("is never read as income by the probes, and shows a battery's worth", () => {
@@ -324,5 +329,176 @@ describe("a save from before the grid", () => {
     const loaded = reconcileRun(def, old);
     expect(() => play(loaded, 200)).not.toThrow();
     expect(gridClock(play(loaded, 5))).toBeGreaterThan(0);
+  });
+});
+
+describe("holding pop-ups back for the picture", () => {
+  it("holds them for the banner and the first seconds of the dark, not the whole time districts are out", () => {
+    const hot = night({}, 5, { pgLevel: 3, pgDays: 5 });
+    let run = toClock(hot, G.rushAt - 1);
+    let busyAtSnap = false;
+    let lastBusy = -1;
+    let darkSeconds = 0;
+    let busySeconds = 0;
+    for (let t = 0; t < G.rushSeconds + G.recoverySeconds + 10; t += 1) {
+      run = tick(def, run, 1);
+      if (districtsDark(run) > 0) darkSeconds += 1;
+      if (isGridMomentBusy(run)) {
+        busySeconds += 1;
+        lastBusy = t;
+      }
+      if (isRushNow(run) && districtsDark(run) > 0 && t < G.snapSeconds)
+        busyAtSnap = true;
+    }
+    expect(busyAtSnap).toBe(true);
+    expect(darkSeconds).toBeGreaterThan(G.rushSeconds);
+    // busy for the snap and the banner only: well under the time it stays dark
+    expect(busySeconds).toBeLessThan(darkSeconds * 0.6);
+    expect(busySeconds).toBeLessThanOrEqual(
+      G.snapSeconds + G.bannerSeconds + 2
+    );
+    expect(lastBusy).toBeLessThan(G.rushSeconds + G.bannerSeconds + 2);
+    // and it is not busy at all once the banner has gone, dark or not
+    expect(isGridMomentBusy(run)).toBe(false);
+  });
+
+  it("is quiet through a dark evening's long recovery", () => {
+    const hot = night({}, 5, { pgLevel: 3, pgDays: 5 });
+    let run = toClock(hot, G.rushAt - 1);
+    run = play(run, G.rushSeconds + G.bannerSeconds + 3);
+    expect(districtsDark(run)).toBeGreaterThan(0);
+    expect(isGridMomentBusy(run)).toBe(false);
+  });
+});
+
+describe("the streetlights are a commitment", () => {
+  it("follow a change only once it has settled: dimming at the last minute does not protect the start of the rush", () => {
+    const run = toClock(
+      night(BATTERIES, 5, { pgLevel: 2, pgDays: 5 }),
+      G.rushAt - 1
+    );
+    // asked for just before the rush, it has not settled when the rush begins
+    const dim = performAction(def, run, lampActionId(0));
+    const into = play(dim, 3);
+    expect(isRushNow(into)).toBe(true);
+    expect(lampStep(into)).toBe(2);
+    expect(lampChosen(into)).toBe(0);
+    // it takes effect once it has settled
+    expect(lampStep(play(dim, G.lampLockSeconds + 1))).toBe(0);
+  });
+
+  it("cannot be switched down and back for free around the rush: the dim lasts until the way back has settled", () => {
+    // dimmed as the bots do (settled well before the rush) ...
+    let run = toClock(
+      night(BATTERIES, 5, { pgLevel: 1, pgDays: 5 }),
+      G.rushAt - (G.lampLockSeconds + 3)
+    );
+    run = performAction(def, run, lampActionId(0));
+    run = toClock(run, G.rushAt + G.rushSeconds + 1);
+    expect(lampStep(run)).toBe(0);
+    // ... the way back (here the lights going back by themselves) is just
+    // as slow: the cities stay dim until it has settled
+    expect(lampLockLeft(run)).toBeGreaterThan(G.lampLockSeconds - 3);
+    expect(canPerformAction(def, run, lampActionId(3))).toBe(false);
+    expect(lampStep(play(run, G.lampLockSeconds - 3))).toBe(0);
+    expect(lampStep(play(run, G.lampLockSeconds + 1))).toBe(2);
+  });
+
+  it("goes back to what it was after the rush when it was dimmed for tonight", () => {
+    let run = toClock(
+      night(BATTERIES, 5, { pgLevel: 2, pgDays: 5 }),
+      G.rushAt - (G.lampLockSeconds + 3)
+    );
+    expect(lampStep(run)).toBe(2);
+    run = performAction(def, run, lampActionId(0));
+    run = toClock(run, G.rushAt + G.rushSeconds + 1);
+    expect(lampStep(run)).toBe(0);
+    // the rush is over: it settles back to Bright with no click
+    expect(lampChosen(run)).toBe(2);
+    run = play(run, G.lampLockSeconds + 2);
+    expect(lampStep(run)).toBe(2);
+  });
+
+  it("keeps a change made by day: only dusk's changes are for tonight", () => {
+    let run = toClock(night(BATTERIES, 5), 10);
+    run = performAction(def, run, lampActionId(0));
+    run = play(run, G.lampLockSeconds + 1);
+    run = toClock(run, G.rushAt + G.rushSeconds + G.lampLockSeconds + 5);
+    expect(lampStep(run)).toBe(0);
+  });
+});
+
+describe("the night's seed", () => {
+  it("does not depend on when the grid opens: a run's evenings are fixed when it begins", () => {
+    const evenings = (taps: number): number[] => {
+      const base = newRun(def, undefined, 11);
+      const run = reconcileRun(def, {
+        ...base,
+        // the player's taps move run.rng, whenever they happen
+        rng: base.rng + taps * 7919,
+        phase: 1,
+        owned: { gen1: 5, gen2: 4, "lines-1": 1, "lines-2": 1, ...BATTERIES },
+        resources: { ...base.resources, night: 99 },
+      });
+      let next = tick(def, run, 0.1);
+      const levels = [eveningLevel(next)];
+      let day = next.resources.pgDays;
+      for (let t = 0; t < G.daySeconds * 30; t += 1) {
+        next = tick(def, next, 1);
+        if (next.resources.pgDays !== day) {
+          day = next.resources.pgDays;
+          levels.push(eveningLevel(next));
+        }
+      }
+      return levels;
+    };
+    expect(evenings(0)).toEqual(evenings(500));
+    expect(newRun(def, undefined, 11).resources.nightSeed).not.toBe(0);
+    expect(newRun(def, undefined, 12).resources.nightSeed).not.toBe(
+      newRun(def, undefined, 11).resources.nightSeed
+    );
+  });
+});
+
+describe("saves from before the batteries", () => {
+  it("pay back what the cut load balancer and smart grid cost, once, in the night", () => {
+    const base = newRun(def, undefined, 3);
+    const old = reconcileRun(def, {
+      ...base,
+      phase: 1,
+      owned: { gen1: 5, gen2: 3, "grid-1": 1, "grid-2": 1 },
+      resources: { ...base.resources, night: 80, power: 1000 },
+    });
+    expect(old.owned["grid-1"]).toBe(1);
+    const after = tick(def, old, 1);
+    const paid = (9600 + 9000) * 28;
+    expect(paid).toBeGreaterThan(500_000);
+    // everything they paid comes back (and a second of the night's pay)
+    expect(after.resources.power - old.resources.power).toBeGreaterThanOrEqual(
+      paid
+    );
+    expect(after.resources.power - old.resources.power).toBeLessThan(
+      paid * 1.01
+    );
+    expect(after.owned["grid-1"]).toBeUndefined();
+    expect(after.owned["grid-2"]).toBeUndefined();
+    // and only once
+    const later = play(after, 5);
+    expect(later.resources.power - after.resources.power).toBeLessThan(
+      paid * 0.01
+    );
+  });
+
+  it("keeps the refund at what was paid, whatever the night costs now", () => {
+    const base = newRun(def, undefined, 3);
+    const old = reconcileRun(def, {
+      ...base,
+      phase: 1,
+      owned: { gen1: 5, gen2: 3, "grid-1": 1 },
+      resources: { ...base.resources, night: 80, power: 0 },
+    });
+    const after = tick(def, old, 1);
+    expect(after.resources.power).toBeGreaterThan(9600 * 28);
+    expect(after.resources.power).toBeLessThan(9600 * 28 * 1.05);
   });
 });

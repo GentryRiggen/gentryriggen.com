@@ -236,6 +236,12 @@ export interface UpgradeDef {
   /** Sim hint: higher is bought first among the affordable. */
   priority?: number;
   /**
+   * Has a place of its own: it pops in as soon as it is visible and never
+   * takes one of the `maxVisible` slots (a chain that must not be crowded
+   * out by whatever else is on offer).
+   */
+  hasOwnSlot?: boolean;
+  /**
    * Scorecard tag: "mechanic" is a new system or action, "scale" a bigger
    * step on something that exists, "filler" a small repeatable. Omitted is
    * "scale". Read only by the simulator and the scorecard.

@@ -31,6 +31,11 @@ import {
   readiness,
   schoolMult,
   setPost,
+  isCommitted,
+  moveFee,
+  sizeMult,
+  stormSize,
+  townWorth,
   stageSecondsLeft,
   lastStorm,
   stormResultLine,
@@ -253,7 +258,8 @@ describe("the weather desk", () => {
     const forecast = stormWillHit(toForecast(tick(def, nightRun(), 1)), 0);
     const landed = toLandfall(readyCrew(forecast, 0));
     expect(hasCrew(landed, 0)).toBe(true);
-    expect(readiness(landed, 0)).toBe(1);
+    // the sandbags are used up: the next front needs a crew to get ready afresh
+    expect(readiness(landed, 0)).toBe(0);
     const allDark = {
       ...landed,
       resources: { ...landed.resources, wxOut0: 60, wxOut1: 60, wxOut2: 60 },
@@ -352,8 +358,11 @@ describe("the weather desk", () => {
     expect(buildMult(sent)).toBeCloseTo(1 + TUNING.crews.buildBoost);
     expect(crewsHeaded(sent, 0)).toBe(1);
     expect(crewsPlaced(sent)).toBe(0);
+    // sandbags are only filled for a storm that is on its way
+    const waiting = idle(sent, TUNING.grid.moveSeconds + 20);
+    expect(readiness(waiting, 0)).toBe(0);
     // called away again, it goes back on the road and its readiness resets
-    const there = idle(sent, TUNING.grid.moveSeconds + 20);
+    const there = idle(toForecast(waiting), 20);
     expect(readiness(there, 0)).toBeGreaterThan(0.2);
     const away = performAction(def, there, crewPostActionId(0, POST_BUILD));
     expect(readiness(idle(away, 1), 0)).toBe(0);
@@ -398,12 +407,83 @@ describe("the weather desk", () => {
     expect(lastStorm(mixed).kind).toBe("vane");
   });
 
-  it("sizes the bonus at about a minute of income", () => {
+  it("sizes the bonus by how big the storm is and how big the town", () => {
     const forecast = stormWillHit(toForecast(tick(def, nightRun(), 1)), 0);
     const after = toLandfall(readyCrew(forecast, 0));
     const seconds = lastStorm(after).payout / incomePerSecond(forecast);
-    expect(seconds).toBeGreaterThan(45);
-    expect(seconds).toBeLessThan(75);
+    // a ready crew earns the whole bonus: so many seconds of income, times how
+    // big this front is and how much the town pays (income grows a little
+    // while the forecast plays out)
+    const expected =
+      TUNING.weather.bonusSeconds *
+      sizeMult(stormSize(forecast)) *
+      townWorth(0);
+    expect(seconds).toBeGreaterThan(expected * 0.7);
+    expect(seconds).toBeLessThan(expected * 1.6);
+  });
+
+  it("tells the forecast how big the storm is, from the draw, and the sizes all turn up", () => {
+    const sizes = new Set<number>();
+    for (let seed = 1; seed <= 40; seed += 1) {
+      const base = newRun(def, undefined, seed * 7919);
+      const run = toForecast(
+        tick(
+          def,
+          {
+            ...base,
+            phase: 1,
+            owned: { gen1: 5, gen2: 3 },
+            resources: { ...base.resources, night: 80, power: 1000 },
+          },
+          1
+        )
+      );
+      sizes.add(stormSize(run));
+    }
+    expect([...sizes].sort()).toEqual([0, 1, 2]);
+    expect(TUNING.weather.sizes[0]).toBeLessThan(1);
+    expect(TUNING.weather.sizes[2]).toBeGreaterThan(1);
+  });
+
+  it("holds a crew sent in the forecast until the storm lands, but not one that was already waiting", () => {
+    const forecast = toForecast(tick(def, nightRun(), 1));
+    const sent = shield(forecast, 1);
+    expect(isCommitted(sent, 0)).toBe(true);
+    // it cannot be called back, and nothing else can move it
+    expect(canPerformAction(def, sent, crewPostActionId(0, POST_BUILD))).toBe(
+      false
+    );
+    expect(canPerformAction(def, sent, crewPostActionId(0, POST_WATCH))).toBe(
+      false
+    );
+    // the other crew is free
+    expect(canPerformAction(def, sent, crewPostActionId(1, POST_SCHOOL))).toBe(
+      true
+    );
+    // the storm lands: it is free again
+    const landed = toLandfall(sent);
+    expect(isCommitted(landed, 0)).toBe(false);
+    expect(canPerformAction(def, landed, crewPostActionId(0, POST_BUILD))).toBe(
+      true
+    );
+    // a crew sent while the storm is still forming is not committed
+    const forming = tick(def, nightRun(), 1);
+    expect(isCommitted(shield(forming, 1), 0)).toBe(false);
+  });
+
+  it("charges for going out on storm duty, and nothing for coming home", () => {
+    const run = {
+      ...toForecast(tick(def, nightRun(), 1)),
+    };
+    run.resources.power = 1e9;
+    const out = shield(run, 0);
+    const fee = moveFee(incomePerSecond(run));
+    expect(fee).toBeGreaterThan(0);
+    expect(run.resources.power - out.resources.power).toBeCloseTo(fee, 4);
+    const landed = toLandfall(out);
+    const before = landed.resources.power;
+    const home = performAction(def, landed, crewPostActionId(0, POST_BUILD));
+    expect(home.resources.power).toBe(before);
   });
 
   it("survives a save round trip, mid-forecast", () => {

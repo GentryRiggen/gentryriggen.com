@@ -981,6 +981,20 @@ html:has(.jim-app) body {
   animation: ln-band 0.9s linear both;
 }
 
+/* A district's lights snap off: a white flash, then black. */
+@keyframes ln-cut {
+  0% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-cut {
+  opacity: 0;
+  animation: ln-cut 0.45s ease-out 1 both;
+}
+
 /* The sky flashes red once when the lights go out. */
 @keyframes ln-flash {
   0% {
@@ -1223,6 +1237,7 @@ html:has(.jim-app) body {
   .ln-drain,
   .ln-snap,
   .ln-band,
+  .ln-cut,
   .ln-flash,
   .ln-alarm,
   .ln-wave,
@@ -1244,6 +1259,7 @@ html:has(.jim-app) body {
     animation: none;
   }
   /* The flashes and rings are drawn hidden, so nothing is left covering the scene. */
+  .ln-cut,
   .ln-flash,
   .ln-alarm,
   .ln-wave,

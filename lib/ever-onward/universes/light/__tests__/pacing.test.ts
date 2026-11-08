@@ -32,7 +32,7 @@ describe("upgrades are few and gated", () => {
     expect(def.maxVisible).toBe(3);
   });
 
-  it("never offers more than 3 unbought upgrades in a real run", () => {
+  it("never offers more than 3 unbought upgrades in a real run (the batteries have a place of their own)", () => {
     let worst = 0;
     simulate(def, {
       maxSeconds: 6 * 3600,
@@ -40,13 +40,37 @@ describe("upgrades are few and gated", () => {
       strategy: REALISTIC,
       stopWhen: (run) => {
         const offered = visibleUpgrades(def, run).filter(
-          (u) => upgradeLevel(run, u.id) === 0 && (u.maxLevel ?? 1) >= 1
+          (u) =>
+            !u.hasOwnSlot &&
+            upgradeLevel(run, u.id) === 0 &&
+            (u.maxLevel ?? 1) >= 1
         );
         worst = Math.max(worst, offered.length);
         return false;
       },
     });
     expect(worst).toBeLessThanOrEqual(3);
+  });
+
+  it("gives a place of its own only to the battery chain, one step on offer at a time", () => {
+    const own = def.upgrades.filter((u) => u.hasOwnSlot);
+    expect(own.map((u) => u.id)).toEqual(
+      Array.from({ length: 8 }, (_, i) => `batt-${i + 1}`)
+    );
+    let worst = 0;
+    simulate(def, {
+      maxSeconds: 6 * 3600,
+      step: 1,
+      strategy: REALISTIC,
+      stopWhen: (run) => {
+        const offered = visibleUpgrades(def, run).filter(
+          (u) => u.hasOwnSlot && upgradeLevel(run, u.id) === 0
+        );
+        worst = Math.max(worst, offered.length);
+        return false;
+      },
+    });
+    expect(worst).toBeLessThanOrEqual(1);
   });
 
   it("keeps repeatables to a handful per phase", () => {

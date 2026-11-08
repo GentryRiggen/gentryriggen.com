@@ -47,6 +47,11 @@ const GATE_CAP = 59;
  * posts, the streetlights as a dial) scored 76.7 uncapped: the same total,
  * with the night's chores, tension and decisions all in their bands (the
  * night is 21 minutes, up from 19). The floor is that score minus 1.
+ *
+ * Fixing that night's review (the bank always on offer, a grid you read
+ * rather than sum, crews that commit, a lit night worth 200 seconds, the
+ * night's prices 135 instead of 28) scored 76.5 uncapped with the night
+ * back at 20 minutes. The floor stays where it was.
  */
 const UNCAPPED_FLOOR = 75.7;
 /** Gates knowingly failing; no other gate may fail. */

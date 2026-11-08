@@ -1,6 +1,6 @@
 import type { ActionDef } from "../../engine/types";
 import { PHASE_NIGHT } from "./resources";
-import { isLampsOpen, lampLockLeft, lampStep, setLamps } from "./tick";
+import { isLampsOpen, lampChosen, lampLockLeft, setLamps } from "./tick";
 import { TUNING } from "./tuning";
 
 /**
@@ -8,9 +8,9 @@ import { TUNING } from "./tuning";
  * megawatt, but the evening rush hits harder, each town wants a little more
  * power and the busy crews learn less. Softer pays less, eases the rush,
  * lights more towns with the same plants and gives the crews time to learn
- * (know-how for projects). A change takes a few seconds to settle, and the
- * right step moves with how big tonight's rush is, so it is worth setting
- * each evening.
+ * (know-how for projects). The cities follow a change only after a few
+ * seconds, so it has to be made before the rush, and the right step moves with
+ * how big tonight's rush is, so it is worth setting each evening.
  */
 
 const LABELS = ["Soft glow", "Gentle", "Bright", "Dazzling"] as const;
@@ -25,6 +25,14 @@ const learn = (n: number): string =>
     ? `crews learn ${Number(n.toFixed(2))}x as fast`
     : `crews learn ${pct(n)} as fast`;
 
+/** How the step shapes the evening rush, in words (never a percentage to sum up). */
+export function rushWords(peak: number): string {
+  if (peak <= 0.6) return "a much gentler evening rush";
+  if (peak < 1) return "a gentler evening rush";
+  if (peak === 1) return "the usual evening rush";
+  return "a much harder evening rush";
+}
+
 /** One plain line per step, read from the tuning so it can't drift. */
 export function lampNote(step: number): string {
   const s = TUNING.lamps.steps[step];
@@ -33,7 +41,7 @@ export function lampNote(step: number): string {
     `Pays ${pct(s.pay)}`,
     learn(s.knowhow),
     `towns want ${change(s.demand, "less", "more")}`,
-    `the evening rush hits ${change(s.peak, "less", "harder")}`,
+    rushWords(s.peak),
   ].join(" · ");
 }
 
@@ -56,7 +64,7 @@ export const LAMP_ACTIONS: readonly ActionDef[] = LAMP_STEPS.map((step, i) => ({
   describe: (run) => ({
     label: step.label,
     detail: step.note,
-    isBlocked: lampStep(run) === i || lampLockLeft(run) > 0,
+    isBlocked: lampChosen(run) === i || lampLockLeft(run) > 0,
   }),
   perform: (run) => setLamps(run, i),
 }));

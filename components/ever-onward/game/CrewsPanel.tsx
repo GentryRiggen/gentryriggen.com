@@ -12,12 +12,16 @@ import {
   buildingCrews,
   crewCount,
   crewPostActionId,
+  isCommitted,
   isCrewsOpen,
   isWeatherOpen,
+  moveFee,
   postOf,
   schoolCrews,
   travelLeft,
 } from "@/lib/ever-onward/universes/light/weather";
+import { short } from "@/lib/ever-onward/universes/light/preview";
+import { incomePerSecond } from "@/lib/ever-onward/universes/light/tick";
 import { TUNING } from "@/lib/ever-onward/universes/light/tuning";
 import type { PanelProps } from "../universes/types";
 import PanelFrame from "./retro/PanelFrame";
@@ -93,6 +97,7 @@ function CrewsPanel({ def, run, onAct }: PanelProps) {
               data-testid={`lm-crew-${crew}`}
               data-post={post}
               data-moving={isMoving}
+              data-committed={isCommitted(run, crew)}
               className="space-y-1.5 border-2 border-slate-600 bg-slate-900/80 p-2"
             >
               <p className="flex items-center gap-2 font-mono text-sm font-bold text-slate-100">
@@ -102,6 +107,7 @@ function CrewsPanel({ def, run, onAct }: PanelProps) {
                   {isMoving
                     ? `on the road, ${Math.ceil(road)} s`
                     : postState(post)}
+                  {isCommitted(run, crew) && " until the storm lands"}
                 </span>
               </p>
               <div
@@ -149,8 +155,11 @@ function CrewsPanel({ def, run, onAct }: PanelProps) {
         {isWeatherOpen(run)
           ? " On watch: a crew at the town the storm hits earns a bonus and keeps its lights on, but builds nothing."
           : ""}{" "}
-        A move takes {TUNING.grid.moveSeconds} seconds on the road, and the crew
-        does no work until it arrives.
+        A crew sent to watch a town once the forecast is up stays there until
+        the storm lands. A move takes {TUNING.grid.moveSeconds} seconds on the
+        road, and the crew does no work until it arrives. Going out on storm
+        watch costs about {short(moveFee(incomePerSecond(run)))} power in
+        sandbags and wages; coming home is free.
       </p>
     </PanelFrame>
   );

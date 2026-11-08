@@ -4,6 +4,7 @@ import { memo } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import {
+  STORM_SIZE_NAMES,
   TOWNS,
   chanceOf,
   crewCount,
@@ -20,6 +21,8 @@ import {
   stageLength,
   stageSecondsLeft,
   stormResultLine,
+  stormSize,
+  townWorth,
   vanePick,
   weatherStage,
 } from "@/lib/ever-onward/universes/light/weather";
@@ -54,6 +57,14 @@ const clock = (seconds: number): string => {
   const whole = Math.max(0, Math.ceil(seconds));
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
 };
+
+/** What a storm on the town pays, in words: a big town pays more, a small one less. */
+const worthWords = (worth: number): string =>
+  worth > 1.2
+    ? "big town: pays more"
+    : worth < 0.8
+      ? "small town: pays less"
+      : "pays the usual";
 
 /** Little pixel pictures of the three towns (river, hill, harbor). */
 function TownArt({ town }: { town: number }) {
@@ -183,13 +194,19 @@ function TownCard({ run, town }: TownCardProps) {
       role="group"
       aria-label={name}
       aria-describedby={`lm-town-${town}-about`}
-      className={`flex min-h-44 min-w-0 flex-col items-center justify-between gap-1.5 border-4 p-2 text-center ${frame}`}
+      className={`flex min-h-48 min-w-0 flex-col items-center justify-between gap-1.5 border-4 p-2 text-center ${frame}`}
     >
       <span id={`lm-town-${town}-about`} className="sr-only">
         {details}
       </span>
       <span className={`${pixelClass} text-[10px] leading-tight text-sky-100`}>
         {name}
+      </span>
+      <span
+        data-testid={`lm-town-${town}-size`}
+        className="font-mono text-[10px] leading-none text-sky-300"
+      >
+        {worthWords(townWorth(town))}
       </span>
       <span className={isDark ? "opacity-40 grayscale" : ""}>
         <TownArt town={town} />
@@ -326,6 +343,7 @@ function WeatherDesk({ run }: WeatherDeskProps) {
   const earned = run.resources.wxEarned ?? 0;
   const vaneTown = TOWNS[vanePick(run)];
   const step = forecastStep(run);
+  const size = STORM_SIZE_NAMES[stormSize(run)];
 
   return (
     <PanelFrame
@@ -334,7 +352,9 @@ function WeatherDesk({ run }: WeatherDeskProps) {
       icon="⛈"
       tone="sky"
       status={
-        isForecast ? `Forecast ${step} of ${FORECAST_STEPS}` : "Storm forming"
+        isForecast
+          ? `Forecast ${step} of ${FORECAST_STEPS}: a ${size} storm`
+          : "Storm forming"
       }
       statusActive={isForecast}
       statusTestId="lm-weather-step"
@@ -393,8 +413,8 @@ function WeatherDesk({ run }: WeatherDeskProps) {
       <p className="font-mono text-sm text-sky-50">
         {isForecast
           ? step < FORECAST_STEPS
-            ? "The storm's path gets surer each step. Put a crew on a town now on a guess, or wait for a surer forecast: a crew needs time to get ready."
-            : "Last forecast: this is about where it lands."
+            ? `A ${size} storm. Its path gets surer each step. Put a crew on a town now on a guess, or wait for a surer forecast: a crew needs time to get ready.`
+            : `A ${size} storm. Last forecast: this is about where it lands.`
           : `A storm is forming out at sea. Post a crew on a town ahead of it in the Crews panel. A crew on watch takes about ${Math.round(
               readySeconds(run)
             )} seconds to get ready once it is there.`}

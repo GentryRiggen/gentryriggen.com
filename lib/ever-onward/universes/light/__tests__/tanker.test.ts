@@ -112,8 +112,31 @@ describe("oil tankers", () => {
     run.resources.lampDarkFor = T.darkBannerSeconds + 30;
     expect(isCoastMomentBusy(run)).toBe(false);
     run.resources.oil = 100;
-    run.resources.lampRelit = 3;
+    run.resources.lampRelitHold = 3;
     expect(isCoastMomentBusy(run)).toBe(true);
+  });
+
+  it("holds narration a few seconds past the relight banner, and no longer", () => {
+    const run = coast(4);
+    run.resources.oil = 0;
+    def.tick(run, 1);
+    run.resources.coins = 1e9;
+    run.resources.oil = 100;
+    def.tick(run, 1);
+    // the relight banner is up, and narration waits
+    expect(sceneInfo(run).relit).toBeGreaterThan(0);
+    expect(isCoastMomentBusy(run)).toBe(true);
+    // the banner is gone ...
+    for (let t = 0; t < T.relitSeconds; t += 1) def.tick(run, 1);
+    expect(sceneInfo(run).relit).toBe(0);
+    // ... narration still waits a few seconds, so the story card cannot cover it ...
+    expect(T.relitHoldSeconds).toBeGreaterThan(T.relitSeconds);
+    expect(T.relitHoldSeconds - T.relitSeconds).toBeLessThanOrEqual(4);
+    expect(isCoastMomentBusy(run)).toBe(true);
+    // ... and then lets go
+    for (let t = 0; t < T.relitHoldSeconds - T.relitSeconds + 1; t += 1)
+      def.tick(run, 1);
+    expect(isCoastMomentBusy(run)).toBe(false);
   });
 });
 

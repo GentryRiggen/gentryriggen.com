@@ -94,6 +94,16 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "lamps", label: "Streetlight brightness", initial: 2, phases: HIDDEN },
   { id: "lampChanges", label: "Streetlight changes", phases: HIDDEN },
   { id: "lampLock", label: "Streetlights settling", phases: HIDDEN },
+  {
+    id: "lampHome",
+    label: "Streetlight step to go back to after the rush (step + 1)",
+    phases: HIDDEN,
+  },
+  {
+    id: "lampNext",
+    label: "Streetlight step on its way (step + 1)",
+    phases: HIDDEN,
+  },
   // The grid (No More Night): the day clock, the batteries and the evening's
   // moments, all read by grid.ts. A save without them reads as "not begun".
   { id: "pgStarted", label: "Grid day clock begun", phases: HIDDEN },
@@ -125,6 +135,9 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "crewPost0", label: "Crew 1 post", phases: HIDDEN },
   { id: "crewPost1", label: "Crew 2 post", phases: HIDDEN },
   { id: "crewPost2", label: "Crew 3 post", phases: HIDDEN },
+  { id: "crewLock0", label: "Crew 1 committed to its watch", phases: HIDDEN },
+  { id: "crewLock1", label: "Crew 2 committed to its watch", phases: HIDDEN },
+  { id: "crewLock2", label: "Crew 3 committed to its watch", phases: HIDDEN },
   { id: "crewTravel0", label: "Crew 1 road time", phases: HIDDEN },
   { id: "crewTravel1", label: "Crew 2 road time", phases: HIDDEN },
   { id: "crewTravel2", label: "Crew 3 road time", phases: HIDDEN },
@@ -163,6 +176,11 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "hbShifts", label: "Rival harbor changes", phases: HIDDEN },
   { id: "hbRate", label: "Going rate", phases: HIDDEN },
   { id: "hbSeed", label: "Harbor random stream", phases: HIDDEN },
+  {
+    id: "nightSeed",
+    label: "The night's seed, fixed when the run began",
+    phases: HIDDEN,
+  },
   // Oil tankers and the lamp's moments (The Coast), read by tanker.ts
   // 0 until the market has moved: a save from before reads the saved price.
   { id: "oilBase", label: "Oil market price", phases: HIDDEN },
@@ -180,6 +198,11 @@ export const RESOURCES: readonly ResourceDef[] = [
   },
   { id: "lampDarks", label: "Times the lamp went dark", phases: HIDDEN },
   { id: "lampRelit", label: "Beam burst left", phases: HIDDEN },
+  {
+    id: "lampRelitHold",
+    label: "Seconds narration still waits after a relight",
+    phases: HIDDEN,
+  },
   // The Weather Desk (No More Night): all timers and tallies, read by weather.ts
   { id: "wxStage", label: "Weather stage", phases: HIDDEN },
   { id: "wxTimer", label: "Weather timer", phases: HIDDEN },
@@ -190,6 +213,18 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "wxChance2", label: "Chance, town 3", phases: HIDDEN },
   { id: "wxStep", label: "Forecast step", phases: HIDDEN },
   { id: "wxTarget", label: "Where the storm lands", phases: HIDDEN },
+  {
+    id: "wxSize",
+    label: "How big the storm is (0 small, 1 ordinary, 2 big)",
+    initial: 1,
+    phases: HIDDEN,
+  },
+  {
+    id: "wxLastSize",
+    label: "How big the last storm was",
+    initial: 1,
+    phases: HIDDEN,
+  },
   { id: "wxBase0", label: "First forecast, town 1", phases: HIDDEN },
   { id: "wxBase1", label: "First forecast, town 2", phases: HIDDEN },
   { id: "wxBase2", label: "First forecast, town 3", phases: HIDDEN },

@@ -36,7 +36,11 @@ export default function SceneCaption({ info }: { info: LightSceneInfo }) {
     <p
       aria-hidden="true"
       data-testid="lm-scene-caption"
-      className={`${pixelClass} pointer-events-none absolute bottom-0 left-0 max-w-full truncate bg-black/65 px-2 py-1.5 text-[10px] leading-none text-amber-100 lg:text-xs`}
+      data-phase={info.phase}
+      className={`${pixelClass} pointer-events-none absolute left-0 max-w-full truncate bg-black/65 px-2 py-1.5 text-[10px] leading-none text-amber-100 lg:text-xs ${
+        // The night's stations fill the picture's bottom edge: the caption sits on top.
+        info.phase === "night" ? "top-0" : "bottom-0"
+      }`}
     >
       <CaptionLine text={captionFor(info)} />
     </p>

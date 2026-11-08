@@ -5,9 +5,9 @@ import { formatNumber } from "@/lib/ever-onward/engine/format";
 import {
   EVENING_NAMES,
   batteryCapacity,
-  batteryCharge,
-  batterySecondsOfGrid,
+  batteryCount,
   blackouts,
+  chargeShare01,
   dayShare,
   districtsDark,
   eveningLevel,
@@ -15,12 +15,9 @@ import {
   isRushNow,
   lastEvening,
   litNights,
-  rateShare,
-  rushCarry,
-  rushExcess,
   secondsToRush,
 } from "@/lib/ever-onward/universes/light/grid";
-import { supplyMW } from "@/lib/ever-onward/universes/light/tick";
+import { supplyMW, tier } from "@/lib/ever-onward/universes/light/tick";
 import { TUNING } from "@/lib/ever-onward/universes/light/tuning";
 import type { PanelProps } from "../universes/types";
 import PanelFrame from "./retro/PanelFrame";
@@ -130,26 +127,58 @@ function Gauge({
   );
 }
 
+/** How full the batteries look, in words (the bar says the rest). */
+const fullness = (share: number): string =>
+  share >= 0.97
+    ? "full"
+    : share >= 0.75
+      ? "nearly full"
+      : share >= 0.4
+        ? "about half full"
+        : share > 0.05
+          ? "low"
+          : "empty";
+
+/** Tonight's rush drawn as glowing bars, one more for each hotter evening. */
+function RushBars({ level }: { level: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      data-testid="lm-grid-bars"
+      data-level={level}
+      className="flex h-6 items-end gap-1"
+    >
+      {EVENING_NAMES.map((name, i) => (
+        <span
+          key={name}
+          className={`w-3 border border-slate-950 ${
+            i <= level ? "bg-orange-400" : "bg-slate-800"
+          } ${["h-2", "h-3", "h-4.5", "h-6"][i]}`}
+        />
+      ))}
+    </span>
+  );
+}
+
 /**
  * The grid: the day, tonight's evening rush, and the three things that have
- * to stay in step to carry it. It shows the numbers and never says which
- * streetlights to pick; the batteries and lines are bought in the shop.
+ * to stay in step to carry it. It shows what you would see (how big tonight
+ * looks, how full the bank is) and never the sums, nor which streetlights
+ * to pick; the batteries and lines are bought in the shop.
  */
 function GridPanel({ run }: PanelProps) {
   if (!isGridOpen(run) || run.complete) return null;
   const plants = supplyMW(run);
   const capacity = batteryCapacity(run);
-  const charge = batteryCharge(run);
+  const share = chargeShare01(run);
   const level = eveningLevel(run);
   const isRush = isRushNow(run);
   const dark = districtsDark(run);
-  const asks = rushExcess(run) * G.rushSeconds;
-  const holds =
-    batterySecondsOfGrid(run) * (capacity > 0 ? charge / capacity : 0);
   const last = lastEvening(run);
   const lits = litNights(run);
   const out = blackouts(run);
   const toRush = secondsToRush(run);
+  const lines = tier(run, "lines");
   const result =
     last === 1
       ? `Last evening every district stayed lit. ${lits} ${lits === 1 ? "night" : "nights"} lit all night so far.`
@@ -177,18 +206,17 @@ function GridPanel({ run }: PanelProps) {
       resultTone={last === 2 ? "slate" : "emerald"}
     >
       <DayStrip share={dayShare(run)} />
-      <p
-        data-testid="lm-grid-tonight"
-        className="font-mono text-sm font-bold text-amber-100"
-      >
-        {isRush
-          ? `The rush is on: everybody switched on at once.`
-          : `Tonight's rush: a ${EVENING_NAMES[level]} evening, in ${clock(toRush)}.`}{" "}
-        <span className="text-slate-200">
-          With the streetlights as they are it asks for {asks.toFixed(1)}{" "}
-          seconds of the grid on top of what the plants make.
-        </span>
-      </p>
+      <div className="flex items-center gap-3">
+        <RushBars level={level} />
+        <p
+          data-testid="lm-grid-tonight"
+          className="font-mono text-sm font-bold text-amber-100"
+        >
+          {isRush
+            ? `The rush is on: everybody switched on at once.`
+            : `Tonight's rush: a ${EVENING_NAMES[level]} evening, in ${clock(toRush)}.`}
+        </p>
+      </div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <Gauge
           testId="lm-grid-plants"
@@ -198,9 +226,9 @@ function GridPanel({ run }: PanelProps) {
         />
         <Gauge
           testId="lm-grid-lines"
-          label="Lines carry"
-          value={`${formatNumber(Math.floor(rushCarry(run)))} MW`}
-          note={`The most the batteries can give back at once: ${Math.round(rateShare(run) * 100)}% of the plants.`}
+          label="Power lines"
+          value={lines > 0 ? `${lines} built` : "none yet"}
+          note="More lines let the batteries give their power back faster."
         />
         <div
           data-testid="lm-grid-batteries"
@@ -209,18 +237,13 @@ function GridPanel({ run }: PanelProps) {
           <p className={`${pixelClass} text-[10px] text-slate-300`}>
             Batteries
           </p>
-          <p
-            className={`${pixelClass} text-sm tabular-nums text-amber-200 sm:text-base`}
-          >
-            {capacity > 0 ? `${holds.toFixed(1)} s` : "none yet"}
+          <p className={`${pixelClass} text-sm text-amber-200 sm:text-base`}>
+            {capacity > 0 ? fullness(share) : "none yet"}
           </p>
-          <Segments
-            share={capacity > 0 ? charge / capacity : 0}
-            tone="bg-lime-300"
-          />
+          <Segments share={share} tone="bg-lime-300" />
           <p className="font-mono text-xs leading-snug text-slate-300">
             {capacity > 0
-              ? `Stored of ${batterySecondsOfGrid(run).toFixed(1)} s they hold. They charge by day and carry the rush.`
+              ? `${batteryCount(run)} ${batteryCount(run) === 1 ? "step" : "steps"} built. They charge by day and carry the rush.`
               : "Buy some in the shop. They charge by day and carry the rush."}
           </p>
         </div>
