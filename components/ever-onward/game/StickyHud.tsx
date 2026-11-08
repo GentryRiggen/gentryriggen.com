@@ -182,7 +182,7 @@ export default function StickyHud({
               value={value}
               format={formatPrimary}
               testId="lm-hud-value"
-              className={`${pixelClass} text-xl leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
+              className={`${pixelClass} shrink-0 text-xl leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
             />
             {/* The rate gives way (clipped) before it can run under the
                 slim row's goal on a narrow phone. */}
@@ -233,7 +233,7 @@ export default function StickyHud({
               title={alert}
               aria-label={alert}
               onClick={onSelectAlert}
-              className={`${pixelClass} -my-2.5 min-h-11 shrink-0 animate-pulse touch-manipulation border-2 border-red-500 bg-red-950 px-2 py-1 text-[10px] leading-none text-red-200 motion-reduce:animate-none ${retroFocusClass}`}
+              className={`${pixelClass} -my-2.5 min-h-11 min-w-0 animate-pulse touch-manipulation truncate border-2 border-red-500 bg-red-950 px-2 py-1 text-[10px] leading-none text-red-200 motion-reduce:animate-none ${retroFocusClass}`}
             >
               ⚠ {alert.split("!")[0]}!
             </button>

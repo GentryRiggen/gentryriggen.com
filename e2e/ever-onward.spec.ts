@@ -236,11 +236,16 @@ test.describe("Ever Onward", () => {
     for (const i of [0, 1, 2, 3, 4]) {
       await expect(panel.getByTestId(`ms-price-${i}`)).toContainText("+ ");
     }
+    // The jump's bot may have left the sign anywhere but Free.
+    const before = await page
+      .getByTestId("eo-stand")
+      .getAttribute("data-price");
+    expect(before).not.toBe("0");
     await panel.getByRole("radio", { name: "Price: Free" }).click();
     await expect(panel).toHaveAttribute("data-painting", "yes");
     await expect(page.getByTestId("eo-stand")).toHaveAttribute(
       "data-price",
-      "2"
+      before ?? "2"
     );
     await expect(panel.getByTestId("ms-street-0")).toContainText("float");
     await panel.getByTestId("ms-send-3").click();

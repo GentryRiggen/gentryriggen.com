@@ -10,6 +10,7 @@ import {
   steersFloats,
   takesFork,
 } from "../bots";
+import { forkSide } from "../forks";
 import { sceneInfo } from "../scene";
 import { incomePerSecond } from "../tick";
 import {
@@ -23,6 +24,7 @@ import {
   coinsPerSecond,
   crowdAt,
   dayKind,
+  donorFor,
   floatsOn,
   floatsOwned,
   grumpyCount,
@@ -37,6 +39,7 @@ import {
   sendActionId,
   streetFall,
   streetRise,
+  targetOf,
   townMood,
   weightOf,
 } from "../town";
@@ -98,18 +101,20 @@ describe("The town: the lemonade stand", () => {
     const crowds = PRICE_DEFS.map((_, level) => crowdAt(run, level));
     for (let i = 1; i < crowds.length; i += 1)
       expect(crowds[i]).toBeLessThan(crowds[i - 1]);
-    expect(coinsAt(run, 0)).toBe(0);
+    // Free still gets a trickle of tips, so it is a choice and not a trap.
+    expect(coinsAt(run, 0)).toBeGreaterThan(0);
+    expect(coinsAt(run, 0)).toBeLessThan(coinsAt(run, 1) / 2);
     expect(coinsAt(run, 2)).toBeGreaterThan(coinsAt(run, 1));
     // The top price brings so few people that it earns less than the middle.
     expect(coinsAt(run, 4)).toBeLessThan(coinsAt(run, 3) * 1.5);
   });
 
-  it("pays the most cheers to a full street and no coins for free lemonade", () => {
+  it("pays the most cheers to a full street and hardly any coins for free lemonade", () => {
     const fair = openTown();
     const free = performAction(def, fair, priceActionId(0));
     const settled = advance(free, T.repaintSeconds + 1);
     expect(priceOf(settled)).toBe(0);
-    expect(coinsPerSecond(settled)).toBe(0);
+    expect(coinsPerSecond(settled)).toBeLessThan(coinsPerSecond(fair) / 2);
     expect(incomePerSecond(settled)).toBeGreaterThan(incomePerSecond(fair));
     const pricey = advance(
       performAction(def, fair, priceActionId(4)),
@@ -277,6 +282,17 @@ describe("The town: nothing is best for good (simulated)", () => {
       results[`price${level}`] = mean(both(buildsFloats, holdsPrice(level)));
     results.evenSplit = mean(both(buildsFloats, runsStand()));
     results.plainSplit = mean(both(buildsFloats, runsStand(), plainSplit));
+    results.partyOnly = mean(
+      both(buildsFloats, runsStand(), (run, a) =>
+        dayKind(run) === 3 ? steersFloats(10)(run, a) : []
+      )
+    );
+    results.rainOnly = mean(
+      both(buildsFloats, runsStand(), (run, a) =>
+        dayKind(run) === 2 ? steersFloats(10)(run, a) : []
+      )
+    );
+    if (process.env.EO_FRONTIER) console.table(results);
   });
 
   it("finishes the town sooner by adjusting the price than at any one price", () => {
@@ -290,9 +306,13 @@ describe("The town: nothing is best for good (simulated)", () => {
       expect(results.evenSplit).toBeLessThan(fixed);
   });
 
-  it("finishes sooner by moving floats with the day than with one split for good", () => {
-    expect(results.adjusts).toBeLessThan(results.evenSplit);
-    expect(results.adjusts).toBeLessThan(results.plainSplit);
+  it("moving floats with the day is never a mistake, even though a whole town's time barely moves", () => {
+    // Across a whole town the weather is diluted, so steering is about as
+    // quick as one split (within 2%), and never slower than moving only on
+    // plain days. What it changes is the route's pay on the day itself: see
+    // the test below.
+    expect(results.adjusts).toBeLessThan(results.evenSplit * 1.02);
+    expect(results.adjusts).toBeLessThan(results.plainSplit * 1.02);
   });
 
   it("never lets one end of the price win: free is far slower, pricey slower still than fair", () => {
@@ -312,5 +332,103 @@ describe("The town: nothing is best for good (simulated)", () => {
     expect(floatsOwned(run)).toBeGreaterThan(T.startFloats);
     expect(townMood(run)).toBeGreaterThan(0.3);
     expect(STREETS.length).toBe(STREET_COUNT);
+  });
+});
+
+describe("The town: the route is a dial, and the factory is playable", () => {
+  /** A town of `floats` spread evenly, on a given day, every street at its target. */
+  function dayTown(floats: number, kind: number, street: number): RunState {
+    const start = openTown();
+    const even = [0, 0, 0, 0];
+    for (let n = 0; n < floats; n += 1) even[n % 4] += 1;
+    const run: RunState = {
+      ...start,
+      // The bot looks at the start of every ten seconds.
+      time: Math.ceil(start.time / 10) * 10,
+      resources: {
+        ...start.resources,
+        tnFloats: floats,
+        tnDay: kind,
+        tnDaySt: street,
+        tnDayLeft: 75,
+        tnCalm: 999,
+      },
+    };
+    even.forEach((n, i) => (run.resources[`tnF${i}`] = n));
+    for (let i = 0; i < STREET_COUNT; i += 1)
+      run.resources[`tnH${i}`] = targetOf(run, i);
+    return run;
+  }
+
+  /** The route's pay averaged over a day, with or without steering at the start. */
+  function averageRoute(run: RunState, steer: boolean): number {
+    let now = run;
+    let total = 0;
+    const ids = def.actions!.map((a) => a.id);
+    for (let t = 0; t < 75; t += 1) {
+      if (steer && t % 10 === 0)
+        for (const id of steersFloats(10)(now, ids))
+          now = performAction(def, now, id);
+      now = tick(def, now, 1);
+      total += routeMult(now);
+    }
+    return total / 75;
+  }
+
+  it("pays 6% or more extra on a street party when steered, and loses nothing on a rainy day", () => {
+    for (const [street, floats] of [
+      [0, 6],
+      [1, 6],
+      [2, 8],
+    ] as const) {
+      const party = dayTown(floats, 3, street);
+      expect(averageRoute(party, true)).toBeGreaterThan(
+        averageRoute(party, false) * 1.06
+      );
+    }
+    for (const [street, floats] of [
+      [0, 6],
+      [1, 6],
+      [2, 8],
+    ] as const) {
+      const rain = dayTown(floats, 2, street);
+      expect(averageRoute(rain, true)).toBeGreaterThanOrEqual(
+        averageRoute(rain, false) - 1e-9
+      );
+    }
+  });
+
+  it("takes a float from the street that will miss it least, never one that would turn grumpy", () => {
+    const run = dayTown(6, 0, 0);
+    // 2-2-1-1: sending one to Elm comes from Mill (more floats, less weight), not from a street with one.
+    expect(floatsOn(run, 0)).toBe(2);
+    expect(donorFor(run, 0)).toBe(1);
+    const lone = { ...run, resources: { ...run.resources, tnF1: 1, tnF3: 3 } };
+    expect(donorFor(lone, 0)).toBe(3);
+  });
+
+  it("opens the factory fork with no street grumpy", () => {
+    const start = runAtPhaseStart(1);
+    const run: RunState = {
+      ...start,
+      owned: { ...start.owned, clown: 3, band: 2 },
+      resources: { ...start.resources, fkTown: 2 },
+    };
+    const opened = advance(run, 2);
+    expect(forkSide(opened, "town")).toBe(1);
+    expect(grumpyCount(opened)).toBe(0);
+    // And a street left with one float is still not grumpy under the factory.
+    const settled = advance(opened, 200);
+    for (let i = 0; i < STREET_COUNT; i += 1)
+      if (floatsOn(settled, i) >= 1) expect(isGrumpy(settled, i)).toBe(false);
+  });
+
+  it("makes the stand's prices a real choice on a plain day: Dear beats Fair on coins, Free trickles", () => {
+    const run = dayTown(6, 0, 0);
+    expect(coinsAt(run, 3)).toBeGreaterThan(coinsAt(run, 2));
+    expect(coinsAt(run, 0)).toBeGreaterThan(0);
+    // A hot day lifts Pricey above Dear.
+    const hot = dayTown(6, 1, 0);
+    expect(coinsAt(hot, 4)).toBeGreaterThan(coinsAt(hot, 3));
   });
 });

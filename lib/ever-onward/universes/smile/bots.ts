@@ -27,6 +27,7 @@ import {
   coinsAt,
   coinsOf,
   dayKind,
+  dayLeft,
   dayStreet,
   DAY_RAIN,
   floatCost,
@@ -38,6 +39,7 @@ import {
   priceActionId,
   priceOf,
   sendActionId,
+  targetWith,
   weightOf,
 } from "./town";
 import { TUNING } from "./tuning";
@@ -324,12 +326,17 @@ export const buildsFloats: Actions = (run, available) =>
 /** What the floats on a street are worth today, as the route would pay them. */
 function streetValue(run: RunState, street: number, floats: number): number {
   const rain =
-    dayKind(run) === DAY_RAIN && dayStreet(run) === street ? 0.25 : 1;
+    dayKind(run) === DAY_RAIN && dayStreet(run) === street
+      ? TUNING.town.rainCare
+      : 1;
   return weightOf(run, street) * rain * care(floats);
 }
 
 /** The least a move must add to the route (the weighted mood) to be worth it. */
-const MOVE_WORTH = 0.012;
+const MOVE_WORTH = 1.0;
+
+/** How long a move on a plain day is expected to pay back (seconds). */
+const PLAIN_HORIZON = 60;
 
 /**
  * Steers the floats to where they cheer the town most today: more to a party,
@@ -341,20 +348,30 @@ export const steersFloats =
   (run, available) => {
     if (!isTownOpen(run) || isMoving(run) || !isWindowStart(run, window))
       return [];
+    // A move is paid back over what is left of the day (or a while, on a
+    // plain one); the donor street goes without a float while it is on the road.
+    const horizon = dayLeft(run) > 0 ? dayLeft(run) : PLAIN_HORIZON;
     let best = -1;
-    let bestGain = MOVE_WORTH;
+    let bestNet = MOVE_WORTH;
     for (let to = 0; to < STREET_COUNT; to += 1) {
       const from = donorFor(run, to);
       // Never leaves a street with nothing: it would turn grumpy.
-      if (from < 0 || floatsOn(run, from) < 2) continue;
+      if (
+        from < 0 ||
+        targetWith(run, from, floatsOn(run, from) - 1) < TUNING.town.grumpyAt
+      )
+        continue;
+      const loss =
+        streetValue(run, from, floatsOn(run, from)) -
+        streetValue(run, from, floatsOn(run, from) - 1);
       const gain =
         streetValue(run, to, floatsOn(run, to) + 1) -
         streetValue(run, to, floatsOn(run, to)) -
-        (streetValue(run, from, floatsOn(run, from)) -
-          streetValue(run, from, floatsOn(run, from) - 1));
-      if (gain > bestGain) {
+        loss;
+      const net = gain * horizon - 2 * loss * TUNING.town.moveSeconds;
+      if (net > bestNet) {
         best = to;
-        bestGain = gain;
+        bestNet = net;
       }
     }
     const id = best < 0 ? "" : sendActionId(best);

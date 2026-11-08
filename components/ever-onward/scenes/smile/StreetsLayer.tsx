@@ -34,7 +34,13 @@ const STAGGER = [
 
 const PRICE_WORDS = ["FREE", "CHEAP", "FAIR", "DEAR", "PRICEY"] as const;
 
-/** Big shouted words: outlined so they read over anything. */
+/**
+ * How much bigger every shout is drawn. The scene is a strip about 100 px
+ * high on a phone, so a shout drawn at its "size" would be a 6 px smudge.
+ */
+const SHOUT_BOOST = 2.2;
+
+/** Big shouted words: outlined so they read over anything, and kept in the picture. */
 export function Shout({
   x,
   y,
@@ -48,16 +54,23 @@ export function Shout({
   fill: string;
   children: string;
 }) {
+  // As big as that, unless the word would no longer fit across the picture.
+  const fontSize = Math.min(
+    Math.max(10, size) * SHOUT_BOOST,
+    380 / children.length
+  );
+  // The pixel font is about one em a letter: keep the whole word inside 0 to 400.
+  const half = (fontSize * children.length) / 2 + 6;
   return (
     <text
-      x={Math.min(342, Math.max(58, x))}
+      x={Math.min(400 - half, Math.max(half, x))}
       y={y}
       fill={fill}
       stroke={INK}
-      strokeWidth={4}
+      strokeWidth={fontSize / 3.5}
       paintOrder="stroke"
       strokeLinejoin="round"
-      fontSize={Math.max(10, size)}
+      fontSize={fontSize}
       textAnchor="middle"
       className={pixelClass}
     >

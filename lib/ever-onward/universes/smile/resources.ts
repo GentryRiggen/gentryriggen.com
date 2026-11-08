@@ -101,7 +101,7 @@ export const RESOURCES: readonly ResourceDef[] = [
     "wsDrones",
     "wsKept",
   ]),
-  // The parade: seconds left and parades held.
+  // The cheer broadcast (the world): seconds left and broadcasts held.
   ...hidden(["pdLeft", "pdCount"]),
   // The town: the price and the one being painted, the seconds left, floats
   // on each street and owned, the one on the road (and where to, how long),

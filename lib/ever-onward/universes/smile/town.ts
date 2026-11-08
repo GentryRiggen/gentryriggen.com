@@ -201,7 +201,10 @@ export const canBuyFloat = (run: RunState): boolean =>
   isTownOpen(run) && floatsOwned(run) < floatCap();
 export const floatCost = (run: RunState): number =>
   T.floatCosts[
-    Math.min(T.floatCosts.length - 1, floatsOwned(run) - T.startFloats)
+    Math.max(
+      0,
+      Math.min(T.floatCosts.length - 1, floatsOwned(run) - T.startFloats)
+    )
   ];
 
 /** How much of a street's cheer a number of floats reaches (0 to 1). */
@@ -213,17 +216,25 @@ export function weightOf(run: RunState, street: number): number {
   return STREETS[street].weight * (party ? T.partyWeight : 1);
 }
 
-/** What the floats on a street are working towards (0 to 1). */
-export function targetOf(run: RunState, street: number): number {
+/** What `floats` on a street would be working towards (0 to 1). */
+export function targetWith(
+  run: RunState,
+  street: number,
+  floats: number
+): number {
   const rain = dayKind(run) === DAY_RAIN && dayStreet(run) === street;
   const bigTop = run.flags[projectDoneFlag("big-top")] === true;
   return clamp01(
-    care(floatsOn(run, street)) *
+    care(floats) *
       forkCareMult(run) *
       (bigTop ? T.bigTopCare : 1) *
       (rain ? T.rainCare : 1)
   );
 }
+
+/** What the floats on a street are working towards (0 to 1). */
+export const targetOf = (run: RunState, street: number): number =>
+  targetWith(run, street, floatsOn(run, street));
 
 export const moodOfStreet = (run: RunState, street: number): number =>
   clamp01(res(run, `tnH${street}`));
@@ -234,6 +245,10 @@ export const isGrumpy = (run: RunState, street: number): boolean =>
 export const grumpyCount = (run: RunState): number =>
   STREETS.filter((_, i) => isGrumpy(run, i)).length;
 
+/** The unhappiest street's mood, 0 to 1. */
+export const lowestMood = (run: RunState): number =>
+  Math.min(...STREETS.map((_, i) => moodOfStreet(run, i)));
+
 /** The town's mood, 0 to 1 (the streets at their usual weights). */
 export const townMood = (run: RunState): number =>
   STREETS.reduce((sum, s, i) => sum + s.weight * moodOfStreet(run, i), 0);
@@ -242,7 +257,11 @@ export const townMood = (run: RunState): number =>
 export function routeMult(run: RunState): number {
   if (!isTownOpen(run)) return 1;
   const sum = STREETS.reduce(
-    (total, _, i) => total + weightOf(run, i) * moodOfStreet(run, i),
+    (total, _, i) =>
+      total +
+      weightOf(run, i) *
+        moodOfStreet(run, i) *
+        (isGrumpy(run, i) ? T.grumpyShare : 1),
     0
   );
   return (T.routeBase + T.routeSpan * sum) * T.grumpyDrag ** grumpyCount(run);
@@ -291,8 +310,11 @@ function newDay(run: RunState): void {
         ? DAY_RAIN
         : DAY_PARTY;
   const last = Math.round(res(run, "tnDaySt"));
+  // The first day can fall on any street; after that, on a different one.
   const street =
-    (last + 1 + Math.floor(roll() * (STREET_COUNT - 1))) % STREET_COUNT;
+    daysSoFar(run) === 0
+      ? Math.floor(roll() * STREET_COUNT)
+      : (last + 1 + Math.floor(roll() * (STREET_COUNT - 1))) % STREET_COUNT;
   r.tnDay = kind;
   r.tnDaySt = street;
   r.tnDayLeft = T.daySeconds[0] + roll() * (T.daySeconds[1] - T.daySeconds[0]);
@@ -387,12 +409,25 @@ export function setPrice(run: RunState, level: number): void {
   run.resources.tnChanges = res(run, "tnChanges") + 1;
 }
 
-/** The street a float would come from to go to `street` (-1 if none). */
+/**
+ * The street a float would come from to go to `street` (-1 if none): the one
+ * that will miss it least today (a street with several floats and little
+ * weight, not a street with one float that would turn grumpy).
+ */
 export function donorFor(run: RunState, street: number): number {
   let best = -1;
+  let bestLoss = Infinity;
   for (let i = 0; i < STREET_COUNT; i += 1) {
     if (i === street || floatsOn(run, i) < 1) continue;
-    if (best < 0 || floatsOn(run, i) > floatsOn(run, best)) best = i;
+    const floats = floatsOn(run, i);
+    // A street that would turn grumpy without it is the last one to ask.
+    const loss =
+      weightOf(run, i) * (care(floats) - care(floats - 1)) +
+      (targetWith(run, i, floats - 1) < T.grumpyAt ? 1 : 0);
+    if (loss < bestLoss) {
+      best = i;
+      bestLoss = loss;
+    }
   }
   return best;
 }
@@ -492,7 +527,7 @@ export const TOWN_ACTIONS: readonly ActionDef[] = [
     visibleWhen: isTownOpen,
     describe: (run) => ({
       label: `Send a float to ${street.name}`,
-      detail: `Takes a float from the street with the most. It is on the road for ${T.moveSeconds} seconds and cheers nobody.`,
+      detail: `Takes a float from the street that will miss it least. It is on the road for ${T.moveSeconds} seconds and cheers nobody.`,
       isBlocked: isMoving(run) || donorFor(run, i) < 0,
     }),
     perform: (run) => sendFloat(run, i),

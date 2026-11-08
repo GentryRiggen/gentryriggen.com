@@ -102,6 +102,12 @@ export const quiet: StoryMessage[] = [
     text: "A leaf lands on the bench between them. Neither of them moves it. It is nice to have something there that does not need anything either.",
   },
   {
+    id: "quiet-moth",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 18),
+    text: "A moth finds the lamp and goes round it, slowly, as if it also had nowhere else to be. The person watches it for a long time. So does the robot. Nobody asks what the moth is for.",
+  },
+  {
     id: "quiet-cup",
     phase: PHASE_QUIET,
     when: (run) => after(run, 15),

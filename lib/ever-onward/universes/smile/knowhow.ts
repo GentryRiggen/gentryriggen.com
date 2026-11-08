@@ -31,8 +31,8 @@ const perMin = (n: number): string => `${Number((n * 6000).toFixed(1))}%`;
 
 export const KNOWHOW = "knowhow";
 export const PARADE_ACTION_ID = "parade-start";
-export const PARADE_NAMES = ["", "Parade", "Cheer broadcast"] as const;
-export const BROADCAST_NAME = PARADE_NAMES[2];
+/** The world's parade: the cheer broadcast (the town's route has no parade). */
+export const BROADCAST_NAME = "Cheer broadcast";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
@@ -108,10 +108,10 @@ export const PARADE_ACTIONS: readonly ActionDef[] = [
       const resting = isParadeResting(run);
       return {
         label: on
-          ? `${PARADE_NAMES[run.phase]} is on`
+          ? `${BROADCAST_NAME} is on`
           : resting
             ? "Everyone is catching their breath"
-            : `Start a ${PARADE_NAMES[run.phase].toLowerCase()}`,
+            : `Start a ${BROADCAST_NAME.toLowerCase()}`,
         detail: `Everything pays ${Number((forkParadeMult() * bigTopMult(run)).toFixed(2))}x for ${paradeSeconds()} seconds. Real smiles get painted over ${Math.round((TUNING.world.broadcastPaint - 1) * 100)}% faster while it plays.`,
         cost: { resource: KNOWHOW, amount: K.paradeCost },
         isBlocked: on || resting,

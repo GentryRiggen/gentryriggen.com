@@ -8,6 +8,7 @@ import {
   shownProjects,
 } from "@/lib/ever-onward/engine/engine";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
+import type { RunState } from "@/lib/ever-onward/engine/types";
 import {
   BUY_FLOAT_ACTION_ID,
   PRICE_DEFS,
@@ -70,6 +71,14 @@ const FILL: readonly string[] = [
  * and each float on a street is worth less than the one before). Nothing is
  * recommended: every card says what it gives and what it costs.
  */
+/** "Saving up: about 40 s": when the coins will reach the next float. */
+function untilFloat(run: RunState): string {
+  const rate = coinsPerSecond(run);
+  if (rate <= 0) return "Saving up for a float";
+  const seconds = Math.ceil((floatCost(run) - coinsOf(run)) / rate);
+  return `Saving up: next float in about ${seconds > 90 ? `${Math.ceil(seconds / 60)} min` : `${seconds} s`}`;
+}
+
 export default function TownPanel({ def, run, onAct }: PanelProps) {
   const price = priceOf(run);
   const { radioProps } = useRoving(PRICE_DEFS.length, price);
@@ -236,7 +245,9 @@ export default function TownPanel({ def, run, onAct }: PanelProps) {
                     Send a float here
                   </span>
                   <span className="font-mono text-xs font-bold">
-                    {moving ? "On the road" : "From the busiest street"}
+                    {moving
+                      ? "On the road"
+                      : "From the street that misses it least"}
                   </span>
                 </button>
               </li>
@@ -260,7 +271,7 @@ export default function TownPanel({ def, run, onAct }: PanelProps) {
             {canBuyFloat(run)
               ? canBuild
                 ? "Build another float"
-                : "Saving up for a float"
+                : untilFloat(run)
               : "All the floats are built"}
           </span>
           {canBuyFloat(run) && (

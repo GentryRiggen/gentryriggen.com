@@ -11,7 +11,7 @@ import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { forkParadeMult } from "@/lib/ever-onward/universes/smile/forks";
 import {
   PARADE_ACTION_ID,
-  PARADE_NAMES,
+  BROADCAST_NAME,
   hasKnowhow,
   isParadeOn,
   isParadeOpen,
@@ -51,7 +51,7 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
   if (!isOpen && shown.length === 0 && done.length === 0) return null;
 
   const have = knowhowOf(run);
-  const name = PARADE_NAMES[run.phase];
+  const name = BROADCAST_NAME;
   const on = isParadeOn(run);
   const resting = isParadeResting(run);
   const canHold = canPerformAction(def, run, PARADE_ACTION_ID);

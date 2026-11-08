@@ -123,7 +123,7 @@ function Weary() {
 }
 
 const DAY_NAMES: Record<string, string> = {
-  fest: "FESTIVAL: LOUD IS WELCOME",
+  fest: "FESTIVAL DAY",
   gloom: "GLOOMY WEEK",
   weary: "TIRED OF NOISE",
 };
@@ -228,7 +228,7 @@ function DroneLaunch({ k }: { k: number }) {
           strokeDasharray="8 14"
         />
       </g>
-      <Shout x={200} y={104} size={26} fill="#ff4d8d">
+      <Shout x={200} y={104} size={19} fill="#ff4d8d">
         HYPNODRONES!
       </Shout>
     </g>
@@ -259,7 +259,7 @@ function Painted({ k }: { k: number }) {
           fillOpacity="0.7"
         />
       </g>
-      <Shout x={200} y={200} size={22} fill="#ff7ad9">
+      <Shout x={200} y={200} size={16} fill="#ff7ad9">
         PAINTED SMILES
       </Shout>
     </g>
@@ -304,7 +304,7 @@ function Healed({ k }: { k: number }) {
           <rect x={30 + i * 42} y="236" width="5" height="5" fill="#ffd23f" />
         </g>
       ))}
-      <Shout x={200} y={200} size={26} fill="#ffd23f">
+      <Shout x={200} y={200} size={19} fill="#ffd23f">
         REAL SMILES!
       </Shout>
     </g>
@@ -359,13 +359,13 @@ export default function WorldMoments({ info }: MomentsProps) {
       {info.wday === "weary" && <Weary />}
       {drone && <Hovering />}
       {info.wday !== "" && (
-        <Shout x={200} y={18} size={15} fill={DAY_COLORS[info.wday]}>
+        <Shout x={200} y={18} size={10} fill={DAY_COLORS[info.wday]}>
           {DAY_NAMES[info.wday]}
         </Shout>
       )}
       {info.retune && (
         <g className="ms-t-pulse" data-testid="eo-world-retune">
-          <Shout x={200} y={188} size={14} fill="#ffe29a">
+          <Shout x={200} y={188} size={10} fill="#ffe29a">
             TUNING…
           </Shout>
         </g>

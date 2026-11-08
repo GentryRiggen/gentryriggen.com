@@ -36,10 +36,13 @@ import {
   TOWN_ACTION_IDS,
   canBuyFloat,
   coinsOf,
+  crowdOf,
   dayKind,
   floatCost,
   grumpyCount,
   isTownOpen,
+  lowestMood,
+  priceOf,
   townMood,
 } from "./town";
 import { TUNING } from "./tuning";
@@ -86,14 +89,23 @@ export function smilePlates(run: RunState): string[] {
   if (needsALook(run)) plates.push("face");
   if (
     isWorldOpen(run) &&
-    (worldDayKind(run) !== WORLD_DAY_NONE || realOf(run) < 0.4)
+    (worldDayKind(run) !== WORLD_DAY_NONE || realOf(run) < 0.6)
   )
     plates.push("dial");
   if (isTownOpen(run)) {
     const day = dayKind(run);
-    if (day === DAY_HOT || day === DAY_RAIN) plates.push("stand");
+    // Coins with nothing left to buy are a reason to look at the sign again.
+    const coinsIdle = !canBuyFloat(run) && !hasOpenProject(run);
+    if (
+      day === DAY_HOT ||
+      day === DAY_RAIN ||
+      crowdOf(run) < 0.3 ||
+      (coinsIdle && priceOf(run) > 0)
+    )
+      plates.push("stand");
     if (
       grumpyCount(run) > 0 ||
+      lowestMood(run) < 0.5 ||
       (day !== DAY_NONE && day !== DAY_HOT) ||
       (canBuyFloat(run) && coinsOf(run) >= floatCost(run))
     )
