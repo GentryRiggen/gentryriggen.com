@@ -8,7 +8,6 @@ import {
   autoCoinsPerSecond,
   calmSkyIncomePerSecond,
   calmTapCoins,
-  driftPerSecond,
   lastTapResolve,
   lighthouseCount,
   lightsLetGo,
@@ -17,6 +16,7 @@ import {
   steadyFlame,
   syncDisplay,
 } from "./tick";
+import { burnShare } from "./sunEdge";
 import { TUNING } from "./tuning";
 
 /**
@@ -142,9 +142,9 @@ export const FORKS: readonly ForkDef[] = [
     stats: [
       { label: "Energy/sec", read: calmSkyIncomePerSecond },
       {
-        label: "Fleet drift",
-        read: (run) => driftPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "A usual flare burns",
+        read: (run) => burnShare(run, 1) * 100,
+        suffix: "% of the fleet",
       },
     ],
     sides: [
@@ -154,7 +154,7 @@ export const FORKS: readonly ForkDef[] = [
         tagline: "A swarm",
         wry: "Fine. Now there are more of them to lose.",
         gives: `The fleet grows ${times(K.sky.swarmProbes)} at once.`,
-        catches: `The fleet drifts off course ${more(K.sky.swarmDrift)} faster.`,
+        catches: `Flares burn ${more(K.sky.swarmFlare)} more of the fleet.`,
         price: K.costs.swarm,
       },
       {
@@ -162,7 +162,7 @@ export const FORKS: readonly ForkDef[] = [
         name: "Bigger mirrors",
         tagline: "One very large idea",
         wry: "Very large, very patient, and not going anywhere.",
-        gives: `Every collector catches ${times(K.sky.mirrorsEnergy)}, and the fleet drifts ${less(K.sky.mirrorsDrift)} less.`,
+        gives: `Every collector catches ${times(K.sky.mirrorsEnergy)}, and flares burn ${less(K.sky.mirrorsFlare)} less of the fleet.`,
         catches: "No new probes come of it.",
         price: K.costs.mirrors,
       },

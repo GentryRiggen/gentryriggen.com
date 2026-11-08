@@ -4,6 +4,7 @@ import type { RunState } from "../../../engine/types";
 import { lightUniverse } from "..";
 import { tankCapacity } from "../tick";
 import { choosesFork } from "../bots";
+import { openSkyDials } from "../sunEdge";
 
 export const def = lightUniverse;
 
@@ -17,12 +18,8 @@ const MIN = 60;
 export function oilActions(run: RunState, available: readonly string[]) {
   // A fork in the road is one click in the shop, like any other buy.
   const picks: string[] = choosesFork(run, available);
-  // Looks after what needs hands: the fleet when it dips, and takes the
-  // bonuses on offer.
-  if (available.includes("correct-course") && run.resources.heading < 45)
-    picks.push("correct-course");
-  for (const id of ["catch-flare", "flash-lamp"])
-    if (available.includes(id)) picks.push(id);
+  // Looks after what needs hands at the end.
+  if (available.includes("flash-lamp")) picks.push("flash-lamp");
   if (available.includes("steer-boat") && run.resources.boatHeading < 50)
     picks.push("steer-boat");
   if (!available.includes("buy-oil")) return picks;
@@ -108,3 +105,14 @@ export const MODEST_PRESTIGE: Record<string, number> = {
   "ember-thrift": 1,
   "ember-gift": 1,
 };
+
+/** The run with the sky's dials open (the first probe has flown). */
+export function withDials(run: RunState): RunState {
+  const next = {
+    ...run,
+    flags: { ...run.flags },
+    resources: { ...run.resources },
+  };
+  openSkyDials(next);
+  return next;
+}

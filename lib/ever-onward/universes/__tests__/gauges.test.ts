@@ -118,11 +118,15 @@ describe("HUD gauges", () => {
       display: "1.23K saved",
     });
     run.resources.probes = 10;
-    run.resources.heading = 40;
+    // Flying brushing the sun with one shield point: a flare would burn a lot.
+    run.flags["sky-dials"] = true;
+    run.resources.skDistNow = 4;
+    run.resources.skDist = 4;
+    run.resources.skT3 = 1;
+    run.resources.skE3 = 1;
     expect(lightUniverse.gauge?.(run)).toMatchObject({
-      label: "COURSE",
-      display: "40%",
-      status: "LOW",
+      label: "FLARE SAFE",
+      status: "DANGER",
     });
   });
 });

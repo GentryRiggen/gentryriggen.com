@@ -1,33 +1,35 @@
 import { performAction, tick } from "../../../engine/engine";
 import type { RunState } from "../../../engine/types";
-import { headingFactor } from "../tick";
+import { RECALL_ACTION, wildShare } from "../design";
 import { def, runAtPhaseStart } from "./fixtures";
 
-/** The sky with a probe out, so the fleet can drift. */
-function driftingSky(): RunState {
+/** The sky with a fleet out and the dials open. */
+function openSky(): RunState {
   const start = runAtPhaseStart(2);
-  return {
-    ...start,
-    owned: { ...start.owned, collector: 1 },
-    resources: { ...start.resources, probes: 20, heading: 10, collectors: 1 },
-  };
+  return tick(
+    def,
+    {
+      ...start,
+      owned: { ...start.owned, collector: 3, probe: 1 },
+      flags: { ...start.flags, "sky-dials": true },
+      resources: { ...start.resources, probes: 20, collectors: 3 },
+    },
+    1
+  );
 }
 
-describe("the watched numbers (heading in the sky)", () => {
-  it("a drifting fleet slows down but never stops, and a correction is free", () => {
-    const run = driftingSky();
-    expect(headingFactor(run)).toBeGreaterThan(0);
-    expect(tick(def, run, 1).resources.probes).toBeGreaterThan(
-      run.resources.probes
+describe("the sky's fleet", () => {
+  it("a fleet with strays still grows and never stops, and bringing them home is possible", () => {
+    const run = openSky();
+    const stray: RunState = {
+      ...run,
+      resources: { ...run.resources, skWild: 10 },
+    };
+    expect(tick(def, stray, 1).resources.probes).toBeGreaterThan(
+      stray.resources.probes
     );
-    const fixed = performAction(def, run, "correct-course");
-    expect(fixed.resources.heading).toBe(100);
-  });
-
-  it("a solar flare pays a bonus when claimed", () => {
-    const sky = driftingSky();
-    sky.resources.flare = 30;
-    const afterFlare = performAction(def, sky, "catch-flare");
-    expect(afterFlare.resources.energy).toBeGreaterThan(sky.resources.energy);
+    const home = performAction(def, stray, RECALL_ACTION);
+    expect(home.resources.skRecall).toBeGreaterThan(0);
+    expect(wildShare(stray)).toBeGreaterThan(0);
   });
 });

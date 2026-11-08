@@ -156,8 +156,8 @@
   },
   "light/cut-sky-end": {
     "file": "/ever-onward/voice/light/cut-sky-end.mp3",
-    "hash": "71ac7d062538",
-    "durationGuess": 19
+    "hash": "284649b4b366",
+    "durationGuess": 23
   },
   "light/cut-last-1": {
     "file": "/ever-onward/voice/light/cut-last-1.mp3",
@@ -414,15 +414,20 @@
     "hash": "9bdc93dd9813",
     "durationGuess": 9
   },
-  "light/sky-races": {
-    "file": "/ever-onward/voice/light/sky-races.mp3",
-    "hash": "f513be6dee6f",
-    "durationGuess": 18
+  "light/sky-edge": {
+    "file": "/ever-onward/voice/light/sky-edge.mp3",
+    "hash": "091881093d4d",
+    "durationGuess": 14
   },
-  "light/sky-scout": {
-    "file": "/ever-onward/voice/light/sky-scout.mp3",
-    "hash": "466c9ebca3d2",
-    "durationGuess": 18
+  "light/sky-wild": {
+    "file": "/ever-onward/voice/light/sky-wild.mp3",
+    "hash": "1dde100e6944",
+    "durationGuess": 14
+  },
+  "light/sky-home": {
+    "file": "/ever-onward/voice/light/sky-home.mp3",
+    "hash": "c3c2874da518",
+    "durationGuess": 11
   },
   "light/sky-sail": {
     "file": "/ever-onward/voice/light/sky-sail.mp3",

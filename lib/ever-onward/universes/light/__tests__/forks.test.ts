@@ -23,7 +23,6 @@ import { sceneInfo } from "..";
 import {
   autoFlashRate,
   calmSkyIncomePerSecond,
-  driftPerSecond,
   fadeRate,
   lastTapResolve,
   powerPerSecond,
@@ -33,6 +32,7 @@ import {
   tankCapacity,
 } from "../tick";
 import { lightSceneDiff } from "../hooks";
+import { burnShare } from "../sunEdge";
 import { TUNING } from "../tuning";
 
 jest.setTimeout(120_000);
@@ -58,6 +58,8 @@ function runAt(fork: ForkDef): RunState {
     ...base,
     phase: fork.phase,
     owned,
+    // In the sky the dials are open and the fleet flies near the sun.
+    flags: fork.id === "sky" ? { "sky-dials": true } : base.flags,
     resources: {
       ...base.resources,
       [fork.currency]: 1e8,
@@ -65,6 +67,8 @@ function runAt(fork: ForkDef): RunState {
       night: 80,
       probes: 20,
       collectors: 6,
+      skDist: 3,
+      skDistNow: 3,
     },
   });
 }
@@ -183,16 +187,16 @@ describe("the forks in the road", () => {
     expect(K.costs.wind).toBeGreaterThan(K.costs.coal * 2);
   });
 
-  it("sky: a swarm triples the fleet and drifts; mirrors pay more and steady it", () => {
+  it("sky: a swarm triples the fleet and flares burn more of it; mirrors pay more and flares burn less", () => {
     const fork = forkNamed("sky");
     const run = runAt(fork);
     const swarm = performAction(def, run, forkActionId("swarm"));
     expect(swarm.resources.probes).toBeCloseTo(
       run.resources.probes * K.sky.swarmProbes
     );
-    expect(driftPerSecond(swarm)).toBeGreaterThan(driftPerSecond(run));
+    expect(burnShare(swarm, 1)).toBeGreaterThan(burnShare(run, 1));
     const mirrors = performAction(def, run, forkActionId("mirrors"));
-    expect(driftPerSecond(mirrors)).toBeLessThan(driftPerSecond(run));
+    expect(burnShare(mirrors, 1)).toBeLessThan(burnShare(run, 1));
     expect(calmSkyIncomePerSecond(mirrors)).toBeGreaterThan(
       calmSkyIncomePerSecond(run) * 1.5
     );

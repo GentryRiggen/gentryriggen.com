@@ -3,10 +3,6 @@ import { sceneInfo } from "./scene";
 import { LAMP_ACTION_IDS } from "./lamps";
 import { BEAM_ACTION_IDS } from "./beam";
 import {
-  headingOf,
-  isCourseAuto,
-  isCourseInPlay,
-  isFlareOn,
   isBoatOut,
   isGridInPlay,
   flameFraction,
@@ -20,11 +16,18 @@ import {
 import { trafficShare } from "./toll";
 import { cloneRun } from "../../engine/engine";
 import {
-  LAUNCH_ACTION_IDS,
-  isProbesOpen,
-  runsHome,
-  withoutProbeRaces,
-} from "./probes";
+  DESIGN_ACTION_IDS,
+  RECALL_ACTION,
+  isDialsOpen,
+  wildCount,
+} from "./design";
+import {
+  DISTANCE_ACTION_IDS,
+  flaresSoFar,
+  flareSafety,
+  forecastSize,
+  withoutFlares,
+} from "./sunEdge";
 import { TOLL_ACTION_IDS, isTollOpen, tollLockLeft } from "./toll";
 import { isTankerIn } from "./tanker";
 import {
@@ -93,12 +96,13 @@ export function lightPlates(run: RunState): string[] {
       plates.push("weather");
   } else if (run.phase === 2) {
     plates.push("aim");
-    if (isCourseInPlay(run) && !isCourseAuto(run) && headingOf(run) < 85)
-      plates.push("course");
-    if (isFlareOn(run)) plates.push("flare");
-    // Offered once the first probe is home (so it is not a crowd of beats at
-    // the moment the map opens; a trip is over a minute long).
-    if (isProbesOpen(run) && runsHome(run) >= 1) plates.push("race");
+    // The design bench and the sun's edge want a look when a flare is
+    // forecast or the fleet has strays (not at the moment they open).
+    if (isDialsOpen(run) && flaresSoFar(run) >= 1) {
+      plates.push("design");
+      if (forecastSize(run) !== null) plates.push("flare");
+      if (wildCount(run) >= 1) plates.push("wild");
+    }
   } else {
     plates.push("tend");
     const hasLetGoOnOffer = run.revealed.some(
@@ -127,9 +131,9 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   crews: CREW_POST_ACTION_IDS,
   lamp: BEAM_ACTION_IDS,
   toll: TOLL_ACTION_IDS,
-  race: LAUNCH_ACTION_IDS,
-  course: ["correct-course"],
-  flare: ["catch-flare"],
+  design: DESIGN_ACTION_IDS,
+  flare: DISTANCE_ACTION_IDS,
+  wild: [RECALL_ACTION],
   boat: ["steer-boat", "flash-lamp"],
   garden: GARDEN_ACTION_IDS,
   fund: FUND_ACTION_IDS,
@@ -139,14 +143,16 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
 
 /**
  * Real choices, for the decision-gap metric: buying oil at a price, the
- * harbor toll, which route to fly, where the storm crews go, when to water.
+ * harbor toll, the probe design and the sun's edge, where the storm crews go, when to water.
  * Claims (the rush, a flare), fixes (balance, correct, steer) and collects
  * (pick) are not choices.
  */
 export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   "buy-oil",
   ...TOLL_ACTION_IDS,
-  ...LAUNCH_ACTION_IDS,
+  ...DESIGN_ACTION_IDS,
+  ...DISTANCE_ACTION_IDS,
+  RECALL_ACTION,
   ...CREW_POST_ACTION_IDS,
   WATER_ACTION,
   ...LAMP_ACTION_IDS,
@@ -181,13 +187,14 @@ export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
     lowZone: { lo: 0.05, hi: 0.5 },
   },
   {
-    id: "heading",
-    label: "Probe heading",
+    id: "fleet",
+    label: "Flare safety",
     level: (run) =>
-      isCourseInPlay(run) && !isCourseAuto(run)
-        ? Math.min(1, Math.max(0, headingOf(run) / 100))
+      isDialsOpen(run) && (run.resources.probes ?? 0) >= 4
+        ? flareSafety(run)
         : null,
-    lowZone: { lo: 0.05, hi: 0.5 },
+    // Flying close with thin shields: a flare would burn a lot of the fleet.
+    lowZone: { lo: 0.05, hi: 0.6 },
   },
 ];
 
@@ -230,9 +237,12 @@ function sceneKey(run: RunState): string {
     s.stormCrews,
     s.tollOpen,
     s.tollStep,
-    s.raceOpen,
-    s.raceFins,
-    s.raceControl,
+    s.dialsOpen,
+    s.dsSpeed,
+    s.dsMirrors,
+    s.dsCopying,
+    s.dsShields,
+    s.wild,
     s.weatherVane,
     s.aimLevel,
     s.mirrorTier,
@@ -264,7 +274,7 @@ export const lightIncomeView = (run: RunState): RunState => {
     isOverdriveOn(run) ||
     isWeatherOpen(run) ||
     isGridInPlay(run) ||
-    isProbesOpen(run) ||
+    isDialsOpen(run) ||
     isGardenOpen(run)
       ? cloneRun(run)
       : run;
@@ -272,7 +282,7 @@ export const lightIncomeView = (run: RunState): RunState => {
   if (isOverdriveOn(draft)) draft.resources.odLeft = 0;
   if (isWeatherOpen(draft)) withoutStorms(draft);
   if (isGridInPlay(draft)) withoutEvenings(draft);
-  if (isProbesOpen(draft)) withoutProbeRaces(draft);
+  if (isDialsOpen(draft)) withoutFlares(draft);
   if (isGardenOpen(draft)) withoutGarden(draft);
   return draft;
 };

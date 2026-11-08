@@ -9,12 +9,26 @@ import {
   tankerDeal,
 } from "./tanker";
 import {
-  hasMissionControl,
-  hasRacingFins,
-  isProbeOut,
-  isScoutOut,
-  isProbesOpen,
-} from "./probes";
+  COPYING,
+  MIRRORS,
+  SHIELDS,
+  SPEED,
+  isDialsOpen,
+  isGoneWild,
+  isHome,
+  isRecalling,
+  isSettling,
+  pointsAt,
+  wildLevel,
+} from "./design";
+import {
+  distanceNow,
+  forecastSize,
+  hitSize,
+  lastBurn,
+  lastSaved,
+  sunMood,
+} from "./sunEdge";
 import { gardenCode, hasRainBarrel } from "./garden";
 import { LET_GO } from "./upgrades";
 import { hasFork, windRamp } from "./forkState";
@@ -52,10 +66,7 @@ import {
 import {
   boatHeadingOf,
   flameFraction,
-  headingOf,
   isBoatOut,
-  isFleetGlowing,
-  isFlareOn,
   isGridInPlay,
   isStorming,
   lampStep,
@@ -128,7 +139,7 @@ export interface LightSceneInfo {
   boatProgress: number;
   /** How true its heading is, 0..1 (steps of 5%): 1 is straight at the beam. */
   boatHeading: number;
-  /** 1 while the steady glow is on: sparkling cities, a fleet in formation. */
+  /** 1 while the steady glow is on: sparkling cities. */
   glow: number;
   /** 1 once the last flash is made and the boat has turned for home. */
   finished: number;
@@ -210,20 +221,33 @@ export interface LightSceneInfo {
   darkBanner: number;
   /** 1 for a few seconds after the lamp is lit again: the beam bursts. */
   relit: number;
-  /** 1 once the probe races are open: a dock stands beside the mirror field. */
-  raceOpen: number;
-  /** 1 while the racing probe is away from the dock. */
-  raceOut: number;
-  /** 1 once the racing fins are bought. */
-  raceFins: number;
-  /** 1 once mission control stands by the dock (its scout flies on its own). */
-  raceControl: number;
-  /** 1 while the scout probe is away from the dock. */
-  raceScout: number;
-  /** 1 while a solar flare can be caught. */
-  flare: number;
-  /** How true the probe fleet flies, 0..1 (steps of 10%). */
-  fleetHeading: number;
+  /** 1 once the sky's dials are open: the design bench and the sun's edge. */
+  dialsOpen: number;
+  /** The sun's mood: 0 quiet, 1 usual, 2 restless. */
+  sunMood: number;
+  /** Where the fleet flies, in halves of a step (0 far .. 8 brushing the sun). */
+  sunDist: number;
+  /** Design points at work in speed, mirrors, copying and shields (0..8). */
+  dsSpeed: number;
+  dsMirrors: number;
+  dsCopying: number;
+  dsShields: number;
+  /** 1 while design points are on their way to a new place. */
+  dsMoving: number;
+  /** Wild probes: 0 none .. 4 most of the fleet. */
+  wild: number;
+  /** 1 while a green tether pulls the wild ones home. */
+  tether: number;
+  /** The forecast: 0 none, then 1 small, 2 medium, 3 big flare coming. */
+  flareFore: number;
+  /** A flare's moment: 0 none, then 1 small, 2 medium, 3 big. */
+  flareHit: number;
+  /** What it burned, in tens of percent of the fleet (0..9), and what shields saved (0..9). */
+  flareLost: number;
+  flareSaved: number;
+  /** 1 for a few seconds when probes go wild, and when they come home. */
+  goneWild: number;
+  homeAgain: number;
   aimLevel: number;
   mirrorTier: number;
   copyTier: number;
@@ -317,7 +341,7 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     rainBarrel: hasRainBarrel(run) ? 1 : 0,
     boatProgress: step(clamp01(finite(r.boatProgress ?? 0) / 100), 100),
     boatHeading: step(boatHeadingOf(run) / 100, 20),
-    glow: isGridGlowing(run) || isFleetGlowing(run) ? 1 : 0,
+    glow: isGridGlowing(run) ? 1 : 0,
     finished: run.flags.finished ? 1 : 0,
     lantern: lanternOf(run),
     oilFraction: step(finite(r.oil ?? 0) / Math.max(1, tankCapacity(run)), 10),
@@ -381,13 +405,28 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     barrels: run.phase === 0 && barrelsRolling(run) ? 1 : 0,
     darkBanner: run.phase === 0 && isDarkBanner(run) ? 1 : 0,
     relit: run.phase === 0 && isRelit(run) ? 1 : 0,
-    raceOpen: isProbesOpen(run) ? 1 : 0,
-    raceOut: isProbeOut(run) ? 1 : 0,
-    raceFins: hasRacingFins(run) ? 1 : 0,
-    raceControl: hasMissionControl(run) ? 1 : 0,
-    raceScout: isScoutOut(run) ? 1 : 0,
-    flare: isFlareOn(run) ? 1 : 0,
-    fleetHeading: step(finite(headingOf(run)) / 100, 10),
+    dialsOpen: isDialsOpen(run) ? 1 : 0,
+    sunMood: isDialsOpen(run) ? sunMood(run) : 1,
+    sunDist: isDialsOpen(run) ? Math.round(distanceNow(run) * 2) : 0,
+    dsSpeed: isDialsOpen(run) ? Math.round(pointsAt(run, SPEED)) : 0,
+    dsMirrors: isDialsOpen(run) ? Math.round(pointsAt(run, MIRRORS)) : 0,
+    dsCopying: isDialsOpen(run) ? Math.round(pointsAt(run, COPYING)) : 0,
+    dsShields: isDialsOpen(run) ? Math.round(pointsAt(run, SHIELDS)) : 0,
+    dsMoving: isDialsOpen(run) && isSettling(run) ? 1 : 0,
+    wild: isDialsOpen(run) ? wildLevel(run) : 0,
+    tether: isDialsOpen(run) && isRecalling(run) ? 1 : 0,
+    flareFore: isDialsOpen(run) ? (forecastSize(run) ?? -1) + 1 : 0,
+    flareHit: isDialsOpen(run) ? (hitSize(run) ?? -1) + 1 : 0,
+    flareLost:
+      isDialsOpen(run) && hitSize(run) !== null
+        ? Math.min(9, Math.floor(lastBurn(run) * 10))
+        : 0,
+    flareSaved:
+      isDialsOpen(run) && hitSize(run) !== null
+        ? Math.min(9, Math.floor(lastSaved(run) * 10))
+        : 0,
+    goneWild: isDialsOpen(run) && isGoneWild(run) ? 1 : 0,
+    homeAgain: isDialsOpen(run) && isHome(run) ? 1 : 0,
     aimLevel: level(run, "aim"),
     mirrorTier: tier(run, "mirror"),
     copyTier: tier(run, "copy"),

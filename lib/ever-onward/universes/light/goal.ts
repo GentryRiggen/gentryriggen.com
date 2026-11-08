@@ -10,18 +10,16 @@ import {
 } from "./resources";
 import {
   flameFraction,
-  headingOf,
   isBeamOpen,
-  isCourseAuto,
-  isCourseInPlay,
   isGridInPlay,
   isReadyToFlash,
   lighthouseCount,
   tankCapacity,
 } from "./tick";
-import { TUNING } from "./tuning";
 import { LET_GO, UPGRADES } from "./upgrades";
 import { batteryCapacity, chargeShare01 } from "./grid";
+import { isDialsOpen } from "./design";
+import { flareSafety } from "./sunEdge";
 import { fundBalance, fundKind, isFundOpen } from "./fund";
 
 const LIGHTHOUSE = UPGRADES.find((u) => u.id === "lighthouse");
@@ -67,7 +65,7 @@ export function lightGoal(run: RunState): GoalView | null {
       target: TOTAL_STARS,
       unit: "stars",
       progress: taken - Math.floor(taken),
-      next: "Grow the probe fleet and keep it on course",
+      next: "Grow the probe fleet and keep it safe from flares",
     };
   }
   if (run.phase === 3) {
@@ -189,22 +187,16 @@ function percentMeter(
 /**
  * The number this part asks the player to look after, kept on the HUD so a
  * dim flame or a drifting fleet is never hidden in the details: the grid at
- * night is the batteries, the fleet's heading in the sky, the flame at the end.
+ * night is the batteries, how safe the fleet is from a flare in the sky, the flame at the end.
  */
 function watchedMeter(run: RunState): GaugeView | null {
   if (run.phase === 1 && isGridInPlay(run) && batteryCapacity(run) > 0) {
     const view = percentMeter("BATTERY", chargeShare01(run), 0.5, 0.1);
     return { ...view, status: view.isCritical ? "EMPTY" : view.status };
   }
-  if (run.phase === 2 && isCourseInPlay(run) && !isCourseAuto(run)) {
-    const view = percentMeter(
-      "COURSE",
-      headingOf(run) / 100,
-      0.5,
-      0.15,
-      TUNING.sky.glowAt
-    );
-    return { ...view, status: view.isCritical ? "LOST" : view.status };
+  if (run.phase === 2 && isDialsOpen(run) && (run.resources.probes ?? 0) >= 4) {
+    const view = percentMeter("FLARE SAFE", flareSafety(run), 0.6, 0.2);
+    return { ...view, status: view.isCritical ? "DANGER" : view.status };
   }
   if (run.phase === 3)
     return percentMeter("FLAME", flameFraction(run), FLAME_LOW, FLAME_COLD);

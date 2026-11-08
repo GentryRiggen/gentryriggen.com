@@ -86,14 +86,8 @@ export const VISITORS: readonly VisitorDef[] = [
     phase: PHASE_SKY,
     name: "A strange signal",
     arrivesWhen: (run) => res(run, "stars") <= 970 && owned(run, "probe") >= 1,
-    giftText: (run) =>
-      run.phase === 2
-        ? `${incomeText(run)} and a true course for the fleet`
-        : incomeText(run),
-    give: (run) => {
-      giveIncome(run);
-      if (run.phase === 2) run.resources.heading = 100;
-    },
+    giftText: incomeText,
+    give: giveIncome,
   },
 ];
 

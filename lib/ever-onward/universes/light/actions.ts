@@ -1,5 +1,5 @@
 import type { ActionDef } from "../../engine/types";
-import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
+import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT } from "./resources";
 import {
   boatArrived,
   boatHeadingOf,
@@ -7,19 +7,10 @@ import {
   isReadyToFlash,
   steerBonus,
   barrelOil,
-  flareBonus,
-  headingFactor,
-  headingOf,
-  isCourseAuto,
-  isCourseInPlay,
-  isFlareOn,
-  isFleetGlowing,
   isOilCheap,
   isOilDear,
-  nextFlareIn,
   tankCapacity,
   isBeamOpen,
-  calmSkyIncomePerSecond,
   resolvePerSecond,
   incomePerSecond,
 } from "./tick";
@@ -45,15 +36,8 @@ import {
 } from "./weather";
 import { TOLL_ACTIONS } from "./toll";
 import { noteBuy } from "./tanker";
-import {
-  ROUTES,
-  isProbeOut,
-  isProbesOpen,
-  launchActionId,
-  launchProbe,
-  routeHaul,
-  routeSeconds,
-} from "./probes";
+import { DESIGN_ACTIONS, RECALL } from "./design";
+import { DISTANCE_ACTIONS } from "./sunEdge";
 import {
   PICK_ACTION,
   WATER_ACTION,
@@ -140,61 +124,6 @@ const BUY_OIL: ActionDef = {
     const oil = paid / Math.max(run.resources.oilPrice, 0.01);
     run.resources.oil += oil;
     noteBuy(run, wasDark, oil / tankCapacity(run));
-  },
-};
-
-/** Heading at or above this has nothing to correct. */
-const ON_COURSE = 75;
-
-/** Probes wander as the fleet grows; a free correction points them home. */
-const CORRECT_COURSE: ActionDef = {
-  id: "correct-course",
-  phases: [PHASE_SKY],
-  visibleWhen: (run) => isCourseInPlay(run) && !isCourseAuto(run),
-  describe: (run) => {
-    const heading = headingOf(run);
-    const pace = Math.round(headingFactor(run) * 100);
-    const tone = heading < 50 ? "bad" : heading < 80 ? "neutral" : "good";
-    const text = heading < 50 ? "lost" : heading < 80 ? "drifting" : "true";
-    return {
-      label:
-        heading >= ON_COURSE
-          ? "The fleet is on course, in formation"
-          : "Send a course correction",
-      detail: `Heading ${Math.floor(heading)}% · the fleet works at ${pace}% pace${
-        isFleetGlowing(run) ? " (steady glow +15%)" : ""
-      }${isFlareOn(run) ? " · a flare is out" : ""}`,
-      isBlocked: heading >= ON_COURSE,
-      hint: { text, tone },
-      trendResource: "heading",
-    };
-  },
-  perform: (run) => {
-    run.resources.heading = 100;
-    run.resources.knowhow =
-      (run.resources.knowhow ?? 0) + TUNING.projects.sky.perCourse;
-  },
-};
-
-/** A claimable bonus while a solar flare is out; claiming it never costs. */
-const CATCH_FLARE: ActionDef = {
-  id: "catch-flare",
-  phases: [PHASE_SKY],
-  visibleWhen: (run) => isFlareOn(run),
-  describe: (run) => ({
-    label: "Catch the solar flare",
-    detail: `A burst of sunlight, waiting for you to take it: +${formatNumber(
-      Math.floor(flareBonus(run))
-    )} energy`,
-    hint: { text: "bonus", tone: "good" },
-  }),
-  perform: (run) => {
-    run.resources.energy += flareBonus(run);
-    run.resources.knowhow =
-      (run.resources.knowhow ?? 0) + TUNING.projects.sky.perFlare;
-    run.resources.flaresCaught = (run.resources.flaresCaught ?? 0) + 1;
-    run.resources.flare = 0;
-    run.resources.flareCooldown = nextFlareIn(run);
   },
 };
 
@@ -288,23 +217,6 @@ const CREW_POSTS: readonly ActionDef[] = Array.from(
     }))
 ).flat();
 
-/** One launch button per route; the race panel draws them itself. */
-const LAUNCH_ROUTE: readonly ActionDef[] = ROUTES.map((route, index) => ({
-  id: launchActionId(index),
-  phases: [PHASE_SKY],
-  isInline: true,
-  visibleWhen: isProbesOpen,
-  describe: (run) => ({
-    label: `Launch: ${route.name}`,
-    detail: isProbeOut(run)
-      ? "The probe is out. It will be back soon."
-      : `${Math.round(routeSeconds(run, index))} s, about ${formatNumber(
-          Math.floor(routeHaul(run, index, calmSkyIncomePerSecond(run)))
-        )} energy.`,
-    isBlocked: isProbeOut(run),
-  }),
-  perform: (run) => launchProbe(run, index, calmSkyIncomePerSecond(run)),
-}));
 /** The memory garden's two buttons; its panel draws them itself. */
 const WATER_GARDEN: ActionDef = {
   id: WATER_ACTION,
@@ -349,29 +261,24 @@ const PICK_BLOOMS: ActionDef = {
 };
 
 /**
- * The second thing know-how buys: a minute of everything paying double. At
- * night nothing charges the batteries and the evening rush is bigger; in the
- * sky the fleet slips faster. Steady all minute, half comes back.
+ * The second thing know-how buys: a minute of everything paying double. The
+ * plants run hot, nothing charges the batteries and the evening rush is
+ * bigger. Keep every district lit all minute and half comes back.
  */
 const OVERDRIVE: ActionDef = {
   id: OVERDRIVE_ACTION,
-  phases: [PHASE_NIGHT, PHASE_SKY],
+  phases: [PHASE_NIGHT],
   visibleWhen: isOverdriveOpen,
   describe: (run) => {
     const O = TUNING.overdrive;
-    const isNight = run.phase === 1;
     if (isOverdriveOn(run)) {
       const isSteady = isOverdriveSteady(run);
       return {
-        label: isNight
-          ? "The plants are running hot"
-          : "The fleet is at full burn",
+        label: "The plants are running hot",
         detail: `${Math.ceil(overdriveSecondsLeft(run))} s left · ${
           isSteady
             ? `steady so far: half your know-how comes back`
-            : isNight
-              ? "a district went dark: no know-how comes back"
-              : "the fleet slipped: no know-how comes back"
+            : "a district went dark: no know-how comes back"
         }`,
         isBlocked: true,
         hint: isSteady
@@ -381,13 +288,9 @@ const OVERDRIVE: ActionDef = {
     }
     const last = lastOverdrive(run);
     return {
-      label: isNight ? "Run the plants hot" : "Full burn",
-      detail: `${last === 1 ? "Last run held steady. " : last === 2 ? "Last run slipped. " : ""}Everything pays ${O.boost}× for ${O.seconds} s, ${
-        isNight
-          ? `but nothing charges the batteries and the evening rush is ${Math.round((TUNING.grid.hotPeak - 1) * 100)}% bigger. Keep every district lit all minute and half the know-how comes back.`
-          : `but the fleet slips ${O.strain}× as fast. Keep it above ${O.cleanAbove}% and half the know-how comes back.`
-      }`,
-      cost: { resource: "knowhow", amount: overdriveCost(run) },
+      label: "Run the plants hot",
+      detail: `${last === 1 ? "Last run held steady. " : last === 2 ? "Last run slipped. " : ""}Everything pays ${O.boost}× for ${O.seconds} s, but nothing charges the batteries and the evening rush is ${Math.round((TUNING.grid.hotPeak - 1) * 100)}% bigger. Keep every district lit all minute and half the know-how comes back.`,
+      cost: { resource: "knowhow", amount: overdriveCost() },
     };
   },
   perform: (run) => startOverdrive(run),
@@ -439,12 +342,12 @@ export const ACTIONS: readonly ActionDef[] = [
   ...FUND_IN,
   FUND_OUT,
   BUY_OIL,
-  CORRECT_COURSE,
-  CATCH_FLARE,
   STEER_BOAT,
   FLASH_LAMP,
   ...CREW_POSTS,
-  ...LAUNCH_ROUTE,
+  ...DESIGN_ACTIONS,
+  RECALL,
+  ...DISTANCE_ACTIONS,
   WATER_GARDEN,
   PICK_BLOOMS,
   ...LAMP_ACTIONS,

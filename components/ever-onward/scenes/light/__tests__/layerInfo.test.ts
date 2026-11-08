@@ -1,5 +1,4 @@
-import { performAction, tick } from "@/lib/ever-onward/engine/engine";
-import { launchActionId } from "@/lib/ever-onward/universes/light/probes";
+import { tick } from "@/lib/ever-onward/engine/engine";
 import { sceneInfo } from "@/lib/ever-onward/universes/light";
 import {
   def,
@@ -50,26 +49,27 @@ describe("layer info", () => {
     expect(changed).toBeLessThan(1750 * 0.05);
   });
 
-  it("redraws the sky only when a probe leaves or comes home, not as it flies", () => {
+  it("redraws the sky only when a dial or a moment changes, not as the fleet flies", () => {
     let run = tick(
       def,
-      { ...runAtPhaseStart(2), owned: { collector: 5, probe: 1, "nav-1": 1 } },
+      { ...runAtPhaseStart(2), owned: { collector: 5, probe: 1 } },
       0.1
     );
-    expect(sceneInfo(run).raceOpen).toBe(1);
-    run = performAction(def, run, launchActionId(0));
+    run = tick(
+      def,
+      { ...run, resources: { ...run.resources, probes: 8 } },
+      0.1
+    );
+    expect(sceneInfo(run).dialsOpen).toBe(1);
     let changed = 0;
     for (let i = 0; i < 1000; i += 1) {
       const before = { info: sceneInfo(run) };
       run = tick(def, run, 0.1);
       const after = sceneInfo(run);
-      if (before.info.raceOut !== after.raceOut) changed += 1;
-      expect(after.raceOpen).toBe(1);
+      if (!isSameLayerInfo(before, { info: after })) changed += 1;
     }
-    // out for 75 s (the short hop), then home: the picture changed once on
-    // the way back
-    expect(changed).toBe(1);
-    expect(sceneInfo(run).raceOut).toBe(0);
+    // 100 s of calm flying: a flare or two and the sun's glide, nothing like a redraw a tick
+    expect(changed).toBeLessThan(1000 * 0.06);
   });
 
   it("ignores the numbers only the caption reads", () => {

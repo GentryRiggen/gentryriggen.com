@@ -52,6 +52,12 @@ const GATE_CAP = 59;
  * rather than sum, crews that commit, a lit night worth 200 seconds, the
  * night's prices 135 instead of 28) scored 76.5 uncapped with the night
  * back at 20 minutes. The floor stays where it was.
+ *
+ * The Sky's dials (the probe design, the sun's edge with its flares, and
+ * wild probes; the probe races, course drift, the claimable flare and the
+ * sky's overdrive are gone) scored 76.8 uncapped, up from 76.5, with the sky
+ * about 17 minutes for a reading player and every sky gate in its band bar
+ * the known decision gaps. The floor stays where it was.
  */
 const UNCAPPED_FLOOR = 75.7;
 /** Gates knowingly failing; no other gate may fail. */

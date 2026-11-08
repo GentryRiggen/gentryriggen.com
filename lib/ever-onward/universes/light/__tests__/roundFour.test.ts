@@ -23,13 +23,10 @@ import {
   crewPostActionId,
   weatherStage,
 } from "../weather";
-import {
-  MISSION_CONTROL_ID,
-  PROBES_OPEN_FLAG,
-  RACING_FINS_ID,
-  isProbeOut,
-  launchActionId,
-} from "../probes";
+import { REMOVED_SKY_COSTS, REMOVED_SKY_SCALE } from "../costs";
+
+const RACING_FINS_ID = "fins-1";
+const MISSION_CONTROL_ID = "mission-control";
 import {
   PICK_ACTION,
   RAIN_BARREL_ID,
@@ -214,29 +211,29 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
     expect(lastStorm(byHand).payout).toBeGreaterThan(lastStorm(byVane).payout);
   });
 
-  it("racing fins show after one run home, then mission control; hand plus scout beats the scout", () => {
-    const flags = { [PROBES_OPEN_FLAG]: true };
-    expect(shown(RACING_FINS_ID, at(2, {}, { prRuns: 0 }, flags))).toBe(false);
-    expect(shown(RACING_FINS_ID, at(2, {}, { prRuns: 1 }, flags))).toBe(true);
-    expect(shown(MISSION_CONTROL_ID, at(2, {}, {}, flags))).toBe(false);
-    expect(
-      shown(MISSION_CONTROL_ID, at(2, { [RACING_FINS_ID]: 1 }, {}, flags))
-    ).toBe(true);
-
-    const open = tick(
+  it("an old save's racing fins and mission control are paid back in the sky, once", () => {
+    const run = tick(
       def,
-      at(2, { collector: 5, probe: 1, "nav-1": 1, [MISSION_CONTROL_ID]: 1 }),
-      0.1
+      at(
+        2,
+        {
+          collector: 5,
+          probe: 1,
+          [RACING_FINS_ID]: 1,
+          [MISSION_CONTROL_ID]: 1,
+        },
+        { energy: 0 }
+      ),
+      1
     );
-    const short = launchActionId(0);
-    let both = performAction(def, open, short);
-    let scoutOnly = performAction(def, open, short);
-    for (let t = 0; t < 600; t += 1) {
-      both = tick(def, both, 1);
-      scoutOnly = tick(def, scoutOnly, 1);
-      if (!isProbeOut(both)) both = performAction(def, both, short);
-    }
-    expect(both.resources.energy).toBeGreaterThan(scoutOnly.resources.energy);
+    const paid =
+      (REMOVED_SKY_COSTS[RACING_FINS_ID] +
+        REMOVED_SKY_COSTS[MISSION_CONTROL_ID]) *
+      REMOVED_SKY_SCALE;
+    expect(run.owned[RACING_FINS_ID]).toBeUndefined();
+    expect(run.owned[MISSION_CONTROL_ID]).toBeUndefined();
+    expect(run.resources.energy).toBeGreaterThanOrEqual(paid);
+    expect(tick(def, run, 1).resources.energy).toBeLessThan(paid * 1.5);
   });
 
   it("the rain barrel shows after three real picks, and watering by hand still helps", () => {

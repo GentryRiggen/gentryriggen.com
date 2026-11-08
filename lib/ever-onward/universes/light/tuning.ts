@@ -6,7 +6,7 @@ export const TUNING = {
    * again (and added forks, the fund and overdrive), so the whole run is
    * priced up to stay about two hours.
    */
-  costScale: { coast: 1, night: 135, sky: 9.5, last: 4.6 } as Record<
+  costScale: { coast: 1, night: 135, sky: 8, last: 4.6 } as Record<
     string,
     number
   >,
@@ -53,12 +53,12 @@ export const TUNING = {
       windRampSeconds: 150,
     },
     sky: {
-      /** More probes: the fleet grows at once, and drifts off course faster. */
+      /** More probes: the fleet grows at once, and flares burn more of it. */
       swarmProbes: 3,
-      swarmDrift: 1.5,
-      /** Bigger mirrors: every collector catches more, and the fleet is steadier. */
+      swarmFlare: 1.4,
+      /** Bigger mirrors: every collector catches more, and flares burn less of the fleet. */
       mirrorsEnergy: 2.6,
-      mirrorsDrift: 0.85,
+      mirrorsFlare: 0.85,
     },
     last: {
       /** Let it go: resolve comes faster and the flame fades faster. */
@@ -236,22 +236,6 @@ export const TUNING = {
       darkBannerSeconds: 6,
     },
   },
-  /** Probe Races, a side machine of the sky (see probes.ts). */
-  probes: {
-    /** Seconds of sky income each route brings home, and how long it takes. */
-    short: { seconds: 75, haulSeconds: 52 },
-    long: { seconds: 180, haulSeconds: 120 },
-    /** The comet route pays between these, by how close the comet is at launch. */
-    comet: { seconds: 110, haulMin: 40, haulMax: 92 },
-    /** The comet drifts out and back in one slow pass of this many seconds. */
-    cometCycleSeconds: 150,
-    /** Racing fins: every run takes this share of its time. */
-    finsTimeFactor: 0.5,
-    /** Mission control's scout brings home this share of a hand-flown haul. */
-    scoutShare: 0.35,
-    /** A haul flows in over this many seconds, like a rush of light. */
-    surgeSeconds: 4,
-  },
   /** The Memory Garden, a side machine of The Last Light (see garden.ts). */
   garden: {
     /** Seconds a seed takes to bloom with no water at all. */
@@ -385,40 +369,34 @@ export const TUNING = {
       /** Know-how a second: every collector, and the fleet's size on a log scale. */
       knowhowPerCollector: 0.02,
       knowhowPerDecade: 0.08,
-      /** Know-how for catching a flare, and for correcting the course. */
+      /** Know-how for a flare weathered (it burned under a quarter of the fleet), and for bringing wild probes home. */
       perFlare: 2,
-      perCourse: 1,
+      perHome: 1,
       /** Star atlas: probes take stars faster. */
       atlasBoost: 1.6,
-      /** Mirror polish: every collector catches more, the fleet drifts faster. */
+      /** Mirror polish: every collector catches more, flares burn more of the fleet. */
       polishBoost: 1.6,
-      polishDrift: 1.25,
+      polishFlare: 1.25,
       /** Relay codes: every star taken pays more. */
       relayBoost: 1.5,
-      /** Probe school: probes copy faster; flares come less often. */
+      /** Probe school: probes copy faster; more of them go wild. */
       schoolBoost: 1.5,
-      schoolFlareGap: 1.3,
-      /** Flare watchers: flares pay more and come sooner. */
-      flarePay: 1.6,
-      flareGap: 0.8,
+      schoolWild: 1.4,
     },
   },
   /**
    * Overdrive, the second thing know-how buys (besides projects): run the
-   * night's plants, or the sky's whole fleet, hot for a minute. Everything
-   * pays `boost` times as much, but the grid (or the fleet's heading) slips
-   * `strain` times as fast. Keep it above `cleanAbove` the whole minute and
+   * night's plants hot for a minute. Everything pays `boost` times as much,
+   * but the evening rush is bigger and nothing charges. Keep it above `cleanAbove` the whole minute and
    * `refund` of the know-how comes back. Nothing here is chance.
    */
   overdrive: {
     seconds: 60,
     boost: 2,
-    strain: 3,
     cleanAbove: 60,
     refund: 0.5,
     nightCost: 30,
-    skyCost: 30,
-    /** It is offered from this many steam plants (night) / probes (sky). */
+    /** It is offered from this many steam plants. */
     nightAtSteamPlants: 2,
   },
   /**
@@ -533,21 +511,104 @@ export const TUNING = {
     /** A wave of copies / early arrivals lands when these are bought. */
     copyFleetBump: 1.5,
     engineFleetBump: 1.3,
-    /** Probes wander off course; cheaper to fix by hand than to ignore. */
-    headingFloor: 0.6,
-    /** Steady glow: a fleet in formation takes stars this much faster. */
-    glowAt: 75,
-    glowBonus: 0.15,
-    driftBase: 0.16,
-    driftPerDecade: 0.14,
-    chartsSaving: 0.5,
-    autoCorrectBelow: 55,
-    autoCorrectTo: 90,
-    /** Solar flare: a claimable bonus that waits, like the evening rush. */
-    flareGapMin: 110,
-    flareGapSpread: 110,
-    flareFirst: 100,
-    flareBonusSeconds: 25,
+    /** The sky's first flare comes this long after the first probe flies. */
+    flareFirst: 90,
+  },
+  /**
+   * The sky's three dials (see design.ts and sunEdge.ts). Design points are
+   * split across four things a probe can be good at; the sun's edge is how
+   * close the fleet flies (much more light, and flares that burn probes);
+   * and copying hard sends some probes wild.
+   */
+  dials: {
+    /** Design points to split, and the split the fleet starts with. */
+    points: 8,
+    startSplit: [2, 2, 2, 2] as readonly number[],
+    /** One point takes this long to land in its new place. */
+    settleSeconds: 6,
+    /** What each point of a stat is worth (1 at the starting 2 points). */
+    speedBase: 0.4,
+    speedStep: 0.3,
+    mirrorBase: 0.5,
+    mirrorStep: 0.25,
+    copyBase: 0,
+    copyStep: 0.5,
+    /** A shield point leaves 1 / (1 + this x points) of a flare's burn. */
+    shieldStep: 1.1,
+    /** The shield foundry makes every shield point this much stronger. */
+    foundryShield: 1.5,
+    /** Where the sun's edge steps start and how fast the fleet moves between them. */
+    startDistance: 1,
+    distanceStepSeconds: 30,
+    /** Light each distance gathers (step 0 far, 4 brushing the sun). */
+    light: [0.7, 1, 1.5, 2.2, 3.5] as readonly number[],
+    /** How hot each distance is: the share of a flare that reaches the fleet. */
+    heat: [0, 0.1, 0.25, 0.5, 0.9] as readonly number[],
+    /** How hard each size of flare burns, unshielded and at heat 1. */
+    flareBurn: [1, 2.5, 5] as readonly number[],
+    /**
+     * The sun's moods, which come and go on their own: how soon its flares
+     * come (a gap of `gapMin` plus up to `gapSpread` seconds) and how big
+     * (the odds of small, medium and big).
+     */
+    moods: [
+      {
+        name: "quiet",
+        gapMin: 200,
+        gapSpread: 100,
+        lead: 50,
+        odds: [0.9, 0.1, 0],
+      },
+      {
+        name: "usual",
+        gapMin: 70,
+        gapSpread: 50,
+        lead: 35,
+        odds: [0.4, 0.4, 0.2],
+      },
+      {
+        name: "restless",
+        gapMin: 30,
+        gapSpread: 30,
+        lead: 8,
+        odds: [0.02, 0.28, 0.7],
+      },
+    ] as readonly {
+      name: string;
+      gapMin: number;
+      gapSpread: number;
+      /** How many seconds ahead its flares are forecast (a restless sun gives little warning). */
+      lead: number;
+      odds: readonly number[];
+    }[],
+    /** A mood lasts this long, and the sun starts out "usual". */
+    moodMin: 150,
+    moodSpread: 150,
+    startMood: 1,
+    /** The chance the forecast has the size right (with sun charts). */
+    forecastSure: 0.6,
+    forecastSureCharts: 0.9,
+    /** Flare watchers show the forecast this much sooner. */
+    watchLead: 15,
+    /** How long the flare and wild moments stay on in the picture. */
+    hitSeconds: 6,
+    wildBannerSeconds: 6,
+    homeBannerSeconds: 6,
+    /** Copying above this many points sends copies wild: this share of them, times the points over, squared. */
+    wildFree: 2,
+    wildShare: 0.04,
+    wildMax: 0.95,
+    /** Wild probes grow on their own at this share of a probe's growth (and take no stars for you). */
+    wildGrowth: 1,
+    /** Wild probes crowd the sky: tame growth and star-taking shrink by this share of the wild share. */
+    wildCrowd: 0.6,
+    /** The share of the sunlight wild probes keep (at most, when all are wild). */
+    wildLight: 0.8,
+    /** Bringing them home: design points pulled from copying for this long. */
+    recallPoints: 3,
+    recallSeconds: 20,
+    /** The wild ones are first noticed when they are this share of the fleet. */
+    wildNotice: 0.04,
   },
   last: {
     /** The flame (0..flameFull) starts here, whatever came before. */

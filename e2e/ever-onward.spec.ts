@@ -165,6 +165,43 @@ test.describe("Ever Onward", () => {
     await expect(page.getByTestId("lm-station-school")).toBeAttached();
   });
 
+  test("the sky's dials show in the panels and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-jump-light-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 60_000,
+    });
+    // The sun's edge: the mood and the forecast are plain words; the five
+    // steps show light and flare heat as bars, never numbers to work out.
+    const edge = page.getByTestId("lm-sunedge");
+    await expect(edge).toBeVisible();
+    await expect(edge.getByTestId("lm-sun-mood")).toBeVisible();
+    await expect(edge.getByTestId("lm-sun-forecast")).toBeVisible();
+    await expect(edge).not.toContainText(/best|recommend/i);
+    await edge.getByTestId("lm-sunedge-4").click();
+    await expect(edge).toHaveAttribute("data-step", "4");
+    // The probe design: four stats, each with its plus and its minus.
+    const design = page.getByTestId("lm-design");
+    await expect(design).toBeVisible();
+    await expect(design).not.toContainText(/best|recommend/i);
+    const speed = design.getByTestId("lm-design-speed");
+    const before = Number(await speed.getAttribute("data-points"));
+    await design.getByTestId("lm-design-down-speed").click();
+    await expect(speed).toHaveAttribute("data-points", String(before - 1));
+    await expect(design).toHaveAttribute("data-spare", "1");
+    await design.getByTestId("lm-design-up-copying").click();
+    await expect(design).toHaveAttribute("data-spare", "0");
+    await expect(design.getByTestId("lm-wild")).toBeVisible();
+    // The picture: the robot's stream of probes and the sun's dials.
+    await expect(page.getByTestId("lm-sky-dials")).toBeAttached();
+  });
+
   test("the old window box turns the blind, and the picture shows the light and the leaves", async ({
     page,
   }) => {

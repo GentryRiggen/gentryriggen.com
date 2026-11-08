@@ -18,7 +18,8 @@ import EmberIcon from "../game/EmberIcon";
 import LampPanel from "../game/LampPanel";
 import LanternPicker from "../game/LanternPicker";
 import MemoryGarden from "../game/MemoryGarden";
-import ProbeRaces from "../game/ProbeRaces";
+import ProbeDesignPanel from "../game/ProbeDesignPanel";
+import SunEdgePanel from "../game/SunEdgePanel";
 import ForkPanel from "../game/ForkPanel";
 import HarborPanel from "../game/HarborPanel";
 import FundPanel from "../game/FundPanel";
@@ -91,9 +92,10 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   // A tanker tying up at the quay, and barrels rolling into the tanks.
   if (rose("tkVisits")) cues.push("arrive");
   if (rose("tkBuys")) cues.push("splash");
-  // The racing probe leaving the dock, and coming home.
-  if (rose("prLaunches")) cues.push("launch");
-  if (rose("prRuns")) cues.push("arrive");
+  // A flare sweeping the fleet, probes going wild, and the wild ones coming home.
+  if (rose("skFlares")) cues.push("thunder");
+  if (rose("skWilds")) cues.push("splash");
+  if (rose("skRecalls")) cues.push("arrive");
   // A memory flower picked in the garden.
   if (rose("gdPicks")) cues.push("chime");
   return cues;
@@ -106,7 +108,8 @@ export const LIGHT_UI: UniverseUi = {
     GridPanel,
     StreetlightsPanel,
     CrewsPanel,
-    ProbeRaces,
+    SunEdgePanel,
+    ProbeDesignPanel,
     MemoryGarden,
   ],
   panels: [

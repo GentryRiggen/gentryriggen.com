@@ -5,14 +5,13 @@ import {
   appetite,
   collectorEnergyPerSecond,
   demandMW,
-  driftPerSecond,
-  flareBonus,
   knowhowPerSecond,
   incomePerSecond,
   powerPerSecond,
   probeEnergyPerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
+import { burnShare, forecastLead } from "./sunEdge";
 import { litBonus, litNights, rushCarry, rushExcessAt } from "./grid";
 import {
   BAROMETERS_ID,
@@ -226,15 +225,16 @@ export const SKY_PROJECTS: readonly ProjectDef[] = [
     name: "Mirror polish",
     description:
       "A rag, a ladder and a very long Saturday. Every collector catches 60% more.",
-    tradeOff: "The glare confuses the fleet: its heading drifts 25% faster.",
+    tradeOff:
+      "The glare gets into the shields: flares burn 25% more of the fleet.",
     costs: cost(70),
     revealWhen: (run) => owned(run, "collector") >= 5,
     effectPreview: projectPreviewOf("mirror-polish", [
       { label: "Energy/sec", read: collectorEnergyPerSecond },
       {
-        label: "Fleet drift",
-        read: (run) => driftPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "A usual flare burns",
+        read: (run) => burnShare(run, 1) * 100,
+        suffix: "% of the fleet",
       },
     ]),
   },
@@ -258,10 +258,11 @@ export const SKY_PROJECTS: readonly ProjectDef[] = [
     name: "Probe school",
     description:
       "Young probes learn to copy themselves from older ones. Copying is 50% faster.",
-    tradeOff: "The older ones hog the dish: flares come 30% less often.",
+    tradeOff: "Copies made in a hurry wander: 40% more of them go wild.",
     costs: cost(140),
     revealWhen: (run) => owned(run, "copy-1") >= 1,
-    effectPreview: () => "Probes copy 1.5× as fast · flares 1.3× as far apart",
+    effectPreview: () =>
+      `Probes copy ${TUNING.projects.sky.schoolBoost}× as fast · wild ones ${TUNING.projects.sky.schoolWild}× as many`,
     botValue: 0.3,
   },
   {
@@ -269,12 +270,12 @@ export const SKY_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_SKY,
     name: "Flare watchers",
     description:
-      "A night shift that does nothing but watch the sun. Flares come 20% sooner and pay 60% more.",
+      "A night shift that does nothing but watch the sun. The flare forecast shows 15 s sooner.",
     tradeOff: "Costs energy you could put into a collector.",
     costs: cost(90, 2500, "energy"),
-    revealWhen: (run) => (run.resources.flaresCaught ?? 0) >= 1,
+    revealWhen: (run) => (run.resources.skFlares ?? 0) >= 2,
     effectPreview: projectPreviewOf("flare-watch", [
-      { label: "A flare pays", read: flareBonus },
+      { label: "Forecast shows", read: forecastLead, suffix: " s ahead" },
     ]),
     botValue: 0.1,
   },

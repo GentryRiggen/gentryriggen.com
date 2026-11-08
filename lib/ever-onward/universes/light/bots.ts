@@ -34,8 +34,8 @@ import { cloneRun } from "../../engine/engine";
 import { chosenSide, forkActionId, forkOf, chooseSide } from "./forks";
 import type { ForkDef, ForkSide } from "./forks";
 import { fundIncome } from "./tick";
+import { playsSky } from "./skyBots";
 import { OVERDRIVE_ACTION, isOverdriveOpen, overdriveCost } from "./overdrive";
-import { cometCloseness, isProbeOut, launchActionId } from "./probes";
 import {
   PICK_ACTION,
   WATER_ACTION,
@@ -139,16 +139,13 @@ const cheapskateOil = buysOilWhen(
 );
 
 /**
- * Looks after what needs hands: the fleet's heading when it dips under
- * `below` percent, and claims the solar flare when `claims` (a busy or
- * relaxed player may let it pass).
+ * Looks after what needs hands at the end: steers the first ship's boat when
+ * its heading dips under `below` percent, and makes the one flash.
  */
 const looksAfterThings =
-  (below: number, claims: boolean): OilChoice =>
+  (below: number): OilChoice =>
   (run, available) => {
     const picks: string[] = [];
-    if (available.includes("correct-course") && run.resources.heading < below)
-      picks.push("correct-course");
     // The first ship: steer it when it drifts, and the one flash that ends it.
     if (
       available.includes("steer-boat") &&
@@ -156,8 +153,6 @@ const looksAfterThings =
     )
       picks.push("steer-boat");
     if (available.includes("flash-lamp")) picks.push("flash-lamp");
-    // The window waits for the player, so a claiming bot takes it at once.
-    if (claims && available.includes("catch-flare")) picks.push("catch-flare");
     return picks;
   };
 
@@ -313,37 +308,6 @@ const setsToll =
     const gain = tollNet(run, want) / Math.max(tollNet(run, now), 1e-6);
     if (step === undefined && gain < TOLL_SWITCH_GAIN) return [];
     const id = tollActionId(want);
-    return available.includes(id) ? [id] : [];
-  };
-
-/** Seconds in one stretch of attention for the probe races. */
-const RACE_WINDOW = 30;
-
-/**
- * Launches the racing probe whenever it sits at the dock, on the route that
- * fits the player: `comet` is how close the comet must be before the bot
- * chases it (it reads the bar), `plain` the route it flies otherwise (0 short
- * hop, 1 long loop). A bot with real attention misses now and then: it lets
- * the probe sit at the dock for one 30 s stretch in every `skipEvery`th
- * (counted by the clock, so the sim stays deterministic), and `onlyEvery`
- * makes a distracted player launch in just one stretch in so many. A probe at
- * the dock waits, so a miss costs only time.
- */
-const racesProbes =
-  (options: {
-    comet: number;
-    plain: number;
-    skipEvery?: number;
-    onlyEvery?: number;
-  }): OilChoice =>
-  (run, available) => {
-    if (isProbeOut(run)) return [];
-    const stretch = Math.floor(run.time / RACE_WINDOW);
-    const { skipEvery, onlyEvery } = options;
-    if (skipEvery && stretch % skipEvery === skipEvery - 1) return [];
-    if (onlyEvery && stretch % onlyEvery !== 0) return [];
-    const route = cometCloseness(run) >= options.comet ? 2 : options.plain;
-    const id = launchActionId(route);
     return available.includes(id) ? [id] : [];
   };
 
@@ -581,7 +545,8 @@ export const runsOverdrive =
     // At night the question is the next rush: start only when it is far
     // enough off to be over before it, and the batteries are full so the
     // minute without charging leaves them ready.
-    if (run.phase === 1) {
+    if (run.phase !== 1) return [];
+    {
       const room = TUNING.overdrive.seconds + 12;
       if (isGridOpen(run) && (isRushNow(run) || secondsToRush(run) < room))
         return [];
@@ -590,7 +555,7 @@ export const runsOverdrive =
         batteryCharge(run) < batteryCapacity(run) * (startAt / 100)
       )
         return [];
-    } else if ((run.resources.heading ?? 100) < startAt) return [];
+    }
     const readyProjects = shownProjects(lightUniverse, run).filter((p) =>
       p.costs.every(
         (c) =>
@@ -605,7 +570,7 @@ export const runsOverdrive =
           )
         )
       : 0;
-    return (run.resources.knowhow ?? 0) >= overdriveCost(run) + reserve
+    return (run.resources.knowhow ?? 0) >= overdriveCost() + reserve
       ? [OVERDRIVE_ACTION]
       : [];
   };
@@ -705,7 +670,7 @@ export const buysBatteries =
 const withOil = (
   strategy: Strategy,
   actions: OilChoice,
-  care: OilChoice = looksAfterThings(45, true),
+  care: OilChoice = looksAfterThings(45),
   weather: OilChoice = () => [],
   toll: OilChoice = () => [],
   race: OilChoice = () => [],
@@ -743,7 +708,7 @@ export function nightPlayer(habits: {
   return withOil(
     { ...tapper, choose: buysBatteries() },
     savvyOil,
-    looksAfterThings(74, true),
+    looksAfterThings(74),
     habits.crews ?? (() => []),
     () => [],
     () => [],
@@ -755,9 +720,26 @@ export function nightPlayer(habits: {
   );
 }
 
-/** Tends at `below` percent and claims, or not: one dial of a skill pair. */
-const tender = (base: Strategy, below: number, claims: boolean): Strategy =>
-  withOil(base, savvyOil, looksAfterThings(below, claims));
+/**
+ * A player for the sky alone (the dials' tests): the eager tapper with the
+ * shop order, oil, and exactly the sky habit given.
+ */
+export function skyPlayer(habits: { sky?: OilChoice }): Strategy {
+  const tapper = genericBots(lightUniverse).tapper;
+  return withOil(
+    { ...tapper, choose: buysBatteries() },
+    savvyOil,
+    looksAfterThings(74),
+    () => [],
+    () => [],
+    habits.sky ?? (() => []),
+    () => [],
+    () => [],
+    () => [],
+    () => [],
+    choosesFork
+  );
+}
 
 /** How much of the next price the scorecard's players keep parked while saving. */
 export const DEFAULT_FUND_SHARE = 0.3;
@@ -790,13 +772,25 @@ export function lightBots(
     ...choosesFork(run, available),
     ...(run.phase >= 3 ? lastPhaseActions(run, available) : []),
   ];
-  const tendPair = {
-    naive: tender(base.tapper, 15, true),
-    careful: tender(base.tapper, 74, true),
-  };
-  const claimPair = {
-    ignores: tender(base.tapper, 74, false),
-    claims: tender(base.tapper, 74, true),
+  // In the sky the naive player reads the stars and the sun's mood but never
+  // looks at the flare forecast; the careful one reads all three.
+  const skyPair = {
+    naive: withOil(
+      base.tapper,
+      savvyOil,
+      looksAfterThings(15),
+      () => [],
+      () => [],
+      playsSky({ forecast: false })
+    ),
+    careful: withOil(
+      base.tapper,
+      savvyOil,
+      looksAfterThings(74),
+      () => [],
+      () => [],
+      playsSky()
+    ),
   };
   // At night the careful player reads each evening and posts the crews; the
   // naive one sets the streetlights once and leaves every crew building.
@@ -804,7 +798,7 @@ export function lightBots(
     naive: withOil(
       base.tapper,
       savvyOil,
-      looksAfterThings(15, true),
+      looksAfterThings(15),
       () => [],
       () => [],
       () => [],
@@ -814,7 +808,7 @@ export function lightBots(
     careful: withOil(
       base.tapper,
       savvyOil,
-      looksAfterThings(74, true),
+      looksAfterThings(74),
       tendsCrews(),
       () => [],
       () => [],
@@ -826,10 +820,10 @@ export function lightBots(
     tapper: withOil(
       base.tapper,
       savvyOil,
-      looksAfterThings(74, true),
+      looksAfterThings(74),
       tendsCrews({ skipEvery: 10 }),
       setsToll({ skipEvery: 8 }),
-      racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
+      playsSky({ skipEvery: 8 }),
       tendsGarden({ skipEvery: 6 }),
       setsAllLamps({ patience: 30, skipEvery: 8 }),
       investsInFund(fundShare, fundWait),
@@ -839,10 +833,10 @@ export function lightBots(
     realistic: withOil(
       base.realistic,
       savvyOil,
-      looksAfterThings(42, true),
+      looksAfterThings(42),
       tendsCrews({ skipEvery: 5 }),
       setsToll({ skipEvery: 4 }),
-      racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
+      playsSky({ skipEvery: 4 }),
       tendsGarden({ skipEvery: 3 }),
       setsAllLamps({ patience: 30, skipEvery: 4 }),
       investsInFund(fundShare, fundWait),
@@ -861,10 +855,10 @@ export function lightBots(
       ...withOil(
         base.dawdler,
         savvyOil,
-        looksAfterThings(35, false),
+        looksAfterThings(35),
         tendsCrews({ onlyEvery: 3 }),
         setsToll({ onlyEvery: 3 }),
-        racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
+        playsSky({ onlyEvery: 3 }),
         tendsGarden({ onlyEvery: 3 }),
         setsAllLamps({ patience: 30, onlyEvery: 3 }),
         investsInFund(fundShare, fundWait * 2),
@@ -877,13 +871,12 @@ export function lightBots(
     // taps against one who does.
     skill: {
       1: nightPair,
-      2: tendPair,
+      2: skyPair,
       3: {
         naive: { ...base.tapper, tapRate: () => 0.5, actions: idleActions },
         careful: { ...base.tapper, actions: idleActions },
       },
     },
-    claim: { 2: claimPair },
     naiveOil: withOil(base.tapper, naiveOil),
     cheapskateOil: withOil(base.tapper, cheapskateOil),
   };

@@ -223,8 +223,8 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
   ],
   [PHASE_SKY]: [
     "Add sun collectors: they gather light for you.",
-    "Send a course correction when the fleet drifts. A steady fleet works faster.",
-    "Catch the solar flare when it shines. It waits for you.",
+    "Split your probe design, and fly closer to the sun for more light. Flares burn what flies close.",
+    "Copy too hard and some probes go wild. Bring them home before they take over.",
   ],
   [PHASE_LAST]: [
     "Spend resolve in the shop to let lights go dark. Each one you let go moves the goal.",

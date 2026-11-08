@@ -1,6 +1,8 @@
 import type { EventSource } from "../../engine/types";
 import { gardenResultLine, picksSoFar } from "./garden";
-import { resultLine, runsHome } from "./probes";
+import { flareLine, homeLine, wildLine } from "./skyLines";
+import { flaresSoFar } from "./sunEdge";
+import { recallsSoFar, wildsSoFar } from "./design";
 import { tankerLine, tankerVisits } from "./tanker";
 import {
   frontsSoFar,
@@ -36,6 +38,13 @@ export const LIGHT_EVENTS: readonly EventSource[] = [
     line: tankerLine,
     tone: () => "good",
   },
-  { id: "probe", count: runsHome, line: resultLine },
+  {
+    id: "flare",
+    count: flaresSoFar,
+    line: flareLine,
+    tone: (run) => ((run.resources.skHitLost ?? 0) >= 0.25 ? "bad" : "good"),
+  },
+  { id: "wild", count: wildsSoFar, line: wildLine, tone: () => "bad" },
+  { id: "home", count: recallsSoFar, line: homeLine, tone: () => "good" },
   { id: "garden-pick", count: picksSoFar, line: gardenResultLine },
 ];

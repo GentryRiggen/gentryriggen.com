@@ -19,11 +19,11 @@ import {
 import {
   appetite,
   collectorEnergyPerSecond,
-  driftPerSecond,
   knowhowPerSecond,
   powerPerSecond,
 } from "../tick";
 import { rushExcessAt } from "../grid";
+import { burnShare } from "../sunEdge";
 import { TUNING } from "../tuning";
 
 const O = TUNING.overdrive;
@@ -52,6 +52,7 @@ function skyRun(knowhow = 300): RunState {
   return reconcileRun(def, {
     ...base,
     phase: 2,
+    flags: { ...base.flags, "sky-dials": true },
     owned: { collector: 6, probe: 1, "copy-1": 1 },
     resources: {
       ...base.resources,
@@ -59,6 +60,8 @@ function skyRun(knowhow = 300): RunState {
       probes: 20,
       collectors: 6,
       knowhow,
+      skDist: 3,
+      skDistNow: 3,
     },
   });
 }
@@ -100,7 +103,7 @@ describe("know-how has two hungry sinks", () => {
       owned: { collector: 6 },
     });
     expect(isOverdriveOpen(noProbe)).toBe(false);
-    expect(isOverdriveOpen(skyRun())).toBe(true);
+    expect(isOverdriveOpen(skyRun())).toBe(false);
   });
 });
 
@@ -168,18 +171,9 @@ describe("overdrive", () => {
     expect(run.resources.power).toBeGreaterThan(power);
   });
 
-  it("works the same way in the sky, on the fleet's heading", () => {
-    const run = skyRun();
-    const energy = collectorEnergyPerSecond(run);
-    const drift = driftPerSecond(run);
-    const driven = performAction(def, run, OVERDRIVE_ACTION);
-    expect(overdriveCost(run)).toBe(O.skyCost);
-    expect(collectorEnergyPerSecond(driven)).toBeCloseTo(energy * O.boost, 5);
-    expect(driftPerSecond(driven)).toBeCloseTo(drift * O.strain, 5);
-    let t = driven;
-    t = { ...t, resources: { ...t.resources, heading: 10 } };
-    for (let i = 0; i < O.seconds + 1; i += 1) t = tick(def, t, 1);
-    expect(t.resources.odKind).toBe(2);
+  it("is for the night alone: the sky has its own risk dial", () => {
+    expect(isOverdriveOpen(skyRun())).toBe(false);
+    expect(overdriveCost()).toBe(O.nightCost);
   });
 
   it("is never read as income by the scorecard's probes", () => {
@@ -191,7 +185,7 @@ describe("overdrive", () => {
   it("reads an old save with no overdrive as never run", () => {
     const run = nightRun();
     const old: RunState = { ...run, resources: { ...run.resources } };
-    for (const id of ["odLeft", "odClean", "odRuns", "odKind", "flaresCaught"])
+    for (const id of ["odLeft", "odClean", "odRuns", "odKind"])
       delete old.resources[id];
     const loaded = reconcileRun(def, old);
     expect(isOverdriveOn(loaded)).toBe(false);
@@ -221,7 +215,7 @@ describe("the sky's projects", () => {
     expect(collectorEnergyPerSecond(polished)).toBeCloseTo(
       collectorEnergyPerSecond(sky) * TUNING.projects.sky.polishBoost
     );
-    expect(driftPerSecond(polished)).toBeGreaterThan(driftPerSecond(sky));
+    expect(burnShare(polished, 1)).toBeGreaterThan(burnShare(sky, 1));
     for (const project of shownProjects(def, sky))
       expect(project.tradeOff).toBeTruthy();
   });

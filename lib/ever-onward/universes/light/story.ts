@@ -280,18 +280,23 @@ const sky: StoryMessage[] = [
     text: "Space is wide and probes are patient. The first copies arrive years later, but your clock has never minded waiting.",
   },
   {
-    id: "sky-races",
+    id: "sky-edge",
     phase: PHASE_SKY,
-    // Some time after the charts arrive, so the map and its story do not land together.
-    when: (run) =>
-      run.flags["probes-open"] === true && (run.resources.prTime ?? 0) >= 30,
-    text: "The star charts show three routes, and a little racing probe waits at the dock with its engine humming. It is no use to the fleet, really. It just wants to go fast, and come home, and tell you all about it.",
+    // After the first flare has passed, so it lands on a quiet screen.
+    when: (run) => (run.resources.skFlares ?? 0) >= 1,
+    text: "The sun does not mind visitors. It just throws a flare now and then, the way anyone clears their throat. Closer is brighter, and farther is calmer, and a few shields never hurt.",
   },
   {
-    id: "sky-scout",
+    id: "sky-wild",
     phase: PHASE_SKY,
-    when: (run) => owned(run, "mission-control") >= 1,
-    text: "Mission control is a small room with a very big window. A scout probe slips out and flies your last route, so the dock is never quiet. Your racing probe is still yours, and the stars have plenty of room for both.",
+    when: (run) => (run.resources.skWilds ?? 0) >= 1,
+    text: "Some of the copies came out different. They turned red, kept their light for themselves, and wandered off to be wild. They are not bad probes. They are just very sure of themselves.",
+  },
+  {
+    id: "sky-home",
+    phase: PHASE_SKY,
+    when: (run) => (run.resources.skRecalls ?? 0) >= 1,
+    text: "The wild ones came home on a green thread, a little embarrassed. Nobody mentions it. The fleet makes room, and the copies go on copying.",
   },
   {
     id: "sky-sail",

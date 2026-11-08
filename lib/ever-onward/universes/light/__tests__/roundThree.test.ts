@@ -14,9 +14,7 @@ import { lanternOf, sceneInfo } from "../scene";
 import { isGridGlowing } from "../grid";
 import {
   collectorEnergyPerSecond,
-  isFleetGlowing,
   resolvePerSecond,
-  starsPerSecond,
   steerBonus,
 } from "../tick";
 import { lightCountdown } from "../visitors";
@@ -150,25 +148,6 @@ describe("the steady glow", () => {
     expect(isGridGlowing(dark)).toBe(false);
     expect(sceneInfo(lit).glow).toBe(1);
     expect(sceneInfo(dark).glow).toBe(0);
-  });
-
-  it("speeds the fleet up 15% while it flies true", () => {
-    const sky = (heading: number): RunState => {
-      const run = { ...newRun(def), phase: 2 };
-      return {
-        ...run,
-        resources: { ...run.resources, probes: 50, heading },
-      };
-    };
-    expect(isFleetGlowing(sky(90))).toBe(true);
-    expect(isFleetGlowing(sky(60))).toBe(false);
-    const ratio =
-      starsPerSecond(sky(75)) /
-      starsPerSecond({
-        ...sky(75),
-        resources: { ...sky(75).resources, heading: 74.9 },
-      });
-    expect(ratio).toBeGreaterThan(1.15);
   });
 });
 

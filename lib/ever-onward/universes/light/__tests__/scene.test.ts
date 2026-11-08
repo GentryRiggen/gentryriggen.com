@@ -26,7 +26,6 @@ describe("sceneInfo", () => {
           "lightsFraction",
           "oilFraction",
           "charge",
-          "fleetHeading",
         ] as const) {
           expect(info[key]).toBeGreaterThanOrEqual(0);
           expect(info[key]).toBeLessThanOrEqual(1);

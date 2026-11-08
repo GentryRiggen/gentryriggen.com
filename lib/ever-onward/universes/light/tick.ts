@@ -10,9 +10,23 @@ import {
   TOTAL_LIGHTS,
   TOTAL_STARS,
 } from "./resources";
-import { REMOVED_NIGHT_COSTS, REMOVED_NIGHT_SCALE } from "./costs";
+import {
+  REMOVED_NIGHT_COSTS,
+  REMOVED_NIGHT_SCALE,
+  REMOVED_SKY_COSTS,
+  REMOVED_SKY_SCALE,
+} from "./costs";
 import { TUNING } from "./tuning";
-import { tickProbes } from "./probes";
+import {
+  SKY_DIALS_FLAG,
+  copyMult,
+  mirrorMult,
+  speedMult,
+  tickDesign,
+  wildFraction,
+  wildShare,
+} from "./design";
+import { lightMult, openSkyDials, tickSunEdge } from "./sunEdge";
 import { tickGarden } from "./garden";
 import {
   growthRate,
@@ -30,7 +44,7 @@ import {
 } from "./tanker";
 import { tickFund } from "./fund";
 import { hasFork, windRamp } from "./forkState";
-import { overdriveBoost, overdriveStrain, tickOverdrive } from "./overdrive";
+import { overdriveBoost, tickOverdrive } from "./overdrive";
 import { districtsDark, tickGrid } from "./grid";
 import {
   buildMult,
@@ -512,6 +526,21 @@ function refundRemovedUpgrades(run: RunState): void {
   }
 }
 
+/**
+ * A save from before the sky's dials owns the racing fins and mission
+ * control: while it is in the sky, pay back what they cost and take them off
+ * the books, once.
+ */
+function refundRemovedSkyUpgrades(run: RunState): void {
+  for (const [id, cost] of Object.entries(REMOVED_SKY_COSTS)) {
+    const levels = Math.floor(run.owned[id] ?? 0);
+    if (levels <= 0) continue;
+    run.resources.energy =
+      res(run, "energy") + cost * REMOVED_SKY_SCALE * levels;
+    delete run.owned[id];
+  }
+}
+
 /** Demand at a given brightness (for the knob's "lights up the rest" hint). */
 export const demandAtStep = (run: RunState, step: number): number =>
   (demandMW(run) / lampEffect(run).demand) * LAMPS.steps[step].demand;
@@ -616,7 +645,9 @@ export const collectorEnergyPerSecond = (run: RunState): number =>
   S.mirrorBonus ** tier(run, "mirror") *
   ifProject(run, "mirror-polish", SP.polishBoost) *
   (hasFork(run, "mirrors") ? FK.sky.mirrorsEnergy : 1) *
-  overdriveBoost(run) *
+  mirrorMult(run) *
+  lightMult(run) *
+  (1 - wildLight(run)) *
   speed(run);
 
 export const travelSeconds = (run: RunState): number =>
@@ -632,33 +663,13 @@ export const appetite = (run: RunState): number =>
 export const aimEnergy = (run: RunState): number =>
   (S.aimBase + S.aimPerLevel * level(run, "aim")) * tapMult(run);
 
-/** Heading 0..100; a save from before course drift counts as on course. */
-export const headingOf = (run: RunState): number =>
-  run.resources.heading ?? 100;
-
-/** How well the fleet flies: floor..1, never zero. */
-export const headingFactor = (run: RunState): number =>
-  S.headingFloor + (1 - S.headingFloor) * (headingOf(run) / 100);
-
-export const isCourseAuto = (run: RunState): boolean => tier(run, "nav") >= 2;
-export const isFlareOn = (run: RunState): boolean => res(run, "flare") > 0;
-export const isCourseInPlay = (run: RunState): boolean =>
+/** The sky's dials matter once there is a fleet to design and to lose. */
+export const isFleetInPlay = (run: RunState): boolean =>
   run.phase === 2 && res(run, "probes") >= 1;
 
-/** Heading lost per second (percent): more probes, more ways to wander. */
-export function driftPerSecond(run: RunState): number {
-  return (
-    (S.driftBase + S.driftPerDecade * Math.log10(1 + res(run, "probes"))) *
-    S.chartsSaving ** Math.min(1, tier(run, "nav")) *
-    ifProject(run, "mirror-polish", SP.polishDrift) *
-    (hasFork(run, "swarm")
-      ? FK.sky.swarmDrift
-      : hasFork(run, "mirrors")
-        ? FK.sky.mirrorsDrift
-        : 1) *
-    overdriveStrain(run)
-  );
-}
+/** The share of the sunlight wild probes keep for themselves. */
+export const wildLight = (run: RunState): number =>
+  TUNING.dials.wildLight * wildShare(run);
 
 const probeGrowthRate = (run: RunState): number => {
   const travel = S.travelBase * S.engineSaving ** tier(run, "engines");
@@ -670,77 +681,68 @@ const probeGrowthRate = (run: RunState): number => {
   );
 };
 
-/**
- * Steady glow: the fleet is flying true (at least `glowAt`), so it flies in
- * formation and takes stars a little faster.
- */
-export const isFleetGlowing = (run: RunState): boolean =>
-  isCourseInPlay(run) && headingOf(run) >= S.glowAt;
-
-/** Stars the fleet takes per second at its heading (glow included). */
+/** Stars the tame fleet takes per second. */
 export const starsPerSecond = (run: RunState): number =>
   res(run, "probes") *
   S.takePerProbe *
   appetite(run) *
   speed(run) *
-  headingFactor(run) *
-  (isFleetGlowing(run) ? 1 + S.glowBonus : 1);
+  speedMult(run) *
+  (1 - TUNING.dials.wildCrowd * wildShare(run));
 
-/** Energy per second from probes: every star taken pays a bounty. */
+/** Energy per star taken, light and mirrors included. */
 export const starBounty = (run: RunState): number =>
   S.starBounty *
   S.relayBonus ** tier(run, "relay") *
   ifProject(run, "relay-codes", SP.relayBoost) *
-  overdriveBoost(run);
+  mirrorMult(run) *
+  lightMult(run);
 
 export const probeEnergyPerSecond = (run: RunState): number =>
   starsPerSecond(run) * starBounty(run);
 
-/** Energy a solar flare pays when caught: a slice of income plus aiming. */
-export const flareBonus = (run: RunState): number =>
-  S.flareBonusSeconds *
-  ifProject(run, "flare-watch", SP.flarePay) *
-  (collectorEnergyPerSecond(run) +
-    probeEnergyPerSecond(run) +
-    aimEnergy(run) * 3);
-
-/**
- * Drift builds, charts and a navigator fix the course. A solar flare opens
- * once its timer runs out and waits until it is caught (see `catch-flare`).
- */
-function updateSkyEvents(run: RunState, dt: number): void {
-  const r = run.resources;
-  if (isCourseInPlay(run)) {
-    r.heading = Math.max(0, headingOf(run) - driftPerSecond(run) * dt);
-    if (isCourseAuto(run) && r.heading < S.autoCorrectBelow)
-      r.heading = S.autoCorrectTo;
-  }
-  // Flares come as soon as there is a collector to catch one.
-  if (res(run, "collectors") < 1 || r.flare > 0) return;
-  r.flareCooldown -= dt;
-  if (r.flareCooldown <= 0) r.flare = 1;
-}
-
-/** The wait before the next solar flare once one is caught. */
-export const nextFlareIn = (run: RunState): number =>
-  (S.flareGapMin + nextRandom(run) * S.flareGapSpread) *
-  ifProject(run, "flare-watch", SP.flareGap) *
-  ifProject(run, "probe-school", SP.schoolFlareGap);
+/** The share of new copies that go wild. */
+export const wildCopies = (run: RunState): number =>
+  wildFraction(run, ifProject(run, "probe-school", SP.schoolWild));
 
 function tickSky(run: RunState, dt: number): void {
-  updateSkyEvents(run, dt);
   const r = run.resources;
+  // Overdrive belongs to the night; a minute left over from an old save ends.
+  r.odLeft = 0;
+  refundRemovedSkyUpgrades(run);
+  if (run.flags[SKY_DIALS_FLAG] !== true && res(run, "probes") >= 1)
+    openSkyDials(run);
+  tickDesign(run, dt, () => {
+    r.knowhow = res(run, "knowhow") + SP.perHome;
+  });
+  tickSunEdge(run, dt, () => {
+    r.knowhow = res(run, "knowhow") + SP.perFlare;
+  });
   const remaining = r.stars;
   const open = remaining / TOTAL_STARS;
   let taken = 0;
-  if (r.probes > 0 && remaining > 0) {
-    r.probes +=
-      r.probes *
+  if ((r.probes > 0 || res(run, "skWild") > 0) && remaining > 0) {
+    const growth =
       probeGrowthRate(run) *
       open *
       speed(run) *
-      headingFactor(run) *
+      (1 - TUNING.dials.wildCrowd * wildShare(run)) *
       dt;
+    const wild = res(run, "skWild");
+    const noticed = wildShare(run);
+    // Copies the fleet makes: the share that go wild leave it and grow on their own.
+    const copies = r.probes * growth * copyMult(run);
+    const strays = copies * wildCopies(run);
+    r.probes += copies - strays;
+    r.skWild = wild + strays + wild * growth * TUNING.dials.wildGrowth;
+    if (
+      strays > 0 &&
+      noticed < TUNING.dials.wildNotice &&
+      wildShare(run) >= TUNING.dials.wildNotice
+    ) {
+      r.skWilds = res(run, "skWilds") + 1;
+      r.skWildLeft = TUNING.dials.wildBannerSeconds;
+    }
     taken = Math.min(remaining, starsPerSecond(run) * dt);
     r.starsTaken += taken;
     r.stars = Math.max(0, TOTAL_STARS - r.starsTaken);
@@ -903,13 +905,9 @@ export function syncDisplay(run: RunState): void {
 
 export function tickLight(run: RunState, dt: number): void {
   const phase = run.phase;
-  // Every phase: a probe away and a haul flowing in when the sky ends finish.
-  tickProbes(run, dt, () => calmSkyIncomePerSecond(run));
   tickGarden(run, dt);
   tickFund(run, dt, () => fundIncome(run));
-  tickOverdrive(run, dt, () =>
-    run.phase === 1 ? nightSteadiness(run) : headingOf(run)
-  );
+  tickOverdrive(run, dt, () => nightSteadiness(run));
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);
   else if (phase === 2) tickSky(run, dt);

@@ -44,8 +44,6 @@ export const COSTS: Record<string, number> = {
   "relay-1": 3740,
   "relay-2": 12000,
   "relay-3": 20000,
-  "fins-1": 5250,
-  "mission-control": 3792,
   "storm-crews": 2500,
   "weather-vane": 1600,
   "nav-1": 400,
@@ -98,4 +96,16 @@ export const REMOVED_NIGHT_SCALE = 28;
 export const REMOVED_NIGHT_COSTS: Readonly<Record<string, number>> = {
   "grid-1": 9600,
   "grid-2": 9000,
+};
+
+/**
+ * Upgrades cut when the sky got its dials (the racing fins and mission
+ * control belonged to the probe races) and what they cost before the sky's
+ * costScale, which was `REMOVED_SKY_SCALE` when they were bought. A save that
+ * owns one in the sky is paid back what it paid.
+ */
+export const REMOVED_SKY_SCALE = 9.5;
+export const REMOVED_SKY_COSTS: Readonly<Record<string, number>> = {
+  "fins-1": 5250,
+  "mission-control": 3792,
 };

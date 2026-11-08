@@ -72,9 +72,6 @@ export const PHASES: readonly PhaseDef[] = [
       closeFund(run);
       run.resources.odLeft = 0;
       run.resources.energy += 20 * headStart(run);
-      run.resources.heading = 100;
-      run.resources.flare = 0;
-      run.resources.flareCooldown = TUNING.sky.flareFirst;
       syncDisplay(run);
     },
   },

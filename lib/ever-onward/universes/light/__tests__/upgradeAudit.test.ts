@@ -56,7 +56,6 @@ describe("every upgrade lands", () => {
     expect(S.relayBonus).toBeGreaterThanOrEqual(BIG);
     expect(S.appetiteBonus).toBeGreaterThanOrEqual(2);
     expect(1 / S.engineSaving).toBeGreaterThanOrEqual(BIG);
-    expect(1 / TUNING.probes.finsTimeFactor).toBeGreaterThanOrEqual(2);
     const aim = (level: number) => S.aimBase + S.aimPerLevel * level;
     expect(aim(1) / aim(0)).toBeGreaterThanOrEqual(2);
     expect(aim(2) / aim(1)).toBeGreaterThanOrEqual(BIG);

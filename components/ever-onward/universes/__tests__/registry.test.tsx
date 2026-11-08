@@ -2,7 +2,8 @@ import { PLAYABLE_UNIVERSES } from "@/lib/ever-onward/universes";
 import LampPanel from "../../game/LampPanel";
 import FundPanel from "../../game/FundPanel";
 import MemoryGarden from "../../game/MemoryGarden";
-import ProbeRaces from "../../game/ProbeRaces";
+import ProbeDesignPanel from "../../game/ProbeDesignPanel";
+import SunEdgePanel from "../../game/SunEdgePanel";
 import HarborPanel from "../../game/HarborPanel";
 import ProjectsPanel from "../../game/ProjectsPanel";
 import CrewsPanel from "../../game/CrewsPanel";
@@ -29,7 +30,8 @@ describe("the universe UI registry", () => {
       GridPanel,
       StreetlightsPanel,
       CrewsPanel,
-      ProbeRaces,
+      SunEdgePanel,
+      ProbeDesignPanel,
       MemoryGarden,
     ]);
     expect(panels.slice(2)).toEqual([FundPanel, WeatherDesk, ProjectsPanel]);
