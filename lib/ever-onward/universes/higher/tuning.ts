@@ -83,7 +83,11 @@ export const TUNING = {
     }[],
     /** The pace a fresh playroom starts at (index into `paces`). */
     startPace: 1,
-    /** The pace dial moves one step every this many seconds. */
+    /**
+     * The pace dial moves one step every this many seconds. (Raised from 2 with
+     * the Sky; the Town reads the same value and was retuned on it. Not a
+     * Sky-only change.)
+     */
     settleSeconds: 3,
     /** The lean eases toward its target; this many seconds to close the gap. */
     leanSeconds: 4,
@@ -199,30 +203,56 @@ export const TUNING = {
    */
   sky: {
     /** The sky's own pay before strain (keeps the part's length). */
-    base: 0.89,
+    base: 0.95,
     /**
-     * Slack to humming: pay, then the chance per second of a snap in calm
-     * air, and per second of a snap and of a drop while a gust blows.
+     * Slack to humming: pay, how much of it is left while clouds gather (a
+     * tight cable hums in the wind and hoists slowly), then the chance per
+     * second of a snap in calm air, and per second of a snap and of a drop
+     * while a gust blows.
      */
     strains: [
-      { name: "Slack", pay: 0.85, calm: 0, snap: 0.005, drop: 0.02 },
-      { name: "Taut", pay: 1, calm: 0.0004, snap: 0.02, drop: 0.05 },
-      { name: "Tight", pay: 1.2, calm: 0.002, snap: 0.08, drop: 0.13 },
-      { name: "Humming", pay: 1.4, calm: 0.006, snap: 0.2, drop: 0.2 },
+      { name: "Slack", pay: 0.85, drag: 1, calm: 0, snap: 0.005, drop: 0.02 },
+      {
+        name: "Taut",
+        pay: 1.05,
+        drag: 1,
+        calm: 0.0004,
+        snap: 0.02,
+        drop: 0.05,
+      },
+      {
+        name: "Tight",
+        pay: 1.15,
+        drag: 0.9,
+        calm: 0.002,
+        snap: 0.08,
+        drop: 0.13,
+      },
+      {
+        name: "Humming",
+        pay: 1.4,
+        drag: 0.6,
+        calm: 0.006,
+        snap: 0.2,
+        drop: 0.2,
+      },
     ] as readonly {
       name: string;
       pay: number;
+      drag: number;
       calm: number;
       snap: number;
       drop: number;
     }[],
+    /** While clouds gather or a gust is sure, calm-air snaps are this many times likelier. */
+    cloudSnapMult: 4,
     startStrain: 1,
     /** The dial moves one step every this many seconds. */
     settleSeconds: 2.5,
     /** The forecast moves a step this often: calm, clouds, then a sure gust. */
-    stepSeconds: 8,
+    stepSeconds: 10,
     /** From a calm sky, clouds gather; from clouds, a sure gust (else it clears). */
-    cloudChance: 0.25,
+    cloudChance: 0.18,
     gustChance: 0.6,
     /** After a gust the sky stays clear for a while: clouds gather this much less often. */
     spellSeconds: 30,
@@ -243,12 +273,14 @@ export const TUNING = {
     /** Braces and ballast never calm the risks below this share. */
     calmFloor: 0.25,
     /** The no-crane climb: how long, how much the pay drops to, and the prize. */
-    ncSeconds: 65,
+    ncSeconds: 55,
     ncPay: 0.25,
-    ncBonus: 0.2,
+    ncBonus: 0.1,
     ncMax: 4,
     /** A climb that fails leaves the crew resting this long, earning nothing. */
-    ncFailSeconds: 14,
+    ncFailSeconds: 16,
+    /** Giving a climb up leaves the crew resting this long (less than a failed one). */
+    ncGiveUpSeconds: 7,
     /** A spare cable (a delivery) halves the risks for this long. */
     softSeconds: 60,
     /** The scene shows a drop, a snap, a tie or a win for this long. */

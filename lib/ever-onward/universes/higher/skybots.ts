@@ -12,6 +12,7 @@ import {
   gustPower,
   gustInExact,
   isBlowing,
+  isCloudy,
   isNoCrane,
   isSkyOpen,
   riskCalm,
@@ -51,12 +52,14 @@ const STEPS = STRAINS.map((_, i) => i);
 /** What a strain pays, ignoring the tie and the fetching (the bot's yardstick). */
 const pay = (run: RunState, s: number): number => skyPayAt(run, s);
 
-/** The strain a calm sky is worth most at: pay, less the snaps it risks. */
+/** The strain this sky is worth most at: pay, less the snaps it risks (clouds make a tight cable snap more). */
 export function calmStrain(run: RunState): number {
   const calm = riskCalm(run);
   const value = (s: number): number =>
     pay(run, s) *
-    (1 - snapPerCalmSecond(s, calm) * (K.hookSeconds + K.restringSeconds));
+    (1 -
+      snapPerCalmSecond(s, calm, isCloudy(run)) *
+        (K.hookSeconds + K.restringSeconds));
   return STEPS.reduce(
     (best, s) => (value(s) > value(best) + 1e-9 ? s : best),
     0
@@ -87,7 +90,7 @@ function rideCost(
 const tieCost = (): number => K.tieSeconds + K.gustSeconds + K.untieSeconds;
 
 /** A change of cable or a tie-down must save this many seconds of pay to be worth the clicks. */
-const WORTH_A_CLICK = 3;
+const WORTH_A_CLICK = 10;
 
 /** The best way through a sure gust: tie, or ride it at some strain. */
 export function gustPlan(run: RunState): { tie: boolean; strain: number } {
@@ -152,7 +155,7 @@ export function skySecondsLeft(run: RunState): number {
 }
 
 /** A bot only tries the climb when it is expected to pay back this many times over. */
-const CLIMB_BAR = 1.6;
+const CLIMB_BAR = 1.3;
 
 /** True when the no-crane climb is worth its slow minute, by the forecast. */
 function craneIsWorthIt(run: RunState): boolean {
@@ -163,7 +166,7 @@ function craneIsWorthIt(run: RunState): boolean {
   const { odds, seconds } = climbOdds(K.ncSeconds, sinceGust(run));
   const cost = (seconds * (1 - K.ncPay) + (1 - odds) * K.ncFailSeconds) * unit;
   const left = skySecondsLeft(run);
-  // The next badge adds a tenth of what the tower paid before any badge.
+  // The next badge adds `ncBonus` of what the tower paid before any badge.
   const gain =
     ((K.ncBonus * unit) / ncBonusMult(run)) * Math.max(0, left - K.ncSeconds);
   return odds * gain > CLIMB_BAR * cost;

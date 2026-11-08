@@ -31,9 +31,12 @@ jest.setTimeout(180_000);
  * line or two per minute, a few plates a few seconds after their reveal) and
  * idle / eager 1.99x (an unattended Town takes about 70 min, the dials are
  * worth a lot).
+ *
+ * The Sky's fix round (a strain dial that moves with the clouds, honest copy)
+ * scores 82.4 uncapped, so the floor is 81.9 (that minus half a point).
  */
 const GATE_CAP = 59;
-const UNCAPPED_FLOOR = 81.3;
+const UNCAPPED_FLOOR = 81.9;
 
 const HOUR = 3600;
 

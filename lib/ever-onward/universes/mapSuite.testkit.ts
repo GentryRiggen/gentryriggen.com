@@ -7,7 +7,12 @@ import type { UniverseDef } from "../engine/types";
  * tests): its shape, its art, and the route bot's pacing. Not a test file
  * itself; call it from one.
  */
-export function describeMap(def: UniverseDef, tapper: () => Strategy): void {
+export function describeMap(
+  def: UniverseDef,
+  tapper: () => Strategy,
+  options: { maxRatioAtRun10?: number } = {}
+): void {
+  const maxRatioAtRun10 = options.maxRatioAtRun10 ?? 0.8;
   const map = def.map!;
 
   describe(`${def.title}: ${map.title}`, () => {
@@ -70,9 +75,9 @@ export function describeMap(def: UniverseDef, tapper: () => Strategy): void {
         expect(ratio(1)).toBeLessThanOrEqual(1.05);
       });
 
-      it("run 10 is 65-80% of run 1", () => {
+      it(`run 10 is 65-${Math.round(maxRatioAtRun10 * 100)}% of run 1`, () => {
         expect(ratio(9)).toBeGreaterThanOrEqual(0.65);
-        expect(ratio(9)).toBeLessThanOrEqual(0.8);
+        expect(ratio(9)).toBeLessThanOrEqual(maxRatioAtRun10);
       });
 
       it("finds all 14 within 40 runs, and no run drops under 40%", () => {

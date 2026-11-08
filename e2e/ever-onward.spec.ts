@@ -238,16 +238,23 @@ test.describe("Ever Onward", () => {
     // The no-crane climb turns the crane off, and can be given up.
     const climb = page.getByTestId("bh-nocrane");
     await expect(climb).toBeVisible();
-    await climb.getByTestId("bh-nocrane-start").click();
-    await expect(page.getByTestId("sk-nocrane")).toHaveAttribute(
-      "data-on",
-      "1"
-    );
-    await climb.getByTestId("bh-nocrane-stop").click();
-    await expect(page.getByTestId("sk-nocrane")).toHaveAttribute(
-      "data-on",
-      "0"
-    );
+    // The jump's bot may already have earned every badge; then there is no
+    // climb left to start, and the card says so.
+    const start = climb.getByTestId("bh-nocrane-start");
+    if (await start.isEnabled()) {
+      await start.click();
+      await expect(page.getByTestId("sk-nocrane")).toHaveAttribute(
+        "data-on",
+        "1"
+      );
+      await climb.getByTestId("bh-nocrane-stop").click();
+      await expect(page.getByTestId("sk-nocrane")).toHaveAttribute(
+        "data-on",
+        "0"
+      );
+    } else {
+      await expect(start).toContainText(/all badges earned/i);
+    }
   });
 
   test("Test mode on the hub opens a locked universe", async ({ page }) => {

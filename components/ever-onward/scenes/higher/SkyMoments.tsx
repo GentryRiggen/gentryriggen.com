@@ -24,7 +24,8 @@ const STAGGER = [
 
 /** Sky cover: darker with each forecast step, clouds that gather, lightning. */
 export function Storm({ info }: { info: HigherSceneInfo }) {
-  const dim = info.gust ? 0.55 : [0, 0.3, 0.55][info.wx];
+  // A win is a gold moment: the storm's navy dim would turn it muddy.
+  const dim = info.ncWon ? 0 : info.gust ? 0.55 : [0, 0.3, 0.55][info.wx];
   return (
     <g data-testid="sk-storm" data-wx={info.wx}>
       <rect

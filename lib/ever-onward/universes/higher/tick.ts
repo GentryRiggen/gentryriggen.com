@@ -37,7 +37,7 @@ function netTap(run: RunState): number {
     : grossTap(run) *
         paceMult(run) *
         townTap(run) *
-        skyPay(run) *
+        skyPay(run, true) *
         (1 + gainOf(run));
 }
 

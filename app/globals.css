@@ -4345,6 +4345,12 @@ html:has(.jim-app) body {
     animation: none;
   }
 
+  /* A flash that cannot animate must not stay painted: hide the full-scene flashes. */
+  .bh-flash,
+  .bh-flash-gold {
+    opacity: 0;
+  }
+
   /* Things that move across the picture rest where they can still be seen. */
   .bh-drive,
   .bh-fly,

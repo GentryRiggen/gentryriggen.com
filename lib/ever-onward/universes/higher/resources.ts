@@ -180,6 +180,7 @@ export const RESOURCES: readonly ResourceDef[] = [
       "skRestUntil",
       "skNcFailAt",
       "skRng",
+      "skWxRng",
     ],
     {
       skStrain: TUNING.sky.startStrain,

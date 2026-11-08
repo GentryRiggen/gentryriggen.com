@@ -565,6 +565,11 @@ export interface UniverseDef {
   goalMeter?(run: RunState): GoalView | null;
   /** A big meter kept on the HUD (e.g. the lamp oil), or null. Must only read. */
   gauge?(run: RunState): GaugeView | null;
+  /**
+   * True while the scene is showing something the player should see
+   * unobstructed (a big moment). Pop-ups over the scene wait. Must only read.
+   */
+  isSceneBusy?(run: RunState): boolean;
   /** A short warning to show right now (e.g. the lamp ran dry), or null. Must only read. */
   alert?(run: RunState): string | null;
   prestige: PrestigeDef;

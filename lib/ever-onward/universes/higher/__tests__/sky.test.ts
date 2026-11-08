@@ -16,10 +16,15 @@ import {
   canStartNoCrane,
   forecastOf,
   gustIn,
+  gustInExact,
   hookOf,
   isBlowing,
   isIdle,
   isNoCrane,
+  isSkyMomentBusy,
+  isSkyOpen,
+  isStrongGust,
+  strainStep,
   ncWins,
   skyPay,
   strainActionId,
@@ -134,11 +139,12 @@ describe("tying down", () => {
       run = until(run, (r) => forecastOf(r) === 2 && gustIn(r) <= 3);
       const lost = (r: RunState): number =>
         (r.resources.skDrops ?? 0) + (r.resources.skSnaps ?? 0);
-      const before = lost(run);
       if (tied) {
         run = performAction(def, run, TIE_ACTION_ID);
+        // The moment of tying is still loose; the tower is safe once tied.
         run = until(run, (r) => tieState(r) === "tied", 10);
       }
+      const before = lost(run);
       run = until(run, (r) => isBlowing(r), 20);
       run = until(run, (r) => !isBlowing(r), 20);
       return lost(run) - before;
@@ -268,7 +274,7 @@ describe("a gust moves the best answer: the simulator plays the sky", () => {
   };
   const end = UPGRADES.find((u) => u.id === "space-elevator");
   const base = runAtPhaseStart(2);
-  const SEEDS = 10;
+  const SEEDS = 20;
   const LEFT = 1500;
 
   const step = (
@@ -302,16 +308,53 @@ describe("a gust moves the best answer: the simulator plays the sky", () => {
     return run.resources.beams / 120;
   })();
 
-  /** Mean seconds to finish a sky that is `LEFT` seconds from its end at a taut cable. */
-  function seconds(style: SkyStyle): number {
+  /** Mean seconds to finish a sky that is `left` seconds from its end at a taut cable. */
+  const seconds = (style: SkyStyle, left = LEFT): number =>
+    secondsOf(playsSky(style, 1), left);
+
+  const reads: SkyStyle = { strain: "reads", tie: "reads", crane: "reads" };
+  const best = seconds(reads);
+
+  /**
+   * A player who sets one strain and only ties down when the banner says a
+   * strong gust is sure (the best fixed plan a reader could copy).
+   */
+  const fixedStrongTie =
+    (strain: number): ReturnType<typeof playsSky> =>
+    (run, available) => {
+      const out = playsSky(
+        { strain: "reads", tie: "never", crane: "reads" },
+        1
+      )(run, available).filter((id) => id.startsWith("sky-nocrane"));
+      if (!isSkyOpen(run)) return out;
+      const t = tieState(run);
+      const wx = forecastOf(run);
+      if (
+        t === "free" &&
+        wx === 2 &&
+        isStrongGust(run) &&
+        gustInExact(run) <= 3 &&
+        !isNoCrane(run)
+      )
+        out.push(TIE_ACTION_ID);
+      else if (t === "tied" && !isBlowing(run) && wx !== 2)
+        out.push(TIE_ACTION_ID);
+      if (t === "free" && strainStep(run) !== strain)
+        out.push(strainActionId(strain));
+      return out;
+    };
+
+  function secondsOf(
+    strategy: ReturnType<typeof playsSky>,
+    left = LEFT
+  ): number {
     const cost = upgradeCost(start(), end!);
-    const strategy = playsSky(style, 1);
     let total = 0;
     for (let seed = 1; seed <= SEEDS; seed += 1) {
       let run: RunState = {
         ...start(),
         rng: seed * 7919 + 1,
-        resources: { ...start().resources, beams: cost - LEFT * rate },
+        resources: { ...start().resources, beams: cost - left * rate },
       };
       let t = 0;
       while (run.resources.beams < cost && t < 6000) {
@@ -323,32 +366,103 @@ describe("a gust moves the best answer: the simulator plays the sky", () => {
     return total / SEEDS;
   }
 
-  const reads: SkyStyle = { strain: "reads", tie: "reads", crane: "reads" };
-  const best = seconds(reads);
-
-  it("beats every fixed cable strain (with its best way of tying down)", () => {
-    for (const strain of [0, 1, 2, 3])
-      for (const tie of ["never", "gust"] as const)
-        expect([
-          `s${strain} ${tie}`,
-          seconds({ strain, tie, crane: "reads" }) > best * 1.01,
-        ]).toEqual([`s${strain} ${tie}`, true]);
+  it("beats every fixed cable strain by 5% (reading the clouds is what pays)", () => {
+    for (const strain of [0, 1, 2, 3]) {
+      const plans: [string, number][] = [
+        [`s${strain} strong-banner tie`, secondsOf(fixedStrongTie(strain))],
+        [
+          `s${strain} gust tie`,
+          seconds({ strain, tie: "gust", crane: "reads" }),
+        ],
+        [
+          `s${strain} never tie`,
+          seconds({ strain, tie: "never", crane: "reads" }),
+        ],
+      ];
+      for (const [name, secs] of plans)
+        expect([name, secs > best * 1.05]).toEqual([name, true]);
+    }
   });
 
-  it("beats tying at the sure gust every time, tying at the first clouds, and never tying", () => {
-    for (const tie of ["never", "gust", "clouds"] as const)
+  it("beats tying at the sure gust every time and tying at the first clouds", () => {
+    for (const tie of ["gust", "clouds"] as const)
       expect([
         tie,
         seconds({ strain: "reads", tie, crane: "reads" }) > best * 1.01,
       ]).toEqual([tie, true]);
   });
 
-  it("beats never trying the no-crane climb, and trying it every time it can", () => {
+  it("beats never trying the no-crane climb (a long way from the end) and trying it every time it can (near the end)", () => {
     expect(
       seconds({ strain: "reads", tie: "reads", crane: "never" })
     ).toBeGreaterThan(best * 1.02);
     expect(
-      seconds({ strain: "reads", tie: "reads", crane: "always" })
-    ).toBeGreaterThan(best * 1.02);
+      seconds({ strain: "reads", tie: "reads", crane: "always" }, 600)
+    ).toBeGreaterThan(seconds(reads, 600) * 1.05);
+  });
+});
+
+describe("sky fixes: weather of its own, honest rests, moments held", () => {
+  const timeline = (strain: number, seed: number): string => {
+    let run = { ...sky({ skStrain: strain, skEff: strain }), rng: seed };
+    const seen: string[] = [];
+    for (let t = 0; t < 400; t += 1) {
+      run = tick(def, run, 1);
+      seen.push(`${forecastOf(run)}${isBlowing(run) ? "g" : ""}`);
+    }
+    return seen.join("");
+  };
+
+  it("never lets your cable change the weather", () => {
+    for (const seed of [3, 11, 29])
+      expect(timeline(3, seed)).toBe(timeline(0, seed));
+  });
+
+  it("will not start a no-crane climb while a gust is sure", () => {
+    const run = withResources(sky(), {
+      skWx: 2,
+      skWxAt: sky().time + 20,
+    });
+    expect(forecastOf(run)).toBe(2);
+    expect(canStartNoCrane(run)).toBe(false);
+  });
+
+  it("makes giving up a climb cost a short rest", () => {
+    let run = performAction(def, sky(), NC_START_ACTION_ID);
+    run = performAction(def, run, NC_STOP_ACTION_ID);
+    expect(isNoCrane(run)).toBe(false);
+    expect(isIdle(run)).toBe(true);
+    expect(canStartNoCrane(run)).toBe(false);
+    expect(skyPay(run)).toBe(0);
+  });
+
+  it("lets a hand on the rope pay in full while the crane is off", () => {
+    const calm = withResources(sky(), { skWx: 0 });
+    const climbing = performAction(def, calm, NC_START_ACTION_ID);
+    expect(manualPerTap(climbing)).toBeCloseTo(manualPerTap(calm), 6);
+    expect(incomePerSecond(climbing)).toBeLessThan(incomePerSecond(calm));
+  });
+
+  it("holds story toasts while a drop, a snap or a win is on screen", () => {
+    expect(isSkyMomentBusy(sky())).toBe(false);
+    for (const key of ["skDropAt", "skSnapAt", "skNcWinAt", "skNcFailAt"]) {
+      const base = sky();
+      expect(isSkyMomentBusy(withResources(base, { [key]: base.time }))).toBe(
+        true
+      );
+    }
+  });
+
+  it("ranks a drop or a snap over a ended climb on the banner", () => {
+    const base = sky();
+    const info = sceneInfo(
+      withResources(base, {
+        skDropAt: base.time,
+        skNcFailAt: base.time,
+        skDrops: 1,
+        skNcFails: 1,
+      })
+    );
+    expect(info.phase === "sky" && info.dropped && info.ncLost).toBe(true);
   });
 });

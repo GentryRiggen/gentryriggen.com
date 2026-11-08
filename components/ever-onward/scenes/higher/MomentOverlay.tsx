@@ -92,6 +92,8 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
       });
   }
   if (info.phase === "sky") {
+    // The newest shows first, so the order is the rank: a quiet note sits
+    // under the gust, and a drop or a snap outranks everything but a win.
     if (info.wx === 2 && !info.gust)
       moments.push({
         key: `coming-${info.gusts}`,
@@ -101,19 +103,26 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
           : "bg-slate-600 text-slate-50 border-slate-200",
         edge: info.strong ? "border-rose-500" : "",
       });
-    if (info.gust)
-      moments.push({
-        key: `gust-${info.gusts}`,
-        text: info.strong ? "STRONG GUST!" : "GUST!",
-        banner: "bg-sky-200 text-sky-950 border-white",
-        edge: "border-sky-100",
-      });
     if (info.tied)
       moments.push({
         key: `tied-${info.ties}`,
         text: "TIED DOWN",
         banner: "bg-yellow-400 text-yellow-950 border-yellow-100",
         edge: "border-yellow-200",
+      });
+    if (info.ncLost)
+      moments.push({
+        key: `nclost-${info.ncFailed}`,
+        text: "CLIMB ENDED",
+        banner: "bg-slate-700 text-slate-50 border-slate-300",
+        edge: "",
+      });
+    if (info.gust)
+      moments.push({
+        key: `gust-${info.gusts}`,
+        text: info.strong ? "STRONG GUST!" : "GUST!",
+        banner: "bg-sky-200 text-sky-950 border-white",
+        edge: "border-sky-100",
       });
     if (info.dropped)
       moments.push({
@@ -129,13 +138,6 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
         banner: "bg-red-700 text-red-50 border-red-200",
         edge: "border-red-500",
       });
-    if (info.ncLost)
-      moments.push({
-        key: `nclost-${info.ncFailed}`,
-        text: "CLIMB ENDED",
-        banner: "bg-slate-700 text-slate-50 border-slate-300",
-        edge: "",
-      });
     if (info.ncWon)
       moments.push({
         key: `ncwin-${info.badges}`,
@@ -146,6 +148,20 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
   }
   return moments;
 }
+
+const FULL_BANNER =
+  "inset-x-0 top-1/2 -translate-y-1/2 border-y-4 px-2 py-2 text-xl sm:text-2xl";
+
+/**
+ * The sky's moments are drawn in the picture itself (the whip, the falling
+ * beam, the gust), so its banner is a tag at the top edge (smaller on a phone)
+ * and the picture stays clear.
+ */
+const SKY_BANNER =
+  "left-1/2 top-1 w-max max-w-[92%] -translate-x-1/2 rounded border-2 px-2 py-1 text-xs sm:top-3 sm:border-4 sm:px-4 sm:py-2 sm:text-2xl";
+
+const placeFor = (info: HigherSceneInfo): string =>
+  info.phase === "sky" ? SKY_BANNER : FULL_BANNER;
 
 /**
  * Big HTML banners over the scene. The picture is an SVG that shrinks to a
@@ -185,7 +201,7 @@ export default function MomentOverlay({ info }: { info: HigherSceneInfo }) {
       <p
         key={latest.key}
         data-testid="hs-moment-text"
-        className={`${pixelClass} bh-banner absolute inset-x-0 top-1/2 -translate-y-1/2 border-y-4 px-2 py-2 text-center text-xl leading-none sm:text-2xl ${latest.banner}`}
+        className={`${pixelClass} bh-banner absolute text-center leading-none ${placeFor(info)} ${latest.banner}`}
       >
         {latest.text}
       </p>

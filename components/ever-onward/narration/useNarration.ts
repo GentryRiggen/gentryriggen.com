@@ -26,6 +26,8 @@ interface UseNarrationOptions {
   run: RunState;
   /** True while a full-screen moment is up; messages then stay silent. */
   isSuppressed?: boolean;
+  /** True while the scene is busy: a toast stays out of the way until clear (and lapses as usual). */
+  isHeld?: boolean;
 }
 
 export interface NarrationApi {
@@ -50,6 +52,7 @@ export function useNarration({
   def,
   run,
   isSuppressed = false,
+  isHeld = false,
 }: UseNarrationOptions): NarrationApi {
   const { isEnabled, isAutoPlay } = useNarrationSettings();
   const [toast, setToast] = useState<NarrationToastState | null>(null);
@@ -101,5 +104,9 @@ export function useNarration({
   }, [toast]);
   const dismissToast = useCallback(() => setToast(null), []);
 
-  return { toast: isEnabled ? toast : null, playToast, dismissToast };
+  return {
+    toast: isEnabled && !isHeld ? toast : null,
+    playToast,
+    dismissToast,
+  };
 }

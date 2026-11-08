@@ -32,6 +32,8 @@ import { TUNING } from "./tuning";
 
 const K = TUNING.sky;
 const SEED_MIX = 0x5c71e;
+/** The weather's own stream: what you choose never changes the sky. */
+const WEATHER_MIX = 0x3f1d7a;
 
 export const STRAINS = K.strains;
 export const strainActionId = (step: number): string => `strain-${step}`;
@@ -78,6 +80,10 @@ function blendAt(at: number, pick: (i: number) => number): number {
 /** How much a strain pays (1 = taut), blended between steps while it moves. */
 export const strainPay = (at: number): number =>
   blendAt(at, (i) => STRAINS[i].pay);
+
+/** How much of that pay is left while clouds gather (a tight cable hums and slows). */
+export const strainDrag = (at: number): number =>
+  blendAt(at, (i) => STRAINS[i].drag);
 
 // ------------------------------------------------------------------ weather
 
@@ -212,15 +218,35 @@ export const dropInGust = (strain: number, calm: number, power = 1): number =>
   );
 
 /** Chance per second that the cable snaps in calm air. */
-export const snapPerCalmSecond = (strain: number, calm: number): number =>
+export const snapPerCalmSecond = (
+  strain: number,
+  calm: number,
+  isCloudy = false
+): number =>
   perSecond(
     blendAt(strain, (i) => STRAINS[i].calm),
     calm
-  );
+  ) * (isCloudy ? K.cloudSnapMult : 1);
+
+/** True while clouds gather or a gust is sure: a taut cable hums and snaps more. */
+export const isCloudy = (run: RunState): boolean =>
+  isSkyOpen(run) && forecastOf(run) >= 1;
 
 /** What a drop costs, in seconds of the load's pay and of fetching it. */
 export const DROP_SECONDS = K.hookSeconds + K.stallSeconds;
 export const SNAP_SECONDS = K.hookSeconds + K.restringSeconds;
+
+/**
+ * True while the scene is showing a big sky moment (a gust, a drop, a snap, a
+ * climb won or lost). Story toasts wait so they never cover it.
+ */
+export const isSkyMomentBusy = (run: RunState): boolean =>
+  isSkyOpen(run) &&
+  (isBlowing(run) ||
+    justDropped(run) ||
+    justSnapped(run) ||
+    justNcWon(run) ||
+    justNcFailed(run));
 
 // ------------------------------------------------------------ no-crane climb
 
@@ -244,7 +270,7 @@ export const justNcFailed = (run: RunState): boolean =>
   res(run, "skNcFailAt") > 0 &&
   run.time - res(run, "skNcFailAt") < K.showSeconds;
 
-/** What the permanent bonus pays now (1 + a tenth per badge). */
+/** What the permanent bonus pays now (1 + `ncBonus` per badge). */
 export const ncBonusMult = (run: RunState): number =>
   1 + K.ncBonus * ncWins(run);
 
@@ -254,6 +280,7 @@ export const canStartNoCrane = (run: RunState): boolean =>
   ncWins(run) < K.ncMax &&
   tieState(run) === "free" &&
   !isBlowing(run) &&
+  forecastOf(run) !== 2 &&
   !isFetching(run) &&
   !isRestringing(run) &&
   !isResting(run);
@@ -262,17 +289,19 @@ export const canStartNoCrane = (run: RunState): boolean =>
 
 /**
  * What the sky pays, multiplied in: the sky's base, the strain, the badges,
- * and the crane being off. Nothing at all while tying, tied, untying,
- * fetching a dropped load or restringing a snapped cable.
+ * and the crane being off (which only cuts what the helpers earn: a hand
+ * on the rope still pays in full). Nothing at all while tying, tied,
+ * untying, fetching a dropped load or restringing a snapped cable.
  */
-export function skyPay(run: RunState): number {
+export function skyPay(run: RunState, isTap = false): number {
   if (run.phase !== 2) return 1;
   if (!isSkyOpen(run)) return K.base;
   if (isIdle(run)) return 0;
   return (
     K.base *
     strainPay(strainNow(run)) *
-    (isNoCrane(run) ? K.ncPay : 1) *
+    (isCloudy(run) ? strainDrag(strainNow(run)) : 1) *
+    (isNoCrane(run) && !isTap ? K.ncPay : 1) *
     ncBonusMult(run)
   );
 }
@@ -281,6 +310,7 @@ export function skyPay(run: RunState): number {
 export const skyPayAt = (run: RunState, strain: number): number =>
   K.base *
   strainPay(strain) *
+  (isCloudy(run) ? strainDrag(strain) : 1) *
   (isNoCrane(run) ? K.ncPay : 1) *
   ncBonusMult(run);
 
@@ -316,8 +346,12 @@ export function startNoCrane(run: RunState): void {
   r.skNcTries = res(run, "skNcTries") + 1;
 }
 
+/** Giving up is not free: the crew rests a while before the crane is back. */
 export function stopNoCrane(run: RunState): void {
-  run.resources.skNc = 0;
+  const r = run.resources;
+  if (res(run, "skNc") <= 0) return;
+  r.skNc = 0;
+  r.skRestUntil = run.time + K.ncGiveUpSeconds;
 }
 
 /** A spare cable from a delivery halves the risks for a minute. */
@@ -327,14 +361,21 @@ export function spareCable(run: RunState): void {
 
 // --------------------------------------------------------------------- tick
 
-function roll(run: RunState): number {
+function rollFrom(run: RunState, key: string, mix: number): number {
   const r = run.resources;
-  if (!r.skRng) r.skRng = (run.rng ^ SEED_MIX) | 0 || 1;
-  const stream = { rng: r.skRng | 0 };
+  if (!r[key]) r[key] = (run.rng ^ mix) | 0 || 1;
+  const stream = { rng: r[key] | 0 };
   const value = nextRandom(stream);
-  r.skRng = stream.rng;
+  r[key] = stream.rng;
   return value;
 }
+
+/** The roll for drops and snaps. */
+const roll = (run: RunState): number => rollFrom(run, "skRng", SEED_MIX);
+
+/** The roll for the weather: a stream of its own, so choices never move it. */
+const rollWeather = (run: RunState): number =>
+  rollFrom(run, "skWxRng", WEATHER_MIX);
 
 /** Records an hoisted amount: it is on the hook until it lands. */
 export function hoisted(run: RunState, amount: number): void {
@@ -407,16 +448,16 @@ function tickWeather(run: RunState): void {
     } else {
       const next =
         wx === 0
-          ? roll(run) < cloudChanceAt(run, r.skWxAt)
+          ? rollWeather(run) < cloudChanceAt(run, r.skWxAt)
             ? 1
             : 0
-          : roll(run) < K.gustChance
+          : rollWeather(run) < K.gustChance
             ? 2
             : 0;
       r.skWx = next;
       r.skWxAt += K.stepSeconds;
       // Once a gust is sure, so is how strong it is.
-      if (next === 2) r.skStrong = roll(run) < K.strongChance ? 1 : 0;
+      if (next === 2) r.skStrong = rollWeather(run) < K.strongChance ? 1 : 0;
     }
   }
 }
@@ -482,7 +523,8 @@ export function tickSky(run: RunState, dt: number): void {
     }
     return;
   }
-  if (roll(run) < snapPerCalmSecond(strain, calm) * dt) snap(run);
+  if (roll(run) < snapPerCalmSecond(strain, calm, isCloudy(run)) * dt)
+    snap(run);
 }
 
 /** A new site has calm air, a taut cable and the crane on. */
@@ -529,7 +571,7 @@ export const STRAIN_ACTIONS: readonly ActionDef[] = STRAINS.map((s, i) => ({
   visibleWhen: isSkyOpen,
   describe: (run) => ({
     label: s.name,
-    detail: `${strainNote(i)} A gust makes a snap much likelier. Changing takes a moment.`,
+    detail: `${strainNote(i)} Clouds and gusts make a snap likelier. Changing takes a moment.`,
     isBlocked: strainStep(run) === i,
   }),
   perform: (run) => setStrain(run, i),

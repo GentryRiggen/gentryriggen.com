@@ -55,10 +55,10 @@ export function higherAlert(run: RunState): string | null {
     return "A gust is blowing! A loose load can drop, and a tight cable can snap.";
   if (forecastOf(run) === 2)
     return isNoCrane(run)
-      ? `A gust is coming in ${gustIn(run)} seconds and it will end the no-crane climb. You can put the crane back on and not waste the slow seconds.`
+      ? `A gust is coming in ${gustIn(run)} seconds and it will end the no-crane climb.`
       : `A gust is coming in ${gustIn(run)} seconds! A loose load can drop and a tight cable can snap. Tie down (it takes a moment and earns nothing), or ease the cable.`;
   if (forecastOf(run) === 1 && strainStep(run) >= 2)
-    return "Clouds are gathering. A gust may follow, and a tight cable snaps much more in a gust.";
+    return "Clouds are gathering. A tight cable hums and snaps more now, and a gust may follow.";
   if (isNoCrane(run) && ncLeft(run) <= 10)
     return `Almost there! ${ncLeft(run)} more seconds without the crane.`;
   return null;
