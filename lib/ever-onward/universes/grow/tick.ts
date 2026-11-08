@@ -3,7 +3,6 @@ import { visitorHereFlag } from "../../engine/engine";
 import { MANUAL_RESOURCES } from "./resources";
 import { pollenRipenMult, tickBees } from "./bees";
 import { greenMult, tickBiomes } from "./biomes";
-import { tickFair } from "./fair";
 import { phaseBoost, tickKnowhow } from "./knowhow";
 import {
   farmForkMult,
@@ -11,15 +10,8 @@ import {
   seedHelperMult,
   sprinklerForkMult,
 } from "./forks";
-import {
-  bankGainFor,
-  bankKept,
-  bankStock,
-  savedShare,
-  tickBank,
-} from "./seedbank";
-import { tickMigration } from "./migration";
-import { marketMult, tickMarket } from "./market";
+import { dayStartPay, daySeconds, marketMult, tickMarket } from "./market";
+import { tickPumpkin } from "./pumpkin";
 import { seasonBoost } from "./seasons";
 import { TUNING } from "./tuning";
 import { tickWater, waterFactor } from "./water";
@@ -48,24 +40,20 @@ const scaleMult = (run: RunState): number =>
   (owned(run, SCALE_IDS[run.phase]) +
     (run.phase === 1 ? owned(run, "silo") : 0));
 
-/**
- * The farm's pay before the seed bank takes its share: the bank's yield
- * bonus is already in, the kept share is not yet out.
- */
-function farmGrossTap(run: RunState): number {
+/** What one tap earns on the farm. */
+function farmTap(run: RunState): number {
   return (
     TUNING.phases[1].tap *
     scaleMult(run) *
     tapMult(run) *
     marketMult(run) *
     farmForkMult(run) *
-    phaseBoost(run) *
-    (1 + bankGain(run))
+    phaseBoost(run)
   );
 }
 
-/** Harvest per second from the farm's helpers, kept share not yet taken. */
-function farmGrossIncome(run: RunState): number {
+/** Harvest per second from the farm's helpers. */
+function farmIncome(run: RunState): number {
   return (
     farmHelpers(run) *
     scaleMult(run) *
@@ -73,32 +61,29 @@ function farmGrossIncome(run: RunState): number {
     speed(run) *
     waterFactor(run) *
     farmForkMult(run) *
-    phaseBoost(run) *
-    (1 + bankGain(run))
+    phaseBoost(run)
   );
 }
 
-/** The seed bank's yield bonus, read against the farm without the bank. */
-export function bankGain(run: RunState): number {
-  if (run.phase !== 1) return 0;
-  const reference =
-    (farmHelpers(run) *
-      scaleMult(run) *
-      marketMult(run) *
-      speed(run) *
-      waterFactor(run) +
-      TUNING.farm.bank.referenceTaps *
-        TUNING.phases[1].tap *
-        scaleMult(run) *
-        tapMult(run) *
-        marketMult(run)) *
-    farmForkMult(run);
-  return bankGainFor(bankStock(run), reference);
-}
+/**
+ * What a second of the farm pays with a few taps in it: harvest day's pay
+ * and the pumpkin's prices are worked out from this.
+ */
+export const farmPayPerSecond = (run: RunState): number =>
+  incomePerSecond(run) + TUNING.market.referenceTaps * manualPerTap(run);
+
+/**
+ * The farm's pay a second as it stood at the start of this harvest day: what
+ * the prize pumpkin's prices follow, so they do not swing with the field
+ * (it is bare again after every harvest day). Before the first day is read,
+ * the live pay.
+ */
+export const dayFarmPay = (run: RunState): number =>
+  dayStartPay(run) > 0 ? dayStartPay(run) : farmPayPerSecond(run);
 
 /** What one tap earns right now (in spring, planting pays more). */
 export function manualPerTap(run: RunState): number {
-  if (run.phase === 1) return farmGrossTap(run) * (1 - savedShare(run));
+  if (run.phase === 1) return farmTap(run);
   const season = run.phase === 0 ? seasonBoost(run, "plant") : 1;
   // On the farm a tap picks whatever is planted, at what the towns pay.
   const market = run.phase === 1 ? marketMult(run) : 1;
@@ -163,7 +148,7 @@ export function incomePerSecond(run: RunState): number {
       waterFactor(run) *
       seasonBoost(run, "grow")
     );
-  if (run.phase === 1) return farmGrossIncome(run) * (1 - savedShare(run));
+  if (run.phase === 1) return farmIncome(run);
   if (run.phase === 2)
     return (
       worldHelpers(run) *
@@ -178,6 +163,7 @@ export function incomePerSecond(run: RunState): number {
     return (
       (stacked(owned(run, "trellis")) * TUNING.phases[3].helper +
         stacked(owned(run, "wind-chime")) * b.chimeRate +
+        stacked(owned(run, "sun-catcher")) * b.catcherRate +
         stacked(owned(run, "dew-collector")) * b.dewRate) *
       seedHelperMult(run) *
       scaleMult(run) *
@@ -222,10 +208,6 @@ function earn(run: RunState, amount: number): void {
   run.resources[MANUAL_RESOURCES[run.phase]] += amount;
 }
 
-/** What a second of tending is worth: the helpers plus one tap. */
-export const tendingValue = (run: RunState): number =>
-  incomePerSecond(run) + manualPerTap(run);
-
 /** The yard: water, ripening, and the helpers that pick (never spoils). */
 function tickYard(run: RunState, dt: number): void {
   tickWater(run, dt);
@@ -239,25 +221,23 @@ export function tickGrow(run: RunState, dt: number): void {
   if (run.phase === 0) tickYard(run, dt);
   else if (run.phase === 1) {
     tickWater(run, dt);
-    tickMarket(run, dt);
     earn(run, incomePerSecond(run) * dt);
-    tickBank(run, farmGrossIncome(run) * savedShare(run), dt);
   } else if (run.phase === 2) {
     tickWater(run, dt);
     tickBiomes(run, dt);
     earn(run, incomePerSecond(run) * dt);
   } else earn(run, incomePerSecond(run) * dt);
   tickKnowhow(run, dt);
+  // Harvest day, and a payout still flowing after the farm ends.
+  tickMarket(run, dt, () => farmPayPerSecond(run) * TUNING.market.daySeconds);
   // After the phase ends, a pollination in flight still finishes paying out.
   tickBees(run, dt, () => incomePerSecond(run));
-  tickFair(run, dt, () => incomePerSecond(run));
-  tickMigration(run, dt, () => incomePerSecond(run));
-  if (isWindowBoxOpen(run)) tickWindowBox(run, dt, () => tendingValue(run));
+  tickPumpkin(run, dt, () => dayFarmPay(run), daySeconds(run));
+  if (isWindowBoxOpen(run)) tickWindowBox(run, dt);
 }
 
 export function manualGrow(run: RunState): void {
   earn(run, manualPerTap(run));
-  if (run.phase === 1) bankKept(run, farmGrossTap(run) * savedShare(run));
 }
 
 export const isGrowComplete = (run: RunState): boolean =>

@@ -36,7 +36,7 @@ describe("water upgrade cards say what they fill and why it matters", () => {
     expect(card("cloud-seeder", 2)).toBe("Rain into the tank 100% → 125%");
   });
 
-  test("the watering can says what an answer pays", () => {
-    expect(card("watering-can", 3)).toMatch(/^Care per answer 100% → \d+%$/);
+  test("the deeper pot says how much slower the soil changes", () => {
+    expect(card("deep-pot", 3)).toBe("Soil change speed 100% → 72%");
   });
 });

@@ -13,7 +13,7 @@ import { def } from "./fixtures";
 jest.setTimeout(180_000);
 
 /**
- * Round 1 scored 84.1 with no failing gate (decision gaps included). The
+ * The last round scored 83.3 with no failing gate (decision gaps included). The
  * floor is that minus 1. Raise it as rounds land.
  */
 const GATE_CAP = 59;

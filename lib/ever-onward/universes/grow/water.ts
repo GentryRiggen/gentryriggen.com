@@ -47,7 +47,8 @@ const wetland = (run: RunState): number => gain(res(run, "bmWetland"));
 /** Wetland focus: the wetland holds and seeps more water. */
 const wetWater = (run: RunState): number =>
   worldFocus(run) === "wetland" ? TUNING.forks.world.wetlandWater : 1;
-const jungle = (run: RunState): number => gain(res(run, "bmJungle"));
+/** The jungle drinks more than its share: its thirst grows with the square of what it covers. */
+const jungle = (run: RunState): number => res(run, "bmJungle") ** 2;
 const worldHelperCount = (run: RunState): number =>
   owned(run, "windbreak") +
   owned(run, "planting-rover") +
@@ -122,7 +123,8 @@ export function seedWater(run: RunState): void {
 export function tickWater(run: RunState, dt: number): void {
   const stream = { rng: run.resources.wtRng | 0 };
   const before = rainOutlook(run);
-  const wobble = (nextRandom(stream) - 0.5) * W.outlookWobble * Math.sqrt(dt);
+  const swing = onWorld(run) ? G.outlookWobble : W.outlookWobble;
+  const wobble = (nextRandom(stream) - 0.5) * swing * Math.sqrt(dt);
   const pull = (W.outlookMean - before) * W.outlookPull * dt;
   const outlook = Math.min(1, Math.max(0, before + pull + wobble));
   run.resources.wtRng = stream.rng;

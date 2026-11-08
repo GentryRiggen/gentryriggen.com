@@ -2,8 +2,8 @@ import type { GrowSceneInfo } from "@/lib/ever-onward/universes/grow";
 
 /**
  * The picture for the trade-offs: what each side of a fork looks like, and
- * the seed bank's sacks. Every group is drawn only once its choice is made
- * (or its sacks are in the bank), so the picture changes when you choose.
+ * Every group is drawn only once its choice is made, so the picture changes
+ * when you choose.
  * Motion lives in `gt-` classes in globals.css and stops for reduced motion.
  */
 
@@ -64,39 +64,10 @@ export function YardForkArt({ info }: { info: GrowSceneInfo }) {
   return null;
 }
 
-/** Farm: the seed bank's sacks, and the scarecrow crew or the hawk. */
+/** Farm: the scarecrow crew or the hawk. */
 export function FarmForkArt({ info }: { info: GrowSceneInfo }) {
   return (
     <g aria-hidden="true">
-      {info.bank > 0 && (
-        <g data-bank={info.bank} className="gt-sack">
-          {Array.from({ length: info.bank + 1 }, (_, i) => (
-            <g key={i}>
-              <rect
-                x={132 + i * 14}
-                y={266 - (i % 2) * 8}
-                width="12"
-                height="14"
-                fill="#e8c27a"
-              />
-              <rect
-                x={134 + i * 14}
-                y={263 - (i % 2) * 8}
-                width="8"
-                height="4"
-                fill="#c9a56a"
-              />
-              <rect
-                x={136 + i * 14}
-                y={271 - (i % 2) * 8}
-                width="4"
-                height="4"
-                fill="#74b816"
-              />
-            </g>
-          ))}
-        </g>
-      )}
       {info.fork === 1 && (
         <g data-fork-art="crew">
           {[0, 1, 2, 3].map((i) => (
@@ -290,7 +261,7 @@ export function SeedForkArt({ info }: { info: GrowSceneInfo }) {
   return null;
 }
 
-/** Farm: drip lines, a cold store and hybrid seed; bunting while a festival is on. */
+/** Farm: drip lines, a leaf-mould heap and hybrid seed; bunting while a festival is on. */
 export function FarmProjectArt({ info }: { info: GrowSceneInfo }) {
   return (
     <g aria-hidden="true">
@@ -321,11 +292,20 @@ export function FarmProjectArt({ info }: { info: GrowSceneInfo }) {
         </g>
       )}
       {(info.projects & 2) !== 0 && (
-        <g data-project="cold-store">
-          <rect x="62" y="258" width="40" height="22" fill="#a5d8ff" />
-          <rect x="58" y="252" width="48" height="8" fill="#f1f3f5" />
-          <rect x="76" y="266" width="12" height="14" fill="#4c6ef5" />
-          <rect x="64" y="250" width="6" height="3" fill="#ffffff" />
+        <g data-project="compost-heap">
+          <rect x="62" y="266" width="44" height="14" fill="#4a2f18" />
+          <rect x="68" y="258" width="32" height="10" fill="#5e3d20" />
+          <rect x="76" y="252" width="16" height="8" fill="#6f4a28" />
+          <rect x="72" y="262" width="6" height="3" fill="#74b816" />
+          <rect x="90" y="260" width="6" height="3" fill="#c27c1a" />
+          <circle
+            cx="84"
+            cy="248"
+            r="2.5"
+            fill="#ffffff"
+            fillOpacity="0.7"
+            className="lm-puff"
+          />
         </g>
       )}
       {(info.projects & 4) !== 0 && (

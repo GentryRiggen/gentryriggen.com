@@ -20,29 +20,43 @@ import {
 } from "./bees";
 import {
   BIOMES,
-  activeBiome,
-  bestBiome,
-  biomeValue,
-  spreadActionId,
+  isBiomeLocked,
+  lessActionId,
+  moreActionId,
+  pointsOf,
   type Biome,
 } from "./biomes";
-import { enterActionId, fairsSoFar, likeliestPumpkin } from "./fair";
-import { flightsSoFar, mostWelcoming, sendActionId } from "./migration";
 import {
-  bestCrop,
-  cropPrice,
+  ENTER_ACTION_ID,
+  FEED_ACTION_ID,
+  entriesSoFar,
+  pumpkinStep,
+} from "./pumpkin";
+import {
+  CROPS,
+  daySeconds,
+  forecastOf,
+  grownIfPlantedIn,
+  growPay,
+  isFieldPlanted,
   plantActionId,
-  plantedCrop,
-  type Crop,
+  soilOf,
+  wearsSoil,
+  type FieldCrop,
 } from "./market";
 import { seasonOf, seasonSecondsLeft, secondsToAutumn } from "./seasons";
-import { bankActionId, bankStep } from "./seedbank";
 import { shownProjects } from "../../engine/engine";
 import { FESTIVAL_ACTION_ID, festivalCost, knowhowOf } from "./knowhow";
 import { currentFork, forkActionId, type ForkSide } from "./forks";
 import { TUNING } from "./tuning";
-import { STORAGE_IDS, isDry, rainOutlook } from "./water";
-import { currentWant, isWanting, tendActionId, tendsSoFar } from "./windowbox";
+import { STORAGE_IDS, isDry, rainOutlook, waterLevel } from "./water";
+import {
+  SHADE_ACTION_ID,
+  SUN_ACTION_ID,
+  isBlindMoving,
+  leafOf,
+  leafSeconds,
+} from "./windowbox";
 import { growUniverse } from ".";
 
 type Actions = NonNullable<Strategy["actions"]>;
@@ -125,153 +139,191 @@ export const tendsBees: Actions = (run, available) => {
   return [];
 };
 
+/** Steps the bot feeds the prize pumpkin to before it enters it. */
+const PUMPKIN_TARGET = 4;
+
 /**
- * Enters the pumpkin with the best expected payout. Like the bee bot, one
- * fair in every `skipEvery`th goes to the fair helper instead.
+ * Tends the prize pumpkin: feeds it a step on each harvest day until it is
+ * big enough, then enters it. Like the bee bot, one entry in every
+ * `skipEvery`th goes to the fair helper instead (or after SKIP_DELAY).
  */
-export const entersFair =
-  (options: { skipEvery?: number } = {}): Actions =>
+export const feedsPumpkin =
+  (options: { skipEvery?: number; target?: number } = {}): Actions =>
   (run, available) => {
     if (run.phase !== 1) return [];
-    const { skipEvery } = options;
+    const { skipEvery, target = PUMPKIN_TARGET } = options;
+    const wantsEntry = pumpkinStep(run) >= target;
     if (
+      wantsEntry &&
       skipEvery &&
-      fairsSoFar(run) % skipEvery === skipEvery - 1 &&
-      (run.resources.frTime ?? 0) < SKIP_DELAY
+      entriesSoFar(run) % skipEvery === skipEvery - 1 &&
+      daySeconds(run) < SKIP_DELAY
     )
       return [];
-    const id = enterActionId(likeliestPumpkin(run));
+    const id = wantsEntry ? ENTER_ACTION_ID : FEED_ACTION_ID;
     return available.includes(id) ? [id] : [];
   };
 
 /**
- * Sends the flock to the most welcoming region. Like the fair bot, one flight
- * in every `skipEvery`th goes to the flock leader instead.
+ * Reads the leaves and turns the blind: shade when they curl or crisp up
+ * (the soil is drying), sun when they droop or go floppy (too wet). It waits
+ * for the blind to finish moving, and for the leaves to have looked that way
+ * for `reactAfter` seconds (a slower player notices later). It never looks at
+ * the weather: the leaves are all it reads.
  */
-export const sendsFlock =
-  (options: { skipEvery?: number } = {}): Actions =>
+export const readsLeaves =
+  (reactAfter = 4): Actions =>
   (run, available) => {
-    if (run.phase !== 2) return [];
-    const { skipEvery } = options;
-    if (
-      skipEvery &&
-      flightsSoFar(run) % skipEvery === skipEvery - 1 &&
-      (run.resources.mgTime ?? 0) < SKIP_DELAY
-    )
-      return [];
-    const id = sendActionId(mostWelcoming(run));
+    if (run.phase !== 3 || isBlindMoving(run)) return [];
+    const leaf = leafOf(run);
+    if (leaf === "perky" || leafSeconds(run) < reactAfter) return [];
+    const id =
+      leaf === "curl" || leaf === "dry" ? SHADE_ACTION_ID : SUN_ACTION_ID;
     return available.includes(id) ? [id] : [];
   };
 
 /**
- * Answers what the pot wants. Like the other side-machine bots, one want in
- * every `skipEvery`th goes to the music box instead (or after SKIP_DELAY).
+ * How much a bot likes planting a crop now: what the forecast expects, times
+ * how grown it would be, less a worry about wearing the soil, plus a liking
+ * for beans once the soil is tired.
  */
-export const tendsPot =
-  (options: { skipEvery?: number } = {}): Actions =>
-  (run, available) => {
-    if (run.phase !== 3 || !isWanting(run)) return [];
-    const { skipEvery } = options;
-    if (
-      skipEvery &&
-      tendsSoFar(run) % skipEvery === skipEvery - 1 &&
-      (run.resources.wbTime ?? 0) < SKIP_DELAY
-    )
-      return [];
-    const id = tendActionId(currentWant(run));
-    return available.includes(id) ? [id] : [];
-  };
+function plantValue(run: RunState, crop: FieldCrop): number {
+  const pay = forecastOf(run, crop).middle * growPay(grownIfPlantedIn(run, 0));
+  if (crop === "beans") return pay * (soilOf(run) < 0.5 ? 1.5 : 1);
+  return wearsSoil(run, crop) ? pay * 0.65 : pay;
+}
 
 /**
- * Looks at the market now and then and plants the crop the towns want most,
- * once it beats what is planted by `margin` (so it never chases a crumb).
+ * Looks at the forecast and plants for harvest day once the day is
+ * `plantAt` seconds old (so the forecast has firmed up a little): the crop
+ * the forecast and the soil like best, beans when the soil is tired. It
+ * plants into an empty field only, and never changes its mind.
  */
 export const cropPolicy =
-  (window = 10, margin = TUNING.market.playerMargin): Actions =>
+  (window = 10, plantAt = 38): Actions =>
   (run, available) => {
     if (run.phase !== 1 || !isWindowStart(run, window)) return [];
-    const best = bestCrop(run);
-    if (best === plantedCrop(run)) return [];
-    if (cropPrice(run, best) < cropPrice(run, plantedCrop(run)) * margin)
-      return [];
+    if (isFieldPlanted(run) || daySeconds(run) < plantAt) return [];
+    let best: FieldCrop = CROPS[0];
+    for (const crop of [...CROPS, "beans" as const])
+      if (plantValue(run, crop) > plantValue(run, best)) best = crop;
     const id = plantActionId(best);
     return available.includes(id) ? [id] : [];
   };
 
-/** Sets the seed bank to this step on the first look and never changes it. */
-export const keepsSeed =
-  (step: number): Actions =>
-  (run, available) => {
-    const id = bankActionId(step);
-    return run.phase === 1 && bankStep(run) !== step && available.includes(id)
-      ? [id]
-      : [];
-  };
-
-/** Share of the barn's price in hand at which seed stops being kept. */
-const BARN_NEAR_SHARE = 0.25;
-
-/**
- * Keeps a quarter of the harvest as seed while the barn is far off, and
- * sells it all once a good part of the barn's price is in hand (seed in the
- * bank when the farm ends is left behind). Looks every `window` seconds.
- */
-export const bankPolicy =
-  (window = 10): Actions =>
-  (run, available) => {
-    if (run.phase !== 1 || !isWindowStart(run, window)) return [];
-    const barn = growUniverse.upgrades.find((u) => u.id === "grain-barn");
-    const isNear =
-      !!barn &&
-      run.revealed.includes(barn.id) &&
-      (run.resources.harvest ?? 0) >= BARN_NEAR_SHARE * upgradeCost(run, barn);
-    const want = isNear ? 0 : 1;
-    const id = bankActionId(want);
-    return bankStep(run) !== want && available.includes(id) ? [id] : [];
-  };
-
-/** Plants this crop on the first look and never changes its mind. */
+/** Plants this crop into every empty field at once, whatever the forecast. */
 export const alwaysPlants =
-  (crop: Crop): Actions =>
+  (crop: FieldCrop): Actions =>
   (run, available) => {
     const id = plantActionId(crop);
-    return run.phase === 1 &&
-      plantedCrop(run) !== crop &&
-      available.includes(id)
+    return run.phase === 1 && !isFieldPlanted(run) && available.includes(id)
       ? [id]
       : [];
   };
+
+/** What a player who only wants the most green sets, and leaves. */
+const GREEDY_MIX: Readonly<Record<Biome, number>> = {
+  forest: 7,
+  jungle: 7,
+  meadow: 3,
+  wetland: 3,
+};
+
+/** Slider points a careful bot spreads over the open kinds (a point is 5%). */
+const CAREFUL_POINTS = 20;
 
 /**
- * Looks at the world now and then and spreads the biome worth the most,
- * once it beats the spreading one by `margin` (so it never chases a crumb).
+ * The mix a careful bot wants now. The world's fork leaves three kinds open
+ * (the focus kind, jungle and meadow). The focus kind and the meadow take what
+ * the jungle leaves; the jungle gets less while the tank is low or the rain is
+ * dry, and more once the tank is full in a rainy spell. A point is 5% of the
+ * mix, so a one point drift is left alone (see steerTo's tolerance) and the
+ * bot does not flap across a line.
  */
-export const biomePolicy =
-  (window = 15, margin = TUNING.world.playerMargin): Actions =>
-  (run, available) => {
-    if (run.phase !== 2 || !isWindowStart(run, window)) return [];
-    const best = bestBiome(run);
-    if (best === activeBiome(run)) return [];
-    if (biomeValue(run, best) < biomeValue(run, activeBiome(run)) * margin)
-      return [];
-    const id = spreadActionId(best);
-    return available.includes(id) ? [id] : [];
+export function idealMix(run: RunState): Record<Biome, number> {
+  const open = BIOMES.filter((b) => !isBiomeLocked(run, b));
+  const focus = open.find((b) => b !== "jungle" && b !== "meadow") ?? "forest";
+  const level = waterLevel(run);
+  const rain = rainOutlook(run);
+  const jungle =
+    level < 0.3 || rain < 0.3
+      ? 4
+      : level < 0.5 && rain < 0.5
+        ? 5
+        : level > 0.7 && rain > 0.55
+          ? 8
+          : 6;
+  const mix: Record<Biome, number> = {
+    forest: 0,
+    jungle,
+    meadow: CAREFUL_POINTS - jungle - 8,
+    wetland: 0,
   };
+  mix[focus] = 8;
+  return mix;
+}
 
-/** Spreads this biome on the first look and never changes its mind. */
-export const alwaysSpreads =
-  (biome: Biome): Actions =>
-  (run, available) => {
-    const id = spreadActionId(biome);
-    return run.phase === 2 &&
-      activeBiome(run) !== biome &&
-      available.includes(id)
-      ? [id]
+/** Each biome's share of a mix, 0 to 1. */
+function fractions(mix: Record<Biome, number>): Record<Biome, number> {
+  const total = BIOMES.reduce((sum, b) => sum + mix[b], 0) || 1;
+  return Object.fromEntries(BIOMES.map((b) => [b, mix[b] / total])) as Record<
+    Biome,
+    number
+  >;
+}
+
+/**
+ * Moves the sliders toward `want`: one point off the biome that asks for the
+ * most too much and one onto the one that asks for the most too little, when
+ * either is off by `tolerance` of the mix (so a near miss is left alone).
+ */
+function steerTo(
+  run: RunState,
+  available: readonly string[],
+  want: Record<Biome, number>,
+  tolerance = 0.07
+): string[] {
+  const goal = fractions(want);
+  const now = fractions(
+    Object.fromEntries(BIOMES.map((b) => [b, pointsOf(run, b)])) as Record<
+      Biome,
+      number
+    >
+  );
+  const diff = (b: Biome) => goal[b] - now[b];
+  // Only a move that gets closer: a point is worth 1/total of the mix.
+  const total = BIOMES.reduce((sum, b) => sum + pointsOf(run, b), 0) || 1;
+  tolerance = Math.max(tolerance, 0.6 / total);
+  const ranked = [...BIOMES].sort((a, b) => diff(b) - diff(a));
+  const picks: string[] = [];
+  const up = ranked.find((b) => available.includes(moreActionId(b)));
+  const down = [...ranked]
+    .reverse()
+    .find((b) => available.includes(lessActionId(b)));
+  if (up && diff(up) >= tolerance) picks.push(moreActionId(up));
+  if (down && diff(down) <= -tolerance) picks.push(lessActionId(down));
+  return picks;
+}
+
+/**
+ * Looks at the world now and then and moves the sliders toward the careful
+ * mix (see idealMix), a point or two at a time.
+ */
+export const mixPolicy =
+  (window = 15): Actions =>
+  (run, available) =>
+    run.phase === 2 && isWindowStart(run, window)
+      ? steerTo(run, available, idealMix(run))
       : [];
-  };
 
-/** Every biome, for tests that want the list. */
-export const ALL_BIOMES: readonly Biome[] = BIOMES;
+/**
+ * Sets the sliders to this mix on the first look and never touches them
+ * again (the naive player: no eye on the water or the rot).
+ */
+export const setsMixOnce =
+  (mix: Record<Biome, number>): Actions =>
+  (run, available) =>
+    run.phase === 2 ? steerTo(run, available, mix, 0.04) : [];
 
 /**
  * Buys the given side of the current part's fork the moment it is open and
@@ -339,12 +391,45 @@ function withStorageRule(strategy: Strategy, allows: StorageRule): Strategy {
 export function yardPlayer(
   base: Strategy,
   harvest: Actions,
-  storage: StorageRule
+  storage: StorageRule,
+  fork: Actions = takesFork()
 ): Strategy {
   return {
     ...withStorageRule(base, storage),
-    actions: alongside(takesFork(), alongside(holdsFestival, harvest)),
+    actions: alongside(fork, alongside(holdsFestival, harvest)),
   };
+}
+
+/** Takes the usual side everywhere but the world, where it takes `side`. */
+export const takesWorldSide =
+  (side: ForkSide): Actions =>
+  (run, available) =>
+    (run.phase === 2 ? takesFork(side) : takesFork())(run, available);
+
+/**
+ * A player who sets the world's sliders once and leaves them, with the given
+ * side of the world's fork (the sweep and the guard test use it).
+ */
+export function staticMixPlayer(
+  mix: Record<Biome, number>,
+  side: ForkSide = 0
+): Strategy {
+  return yardPlayer(
+    genericBots(growUniverse).tapper,
+    setsMixOnce(mix),
+    whenRainTurnsDry,
+    takesWorldSide(side)
+  );
+}
+
+/** A player who keeps adjusting the sliders, with the given world side. */
+export function adjustingPlayer(side: ForkSide = 0): Strategy {
+  return yardPlayer(
+    genericBots(growUniverse).tapper,
+    mixPolicy(),
+    whenRainTurnsDry,
+    takesWorldSide(side)
+  );
 }
 
 /** The scorecard's player personalities for Make It Grow. */
@@ -357,11 +442,8 @@ export function growBots(): BotSet {
       alongside(
         tendsBees,
         alongside(
-          alongside(cropPolicy(), bankPolicy()),
-          alongside(
-            entersFair(),
-            alongside(biomePolicy(), alongside(sendsFlock(), tendsPot()))
-          )
+          cropPolicy(),
+          alongside(feedsPumpkin(), alongside(mixPolicy(), readsLeaves(6)))
         )
       )
     ),
@@ -369,6 +451,8 @@ export function growBots(): BotSet {
   );
   return {
     tapper,
+    // The realistic player takes the wetland in the world (the tapper takes
+    // the old forest), so both sides of that fork are played.
     realistic: yardPlayer(
       base.realistic,
       alongside(
@@ -376,21 +460,16 @@ export function growBots(): BotSet {
         alongside(
           tendsBees,
           alongside(
-            alongside(cropPolicy(20), bankPolicy(20)),
+            cropPolicy(20, 45),
             alongside(
-              entersFair({ skipEvery: 6 }),
-              alongside(
-                biomePolicy(30),
-                alongside(
-                  sendsFlock({ skipEvery: 6 }),
-                  tendsPot({ skipEvery: 6 })
-                )
-              )
+              feedsPumpkin({ skipEvery: 6 }),
+              alongside(mixPolicy(30), readsLeaves(5))
             )
           )
         )
       ),
-      whenRainTurnsDry
+      whenRainTurnsDry,
+      takesWorldSide(1)
     ),
     idle: {
       ...withStorageRule(base.idle, afterRunningDry),
@@ -405,16 +484,10 @@ export function growBots(): BotSet {
         alongside(
           tendsBees,
           alongside(
-            alongside(cropPolicy(60), bankPolicy(60)),
+            cropPolicy(60, 70),
             alongside(
-              entersFair({ skipEvery: 2 }),
-              alongside(
-                biomePolicy(90),
-                alongside(
-                  sendsFlock({ skipEvery: 2 }),
-                  tendsPot({ skipEvery: 2 })
-                )
-              )
+              feedsPumpkin({ skipEvery: 2 }),
+              alongside(mixPolicy(90), readsLeaves(10))
             )
           )
         )
@@ -425,24 +498,20 @@ export function growBots(): BotSet {
       2: {
         naive: yardPlayer(
           base.tapper,
-          alongside(biomePolicy(), sendsFlock()),
+          setsMixOnce(GREEDY_MIX),
           afterRunningDry
         ),
-        careful: yardPlayer(
-          base.tapper,
-          alongside(biomePolicy(), sendsFlock()),
-          whenRainTurnsDry
-        ),
+        careful: yardPlayer(base.tapper, mixPolicy(), whenRainTurnsDry),
       },
       1: {
         naive: yardPlayer(
           base.tapper,
-          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
+          alongside(cropPolicy(), feedsPumpkin()),
           afterRunningDry
         ),
         careful: yardPlayer(
           base.tapper,
-          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
+          alongside(cropPolicy(), feedsPumpkin()),
           whenRainTurnsDry
         ),
       },
@@ -460,23 +529,11 @@ export function growBots(): BotSet {
       },
     },
     claim: {
-      2: {
-        ignores: yardPlayer(base.tapper, biomePolicy(), whenRainTurnsDry),
-        claims: yardPlayer(
-          base.tapper,
-          alongside(biomePolicy(), sendsFlock()),
-          whenRainTurnsDry
-        ),
-      },
       1: {
-        ignores: yardPlayer(
-          base.tapper,
-          alongside(cropPolicy(), bankPolicy()),
-          whenRainTurnsDry
-        ),
+        ignores: yardPlayer(base.tapper, cropPolicy(), whenRainTurnsDry),
         claims: yardPlayer(
           base.tapper,
-          alongside(alongside(cropPolicy(), bankPolicy()), entersFair()),
+          alongside(cropPolicy(), feedsPumpkin()),
           whenRainTurnsDry
         ),
       },

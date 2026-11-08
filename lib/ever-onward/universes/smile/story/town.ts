@@ -1,7 +1,6 @@
 import type { RunState, StoryMessage } from "../../../engine/types";
-import { paradesSoFar } from "../knowhow";
-import { heatOf, isTired } from "../meter";
 import { PHASE_TOWN } from "../resources";
+import { DAY_HOT, dayKind, grumpyCount, isTownOpen } from "../town";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
@@ -37,19 +36,19 @@ export const town: StoryMessage[] = [
     id: "town-bench",
     phase: PHASE_TOWN,
     when: (run) => owned(run, "bench") >= 1,
-    text: "The robot adds benches in the shade, because even cheering gets tiring. The mayor says it is the first sensible idea of the week.",
+    text: "The robot adds benches in the shade, so a street can wait happily for the next float. The mayor says it is the first sensible idea of the week.",
   },
   {
-    id: "town-warm",
+    id: "town-stand",
     phase: PHASE_TOWN,
-    when: (run) => heatOf(run) >= 0.5,
-    text: "The crowd is getting a bit pink in the face. Cheering is hard work, even when it is fun. The robot hands out lemonade and suggests everyone sit down for a minute.",
+    when: (run) => isTownOpen(run),
+    text: "The robot sets up a lemonade stand with a little chalk sign. Nobody is sure what a fair price is, so the sign has a lot of rubbing out on it.",
   },
   {
     id: "town-parade",
     phase: PHASE_TOWN,
-    when: (run) => paradesSoFar(run) >= 1,
-    text: "A parade! Floats, confetti, and a dog in a very small hat. The whole street throws up its arms, and for a whole afternoon, nobody is thinking about anything else.",
+    when: (run) => (run.resources.tnMoves ?? 0) >= 1,
+    text: "A parade! Floats, confetti, and a dog in a very small hat. Every street gets a turn, and the whole street throws up its arms.",
   },
   {
     id: "town-fork",
@@ -64,10 +63,16 @@ export const town: StoryMessage[] = [
     text: "The smile factory opens with a big ribbon and a small whistle. Smiles go in the front and come out the back, in boxes, all lined up. Each one is tested on a volunteer before it ships.",
   },
   {
-    id: "town-tired",
+    id: "town-grumpy",
     phase: PHASE_TOWN,
-    when: (run) => isTired(run),
-    text: "Everybody is worn out, and a little cranky about it. The robot hands out blankets and asks the town to take a break. The break is a very good idea. The robot, for some reason, finds it hard.",
+    when: (run) => grumpyCount(run) > 0,
+    text: "One street has been left out of the parade, and it has noticed. Arms are crossed. Somebody says hmph, quite loudly. The robot takes the hint and starts looking for a float.",
+  },
+  {
+    id: "town-hot",
+    phase: PHASE_TOWN,
+    when: (run) => dayKind(run) === DAY_HOT,
+    text: "It is boiling. A queue forms at the lemonade stand, then another queue behind it. The robot wonders, not for the first time, what a cup of lemonade is really worth.",
   },
   {
     id: "town-hero",

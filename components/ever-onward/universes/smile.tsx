@@ -6,13 +6,13 @@ import {
   SMILE_UNEASE,
 } from "../audio/smileScores";
 import type { CueName } from "../audio/everOnwardSynth";
-import BondPanel from "../game/smile/BondPanel";
-import CheerMeter from "../game/smile/CheerMeter";
-import FetchPanel from "../game/smile/FetchPanel";
-import FriendPanel from "../game/smile/FriendPanel";
+import BenchPanel from "../game/smile/BenchPanel";
 import KnowHowPanel from "../game/smile/KnowHowPanel";
 import SmileEndingArt from "../game/smile/SmileEndingArt";
+import SpeakersPanel from "../game/smile/SpeakersPanel";
 import SmileForkPanel from "../game/smile/SmileForkPanel";
+import TogetherPanel from "../game/smile/TogetherPanel";
+import TownPanel from "../game/smile/TownPanel";
 import StickerIcon from "../game/smile/StickerIcon";
 import { SMILEY_DIM, SMILEY_LIT, SMILEY_ROWS } from "../game/smile/sprites";
 import SmileScene from "../scenes/smile/SmileScene";
@@ -47,17 +47,26 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   const cues: CueName[] = [];
   const rose = (id: string) =>
     (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
-  if (rose("ftThrows")) cues.push("buzz");
+  if (rose("tgLits")) cues.push("chime");
+  if (rose("tgSighs")) cues.push("flutter");
   if (rose("pdCount")) cues.push("ribbon");
-  if (rose("qtTends")) cues.push("flutter");
+  if (rose("tnArriveAt")) cues.push("ribbon");
+  if (rose("tnGrumpAt")) cues.push("flutter");
+  if (rose("tnDays")) cues.push("chime");
+  if (rose("qbLands")) cues.push("chime");
+  if (rose("qbPulls")) cues.push("flutter");
+  if (rose("wsLosses")) cues.push("flutter");
+  if (rose("wsHeals")) cues.push("bloom");
+  if (rose("wsDrones")) cues.push("buzz");
+  if (rose("wsDays")) cues.push("chime");
   return cues;
 }
 
 /** The Make Everyone Smile screens: scene, panels, ending, sounds. */
 export const SMILE_UI: UniverseUi = {
   Scene: SmileScene,
-  primaryPanels: [BondPanel, CheerMeter, FriendPanel],
-  panels: [SmileForkPanel, FetchPanel, KnowHowPanel],
+  primaryPanels: [TogetherPanel, TownPanel, SpeakersPanel, BenchPanel],
+  panels: [SmileForkPanel, KnowHowPanel],
   ending: { storyIds: ENDING_STORY_IDS, Art: SmileEndingArt },
   tapLooks: LOOKS,
   hubSprite: { rows: SMILEY_ROWS, lit: SMILEY_LIT, dim: SMILEY_DIM },

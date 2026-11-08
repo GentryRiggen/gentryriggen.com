@@ -1,13 +1,13 @@
 import { visitorHereFlag } from "../../engine/engine";
 import type { RunState } from "../../engine/types";
-import { bondGainFor, bondKept, bondStock, savedShare, tickBond } from "./bond";
-import { forkBondMult, forkHelperMult, forkTapMult } from "./forks";
-import { phaseBoost, tickKnowhow } from "./knowhow";
-import { heatByTap, tickMeter, tiredMult } from "./meter";
-import { tickFetch } from "./fetch";
-import { addPatience, isQuietOpen, tickQuiet } from "./quiet";
+import { forkHelperMult, forkTapMult } from "./forks";
+import { isParadeOn, phaseBoost, tickKnowhow } from "./knowhow";
+import { addPatience, tickQuiet } from "./quiet";
 import { MANUAL_RESOURCES } from "./resources";
+import { tickTown } from "./town";
 import { TUNING } from "./tuning";
+import { bondGain, tickTogether, togetherPay } from "./together";
+import { tickWorld, worldPay } from "./world";
 import { RETURN_VISITOR_ID } from "./visitors";
 
 /** The three helper lines of each phase, by phase index. */
@@ -70,7 +70,7 @@ function helperSum(run: RunState): number {
   );
 }
 
-/** Taps and income of the first part before the bank takes its share. */
+/** Taps and income of the first part before what you do together pays. */
 function friendGrossTap(run: RunState): number {
   return (
     TUNING.phases[0].tap *
@@ -91,22 +91,11 @@ function friendGrossIncome(run: RunState): number {
   );
 }
 
-/** The friendship bank's bonus on every laugh, read against a friend without it. */
-export function bondGain(run: RunState): number {
-  if (run.phase !== 0) return 0;
-  const reference =
-    helperSum(run) * scaleMult(run) * forkHelperMult(run) * speed(run) +
-    TUNING.bond.referenceTaps *
-      TUNING.phases[0].tap *
-      scaleMult(run) *
-      tapMult(run) *
-      forkTapMult(run);
-  return bondGainFor(bondStock(run), reference) * forkBondMult(run);
-}
-
 /** What one tap earns right now. */
 export function manualPerTap(run: RunState): number {
-  if (run.phase === 0) return friendGrossTap(run) * (1 - savedShare(run));
+  // Taps stay the same whatever you do together: only the helpers and the
+  // bond follow it, so a tap always works.
+  if (run.phase === 0) return friendGrossTap(run);
   const base = TUNING.phases[run.phase].tap * scaleMult(run) * tapMult(run);
   if (run.phase === 3) return base;
   return (
@@ -114,23 +103,19 @@ export function manualPerTap(run: RunState): number {
     tapReach(run) *
     forkTapMult(run) *
     phaseBoost(run) *
-    tiredMult(run) *
+    worldPay(run) *
     signMult(run)
   );
 }
 
 /** The phase's manual resource per second from helpers alone. */
 export function incomePerSecond(run: RunState): number {
-  if (run.phase === 0) return friendGrossIncome(run) * (1 - savedShare(run));
+  if (run.phase === 0) return friendGrossIncome(run) * togetherPay(run);
   const base =
     helperSum(run) * scaleMult(run) * forkHelperMult(run) * speed(run);
   if (run.phase === 3) return base;
-  return base * phaseBoost(run) * tiredMult(run) * signMult(run);
+  return base * phaseBoost(run) * worldPay(run) * signMult(run);
 }
-
-/** What a second of tending is worth: the helpers plus one tap. */
-export const tendingValue = (run: RunState): number =>
-  incomePerSecond(run) + manualPerTap(run);
 
 /** Earned patience also builds trust, which is all the last part asks for. */
 function earn(run: RunState, amount: number): void {
@@ -143,18 +128,15 @@ function earn(run: RunState, amount: number): void {
 
 export function tickSmile(run: RunState, dt: number): void {
   earn(run, incomePerSecond(run) * dt);
-  if (run.phase === 0)
-    tickBond(run, friendGrossIncome(run) * savedShare(run), dt);
-  tickFetch(run, dt);
+  tickTogether(run, dt, () => friendGrossIncome(run) + friendGrossTap(run));
   tickKnowhow(run, dt);
-  tickMeter(run, dt);
-  if (isQuietOpen(run)) tickQuiet(run, dt, () => tendingValue(run));
+  tickTown(run, dt);
+  tickWorld(run, dt, isParadeOn(run));
+  tickQuiet(run, dt);
 }
 
 export function manualSmile(run: RunState): void {
   earn(run, manualPerTap(run));
-  if (run.phase === 0) bondKept(run, friendGrossTap(run) * savedShare(run));
-  heatByTap(run);
 }
 
 export const isSmileComplete = (run: RunState): boolean =>

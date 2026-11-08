@@ -230,23 +230,23 @@ export const CUTSCENES: Readonly<Record<string, readonly CutsceneFrame[]>> = {
 
 export const TIPS: Readonly<Record<string, readonly string[]>> = {
   [PHASE_FRIEND]: [
-    "A friendship bracelet opens the bank: set smiles aside and later laughs grow bigger.",
-    "Jokes pay when you tap. Kindness pays while you rest. Pick the way you like.",
-    "Set aside about a quarter at first, and ease off when next door is near.",
+    "A friendship bracelet opens what you do together: jokes, games, or just listening.",
+    "Whatever you keep doing wears thin. Change it up and it comes back.",
+    "Watch the friend's face. It only hints at what they need, and it gets surer the longer you look.",
   ],
   [PHASE_TOWN]: [
-    "Start a parade when the cheer meter is cool. It pays double for a while.",
-    "Tap too fast and the crowd gets tired. Ease off and let the meter cool.",
-    "Spend know-how on a project that lasts, or a parade that pays now.",
+    "Free lemonade fills the street with cheers. A higher price brings coins instead.",
+    "A street with no float gets grumpy. Send it one, but the floats you take away are missed.",
+    "Rain, a hot day or a street party can change what works best. Keep an eye on the day.",
   ],
   [PHASE_WORLD]: [
-    "A cheer broadcast pays double, but it warms the meter. Start one when it is cool.",
-    "Masks and quiet hours cool the meter. A worn-out world pays less.",
-    "Loudspeakers or listening boxes: one gets built first, and the other waits.",
+    "A louder loudspeaker pays more grins, and it paints real smiles over. A quiet one lets them come back.",
+    "A festival, a gloomy week or tired ears change what suits the day. Keep an eye on it.",
+    "Some projects are cheap in grins and cost real smiles. How many you keep shapes The Quiet.",
   ],
   [PHASE_QUIET]: [
-    "Watch the friend. The clue says what they want, and the right answer helps most.",
-    "Every answer helps a little, so answer kindly and do not worry.",
-    "Tea, a blanket and the sound of rain all help, even while you wait.",
+    "Sitting closer builds trust faster, but only when the friend is ready for it.",
+    "Watch their body: arms folded and looking away means not yet, leaning your way means come closer.",
+    "Things on the bench change their mood: a bird, a snack, a noisy truck. If they pull away, give them room.",
   ],
 };

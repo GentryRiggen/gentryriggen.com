@@ -3,13 +3,7 @@ import { handHarvestPays } from "./actions";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import { formatNumber } from "../../engine/format";
 import type { RunState, UpgradeDef } from "../../engine/types";
-import {
-  FAIR_HAND_ID,
-  fairsSoFar,
-  handPaysOn,
-  handShown,
-  openFair,
-} from "./fair";
+import { PUMPKIN_HAND_ID, handPaysOn, handShown, openPumpkin } from "./pumpkin";
 import {
   BEE_KEEPER_ID,
   BEES_OPEN_FLAG,
@@ -18,16 +12,9 @@ import {
   wiltsSoFar,
 } from "./bees";
 import { worldCover } from "./biomes";
-import {
-  FLOCK_LEADER_ID,
-  flightsSoFar,
-  leaderPaysOn,
-  leaderShown,
-  openMigration,
-} from "./migration";
 import { TUNING } from "./tuning";
 import { beesWelcome, forkSide } from "./forks";
-import { MARKET_AGENT_ID } from "./market";
+import { MARKET_AGENT_ID, harvestDays } from "./market";
 import {
   PHASE_FARM,
   PHASE_IDS,
@@ -39,21 +26,18 @@ import {
   RESOURCES,
 } from "./resources";
 import {
+  dayFarmPay,
   incomePerSecond,
   manualPerTap,
   pickPerSecond,
-  tendingValue,
 } from "./tick";
 import { DRY_FLOOR, waterCapacity } from "./water";
 import {
+  DEEP_POT_ID,
   LANTERN_ID,
-  MUSIC_BOX_ID,
-  WATERING_CAN_ID,
-  boxPays,
-  canMult,
-  musicBoxShown,
   potGrowth,
-  tendsSoFar,
+  soilRate,
+  wiltsSoFar as potWilts,
 } from "./windowbox";
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
@@ -386,15 +370,15 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 6,
     kind: "mechanic",
     visibleWhen: ownsAtLeast("scarecrow", 3),
-    onBuy: openFair,
+    onBuy: openPumpkin,
     effectPreview: (run) => helperPreview(run, "tractor"),
   },
   {
-    id: FAIR_HAND_ID,
+    id: PUMPKIN_HAND_ID,
     badge: "NEW ABILITY",
     name: "A fair helper",
     description:
-      "A cheerful neighbour in a straw hat who carries a pumpkin to the county fair when you are busy. Your own pick still pays more.",
+      "A cheerful neighbour in a straw hat who carries your prize pumpkin to the county fair if you forget to. Your own entry still pays more.",
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 45000,
@@ -402,17 +386,17 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     // A bonus helper, not income: bots buy the farm first.
     priority: -1,
     kind: "mechanic",
-    // Halfway along: once the first fair has been judged.
+    // Halfway along: once a few harvest days have gone by.
     visibleWhen: handShown,
     effectPreview: (run) =>
-      `Enters the fair's likeliest pumpkin for you after a wait: about ${num(Math.floor(handPaysOn(run, incomePerSecond(run))))} harvest (fairs so far: ${fairsSoFar(run)})`,
+      `Enters a grown pumpkin for you on a day you did not: about ${num(Math.floor(handPaysOn(run, dayFarmPay(run))))} harvest (harvest days so far: ${harvestDays(run)})`,
   },
   {
     id: MARKET_AGENT_ID,
     badge: "NEW ABILITY",
     name: "A market agent",
     description:
-      "A friendly person with a clipboard who asks the towns what they want, and plants it now and then. You will always choose better, because you are looking.",
+      "A friendly person with a clipboard who reads the forecast and plants what looks likeliest, a little way into every harvest day. He never rests the soil. You will always choose better, because you are looking.",
     phases: [PHASE_FARM],
     currency: "harvest",
     baseCost: 90000,
@@ -422,7 +406,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     kind: "mechanic",
     visibleWhen: ownsAtLeast("tractor", 3),
     effectPreview: () =>
-      `Re-plants what the towns want most, every ${TUNING.market.agentSeconds} seconds`,
+      `Plants the likeliest crop ${TUNING.market.agentAt} seconds into every harvest day`,
   },
   {
     id: "irrigation",
@@ -535,7 +519,6 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   },
   {
     id: "planting-rover",
-    badge: "NEW ABILITY",
     name: "A planting rover",
     description:
       "A six-wheeled rover that plants a tree, shuffles forward and plants another, all day and all night.",
@@ -546,26 +529,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     maxLevel: 8,
     kind: "mechanic",
     visibleWhen: ownsAtLeast("windbreak", 3),
-    onBuy: openMigration,
     effectPreview: (run) => helperPreview(run, "planting-rover"),
-  },
-  {
-    id: FLOCK_LEADER_ID,
-    badge: "NEW ABILITY",
-    name: "A flock leader",
-    description:
-      "A wise old goose who leads a waiting flock to the place that needs it most when you are busy. Your own choice still grows more.",
-    phases: [PHASE_WORLD],
-    currency: "green",
-    baseCost: 900000,
-    costGrowth: 1,
-    // A bonus helper, not income: bots buy the world first.
-    priority: -1,
-    kind: "mechanic",
-    // Halfway along: once a couple of flights have landed.
-    visibleWhen: leaderShown,
-    effectPreview: (run) =>
-      `Sends a waiting flock to the most welcoming place: about ${num(Math.floor(leaderPaysOn(run, incomePerSecond(run))))} green (flights so far: ${flightsSoFar(run)})`,
   },
   {
     id: "cloud-seeder",
@@ -602,7 +566,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     description: "One seed, saved from everything, kept safe for later.",
     phases: [PHASE_WORLD],
     currency: "green",
-    baseCost: 46000000,
+    baseCost: 110000000,
     costGrowth: 1,
     kind: "mechanic",
     visibleWhen: (run) =>
@@ -649,6 +613,20 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     effectPreview: (run) => helperPreview(run, "wind-chime"),
   },
   {
+    id: "sun-catcher",
+    name: "A little sun-catcher",
+    description:
+      "A crystal in the window. It throws small rainbows across the room, and the pot likes them.",
+    phases: [PHASE_SEED],
+    currency: "care",
+    baseCost: 420,
+    costGrowth: 2.4,
+    maxLevel: 6,
+    kind: "mechanic",
+    visibleWhen: ownsAtLeast("wind-chime", 1),
+    effectPreview: (run) => helperPreview(run, "sun-catcher"),
+  },
+  {
     id: "dew-collector",
     name: "A dew collector",
     description:
@@ -663,44 +641,26 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     effectPreview: (run) => helperPreview(run, "dew-collector"),
   },
   {
-    id: WATERING_CAN_ID,
-    name: "A bigger watering can",
+    id: DEEP_POT_ID,
+    name: "A deeper pot",
     description:
-      "A little tin can with a long spout. Every answer you give the pot is worth half as much again.",
+      "More soil holds more water, so it dries and soaks more slowly. The leaves give you longer to notice.",
     phases: [PHASE_SEED],
     currency: "care",
-    baseCost: 24,
-    costGrowth: 2.2,
-    maxLevel: 5,
+    baseCost: 600,
+    costGrowth: 3,
+    maxLevel: 3,
     kind: "mechanic",
-    visibleWhen: (run) => tendsSoFar(run) >= 1,
+    visibleWhen: (run) => potWilts(run) >= 1 || owned(run, "wind-chime") >= 1,
     effectPreview: (run) =>
-      `Care per answer ${num(Math.round(canMult(run) * 100))}% → ${num(
+      `Soil change speed ${num(Math.round(soilRate(run) * 100))}% → ${num(
         Math.round(
-          canMult({
+          soilRate({
             ...run,
-            owned: {
-              ...run.owned,
-              [WATERING_CAN_ID]: owned(run, WATERING_CAN_ID) + 1,
-            },
+            owned: { ...run.owned, [DEEP_POT_ID]: owned(run, DEEP_POT_ID) + 1 },
           }) * 100
         )
       )}%`,
-  },
-  {
-    id: MUSIC_BOX_ID,
-    badge: "NEW ABILITY",
-    name: "A little music box",
-    description:
-      "It plays the pot a soft tune when you are busy. Your own answer still grows it more.",
-    phases: [PHASE_SEED],
-    currency: "care",
-    baseCost: 120,
-    costGrowth: 1,
-    kind: "mechanic",
-    visibleWhen: musicBoxShown,
-    effectPreview: (run) =>
-      `Answers a waiting pot for you after a pause: about ${num(Math.floor(boxPays(run, tendingValue(run))))} care (answers so far: ${tendsSoFar(run)})`,
   },
   {
     id: LANTERN_ID,

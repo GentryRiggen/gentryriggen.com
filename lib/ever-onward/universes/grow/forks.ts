@@ -142,13 +142,14 @@ export const FORKS: readonly ForkDef[] = [
     sides: [
       {
         name: "Morning sun",
-        blurb: `Every answer you give the pot is worth ${times(T.seed.sunTap)}. A sunbeam falls across the sill.`,
-        catchLine: "You have to be there. The helpers pay as they always did.",
+        blurb: `The light does ${times(T.seed.sunGrowth)} as much of the growing on its own. A sunbeam falls across the sill.`,
+        catchLine:
+          "Only while the leaves are happy. Care and helpers pay as they always did.",
       },
       {
         name: "Night-light",
         blurb: `A little bulb sits up with the pot, so the trellis, chime and dew all pay ${times(T.seed.nightHelpers)}. Moths come to visit.`,
-        catchLine: "Your own answers pay as they always did.",
+        catchLine: "The light grows the pot as it always did.",
       },
     ],
   },
@@ -247,9 +248,9 @@ export const worldFocus = (run: RunState): "forest" | "wetland" | null => {
   return side === 0 ? "forest" : side === 1 ? "wetland" : null;
 };
 
-/** Seed: how much more taps and answers pay (the morning sun). */
-export const seedTapMult = (run: RunState): number =>
-  forkSide(run, "seed") === 0 ? T.seed.sunTap : 1;
+/** Seed: how much faster the light alone grows the pot (the morning sun). */
+export const seedSunMult = (run: RunState): number =>
+  forkSide(run, "seed") === 0 ? T.seed.sunGrowth : 1;
 
 /** Seed: how much more the trellis, chime and dew pay (the night-light). */
 export const seedHelperMult = (run: RunState): number =>

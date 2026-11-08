@@ -1,6 +1,7 @@
 import type { SmileSceneInfo } from "@/lib/ever-onward/universes/smile/scene";
 import { TownForkArt } from "./ForkArt";
-import { BALLOON_COLORS, Face, INK, PixelText, type Mood } from "./parts";
+import StreetsLayer from "./StreetsLayer";
+import { BALLOON_COLORS, Face, INK } from "./parts";
 
 interface LayerProps {
   info: SmileSceneInfo;
@@ -238,7 +239,6 @@ function Benches({ count }: { count: number }) {
 
 function Crowd({ info }: LayerProps) {
   const n = Math.min(14, 6 + info.a + info.b + info.c);
-  const mood: Mood = info.tired ? "flat" : info.parade ? "grin" : "smile";
   return (
     <g>
       {Array.from({ length: n }, (_, i) => (
@@ -247,40 +247,11 @@ function Crowd({ info }: LayerProps) {
             x={10 + i * 27}
             y={274 - (i % 3) * 3}
             size={14}
-            mood={mood}
+            mood="smile"
             fill={SKIN_TONES[i % 3]}
-            isSweaty={info.heat >= 3 || info.tired}
           />
         </g>
       ))}
-    </g>
-  );
-}
-
-function ParadeFloat() {
-  return (
-    <g className="ms-drift">
-      <rect x="150" y="214" width="96" height="16" fill="#ff9f43" />
-      <rect x="160" y="196" width="40" height="18" fill="#ff5d73" />
-      <rect x="206" y="204" width="30" height="10" fill="#ffd23f" />
-      <rect x="156" y="230" width="12" height="12" fill="#2b2140" />
-      <rect x="224" y="230" width="12" height="12" fill="#2b2140" />
-      <PixelText x={198} y={226} fill="#fff">
-        HOORAY
-      </PixelText>
-      <g>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <rect
-            key={i}
-            x={156 + i * 20}
-            y={186}
-            width="4"
-            height="4"
-            fill={BALLOON_COLORS[i]}
-            className={i % 2 ? "ms-confetti" : "ms-confetti-b"}
-          />
-        ))}
-      </g>
     </g>
   );
 }
@@ -306,7 +277,7 @@ function Statue() {
   );
 }
 
-/** The Town: a street with clowns, a band, a factory and fireworks. */
+/** The Town: a street with clowns, a band, a factory, fireworks, a lemonade stand and a parade route. */
 export default function TownLayer({ info }: LayerProps) {
   const bigTop = (info.projects & 1) !== 0;
   const shade = (info.projects & 2) !== 0;
@@ -343,10 +314,10 @@ export default function TownLayer({ info }: LayerProps) {
       )}
       {info.a > 0 && <Clowns count={info.a} />}
       {info.b > 0 && <Band count={info.b} />}
-      {info.parade && <ParadeFloat />}
       {info.extraA > 0 && <Benches count={info.extraA} />}
       {info.c >= 3 && <Statue />}
-      <Crowd info={info} />
+      {info.price < 0 && <Crowd info={info} />}
+      <StreetsLayer info={info} />
     </g>
   );
 }

@@ -62,8 +62,6 @@ export const PHASES: readonly PhaseDef[] = [
       );
       fillFarmTank(run);
       seedMarket(run);
-      // A new farm keeps a quarter back as seed; the bank panel changes it.
-      run.resources.sbStep = 1;
       headStart(1)(run);
     },
   },
@@ -80,9 +78,14 @@ export const PHASES: readonly PhaseDef[] = [
     tapDoes: "plant something green and earn green",
     isDone: (run) => owned(run, "seed-vault") >= 1,
     onEnter: (run) => {
-      // The farm's leftover harvest turns into the first green.
+      // The world opens the same way however the farm ended: a fixed start,
+      // and a little extra for a well-stocked barn (never more than a tenth).
+      const W = TUNING.world;
       run.resources.green += Math.floor(
-        (run.resources.harvest ?? 0) * TUNING.world.harvestToGreen
+        W.openingGreen *
+          (1 +
+            W.openingLeftover *
+              Math.min(1, (run.resources.harvest ?? 0) / W.openingLeftoverFull))
       );
       seedBiomes(run);
       fillWorldTank(run);
@@ -96,7 +99,7 @@ export const PHASES: readonly PhaseDef[] = [
     title: "The Old Window Box",
     intro:
       "The whole world is green now, and so quiet you can hear the leaves. The robot has grown everything there is to grow, except for one thing: the old window box, empty on its sill. The kid who planted the first seed grew up and moved away. So the robot tends one small pot and plants one small seed, just in case they come back.",
-    goal: "Tend the old window box until the seed blooms.",
+    goal: "Keep the old window box just right until the seed blooms.",
     manualResource: "care",
     manualLabel: "Tend the pot",
     tapDoes: "tend the pot. Every bit of care you earn grows it",

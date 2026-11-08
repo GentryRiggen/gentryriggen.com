@@ -71,7 +71,7 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "Tell jokes",
         blurb: `Knock knock! Every tap you make pays ${times(T.friend.jokesTap)} as much. The jokes are good ones, and some are even new.`,
-        catchLine: `Laughs fade fast, so the friendship bank grows ${less(T.friend.jokesBond)} less.`,
+        catchLine: `Laughs fade fast, so the bond you build together grows ${less(T.friend.jokesBond)} less.`,
       },
       {
         name: "Be kind",
@@ -94,12 +94,12 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "Clown school",
         blurb: `Honk! Every tap pays ${times(T.town.clownTap)} as much, and the big shoes get a laugh every time.`,
-        catchLine: `Clowns tire a crowd out fast: the cheer meter fills ${Math.round((T.town.clownHeat - 1) * 100)}% faster.`,
+        catchLine: `Clowns stir a crowd up, so a street with no float turns grumpy ${Math.round((TUNING.town.clownFall - 1) * 100)}% faster.`,
       },
       {
         name: "Smile factory",
         blurb: `Smiles in boxes, on belts, all day and night. Clowns, bands and factory floors all pay ${times(T.town.factoryHelpers)} as much.`,
-        catchLine: `Every factory smile looks alike, so parades pay only ${times(T.town.factoryParade)} instead of double.`,
+        catchLine: `Every factory smile looks alike, so a float cheers a street only ${Math.round(TUNING.town.factoryCare * 100)}% as much.`,
       },
     ],
   },
@@ -117,12 +117,12 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "Loudspeakers",
         blurb: `A cheerful voice on every corner, saying the nicest thing. Every helper pays ${times(T.world.speakerHelpers)} as much.`,
-        catchLine: `Nobody can turn them down, so the cheer meter cools ${less(T.world.speakerCool)} slower.`,
+        catchLine: `Nobody can turn them down, so real smiles get painted over ${Math.round((T.world.speakerPaint - 1) * 100)}% faster.`,
       },
       {
         name: "Listening boxes",
-        blurb: `Notes go in, notes get read. Helpers pay ${times(T.world.boxHelpers)} as much, and the cheer meter cools ${times(T.world.boxCool)} as fast.`,
-        catchLine: "Slower to build, and the notes are not always happy ones.",
+        blurb: `Notes go in, notes get read. Real smiles get painted over ${less(T.world.boxPaint)} slower, and a few come back by themselves.`,
+        catchLine: `Not everyone writes a happy note, so helpers pay only ${times(T.world.boxHelpers)} as much.`,
       },
     ],
   },
@@ -139,13 +139,13 @@ export const FORKS: readonly ForkDef[] = [
     sides: [
       {
         name: "A few words",
-        blurb: `Every answer you give pays ${times(T.quiet.wordsTap)} as much, and every word is a small gift.`,
+        blurb: `Side by side, trust builds ${times(1 + TUNING.quiet.closeGain * T.quiet.wordsClose)} as fast, not ${times(1 + TUNING.quiet.closeGain)}, and every word is a small gift.`,
         catchLine: "You have to be there. The helpers pay as they always did.",
       },
       {
         name: "Just sit",
         blurb: `You stop talking and keep the bench warm. Tea, blanket and rain all pay ${times(T.quiet.silenceHelpers)} as much.`,
-        catchLine: "Your own answers pay as they always did.",
+        catchLine: "Your own words pay as they always did.",
       },
     ],
   },
@@ -203,9 +203,11 @@ export const forkTapMult = (run: RunState): number =>
     ? pick(run, "friend", T.friend.jokesTap, 1)
     : PHASE_IDS[run.phase] === PHASE_TOWN
       ? pick(run, "town", T.town.clownTap, 1)
-      : PHASE_IDS[run.phase] === PHASE_QUIET
-        ? pick(run, "quiet", T.quiet.wordsTap, 1)
-        : 1;
+      : 1;
+
+/** How much more sitting closer builds trust (a few words make a bench seat warmer). */
+export const forkCloseMult = (run: RunState): number =>
+  pick(run, "quiet", T.quiet.wordsClose, 1);
 
 /** How much more every helper pays with the chosen side. */
 export const forkHelperMult = (run: RunState): number =>
@@ -219,23 +221,28 @@ export const forkHelperMult = (run: RunState): number =>
           ? pick(run, "quiet", 1, T.quiet.silenceHelpers)
           : 1;
 
-/** How much the friendship bank gives of what it would (jokes fade fast). */
+/** How much the bond gives of what it would (jokes fade fast). */
 export const forkBondMult = (run: RunState): number =>
   pick(run, "friend", T.friend.jokesBond, 1);
 
-/** How fast the cheer meter heats (clowns tire a crowd). */
-export const forkHeatMult = (run: RunState): number =>
-  pick(run, "town", T.town.clownHeat, 1);
+/** How fast a street with no float turns grumpy (clowns stir a crowd up). */
+export const forkFallMult = (run: RunState): number =>
+  pick(run, "town", TUNING.town.clownFall, 1);
 
-/** How fast the cheer meter cools. */
-export const forkCoolMult = (run: RunState): number =>
-  pick(run, "world", T.world.speakerCool, T.world.boxCool);
+/** How much a float cheers a street (the factory's smiles are all alike). */
+export const forkCareMult = (run: RunState): number =>
+  pick(run, "town", 1, TUNING.town.factoryCare);
 
-/** The multiplier of a parade (the factory's are all alike). */
-export const forkParadeMult = (run: RunState): number =>
-  forkSide(run, "town") === 1
-    ? T.town.factoryParade
-    : TUNING.knowhow.paradeMult;
+/** How much faster real smiles get painted over (the loudspeakers' catch). */
+export const forkPaintMult = (run: RunState): number =>
+  pick(run, "world", T.world.speakerPaint, T.world.boxPaint);
+
+/** Real smiles that come back a second by themselves (the boxes). */
+export const forkHealRate = (run: RunState): number =>
+  forkSide(run, "world") === 1 ? T.world.boxHeal : 0;
+
+/** The multiplier of a cheer broadcast. */
+export const forkParadeMult = (): number => TUNING.knowhow.paradeMult;
 
 /** Marks a side as chosen (the engine has already taken the cost). */
 export function chooseSide(run: RunState, id: ForkId, side: ForkSide): void {

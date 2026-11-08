@@ -11,7 +11,7 @@ import { formatNumber } from "@/lib/ever-onward/engine/format";
 import { forkParadeMult } from "@/lib/ever-onward/universes/smile/forks";
 import {
   PARADE_ACTION_ID,
-  PARADE_NAMES,
+  BROADCAST_NAME,
   hasKnowhow,
   isParadeOn,
   isParadeOpen,
@@ -51,7 +51,7 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
   if (!isOpen && shown.length === 0 && done.length === 0) return null;
 
   const have = knowhowOf(run);
-  const name = PARADE_NAMES[run.phase];
+  const name = BROADCAST_NAME;
   const on = isParadeOn(run);
   const resting = isParadeResting(run);
   const canHold = canPerformAction(def, run, PARADE_ACTION_ID);
@@ -70,14 +70,15 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
         last
           ? `${last.name}: done!`
           : on
-            ? `The ${name.toLowerCase()} is on: everything pays ${Number(forkParadeMult(run).toFixed(2))}x or more.`
+            ? `The ${name.toLowerCase()} is on: everything pays ${Number(forkParadeMult().toFixed(2))}x or more.`
             : ""
       }
       resultTestId="ms-knowhow-result"
     >
       <p className="font-mono text-sm text-slate-200">
         Your helpers learn as they work. Spend it on a project that lasts, or on
-        a {name.toLowerCase()} that pays now. Not both.
+        a {name.toLowerCase()} that pays now. Some projects are cheap in grins
+        and cost real smiles. Not all of them do.
       </p>
       {shown.length > 0 && (
         <ul className="space-y-2" aria-label="Projects">
@@ -105,9 +106,23 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
                   {project.description}
                 </p>
                 {effect && (
-                  <p className="font-mono text-xs font-bold text-emerald-200 tabular-nums">
-                    {effect}
-                  </p>
+                  <ul
+                    data-testid={`ms-project-${project.id}-effect`}
+                    className="space-y-0.5 font-mono text-xs font-bold tabular-nums"
+                  >
+                    {effect.split("\n").map((line) => (
+                      <li
+                        key={line}
+                        className={
+                          line.startsWith("−")
+                            ? "text-fuchsia-200"
+                            : "text-emerald-200"
+                        }
+                      >
+                        {line}
+                      </li>
+                    ))}
+                  </ul>
                 )}
                 {project.tradeOff && (
                   <p className="font-mono text-xs text-amber-200">
@@ -150,9 +165,11 @@ export default function KnowHowPanel({ def, run, onAct }: PanelProps) {
         >
           <h3 className={`${pixelClass} text-[10px] text-amber-200`}>{name}</h3>
           <p id="ms-parade-about" className="font-mono text-sm text-slate-100">
-            Everything pays {Number(forkParadeMult(run).toFixed(2))}x or more
-            for {paradeSeconds()} seconds. It warms the cheer meter, and the
-            crowd needs a short rest after. {paradesSoFar(run)} so far.
+            Everything pays {Number(forkParadeMult().toFixed(2))}x or more for{" "}
+            {paradeSeconds()} seconds. Real smiles get painted over{" "}
+            {Math.round((TUNING.world.broadcastPaint - 1) * 100)}% faster while
+            it plays, and the crowd needs a short rest after.{" "}
+            {paradesSoFar(run)} so far.
           </p>
           <button
             type="button"

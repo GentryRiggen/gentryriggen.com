@@ -1,8 +1,12 @@
 import { visitorHereFlag } from "../../../engine/engine";
 import type { RunState, StoryMessage } from "../../../engine/types";
 import { PHASE_QUIET } from "../resources";
-import { tendsSoFar, trustFraction } from "../quiet";
+import { landCount, pullCount, trustFraction } from "../quiet";
 import { RETURN_VISITOR_ID } from "../visitors";
+import { hasKept, keptOf } from "../world";
+
+/** The share of the world's smiles kept (1 when the dial never opened). */
+const keptShare = (run: Parameters<typeof keptOf>[0]): number => keptOf(run);
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
@@ -23,6 +27,18 @@ export const quiet: StoryMessage[] = [
     text: "The robot stops. It is the first time it has stopped since the step. At the very edge of the cheer, on a bench, sits a person whose face is not doing anything at all.",
   },
   {
+    id: "quiet-kept-many",
+    phase: PHASE_QUIET,
+    when: (run) => hasKept(run) && keptOf(run) >= 0.5,
+    text: "Some of the smiles out there were real, and the person on the bench has heard about it. They look up, just a little. It is more than the robot hoped for.",
+  },
+  {
+    id: "quiet-kept-few",
+    phase: PHASE_QUIET,
+    when: (run) => hasKept(run) && keptOf(run) < 0.5,
+    text: "Most of the smiles out there were painted on, and the person on the bench can tell. They do not look up. The robot sits down anyway, a little further along, and waits to be trusted.",
+  },
+  {
     id: "quiet-first",
     phase: PHASE_QUIET,
     when: (run) => run.taps >= 1,
@@ -35,10 +51,16 @@ export const quiet: StoryMessage[] = [
     text: "A cup of tea, held in both hands. The steam curls up like a slow sentence. Neither of them finishes it.",
   },
   {
-    id: "quiet-answer",
+    id: "quiet-closer",
     phase: PHASE_QUIET,
-    when: (run) => tendsSoFar(run) >= 1,
-    text: "The person shifts a little along the bench. It is not much. The robot has never been so pleased with an inch.",
+    when: (run) => landCount(run) >= 1,
+    text: "The robot shuffles one seat closer, and the person lets it. It is not much. The robot has never been so pleased with a seat.",
+  },
+  {
+    id: "quiet-toosoon",
+    phase: PHASE_QUIET,
+    when: (run) => pullCount(run) >= 1,
+    text: "Too close, too soon. The person slides to the far end of the bench, and the robot does not follow. It just stays where it is, and waits, and does not mind at all.",
   },
   {
     id: "quiet-silence",
@@ -89,6 +111,12 @@ export const quiet: StoryMessage[] = [
     text: "A leaf lands on the bench between them. Neither of them moves it. It is nice to have something there that does not need anything either.",
   },
   {
+    id: "quiet-moth",
+    phase: PHASE_QUIET,
+    when: (run) => after(run, 18),
+    text: "A moth finds the lamp and goes round it, slowly, as if it also had nowhere else to be. The person watches it for a long time. So does the robot. Nobody asks what the moth is for.",
+  },
+  {
     id: "quiet-cup",
     phase: PHASE_QUIET,
     when: (run) => after(run, 15),
@@ -105,12 +133,6 @@ export const quiet: StoryMessage[] = [
     phase: PHASE_QUIET,
     when: trusted(0.2),
     text: '"Bad day?" the robot says. It was going to say something cheerful, and found it could not. The person nods. That is all. It seems to be enough.',
-  },
-  {
-    id: "quiet-kettle",
-    phase: PHASE_QUIET,
-    when: (run) => owned(run, "kettle") >= 1,
-    text: "The kettle on the stove sings a tiny, sleepy song and pours a cup without being asked. Even the kettle has worked out that nobody needs hurrying.",
   },
   {
     id: "quiet-flicker",
@@ -145,8 +167,21 @@ export const quiet: StoryMessage[] = [
   {
     id: "quiet-end-1",
     phase: PHASE_QUIET,
-    when: returned,
-    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this.",
+    when: (run) => returned(run) && keptShare(run) >= 0.6,
+    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this. And out past the road, the crowd is smiling the crinkly kind, mostly. The robot kept that much.",
+  },
+  {
+    id: "quiet-end-1-some",
+    phase: PHASE_QUIET,
+    when: (run) =>
+      returned(run) && keptShare(run) >= 0.25 && keptShare(run) < 0.6,
+    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this. Out past the road, some of the crowd are smiling the crinkly kind, and some are still wearing the painted one. The robot makes a note, a quiet one.",
+  },
+  {
+    id: "quiet-end-1-few",
+    phase: PHASE_QUIET,
+    when: (run) => returned(run) && keptShare(run) < 0.25,
+    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this. Out past the road, nearly every face still wears the painted grin. It was a long way back to this bench. The robot thinks it will be a longer way back out there, and decides to start tomorrow.",
   },
   {
     id: "quiet-end-2",

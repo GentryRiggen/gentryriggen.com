@@ -289,18 +289,18 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "Plant flower beds for your bees, but don't work a bed too hard or it wilts. Keep honey for winter.",
   ],
   [PHASE_FARM]: [
-    "Plant what the towns are asking for: their orders pay more.",
-    "Enter the pumpkin marked best chances at the county fair.",
-    "Dig wells and irrigation channels: dry tanks slow the fields.",
+    "Plant for harvest day: the towns pay for what they want that day. The forecast firms up as it nears.",
+    "Grow the same crop twice and the soil wears out. Beans rest it.",
+    "Feed the prize pumpkin for better ribbons, but feed it too much and it splits.",
   ],
   [PHASE_WORLD]: [
-    "Try a second kind of green: a new one soon beats a bigger first one.",
-    "Send each flock where the weather is kind and the land is still bare.",
-    "Rivers and cloud seeders keep the whole planet watered.",
+    "Mix the kinds of green: a new one soon beats a bigger first one.",
+    "The jungle pays most but drinks the most. Wetland and rivers keep the water up.",
+    "A kind that takes over the land can catch a blight, and the rain keeps changing. Watch the tank.",
   ],
   [PHASE_SEED]: [
-    "Read the clue, then give the pot what it wants. The right answer helps most.",
-    "A wind chime and a dew collector tend the pot between your answers.",
-    "A bigger watering can helps every answer.",
+    "Slide the blind. More sun grows the pot faster but dries the soil. Shade keeps it moist but is slow.",
+    "Read the leaves: curling and crisp mean dry, drooping and floppy mean soggy. The weather keeps changing.",
+    "A wind chime and a dew collector grow the pot between your taps.",
   ],
 };

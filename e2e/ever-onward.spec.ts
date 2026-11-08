@@ -77,6 +77,252 @@ test.describe("Ever Onward", () => {
     await expect(panel.getByTestId("eo-bees-honey")).toContainText("Honey");
   });
 
+  test("the old window box turns the blind, and the picture shows the light and the leaves", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-3-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("eo-windowbox");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("eo-windowbox-leaves")).toBeVisible();
+    await expect(panel.getByTestId("eo-windowbox-sky")).toBeVisible();
+    await expect(page.getByTestId("eo-leaves")).toBeAttached();
+    const blind = page.getByTestId("eo-blind");
+    await expect(blind).toBeAttached();
+    // The blind takes a few seconds to open all the way.
+    await panel.getByRole("button", { name: "More sun" }).click();
+    await panel.getByRole("button", { name: "More sun" }).click();
+    await expect(blind).toHaveAttribute("data-light", "8", { timeout: 20_000 });
+    await expect(
+      panel.getByRole("button", { name: "More sun" })
+    ).toHaveAttribute("aria-disabled", "true");
+    await panel.getByRole("button", { name: "More shade" }).click();
+    await panel.getByRole("button", { name: "More shade" }).click();
+    await expect(blind).toHaveAttribute("data-light", "0", { timeout: 20_000 });
+    await expect(
+      panel.getByRole("button", { name: "More shade" })
+    ).toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("the farm plants for harvest day and tends a prize pumpkin in the panels and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-1-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    await expect(page.getByTestId("eo-farm-day")).toBeAttached();
+    await expect(page.getByTestId("eo-field-0")).toBeAttached();
+    await expect(page.getByTestId("eo-prize-pumpkin")).toBeAttached();
+    const market = page.getByTestId("lm-market");
+    await expect(market).toBeVisible();
+    await expect(market.getByRole("radio")).toHaveCount(4);
+    await expect(market.getByTestId("lm-soil")).toContainText("Soil");
+    const pumpkin = page.getByTestId("lm-pumpkin");
+    await expect(pumpkin).toBeVisible();
+    await expect(pumpkin.getByTestId("lm-pumpkin-feed")).toContainText(
+      "Chance it splits"
+    );
+    // Planting puts a crop in the ground, in the panel and in the picture.
+    await market.getByRole("radio", { name: "Corn" }).click();
+    await expect(market).toHaveAttribute("data-planted", "corn");
+    await expect(page.getByTestId("eo-field-0")).not.toHaveAttribute(
+      "data-stage",
+      "0"
+    );
+  });
+
+  test("the world mixes biomes with sliders and the picture shows the water", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make It Grow" })
+      .click();
+    await page.getByTestId("eo-jump-grow-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const globe = page.getByTestId("lm-globe");
+    await expect(globe).toBeAttached();
+    await expect(globe).toHaveAttribute("data-water", /\d+/);
+    const mix = page.getByTestId("lm-biomes");
+    await expect(mix).toBeVisible();
+    await expect(mix.getByTestId("lm-biomes-jungle")).toBeVisible();
+    const jungle = mix.getByTestId("lm-biomes-jungle");
+    const before = Number(await jungle.getAttribute("data-points"));
+    await mix.getByTestId("lm-mix-more-jungle").click();
+    await expect(jungle).toHaveAttribute("data-points", String(before + 1));
+  });
+
+  test("what you do together: three activities, the friend's face hint and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make Everyone Smile" })
+      .click();
+    await page.getByTestId("eo-jump-smile-0-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("ms-together");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("ms-together-face")).toContainText(
+      "Their face looks like it wants"
+    );
+    await expect(page.getByTestId("eo-together-scene")).toBeAttached();
+    await expect(page.getByTestId("eo-face-hint")).toBeAttached();
+    for (const i of [0, 1, 2]) {
+      await expect(panel.getByTestId(`ms-together-${i}`)).toContainText("+ ");
+    }
+    // Whatever the run was doing when we jumped in, pick something else.
+    await panel.locator('[role="radio"][aria-checked="false"]').first().click();
+    await expect(panel).toHaveAttribute("data-switching", "yes");
+    await expect(page.getByTestId("eo-together-scene")).toBeAttached();
+  });
+
+  test("the quiet: sit closer, read the bench and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make Everyone Smile" })
+      .click();
+    await page.getByTestId("eo-jump-smile-3-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("ms-bench");
+    await expect(panel).toBeVisible();
+    await expect(panel.getByTestId("ms-bench-tell")).toContainText(/\w/);
+    for (const id of ["ms-bench-closer", "ms-bench-back"]) {
+      await expect(panel.getByTestId(id)).toContainText("+ ");
+      await expect(panel.getByTestId(id)).toContainText("− ");
+    }
+    await expect(page.getByTestId("eo-bench-scene")).toBeAttached();
+    await expect(page.getByTestId("eo-bench-friend")).toBeAttached();
+    // Whatever seat the jump landed on, scoot back one: it takes a moment,
+    // and the robot is already on its way.
+    const seat = Number(await panel.getAttribute("data-seat"));
+    expect(seat).toBeGreaterThan(0);
+    await panel.getByTestId("ms-bench-back").click();
+    await expect(panel).toHaveAttribute("data-moving", "yes");
+    await expect(page.getByTestId("eo-bench-robot")).toHaveAttribute(
+      "data-at",
+      String(seat - 1)
+    );
+  });
+
+  test("the town: lemonade stand price, parade route floats and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make Everyone Smile" })
+      .click();
+    await page.getByTestId("eo-jump-smile-1-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("ms-town");
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId("ms-meter")).toHaveCount(0);
+    await expect(page.getByTestId("eo-town-dials")).toBeAttached();
+    await expect(page.getByTestId("eo-stand")).toBeAttached();
+    for (const i of [0, 1, 2, 3, 4]) {
+      await expect(panel.getByTestId(`ms-price-${i}`)).toContainText("+ ");
+    }
+    // The jump's bot may have left the sign anywhere but Free.
+    const before = await page
+      .getByTestId("eo-stand")
+      .getAttribute("data-price");
+    expect(before).not.toBe("0");
+    await panel.getByRole("radio", { name: "Price: Free" }).click();
+    await expect(panel).toHaveAttribute("data-painting", "yes");
+    await expect(page.getByTestId("eo-stand")).toHaveAttribute(
+      "data-price",
+      before ?? "2"
+    );
+    await expect(panel.getByTestId("ms-street-0")).toContainText("float");
+    await panel.getByTestId("ms-send-3").click();
+    await expect(page.getByTestId("eo-float-road")).toBeAttached();
+  });
+
+  test("the world: loudspeaker level, real and painted smiles, and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Make Everyone Smile" })
+      .click();
+    await page.getByTestId("eo-jump-smile-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("ms-speakers");
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId("ms-meter")).toHaveCount(0);
+    await expect(page.getByTestId("eo-world-crowd")).toBeAttached();
+    for (const i of [0, 1, 2, 3, 4]) {
+      await expect(panel.getByTestId(`ms-level-${i}`)).toContainText("+ ");
+      await expect(panel.getByTestId(`ms-level-${i}`)).toContainText("− ");
+    }
+    await panel.getByRole("radio", { name: "Loudspeakers: Loudest" }).click();
+    await expect(panel).toHaveAttribute("data-retuning", "yes");
+    await expect(page.getByTestId("eo-world-retune")).toBeAttached();
+    await expect(panel).toHaveAttribute("data-level", "4", { timeout: 20_000 });
+    await expect(page.getByTestId("eo-world-waves")).toHaveAttribute(
+      "data-loud",
+      "4"
+    );
+  });
+
   test("the playroom's build pace and streak work in the panel and the picture", async ({
     page,
   }) => {

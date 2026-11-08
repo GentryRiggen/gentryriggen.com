@@ -143,25 +143,18 @@ describe("Make Everyone Smile skeleton", () => {
       expect(fresh.run.resources.smiles).toBeGreaterThanOrEqual(0);
     });
 
-    it("reads a run saved before the later parts existed as not chosen, not tired and not banked", () => {
+    it("reads a run saved before the later parts existed as not chosen, every smile real and nothing together", () => {
       const run = newRun(def);
       const trimmed = {
         ...run,
         resources: Object.fromEntries(
           Object.entries(run.resources).filter(
-            ([id]) => !/^(fk|bd|mt|pd|ft|qt)/.test(id)
+            ([id]) => !/^(fk|tg|ws|pd|qt)/.test(id)
           )
         ),
       };
       const loaded = reconcileRun(def, trimmed);
-      for (const id of [
-        "fkFriend",
-        "bdStock",
-        "mtHeat",
-        "pdLeft",
-        "ftStage",
-        "qtStage",
-      ])
+      for (const id of ["fkFriend", "tgBond", "wsDays", "pdLeft", "qbSeat"])
         expect(loaded.resources[id]).toBe(0);
       const later = simulate(def, {
         strategy: smileBots().tapper,

@@ -17,6 +17,47 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.37.0",
+    date: "2026-11-08",
+    title: "Build It Higher, with real choices",
+    highlights: [
+      "In the Playroom, you now pick how fast to build: easy, steady or a rush. Rushing is quicker, but the tower leans more, and a good streak of careful blocks helps you out",
+      "In the Town, you give each crew a foreman by handing out hats. A foreman needs a shift to put the hat on, so choose with care",
+      "The town also has a shadow that dims the streets. A lights switch turns the lamps on, and lamps cost bricks",
+      "In the Sky, you check the wind forecast before each climb. Wind and a heavy load strain the cables, so watch the strain dial",
+      "Some climbs have no crane. You go up the slow way, and tying everything down keeps it from blowing off",
+      "At the Top, you choose keepsakes to carry up with you, and the pack shows in the picture",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
+    version: "1.36.0",
+    date: "2026-11-07",
+    title: "Make Everyone Smile, with real choices",
+    highlights: [
+      "With One Sad Friend, the bank switch and the fetch machine are gone. Now you pick what to do together: tell jokes, play games or just listen",
+      "Doing the same thing again and again wears thin, so mix it up. Read their face to see what they want",
+      "In the Town, the cheer meter is gone. You set a lemonade stand price, plan a parade route and watch out for grumpy streets",
+      "In the World, you get a loudspeaker, and you learn the difference between real smiles and painted smiles. Beware the HypnoDrones",
+      "How many real smiles you keep changes how The Quiet goes",
+      "In The Quiet, the guessing machine is gone. Now you sit closer on the bench and read how they are sitting",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
+    version: "1.35.0",
+    date: "2026-11-07",
+    title: "The farm, the whole world and the window box",
+    highlights: [
+      "In Make It Grow's farm, the seed bank and the county fair quiz are gone. Now you plant for harvest day, using a weather forecast that gets more sure the closer you get",
+      "Soil wears out if you keep planting the same thing, and beans give it a rest. You also feed one prize pumpkin, which can split in two, and enter it at the end",
+      "In the whole world, the bird migration quiz is gone. Now you slide the biomes up and down to shape the world",
+      "Jungle drinks water and wetland stores it, so the mix matters. Cover too much of the world with one kind of land and blight sets in",
+      "In the old window box, the guessing game is gone. You get a sun-or-shade blind to set, you read the leaves to see how the plants feel, and the weather changes what is right",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
     version: "1.34.0",
     date: "2026-11-07",
     title: "A map in every universe",

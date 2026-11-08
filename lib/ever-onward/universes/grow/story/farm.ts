@@ -31,7 +31,7 @@ export const farm: StoryMessage[] = [
     id: "farm-market",
     phase: PHASE_FARM,
     when: (run) => after(run, 1),
-    text: "Three towns have sent notes to the farm gate. One wants tomatoes, one wants corn, and one wants a pumpkin the size of a cart. What they want changes with the weather and the week, so keep an eye on the orders.",
+    text: "Three towns have sent notes to the farm gate. One wants tomatoes, one wants corn, and one wants a pumpkin the size of a cart. A cart comes every few minutes and the towns pay for what they want on that day, so plant now for what they will want then.",
   },
   {
     id: "farm-well",
@@ -73,7 +73,7 @@ export const farm: StoryMessage[] = [
     id: "farm-agent",
     phase: PHASE_FARM,
     when: (run) => owned(run, "market-agent") >= 1,
-    text: "A cheerful person with a clipboard turns up at the gate. They will ask the towns what they want and plant it now and then. Plant it yourself, though, and it will be done sooner and better.",
+    text: "A cheerful person with a clipboard turns up at the gate. They read the forecast and plant what looks likeliest a while into every day, and they never think about the soil. Plant it yourself, though, and it will be done sooner and better.",
   },
   {
     id: "farm-time-2",

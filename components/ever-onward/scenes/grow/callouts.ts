@@ -9,7 +9,6 @@ import {
   FARM_BARN,
   FARM_GLASS,
   FRAME,
-  GLOBE_FLOCK,
   GLOBE_RAIN,
   GLOBE_ROVER,
   GLOBE_SEEDER,
@@ -33,11 +32,11 @@ import {
   hiveAt,
   tractorAt,
   wellAt,
-  SEED_CAN,
   SEED_CHIME,
+  SEED_CATCHER,
   SEED_DEW,
   SEED_LANTERN,
-  SEED_MUSIC,
+  SEED_POT,
   SEED_SILL,
   SEED_TRELLIS,
   type Point,
@@ -96,7 +95,6 @@ const WORLD_PLACES: Record<string, Place> = {
   "planting-rover": (n) => at(GLOBE_ROVER, `Planting rover ${n}`),
   "cloud-seeder": (n) => at(cloudAt(nth(n, 4) + 1), `Cloud seeder ${n}`, -8),
   "sky-seeder": (n) => at(GLOBE_SEEDER, `Sky seeder ${n}`),
-  "flock-leader": () => at(GLOBE_FLOCK, "Flock leader"),
   "seed-vault": () => at(GLOBE_VAULT, "Seed vault"),
 };
 
@@ -105,8 +103,8 @@ const SEED_PLACES: Record<string, Place> = {
   "sunny-sill": () => at(SEED_SILL, "A sunny sill", 6),
   "wind-chime": () => at(SEED_CHIME, "A wind chime", 30),
   "dew-collector": () => at(SEED_DEW, "Dew collector", -8),
-  "watering-can": () => at(SEED_CAN, "A little can", -8),
-  "music-box": () => at(SEED_MUSIC, "A music box", -8),
+  "sun-catcher": () => at(SEED_CATCHER, "A sun-catcher", 24),
+  "deep-pot": () => at(SEED_POT, "A deeper pot", 6),
   "window-lantern": () => at(SEED_LANTERN, "The window lantern", -20),
 };
 

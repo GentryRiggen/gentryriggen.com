@@ -2,15 +2,23 @@
 
 import { canPerformAction } from "@/lib/ever-onward/engine/engine";
 import {
-  WANTS,
-  currentWant,
-  isWanting,
+  LEAF_WORDS,
+  MAX_AIM,
+  SHADE_ACTION_ID,
+  SKY_WORDS,
+  SUN_ACTION_ID,
+  aimOf,
+  aimWords,
+  isBlindMoving,
+  leafOf,
+  needsLook,
   potGrowth,
   potStage,
-  secondsToWant,
-  tendActionId,
+  skyOf,
   windowBoxLine,
+  type LeafMood,
   type PotStage,
+  type SkyId,
 } from "@/lib/ever-onward/universes/grow/windowbox";
 import type { PanelProps } from "../../universes/types";
 import PanelFrame from "../retro/PanelFrame";
@@ -23,75 +31,48 @@ const STAGE_WORDS: Record<PotStage, string> = {
   bloom: "In bloom",
 };
 
-/** The old window box's pot, drawn in four small steps. */
-function Pot({ stage }: { stage: PotStage }) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      className="h-32 w-32 shrink-0"
-      role="img"
-      aria-label={`The pot: ${STAGE_WORDS[stage].toLowerCase()}`}
-      data-testid="lm-windowbox-pot"
-      data-stage={stage}
-      shapeRendering="crispEdges"
-    >
-      <rect x="0" y="0" width="48" height="48" fill="#1e293b" />
-      <rect x="4" y="4" width="40" height="40" fill="#fde68a" opacity="0.22" />
-      <rect x="2" y="40" width="44" height="6" fill="#78350f" />
-      <rect x="12" y="30" width="24" height="12" fill="#c2410c" />
-      <rect x="10" y="28" width="28" height="4" fill="#ea580c" />
-      <rect x="14" y="28" width="20" height="2" fill="#451a03" />
-      {stage !== "soil" && (
-        <rect
-          x="23"
-          y={stage === "sprout" ? 22 : 14}
-          width="2"
-          height="14"
-          fill="#16a34a"
-        />
-      )}
-      {stage === "sprout" && (
-        <>
-          <rect x="19" y="21" width="5" height="3" fill="#4ade80" />
-          <rect x="25" y="19" width="5" height="3" fill="#4ade80" />
-        </>
-      )}
-      {stage === "bud" && (
-        <>
-          <rect x="20" y="22" width="4" height="3" fill="#4ade80" />
-          <rect x="25" y="19" width="4" height="3" fill="#4ade80" />
-          <rect x="21" y="10" width="6" height="6" fill="#f472b6" />
-        </>
-      )}
-      {stage === "bloom" && (
-        <>
-          <rect x="20" y="22" width="4" height="3" fill="#4ade80" />
-          <rect x="25" y="19" width="4" height="3" fill="#4ade80" />
-          <rect x="17" y="6" width="14" height="14" fill="#fb7185" />
-          <rect x="14" y="9" width="20" height="8" fill="#fda4af" />
-          <rect x="21" y="10" width="6" height="6" fill="#fde047" />
-        </>
-      )}
-    </svg>
-  );
-}
+const LEAF_TONE: Record<LeafMood, string> = {
+  perky: "text-lime-300",
+  curl: "text-amber-300",
+  dry: "text-orange-300",
+  droop: "text-sky-300",
+  soggy: "text-sky-200",
+};
+
+const BUTTONS = [
+  {
+    id: SUN_ACTION_ID,
+    label: "More sun",
+    up: "Grows faster",
+    down: "Dries the soil out",
+    icon: "☀",
+  },
+  {
+    id: SHADE_ACTION_ID,
+    label: "More shade",
+    up: "Keeps the soil moist",
+    down: "Grows slower",
+    icon: "☁",
+  },
+] as const;
 
 /**
- * The old window box: one small pot on one small sill. Now and then the pot
- * seems to want something, and the words say what. Every answer helps, the
- * right one most. The three choices are plain buttons (stable labels,
- * aria-disabled while the pot rests, never remounted).
+ * The old window box: one pot, one blind, one quiet choice. More sun grows
+ * the pot faster and dries the soil; shade is slow but keeps it moist. The
+ * panel never says which is right: the leaves do, and so does the weather
+ * outside, which keeps changing. The two choices are plain buttons (stable
+ * labels, aria-disabled at the ends of the blind, never remounted).
  */
 export default function WindowBox({ def, run, onAct }: PanelProps) {
   if (run.phase !== 3 || run.complete) return null;
 
   const stage = potStage(run);
-  const wanting = isWanting(run);
-  const want = currentWant(run);
+  const leaf = leafOf(run);
+  const sky = skyOf(run).id as SkyId;
+  const aim = aimOf(run);
   const percent = Math.floor(potGrowth(run) * 100);
-  const headline = wanting
-    ? "The pot wants something. What would be kind?"
-    : `The pot is resting. It will ask again in about ${Math.max(1, Math.ceil(secondsToWant(run)))} seconds.`;
+  const look = needsLook(run);
+  const leafHeading = stage === "soil" ? "The soil" : "The leaves";
 
   return (
     <PanelFrame
@@ -99,51 +80,85 @@ export default function WindowBox({ def, run, onAct }: PanelProps) {
       title="The old window box"
       tone="amber"
       status={STAGE_WORDS[stage]}
-      statusActive={wanting}
-      testId="lm-windowbox"
+      statusActive={look}
+      testId="eo-windowbox"
       data={{
         "data-stage": stage,
-        "data-wanting": wanting ? "true" : "false",
+        "data-leaf": leaf,
+        "data-sky": sky,
+        "data-aim": String(aim),
       }}
       result={windowBoxLine(run)}
-      resultTestId="lm-windowbox-result"
+      resultTestId="eo-windowbox-result"
     >
-      <div className="flex items-center gap-3">
-        <Pot stage={stage} />
-        <div className="min-w-0 flex-1 space-y-2">
-          <p
-            data-testid="lm-windowbox-headline"
-            className={`${pixelClass} text-xs leading-relaxed sm:text-sm ${
-              wanting ? "text-amber-300" : "text-lime-50"
-            }`}
-          >
-            {headline}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div
+          data-testid="eo-windowbox-leaves"
+          className="space-y-1 border-2 border-slate-700 bg-slate-900/80 p-2"
+        >
+          <p className={`${pixelClass} text-[10px] text-slate-400`}>
+            {leafHeading}
           </p>
-          <p className="font-mono text-xs text-slate-300">
-            The pot is {percent}% grown. Every answer helps. The right one helps
-            most.
+          <p
+            className={`${pixelClass} text-xs leading-relaxed sm:text-sm ${LEAF_TONE[leaf]}`}
+          >
+            {stage === "soil" ? LEAF_SOIL_WORDS[leaf] : LEAF_WORDS[leaf]}
+          </p>
+        </div>
+        <div
+          data-testid="eo-windowbox-sky"
+          className="space-y-1 border-2 border-slate-700 bg-slate-900/80 p-2"
+        >
+          <p className={`${pixelClass} text-[10px] text-slate-400`}>Outside</p>
+          <p className={`${pixelClass} text-xs text-lime-50 sm:text-sm`}>
+            {SKY_WORDS[sky]}
           </p>
         </div>
       </div>
 
       <div
-        role="group"
-        aria-label="Tend the pot"
-        className="grid grid-cols-1 gap-2 sm:grid-cols-3"
+        data-testid="eo-windowbox-blind"
+        className="space-y-1 border-2 border-slate-700 bg-slate-900/80 p-2"
       >
-        {WANTS.map((w, i) => {
-          const doable = canPerformAction(def, run, tendActionId(i));
-          const right = wanting && want === i;
+        <p className="font-mono text-xs text-slate-300">
+          The blind: {aimWords(run).toLowerCase()}
+          {isBlindMoving(run) ? " (moving, give it a moment)" : ""}
+        </p>
+        <div
+          role="img"
+          aria-label={`The blind is ${aim} of ${MAX_AIM} steps open`}
+          className="flex gap-1"
+        >
+          {Array.from({ length: MAX_AIM + 1 }, (_, i) => (
+            <span
+              key={i}
+              aria-hidden="true"
+              className={`h-3 flex-1 border-2 ${
+                i <= aim
+                  ? "border-amber-200 bg-amber-300"
+                  : "border-slate-600 bg-slate-800"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div
+        role="group"
+        aria-label="Turn the blind"
+        className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+      >
+        {BUTTONS.map((b) => {
+          const doable = canPerformAction(def, run, b.id);
           return (
             <button
-              key={w.id}
+              key={b.id}
               type="button"
               aria-disabled={!doable}
-              aria-label={w.label}
-              aria-describedby={`lm-windowbox-${w.id}-note`}
-              data-testid={`lm-windowbox-${w.id}`}
+              aria-label={b.label}
+              data-testid={`eo-windowbox-${b.id}`}
               onClick={() => {
-                if (doable) onAct(tendActionId(i));
+                if (doable) onAct(b.id);
               }}
               className={`${pixelClass} min-h-14 w-full touch-manipulation space-y-1 border-4 p-2 text-left text-[10px] ${retroFocusClass} ${
                 doable
@@ -151,21 +166,33 @@ export default function WindowBox({ def, run, onAct }: PanelProps) {
                   : "border-slate-600 bg-slate-800 text-slate-400 shadow-[4px_4px_0_#0f172a]"
               }`}
             >
-              <span className="block">{w.label}</span>
-              <span
-                id={`lm-windowbox-${w.id}-note`}
-                className="block font-mono text-xs font-bold normal-case"
-              >
-                {doable
-                  ? right
-                    ? "Just what it wanted"
-                    : "It will like this too"
-                  : "The pot is resting"}
+              <span className="block">
+                <span aria-hidden="true">{b.icon} </span>
+                {b.label}
+              </span>
+              <span className="block font-mono text-xs font-bold normal-case">
+                + {b.up}
+              </span>
+              <span className="block font-mono text-xs font-bold normal-case">
+                − {b.down}
               </span>
             </button>
           );
         })}
       </div>
+
+      <p className="font-mono text-xs text-slate-300">
+        The pot is {percent}% grown. The blind takes a few seconds to move.
+      </p>
     </PanelFrame>
   );
 }
+
+/** Before there are leaves, the soil says the same things. */
+const LEAF_SOIL_WORDS: Record<LeafMood, string> = {
+  perky: "Dark and just damp",
+  curl: "Pale and drying",
+  dry: "Dusty and cracked",
+  droop: "Wet and heavy",
+  soggy: "Soggy, with a puddle",
+};
