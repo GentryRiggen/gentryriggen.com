@@ -10,6 +10,7 @@ import {
   isLampsOpen,
   knowhowAtStep,
   lampStep,
+  goingRate,
   supplyMW,
   tankCapacity,
   tier,
@@ -45,7 +46,15 @@ import {
   growingCount,
   thirstyCount,
 } from "./garden";
-import { HAUL_ACTION, SET_NETS_ACTION, highTidesSoFar } from "./tide";
+import {
+  TOLL_STEPS,
+  bestTollStep,
+  tollActionId,
+  tollEarning,
+  tollLockLeft,
+  tollStep,
+} from "./toll";
+import { isTankerIn } from "./tanker";
 import {
   chanceOf,
   crewActionId,
@@ -66,6 +75,8 @@ import { TUNING } from "./tuning";
 
 /** The smallest share of the tank a bot bothers to buy in one click. */
 const MIN_BARREL_SHARE = 0.4;
+/** The tank share under which a player buys whatever the coins allow. */
+const PANIC_SHARE = 0.05;
 /** ... or this much when the lamp is nearly dry. */
 const MIN_DRY_BARREL_SHARE = 0.25;
 
@@ -88,20 +99,29 @@ const buysOilWhen =
     const isWorthIt =
       barrel >= capacity * MIN_BARREL_SHARE ||
       (oil < capacity * 0.15 && barrel >= capacity * MIN_DRY_BARREL_SHARE);
-    return isWorthIt && wants(oil, oilPrice, capacity) ? ["buy-oil"] : [];
+    // About to go dark: anyone buys what they can afford, however small.
+    const isPanic = oil < capacity * PANIC_SHARE && barrel >= capacity * 0.03;
+    return (isWorthIt && wants(oil, oilPrice, capacity)) || isPanic
+      ? ["buy-oil"]
+      : [];
   };
 
-/** Buys when the tank is low or the price is under the usual 2.0. */
-const savvyOil = buysOilWhen(
-  (oil, price, capacity) =>
-    oil < capacity * 0.15 || (price < 2 && oil < capacity * 0.6)
-);
+/**
+ * Buys when the tank is low (never let the lamp go dark), or when a tanker is
+ * in or the price is low and the tank has room worth filling.
+ */
+const savvyOil: OilChoice = (run, available) =>
+  buysOilWhen(
+    (oil, price, capacity) =>
+      oil < capacity * 0.2 ||
+      ((isTankerIn(run) || price < 1.2) && oil < capacity * 0.6)
+  )(run, available);
 /** Buys when the tank is low, whatever the price. */
 const naiveOil = buysOilWhen((oil, _price, capacity) => oil < capacity * 0.15);
 /** Buys only on a bargain, or when the lamp is about to go out. */
 const cheapskateOil = buysOilWhen(
   (oil, price, capacity) =>
-    (price < 1.4 && oil < capacity * 0.8) || oil < capacity * 0.04
+    (price < 1.2 && oil < capacity * 0.8) || oil < capacity * 0.04
 );
 
 /**
@@ -186,22 +206,39 @@ const STEP_SECONDS = TUNING.weather.stepSeconds;
 /** Points of (chance x readiness) a move must gain to be worth it. */
 const WEATHER_MOVE_GAIN = 4;
 
+/** Seconds in one stretch of attention for the harbor desk. */
+const TOLL_WINDOW = 20;
+/** A new toll must earn this much more than today's to be worth repainting the sign for. */
+const TOLL_SWITCH_GAIN = 1.1;
+
 /**
- * Hauls full nets in and sets them again. A bot with real attention misses
- * now and then: it leaves the nets in the water for one cycle in every
- * `skipEvery`th (counted by the clock itself, so the sim stays
- * deterministic), and `onlyEvery` makes a distracted player set them in just
- * one cycle in so many. Full nets wait, so a miss costs only the catch.
+ * Reads the going rate off the rival's sign and sets the toll that earns the
+ * most from it, when that beats today's by enough. A bot with real attention
+ * looks in windows of 20 seconds and misses one window in every `skipEvery`th
+ * (counted by the clock, so the sim stays deterministic); a distracted one
+ * (`onlyEvery`) looks in just one window in so many. `step` makes a bot that
+ * never reads the sign (it sets that toll once and leaves it).
  */
-const tendsTide =
-  (options: { skipEvery?: number; onlyEvery?: number } = {}): OilChoice =>
+const setsToll =
+  (
+    options: { skipEvery?: number; onlyEvery?: number; step?: number } = {}
+  ): OilChoice =>
   (run, available) => {
-    if (available.includes(HAUL_ACTION)) return [HAUL_ACTION];
-    const cycle = highTidesSoFar(run);
-    const { skipEvery, onlyEvery } = options;
-    if (skipEvery && cycle % skipEvery === skipEvery - 1) return [];
-    if (onlyEvery && cycle % onlyEvery !== 0) return [];
-    return available.includes(SET_NETS_ACTION) ? [SET_NETS_ACTION] : [];
+    const window = Math.floor(run.time / TOLL_WINDOW);
+    const { skipEvery, onlyEvery, step } = options;
+    if (skipEvery && window % skipEvery === skipEvery - 1) return [];
+    if (onlyEvery && window % onlyEvery !== 0) return [];
+    if (tollLockLeft(run) > 0) return [];
+    const rate = goingRate(run);
+    const want = step ?? bestTollStep(rate);
+    const now = tollStep(run);
+    if (want === now) return [];
+    const gain =
+      tollEarning(TOLL_STEPS[want].pay, rate) /
+      Math.max(tollEarning(TOLL_STEPS[now].pay, rate), 1e-6);
+    if (step === undefined && gain < TOLL_SWITCH_GAIN) return [];
+    const id = tollActionId(want);
+    return available.includes(id) ? [id] : [];
   };
 
 /** Seconds in one stretch of attention for the probe races. */
@@ -289,7 +326,9 @@ const setsLamps =
   };
 
 /** A move to another brightness must beat today's by this much (no flicker). */
-const BEAM_SWITCH_GAIN = 1.08;
+const BEAM_SWITCH_GAIN = 1.25;
+/** Seconds in one stretch of attention for the lamp's brightness. */
+const BEAM_WINDOW = 45;
 
 /**
  * Reads the lamp panel and picks the brightness that earns the most after
@@ -297,6 +336,8 @@ const BEAM_SWITCH_GAIN = 1.08;
  */
 const setsBeam: OilChoice = (run, available) => {
   if (!isBeamOpen(run)) return [];
+  // It looks at the lamp once in a while, not every second.
+  if (Math.floor(run.time) % BEAM_WINDOW !== 0) return [];
   const want = bestBeamStep(run);
   const now = beamStep(run);
   if (want === now) return [];
@@ -494,7 +535,7 @@ const withOil = (
   actions: OilChoice,
   care: OilChoice = looksAfterThings(45, true),
   weather: OilChoice = () => [],
-  tide: OilChoice = () => [],
+  toll: OilChoice = () => [],
   race: OilChoice = () => [],
   garden: OilChoice = () => [],
   lamps: OilChoice = () => [],
@@ -509,7 +550,7 @@ const withOil = (
     actions,
     care,
     weather,
-    tide,
+    toll,
     race,
     garden,
     lamps,
@@ -555,7 +596,7 @@ export function lightBots(
       savvyOil,
       looksAfterThings(74, true),
       tendsWeather({ skipEvery: 10 }),
-      tendsTide({ skipEvery: 8 }),
+      setsToll({ skipEvery: 8 }),
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
       tendsGarden({ skipEvery: 6 }),
       setsAllLamps({ patience: 30 }),
@@ -568,7 +609,7 @@ export function lightBots(
       savvyOil,
       looksAfterThings(42, true),
       tendsWeather({ skipEvery: 5 }),
-      tendsTide({ skipEvery: 4 }),
+      setsToll({ skipEvery: 4 }),
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
       tendsGarden({ skipEvery: 3 }),
       setsAllLamps({ patience: 30 }),
@@ -590,7 +631,7 @@ export function lightBots(
         savvyOil,
         looksAfterThings(35, false),
         tendsWeather({ onlyEvery: 3 }),
-        tendsTide({ onlyEvery: 3 }),
+        setsToll({ onlyEvery: 3 }),
         racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
         tendsGarden({ onlyEvery: 3 }),
         setsAllLamps({ patience: 30 }),

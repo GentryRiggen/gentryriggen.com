@@ -254,10 +254,10 @@
     "hash": "2f5c9660e6fe",
     "durationGuess": 12
   },
-  "light/coast-tide": {
-    "file": "/ever-onward/voice/light/coast-tide.mp3",
-    "hash": "e1513977f6f3",
-    "durationGuess": 20
+  "light/coast-toll": {
+    "file": "/ever-onward/voice/light/coast-toll.mp3",
+    "hash": "8d8ceb2cc5bc",
+    "durationGuess": 16
   },
   "light/coast-trio": {
     "file": "/ever-onward/voice/light/coast-trio.mp3",
@@ -279,9 +279,9 @@
     "hash": "58fbf63493fc",
     "durationGuess": 7
   },
-  "light/coast-mill": {
-    "file": "/ever-onward/voice/light/coast-mill.mp3",
-    "hash": "b68a299f5118",
+  "light/coast-tanker": {
+    "file": "/ever-onward/voice/light/coast-tanker.mp3",
+    "hash": "8a4d7d7095e7",
     "durationGuess": 15
   },
   "light/coast-almost": {

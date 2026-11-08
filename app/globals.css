@@ -5738,6 +5738,361 @@ html:has(.jim-app) body {
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Keep the Light On, The Coast: the harbor toll, the oil tanker, the dark.
+   Ships choosing the harbor (or sailing on to the rival), coins at the toll,
+   barrels into the tanks, the lamp sputtering out and bursting back.
+   --------------------------------------------------------------------------- */
+
+/* A ship that chose the harbor: in, tied up (the coin pops), then off. */
+@keyframes lc-dock {
+  0% {
+    opacity: 0;
+    transform: translateX(190px);
+  }
+  8% {
+    opacity: 1;
+  }
+  44% {
+    transform: translateX(0);
+  }
+  84% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+.lc-dock {
+  animation: lc-dock 14s ease-in-out infinite;
+}
+
+@keyframes lc-coin {
+  0%,
+  45% {
+    opacity: 0;
+    transform: translateY(0) scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.5);
+  }
+  66% {
+    opacity: 1;
+    transform: translateY(-22px) scale(1);
+  }
+  76%,
+  100% {
+    opacity: 0;
+    transform: translateY(-32px) scale(0.8);
+  }
+}
+.lc-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-coin 14s ease-out infinite;
+}
+
+/* A ship that did not: up to the quay, a huff at the sign, then on to the rival. */
+@keyframes lc-pass {
+  0% {
+    opacity: 0;
+    transform: translateX(150px);
+  }
+  10% {
+    opacity: 1;
+  }
+  38%,
+  62% {
+    transform: translateX(74px);
+  }
+  90% {
+    opacity: 1;
+    transform: translateX(170px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(180px);
+  }
+}
+.lc-pass {
+  animation: lc-pass 14s ease-in-out infinite;
+}
+
+@keyframes lc-turn {
+  0%,
+  40% {
+    transform: scaleX(1);
+  }
+  46%,
+  100% {
+    transform: scaleX(-1);
+  }
+}
+.lc-turn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-turn 14s steps(1, end) infinite;
+}
+
+@keyframes lc-huff {
+  0%,
+  37% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.5);
+  }
+  41% {
+    opacity: 1;
+    transform: translateY(0) scale(1.2);
+  }
+  45%,
+  64% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(1);
+  }
+}
+.lc-huff {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: lc-huff 14s ease-out infinite;
+}
+
+/* The tanker sails in, glowing. */
+@keyframes lc-tanker-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-110px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.lc-tanker-in {
+  animation: lc-tanker-in 2.4s ease-out both;
+}
+
+@keyframes lc-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.lc-glow {
+  animation: lc-glow 1.4s ease-in-out infinite;
+}
+
+/* Barrels hop from the tanker to the depot's tanks. */
+@keyframes lc-barrel {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-20px, -24px) rotate(-200deg);
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-38px, 14px) rotate(-420deg);
+  }
+}
+.lc-barrel {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-barrel 1.7s ease-in-out both;
+}
+
+@keyframes lc-tank-glow {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.lc-tank-glow {
+  opacity: 0;
+  animation: lc-tank-glow 0.7s ease-in-out infinite;
+}
+
+/* In the dark: a ship drifts at the rocks, shudders, and veers off. */
+@keyframes lc-wreck {
+  0% {
+    opacity: 0;
+    transform: translate(70px, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  48% {
+    transform: translate(-30px, 0) rotate(0deg);
+  }
+  54% {
+    transform: translate(-36px, 2px) rotate(-9deg);
+  }
+  60% {
+    transform: translate(-31px, 0) rotate(7deg);
+  }
+  66% {
+    transform: translate(-35px, 1px) rotate(-6deg);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(60px, -2px) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(80px, 0) rotate(0deg);
+  }
+}
+.lc-wreck {
+  animation: lc-wreck 6s ease-in-out infinite;
+}
+
+@keyframes lc-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.4;
+  }
+}
+.lc-blink {
+  animation: lc-blink 0.7s steps(1, end) infinite;
+}
+
+/* The lamp coughing: a few weak flickers, then nearly out. */
+@keyframes lc-sputter {
+  0% {
+    opacity: 0.9;
+  }
+  4% {
+    opacity: 0.1;
+  }
+  8% {
+    opacity: 0.7;
+  }
+  12% {
+    opacity: 0;
+  }
+  16% {
+    opacity: 0.45;
+  }
+  22%,
+  100% {
+    opacity: 0.04;
+  }
+}
+.lc-sputter {
+  animation: lc-sputter 3.4s linear infinite;
+}
+
+/* A banner pops in, holds, and leaves (the one moment on show at a time). */
+@keyframes lc-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  10% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  18% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.lc-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-shout 0.9s ease-out both;
+}
+
+/* The beam coming back: rings out from the lamp and a soft flash. */
+@keyframes lc-ring {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(4.2);
+  }
+}
+.lc-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-ring 1.5s ease-out 3 both;
+}
+
+@keyframes lc-relit-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.lc-relit-flash {
+  animation: lc-relit-flash 1.6s ease-out both;
+}
+
+/* Reduced motion: ships and signs hold still, and nothing flashes or rolls. */
+@media (prefers-reduced-motion: reduce) {
+  .lc-dock,
+  .lc-coin,
+  .lc-pass,
+  .lc-turn,
+  .lc-huff,
+  .lc-tanker-in,
+  .lc-glow,
+  .lc-barrel,
+  .lc-tank-glow,
+  .lc-wreck,
+  .lc-blink,
+  .lc-sputter,
+  .lc-shout,
+  .lc-ring,
+  .lc-relit-flash {
+    animation: none;
+  }
+  /* What would flash or fly stays out of the picture. */
+  .lc-barrel,
+  .lc-ring,
+  .lc-relit-flash,
+  .lc-tank-glow,
+  .lm-lightning {
+    opacity: 0;
+  }
+  .lc-glow {
+    opacity: 0.7;
+  }
+}
+
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
 @keyframes ms-bob {
   0%,

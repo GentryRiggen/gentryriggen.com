@@ -38,7 +38,6 @@ describe("every upgrade lands", () => {
     const tank = (tier: number) => C.tankSeconds + C.tankSecondsPerTier * tier;
     expect(tank(1) / tank(0)).toBeGreaterThanOrEqual(BIG);
     expect(tank(2) / tank(1)).toBeGreaterThanOrEqual(BIG);
-    expect(TUNING.tide.biggerNetsFactor).toBeGreaterThanOrEqual(BIG);
   });
 
   it("every night step is at least half as big again", () => {

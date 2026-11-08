@@ -67,6 +67,17 @@ const last = [PHASE_LAST] as const;
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
+/**
+ * The coast's later buys appear while you are saving for them (a quarter of
+ * the price in the purse), so something new turns up all through the part
+ * instead of every step at once when a lighthouse goes up.
+ */
+const SAVING_SHARE = 0.25;
+const savingFor =
+  (id: string) =>
+  (run: RunState): boolean =>
+    (run.resources.coins ?? 0) >= COSTS[id] * SAVING_SHARE;
+
 /** The lights you can let go in The Last Light, nearest to farthest. */
 export const LET_GO: readonly { id: string; name: string; text: string }[] = [
   {
@@ -246,7 +257,7 @@ const coastUpgrades: UpgradeDef[] = [
     phases: coast,
     currency: "coins",
     baseCost: COSTS.keeper,
-    costGrowth: 1.18,
+    costGrowth: 1.36,
     maxLevel: TUNING.coast.keeperMax,
     visibleWhen: (run) => run.resources.ships >= 4,
     priority: 1,
@@ -294,12 +305,12 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Trimmed wick",
         description: "The lamp burns 40% less oil.",
-        showWhen: (run) => owned(run, "keeper") >= 4,
+        showWhen: (run) => owned(run, "keeper") >= 2,
       },
       {
         name: "Brass burner",
         description: "Another 40% less oil, for good.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        showWhen: savingFor("wick-2"),
       },
     ],
   }),
@@ -314,17 +325,17 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Harbor fees",
         description: "Every ship pays 50% more.",
-        showWhen: (run) => owned(run, "keeper") >= 6,
+        showWhen: (run) => owned(run, "keeper") >= 4,
       },
       {
         name: "Pilot's tax",
         description: "Ships that want a pilot pay 50% more again.",
-        showWhen: (run) => owned(run, "keeper") >= 14,
+        showWhen: savingFor("fees-2"),
       },
       {
         name: "Toll booth",
         description: "A booth at the harbor mouth, and a bell. 50% more.",
-        showWhen: (run) => lighthouseCount(run) >= 4,
+        showWhen: savingFor("fees-3"),
       },
     ],
   }),
@@ -339,17 +350,17 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Fish market on the quay",
         description: "Ships stay for the market, and pay 50% more.",
-        showWhen: (run) => owned(run, "keeper") >= 8,
+        showWhen: (run) => owned(run, "keeper") >= 5,
       },
       {
         name: "Ferry landing",
         description: "A ferry that never stops. Ships pay 50% more again.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        showWhen: savingFor("dock-2"),
       },
       {
         name: "Cruise terminal",
         description: "Big white ships, big white fares. 50% more.",
-        showWhen: (run) => lighthouseCount(run) >= 5,
+        showWhen: savingFor("dock-3"),
       },
     ],
   }),
@@ -363,13 +374,14 @@ const coastUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Bigger oil tank",
-        description: "Hold three times the oil, so a cheap day goes further.",
-        showWhen: (run) => owned(run, "keeper") >= 10,
+        description:
+          "Hold three times the oil, so a tanker's cheap oil goes further.",
+        showWhen: (run) => owned(run, "keeper") >= 6,
       },
       {
         name: "Oil cistern",
         description: "A whole cellar of oil: two thirds more again.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        showWhen: savingFor("tank-2"),
       },
     ],
   }),
@@ -384,19 +396,19 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Lamp crew drills",
         description: "Keepers practise in pairs, and flash twice as much.",
-        showWhen: (run) => owned(run, "keeper") >= 4,
+        showWhen: (run) => owned(run, "keeper") >= 3,
       },
       {
         name: "Coast guard station",
         description:
           "A station with a roster. Keepers flash twice as much again.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        showWhen: savingFor("train-2"),
       },
       {
         name: "Rescue fleet",
         description:
           "Rescue boats help guide the ships in. Keepers do twice as much again.",
-        showWhen: (run) => lighthouseCount(run) >= 5,
+        showWhen: savingFor("train-3"),
       },
     ],
   }),
@@ -421,30 +433,30 @@ const coastUpgrades: UpgradeDef[] = [
         description:
           "Shutters on every window: in a storm the keepers carry on at full speed instead of hiding indoors.",
         badge: "NEW ABILITY",
-        showWhen: (run) => owned(run, "keeper") >= 12,
+        showWhen: savingFor("shutters-1"),
       },
       {
         name: "Storm-proof glass",
         description:
           "Ships run for your harbor in a storm, and more of them come.",
-        showWhen: (run) => lighthouseCount(run) >= 4,
+        showWhen: savingFor("shutters-2"),
       },
     ],
   }),
   {
     id: "contract",
-    name: "Keepers buy oil when it's cheap",
+    name: "A standing oil order",
     description:
-      "A merchant contract: whenever oil is cheap your keepers top up the tank for you, and they send for a little at any price when it runs nearly dry.",
+      "A merchant contract: whenever the tank falls under a quarter, a full tank is sent for, at whatever the price is. The lamp stays lit, and the market is not your problem.",
     phases: coast,
     currency: "coins",
     baseCost: COSTS.contract,
     costGrowth: 1,
     badge: "NEW ABILITY",
-    visibleWhen: (run) => owned(run, "keeper") >= 15,
+    visibleWhen: savingFor("contract"),
     priority: 2,
     onBuy: sync,
-    effectPreview: () => "Buys oil for you at 1.60 or less",
+    effectPreview: () => "Orders a full tank when it falls under a quarter",
   },
 ];
 

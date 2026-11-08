@@ -1,7 +1,7 @@
 import type { EventSource } from "../../engine/types";
 import { gardenResultLine, picksSoFar } from "./garden";
 import { resultLine, runsHome } from "./probes";
-import { haulResultLine, haulsSoFar } from "./tide";
+import { tankerLine, tankerVisits } from "./tanker";
 import {
   frontsSoFar,
   lastStorm,
@@ -30,7 +30,12 @@ export const LIGHT_EVENTS: readonly EventSource[] = [
     line: stormResultLine,
     tone: (run) => (lastStorm(run).kind === "flicker" ? "bad" : "good"),
   },
-  { id: "haul", count: haulsSoFar, line: haulResultLine },
+  {
+    id: "tanker",
+    count: tankerVisits,
+    line: tankerLine,
+    tone: () => "good",
+  },
   { id: "probe", count: runsHome, line: resultLine },
   { id: "garden-pick", count: picksSoFar, line: gardenResultLine },
 ];

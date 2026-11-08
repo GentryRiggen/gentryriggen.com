@@ -41,7 +41,7 @@ export const VISITORS: readonly VisitorDef[] = [
     id: "visitor-mail",
     phase: PHASE_COAST,
     name: "A mail boat",
-    arrivesWhen: (run) => owned(run, "keeper") >= 6,
+    arrivesWhen: (run) => owned(run, "keeper") >= 4,
     giftText: incomeText,
     give: giveIncome,
   },
@@ -49,7 +49,7 @@ export const VISITORS: readonly VisitorDef[] = [
     id: "visitor-whales",
     phase: PHASE_COAST,
     name: "Whale-watchers",
-    arrivesWhen: (run) => owned(run, "keeper") >= 8,
+    arrivesWhen: (run) => owned(run, "keeper") >= 6,
     giftText: (run) =>
       run.phase === 0 ? "a full tank of lamp oil" : incomeText(run),
     give: (run) => {

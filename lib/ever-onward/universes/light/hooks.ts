@@ -20,6 +20,7 @@ import {
   level,
   tankCapacity,
 } from "./tick";
+import { trafficShare } from "./toll";
 import { cloneRun } from "../../engine/engine";
 import {
   LAUNCH_ACTION_IDS,
@@ -27,13 +28,8 @@ import {
   runsHome,
   withoutProbeRaces,
 } from "./probes";
-import {
-  SET_NETS_ACTION,
-  TIDE_ACTION_IDS,
-  haulsSoFar,
-  isTideOpen,
-  withoutTide,
-} from "./tide";
+import { TOLL_ACTION_IDS, isTollOpen, tollLockLeft } from "./toll";
+import { isTankerIn } from "./tanker";
 import {
   GARDEN_ACTION_IDS,
   WATER_ACTION,
@@ -68,13 +64,14 @@ export function lightPlates(run: RunState): string[] {
     const isTankLow =
       run.resources.oil < tankCapacity(run) * OIL_LOW_SHARE ||
       run.resources.oil <= 0;
-    if (hasOilButton && (isOilCheap(run) || isTankLow))
+    if (hasOilButton && (isTankerIn(run) || isOilCheap(run) || isTankLow))
       plates.push("oilMarket");
     if (hasOilButton) plates.push("lamp");
     if (isStorming(run)) plates.push("storm");
-    // Offered once the second catch is in (so it is not a crowd of beats at
-    // the moment the clock opens).
-    if (isTideOpen(run) && haulsSoFar(run) >= 2) plates.push("tide");
+    // The harbor desk wants a look while the sign is fresh or the ships are
+    // off (a rival's change moves the traffic, so it is a plate then).
+    if (isTollOpen(run) && (tollLockLeft(run) > 0 || trafficShare(run) < 0.7))
+      plates.push("toll");
   } else if (run.phase === 1) {
     plates.push("crank");
     if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
@@ -119,7 +116,7 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   rush: ["ride-rush"],
   lamps: LAMP_ACTION_IDS,
   lamp: BEAM_ACTION_IDS,
-  tide: TIDE_ACTION_IDS,
+  toll: TOLL_ACTION_IDS,
   race: LAUNCH_ACTION_IDS,
   weather: SHIELD_ACTION_IDS,
   course: ["correct-course"],
@@ -132,14 +129,14 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
 };
 
 /**
- * Real choices, for the decision-gap metric: buying oil at a price, when to
- * set the nets, which route to fly, where the storm crews go, when to water.
+ * Real choices, for the decision-gap metric: buying oil at a price, the
+ * harbor toll, which route to fly, where the storm crews go, when to water.
  * Claims (the rush, a flare), fixes (balance, correct, steer) and collects
- * (haul in, pick) are not choices.
+ * (pick) are not choices.
  */
 export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   "buy-oil",
-  SET_NETS_ACTION,
+  ...TOLL_ACTION_IDS,
   ...LAUNCH_ACTION_IDS,
   ...SHIELD_ACTION_IDS,
   WATER_ACTION,
@@ -217,9 +214,8 @@ function sceneKey(run: RunState): string {
     s.bulbsTier,
     s.gridTier,
     s.stormCrews,
-    s.tideOpen,
-    s.biggerNets,
-    s.tideMill,
+    s.tollOpen,
+    s.tollStep,
     s.raceOpen,
     s.raceFins,
     s.raceControl,
@@ -253,7 +249,6 @@ export const lightIncomeView = (run: RunState): RunState => {
   const draft =
     isOverdriveOn(run) ||
     isWeatherOpen(run) ||
-    isTideOpen(run) ||
     isProbesOpen(run) ||
     isGardenOpen(run)
       ? cloneRun(run)
@@ -261,7 +256,6 @@ export const lightIncomeView = (run: RunState): RunState => {
   // A minute of overdrive is a burst, not the income the scorecard measures.
   if (isOverdriveOn(draft)) draft.resources.odLeft = 0;
   if (isWeatherOpen(draft)) withoutStorms(draft);
-  if (isTideOpen(draft)) withoutTide(draft);
   if (isProbesOpen(draft)) withoutProbeRaces(draft);
   if (isGardenOpen(draft)) withoutGarden(draft);
   return draft;

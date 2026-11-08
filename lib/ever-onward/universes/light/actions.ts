@@ -28,7 +28,6 @@ import {
   balanceKnowhow,
   tankCapacity,
   isBeamOpen,
-  calmIncomePerSecond,
   calmSkyIncomePerSecond,
   resolvePerSecond,
 } from "./tick";
@@ -46,16 +45,8 @@ import {
   toggleCrew,
   weatherStage,
 } from "./weather";
-import {
-  HAUL_ACTION,
-  SET_NETS_ACTION,
-  catchCoins,
-  earlinessIfSetNow,
-  haulIn,
-  isTideOpen,
-  netState,
-  setNets,
-} from "./tide";
+import { TOLL_ACTIONS } from "./toll";
+import { noteBuy } from "./tanker";
 import {
   ROUTES,
   isProbeOut,
@@ -147,7 +138,9 @@ const BUY_OIL: ActionDef = {
   // The engine took `paid` coins for what the tank could take or the coins
   // could buy; the oil is exactly what that paid for.
   perform: (run, paid) => {
+    const wasDark = run.resources.oil <= 0;
     run.resources.oil += paid / Math.max(run.resources.oilPrice, 0.01);
+    noteBuy(run, wasDark);
   },
 };
 
@@ -336,44 +329,6 @@ const SEND_CREW: readonly ActionDef[] = TOWNS.map((name, town) => ({
   perform: (run) => toggleCrew(run, town),
 }));
 
-/** The tide clock's two buttons; its panel draws them itself. */
-const SET_NETS: ActionDef = {
-  id: SET_NETS_ACTION,
-  phases: [PHASE_COAST],
-  isInline: true,
-  visibleWhen: isTideOpen,
-  describe: (run) => {
-    const state = netState(run);
-    return {
-      label: state === "empty" ? "Set the nets" : "The nets are out",
-      detail:
-        state === "empty"
-          ? earlinessIfSetNow(run) >= 0.85
-            ? "A full rising tide: the biggest catch."
-            : "Set them before high tide. The earlier, the bigger the catch."
-          : "They fill at high tide, and wait for you.",
-      isBlocked: state !== "empty",
-    };
-  },
-  perform: setNets,
-};
-
-const HAUL_IN: ActionDef = {
-  id: HAUL_ACTION,
-  phases: [PHASE_COAST],
-  isInline: true,
-  visibleWhen: isTideOpen,
-  describe: (run) => ({
-    label: "Haul in!",
-    detail:
-      netState(run) === "full"
-        ? `The nets are full: about ${formatNumber(Math.floor(catchCoins(run, calmIncomePerSecond(run))))} coins.`
-        : "Nothing to haul in yet.",
-    isBlocked: netState(run) !== "full",
-  }),
-  perform: (run) => haulIn(run, calmIncomePerSecond(run)),
-};
-
 /** One launch button per route; the race panel draws them itself. */
 const LAUNCH_ROUTE: readonly ActionDef[] = ROUTES.map((route, index) => ({
   id: launchActionId(index),
@@ -526,11 +481,10 @@ export const ACTIONS: readonly ActionDef[] = [
   STEER_BOAT,
   FLASH_LAMP,
   ...SEND_CREW,
-  SET_NETS,
-  HAUL_IN,
   ...LAUNCH_ROUTE,
   WATER_GARDEN,
   PICK_BLOOMS,
   ...LAMP_ACTIONS,
   ...BEAM_ACTIONS,
+  ...TOLL_ACTIONS,
 ];

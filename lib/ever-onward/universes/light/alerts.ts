@@ -1,14 +1,11 @@
 import type { RunState } from "../../engine/types";
 import { FLAME_COLD } from "./goal";
 import { flameFraction } from "./tick";
-import { TUNING } from "./tuning";
-
-const C = TUNING.coast;
 
 /**
  * A warning the player should see right now, or null. The coast's lamp
- * running dry is the one that matters: income keeps flowing (a dim lamp
- * still guides some ships, so nobody is ever stuck) but it is easy to miss.
+ * running dry is the one that matters: a dark lamp guides almost no ships
+ * (and the ones that stayed away take a while to come back).
  */
 export function lightAlert(run: RunState): string | null {
   if (run.complete) return null;
@@ -18,6 +15,5 @@ export function lightAlert(run: RunState): string | null {
       : null;
   if (run.phase !== 0) return null;
   if ((run.resources.oil ?? 0) > 0) return null;
-  const less = Math.round((1 - C.dimLamp) * 100);
-  return `Out of oil! The lamp is dim, so ships pay ${less}% less. Buy oil to light it up.`;
+  return "Out of oil! The lamp is dark, and ships are keeping away. Buy oil to light it.";
 }

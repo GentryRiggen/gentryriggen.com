@@ -16,6 +16,7 @@ import { PRESTIGE } from "./prestige";
 import { ALL_PROJECTS } from "./projects";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
+import { isCoastMomentBusy } from "./tanker";
 import { LIGHT_EVENTS } from "./events";
 import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
 import { UPGRADES } from "./upgrades";
@@ -40,6 +41,7 @@ export const lightUniverse: UniverseDef = {
   visitors: VISITORS,
   countdown: lightCountdown,
   alert: lightAlert,
+  isSceneBusy: isCoastMomentBusy,
   goalMeter: lightGoal,
   gauge: lightGauge,
   prestige: PRESTIGE,

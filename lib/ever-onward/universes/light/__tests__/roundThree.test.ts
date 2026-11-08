@@ -37,7 +37,7 @@ describe("visitors", () => {
   it("arrive on a milestone, never on a timer", () => {
     const quiet = idle(newRun(def), 3 * 3600);
     expect(waitingVisitors(def, quiet)).toHaveLength(0);
-    const grown = tick(def, withOwned(quiet, { keeper: 6 }), 1);
+    const grown = tick(def, withOwned(quiet, { keeper: 4 }), 1);
     expect(waitingVisitors(def, grown).map((v) => v.id)).toEqual([
       "visitor-mail",
     ]);
@@ -46,7 +46,7 @@ describe("visitors", () => {
   });
 
   it("wait as long as it takes, and give their gift once", () => {
-    const here = tick(def, withOwned(newRun(def), { keeper: 6 }), 1);
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
     const waited = idle(here, 2 * 3600);
     expect(waitingVisitors(def, waited)).toHaveLength(1);
     const greeted = greetVisitor(def, waited, "visitor-mail");
@@ -60,7 +60,7 @@ describe("visitors", () => {
   });
 
   it("pay a late hello in the currency of the part they are greeted in", () => {
-    const here = tick(def, withOwned(newRun(def), { keeper: 6 }), 1);
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
     const later: RunState = {
       ...here,
       phase: 2,
@@ -78,7 +78,7 @@ describe("visitors", () => {
   });
 
   it("bring a small gift: at most about 15 seconds of income", () => {
-    const here = tick(def, withOwned(newRun(def), { keeper: 6 }), 1);
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
     const gift =
       greetVisitor(def, here, "visitor-mail").resources.coins -
       here.resources.coins;

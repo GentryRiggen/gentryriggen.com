@@ -20,10 +20,10 @@ import LanternPicker from "../game/LanternPicker";
 import MemoryGarden from "../game/MemoryGarden";
 import ProbeRaces from "../game/ProbeRaces";
 import ForkPanel from "../game/ForkPanel";
+import HarborPanel from "../game/HarborPanel";
 import FundPanel from "../game/FundPanel";
 import ProjectsPanel from "../game/ProjectsPanel";
 import StreetlightsPanel from "../game/StreetlightsPanel";
-import TideClock from "../game/TideClock";
 import WeatherDesk from "../game/WeatherDesk";
 import LightScene from "../scenes/light/LightScene";
 import type { PanelProps, TapLook, UniverseUi } from "./types";
@@ -83,8 +83,9 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
     (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
   // A storm front landing on the weather desk.
   if (rose("wxFronts")) cues.push("thunder");
-  // Nets hauled in on the tide clock.
-  if (rose("tdHauls")) cues.push("splash");
+  // A tanker tying up at the quay, and barrels rolling into the tanks.
+  if (rose("tkVisits")) cues.push("arrive");
+  if (rose("tkBuys")) cues.push("splash");
   // The racing probe leaving the dock, and coming home.
   if (rose("prLaunches")) cues.push("launch");
   if (rose("prRuns")) cues.push("arrive");
@@ -95,13 +96,12 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
-  topPanels: [LampPanel],
+  topPanels: [LampPanel, HarborPanel],
   primaryPanels: [StreetlightsPanel, ProbeRaces, MemoryGarden],
   panels: [
     CoastForkPanel,
     LaterForkPanel,
     FundPanel,
-    TideClock,
     WeatherDesk,
     ProjectsPanel,
   ],

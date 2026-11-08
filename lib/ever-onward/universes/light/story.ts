@@ -1,6 +1,5 @@
 import type { RunState, StoryMessage } from "../../engine/types";
 import { hasSprouted, picksSoFar } from "./garden";
-import { TIDE_MILL_ID } from "./tide";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
@@ -79,10 +78,10 @@ const coast: StoryMessage[] = [
     text: "Only two dark stretches of coast left. You find that you cannot look at a dark stretch of coast without wanting to put a light on it.",
   },
   {
-    id: "coast-tide",
+    id: "coast-toll",
     phase: PHASE_COAST,
-    when: (run) => run.flags["tide-open"] === true,
-    text: "The fish market has hung a tide clock by the quay. The sea breathes in, and the sea breathes out. A fisherman lends you a net and says: put it out while the water is coming in, and the sea will fill it by itself.",
+    when: (run) => owned(run, "keeper") >= 3,
+    text: "A harbor master's desk by the quay, and a painted sign: what ships pay to come in. Another harbor down the coast has a sign too. The captains read both, and they are not shy about choosing.",
   },
   {
     id: "coast-trio",
@@ -109,12 +108,10 @@ const coast: StoryMessage[] = [
     text: "The ferry never stops now. It carries bicycles, baskets of bread, and one very serious goat.",
   },
   {
-    id: "coast-mill",
+    id: "coast-tanker",
     phase: PHASE_COAST,
-    // Dormant: the Coast no longer has a tide clock (its mill was cut with it).
-    // The line stays so its recorded voice clip stays valid.
-    when: (run) => owned(run, TIDE_MILL_ID) >= 1,
-    text: "A little mill turns with the tide, tending a net of its own. It hums while it works. Your own nets are still yours, and the sea has plenty of fish for both of you.",
+    when: (run) => (run.resources.tkVisits ?? 0) >= 1,
+    text: "A tanker has tied up at the quay, low in the water, full of lamp oil. The captain does not stay long. She says the sea keeps its own timetable, and so does the oil.",
   },
   {
     id: "coast-almost",

@@ -3,7 +3,7 @@ import LampPanel from "../../game/LampPanel";
 import FundPanel from "../../game/FundPanel";
 import MemoryGarden from "../../game/MemoryGarden";
 import ProbeRaces from "../../game/ProbeRaces";
-import TideClock from "../../game/TideClock";
+import HarborPanel from "../../game/HarborPanel";
 import ProjectsPanel from "../../game/ProjectsPanel";
 import StreetlightsPanel from "../../game/StreetlightsPanel";
 import WeatherDesk from "../../game/WeatherDesk";
@@ -22,18 +22,13 @@ describe("the universe UI registry", () => {
     // The coast fork sits under the shop so the upgrades stay on screen.
     expect(panels[0].name).toBe("CoastForkPanel");
     expect(panels[1].name).toBe("LaterForkPanel");
-    expect(topPanels).toEqual([LampPanel]);
+    expect(topPanels).toEqual([LampPanel, HarborPanel]);
     expect(primaryPanels).toEqual([
       StreetlightsPanel,
       ProbeRaces,
       MemoryGarden,
     ]);
-    expect(panels.slice(2)).toEqual([
-      FundPanel,
-      TideClock,
-      WeatherDesk,
-      ProjectsPanel,
-    ]);
+    expect(panels.slice(2)).toEqual([FundPanel, WeatherDesk, ProjectsPanel]);
   });
 
   it("keeps Light's ending lines", () => {

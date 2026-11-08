@@ -13,7 +13,14 @@ import {
 import { TUNING } from "./tuning";
 import { tickProbes } from "./probes";
 import { tickGarden } from "./garden";
-import { tickTide } from "./tide";
+import {
+  growthRate,
+  rivalToll,
+  tickHarbor,
+  tollPay,
+  trafficShare,
+} from "./toll";
+import { noteBuy, tankerDeal, tickTanker } from "./tanker";
 import { tickFund } from "./fund";
 import { hasFork, windRamp } from "./forkState";
 import { overdriveBoost, overdriveStrain, tickOverdrive } from "./overdrive";
@@ -100,15 +107,48 @@ export function setBeam(run: RunState, step: number): void {
   run.resources.lampBeamChanges = res(run, "lampBeamChanges") + 1;
 }
 
-export const shipsPerFlash = (run: RunState): number =>
+/** Ships one flash guides if every ship picked your harbor (what the tank is sized for). */
+export const flashShipsAtFullTraffic = (run: RunState): number =>
   lensShips(run) * tapMult(run) * fresnelMult(run) * beamPay(run);
 
+/** Ships one flash guides: those that choose your harbor at the toll you set. */
+export const shipsPerFlash = (run: RunState): number =>
+  flashShipsAtFullTraffic(run) * trafficShare(run);
+
+/** What a ship pays at the harbor before the toll: the fees and the docks. */
 export const fare = (run: RunState): number =>
   C.fareGrowth ** tier(run, "fees") * C.dockBonus ** tier(run, "dock");
 
+/** How much your lighthouses and docks raise the going rate (1 with one lighthouse and no docks). */
+export const harborGrowth = (run: RunState): number =>
+  growthRate(lighthouseCount(run), tier(run, "dock"));
+
+/**
+ * What a ship pays with your toll on top. A grown harbor raises the going
+ * rate (so the best toll climbs), but the fees and docks already pay for that
+ * growth, so the toll is read against it: the same relative toll earns the
+ * same at any size.
+ */
+export const farePaid = (run: RunState): number =>
+  (fare(run) * tollPay(run) * rivalPayFactor(run)) / harborGrowth(run);
+
+/**
+ * A rival that charges more lets every toll earn a little more, and one that
+ * charges less a little less (the same for every toll, so it never changes
+ * which toll is best, and the coast's income is not rocked by a big swing).
+ */
+const rivalPayFactor = (run: RunState): number =>
+  (rivalToll(run) / C.harbor.rivalStart) ** -(1 - C.harbor.rivalPayShare);
+
+/** The going rate ships measure your toll against (the rival's, grown by your harbor). */
+export const goingRate = (run: RunState): number =>
+  run.resources.hbRate > 0
+    ? run.resources.hbRate
+    : rivalToll(run) * harborGrowth(run);
+
 export const isStorming = (run: RunState): boolean => res(run, "storm") > 0;
 
-/** A dry lamp is dim: it guides fewer ships, but still guides some. */
+/** A dry lamp is dark: only a few ships still find the harbor. */
 export const lampFactor = (run: RunState): number =>
   res(run, "oil") > 0 ? 1 : C.dimLamp / beamPay(run);
 
@@ -123,14 +163,14 @@ const tapShareCoins = (run: RunState): number =>
 export function coastTapCoins(run: RunState): number {
   const bonus = isStorming(run) ? C.stormTapBonus : 1;
   return (
-    shipsPerFlash(run) * bonus * fare(run) * lampFactor(run) +
+    shipsPerFlash(run) * bonus * farePaid(run) * lampFactor(run) +
     tapShareCoins(run)
   );
 }
 
 /** Coins one tap would earn on a calm night with a full lamp. */
 export const calmTapCoins = (run: RunState): number =>
-  shipsPerFlash(run) * fare(run) + tapShareCoins(run);
+  shipsPerFlash(run) * farePaid(run) + tapShareCoins(run);
 
 /** How much each keeper's work is multiplied by their training. */
 export const trainingMult = (run: RunState): number =>
@@ -158,6 +198,10 @@ export const lighthouseMult = (run: RunState): number =>
 
 /** Flashes per second the keepers make, lamp and weather aside. */
 export const autoFlashRate = (run: RunState): number =>
+  autoFlashRateAtFullTraffic(run) * trafficShare(run);
+
+/** The same, if every ship picked your harbor. */
+const autoFlashRateAtFullTraffic = (run: RunState): number =>
   keeperCount(run) *
   C.keeperFlashes *
   lighthouseMult(run) *
@@ -172,7 +216,7 @@ export const autoFlashRate = (run: RunState): number =>
 
 /** Coins per second the keepers earn on a calm night with a full lamp. */
 export const autoCoinsPerSecond = (run: RunState): number =>
-  autoFlashRate(run) * fare(run);
+  autoFlashRate(run) * farePaid(run);
 
 const oilSaving = (run: RunState): number =>
   C.wickSaving ** tier(run, "wick") *
@@ -210,7 +254,8 @@ export const idleBurn = (run: RunState): number =>
  */
 export const tankCapacity = (run: RunState): number => {
   const fullTiltShips =
-    autoFlashRate(run) + C.tankTapsPerSecond * shipsPerFlash(run);
+    autoFlashRateAtFullTraffic(run) +
+    C.tankTapsPerSecond * flashShipsAtFullTraffic(run);
   const seconds = C.tankSeconds + C.tankSecondsPerTier * tier(run, "tank");
   // Sized for the Normal step, so the tank is the same whatever the knob says.
   return Math.max(
@@ -242,38 +287,39 @@ export const isOilDear = (run: RunState): boolean =>
 export function buyBarrel(run: RunState): void {
   const oil = barrelOil(run);
   if (oil <= 0) return;
+  const wasDark = run.resources.oil <= 0;
   run.resources.oil += oil;
   run.resources.coins -= oil * run.resources.oilPrice;
+  noteBuy(run, wasDark);
 }
+
+/** The oil market's own price, before any tanker's deal (a save from before reads today's). */
+export const marketOilPrice = (run: RunState): number =>
+  res(run, "oilBase") > 0 ? res(run, "oilBase") : res(run, "oilPrice");
 
 function driftOilPrice(run: RunState, dt: number): void {
   const calm = run.mods.calm ?? 0;
-  const before = run.resources.oilPrice;
+  const before = marketOilPrice(run);
   const wobble =
     (nextRandom(run) - 0.5) * C.oilWobble * Math.sqrt(dt) * (1 - calm);
   const pull = (C.oilMean - before) * C.oilPull * dt;
-  run.resources.oilPrice = Math.min(
-    C.oilMax,
-    Math.max(C.oilMin, before + pull + wobble)
-  );
-  const slope = (run.resources.oilPrice - before) / dt;
+  const base = Math.min(C.oilMax, Math.max(C.oilMin, before + pull + wobble));
+  run.resources.oilBase = base;
+  // A tanker in port sells below the market until it sails on.
+  run.resources.oilPrice = base * tankerDeal(run);
+  const slope = (base - before) / dt;
   run.resources.oilTrend +=
     (slope - run.resources.oilTrend) * Math.min(1, dt / C.trendSeconds);
 }
 
 /**
- * The oil merchant contract: tops the tank up whenever oil is cheap, and a
- * little at any price when it is nearly dry. Never more than coins allow.
+ * The oil merchant contract: whenever the tank falls under a quarter, a
+ * full tank is ordered, at whatever the price is (never more than coins
+ * allow). It keeps the lamp lit, and pays no attention to the market.
  */
 function merchantBuys(run: RunState): void {
   if (level(run, "contract") === 0) return;
-  const capacity = tankCapacity(run);
-  const oil = run.resources.oil;
-  if (run.resources.oilPrice <= C.contractPrice && oil < capacity * 0.7) {
-    buyBarrel(run);
-  } else if (oil < capacity * 0.05) {
-    buyBarrel(run);
-  }
+  if (run.resources.oil < tankCapacity(run) * C.contractBelow) buyBarrel(run);
 }
 
 function updateStorm(run: RunState, dt: number): void {
@@ -293,13 +339,15 @@ export const stormPassive = (run: RunState): number =>
   C.stormPassive[Math.min(C.stormPassive.length - 1, tier(run, "shutters"))];
 
 function tickCoast(run: RunState, dt: number): void {
-  driftOilPrice(run, dt);
   updateStorm(run, dt);
+  tickTanker(run, dt, isBeamOpen(run));
+  driftOilPrice(run, dt);
+  tickHarbor(run, dt, harborGrowth(run), isStorming(run), res(run, "oil") <= 0);
   const stormFactor = isStorming(run) ? stormPassive(run) : 1;
   const shipsPerSecond = autoFlashRate(run) * lampFactor(run) * stormFactor;
   const ships = shipsPerSecond * dt;
   run.resources.ships += ships;
-  run.resources.coins += ships * fare(run);
+  run.resources.coins += ships * farePaid(run);
   run.resources.oil = Math.max(
     0,
     run.resources.oil - burnPerSecond(run, shipsPerSecond) * dt
@@ -828,8 +876,6 @@ export function syncDisplay(run: RunState): void {
 
 export function tickLight(run: RunState, dt: number): void {
   const phase = run.phase;
-  // Every phase: a catch still flowing in when the coast ends finishes.
-  tickTide(run, dt, () => calmIncomePerSecond(run));
   // Every phase: a probe away and a haul flowing in when the sky ends finish.
   tickProbes(run, dt, () => calmSkyIncomePerSecond(run));
   tickGarden(run, dt);

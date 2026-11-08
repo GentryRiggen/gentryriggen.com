@@ -80,7 +80,7 @@ describe("effect previews", () => {
     // with keepers, it shows that their flashes guide more ships too
     const keepers = { ...run, owned: { ...run.owned, keeper: 2 } };
     expect(previewUpgrade(def, keepers, "lens")).toBe(
-      "×2 ships per flash\nKeepers too: +0.6/s"
+      "×2 ships per flash\nKeepers too: +0.7/s"
     );
   });
 
@@ -88,7 +88,7 @@ describe("effect previews", () => {
     const run = withResources(newRun(def), { coins: 1000, ships: 30 });
     const bought = buy(def, { ...run, revealed: ["keeper"] }, "keeper");
     expect(previewUpgrade(def, run, "keeper")).toBe(
-      "+1 keeper (+0.3/s)\n5 keepers: ×2!"
+      "+1 keeper (+0.35/s)\n3 keepers: ×2!"
     );
     expect(upgradeLevel(bought, "keeper")).toBe(1);
   });
@@ -169,21 +169,25 @@ describe("oil is a decision", () => {
     expect(upkeepRate(def, coastRun({ oil: 0 }), "coins")).toBe(0);
   });
 
-  it("is bought for you after the merchant contract, when it is cheap", () => {
-    const withContract = (price: number): RunState => ({
-      ...coastRun({ oil: 5, oilPrice: price, coins: 500 }),
+  it("is ordered for you after the merchant contract, whenever the tank falls under a quarter", () => {
+    const withContract = (oil: number, price: number): RunState => ({
+      ...coastRun({ oil, oilPrice: price, oilBase: price, coins: 500 }),
       owned: { keeper: 3, contract: 1 },
+      mods: { calm: 0.9 },
     });
-    // keep the price put for this one step
-    const cheap = tick(def, { ...withContract(1.2), mods: { calm: 0.9 } }, 0.1);
-    const dear = tick(def, { ...withContract(4), mods: { calm: 0.9 } }, 0.1);
-    expect(cheap.resources.oil).toBeGreaterThan(20);
-    expect(dear.resources.oil).toBeLessThan(5);
+    const low = tick(def, withContract(5, 1.2), 0.1);
+    const dearLow = tick(def, withContract(5, 4), 0.1);
+    // whatever the price: the order does not read the market
+    expect(low.resources.oil).toBeGreaterThan(20);
+    expect(dearLow.resources.oil).toBeGreaterThan(20);
+    // a tank that is not low is left alone, however cheap oil is
+    const half = tick(def, withContract(100, 0.5), 0.1);
+    expect(half.resources.oil).toBeLessThan(100);
   });
 
   it("even the contract tops up a nearly dry tank at a high price", () => {
     const run: RunState = {
-      ...coastRun({ oil: 0.5, oilPrice: 4, coins: 500 }),
+      ...coastRun({ oil: 0.5, oilPrice: 4, oilBase: 4, coins: 500 }),
       owned: { contract: 1 },
       mods: { calm: 0.9 },
     };

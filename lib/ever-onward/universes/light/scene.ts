@@ -1,11 +1,12 @@
 import type { RunState } from "../../engine/types";
+import { isTollOpen, tollStep, trafficShare } from "./toll";
 import {
-  hasBiggerNets,
-  hasTideMill,
-  isTideOpen,
-  netStateIndex,
-  tideLevel,
-} from "./tide";
+  isDarkBanner,
+  isRelit,
+  isTankerIn,
+  barrelsRolling,
+  tankerDeal,
+} from "./tanker";
 import {
   hasMissionControl,
   hasRacingFins,
@@ -40,7 +41,7 @@ import {
   keeperCount,
   level,
   lighthouseCount,
-  shipsPerFlash,
+  flashShipsAtFullTraffic,
   tankCapacity,
   tier,
 } from "./tick";
@@ -136,16 +137,22 @@ export interface LightSceneInfo {
   stormCrews: number;
   /** 1 once the weather vane stands on the control post. */
   weatherVane: number;
-  /** 1 once the tide clock is open: the sea breathes beside the lighthouse. */
-  tideOpen: number;
-  /** The water, 0..1 (12 steps, so the picture is not redrawn every tick). */
-  tideLevel: number;
-  /** The nets: 0 none out, 1 set and waiting for high tide, 2 full. */
-  nets: number;
-  /** 1 once the bigger nets are bought (a second, wider net). */
-  biggerNets: number;
-  /** 1 once the tide mill turns by the water. */
-  tideMill: number;
+  /** 1 once the harbor desk is open (the toll sign stands on the quay). */
+  tollOpen: number;
+  /** The toll step, 0 (low) to 4. */
+  tollStep: number;
+  /** Ships choosing the harbor, in tenths (0..10): the rest sail on to the rival. */
+  traffic: number;
+  /** 1 while a tanker is tied up with cheap oil. */
+  tanker: number;
+  /** How good the tanker's deal is: 0 none, 1 good, 2 great. */
+  tankerDeal: number;
+  /** 1 for a few seconds after oil is bought: barrels roll into the tanks. */
+  barrels: number;
+  /** 1 for the first seconds of a dry spell: the lamp has gone dark. */
+  darkBanner: number;
+  /** 1 for a few seconds after the lamp is lit again: the beam bursts. */
+  relit: number;
   /** 1 once the probe races are open: a dock stands beside the mirror field. */
   raceOpen: number;
   /** 1 while the racing probe is away from the dock. */
@@ -211,7 +218,8 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     lighthouses,
     coastProgress: clamp01(lighthouses / COAST_LIGHTHOUSES),
     ships: Math.floor(finite(r.ships ?? 0)),
-    shipsPerFlash: finite(shipsPerFlash(run)),
+    // Whatever the traffic is doing, so it sliding up or down never redraws the picture.
+    shipsPerFlash: finite(flashShipsAtFullTraffic(run)),
     lensLevel: lens,
     beam: clamp01(lens / (lens + 12)),
     keepers: finite(keeperCount(run)),
@@ -278,11 +286,14 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     gridTier: tier(run, "grid"),
     stormCrews: level(run, "storm-crews") > 0 ? 1 : 0,
     weatherVane: level(run, "weather-vane") > 0 ? 1 : 0,
-    tideOpen: isTideOpen(run) ? 1 : 0,
-    tideLevel: isTideOpen(run) ? step(tideLevel(run), 12) : 0,
-    nets: isTideOpen(run) ? netStateIndex(run) : 0,
-    biggerNets: hasBiggerNets(run) ? 1 : 0,
-    tideMill: hasTideMill(run) ? 1 : 0,
+    tollOpen: isTollOpen(run) ? 1 : 0,
+    tollStep: tollStep(run),
+    traffic: Math.round(clamp01(trafficShare(run)) * 10),
+    tanker: isTankerIn(run) ? 1 : 0,
+    tankerDeal: isTankerIn(run) ? (tankerDeal(run) <= 0.38 ? 2 : 1) : 0,
+    barrels: run.phase === 0 && barrelsRolling(run) ? 1 : 0,
+    darkBanner: run.phase === 0 && isDarkBanner(run) ? 1 : 0,
+    relit: run.phase === 0 && isRelit(run) ? 1 : 0,
     raceOpen: isProbesOpen(run) ? 1 : 0,
     raceOut: isProbeOut(run) ? 1 : 0,
     raceFins: hasRacingFins(run) ? 1 : 0,

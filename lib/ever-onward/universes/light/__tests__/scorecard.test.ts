@@ -37,24 +37,17 @@ jest.setTimeout(180_000);
  */
 const GATE_CAP = 59;
 /**
- * The Coast rework (goal on the HUD, keepers with milestones, lighthouses that
- * compound, the lamp knob; tuned by playing it in a browser, not to this card)
- * scored 73.3 uncapped, down from 78.9 on the same card. The Coast now takes a player who only taps and buys about 20
- * minutes, and the scorecard's bots (which use the lamp and the fork well) 11, so M14 (total length) fell and
- * the Coast's M1, M4, M5 and M15 gates trip: more, smaller, faster purchases and
- * the lamp knob mean more clicks a minute and later buys that are a smaller
- * share of a much bigger income. That is the point of the rework, so the floor
- * is that score minus 1; it is not tuned back toward the old, slow Coast.
+ * The Coast's dials (the harbor toll and the oil market beside the lamp, with
+ * fewer, bigger keeper steps and the tide clock gone) scored 76.6 uncapped,
+ * up from 73.6, and the Coast now passes every gate it used to trip (M1, M4,
+ * M5, M15): 14 keepers instead of 40 cut its buys from 63 to 40, and the
+ * dials' clicks a minute stay under 3.3. The floor is that score minus 1.
  */
-const UNCAPPED_FLOOR = 72;
-/** Gates the Coast rework knowingly trips (see above); no other gate may fail. */
+const UNCAPPED_FLOOR = 75.6;
+/** Gates knowingly failing; no other gate may fail. */
 const KNOWN_REWORK_GATES: readonly string[] = [
-  // The last cards of the Coast reveal minutes apart (a gap of ~226 s).
-  "M1 Reveal cadence (coast)",
-  "M4 Felt effect (coast)",
-  "M5 Purchase rate (coast)",
+  // The whole run is about 1.3 h; later parts add the length (the band is 2-3 h).
   "M14 Total length (run)",
-  "M15 Chore rate (coast)",
 ];
 /** An M16 phase allowed to fail its gate, but not to get any worse. */
 interface DeadPhaseCeiling {

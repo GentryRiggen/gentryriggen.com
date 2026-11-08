@@ -97,14 +97,14 @@ export const TUNING = {
   coast: {
     fareGrowth: 1.5,
     /** Keepers (the main repeatable buy) stop here. */
-    keeperMax: 40,
+    keeperMax: 14,
     /** Having this many keepers doubles every keeper's work, once each. */
-    keeperMilestones: [5, 10, 25, 40] as readonly number[],
+    keeperMilestones: [3, 6, 10, 14] as readonly number[],
     keeperMilestoneMult: 2,
     /** Every lighthouse after the first multiplies the ships by this. */
     lighthouseMult: 2,
     /** Each lighthouse costs this many times the one before. */
-    lighthouseGrowth: 7.5,
+    lighthouseGrowth: 8,
     /**
      * The lamp's brightness, the coast's one knob. `pay` multiplies the ships
      * every flash guides (yours and the keepers'), `burn` the oil the lamp
@@ -124,7 +124,7 @@ export const TUNING = {
     lensShips: [1, 2, 4, 8] as readonly number[],
     /** A tap also brings this share of a second of the keepers' coins. */
     tapShare: 0.04,
-    keeperFlashes: 0.3,
+    keeperFlashes: 0.35,
     /** Each training step multiplies every keeper's flashes. */
     trainingSteps: [2, 2, 2] as readonly number[],
     /** Oil burned per coin of fare a keeper's ship pays, at the Normal step. */
@@ -135,6 +135,7 @@ export const TUNING = {
     stormLength: 25,
     stormGapMin: 150,
     stormGapSpread: 150,
+    /** A dry lamp is dark: this share of the ships still find the harbor (so nobody is ever stuck). */
     dimLamp: 0.25,
     oilMean: 2,
     oilMin: 0.3,
@@ -145,29 +146,84 @@ export const TUNING = {
     tankBase: 40,
     tankPerTier: 80,
     /** Seconds of full-tilt burn a tank holds, and what each tank upgrade adds. */
-    tankSeconds: 60,
-    tankSecondsPerTier: 120,
+    tankSeconds: 100,
+    tankSecondsPerTier: 200,
     tankTapsPerSecond: 3,
     cheapPrice: 1.4,
     dearPrice: 2.8,
-    contractPrice: 1.6,
     wickSaving: 0.6,
     /** Each dock building makes every ship pay this much more. */
     dockBonus: 1.5,
-  },
-  /** The Tide Clock, a side machine of the coast (see tide.ts). */
-  tide: {
-    /** One full wave, low to high to low, in seconds of play. */
-    cycleSeconds: 175,
-    /** Seconds of coast income a catch is worth: late nets, then early nets. */
-    catchMinSeconds: 30,
-    catchMaxSeconds: 45,
-    /** Bigger nets multiply the catch by this. */
-    biggerNetsFactor: 1.5,
-    /** Seconds of income the tide mill adds on its own at each high tide. */
-    millSeconds: 14,
-    /** The catch flows in over this many seconds, like a rush of fish. */
-    surgeSeconds: 6,
+    /** The oil merchant orders a full tank whenever the tank falls under this share. */
+    contractBelow: 0.25,
+    /**
+     * The harbor toll (see toll.ts): the price you set. Every ship pays
+     * `pay` times the fare, but ships pick a harbor by its toll against the
+     * going rate (the rival harbor down the coast, grown by your own
+     * lighthouses and docks). The share that choose you is
+     * `eagerness / (1 + (pay / rate) ^ steepness)`, at most all of them, and
+     * the traffic follows it slowly.
+     */
+    harbor: {
+      steps: [
+        { label: "Low", pay: 0.7 },
+        { label: "Usual", pay: 1 },
+        { label: "High", pay: 1.4 },
+        { label: "Steep", pay: 2 },
+        { label: "Greedy", pay: 2.8 },
+      ] as readonly { label: string; pay: number }[],
+      defaultStep: 1,
+      /** The desk opens with this many keepers. */
+      opensAtKeepers: 3,
+      steepness: 4,
+      eagerness: 1.5,
+      /** Seconds the traffic takes to cover most of the way to a new share. */
+      followSeconds: 25,
+      /** ... and when the lamp is dark (ships steer clear faster than they come back). */
+      darkFollowSeconds: 8,
+      /** The sign takes this long to repaint; a change also puts a few ships off. */
+      changeLockSeconds: 20,
+      changeTraffic: 0.92,
+      /** The rival harbor's toll wanders between these and glides to each new one. */
+      rivalStart: 1.3,
+      rivalMin: 0.7,
+      rivalMax: 2.2,
+      rivalGapMin: 110,
+      rivalGapSpread: 100,
+      rivalGlideSeconds: 30,
+      /** Each lighthouse after the first and each dock building raises the going rate. */
+      lighthouseRate: 0.03,
+      dockRate: 0.04,
+      /**
+       * How much of the rival's price shows up in what ships pay: the rest is
+       * the same for every toll, so it never changes which toll is best, only
+       * keeps a rival's big swing from rocking the whole coast's income.
+       */
+      rivalPayShare: 0.3,
+      /** In a storm, ships have fewer harbors to pick from. */
+      stormRate: 1.35,
+      /** While the lamp is dark, the traffic settles at this share of what it would be. */
+      darkTraffic: 0.6,
+    },
+    /**
+     * Oil tankers (see tanker.ts): now and then one ties up with cheap oil
+     * for a while. The market price drifts as before; the tanker sells at
+     * `dealMin`..`dealMax` of it until it leaves.
+     */
+    tanker: {
+      firstSeconds: 80,
+      gapMin: 110,
+      gapSpread: 200,
+      staySeconds: 35,
+      dealMin: 0.28,
+      dealMax: 0.55,
+      /** Barrels roll into the tanks this long after a buy. */
+      barrelSeconds: 4,
+      /** The relit beam bursts for this long. */
+      relitSeconds: 5,
+      /** "DARK!" shows this long. */
+      darkBannerSeconds: 6,
+    },
   },
   /** Probe Races, a side machine of the sky (see probes.ts). */
   probes: {

@@ -30,32 +30,23 @@ describe("layer info", () => {
     }
   );
 
-  it("redraws the coast only in twelve steps as the tide moves", () => {
+  it("redraws the coast only in tenths as the traffic follows the toll", () => {
     const base = runAtPhaseStart(0);
-    let run = tick(
-      def,
-      {
-        ...base,
-        owned: { ...base.owned, "dock-1": 1 },
-        flags: { ...base.flags, "tide-open": true },
-      },
-      0.1
-    );
-    expect(sceneInfo(run).tideOpen).toBe(1);
-    const levels = new Set<number>();
+    let run = tick(def, { ...base, owned: { ...base.owned, keeper: 6 } }, 0.1);
+    expect(sceneInfo(run).tollOpen).toBe(1);
+    // a Steep sign: the traffic slides down over a minute or so
+    run.resources.tollStep = 3;
+    const seen = new Set<number>();
     let changed = 0;
-    let levelSteps = 0;
     for (let i = 0; i < 1750; i += 1) {
       const before = { info: sceneInfo(run) };
       run = tick(def, run, 0.1);
       const after = sceneInfo(run);
-      levels.add(after.tideLevel);
-      if (after.tideLevel !== before.info.tideLevel) levelSteps += 1;
+      seen.add(after.traffic);
       if (!isSameLayerInfo(before, { info: after })) changed += 1;
     }
-    // one full wave: 12 steps up and 12 down, nothing like one redraw a tick
-    expect(levels.size).toBeLessThanOrEqual(13);
-    expect(levelSteps).toBeLessThanOrEqual(26);
+    // ten steps at most, nothing like one redraw a tick
+    expect(seen.size).toBeLessThanOrEqual(11);
     expect(changed).toBeLessThan(1750 * 0.05);
   });
 

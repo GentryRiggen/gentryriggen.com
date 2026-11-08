@@ -77,6 +77,43 @@ test.describe("Ever Onward", () => {
     await expect(panel.getByTestId("eo-bees-honey")).toContainText("Honey");
   });
 
+  test("the coast's harbor toll and oil market show in the panels and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-jump-light-0-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    // The harbor desk: the plus and the minus of every toll, and the rival's sign.
+    const harbor = page.getByTestId("lm-harbor");
+    await expect(harbor).toBeVisible();
+    await expect(harbor.getByRole("radio")).toHaveCount(5);
+    await expect(harbor.getByTestId("lm-harbor-rival")).toContainText("x");
+    await expect(harbor.getByTestId("lm-toll-0")).toContainText("come");
+    // The lamp panel keeps its brightness knob beside the oil market, and
+    // never says which step is best.
+    const lamp = page.getByTestId("lm-lamp");
+    await expect(lamp).toBeVisible();
+    await expect(lamp.getByRole("radio")).toHaveCount(4);
+    await expect(lamp).not.toContainText(/best/i);
+    // The picture: the toll sign on the quay, ships on the water, the tank.
+    await expect(page.getByTestId("lm-toll-sign")).toBeAttached();
+    await expect(page.getByTestId("lm-harbor-ships")).toBeAttached();
+    await expect(page.getByTestId("lm-tank-fill")).toBeAttached();
+    // Setting a toll shows in the panel and the sign.
+    await harbor.getByTestId("lm-toll-3").click();
+    await expect(harbor).toHaveAttribute("data-step", "3");
+    await expect(page.getByTestId("lm-toll-sign")).toHaveAttribute(
+      "data-step",
+      "3"
+    );
+  });
+
   test("the old window box turns the blind, and the picture shows the light and the leaves", async ({
     page,
   }) => {
