@@ -1,8 +1,8 @@
 import type { HigherSceneInfo } from "@/lib/ever-onward/universes/higher";
 import {
   KEEPSAKES,
+  keepsakeShare,
   keepsakeStairShare,
-  stairShare,
 } from "@/lib/ever-onward/universes/higher/keepsakes";
 import KeepsakeSprite from "./KeepsakeArt";
 import Px, { Bird, Person } from "./Px";
@@ -108,11 +108,22 @@ function siteOf(index: number): { x: number; y: number } {
 }
 
 /** One keepsake on the stairs, in whichever state it is in. */
-function Keepsake({ index, state }: { index: number; state: string }) {
+function Keepsake({
+  index,
+  state,
+  plays,
+}: {
+  index: number;
+  state: string;
+  plays: boolean;
+}) {
   const k = KEEPSAKES[index];
   const { x, y } = siteOf(index);
   const big = `translate(${x} ${y}) scale(1.6) translate(-6 -6)`;
-  if (state === "2")
+  if (state === "2") {
+    // Only the one just picked up plays its moment; a remount shows none again.
+    if (!plays)
+      return <g data-testid={`tp-keep-${k.id}`} data-state="carried" />;
     return (
       <g data-testid={`tp-keep-${k.id}`} data-state="carried">
         <g className="bh-kp-spark">
@@ -147,6 +158,15 @@ function Keepsake({ index, state }: { index: number; state: string }) {
           <g transform={big}>
             <KeepsakeSprite id={k.id} x={0} y={0} />
           </g>
+        </g>
+      </g>
+    );
+  }
+  if (state === "3" && !plays)
+    return (
+      <g data-testid={`tp-keep-${k.id}`} data-state="left" opacity="0.2">
+        <g transform={`translate(0 -10) ${big}`}>
+          <KeepsakeSprite id={k.id} x={0} y={0} />
         </g>
       </g>
     );
@@ -245,7 +265,7 @@ export default function TopLayer({ info }: { info: HigherSceneInfo }) {
   const lighter = Math.min(4, own["light-load"] ?? 0);
   const lift = info.fork === 2;
   const down = (own["set-down"] ?? 0) > 0;
-  const robot = robotAt(down ? 1 : stairShare(share));
+  const robot = robotAt(down ? 1 : info.walk / 300);
   const dawn = share >= 0.8;
   const dusk = share >= 0.4;
   const sky = dawn ? "#f6c68a" : dusk ? "#5a4f8f" : "#141a45";
@@ -371,7 +391,17 @@ export default function TopLayer({ info }: { info: HigherSceneInfo }) {
       {!down &&
         [...keeps].map((state, i) =>
           state === "-" ? null : (
-            <Keepsake key={KEEPSAKES[i].id} index={i} state={state} />
+            <Keepsake
+              key={KEEPSAKES[i].id}
+              index={i}
+              // One the robot has walked past (a film still has no ticks) is left.
+              state={
+                (state === "0" || state === "1") && keepsakeShare(i) <= share
+                  ? "3"
+                  : state
+              }
+              plays={i === info.lastKeep && (info.packed || info.parted)}
+            />
           )
         )}
       {/* lamps on the landings */}

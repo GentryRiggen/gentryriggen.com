@@ -15,9 +15,11 @@ import {
   justLeft,
   justPicked,
   keepsakeState,
+  lastTouched,
   leftBehind,
   loadOf,
   pickedUp,
+  stairShare,
 } from "./keepsakes";
 import {
   bankTier,
@@ -166,6 +168,8 @@ export interface HigherSceneInfo {
   height: number;
   /** The top: how far down the robot is, in percent. */
   descent: number;
+  /** Where the robot stands on the stairs, 0 to 300 (it walks keepsake to keepsake). */
+  walk: number;
   /** The keepsakes, a digit each: "-" not on the stairs, 0 on them, 1 marked, 2 carried, 3 left. */
   carry: string;
   /** Weight in the pack (0 to 4), and whether the robot has stopped to set something down. */
@@ -176,6 +180,8 @@ export interface HigherSceneInfo {
   parted: boolean;
   packs: number;
   parts: number;
+  /** The keepsake last picked up or left (0-based, -1 for none): only it plays its moment. */
+  lastKeep: number;
   /** How warm the ending is so far (what is carried). */
   warmth: number;
   /** A load is waiting on the site. */
@@ -276,6 +282,7 @@ export function sceneInfo(run: RunState): HigherSceneInfo {
     overtime: isOvertimeOn(run),
     height: Math.min(12, Math.floor((levels + scaling) / 2)),
     descent: Math.round(descentShare(run) * 100),
+    walk: run.phase === 3 ? Math.round(stairShare(descentShare(run)) * 300) : 0,
     carry:
       run.phase === 3
         ? Array.from({ length: KEEPSAKE_COUNT }, (_, i) =>
@@ -294,6 +301,7 @@ export function sceneInfo(run: RunState): HigherSceneInfo {
     parted: run.phase === 3 && justLeft(run),
     packs: pickedUp(run),
     parts: leftBehind(run),
+    lastKeep: run.phase === 3 ? lastTouched(run) : -1,
     warmth: run.phase === 3 ? endingWarmth(run) : 0,
     loadHere: isLoadHere(run),
     visitorHere: run.flags[visitorHereFlag(RETURN_VISITOR_ID)] === true,

@@ -1,9 +1,9 @@
 import type { ActionDef, RunState } from "../../engine/types";
 import { forkSide } from "./forks";
 import { banksSoFar } from "./playroom";
-import { gustsSoFar, ncWins, snapsSoFar } from "./sky";
-import { flipsSoFar, swapsSoFar } from "./town";
-import { isProjectDone, overtimeSoFar } from "./knowhow";
+import { gustsSoFar, snapsSoFar } from "./sky";
+import { flipsSoFar } from "./town";
+import { isProjectDone } from "./knowhow";
 import { FULL_DESCENT, PHASE_TOP } from "./resources";
 import { res } from "./lines";
 import { TUNING } from "./tuning";
@@ -29,7 +29,8 @@ import { TUNING } from "./tuning";
  *
  * State is hidden resources (`kp0`..), one per keepsake: 0 on the stairs,
  * 1 marked to bring, 2 carried, 3 left behind. An old save reads as "all on
- * the stairs", and the ones already passed are left behind on the first tick.
+ * the stairs", and the ones already passed are left behind quietly (no
+ * goodbye) on the first tick.
  */
 
 const K = TUNING.top.keepsakes;
@@ -59,16 +60,11 @@ const PROJECT_IDS = [
   "carbon-cable",
 ] as const;
 
-/** In the order they sit on the way down: the sky first, the rug last. */
+/**
+ * In the order they sit on the way down, a few minutes apart: five that
+ * only exist if they happened in this run, and three that are always there.
+ */
 export const KEEPSAKES: readonly KeepsakeDef[] = [
-  {
-    id: "glove",
-    name: "A window cleaner's glove",
-    from: "Sky",
-    note: "Left on a cable, very far from home.",
-    count: () => 1,
-    warmAt: [1, 99, 99],
-  },
   {
     id: "marble",
     name: "A sky-blue marble",
@@ -94,14 +90,6 @@ export const KEEPSAKES: readonly KeepsakeDef[] = [
     warmAt: [1, 3, 6],
   },
   {
-    id: "medal",
-    name: "A rope medal",
-    from: "Sky",
-    note: "For a whole minute with no crane.",
-    count: ncWins,
-    warmAt: [1, 2, 3],
-  },
-  {
     id: "blueprint",
     name: "A rolled blueprint",
     from: "Town",
@@ -110,36 +98,12 @@ export const KEEPSAKES: readonly KeepsakeDef[] = [
     warmAt: [1, 3, 5],
   },
   {
-    id: "whistle",
-    name: "A shift whistle",
-    from: "Town",
-    note: "Blown to start an overtime shift.",
-    count: overtimeSoFar,
-    warmAt: [1, 3, 6],
-  },
-  {
     id: "key",
     name: "A spare key",
     from: "Town",
     note: "To a door in the tower nobody ever found.",
     count: () => 1,
     warmAt: [1, 99, 99],
-  },
-  {
-    id: "ribbon",
-    name: "The mayor's ribbon",
-    from: "Town",
-    note: "Cut with very large scissors.",
-    count: () => 1,
-    warmAt: [1, 99, 99],
-  },
-  {
-    id: "hat",
-    name: "A spare hard hat",
-    from: "Town",
-    note: "A foreman left it on a peg.",
-    count: swapsSoFar,
-    warmAt: [1, 3, 6],
   },
   {
     id: "bulb",
@@ -156,30 +120,6 @@ export const KEEPSAKES: readonly KeepsakeDef[] = [
     note: "Banked after a long streak.",
     count: banksSoFar,
     warmAt: [1, 4, 10],
-  },
-  {
-    id: "button",
-    name: "A bear's button",
-    from: "Playroom",
-    note: "The first helper's, hanging by one thread.",
-    count: () => 1,
-    warmAt: [1, 99, 99],
-  },
-  {
-    id: "crayon",
-    name: "A crayon",
-    from: "Playroom",
-    note: "Red, and a bit chewed. From the rug.",
-    count: () => 1,
-    warmAt: [1, 99, 99],
-  },
-  {
-    id: "pebble",
-    name: "A smooth pebble",
-    from: "Grass",
-    note: "Picked up on the very last landing, still cool.",
-    count: () => 1,
-    warmAt: [1, 99, 99],
   },
   {
     id: "daisy",
@@ -473,10 +413,18 @@ export function tickKeepsakes(run: RunState): void {
   if (!isTop(run)) return;
   const here = descent(run);
   const r = run.resources;
+  // A save from before the keepsakes can open part-way down: what is already
+  // behind the robot was never on offer, so it is left quietly (no goodbye).
+  const isFirstLook = res(run, "kpSeen") === 0;
+  r.kpSeen = 1;
   for (const i of onTheStairs(run)) {
     if (here < shareOf(i)) continue;
     const state = keepsakeState(run, i);
     if (state !== "open" && state !== "marked") continue;
+    if (state === "open" && isFirstLook) {
+      r[slot(i)] = 3;
+      continue;
+    }
     const fits = loadOf(run) + weightOf(i) <= K.packSize;
     if (state === "marked" && fits) {
       r[slot(i)] = 2;
@@ -508,6 +456,7 @@ export const isKeepMomentBusy = (run: RunState): boolean =>
 export function resetKeepsakes(run: RunState): void {
   for (let i = 0; i < KEEPSAKE_COUNT; i += 1) run.resources[slot(i)] = 0;
   run.resources.kpPauseUntil = 0;
+  run.resources.kpSeen = 0;
 }
 
 // -------------------------------------------------------------------- log

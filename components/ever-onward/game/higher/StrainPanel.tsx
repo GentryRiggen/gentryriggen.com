@@ -81,7 +81,8 @@ export default function StrainPanel({ def, run, onAct }: PanelProps) {
           ? "Changing the strain… the cable takes a moment to settle."
           : "Changing the strain takes a moment to settle."}{" "}
         A gust on a tight cable snaps it much more often. A snap loses the load
-        and takes a moment to restring.
+        and takes a moment to restring. In a strong gust a loose load can drop
+        at any strain, and only a tie-down keeps it.
       </p>
     </PanelFrame>
   );

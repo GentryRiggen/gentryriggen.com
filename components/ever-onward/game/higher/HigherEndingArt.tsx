@@ -112,7 +112,7 @@ export default function HigherEndingArt({ run }: { run: RunState }) {
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black to-transparent" />
       <p
         data-testid="lm-ending-carried"
-        className="absolute inset-x-0 bottom-2 px-4 text-center font-mono text-xs text-amber-100"
+        className="absolute inset-x-0 bottom-2 px-4 text-center font-mono text-sm font-bold text-amber-100 md:text-base"
       >
         It carried {carriedWords(run)} all the way down.
       </p>

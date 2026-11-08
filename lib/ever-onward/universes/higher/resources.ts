@@ -191,7 +191,8 @@ export const RESOURCES: readonly ResourceDef[] = [
   // 2 carried, 3 left), the stop to set one down, how many were picked up and
   // left (with when) and which was last.
   ...hidden([
-    ...Array.from({ length: 16 }, (_, i) => `kp${i}`),
+    ...Array.from({ length: 8 }, (_, i) => `kp${i}`),
+    "kpSeen",
     "kpPauseUntil",
     "kpPicks",
     "kpLefts",

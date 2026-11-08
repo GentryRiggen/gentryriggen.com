@@ -25,9 +25,6 @@ import type { PanelProps } from "../../universes/types";
 import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 
-/** Full class names, so Tailwind sees every one of them. */
-const SLOT_FILL = ["bg-slate-700", "bg-amber-300", "bg-amber-300"] as const;
-
 const ORIGIN_CLASS = {
   Sky: "text-sky-200",
   Town: "text-rose-200",
@@ -91,10 +88,10 @@ export default function PackPanel({ def, run, onAct }: PanelProps) {
             key={n}
             className={`h-3 flex-1 border-2 border-slate-500 ${
               n < carried
-                ? SLOT_FILL[2]
+                ? "bg-amber-300"
                 : n < booked
                   ? "bg-amber-300/40"
-                  : SLOT_FILL[0]
+                  : "bg-slate-700"
             }`}
           />
         ))}
@@ -121,7 +118,7 @@ export default function PackPanel({ def, run, onAct }: PanelProps) {
               key={k.id}
               data-testid={`bh-keep-${k.id}`}
               data-state={state}
-              className={`flex flex-col gap-1.5 border-4 p-2 ${
+              className={`flex flex-col gap-1 border-4 p-2 ${
                 isOn
                   ? "border-amber-300 bg-amber-950/60 shadow-[4px_4px_0_#78350f]"
                   : state === "left"
@@ -132,55 +129,61 @@ export default function PackPanel({ def, run, onAct }: PanelProps) {
               <h3 className={`${pixelClass} text-[10px] text-slate-50`}>
                 {k.name}
               </h3>
-              <p
-                className={`font-mono text-xs font-bold ${ORIGIN_CLASS[k.from]}`}
-              >
-                From the {k.from}
+              <p className="font-mono text-xs leading-snug text-slate-200">
+                <span className={`font-bold ${ORIGIN_CLASS[k.from]}`}>
+                  From the {k.from}.
+                </span>{" "}
+                {k.note}
               </p>
-              <p className="font-mono text-xs text-slate-200">{k.note}</p>
-              <p className="font-mono text-xs font-bold text-emerald-200">
+              <p className="font-mono text-xs leading-snug font-bold text-emerald-200">
                 + Adds {warmthWords(warmthOf(run, i))}
               </p>
-              <p className="font-mono text-xs font-bold text-rose-200">
+              <p className="font-mono text-xs leading-snug font-bold text-rose-200">
                 - Slows steps by about {slowPct}% (weight {weightOf(i)})
               </p>
-              <button
-                type="button"
-                aria-disabled={
-                  !(
-                    canBring ||
-                    state === "marked" ||
-                    (state === "carried" && !settingDown)
-                  )
-                }
-                data-testid={`bh-keep-btn-${k.id}`}
-                onClick={() => {
-                  if (doable) onAct(id);
-                }}
-                className={`${pixelClass} mt-auto min-h-11 w-full touch-manipulation border-4 px-3 py-2 text-[10px] ${retroFocusClass} ${
-                  doable
-                    ? isOn
-                      ? "border-amber-200 bg-amber-400 text-amber-950 shadow-[3px_3px_0_#78350f] hover:bg-amber-300 active:translate-y-0.5 active:shadow-none"
-                      : "border-slate-300 bg-slate-700 text-slate-50 shadow-[3px_3px_0_#0f172a] hover:bg-slate-600 active:translate-y-0.5 active:shadow-none"
-                    : "cursor-not-allowed border-slate-700 bg-slate-900 text-slate-400"
-                }`}
-              >
-                {buttonText(state, canBring)}
-              </button>
-              {(state === "open" || state === "marked") && (
+              <div className="mt-auto grid grid-cols-2 gap-2 pt-1">
                 <button
                   type="button"
-                  aria-disabled={!canPerformAction(def, run, leaveActionId(i))}
-                  data-testid={`bh-keep-leave-${k.id}`}
+                  aria-disabled={
+                    !(
+                      canBring ||
+                      state === "marked" ||
+                      (state === "carried" && !settingDown)
+                    )
+                  }
+                  data-testid={`bh-keep-btn-${k.id}`}
                   onClick={() => {
-                    if (canPerformAction(def, run, leaveActionId(i)))
-                      onAct(leaveActionId(i));
+                    if (doable) onAct(id);
                   }}
-                  className={`${pixelClass} min-h-11 w-full touch-manipulation border-4 border-slate-600 bg-slate-900 px-3 py-2 text-[10px] text-slate-200 hover:bg-slate-800 active:translate-y-0.5 ${retroFocusClass}`}
+                  className={`${pixelClass} ${
+                    state === "open" || state === "marked" ? "" : "col-span-2"
+                  } min-h-11 w-full touch-manipulation border-4 px-2 py-2 text-[10px] ${retroFocusClass} ${
+                    doable
+                      ? isOn
+                        ? "border-amber-200 bg-amber-400 text-amber-950 shadow-[3px_3px_0_#78350f] hover:bg-amber-300 active:translate-y-0.5 active:shadow-none"
+                        : "border-slate-300 bg-slate-700 text-slate-50 shadow-[3px_3px_0_#0f172a] hover:bg-slate-600 active:translate-y-0.5 active:shadow-none"
+                      : "cursor-not-allowed border-slate-700 bg-slate-900 text-slate-400"
+                  }`}
                 >
-                  Leave it
+                  {buttonText(state, canBring)}
                 </button>
-              )}
+                {(state === "open" || state === "marked") && (
+                  <button
+                    type="button"
+                    aria-disabled={
+                      !canPerformAction(def, run, leaveActionId(i))
+                    }
+                    data-testid={`bh-keep-leave-${k.id}`}
+                    onClick={() => {
+                      if (canPerformAction(def, run, leaveActionId(i)))
+                        onAct(leaveActionId(i));
+                    }}
+                    className={`${pixelClass} min-h-11 w-full touch-manipulation border-4 border-slate-600 bg-slate-900 px-2 py-2 text-[10px] text-slate-200 hover:bg-slate-800 active:translate-y-0.5 ${retroFocusClass}`}
+                  >
+                    Leave it
+                  </button>
+                )}
+              </div>
             </li>
           );
         })}

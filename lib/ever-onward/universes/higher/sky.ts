@@ -212,7 +212,8 @@ export const snapInGust = (strain: number, calm: number, power = 1): number =>
 
 /**
  * What a strong gust drops a loose load at any strain, a second (a Slack
- * cable only softens it). Braces and ballast calm it like the rest.
+ * cable does not soften it; only a tie-down keeps the load). Braces and
+ * ballast calm it like the rest.
  */
 export const gustFloor = (run: RunState): number =>
   isStrongGust(run) ? K.strongDropRate : 0;

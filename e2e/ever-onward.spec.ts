@@ -525,27 +525,34 @@ test.describe("Ever Onward", () => {
     const pack = page.getByTestId("bh-pack");
     await expect(pack).toBeVisible();
     await expect(pack).toHaveAttribute("data-load", "0");
-    // The little things are always on the stairs, glowing in the picture.
-    await expect(page.getByTestId("tp-keep-marble").first()).toHaveAttribute(
+    // The next few keepsakes show as cards, glowing on the stairs in the picture.
+    const first = page
+      .locator('[data-testid^="bh-keep-"][data-state="open"]')
+      .first();
+    await expect(first).toBeVisible();
+    const id = (await first.getAttribute("data-testid"))!.replace(
+      "bh-keep-",
+      ""
+    );
+    await expect(page.getByTestId(`tp-keep-${id}`).first()).toHaveAttribute(
       "data-state",
       "open"
     );
     await expect(page.getByTestId("tp-keep-daisy").first()).toBeAttached();
     // Each card shows a plus and a minus. Marking one marks it in the picture.
-    const marble = page.getByTestId("bh-keep-marble");
-    await expect(marble).toContainText("Adds");
-    await expect(marble).toContainText("Slows steps");
-    await page.getByTestId("bh-keep-btn-marble").click();
-    await expect(page.getByTestId("tp-keep-marble").first()).toHaveAttribute(
+    await expect(first).toContainText("Adds");
+    await expect(first).toContainText("Slows steps");
+    await page.getByTestId(`bh-keep-btn-${id}`).click();
+    await expect(page.getByTestId(`tp-keep-${id}`).first()).toHaveAttribute(
       "data-state",
       "marked"
     );
-    await expect(page.getByTestId("bh-keep-btn-marble")).toHaveText(
+    await expect(page.getByTestId(`bh-keep-btn-${id}`)).toHaveText(
       /bringing it/i
     );
     // Changing your mind before the robot gets there is free.
-    await page.getByTestId("bh-keep-btn-marble").click();
-    await expect(page.getByTestId("tp-keep-marble").first()).toHaveAttribute(
+    await page.getByTestId(`bh-keep-btn-${id}`).click();
+    await expect(page.getByTestId(`tp-keep-${id}`).first()).toHaveAttribute(
       "data-state",
       "open"
     );

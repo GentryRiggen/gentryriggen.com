@@ -32,7 +32,13 @@ const K = TUNING.top.keepsakes;
 export type PackStyle = "none" | "all" | "warmest" | "late" | "reads";
 
 /** What one point of a warm ending is worth to a bot, in seconds. */
-const WARMTH_SECONDS = 15;
+const WARMTH_SECONDS = 60;
+
+/**
+ * The way down speeds up (quiet piles on quiet), so the seconds a slow pack
+ * really costs are about this share of the straight-line guess.
+ */
+const SPEED_UP = 0.25;
 
 /** Seconds left on the way down at today's pace (a bot's guess, never growing). */
 export function secondsToGround(run: RunState): number {
@@ -68,14 +74,23 @@ export function wanted(run: RunState, style: PackStyle): number[] {
   if (style === "none") return [];
   const room = PACK_SIZE - loadOf(run);
   const items = ahead(run);
-  if (style === "all" || style === "late") {
-    const list =
-      style === "late" ? items.filter((i) => keepsakeShare(i) >= 0.5) : items;
+  if (style === "all") {
     const out: number[] = [];
     let weight = 0;
-    for (const i of list)
+    for (const i of items)
       if (weight + weightOf(i) <= room) {
         out.push(i);
+        weight += weightOf(i);
+      }
+    return out;
+  }
+  if (style === "late") {
+    // The last few on the way down, whatever they are.
+    const out: number[] = [];
+    let weight = 0;
+    for (const i of [...items].reverse())
+      if (weight + weightOf(i) <= room) {
+        out.unshift(i);
         weight += weightOf(i);
       }
     return out;
@@ -85,7 +100,8 @@ export function wanted(run: RunState, style: PackStyle): number[] {
   const cost = (i: number): number =>
     style === "warmest"
       ? 0
-      : weightOf(i) *
+      : SPEED_UP *
+        weightOf(i) *
         K.slowPerWeight *
         loadEase(run) *
         ((total * (1 - keepsakeShare(i))) / Math.max(0.05, 1 - here));

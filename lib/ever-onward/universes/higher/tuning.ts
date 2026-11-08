@@ -388,32 +388,26 @@ export const TUNING = {
      * Keepsakes to carry down (keepsakes.ts). The pack holds `packSize` of
      * weight; every unit of weight carried slows each step by `slowPerWeight`
      * (the old lift carries it, so only `liftEase` of that). Each sits on the
-     * way down at `share` of the descent. Setting one down stops the robot
+     * way down at `share` of the descent (the descent speeds up, so the
+     * shares are spread to land about a minute or three apart for a player
+     * at a steady pace). Setting one down stops the robot
      * for `setDownSeconds`; the scene shows a pickup or a goodbye for
      * `showSeconds`.
      */
     keepsakes: {
       packSize: 4,
-      slowPerWeight: 1,
+      slowPerWeight: 0.2,
       liftEase: 0.5,
       setDownSeconds: 8,
       showSeconds: 5,
       items: [
-        { id: "glove", share: 0.0045, weight: 1 },
-        { id: "marble", share: 0.0062, weight: 1 },
-        { id: "feather", share: 0.0571, weight: 1 },
-        { id: "bolt", share: 0.0914, weight: 2 },
-        { id: "medal", share: 0.1403, weight: 2 },
-        { id: "blueprint", share: 0.1975, weight: 1 },
-        { id: "whistle", share: 0.2263, weight: 1 },
-        { id: "key", share: 0.2551, weight: 1 },
-        { id: "ribbon", share: 0.3243, weight: 1 },
-        { id: "hat", share: 0.3641, weight: 2 },
-        { id: "bulb", share: 0.404, weight: 1 },
-        { id: "star", share: 0.6032, weight: 1 },
-        { id: "button", share: 0.7578, weight: 1 },
-        { id: "crayon", share: 0.8898, weight: 1 },
-        { id: "pebble", share: 0.9285, weight: 1 },
+        { id: "marble", share: 2e-5, weight: 1 },
+        { id: "feather", share: 0.00066, weight: 1 },
+        { id: "bolt", share: 0.00366, weight: 2 },
+        { id: "blueprint", share: 0.01657, weight: 1 },
+        { id: "key", share: 0.086, weight: 1 },
+        { id: "bulb", share: 0.276, weight: 1 },
+        { id: "star", share: 0.795, weight: 1 },
         { id: "daisy", share: 0.94, weight: 1 },
       ] as readonly { id: string; share: number; weight: number }[],
     },

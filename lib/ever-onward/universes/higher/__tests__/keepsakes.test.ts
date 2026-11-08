@@ -22,6 +22,7 @@ import {
   carriedIndexes,
   endingWarmth,
   isSettingDown,
+  leftBehind,
   keepActionId,
   keepsakeState,
   loadOf,
@@ -103,20 +104,15 @@ describe("what is on the stairs depends on the run", () => {
       skNcWins: 0,
     });
     expect(onTheStairs(bare).map((i) => KEEPSAKES[i].id)).toEqual([
-      "glove",
       "marble",
       "key",
-      "ribbon",
-      "button",
-      "crayon",
-      "pebble",
       "daisy",
     ]);
     expect(onTheStairs(top()).length).toBe(KEEPSAKES.length);
     const snappy = top({ skSnaps: 2 });
     expect(onTheStairs(snappy).map((i) => KEEPSAKES[i].id)).toContain("bolt");
     expect(onTheStairs(snappy).map((i) => KEEPSAKES[i].id)).not.toContain(
-      "medal"
+      "star"
     );
   });
 
@@ -133,18 +129,18 @@ describe("choosing what to bring", () => {
   it("marks a keepsake, takes the mark back, and refuses what will not fit", () => {
     let run = top();
     const bolt = idx("bolt");
-    const medal = idx("medal");
-    const hat = idx("hat");
+    const blueprint = idx("blueprint");
     run = mark(run, bolt);
     expect(keepsakeState(run, bolt)).toBe("marked");
-    run = mark(run, medal);
-    expect(canBring(run, hat)).toBe(false);
-    const glove = idx("glove");
-    run = act(run, glove);
-    expect(keepsakeState(run, glove)).toBe("open");
+    run = mark(run, idx("marble"));
+    run = mark(run, idx("feather"));
+    expect(canBring(run, blueprint)).toBe(false);
+    const daisy = idx("daisy");
+    run = act(run, daisy);
+    expect(keepsakeState(run, daisy)).toBe("open");
     run = unmarkIt(run, bolt);
     expect(keepsakeState(run, bolt)).toBe("open");
-    expect(canBring(run, hat)).toBe(true);
+    expect(canBring(run, blueprint)).toBe(true);
   });
 
   it("shows the next few cards, with a plus and a minus and no verdict, and more as the robot goes", () => {
@@ -157,9 +153,9 @@ describe("choosing what to bring", () => {
       const text = JSON.stringify(k).toLowerCase();
       expect(text).not.toMatch(/best|recommend|should|worth it/);
     }
-    const later = walkTo(top(), 0.1);
+    const later = walkTo(top(), 0.003);
     expect(keepIds(later).length).toBeGreaterThanOrEqual(3);
-    expect(keepIds(later)).not.toContain(keepActionId(idx("glove")));
+    expect(keepIds(later)).not.toContain(keepActionId(idx("marble")));
   });
 
   it("picks up what was marked when the robot reaches it, and leaves the rest", () => {
@@ -184,12 +180,32 @@ describe("choosing what to bring", () => {
   });
 });
 
+describe("a save that opens part-way down", () => {
+  it("leaves what is already behind quietly, with no goodbye", () => {
+    const run = walkTo(top(), 0.3);
+    expect(keepsakeState(run, idx("marble"))).toBe("left");
+    expect(keepsakeState(run, idx("bulb"))).toBe("left");
+    expect(keepsakeState(run, idx("star"))).toBe("open");
+    expect(leftBehind(run)).toBe(0);
+    expect(sceneInfo(run).parted).toBe(false);
+    expect(sceneInfo(run).lastKeep).toBe(-1);
+  });
+
+  it("says goodbye as usual to what the robot walks past after that", () => {
+    let run = walkTo(top(), 0.0001);
+    run = walkTo(run, 0.01);
+    expect(keepsakeState(run, idx("feather"))).toBe("left");
+    expect(sceneInfo(run).parted).toBe(true);
+    expect(sceneInfo(run).lastKeep).toBe(idx("bolt"));
+  });
+});
+
 describe("what it costs", () => {
   it("slows every step by the weight carried, and less in the old lift", () => {
-    const hat = idx("hat");
+    const bolt = idx("bolt");
     let run = top();
-    run = mark(run, hat);
-    run = walkTo(run, K.items[hat].share + 0.01);
+    run = mark(run, bolt);
+    run = walkTo(run, K.items[bolt].share + 0.01);
     expect(loadOf(run)).toBe(2);
     expect(walkMult(run)).toBeCloseTo(1 / (1 + K.slowPerWeight * 2), 5);
     const lift = withResources(run, { fkTop: 2 });
@@ -198,9 +214,9 @@ describe("what it costs", () => {
   });
 
   it("brings the ground nearer more slowly for the same steps", () => {
-    const hat = idx("hat");
+    const bolt = idx("bolt");
     const light = walkTo(top(), 0.6);
-    const heavy = walkTo(mark(top(), hat), 0.6);
+    const heavy = walkTo(mark(top(), bolt), 0.6);
     const gain = (run: RunState): number => {
       let next = run;
       for (let n = 0; n < 40; n += 1) next = manualAction(def, next);
@@ -212,12 +228,12 @@ describe("what it costs", () => {
   });
 
   it("stops the robot for a moment to set one down, and the pack is lighter after", () => {
-    const crayon = idx("crayon");
+    const crayon = idx("bulb");
     const star = idx("star");
     let run = top();
     run = mark(run, star);
     run = mark(run, crayon);
-    run = walkTo(run, 0.92);
+    run = walkTo(run, 0.9);
     expect(loadOf(run)).toBe(2);
     const at = descentShare(run);
     run = act(run, star);
@@ -242,7 +258,7 @@ describe("what it costs", () => {
 describe("the last picture", () => {
   it("has a warmth that is the sum of what was carried", () => {
     let run = top();
-    for (const id of ["feather", "ribbon"]) run = mark(run, idx(id));
+    for (const id of ["feather", "key"]) run = mark(run, idx(id));
     run = walkTo(run, 0.99);
     expect(carriedIndexes(run).length).toBe(2);
     expect(endingWarmth(run)).toBeGreaterThanOrEqual(2);
@@ -344,8 +360,10 @@ describe("no pack is best: a light pack is quicker, a full one is warmer", () =>
         });
 
         it("no pack is both the quickest and the warmest, and three are worth choosing between", () => {
+          // The old lift carries half the weight, so a pack costs half as much there.
+          const margin = side === 1 ? 1.02 : 1.05;
           const quicker = (a: PackStyle, b: PackStyle): boolean =>
-            results[a].seconds < results[b].seconds / 1.05;
+            results[a].seconds < results[b].seconds / margin;
           const warmer = (a: PackStyle, b: PackStyle): boolean =>
             results[a].warmth > results[b].warmth;
           // A pack is beaten when another is quicker and at least as warm, or warmer and no slower.
@@ -365,7 +383,7 @@ describe("no pack is best: a light pack is quicker, a full one is warmer", () =>
           expect(frontier.length).toBeGreaterThanOrEqual(3);
           const seconds = STYLES.map((s) => results[s].seconds);
           expect(Math.max(...seconds) / Math.min(...seconds)).toBeGreaterThan(
-            1.05
+            margin
           );
         });
       });

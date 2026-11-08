@@ -26,7 +26,7 @@ export const CHANGELOG: readonly Release[] = [
       "The town also has a shadow that dims the streets. A lights switch turns the lamps on, and lamps cost bricks",
       "In the Sky, you check the wind forecast before each climb. Wind and a heavy load strain the cables, so watch the strain dial",
       "Some climbs have no crane. You go up the slow way, and tying everything down keeps it from blowing off",
-      "At the Top, you choose keepsakes to carry up with you, and the pack shows in the picture",
+      "At the Top, a few little keepsakes wait on the stairs. Pick the ones to carry down: a full pack slows you a little and makes the last picture warmer",
       "All of it plays out in the pictures, so you can see how your choices are going",
     ],
   },
