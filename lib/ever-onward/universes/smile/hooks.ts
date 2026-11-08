@@ -172,8 +172,12 @@ export const SMILE_CONSUMABLES: readonly ConsumableDef[] = [
   {
     id: "real",
     label: "Real smiles",
-    level: (run) => (isWorldOpen(run) ? realOf(run) : null),
-    lowZone: { lo: 0.02, hi: 0.5 },
+    // Read from the floor up: 0 is the least the world can keep, 1 is all real.
+    level: (run) =>
+      isWorldOpen(run)
+        ? (realOf(run) - TUNING.world.floor) / (1 - TUNING.world.floor)
+        : null,
+    lowZone: { lo: 0.02, hi: 0.35 },
   },
   {
     id: "mood",

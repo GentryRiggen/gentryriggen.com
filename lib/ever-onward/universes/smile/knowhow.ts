@@ -124,9 +124,6 @@ export const PARADE_ACTIONS: readonly ActionDef[] = [
 // ------------------------------------------------------------------- projects
 
 /** "×2 → ×3": a project's before-to-after multiplier. */
-const times = (before: number, after: number): string =>
-  `×${formatNumber(Math.round(before * 100) / 100)} → ×${formatNumber(Math.round(after * 100) / 100)}`;
-
 /** "×2": a project's multiplier, no more digits than it needs. */
 const mult = (n: number): string => `×${Number(n.toFixed(2))}`;
 
@@ -204,7 +201,7 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     costs: cost(K.costs[1]),
     revealWhen: (run) => owned(run, "poster") >= 3,
     effectPreview: () =>
-      `+ A broadcast pays ${times(forkParadeMult(), forkParadeMult() * K.bigTopMult)}\n− It still paints real smiles over faster`,
+      `+ A broadcast pays ${mult(forkParadeMult() * K.bigTopMult)} instead of ${mult(forkParadeMult())}\n− It still paints real smiles over faster`,
     botValue: 0.4,
   },
   {

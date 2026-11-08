@@ -48,6 +48,8 @@ function openRun(seed: number, trust = 0): RunState {
     resources: {
       ...base.resources,
       trust,
+      // Every smile kept: the bench is at its warmest.
+      wsKept: 1,
       qbSeat: 0,
       qbMove: 0,
       qbAway: 0,

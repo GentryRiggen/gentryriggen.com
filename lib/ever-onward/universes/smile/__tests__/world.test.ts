@@ -7,7 +7,7 @@ import {
 } from "../../../engine/engine";
 import { simulate, type Strategy } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
-import { followsTheDay, holdsLevel, worldPlayer } from "../bots";
+import { followsTheDay, holdsLevel, takesProjects, worldPlayer } from "../bots";
 import { sceneInfo } from "../scene";
 import { smileGauge } from "../gauge";
 import { TUNING } from "../tuning";
@@ -321,6 +321,38 @@ describe("The frontier: finishing fast costs real smiles, keeping them costs tim
     };
   }
 
+  const DRONE_TASTE = [
+    "hypno-drones",
+    "listening-benches",
+    "grin-guide",
+    "every-language",
+    "quiet-hours",
+  ];
+  /** A player who takes the drones' projects and plays the dial as `dial`. */
+  function withProjects(
+    dial: NonNullable<Strategy["actions"]>,
+    taste: string[]
+  ): Strategy {
+    const strategy = worldPlayer(hard, dial, "greedy");
+    const fallback = takesProjects("greedy");
+    strategy.projects = (run, shown) =>
+      run.phase !== 2
+        ? (fallback as (r: RunState, p: typeof shown) => string[])(run, shown)
+        : taste.filter((id) => shown.some((p) => p.id === id));
+    return strategy;
+  }
+  /** Loudest for `minutes` of the world, then Hushed to let them heal. */
+  function greedyThenHushed(minutes: number): Strategy {
+    const start = entry.time;
+    return withProjects((run, available) => {
+      if (!isWorldOpen(run) || isRetuning(run)) return [];
+      const id = levelActionId((run.time - start) / 60 < minutes ? 4 : 0);
+      return levelOf(run) !== Number(id.slice(3)) && available.includes(id)
+        ? [id]
+        : [];
+    }, DRONE_TASTE);
+  }
+
   const policies = {
     hushed: () => worldPlayer(hard, holdsLevel(0), "steady"),
     loudest: () => worldPlayer(hard, holdsLevel(4), "steady"),
@@ -336,6 +368,13 @@ describe("The frontier: finishing fast costs real smiles, keeping them costs tim
     careful: () =>
       worldPlayer(hard, followsTheDay({ base: 2, floor: 0.4 }), "steady"),
     greedy: () => worldPlayer(hard, holdsLevel(4), "greedy"),
+    // The ways round the cost: HypnoDrones, then sit at a quiet level and let
+    // the real smiles heal (with or without the listening benches).
+    hushedDrones: () => withProjects(holdsLevel(0), DRONE_TASTE),
+    softDrones: () => withProjects(holdsLevel(1), DRONE_TASTE),
+    greedyThenHushed8: () => greedyThenHushed(8),
+    greedyThenHushed10: () => greedyThenHushed(10),
+    greedyThenHushed12: () => greedyThenHushed(12),
   };
 
   const results = {} as Record<keyof typeof policies, Outcome>;
@@ -356,7 +395,7 @@ describe("The frontier: finishing fast costs real smiles, keeping them costs tim
           ])
         )
       );
-  }, 240_000);
+  }, 900_000);
 
   it("the loudest dial finishes the world fastest and keeps the fewest real smiles of the fixed ones", () => {
     expect(results.loudest.world).toBeLessThan(results.loud.world);
@@ -398,6 +437,28 @@ describe("The frontier: finishing fast costs real smiles, keeping them costs tim
       );
       expect(ordered[i].world).toBeGreaterThan(ordered[i - 1].world);
     }
+  });
+
+  it("HypnoDrones are not free: sitting at Hushed afterwards does not give the smiles back", () => {
+    for (const key of [
+      "hushedDrones",
+      "softDrones",
+      "greedyThenHushed8",
+      "greedyThenHushed10",
+      "greedyThenHushed12",
+    ] as const) {
+      expect(results[key].kept).toBeLessThan(0.15);
+      // No way round: none of them finishes sooner than the player who minds
+      // the real smiles and keeps most of them.
+      expect(results[key].total).toBeGreaterThan(results.keeper.total + 1.5);
+      expect(results[key].total).toBeGreaterThan(results.careful.total);
+    }
+  });
+
+  it("keeping the smiles pays off in the Quiet: the minder finishes sooner overall than the greedy player", () => {
+    expect(results.keeper.total).toBeLessThan(results.greedy.total);
+    expect(results.careful.total).toBeLessThan(results.greedy.total * 1.02);
+    expect(results.keeper.total).toBeLessThan(results.hushed.total);
   });
 
   it("the Quiet takes longer when the real smiles are gone", () => {

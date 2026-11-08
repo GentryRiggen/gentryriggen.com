@@ -70,7 +70,7 @@ export default function SpeakersPanel({ def, run, onAct }: PanelProps) {
         "data-real": tenths,
       }}
       result={realLine(run)}
-      resultTone={real < 0.4 ? "amber" : "emerald"}
+      resultTone={real < 0.6 ? "amber" : "emerald"}
       resultTestId="ms-speakers-result"
     >
       <p

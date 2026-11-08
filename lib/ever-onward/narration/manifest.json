@@ -2926,8 +2926,18 @@
   },
   "smile/quiet-end-1": {
     "file": "/ever-onward/voice/smile/quiet-end-1.mp3",
-    "hash": "ae8b28299cba",
-    "durationGuess": 12
+    "hash": "1d8b7365bfe9",
+    "durationGuess": 20
+  },
+  "smile/quiet-end-1-some": {
+    "file": "/ever-onward/voice/smile/quiet-end-1-some.mp3",
+    "hash": "de77fd98ebd9",
+    "durationGuess": 24
+  },
+  "smile/quiet-end-1-few": {
+    "file": "/ever-onward/voice/smile/quiet-end-1-few.mp3",
+    "hash": "114a2d2442b1",
+    "durationGuess": 28
   },
   "smile/quiet-end-2": {
     "file": "/ever-onward/voice/smile/quiet-end-2.mp3",

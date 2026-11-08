@@ -1,7 +1,7 @@
 import type { SmileSceneInfo } from "@/lib/ever-onward/universes/smile/scene";
 import { QuietForkArt } from "./ForkArt";
 import BenchLayer, { BenchRoad } from "./BenchLayer";
-import type { Mood } from "./parts";
+import { Face, INK, type Mood } from "./parts";
 
 interface LayerProps {
   info: SmileSceneInfo;
@@ -192,6 +192,49 @@ function Blanket({ level }: { level: number }) {
   );
 }
 
+/** Who is real: the order the crowd's real smiles are given out in. */
+const CROWD_X = [30, 80, 130, 180, 230, 280, 330] as const;
+const REAL_ORDER = [3, 0, 5, 2, 6, 1, 4] as const;
+/** How many of the seven far-off faces are real, by the quarter of smiles kept. */
+const REAL_BY_BAND = [1, 3, 5, 7] as const;
+
+/** A painted-on smile: the same wide grin, stiff, never crinkling at the eyes. */
+function PaintedFace({ x, y }: { x: number; y: number }) {
+  return (
+    <g data-crowd="painted" transform={`translate(${x} ${y})`}>
+      <rect x="1" y="0" width="12" height="14" fill="#efe3cf" />
+      <rect x="0" y="1" width="14" height="12" fill="#efe3cf" />
+      <rect x="3" y="4" width="2" height="2" fill={INK} />
+      <rect x="9" y="4" width="2" height="2" fill={INK} />
+      <rect x="2" y="8" width="10" height="3" fill="#fff" stroke={INK} />
+    </g>
+  );
+}
+
+/** The far side of the road: real smiles crinkle and bob, painted ones stay put. */
+function Crowd({ kept }: { kept: number }) {
+  const realCount = REAL_BY_BAND[kept];
+  return (
+    <g aria-hidden="true" data-testid="eo-quiet-crowd" data-kept={kept}>
+      {CROWD_X.map((x, i) => {
+        const isReal = REAL_ORDER.indexOf(i as 0) < realCount;
+        return (
+          <g key={x}>
+            <rect x={x} y="158" width="14" height="14" fill="#3d4a7a" />
+            {isReal ? (
+              <g className={i % 2 ? "ms-bob" : "ms-bob-b"} data-crowd="real">
+                <Face x={x} y={144} size={14} mood="smile" />
+              </g>
+            ) : (
+              <PaintedFace x={x} y={144} />
+            )}
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
 /** The Quiet: a long bench at the edge of the cheer, and two who are not talking. */
 export default function QuietLayer({ info }: LayerProps) {
   const mood = FACE_BY_STAGE[info.face];
@@ -215,6 +258,7 @@ export default function QuietLayer({ info }: LayerProps) {
           <rect key={x} x={x} y="186" width="36" height="3" />
         ))}
       </g>
+      <Crowd kept={info.kept} />
       <BenchRoad info={info} />
       <rect x="-1200" y="198" width="2800" height="120" fill="#33406e" />
       <g className="ms-leaf" fill="#e0a458">

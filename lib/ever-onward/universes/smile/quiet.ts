@@ -2,7 +2,7 @@ import { nextRandom } from "../../engine/rng";
 import type { ActionDef, RunState } from "../../engine/types";
 import { forkCloseMult } from "./forks";
 import { FULL_TRUST, PHASE_QUIET } from "./resources";
-import { carryRealSmiles } from "./world";
+import { carryRealSmiles, keptOf } from "./world";
 import { TUNING } from "./tuning";
 
 /**
@@ -108,9 +108,17 @@ export const closeMult = (run: RunState): number =>
 export const trustMult = (run: RunState): number =>
   1 + Q.benchBoost * Math.min(1, owned(run, BENCH_ID));
 
+/**
+ * How warm the friend is to a bit of patience, from `keptFloor` (the world
+ * painted every smile over) to 1 (all real): they have heard what the world
+ * did. The head start is separate, and stays.
+ */
+export const keptWarmth = (run: RunState): number =>
+  Q.keptFloor + (1 - Q.keptFloor) * keptOf(run);
+
 /** What trust a bit of patience builds right now, all in. */
 export const trustPerPatience = (run: RunState): number =>
-  Q.growthPerPatience * trustMult(run) * closeMult(run);
+  Q.growthPerPatience * trustMult(run) * closeMult(run) * keptWarmth(run);
 
 /** Patience adds up, and the same patience builds trust. */
 export function addPatience(run: RunState, amount: number): void {

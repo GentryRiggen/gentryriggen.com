@@ -15,6 +15,8 @@ export const STORY: readonly StoryMessage[] = [
 export const ENDING_STORY_IDS = [
   "real-smile",
   "quiet-end-1",
+  "quiet-end-1-some",
+  "quiet-end-1-few",
   "quiet-end-2",
   "quiet-end-3",
 ];

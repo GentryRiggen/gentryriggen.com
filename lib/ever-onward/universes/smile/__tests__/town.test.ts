@@ -308,11 +308,11 @@ describe("The town: nothing is best for good (simulated)", () => {
 
   it("moving floats with the day is never a mistake, even though a whole town's time barely moves", () => {
     // Across a whole town the weather is diluted, so steering is about as
-    // quick as one split (within 2%), and never slower than moving only on
-    // plain days. What it changes is the route's pay on the day itself: see
+    // quick as one split, and never slower than it or than moving only on
+    // plain days (no tolerance: a party is worth a float). What it changes is the route's pay on the day itself: see
     // the test below.
-    expect(results.adjusts).toBeLessThan(results.evenSplit * 1.02);
-    expect(results.adjusts).toBeLessThan(results.plainSplit * 1.02);
+    expect(results.adjusts).toBeLessThanOrEqual(results.evenSplit);
+    expect(results.adjusts).toBeLessThanOrEqual(results.plainSplit);
   });
 
   it("never lets one end of the price win: free is far slower, pricey slower still than fair", () => {

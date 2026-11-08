@@ -65,7 +65,7 @@ export const isWorldOpen = (run: RunState): boolean =>
 
 /** The share of smiles that are real, 0.03 to 1 (all real until the dial opens). */
 export const realOf = (run: RunState): number =>
-  isWorldOpen(run) || run.phase > 2 ? clamp(res(run, "wsReal"), W.floor, 1) : 1;
+  hasKept(run) ? clamp(res(run, "wsReal"), W.floor, 1) : 1;
 
 /** Whole quarters of real smiles left (0 to 3 bands, 3 = at least 75%). */
 export const bandOf = (real: number): number =>
@@ -144,7 +144,7 @@ export const paintAt = (
 
 /** Real smiles that come back a second at a level. */
 export const healAt = (run: RunState, level: number): number =>
-  W.heal[level] +
+  W.heal[level] * (isDone(run, "hypno-drones") ? W.dronesHeal : 1) +
   (isDone(run, "listening-benches") ? W.benchesHeal : 0) +
   forkHealRate(run);
 
@@ -281,14 +281,23 @@ export function restoreSmiles(run: RunState): void {
 
 // --------------------------------------------------------- the Quiet's hook
 
-/** True once the dial has been open this run (an older save has no real share). */
-export const hasKept = (run: RunState): boolean =>
-  run.flags[WORLD_OPEN_FLAG] === true;
+/**
+ * True once the dial has been open this run. An older save, or a Test-mode
+ * jump straight to the Quiet, has no real share: every smile counts as real,
+ * so the Quiet gets its full head start and its full warmth.
+ */
+export function hasKept(run: RunState): boolean {
+  return run.flags[WORLD_OPEN_FLAG] === true;
+}
 
-/** What the world ended with (the Quiet reads it; 1 when the dial never opened). */
+/**
+ * What the world ended with (1 when the dial never opened). The Quiet stores
+ * it as it opens (`wsKept` is never under the floor once set); before that it
+ * is the live real share.
+ */
 export const keptOf = (run: RunState): number =>
-  hasKept(run) && run.resources.wsKept !== undefined
-    ? clamp(run.resources.wsKept, 0, 1)
+  hasKept(run) && res(run, "wsKept") > 0
+    ? clamp(res(run, "wsKept"), W.floor, 1)
     : realOf(run);
 
 /** Called as the Quiet opens: the real smiles kept become a head start on trust. */
@@ -391,6 +400,6 @@ export function quietOpeningLine(run: RunState): string {
   if (kept >= 0.6)
     return `${pct(kept)} of the world's smiles were still real, so the friend trusted you ${start}% from the start.`;
   if (kept >= 0.25)
-    return `${pct(kept)} of the world's smiles were still real, so the friend trusted you ${start}% from the start. The rest was a long way to come back from.`;
-  return `Only ${pct(kept)} of the world's smiles were still real. The friend started with ${start}% trust, and a long bench to sit on.`;
+    return `${pct(kept)} of the world's smiles were still real, so the friend trusted you ${start}% from the start. The rest was a long way to come back from, and they warm up a little slower.`;
+  return `Only ${pct(kept)} of the world's smiles were still real. The friend started with ${start}% trust, and warms up very slowly. It is a long bench to sit on.`;
 }

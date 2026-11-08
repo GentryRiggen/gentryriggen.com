@@ -5,6 +5,9 @@ import { landCount, pullCount, trustFraction } from "../quiet";
 import { RETURN_VISITOR_ID } from "../visitors";
 import { hasKept, keptOf } from "../world";
 
+/** The share of the world's smiles kept (1 when the dial never opened). */
+const keptShare = (run: Parameters<typeof keptOf>[0]): number => keptOf(run);
+
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
 /** True once the quiet has been open this many minutes. */
@@ -164,8 +167,21 @@ export const quiet: StoryMessage[] = [
   {
     id: "quiet-end-1",
     phase: PHASE_QUIET,
-    when: returned,
-    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this.",
+    when: (run) => returned(run) && keptShare(run) >= 0.6,
+    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this. And out past the road, the crowd is smiling the crinkly kind, mostly. The robot kept that much.",
+  },
+  {
+    id: "quiet-end-1-some",
+    phase: PHASE_QUIET,
+    when: (run) =>
+      returned(run) && keptShare(run) >= 0.25 && keptShare(run) < 0.6,
+    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this. Out past the road, some of the crowd are smiling the crinkly kind, and some are still wearing the painted one. The robot makes a note, a quiet one.",
+  },
+  {
+    id: "quiet-end-1-few",
+    phase: PHASE_QUIET,
+    when: (run) => returned(run) && keptShare(run) < 0.25,
+    text: "The robot sits very still, so as not to spoil it. All the posters, all the noise, all the towers. Not one of them ever did this. Out past the road, nearly every face still wears the painted grin. It was a long way back to this bench. The robot thinks it will be a longer way back out there, and decides to start tomorrow.",
   },
   {
     id: "quiet-end-2",

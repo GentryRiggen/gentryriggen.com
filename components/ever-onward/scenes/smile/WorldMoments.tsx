@@ -358,11 +358,15 @@ export default function WorldMoments({ info }: MomentsProps) {
       {info.wday === "gloom" && <Gloom />}
       {info.wday === "weary" && <Weary />}
       {drone && <Hovering />}
-      {info.wday !== "" && (
-        <Shout x={200} y={18} size={10} fill={DAY_COLORS[info.wday]}>
-          {DAY_NAMES[info.wday]}
-        </Shout>
-      )}
+      {/* The day's name steps aside while a big moment shouts over it. */}
+      {info.wday !== "" &&
+        info.lostKey === 0 &&
+        info.healKey === 0 &&
+        info.droneKey === 0 && (
+          <Shout x={200} y={18} size={10} fill={DAY_COLORS[info.wday]}>
+            {DAY_NAMES[info.wday]}
+          </Shout>
+        )}
       {info.retune && (
         <g className="ms-t-pulse" data-testid="eo-world-retune">
           <Shout x={200} y={188} size={10} fill="#ffe29a">

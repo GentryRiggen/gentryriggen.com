@@ -93,6 +93,8 @@ export const TUNING = {
     dronesPay: 2.2,
     dronesDrift: 0.0015,
     dronesLoss: 0.3,
+    /** While HypnoDrones fly, the hush heals only this share of what it did. */
+    dronesHeal: 0.25,
     benchesPay: 0.95,
     benchesHeal: 0.0004,
     benchesGain: 0.2,
@@ -148,7 +150,7 @@ export const TUNING = {
     hotThirst: 0.4,
     rainThirst: -0.35,
     rainCare: 0.5,
-    partyWeight: 6,
+    partyWeight: 11,
     dayKinds: [0.4, 0.65] as readonly number[],
     daySeconds: [60, 90] as readonly number[],
     calmSeconds: [5, 15] as readonly number[],
@@ -189,7 +191,7 @@ export const TUNING = {
       boxPaint: 0.6,
       boxHeal: 0.0008,
     },
-    quiet: { cost: 15, wordsClose: 3.4, silenceHelpers: 1.3 },
+    quiet: { cost: 15, wordsClose: 4, silenceHelpers: 1.2 },
   },
   /**
    * The bench in the quiet: how fast patience turns into trust, what sitting
@@ -197,7 +199,7 @@ export const TUNING = {
    * moment around.
    */
   quiet: {
-    growthPerPatience: 8e-5,
+    growthPerPatience: 9.7e-5,
     /** The bench: a part of the bar owned from the start (Room on the bench). */
     benchBoost: 1,
     /** Seats of closeness: 0 is the far end, `seats` is side by side. */
@@ -213,6 +215,8 @@ export const TUNING = {
     openFromTrust: 0.72,
     /** How far the slow wander of their mood goes either way. */
     wander: 0.05,
+    /** Trust per patience in the Quiet scales from this (all painted) up to 1 (all real). */
+    keptFloor: 0.1,
     /** Seconds sat somewhere they are not comfortable before they pull away. */
     crowdSeconds: 4,
     /** Trust lost when they pull away (a share of what there is, at least the floor, of 100), and how long they stay at the far end. */

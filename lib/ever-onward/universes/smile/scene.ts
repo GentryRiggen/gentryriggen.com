@@ -56,6 +56,7 @@ import {
   DAY_GLOOM,
   DAY_WEARY,
   dayKind as worldDayKind,
+  bandOf,
   droneCount,
   healCount,
   isRetuning,
@@ -63,6 +64,7 @@ import {
   justDroned,
   justHealed,
   justLost,
+  keptOf,
   levelOf,
   lostCount,
   realOf,
@@ -144,6 +146,8 @@ export interface SmileSceneInfo {
   /** Quiet: whole percent of trust (steps of 5), and the face's stage. */
   trust: number;
   face: TrustStage;
+  /** Quiet: how many of the world's smiles were kept, in quarters (0 to 3). */
+  kept: number;
   /**
    * Quiet bench: the seat you sit at (0 the far end to 4 side by side), the
    * seat you are scooting to (-1 not moving), their body language (0 pulling
@@ -433,6 +437,7 @@ export function sceneInfo(run: RunState): SmileSceneInfo {
     ...togetherInfo(run),
     trust: p === 3 ? Math.round(trust * 20) * 5 : 0,
     face: p === 3 ? trustStage(run) : TRUST_STAGES[0],
+    kept: p === 3 ? bandOf(keptOf(run)) : 3,
     ...benchInfo(run),
     visitorHere: run.flags[visitorHereFlag(RETURN_VISITOR_ID)] === true,
   };
