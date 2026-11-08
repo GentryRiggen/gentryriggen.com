@@ -85,8 +85,8 @@ export const PHASES: readonly PhaseDef[] = [
       "The sky is empty and very quiet. Every light you ever lit is still burning, and every one of them costs a little warmth to keep. One small boat is out on the dark water, and warmth is how it finds the way. It is up to you which lights stay, and when each one goes.",
     goal: "Keep the flame warm and bring the last ship home.",
     manualResource: "resolve",
-    manualLabel: "Stoke the flame",
-    tapDoes: "stoke the flame. A warm flame earns resolve faster",
+    manualLabel: "Tend the flame",
+    tapDoes: "tend the flame. Each tap earns a little resolve",
     isDone: () => false,
     onEnter: (run) => {
       // The flame starts here whatever came before, so the ending is the same

@@ -233,6 +233,10 @@ test.describe("Ever Onward", () => {
     await lights.getByTestId("lm-letgo-3").click();
     await expect(lights).toHaveAttribute("data-lit", "10");
     await expect(page.getByTestId("lm-goodbye").first()).toBeAttached();
+    await expect(page.getByTestId("lm-goodbye-lantern").first()).toBeAttached();
+    await expect(page.getByTestId("lm-goodbye-banner").first()).toContainText(
+      "BRIDGE LIGHTS"
+    );
     await expect(page.getByTestId("lm-scene-flower").first()).toBeAttached();
     // The next one waits a moment while this one rises.
     await expect(lights.getByTestId("lm-lights-note")).toContainText(/rising/);

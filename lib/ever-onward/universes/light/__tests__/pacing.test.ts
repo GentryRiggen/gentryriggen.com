@@ -78,6 +78,14 @@ describe("upgrades are few and gated", () => {
     for (const n of Object.values(worst)) expect(n).toBeLessThanOrEqual(1);
   });
 
+  /**
+   * The cap on chains with a slot of their own (a card the shop never
+   * hides) was one when each part had a single chain. The last part's shop is
+   * five short chains (hearth, sails, glass, company, song), each with its
+   * own place and its own picture, so four are allowed on offer at once; the
+   * songs begin only when company's chain is done, so five never are. That
+   * loosening is deliberate, and four is still a short, readable shop.
+   */
   it("never has more than four of the last part's chains on offer together", () => {
     let worst = 0;
     simulate(def, {

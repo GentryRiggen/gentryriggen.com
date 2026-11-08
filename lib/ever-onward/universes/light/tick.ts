@@ -31,7 +31,6 @@ import { lightMult, openSkyDials, tickSunEdge } from "./sunEdge";
 import {
   letGoCount,
   resolvePerSecond as lastResolvePerSecond,
-  stoke,
   tapResolve,
   tickWarmth,
 } from "./warmth";
@@ -820,7 +819,6 @@ export function manualLight(run: RunState): void {
   } else if (phase === 2) {
     r.energy += aimEnergy(run);
   } else {
-    stoke(run, tapMult(run));
     r.resolve += tapResolve(run) * tapMult(run);
   }
 }

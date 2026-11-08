@@ -2495,7 +2495,7 @@ html:has(.jim-app) body {
 }
 
 /* Ever Onward: the flowers of The Last Light (swaying, a soft glow). */
-@keyframes gd-sway {
+@keyframes ll-sway {
   0%,
   100% {
     transform: rotate(-2deg);
@@ -2505,7 +2505,7 @@ html:has(.jim-app) body {
   }
 }
 
-@keyframes gd-glow {
+@keyframes ll-glow {
   0%,
   100% {
     opacity: 0.18;
@@ -2515,19 +2515,19 @@ html:has(.jim-app) body {
   }
 }
 
-.gd-sway {
+.ll-sway {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: gd-sway 4.2s ease-in-out infinite;
+  animation: ll-sway 4.2s ease-in-out infinite;
 }
 
-.gd-glow {
-  animation: gd-glow 3.4s ease-in-out infinite;
+.ll-glow {
+  animation: ll-glow 3.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gd-sway,
-  .gd-glow {
+  .ll-sway,
+  .ll-glow {
     animation: none;
   }
 }
@@ -2624,6 +2624,11 @@ html:has(.jim-app) body {
 .ll-banner {
   animation: ll-banner 7s ease-in-out both;
 }
+/* The goodbye's banner waits a moment, so the lantern lifts off clear of it. */
+.ll-banner-late {
+  opacity: 0;
+  animation: ll-banner 6s ease-in-out 0.8s both;
+}
 
 @keyframes ll-fog {
   0%,
@@ -2703,6 +2708,99 @@ html:has(.jim-app) body {
   animation: ll-surge 0.55s ease-in-out infinite;
 }
 
+/* The goodbye's big lantern: lifts off and hangs near the banner. */
+@keyframes ll-lift {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.7);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-44px) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(-48px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-52px) scale(0.9);
+  }
+}
+.ll-lift {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation: ll-lift 7s ease-out both;
+}
+
+/* A wind biting a lamp: the whole lamp leans hard and its light gutters. */
+@keyframes ll-gale {
+  0%,
+  100% {
+    transform: rotate(-19deg);
+  }
+  50% {
+    transform: rotate(-3deg);
+  }
+}
+.ll-gale {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-gale 0.45s ease-in-out infinite;
+}
+
+@keyframes ll-gutter {
+  0%,
+  100% {
+    opacity: 0.95;
+  }
+  35% {
+    opacity: 0.3;
+  }
+  60% {
+    opacity: 0.75;
+  }
+}
+.ll-gutter {
+  animation: ll-gutter 0.6s ease-in-out infinite;
+}
+
+/* A ring that pulses round a lamp the coming wind will bite. */
+@keyframes ll-warn {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.12);
+  }
+}
+.ll-warn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ll-warn 1s ease-in-out infinite;
+}
+
+@keyframes ll-surge-word {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ll-surge-word {
+  animation: ll-surge-word 0.9s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ll-rise,
   .ll-ring,
@@ -2714,8 +2812,28 @@ html:has(.jim-app) body {
   .ll-wake,
   .ll-surge,
   .ll-bloom,
-  .ll-banner {
+  .ll-banner,
+  .ll-banner-late,
+  .ll-lift,
+  .ll-gale,
+  .ll-gutter,
+  .ll-warn,
+  .ll-surge-word {
     animation: none;
+  }
+  /* The goodbye's lantern hangs still, lifted, above its banner. */
+  .ll-banner-late {
+    opacity: 1;
+  }
+  .ll-lift {
+    opacity: 1;
+    transform: translateY(-48px);
+  }
+  .ll-gale {
+    transform: rotate(-8deg);
+  }
+  .ll-warn {
+    opacity: 0.8;
   }
   /* Nothing hangs in mid-air or covers the picture: the lantern and the sparks are gone. */
   .ll-rise,

@@ -65,6 +65,13 @@ const GATE_CAP = 59;
  * 76.8, with the last part about 20 minutes and its decision gaps now in
  * band (longest 112 s, 16% of the time in gaps over a minute, where it was
  * 159 s and 76%). The floor is that score minus 1.3.
+ *
+ * Fixing that review (a kind crossing a player who never buys still finishes
+ * in about twice the reader's time, lumps and winds that make reading beat
+ * every fixed habit, a price ladder and three more song verses that keep a
+ * decision coming) scored 77.4 uncapped with the last part about 21 minutes
+ * and every gate in its band but the known total length. The floor stays at
+ * 77.
  */
 const UNCAPPED_FLOOR = 77;
 /** Gates knowingly failing; no other gate may fail. */

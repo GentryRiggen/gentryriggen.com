@@ -1,5 +1,5 @@
 import { cloneRun } from "../../../engine/engine";
-import { simulate } from "../../../engine/sim";
+import { simulate, type Strategy } from "../../../engine/sim";
 import type { RunState } from "../../../engine/types";
 import { def } from "./fixtures";
 import { lastPlayer, lightBots, type OilChoice } from "../bots";
@@ -40,16 +40,33 @@ export interface LastResult {
   cold: number;
 }
 
-/** Plays the last part out from its start with this habit (none: every light burns until the end). */
+/** How a simulated player spends the part besides letting lights go. */
+export interface Persona {
+  /** Buys from the shop (default true). */
+  buys?: boolean;
+  /** Taps a second (default: the tapper's own pace). */
+  taps?: number;
+}
+
+/** Plays the last part out from its start with this habit (none: only the safety net lets a light go). */
 export function playLast(
   seed: number,
-  lights: OilChoice | undefined
+  lights: OilChoice | undefined,
+  persona: Persona = {}
 ): LastResult {
   const start = lastStart(seed);
   let steps = 0;
   let coldSteps = 0;
+  const base = lastPlayer({ lights });
+  const strategy: Strategy = {
+    ...base,
+    ...(persona.buys === false ? { buys: false } : {}),
+    ...(persona.taps !== undefined
+      ? { tapsPerSecond: persona.taps, tapRate: () => persona.taps ?? 0 }
+      : {}),
+  };
   const result = simulate(def, {
-    strategy: lastPlayer({ lights }),
+    strategy,
     maxSeconds: 6000,
     step: 1,
     startRun: cloneRun(start),
@@ -67,11 +84,22 @@ export function playLast(
   };
 }
 
-/** Runs one habit over every seed. */
-export const playAll = (habit: Habit | null): LastResult[] =>
-  SEEDS.map((seed) =>
-    playLast(seed, habit === null ? undefined : letsLightsGo(habit))
+const played = new Map<string, LastResult[]>();
+
+/** Runs one habit over every seed (kept, so a test that asks again does not play it twice). */
+export function playAll(
+  habit: Habit | null,
+  persona: Persona = {}
+): LastResult[] {
+  const key = JSON.stringify([habit, persona]);
+  const kept = played.get(key);
+  if (kept) return kept;
+  const results = SEEDS.map((seed) =>
+    playLast(seed, habit === null ? undefined : letsLightsGo(habit), persona)
   );
+  played.set(key, results);
+  return results;
+}
 
 /** The mean of a habit's speed against a reference habit, over the seeds (above 1: the reference is faster). */
 export function meanSlower(

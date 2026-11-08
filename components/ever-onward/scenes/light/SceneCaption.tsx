@@ -1,6 +1,9 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 import { TOWN_COUNT } from "@/lib/ever-onward/universes/light/scene";
-import { COAST_LIGHTHOUSES } from "@/lib/ever-onward/universes/light/resources";
+import {
+  COAST_LIGHTHOUSES,
+  TOTAL_LIGHTS,
+} from "@/lib/ever-onward/universes/light/resources";
 import CaptionLine from "../CaptionLine";
 import { pixelClass } from "../../game/retro/retroStyles";
 
@@ -26,7 +29,7 @@ export function captionFor(info: LightSceneInfo): string {
         info.starsRemaining
       )}`;
     default:
-      return `Lights still burning: ${num(info.lightsRemaining)}`;
+      return `Lights burning: ${num(info.lightsRemaining)} of ${TOTAL_LIGHTS}`;
   }
 }
 

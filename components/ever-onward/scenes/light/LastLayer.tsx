@@ -1,5 +1,5 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
-import { LIGHTS } from "@/lib/ever-onward/universes/light/warmth";
+import { LIGHTS, WIND_KINDS } from "@/lib/ever-onward/universes/light/warmth";
 import ForkArt from "./ForkArt";
 import { BOAT_LANE, LAST_LIGHTS, SHORE_Y } from "./anchors";
 
@@ -57,11 +57,18 @@ const GUSTS = [
   { y: 276, x: 384, w: 34, late: "[animation-delay:1.4s]" },
 ] as const;
 
-const WIND_WORDS = [
-  "MILD WIND COMING",
-  "CHILLY WIND COMING",
-  "BITTER WIND COMING",
-];
+const WIND_SIZE_WORDS = ["MILD", "CHILLY", "BITTER"] as const;
+
+/** The lights a wind of this kind (1 sea, 2 town, 3 hills) bites, as a set. */
+const bittenBy = (windKind: number): ReadonlySet<number> =>
+  new Set(windKind > 0 ? WIND_KINDS[windKind - 1].lights : []);
+
+/** Each wind kind's streak colours (the forecast, then blowing). */
+const WIND_COLOURS = [
+  { soft: "#7fd8ff", hard: "#d9f4ff" },
+  { soft: "#ffc58a", hard: "#ffe9d0" },
+  { soft: "#b6e08a", hard: "#e4f7cf" },
+] as const;
 
 /** One remembered lamp on the shore: a tall post, a glowing head, a reflection in the water, and a glass dome once the glass is thicker. */
 function Lamp({
@@ -70,72 +77,92 @@ function Lamp({
   band,
   tier,
   company,
-  isWindy,
+  wind,
 }: {
   index: number;
   isLit: boolean;
   band: number;
   tier: number;
   company: number;
-  isWindy: boolean;
+  /** 0 no wind for this lamp, 1 a wind coming that will bite it, 2 a wind biting it now. */
+  wind: 0 | 1 | 2;
 }) {
   const p = LAST_LIGHTS[index];
   const glow = 20 + band * 5 + company * 2;
   return (
-    <g transform={`translate(${p.x} ${p.y})`} data-testid="lm-last-lamp">
-      <rect x="-1.1" y="-20" width="2.2" height="20" fill="#26335f" />
-      <rect x="-4" y="-2.5" width="8" height="2.5" fill="#1c2748" />
-      {isLit && (
-        <>
-          <ellipse
-            cy="9"
-            rx="4"
-            ry={9 + band * 2}
-            fill="#ffd76a"
-            opacity="0.28"
-            className="transition-opacity duration-[1500ms]"
-          />
-          <circle
-            cy="-26"
-            r={glow}
-            fill="url(#lm-lamp)"
-            className="transition-opacity duration-[1500ms]"
-            opacity="0.95"
-          />
-          <g className={`lm-flicker ${isWindy ? "ll-lean" : ""}`}>
+    <g
+      transform={`translate(${p.x} ${p.y})`}
+      data-testid="lm-last-lamp"
+      data-wind={wind}
+    >
+      <g transform={isLit && wind === 2 ? "scale(1.4)" : undefined}>
+        <g className={isLit && wind === 2 ? "ll-gale" : ""}>
+          <rect x="-1.1" y="-20" width="2.2" height="20" fill="#26335f" />
+          <rect x="-4" y="-2.5" width="8" height="2.5" fill="#1c2748" />
+          {isLit && wind === 1 && (
+            <circle
+              cy="-26"
+              r="19"
+              fill="none"
+              stroke="#9fe0ff"
+              strokeWidth="2"
+              className="ll-warn"
+              data-testid="lm-lamp-warn"
+            />
+          )}
+          {isLit && (
+            <>
+              <ellipse
+                cy="9"
+                rx="4"
+                ry={9 + band * 2}
+                fill="#ffd76a"
+                opacity="0.28"
+                className="transition-opacity duration-[1500ms]"
+              />
+              <circle
+                cy="-26"
+                r={glow}
+                fill="url(#lm-lamp)"
+                className={`transition-opacity duration-[1500ms] ${wind === 2 ? "ll-gutter" : ""}`}
+                opacity="0.95"
+              />
+              <g className={`lm-flicker ${wind === 2 ? "ll-lean" : ""}`}>
+                <rect
+                  x="-4.4"
+                  y="-32"
+                  width="8.8"
+                  height="11"
+                  fill="#ffe28a"
+                  stroke="#6b3d10"
+                  strokeWidth="0.9"
+                />
+                <rect x="-2" y="-29.5" width="4" height="6" fill="#fff8d6" />
+              </g>
+              {tier > 0 && (
+                <path
+                  d="M-5.6 -21 L-5.6 -33 Q0 -39 5.6 -33 L5.6 -21"
+                  fill="none"
+                  stroke="#bfe3ff"
+                  strokeWidth="1.3"
+                  opacity="0.9"
+                />
+              )}
+            </>
+          )}
+          {!isLit && (
             <rect
               x="-4.4"
               y="-32"
               width="8.8"
               height="11"
-              fill="#ffe28a"
-              stroke="#6b3d10"
+              fill="#0c1226"
+              stroke="#26335f"
               strokeWidth="0.9"
             />
-            <rect x="-2" y="-29.5" width="4" height="6" fill="#fff8d6" />
-          </g>
-          {tier > 0 && (
-            <path
-              d="M-5.6 -21 L-5.6 -33 Q0 -39 5.6 -33 L5.6 -21"
-              fill="none"
-              stroke="#bfe3ff"
-              strokeWidth="1.3"
-              opacity="0.9"
-            />
           )}
-        </>
-      )}
-      {!isLit && (
-        <rect
-          x="-4.4"
-          y="-32"
-          width="8.8"
-          height="11"
-          fill="#0c1226"
-          stroke="#26335f"
-          strokeWidth="0.9"
-        />
-      )}
+        </g>
+      </g>
     </g>
   );
 }
@@ -146,13 +173,13 @@ function Flower({ index, isNew }: { index: number; isNew: boolean }) {
   const light = LIGHTS[index];
   return (
     <g
-      transform={`translate(${p.x} ${p.y})`}
+      transform={`translate(${p.x} ${p.y})${isNew ? " scale(1.6)" : ""}`}
       data-testid="lm-scene-flower"
       data-new={isNew ? "yes" : "no"}
     >
       <g className={isNew ? "ll-bloom" : ""}>
-        <g className="gd-sway">
-          <circle cy="-17" r="15" fill={light.petal} className="gd-glow" />
+        <g className="ll-sway">
+          <circle cy="-17" r="15" fill={light.petal} className="ll-glow" />
           <rect x="-0.9" y="-17" width="1.8" height="17" fill="#22c55e" />
           <rect x="-7" y="-8" width="7" height="2.4" fill="#4ade80" />
           <rect x="1" y="-11" width="6" height="2.2" fill="#4ade80" />
@@ -237,6 +264,94 @@ function RisingLantern({
   );
 }
 
+/**
+ * The goodbye: a big lantern in the light's own colour lifts off its lamp
+ * with a glowing trail behind it, and a banner you can read on a phone stays
+ * in the middle of the sky (clear of the pop-ups at the very top). Under
+ * reduced motion the lantern hangs still, lifted, and the banner stays.
+ */
+function Goodbye({ index }: { index: number }) {
+  const p = LAST_LIGHTS[index];
+  const light = LIGHTS[index];
+  return (
+    <g data-testid="lm-goodbye" data-light={index}>
+      <g transform={`translate(${p.x} ${p.y}) scale(2.3)`} aria-hidden="true">
+        <g className="ll-lift" data-testid="lm-goodbye-lantern">
+          {[
+            { y: 17, r: 8, o: 0.4 },
+            { y: 30, r: 6, o: 0.26 },
+            { y: 41, r: 4, o: 0.15 },
+          ].map((t) => (
+            <circle
+              key={t.y}
+              cy={-26 + t.y}
+              r={t.r}
+              fill={light.petal}
+              opacity={t.o}
+            />
+          ))}
+          <circle cy="-26" r="30" fill="url(#lm-lamp)" />
+          <circle cy="-26" r="15" fill={light.petal} opacity="0.4" />
+          <rect
+            x="-7"
+            y="-34"
+            width="14"
+            height="17"
+            fill="#ffcf6a"
+            stroke="#7a3b10"
+            strokeWidth="1.2"
+          />
+          <rect x="-3.2" y="-30" width="6.4" height="8" fill="#fff6c8" />
+          <rect x="-1.5" y="-17" width="3" height="6" fill="#7a3b10" />
+        </g>
+      </g>
+      <g
+        aria-hidden="true"
+        className="ll-banner-late"
+        data-testid="lm-goodbye-banner"
+      >
+        <rect
+          x="30"
+          y="104"
+          width="340"
+          height="62"
+          rx="4"
+          fill="#0a0612"
+          opacity="0.86"
+          stroke={light.petal}
+          strokeWidth="2.4"
+        />
+        <text
+          x="200"
+          y="134"
+          textAnchor="middle"
+          fontSize="28"
+          fill="#fde7a8"
+          stroke="#1a0f05"
+          strokeWidth="5"
+          paintOrder="stroke"
+          className="font-[family-name:var(--font-eo-pixel)]"
+        >
+          GOODBYE,
+        </text>
+        <text
+          x="200"
+          y="158"
+          textAnchor="middle"
+          fontSize="17"
+          fill={light.petal}
+          stroke="#1a0f05"
+          strokeWidth="4"
+          paintOrder="stroke"
+          className="font-[family-name:var(--font-eo-pixel)]"
+        >
+          {light.name.toUpperCase()}
+        </text>
+      </g>
+    </g>
+  );
+}
+
 function Boat({ info }: { info: LightSceneInfo }) {
   const x = BOAT_START_X - info.boatProgress * (BOAT_START_X - BOAT_END_X);
   const colours = lanternColours(info.lantern);
@@ -260,7 +375,12 @@ function Boat({ info }: { info: LightSceneInfo }) {
         opacity={0.1 + 0.5 * warm}
         className="transition-opacity duration-1000"
       />
-      <g transform={`translate(${x} ${BOAT_LANE_Y}) scale(1.45)`}>
+      <g
+        transform={`translate(${x} ${BOAT_LANE_Y}) scale(1.45)`}
+        opacity={info.fog >= 3 ? 0.7 : 1}
+        data-testid="lm-boat"
+        data-slow={info.fog >= 3 ? "yes" : "no"}
+      >
         {/* the golden haze round the boat: it grows as the flame warms */}
         <circle
           cy="-14"
@@ -272,6 +392,19 @@ function Boat({ info }: { info: LightSceneInfo }) {
         />
         {info.surge > 0 && (
           <g aria-hidden="true" data-testid="lm-boat-surge">
+            <text
+              x="-2"
+              y="-31"
+              textAnchor="middle"
+              fontSize="9"
+              fill="#fff0b0"
+              stroke="#3a2205"
+              strokeWidth="2.4"
+              paintOrder="stroke"
+              className="ll-surge-word font-[family-name:var(--font-eo-pixel)]"
+            >
+              WARM! SURGE!
+            </text>
             {[0, 1, 2].map((k) => (
               <rect
                 key={k}
@@ -328,62 +461,143 @@ function Boat({ info }: { info: LightSceneInfo }) {
   );
 }
 
-/** Fog creeping across the water: more of it as the flame cools. */
+/**
+ * Fog creeping across the water: thick when the flame is cold, with the
+ * boat's own word for it, so a cold flame is plainly a slow boat.
+ */
 function Fog({ level }: { level: number }) {
   if (level <= 0) return null;
   return (
     <g aria-hidden="true" data-testid="lm-fog" data-level={level}>
-      {[236, 252, 268, 282].map((y, k) => (
+      <rect
+        x="-1200"
+        y="190"
+        width="2800"
+        height="140"
+        fill="#9fb4d8"
+        opacity={0.06 * level}
+      />
+      {[226, 244, 262, 280, 296].map((y, k) => (
         <ellipse
           key={y}
-          cx={120 + k * 70}
+          cx={90 + k * 55}
           cy={y}
-          rx={120}
-          ry={9 + level * 2}
-          fill="#a9bcdc"
-          opacity={0.07 + 0.07 * level}
+          rx={150}
+          ry={11 + level * 3.5}
+          fill="#b7c8e6"
+          opacity={0.14 + 0.15 * level}
           className={k % 2 === 0 ? "ll-fog" : "ll-fog-b"}
         />
       ))}
+      {level >= 3 && (
+        <g data-testid="lm-fog-word">
+          <rect
+            x="40"
+            y="118"
+            width="320"
+            height="58"
+            rx="4"
+            fill="#0a1226"
+            opacity="0.86"
+            stroke="#b7c8e6"
+            strokeWidth="2"
+          />
+          <text
+            x="200"
+            y="147"
+            textAnchor="middle"
+            fontSize="26"
+            fill="#e4eefc"
+            stroke="#050a18"
+            strokeWidth="5"
+            paintOrder="stroke"
+            className="font-[family-name:var(--font-eo-pixel)]"
+          >
+            THICK FOG
+          </text>
+          <text
+            x="200"
+            y="168"
+            textAnchor="middle"
+            fontSize="16"
+            fill="#c9dbf5"
+            stroke="#050a18"
+            strokeWidth="4"
+            paintOrder="stroke"
+            className="font-[family-name:var(--font-eo-pixel)]"
+          >
+            THE BOAT IS SLOW
+          </text>
+        </g>
+      )}
     </g>
   );
 }
 
-/** Streaks of cold wind across the picture, and a word at the top edge. */
-function Wind({ chill }: { chill: number }) {
-  if (chill <= 0) return null;
+/** Streaks of cold wind across the picture, and its kind in big letters at the top right. */
+function Wind({ chill, windKind }: { chill: number; windKind: number }) {
+  if (chill <= 0 || windKind <= 0) return null;
   const isBlowing = chill >= 4;
   const size = (isBlowing ? chill - 4 : chill - 1) as 0 | 1 | 2;
+  const kind = WIND_KINDS[windKind - 1];
+  const colours = WIND_COLOURS[windKind - 1];
   const count = isBlowing ? GUSTS.length : 2 + size;
   return (
     <g
       aria-hidden="true"
       data-testid="lm-wind-scene"
       data-blowing={isBlowing ? "yes" : "no"}
+      data-kind={kind.id}
     >
       {GUSTS.slice(0, count).map((gust) => (
         <rect
           key={gust.y}
           x={gust.x}
           y={gust.y}
-          width={gust.w}
-          height={isBlowing ? 3.2 : 2.2}
-          fill={isBlowing ? "#eaf7ff" : "#a9c8f5"}
+          width={gust.w * (isBlowing ? 1.5 : 1)}
+          height={isBlowing ? 5 : 3}
+          fill={isBlowing ? colours.hard : colours.soft}
           className={`ll-gust ${gust.late}`}
         />
       ))}
+      <rect
+        x="150"
+        y="50"
+        width="244"
+        height="52"
+        rx="3"
+        fill="#06101f"
+        opacity="0.86"
+        stroke={colours.soft}
+        strokeWidth="2"
+      />
       <text
-        x="394"
-        y="30"
+        x="386"
+        y="76"
         textAnchor="end"
-        fontSize="11"
-        fill={isBlowing ? "#dff0ff" : "#9ec4f2"}
+        fontSize="20"
+        fill={isBlowing ? colours.hard : colours.soft}
         stroke="#050a18"
-        strokeWidth="3"
+        strokeWidth="4"
         paintOrder="stroke"
         className="font-[family-name:var(--font-eo-pixel)]"
       >
-        {isBlowing ? "COLD WIND!" : WIND_WORDS[size]}
+        {isBlowing
+          ? `${kind.name.toUpperCase()}!`
+          : `${kind.name.toUpperCase()} SOON`}
+      </text>
+      <text
+        x="386"
+        y="96"
+        textAnchor="end"
+        fontSize="13"
+        fill={colours.hard}
+        stroke="#050a18"
+        strokeWidth="3.5"
+        paintOrder="stroke"
+        className="font-[family-name:var(--font-eo-pixel)]"
+      >
+        {`${WIND_SIZE_WORDS[size]} · ${isBlowing ? "BITING NOW" : "BE READY"}`}
       </text>
     </g>
   );
@@ -412,7 +626,8 @@ function Hearth({ tier }: { tier: number }) {
 
 export default function LastLayer({ info }: { info: LightSceneInfo }) {
   const glow = 30 + 44 * info.flame;
-  const isWindy = info.chill >= 4;
+  const isBlowing = info.chill >= 4;
+  const bitten = bittenBy(info.windKind);
   const gone = info.letGoMask;
   const justGone = info.goodbye - 1;
   const lantern = lanternColours(info.lantern);
@@ -447,7 +662,7 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
               band={bandOf(info.brightCode, i)}
               tier={info.slowburnTier}
               company={info.companyTier}
-              isWindy={isWindy}
+              wind={bitten.has(i) && info.chill > 0 ? (isBlowing ? 2 : 1) : 0}
             />
           );
         })}
@@ -533,30 +748,10 @@ export default function LastLayer({ info }: { info: LightSceneInfo }) {
         </g>
       </g>
       <Fog level={info.fog} />
-      <Wind chill={info.chill} />
-      {/* a goodbye: the lantern lifts off, and the words stay small at the top edge */}
+      <Wind chill={info.chill} windKind={info.windKind} />
+      {/* a goodbye: a big lantern lifts off, and its banner sits mid-sky */}
       {justGone >= 0 && justGone < LAST_LIGHTS.length && (
-        <g data-testid="lm-goodbye" data-light={justGone}>
-          <RisingLantern
-            x={LAST_LIGHTS[justGone].x}
-            y={LAST_LIGHTS[justGone].y}
-            delay={RISE_DELAYS[0]}
-            colour={LIGHTS[justGone].petal}
-          />
-          <text
-            x="8"
-            y="30"
-            textAnchor="start"
-            fontSize="11"
-            fill="#fde7a8"
-            stroke="#1a0f05"
-            strokeWidth="3"
-            paintOrder="stroke"
-            className="ll-banner font-[family-name:var(--font-eo-pixel)]"
-          >
-            GOODBYE, LITTLE LIGHT
-          </text>
-        </g>
+        <Goodbye index={justGone} />
       )}
       <ForkArt info={info} />
       {info.finished > 0 && (

@@ -6,7 +6,7 @@ export const TUNING = {
    * again (and added forks, the fund and overdrive), so the whole run is
    * priced up to stay about two hours.
    */
-  costScale: { coast: 1, night: 135, sky: 9.5, last: 4.6 } as Record<
+  costScale: { coast: 1, night: 135, sky: 9.5, last: 10.8 } as Record<
     string,
     number
   >,
@@ -27,7 +27,7 @@ export const TUNING = {
       coastShips: 60,
       nightLittleGenerators: 2,
       skyCollectors: 3,
-      lastLights: 10,
+      lastLights: 9,
     },
   },
   /**
@@ -622,53 +622,72 @@ export const TUNING = {
     /** How fast the warmth moves to where the lights leave it (a share a second). */
     warmRate: 0.06,
     /** The hearth's own warmth with no lights burning, and what each hearth step adds. */
-    hearthBase: 0.6,
+    hearthBase: 0.65,
     hearthStep: 0.05,
-    /** Each tap stokes the flame a little; the stoke fades, so mashing gains nothing past the cap. */
-    stokePerTap: 0.012,
-    stokeMax: 0.1,
-    stokeFade: 0.02,
     /** Resolve per second (the pace of the quiet), per tap, and the share of it that even a cold flame gives. */
-    resolvePerSecond: 0.2,
-    resolvePerTap: 0.02,
+    resolvePerSecond: 0.3,
+    resolvePerTap: 0.04,
     coldResolve: 0.35,
     /** The crossing itself gives hope: resolve a second for each full pace of the boat. */
-    hopePerSecond: 0.5,
+    hopePerSecond: 1.4,
     /** Letting go pays this share of a ripe light's worth when cold, rising to all of it when warm. */
     lumpCold: 0.2,
     /** Letting go takes this long (no second light goes meanwhile), and the light's burn fades over `riseSeconds`. */
-    goSeconds: 30,
+    goSeconds: 40,
     riseSeconds: 10,
     /** "GOODBYE, LITTLE LIGHT" and the flower stay on the picture this long. */
+    /** A goodbye's lump comes in as the flower opens: each second pays 2 / `lumpSeconds` of what is still owed, so most of it is in within `lumpSeconds`. */
+    lumpSeconds: 40,
     goodbyeSeconds: 7,
+    /** Story cards wait this long more after a goodbye is gone, so none covers it. */
+    goodbyeAfter: 2,
     /** The boat sails this many seconds with full warmth, and at this share of that when the flame is out. */
-    boatSeconds: 2500,
-    boatFloor: 0.12,
-    /** The boat is "surging" in the picture from this warmth. */
-    surgeAt: 0.75,
-    /** Fog creeps in below this warmth. */
-    fogBelow: 0.4,
+    boatSeconds: 1700,
+    boatFloor: 0.36,
     /**
-     * The cold winds: every so often the lights burn harder for a spell. A
-     * wind is forecast `lead` seconds ahead and has a size (mild, chilly,
-     * bitter) that multiplies every burn while it blows.
+     * Fog slows the boat to `fogPace` of its pace at the coldest, easing off
+     * between `fogFrom` and `fogTo` warmth; a warm flame makes it surge up to
+     * `surgePace` faster between `surgeFrom` and `surgeAt` (the picture shows
+     * the surge from `surgeAt`).
+     */
+    fogPace: 0.35,
+    fogFrom: 0.1,
+    fogTo: 0.45,
+    surgePace: 0.2,
+    surgeFrom: 0.6,
+    surgeAt: 0.75,
+    /** Fog creeps in below this warmth, and a step changes only once the warmth is this much of a step past it. */
+    fogBelow: 0.45,
+    fogHold: 0.2,
+    /**
+     * The cold winds: every so often a wind of one kind (sea, town or hills)
+     * blows for a spell, and only the lights that kind bites burn harder
+     * (their burn times `mult`); the rest burn as usual. A wind is forecast
+     * `lead` seconds ahead, with its kind and size, so the player can let
+     * the lights it will bite go first.
      */
     chill: {
-      first: 80,
-      gapMin: 50,
-      gapSpread: 60,
-      lead: 20,
-      seconds: 30,
-      mult: [1.7, 2.6, 3.8] as const,
-      /** Cupping your hands round the flame costs this many seconds of resolve, and a wind bites this share as hard. */
-      shelterSeconds: 15,
-      shelterBite: 0.25,
-      odds: [0.45, 0.35, 0.2] as const,
+      first: 50,
+      gapMin: 20,
+      gapSpread: 30,
+      lead: 35,
+      seconds: 45,
+      mult: [2.5, 4, 6] as const,
+      /** A light let go while the wind that bites it blows pays this many times its lump (the wind carries the goodbye). */
+      carry: 5,
+      odds: [0.4, 0.35, 0.25] as const,
     },
+    /**
+     * A kind safety net: when no light has been let go for this long, the
+     * heaviest one burns down by itself (the same goodbye, the same flower),
+     * and again after the same wait. A player who only watches still gets
+     * home, and a player who reads never meets it.
+     */
+    netSeconds: 150,
     /** What a hearth step, a slow burn and warm company change. */
     hearthTiers: 6,
     /** Each sail step makes the boat this much faster (they stack). */
-    sailMult: 1.4,
+    sailMult: 1.15,
     slowBurn: 0.85,
     companyMult: 1.3,
     /** Each step of the crossing song makes its hope this much bigger (they stack). */
@@ -683,17 +702,17 @@ export const TUNING = {
     spread: 0.5,
     lonely: 0.6,
     lights: [
-      { burn: 0.02, company: 0.096, memory: 20 },
-      { burn: 0.03, company: 0.112, memory: 20 },
-      { burn: 0.07, company: 0.352, memory: 60 },
-      { burn: 0.035, company: 0.08, memory: 30 },
-      { burn: 0.022, company: 0.16, memory: 40 },
-      { burn: 0.08, company: 0.32, memory: 60 },
-      { burn: 0.03, company: 0.144, memory: 40 },
-      { burn: 0.018, company: 0.128, memory: 40 },
-      { burn: 0.014, company: 0.048, memory: 30 },
-      { burn: 0.06, company: 0.256, memory: 60 },
-      { burn: 0.022, company: 0.064, memory: 40 },
+      { burn: 0.02, company: 0.115, memory: 60 },
+      { burn: 0.03, company: 0.134, memory: 60 },
+      { burn: 0.07, company: 0.422, memory: 180 },
+      { burn: 0.035, company: 0.096, memory: 90 },
+      { burn: 0.022, company: 0.192, memory: 120 },
+      { burn: 0.08, company: 0.384, memory: 180 },
+      { burn: 0.03, company: 0.173, memory: 120 },
+      { burn: 0.018, company: 0.154, memory: 120 },
+      { burn: 0.014, company: 0.058, memory: 90 },
+      { burn: 0.06, company: 0.307, memory: 180 },
+      { burn: 0.022, company: 0.077, memory: 120 },
     ] as const,
   },
 } as const;

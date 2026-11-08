@@ -949,6 +949,9 @@ const SONG_STEPS = chain({
     ["A sea shanty", "Everyone knows the chorus. It carries over the waves."],
     ["A lullaby for the water", "The sea goes still to listen."],
     ["The old lighthouse song", "Keepers have sung it for a hundred years."],
+    ["A round for the whole crew", "Everyone joins in, a beat behind."],
+    ["A verse for the far shore", "Somebody on the shore hums it back."],
+    ["The last verse", "It is a short one. It says: nearly home."],
   ].map(([name, description], i) => ({
     name,
     description,

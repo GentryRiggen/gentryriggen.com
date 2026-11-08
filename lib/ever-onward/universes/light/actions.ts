@@ -32,7 +32,7 @@ import { TOLL_ACTIONS } from "./toll";
 import { noteBuy } from "./tanker";
 import { DESIGN_ACTIONS, RECALL } from "./design";
 import { DISTANCE_ACTIONS } from "./sunEdge";
-import { LET_GO_ACTIONS, SHELTER, isReadyToFlash, letAllGo } from "./warmth";
+import { LET_GO_ACTIONS, isReadyToFlash, letAllGo } from "./warmth";
 import { formatNumber } from "../../engine/format";
 import { FORK_ACTIONS } from "./forks";
 import {
@@ -258,7 +258,6 @@ export const ACTIONS: readonly ActionDef[] = [
   RECALL,
   ...DISTANCE_ACTIONS,
   ...LET_GO_ACTIONS,
-  SHELTER,
   ...LAMP_ACTIONS,
   ...BEAM_ACTIONS,
   ...TOLL_ACTIONS,

@@ -13,10 +13,13 @@ import { TUNING } from "./tuning";
  * second. Warmth is what guides the boat home, so a crowd of lights leaves
  * the boat in fog and a bare shore leaves nothing to remember. Each light
  * keeps you company (a trickle of resolve while it burns, less when the flame
- * is cold); letting one go pays a lump of resolve (more when the flame is
- * warm, less when it is cold) and a flower blooms where it stood. The player picks which light goes and when; the lights,
- * their costs and the cold winds differ from run to run, because every
- * number is moved a little by the run's own seed.
+ * is cold); letting one go pays a
+ * lump of resolve (more when the flame is warm, less when it is cold) and a
+ * flower blooms where it stood. The player picks which light goes and when;
+ * the lights, their costs and the cold winds (each of one kind, biting only
+ * some of the lights) differ from run to run, because every number is moved
+ * a little by the run's own seed. A light left alone too long burns down by
+ * itself, so a player who only watches still gets home.
  *
  * Everything here is plain arithmetic on the engine's `dt`. The only random
  * numbers (each light's spread, the cold winds) come from streams fixed from
@@ -136,6 +139,20 @@ export const LIGHTS: readonly LightDef[] = [
 export const LIGHT_COUNT = LIGHTS.length;
 /** What the three sizes of cold wind are called. */
 export const CHILL_NAMES = ["mild", "chilly", "bitter"] as const;
+
+/** One kind of cold wind: where it comes from, and the lights it bites. */
+export interface WindKind {
+  id: string;
+  name: string;
+  /** Indexes of the lights it bites. */
+  lights: readonly number[];
+}
+
+export const WIND_KINDS: readonly WindKind[] = [
+  { id: "sea", name: "sea wind", lights: [3, 4, 6, 8] },
+  { id: "town", name: "town wind", lights: [0, 1, 2, 5] },
+  { id: "hills", name: "hill wind", lights: [7, 9, 10] },
+];
 /** The lights' indexes, for loops. */
 const INDEXES: readonly number[] = LIGHTS.map((_, i) => i);
 
@@ -146,6 +163,11 @@ const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 const clamp = (n: number, lo: number, hi: number): number =>
   Math.min(hi, Math.max(lo, Number.isFinite(n) ? n : lo));
+/** 0 below `from`, 1 above `to`, a smooth ramp between. */
+const smooth = (from: number, to: number, x: number): number => {
+  const t = clamp((x - from) / (to - from), 0, 1);
+  return t * t * (3 - 2 * t);
+};
 const speed = (run: RunState): number => run.mods.speed ?? 1;
 
 /** Steps of a one-off chain bought so far, in order (`hearth-1`, `hearth-2`...). */
@@ -183,11 +205,16 @@ export const flowerNames = (run: RunState): string[] =>
 
 // ----------------------------------------------------------------- the seed
 
+/** A seed that never moves with the player: the night's, then the harbor's, then a constant. */
+const startSeedOf = (run: RunState): number =>
+  (((run.resources.nightSeed ?? 0) || (run.resources.hbSeed ?? 0) || SEED_MIX) ^
+    SEED_MIX) |
+  0;
+
 /** The lights' own stream, fixed from the run's start seed (never the player's taps). */
 function worldSeed(run: RunState): number {
   const r = run.resources;
-  if (!r.wmSeed)
-    r.wmSeed = harborSeed(((r.nightSeed ?? 0) || run.rng) ^ SEED_MIX);
+  if (!r.wmSeed) r.wmSeed = harborSeed(startSeedOf(run));
   return r.wmSeed | 0;
 }
 
@@ -236,25 +263,42 @@ export const lonelyScale = (run: RunState): number =>
 const TOP_BURN = Math.max(...L.lights.map((l) => l.burn)) * (1 + L.spread);
 const TOP_COMPANY =
   Math.max(...L.lights.map((l) => l.company)) * (1 + L.spread) * (1 + L.lonely);
+/** The cards' scale runs over this many times between 1 pip and 5. */
+const PIP_RANGE = 12;
 
-/** A share of the top, as 1 to 5 pips for a card (never a number to work out). */
+/** A share of the top, as 1 to 5 pips for a card (a log scale: each pip is about 1.9 times the last). */
 const pipsOf = (value: number, top: number): number =>
-  clamp(Math.ceil((value / top) * 5), 1, 5);
+  clamp(
+    1 +
+      Math.floor(
+        (4.999 * Math.log(Math.max(value, 1e-9) / (top / PIP_RANGE))) /
+          Math.log(PIP_RANGE)
+      ),
+    1,
+    5
+  );
 
 /** How heavy light `index` is on the warmth, in 1 to 5 flames. */
 export const burnPips = (run: RunState, index: number): number =>
   pipsOf(burnOf(run, index), TOP_BURN);
 
-/** How much company light `index` keeps you, in 1 to 5 hearts. */
-export const companyPips = (run: RunState, index: number): number =>
-  pipsOf(companyOf(run, index), TOP_COMPANY);
-
-/** The resolve a second light `index` keeps you while it burns, with this run's spread. */
+/** The resolve a second light `index` keeps you while it burns, now. */
 export const companyOf = (run: RunState, index: number): number =>
   L.lights[index].company *
   spreadOf(run, index, 2) *
   lonelyScale(run) *
   companyMult(run);
+
+/** How much company light `index` keeps you, in 1 to 5 hearts. */
+export const companyPips = (run: RunState, index: number): number =>
+  pipsOf(companyOf(run, index), TOP_COMPANY * companyMult(run));
+
+/** What a pip count stands for (the middle of its step), for a player that only reads the cards. */
+export const burnOfPips = (pips: number): number =>
+  (TOP_BURN / PIP_RANGE) * PIP_RANGE ** ((pips - 0.5) / 5);
+export const companyOfPips = (run: RunState, pips: number): number =>
+  ((TOP_COMPANY * companyMult(run)) / PIP_RANGE) *
+  PIP_RANGE ** ((pips - 0.5) / 5);
 
 /** What letting light `index` go is worth in all, in resolve, if the flame were warm. */
 export const memoryOf = (run: RunState, index: number): number =>
@@ -265,6 +309,10 @@ export const memoryOf = (run: RunState, index: number): number =>
 /** Which wind is blowing or on the way: 0 mild, 1 chilly, 2 bitter. */
 export const chillSize = (run: RunState): number =>
   clamp(Math.round(res(run, "wmChillSize")), 0, L.chill.mult.length - 1);
+
+/** Which kind of wind is blowing or on the way (an index of `WIND_KINDS`). */
+export const chillKind = (run: RunState): number =>
+  clamp(Math.round(res(run, "wmChillKind")), 0, WIND_KINDS.length - 1);
 
 export const isChillBlowing = (run: RunState): boolean =>
   run.phase === 3 && res(run, "wmChillLeft") > 0;
@@ -284,32 +332,26 @@ export function chillForecast(run: RunState): number | null {
   return left > 0 && left <= L.chill.lead ? chillSize(run) : null;
 }
 
-/** How much a wind of `size` multiplies every burn. */
+/** How much a wind of `size` multiplies the burn of a light it bites. */
 export const chillBite = (size: number): number =>
   L.chill.mult[clamp(Math.round(size), 0, L.chill.mult.length - 1)];
 
-/** True once the player has cupped their hands round the flame against the wind to come or blowing. */
-export const isSheltered = (run: RunState): boolean =>
-  run.phase === 3 && res(run, "wmShield") > 0;
+/** Does a wind of this kind bite light `index`? */
+export const windBites = (kind: number, index: number): boolean =>
+  WIND_KINDS[clamp(Math.round(kind), 0, WIND_KINDS.length - 1)].lights.includes(
+    index
+  );
 
-/** How much a wind of `size` multiplies every burn for a flame that is sheltered or not. */
-export const biteWith = (size: number, isShelter: boolean): number =>
-  1 + (chillBite(size) - 1) * (isShelter ? L.chill.shelterBite : 1);
-
-/** How much a wind blowing now multiplies every burn (1 when none). */
-export const chillMult = (run: RunState): number =>
-  isChillBlowing(run) ? biteWith(chillSize(run), isSheltered(run)) : 1;
-
-/** What cupping your hands round the flame costs: some seconds of the resolve coming in. */
-export const shelterCost = (run: RunState): number =>
-  Math.max(2, Math.round(resolvePerSecond(run) * L.chill.shelterSeconds));
-
-/** A wind is on the way or blowing, and the flame is not yet cupped. */
-export const canShelter = (run: RunState): boolean =>
-  run.phase === 3 &&
-  !isSheltered(run) &&
+/** The wind (blowing now, or forecast) bites light `index`. */
+export const isBitten = (run: RunState, index: number): boolean =>
   (isChillBlowing(run) || chillForecast(run) !== null) &&
-  (run.resources.resolve ?? 0) >= shelterCost(run);
+  windBites(chillKind(run), index);
+
+/** How much a wind blowing now multiplies light `index`'s burn (1 when none, or when it passes it by). */
+export const windOn = (run: RunState, index: number): number =>
+  isChillBlowing(run) && windBites(chillKind(run), index)
+    ? chillBite(chillSize(run))
+    : 1;
 
 function chillStream<T>(run: RunState, draw: (next: () => number) => T): T {
   const r = run.resources;
@@ -320,7 +362,7 @@ function chillStream<T>(run: RunState, draw: (next: () => number) => T): T {
   return out;
 }
 
-/** Plans the next wind: its size and when it comes. */
+/** Plans the next wind: its size, its kind and when it comes. */
 function planChill(run: RunState, wait: number): void {
   const r = run.resources;
   chillStream(run, (next) => {
@@ -335,8 +377,11 @@ function planChill(run: RunState, wait: number): void {
       }
     }
     r.wmChillSize = size;
+    // Never the same kind twice running, so the wind to come is news.
+    const last = Math.round(res(run, "wmChillKind"));
+    const draw = Math.floor(next() * (WIND_KINDS.length - 1));
+    r.wmChillKind = (last + 1 + draw) % WIND_KINDS.length;
     r.wmChillIn = wait + next() * L.chill.gapSpread;
-    r.wmShield = 0;
   });
 }
 
@@ -352,10 +397,6 @@ export const hearthTier = (run: RunState): number => chainTier(run, "hearth");
 export const hearthWarmth = (run: RunState): number =>
   L.hearthBase + L.hearthStep * hearthTier(run);
 
-/** The glow of recent taps (0 to `stokeMax`). */
-export const stokeOf = (run: RunState): number =>
-  clamp(res(run, "wmStoke"), 0, L.stokeMax);
-
 /** The share of a light still burning on the books: a light rising fades out. */
 function burnShare(run: RunState, index: number): number {
   if (isLit(run, index)) return 1;
@@ -364,21 +405,30 @@ function burnShare(run: RunState, index: number): number {
   return clamp(res(run, "wmRise") / L.riseSeconds, 0, 1);
 }
 
+/** The warmth light `index` costs each second right now, wind and all. */
+export const burnNow = (run: RunState, index: number): number =>
+  burnOf(run, index) * burnShare(run, index) * windOn(run, index);
+
 /** All the warmth the burning lights cost each second, with no wind. */
 export const burnTotal = (run: RunState): number =>
   INDEXES.reduce((sum, i) => sum + burnOf(run, i) * burnShare(run, i), 0);
 
-/** Where the warmth is heading right now (0..1): the hearth less the burn, plus the stoke. */
+/** All the warmth the burning lights cost each second right now, the wind's bite included. */
+export const burnTotalNow = (run: RunState): number =>
+  INDEXES.reduce((sum, i) => sum + burnNow(run, i), 0);
+
+/** Where the warmth is heading right now (0..1): the hearth less the burn. */
 export const warmthTarget = (run: RunState): number =>
-  clamp(
-    hearthWarmth(run) - burnTotal(run) * chillMult(run) + stokeOf(run),
-    L.warmFloor,
-    1
-  );
+  clamp(hearthWarmth(run) - burnTotalNow(run), L.warmFloor, 1);
 
 /** The boat's pace for a warmth: the floor at the coldest, full at the warmest. */
-export const paceAt = (warmth: number): number =>
-  L.boatFloor + (1 - L.boatFloor) * clamp(warmth, 0, 1);
+export const paceAt = (warmth: number): number => {
+  const w = clamp(warmth, 0, 1);
+  // Fog slows the boat below the fog line; a warm flame makes it surge.
+  const fog = L.fogPace + (1 - L.fogPace) * smooth(L.fogFrom, L.fogTo, w);
+  const surge = 1 + L.surgePace * smooth(L.surgeFrom, L.surgeAt, w);
+  return (L.boatFloor + (1 - L.boatFloor) * w) * fog * surge;
+};
 
 /** The boat's own gear: sails, a mast and a lookout make the same warmth go farther. */
 export const boatGear = (run: RunState): number =>
@@ -408,6 +458,23 @@ export const isSurging = (run: RunState): boolean =>
 export const fogOf = (run: RunState): number =>
   clamp((L.fogBelow - warmthOf(run)) / (L.fogBelow - L.warmFloor), 0, 1);
 
+/**
+ * The fog the picture shows, 0..4: `fogOf` in steps, but a step changes only
+ * once the warmth is well past it, so the fog never flickers on a boundary.
+ */
+export function fogLevel(run: RunState): number {
+  // `wmFog` keeps the level plus one, so a run that never settled it reads 0.
+  const held = res(run, "wmFog");
+  return held <= 0 ? Math.round(fogOf(run) * 4) : clamp(held - 1, 0, 4);
+}
+
+function settleFog(run: RunState): void {
+  const aim = fogOf(run) * 4;
+  const held = fogLevel(run);
+  const next = Math.abs(aim - held) > 0.5 + L.fogHold ? Math.round(aim) : held;
+  run.resources.wmFog = clamp(next, 0, 4) + 1;
+}
+
 // ---------------------------------------------------------------- resolve
 
 /** All the company the burning lights keep you, in resolve a second before the warmth (a light rising fades out). */
@@ -433,11 +500,17 @@ export function resolvePerSecond(run: RunState): number {
 export const tapResolve = (run: RunState): number =>
   L.resolvePerTap * (hasFork(run, "keep") ? FK.keepTaps : 1);
 
-/** The resolve letting light `index` go would pay right now. */
+/** Is the wind that is blowing now one that bites light `index`? Its goodbye is carried farther. */
+export const isCarried = (run: RunState, index: number): boolean =>
+  isChillBlowing(run) && windBites(chillKind(run), index);
+
+/** The resolve letting light `index` go would pay right now (more when the wind that bites it carries the goodbye). */
 export function lumpNow(run: RunState, index: number): number {
   if (!isLit(run, index)) return 0;
   const warm = L.lumpCold + (1 - L.lumpCold) * warmthOf(run);
-  return memoryOf(run, index) * warm;
+  return (
+    memoryOf(run, index) * warm * (isCarried(run, index) ? L.chill.carry : 1)
+  );
 }
 
 // ------------------------------------------------------------ letting go
@@ -464,15 +537,18 @@ export function letGo(run: RunState, index: number): void {
   if (!canLetGo(run, index)) return;
   const r = run.resources;
   const lump = lumpNow(run, index);
-  r.resolve = res(run, "resolve") + lump;
+  // The lump comes in over `lumpSeconds`, as the flower opens, not all at once.
+  r.wmOwed = res(run, "wmOwed") + lump;
   run.owned[LIGHTS[index].id] = 1;
   r.wmLastLump = lump;
   r.wmLock = L.goSeconds;
   r.wmRiseIdx = index + 1;
   r.wmRise = L.riseSeconds;
   r.wmBye = L.goodbyeSeconds;
+  r.wmHold = L.goodbyeSeconds + L.goodbyeAfter;
   r.wmByeIdx = index + 1;
   r.wmLets = res(run, "wmLets") + 1;
+  r.wmNet = 0;
   r.lights = Math.max(0, TOTAL_LIGHTS - letGoCount(run));
 }
 
@@ -480,9 +556,9 @@ export function letGo(run: RunState, index: number): void {
 export const goodbyeLeft = (run: RunState): number =>
   Math.max(0, res(run, "wmBye"));
 
-/** True in the first seconds of a goodbye: a story card must not cover it. */
+/** True while a goodbye is on the picture and for a moment after: a story card waits until then. */
 export const isGoodbyeBusy = (run: RunState): boolean =>
-  run.phase === 3 && goodbyeLeft(run) > L.goodbyeSeconds - 4;
+  run.phase === 3 && res(run, "wmHold") > 0;
 
 /** Lets every light still burning go at once: the last flash. */
 export function letAllGo(run: RunState): void {
@@ -495,24 +571,16 @@ export function letAllGo(run: RunState): void {
 /** Starts the part: the lights are all lit; the first wind is planned. */
 export function startWarmth(run: RunState): void {
   const r = run.resources;
-  r.wmSeed = harborSeed(((r.nightSeed ?? 0) || run.rng) ^ SEED_MIX);
+  r.wmSeed = harborSeed(startSeedOf(run));
   r.wmChillSeed = harborSeed(r.wmSeed ^ CHILL_MIX);
-  r.wmStoke = 0;
+  r.wmClock = 0;
+  r.wmNet = 0;
   r.wmLock = 0;
   r.wmRise = 0;
   r.wmRiseIdx = 0;
   r.wmBye = 0;
   r.wmChillLeft = 0;
   planChill(run, L.chill.first);
-}
-
-/** A tap stokes the flame. */
-export function stoke(run: RunState, taps = 1): void {
-  run.resources.wmStoke = clamp(
-    stokeOf(run) + L.stokePerTap * taps,
-    0,
-    L.stokeMax
-  );
 }
 
 /**
@@ -524,10 +592,44 @@ function refundRemovedUpgrades(run: RunState): void {
   for (const [id, cost] of Object.entries(REMOVED_LAST_COSTS)) {
     const levels = Math.floor(owned(run, id));
     if (levels <= 0) continue;
-    run.resources.resolve =
-      res(run, "resolve") + cost * REMOVED_LAST_SCALE * levels;
+    // Pay back what was paid: the run's own price cut (a prestige perk) too.
+    const cut = run.mods.costMult;
+    const paid =
+      cost *
+      REMOVED_LAST_SCALE *
+      levels *
+      (cut !== undefined && Number.isFinite(cut) && cut > 0 ? cut : 1);
+    run.resources.resolve = res(run, "resolve") + paid;
     delete run.owned[id];
   }
+}
+
+/** Pays the lump a goodbye is owed, a little each second. */
+function payOwed(run: RunState, dt: number): void {
+  const owedNow = res(run, "wmOwed");
+  if (owedNow <= 0) return;
+  const pay = Math.min(
+    owedNow,
+    (Math.max(owedNow, 1) / L.lumpSeconds) * dt * 2
+  );
+  run.resources.resolve = res(run, "resolve") + pay;
+  run.resources.wmOwed = owedNow - pay;
+}
+
+/**
+ * The kind safety net: with no light let go for `netSeconds`, the heaviest
+ * burns down by itself, the same goodbye the player would have made. It waits
+ * out the settle first, so two never go at once.
+ */
+function burnDownIfLeftAlone(run: RunState): void {
+  if (res(run, "wmNet") < L.netSeconds || lockLeft(run) > 0) return;
+  const heaviest = INDEXES.filter((i) => isLit(run, i)).reduce(
+    (best, i) => (best < 0 || burnOf(run, i) > burnOf(run, best) ? i : best),
+    -1
+  );
+  if (heaviest < 0 || boatArrived(run)) return;
+  letGo(run, heaviest);
+  run.resources.wmNets = res(run, "wmNets") + 1;
 }
 
 /** Runs the warmth, the company, the wind and the boat for `dt` seconds. */
@@ -553,12 +655,17 @@ export function tickWarmth(run: RunState, dt: number): void {
   r.wmLock = Math.max(0, res(run, "wmLock") - dt);
   r.wmRise = Math.max(0, res(run, "wmRise") - dt);
   r.wmBye = Math.max(0, res(run, "wmBye") - dt);
-  r.wmStoke = Math.max(0, stokeOf(run) - L.stokeFade * dt);
+  r.wmHold = Math.max(0, res(run, "wmHold") - dt);
+  payOwed(run, dt);
+  r.wmClock = res(run, "wmClock") + dt;
+  r.wmNet = res(run, "wmNet") + dt;
+  burnDownIfLeftAlone(run);
   // The warmth moves toward where the lights leave it.
   const warmth = warmthOf(run);
   const target = warmthTarget(run);
   const next = warmth + (target - warmth) * (1 - Math.exp(-L.warmRate * dt));
   r.flame = clamp(next, 0, 1) * L.flameFull;
+  settleFog(run);
   // The resolve of the quiet, and the boat.
   r.resolve = res(run, "resolve") + resolvePerSecond(run) * dt;
   if (boatArrived(run)) return;
@@ -595,27 +702,3 @@ export function goodbyeLine(run: RunState): string | null {
   const lump = Math.max(1, Math.round(lastLump(run)));
   return `You let the ${LIGHTS[index].name.toLowerCase()} go. A flower blooms where they stood: +${lump} resolve.`;
 }
-
-export const SHELTER_ACTION = "shelter-flame";
-
-/** Cups your hands round the flame: this wind bites less, for some resolve. */
-export const SHELTER: ActionDef = {
-  id: SHELTER_ACTION,
-  phases: [PHASE_LAST],
-  isInline: true,
-  visibleWhen: (run) =>
-    run.phase === 3 && (isChillBlowing(run) || chillForecast(run) !== null),
-  describe: (run) => ({
-    label: "Cup your hands round the flame",
-    detail: isSheltered(run)
-      ? "Your hands are round the flame. This wind will bite less."
-      : "This wind bites less, and the lights burn gentler while it blows.",
-    cost: { resource: "resolve", amount: shelterCost(run) },
-    isBlocked: isSheltered(run),
-  }),
-  perform: (run) => {
-    if (isSheltered(run)) return;
-    run.resources.wmShield = 1;
-    run.resources.wmShelters = res(run, "wmShelters") + 1;
-  },
-};

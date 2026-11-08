@@ -32,8 +32,9 @@ import {
 import {
   LIGHT_COUNT,
   chillForecast,
+  chillKind,
   chillSize,
-  fogOf,
+  fogLevel,
   goodbyeIndex,
   hearthTier,
   isChillBlowing,
@@ -153,6 +154,8 @@ export interface LightSceneInfo {
   goodbye: number;
   /** The cold wind: 0 none, 1-3 forecast (mild to bitter), 4-6 blowing. */
   chill: number;
+  /** The kind of that wind (1 sea, 2 town, 3 hills; 0 while none is forecast or blowing). */
+  windKind: number;
   /** Hearth steps bought, 0 to 6. */
   hearthTier: number;
   /** Steps of the boat's sails, the lamp glass and warm company, so each shows in the picture. */
@@ -381,10 +384,11 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     boatVisible: isBoatOut(run) ? 1 : 0,
     boatProgress: step(clamp01(finite(r.boatProgress ?? 0) / 100), 100),
     surge: isSurging(run) ? 1 : 0,
-    fog: run.phase === 3 ? Math.round(fogOf(run) * 4) : 0,
+    fog: run.phase === 3 ? fogLevel(run) : 0,
     brightCode: brightCode(run),
     goodbye: (goodbyeIndex(run) ?? -1) + 1,
     chill: chillCode(run),
+    windKind: chillCode(run) === 0 ? 0 : chillKind(run) + 1,
     hearthTier: hearthTier(run),
     sailTier: tier(run, "sail"),
     slowburnTier: tier(run, "slowburn"),

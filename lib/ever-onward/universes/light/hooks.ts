@@ -28,13 +28,7 @@ import {
 } from "./sunEdge";
 import { TOLL_ACTION_IDS, isTollOpen, tollLockLeft } from "./toll";
 import { isTankerIn } from "./tanker";
-import {
-  LET_GO_ACTION_IDS,
-  SHELTER_ACTION,
-  chillForecast,
-  isChillBlowing,
-  litCount,
-} from "./warmth";
+import { LET_GO_ACTION_IDS, litCount } from "./warmth";
 import {
   FUND_ACTION_IDS,
   FUND_CHOICE_IDS,
@@ -105,8 +99,6 @@ export function lightPlates(run: RunState): string[] {
     plates.push("tend");
     if (litCount(run) > 0) plates.push("lights");
     plates.push("boat");
-    // A cold wind is worth a look while it is forecast or blowing.
-    if (isChillBlowing(run) || chillForecast(run) !== null) plates.push("wind");
   }
   if (isFundOpen(run) && fundBalance(run) > 0) plates.push("fund");
   const fork = forkOf(run);
@@ -130,7 +122,6 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   wild: [RECALL_ACTION],
   boat: ["flash-lamp"],
   lights: LET_GO_ACTION_IDS,
-  wind: [SHELTER_ACTION],
   fund: FUND_ACTION_IDS,
   overdrive: [OVERDRIVE_ACTION],
   fork: FORK_ACTION_IDS,
@@ -150,7 +141,6 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   RECALL_ACTION,
   ...CREW_POST_ACTION_IDS,
   ...LET_GO_ACTION_IDS,
-  SHELTER_ACTION,
   ...LAMP_ACTION_IDS,
   ...BEAM_ACTION_IDS,
   ...FUND_CHOICE_IDS,

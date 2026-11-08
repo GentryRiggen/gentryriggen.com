@@ -62,8 +62,12 @@ describe("every upgrade lands", () => {
   });
 
   it("every step of the last part's shop is plainly felt", () => {
-    // A sail, a song and warm company are each at least a quarter more.
-    expect(L.sailMult).toBeGreaterThanOrEqual(1.25);
+    // A song and warm company are each at least a quarter more. A sail is
+    // 15% (five of them make the boat twice as fast): the sails' weight was
+    // moved into the base pace so a player who never buys still gets home in
+    // about twice the time (see warmthDials.test.ts), and each sail still
+    // shows in the picture.
+    expect(L.sailMult).toBeGreaterThanOrEqual(1.15);
     expect(L.songMult).toBeGreaterThanOrEqual(1.25);
     expect(L.companyMult).toBeGreaterThanOrEqual(1.25);
     // A hearth step is a good share of what a light costs in warmth.

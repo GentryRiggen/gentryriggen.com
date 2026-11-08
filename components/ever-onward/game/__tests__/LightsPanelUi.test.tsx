@@ -16,7 +16,7 @@ function lastRun(resources: Record<string, number> = {}): RunState {
   const run = reconcileRun(def, {
     ...base,
     phase: 3,
-    resources: { ...base.resources, lights: 12, flame: 400, ...resources },
+    resources: { ...base.resources, lights: 11, flame: 400, ...resources },
   });
   startWarmth(run);
   Object.assign(run.resources, resources);
@@ -50,9 +50,14 @@ describe("LightsPanel", () => {
     expect(panel).toHaveAttribute("data-lit", "11");
     for (let i = 0; i < 11; i += 1)
       expect(screen.getByTestId(`lm-light-${i}`)).toBeInTheDocument();
-    // two rows of marks a light, read out as "n of 5"
+    // two rows of marks a light, read out as "Costs warmth: n of 5" and "Keeps company: n of 5"
     const stadium = screen.getByTestId("lm-light-2");
-    expect(within(stadium).getAllByText(/\d of 5/)).toHaveLength(2);
+    expect(
+      within(stadium).getByRole("img", { name: /Costs warmth: \d of 5/ })
+    ).toBeInTheDocument();
+    expect(
+      within(stadium).getByRole("img", { name: /Keeps company: \d of 5/ })
+    ).toBeInTheDocument();
     expect(panel).not.toHaveTextContent(/best|recommend|should/i);
   });
 
@@ -73,20 +78,46 @@ describe("LightsPanel", () => {
     const still = lastRun({ wmChillIn: 90, wmChillLeft: 0, wmChillSize: 1 });
     const { view } = renderPanel(still);
     expect(screen.getByTestId("lm-wind")).toHaveTextContent(/air is still/i);
-    const coming = lastRun({ wmChillIn: 12, wmChillLeft: 0, wmChillSize: 2 });
+    const coming = lastRun({
+      wmChillIn: 12,
+      wmChillLeft: 0,
+      wmChillSize: 2,
+      wmChillKind: 0,
+    });
     view.rerender(
       <LightsPanel def={def} run={coming} onAct={() => undefined} />
     );
     expect(screen.getByTestId("lm-wind")).toHaveTextContent(
-      /bitter wind is coming/i
+      /bitter sea wind is coming/i
+    );
+    // it names the lights it will bite, and marks their cards
+    expect(screen.getByTestId("lm-wind")).toHaveTextContent(
+      /bridge lights, the harbor lamps, the festival lanterns and the moon mirror/i
     );
     expect(screen.getByTestId("lm-wind")).toHaveAttribute("data-windy", "yes");
-    const blowing = lastRun({ wmChillLeft: 20, wmChillSize: 0 });
+    expect(screen.getByTestId("lm-light-3")).toHaveAttribute(
+      "data-bitten",
+      "yes"
+    );
+    expect(screen.getByTestId("lm-light-0")).toHaveAttribute(
+      "data-bitten",
+      "no"
+    );
+    const blowing = lastRun({
+      wmChillLeft: 20,
+      wmChillSize: 0,
+      wmChillKind: 1,
+    });
     view.rerender(
       <LightsPanel def={def} run={blowing} onAct={() => undefined} />
     );
     expect(screen.getByTestId("lm-wind")).toHaveTextContent(
-      /mild wind is blowing/i
+      /mild town wind is blowing/i
+    );
+    // a goodbye in the wind that bites a light pays more, and says so
+    expect(screen.getByTestId("lm-letgo-2")).toHaveTextContent(/on the wind/i);
+    expect(screen.getByTestId("lm-letgo-4")).not.toHaveTextContent(
+      /on the wind/i
     );
   });
 

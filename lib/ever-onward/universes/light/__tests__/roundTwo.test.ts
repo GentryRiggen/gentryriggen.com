@@ -57,7 +57,7 @@ describe("The first ship comes home", () => {
   it("starts the warmth at 30% whatever came before, with every light lit", () => {
     const start = runAtPhaseStart(3);
     expect(warmthOf(start)).toBeCloseTo(0.3, 5);
-    expect(start.resources.lights).toBe(12);
+    expect(start.resources.lights).toBe(11);
     expect(litCount(start)).toBe(11);
   });
 
@@ -69,11 +69,11 @@ describe("The first ship comes home", () => {
     );
   });
 
-  it("stoking the flame helps a little, and a cold flame still earns resolve", () => {
+  it("a tap earns resolve only (it never warms the flame), and a cold flame still earns resolve", () => {
     const start = runAtPhaseStart(3);
     const cold = withResources(start, { flame: 0 });
     const afterTap = manualAction(def, cold);
-    expect(afterTap.resources.wmStoke).toBeGreaterThan(0);
+    expect(afterTap.resources.flame).toBe(cold.resources.flame);
     expect(afterTap.resources.resolve).toBeGreaterThan(cold.resources.resolve);
     expect(tick(def, cold, 10).resources.resolve).toBeGreaterThan(
       cold.resources.resolve

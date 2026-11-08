@@ -238,7 +238,7 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
   it("pays back the cut rain barrel at what it cost, once, in the last part", () => {
     const run = tick(
       def,
-      at(3, { [RAIN_BARREL_ID]: 1 }, { resolve: 0, lights: 12 }),
+      at(3, { [RAIN_BARREL_ID]: 1 }, { resolve: 0, lights: 11 }),
       1
     );
     expect(run.owned[RAIN_BARREL_ID]).toBeUndefined();
@@ -254,18 +254,18 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
   it("keeps the lights an old save already let go gone, and starts a save with no warmth numbers cold-free", () => {
     const old = tick(
       def,
-      at(3, { "letgo-porch": 1, "letgo-signs": 1 }, { lights: 10, flame: 500 }),
+      at(3, { "letgo-porch": 1, "letgo-signs": 1 }, { lights: 9, flame: 500 }),
       1
     );
     expect(litCount(old)).toBe(9);
-    expect(old.resources.lights).toBe(10);
+    expect(old.resources.lights).toBe(9);
     expect(warmthOf(old)).toBeGreaterThan(0);
   });
 });
 
 describe("the flame", () => {
   it("still answers a tap when it is full: the tap earns a little resolve", () => {
-    const full = at(3, {}, { flame: TUNING.last.flameFull, lights: 12 });
+    const full = at(3, {}, { flame: TUNING.last.flameFull, lights: 11 });
     expect(warmthOf(full)).toBe(1);
     // TapButton shows a "+gain" floater whenever this is above 0
     expect(manualGain(def, full)).toBeGreaterThan(0);

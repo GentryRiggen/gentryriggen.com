@@ -12,7 +12,8 @@ export const TOTAL_CITIES = 100;
 /** Stars in the sky at the start of The Sky. */
 export const TOTAL_STARS = 1000;
 /** Lights in the world when The Last Light begins (the lantern is one). */
-export const TOTAL_LIGHTS = 12;
+/** The remembered lights in the last part (a test keeps this equal to warmth.ts's LIGHTS). */
+export const TOTAL_LIGHTS = 11;
 
 const HIDDEN: readonly string[] = [];
 
@@ -367,9 +368,11 @@ export const RESOURCES: readonly ResourceDef[] = [
     phases: HIDDEN,
   },
   { id: "wmChillSize", label: "Size of the next cold wind", phases: HIDDEN },
-  { id: "wmShield", label: "Flame cupped against this wind", phases: HIDDEN },
-  { id: "wmShelters", label: "Winds sheltered from", phases: HIDDEN },
-  { id: "wmStoke", label: "Flame stoked by taps", phases: HIDDEN },
+  { id: "wmChillKind", label: "Kind of the next cold wind", phases: HIDDEN },
+  { id: "wmFog", label: "Fog on the water (0 to 4, plus one)", phases: HIDDEN },
+  { id: "wmClock", label: "Seconds of the last part gone", phases: HIDDEN },
+  { id: "wmNet", label: "Seconds since a light last went", phases: HIDDEN },
+  { id: "wmNets", label: "Lights that burned down alone", phases: HIDDEN },
   { id: "wmLock", label: "Seconds until another light may go", phases: HIDDEN },
   {
     id: "wmRise",
@@ -378,7 +381,13 @@ export const RESOURCES: readonly ResourceDef[] = [
   },
   { id: "wmRiseIdx", label: "The light rising (1 up)", phases: HIDDEN },
   { id: "wmBye", label: "Goodbye banner seconds left", phases: HIDDEN },
+  {
+    id: "wmHold",
+    label: "Seconds story cards wait for a goodbye",
+    phases: HIDDEN,
+  },
   { id: "wmByeIdx", label: "The light of the goodbye (1 up)", phases: HIDDEN },
+  { id: "wmOwed", label: "Resolve a goodbye still owes", phases: HIDDEN },
   { id: "wmLastLump", label: "Resolve the last goodbye paid", phases: HIDDEN },
   { id: "wmLets", label: "Lights let go", phases: HIDDEN },
   // The first ship's boat (shown in the picture and the goal, not as a number).
@@ -388,7 +397,7 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "lantern", label: "Lantern colour", phases: HIDDEN },
   {
     id: "lights",
-    label: "Lights still lit",
+    label: "Lights left",
     initial: TOTAL_LIGHTS,
     phases: [PHASE_LAST],
   },
