@@ -1,6 +1,13 @@
 import type { RunState } from "../../engine/types";
 import { toddlerSeconds, toddlerStage } from "./playroom";
 import { swayOf } from "./sway";
+import {
+  darkCutText,
+  dayNext,
+  dayNow,
+  daySecondsLeft,
+  isTownOpen,
+} from "./town";
 
 /** The tower is wobbling above this. */
 export const WOBBLE_AT = 0.7;
@@ -14,6 +21,24 @@ export function higherAlert(run: RunState): string | null {
       return `The toddler is coming in ${toddlerSeconds(run)} seconds! Tumbles come much more easily while it stomps, most of all for a leaning tower. Bank your streak or slow down.`;
     if (stage === "stomping")
       return "The toddler is stomping on the rug! The tower tumbles much more easily until it goes, even if you stop tapping.";
+    return null;
+  }
+  if (run.phase === 1) {
+    if (swayOf(run) >= WOBBLE_AT)
+      return "The tower is wobbling! The crew works at half speed. Slow the pace, or put Careful Kim on a hat. Braces, a good footing and hard hats make it wobble less.";
+    if (
+      isTownOpen(run) &&
+      daySecondsLeft(run) <= 20 &&
+      dayNext(run).id !== dayNow(run).id
+    )
+      return `${dayNext(run).name} tomorrow in ${daySecondsLeft(run)} seconds. ${dayNext(run).note} Changing a hat takes a whole shift.`;
+    if (
+      isTownOpen(run) &&
+      darkCutText(run) &&
+      daySecondsLeft(run) > 20 &&
+      dayNow(run).id === "night"
+    )
+      return `Night shift! ${darkCutText(run)}`;
     return null;
   }
   if (swayOf(run) < WOBBLE_AT) return null;

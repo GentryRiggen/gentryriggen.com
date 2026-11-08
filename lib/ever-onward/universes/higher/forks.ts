@@ -95,7 +95,7 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "A steel frame",
         blurb: `Helpers pay ${times(T.town.steelPay)} as much. The crews are so busy riveting that they learn slowly: know-how comes in ${times(T.town.steelKnow)}.`,
-        catchLine: "Half the know-how, so fewer projects and overtime.",
+        catchLine: "A quarter less know-how, so fewer projects and overtime.",
       },
       {
         name: "Timber beams",

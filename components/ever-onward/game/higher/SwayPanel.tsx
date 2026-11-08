@@ -34,7 +34,9 @@ const TOWERS = ["block tower", "tower", "tower"] as const;
  * Braces, a footing and hard hats make the button needed less and less.
  */
 export default function SwayPanel({ def, run, onAct }: PanelProps) {
-  if (!hasSway(run) || run.complete || helperLevels(run) < 2) return null;
+  // The town has the build pace instead; Steady is for the sky.
+  if (run.phase !== 2 || !hasSway(run) || run.complete || helperLevels(run) < 2)
+    return null;
   const sway = swayOf(run);
   const canSteady = canPerformAction(def, run, STEADY_ACTION_ID);
   const state = sway >= 0.7 ? "wobbling" : sway >= 0.5 ? "leaning" : "upright";

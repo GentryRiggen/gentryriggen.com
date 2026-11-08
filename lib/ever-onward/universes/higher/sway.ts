@@ -9,7 +9,7 @@ import {
   owned,
   res,
 } from "./lines";
-import { PHASE_SKY, PHASE_TOWN } from "./resources";
+import { PHASE_SKY } from "./resources";
 import { TUNING } from "./tuning";
 
 /**
@@ -30,6 +30,9 @@ export const STEADY_ACTION_ID = "steady";
  */
 export const hasSway = (run: RunState): boolean =>
   run.phase === 1 || run.phase === 2;
+
+/** Steady is a button of the sky; the town sets its lean with the build pace. */
+const hasSteady = (run: RunState): boolean => run.phase === 2;
 
 /** How far the tower leans, 0 (upright) to 1. */
 export const swayOf = (run: RunState): number =>
@@ -84,7 +87,8 @@ export function swayRelax(run: RunState): number {
 }
 
 export function tickSway(run: RunState, dt: number): void {
-  if (!hasSway(run)) return;
+  // The town's lean follows the build pace (town.ts), not this slow climb.
+  if (!hasSway(run) || run.phase === 1) return;
   const sway = swayOf(run);
   run.resources.sway = Math.min(
     1,
@@ -95,6 +99,9 @@ export function tickSway(run: RunState, dt: number): void {
 /** A steadying pole from a delivery: takes some of the sway away. */
 export function relieveSway(run: RunState, share: number): void {
   run.resources.sway = Math.max(0, swayOf(run) * (1 - share));
+  // In the town the pole also holds the lean down for a while.
+  if (run.phase === 1)
+    run.resources.twPoleUntil = run.time + TUNING.town.poleSeconds;
 }
 
 const WORDS = [undefined, "bricks", "beams"] as const;
@@ -103,9 +110,9 @@ const TOWERS = [undefined, "tower", "tower"] as const;
 /** Press to set the tower right. Free, and never a loss. */
 export const STEADY_ACTION: ActionDef = {
   id: STEADY_ACTION_ID,
-  phases: [PHASE_TOWN, PHASE_SKY],
+  phases: [PHASE_SKY],
   isInline: true,
-  visibleWhen: (run) => hasSway(run) && helperLevels(run) >= 2,
+  visibleWhen: (run) => hasSteady(run) && helperLevels(run) >= 2,
   describe: (run) => {
     const sway = swayOf(run);
     return {

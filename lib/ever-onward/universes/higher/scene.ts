@@ -20,6 +20,24 @@ import {
   tumblesSoFar,
 } from "./playroom";
 import { swayOf } from "./sway";
+import {
+  DAYS,
+  darkness,
+  dayNext,
+  dayNow,
+  hasPark,
+  hatIds,
+  isTownOpen,
+  justArrived,
+  justLit,
+  justNewDay,
+  justTossed,
+  lampsOf,
+  lightsSoFar,
+  pendingIds,
+  swapStarts,
+  swapsSoFar,
+} from "./town";
 import { UPGRADES } from "./upgrades";
 
 /** The few numbers the picture needs; the scene redraws only when they change. */
@@ -43,6 +61,33 @@ export interface HigherSceneInfo {
   /** A streak was just banked: 0 no, or the fanfare's size 1 to 3; and the count. */
   banking: number;
   banks: number;
+  /** The town's foremen on their hats, a digit each (0 empty), like "205". */
+  crew: string;
+  /** Hats waiting for a foreman who is on his way, one bit per hat. */
+  waiting: number;
+  /** A hat was just handed back (the old foreman tosses it): the colour, and which swap. */
+  tossed: number;
+  tosses: number;
+  /** A new foreman just took a hat: who, and which arrival. */
+  arrived: number;
+  arrivals: number;
+  /** Which hat was handed back, and which one a new foreman just took (0 to 2). */
+  tossHat: number;
+  arriveHat: number;
+  /** A new day has just begun, and how many have. */
+  dayNew: boolean;
+  days: number;
+  /** The shadow over the town, 0 (bright) to 5 (pitch dark). */
+  shade: number;
+  /** Street lamps lit (0 to 3), and whether the park is open. */
+  lamps: number;
+  park: boolean;
+  /** The lights have just come on, and how many times they have. */
+  lit: boolean;
+  lights: number;
+  /** Today's day and tomorrow's (an index into the days: quiet, market, night, windy, festival). */
+  day: number;
+  tomorrow: number;
   /** How much footing there is, 0 (none) to 3. */
   footing: number;
   /** The share of income kept back (0, 1 or 2). */
@@ -99,6 +144,26 @@ export function sceneInfo(run: RunState): HigherSceneInfo {
     tumbles: tumblesSoFar(run),
     banking: justBanked(run) ? bankTier(run) : 0,
     banks: banksSoFar(run),
+    crew: hatIds(run).join(""),
+    waiting: pendingIds(run).reduce(
+      (bits, id, h) => bits | (id > 0 ? 1 << h : 0),
+      0
+    ),
+    tossed: justTossed(run) ? Math.round(run.resources.tfGone ?? 0) + 1 : 0,
+    tosses: swapStarts(run),
+    arrived: justArrived(run) ? Math.round(run.resources.tfWho ?? 0) : 0,
+    arrivals: swapsSoFar(run),
+    tossHat: Math.round(run.resources.tfHatOff ?? 0),
+    arriveHat: Math.round(run.resources.tfHatOn ?? 0),
+    dayNew: justNewDay(run),
+    days: Math.round(run.resources.twDayN ?? 0),
+    shade: run.phase === 1 ? Math.round(darkness(run) * 5) : 0,
+    lamps: run.phase === 1 ? lampsOf(run) : 0,
+    park: run.phase === 1 && hasPark(run),
+    lit: run.phase === 1 && justLit(run),
+    lights: lightsSoFar(run),
+    day: isTownOpen(run) ? DAYS.indexOf(dayNow(run)) : 0,
+    tomorrow: isTownOpen(run) ? DAYS.indexOf(dayNext(run)) : 0,
     footing: Math.min(3, Math.round(gainOf(run) * 2)),
     keeps: run.phase <= 2 ? footingStep(run) : 0,
     projects: PROJECT_IDS[run.phase].reduce(

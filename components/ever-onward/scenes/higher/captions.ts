@@ -4,6 +4,8 @@ import type { HigherSceneInfo } from "@/lib/ever-onward/universes/higher";
 const count = (n: number, word: string, many = `${word}s`): string =>
   `${n} ${n === 1 ? word : many}`;
 
+const DAY_WORDS = ["", "market day", "night shift", "windy day", "festival"];
+
 const PACE_WORDS = [
   "building carefully",
   "building",
@@ -30,6 +32,13 @@ export function captionFor(info: HigherSceneInfo): string {
       return [
         `A tower of ${4 + info.height * 2} floors`,
         ...(own.mason ? [count(own.mason, "mason")] : []),
+        ...(info.day > 0 ? [DAY_WORDS[info.day]] : []),
+        ...(info.shade >= 3
+          ? ["a dark town"]
+          : info.shade >= 1
+            ? ["a shadow"]
+            : []),
+        ...(info.lamps + (info.park ? 1 : 0) > 0 ? ["lights on"] : []),
         ...lean,
       ].join(" · ");
     case "sky":

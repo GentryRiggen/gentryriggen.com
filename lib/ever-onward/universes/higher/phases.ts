@@ -1,6 +1,7 @@
 import type { PhaseDef, RunState } from "../../engine/types";
 import { CUTSCENES, TIPS } from "./cutscenes";
 import { resetDeliveries } from "./deliveries";
+import { resetTown } from "./town";
 import { HELPER_LINES } from "./lines";
 import {
   MANUAL_RESOURCES,
@@ -37,6 +38,7 @@ function freshSite(run: RunState): void {
   run.resources.otLeft = 0;
   run.resources.dlLast = 0;
   resetDeliveries(run);
+  resetTown(run);
 }
 
 /** What a part's leftovers are worth in the next part's own stuff. */
@@ -81,6 +83,9 @@ export const PHASES: readonly PhaseDef[] = [
         (run.resources.blocks ?? 0) * CARRY_RATES[0]
       );
       freshSite(run);
+      // The town starts at an even pace, whatever the playroom ended on.
+      run.resources.pcPace = TUNING.playroom.startPace;
+      run.resources.pcEff = TUNING.playroom.startPace;
       // A new site keeps a quarter back as footing; the panel changes it.
       run.resources.ftStep = 1;
       headStart(1)(run);

@@ -115,6 +115,70 @@ test.describe("Ever Onward", () => {
     await expect(page.getByTestId("bh-steady")).toHaveCount(0);
   });
 
+  test("the town's foremen, shadow and build pace work in the panels and the picture", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Build It Higher" })
+      .click();
+    await page.getByTestId("eo-jump-higher-1-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    // Build pace and the day's sign (no Steady button any more).
+    const town = page.getByTestId("bh-town");
+    await expect(town).toBeVisible();
+    await expect(page.getByTestId("bh-steady")).toHaveCount(0);
+    await expect(town.getByTestId("bh-day-next")).toContainText("Tomorrow");
+    await town.getByTestId("bh-pace-3").click();
+    await expect(town.getByTestId("bh-pace-3")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    // The hats: pick a foreman, the hat stands empty for a shift, the scene tosses the old hat.
+    const crew = page.getByTestId("bh-crew");
+    await expect(crew).toBeVisible();
+    await crew.getByTestId("bh-hat-1").click();
+    await crew
+      .locator('[data-testid^="bh-foreman-"][aria-disabled="false"]')
+      .first()
+      .click();
+    await expect(page.getByTestId("th-toss")).toBeAttached({ timeout: 5_000 });
+    await expect(crew).toHaveAttribute("data-waiting", "1");
+    await expect(page.getByTestId("th-foremen")).toBeAttached();
+    // The shadow: the town is dim, and the lamps come on with a LIGHTS ON! moment.
+    const shadow = page.getByTestId("bh-shadow");
+    await expect(shadow).toBeVisible();
+    await expect(shadow.getByTestId("bh-shadow-cut")).toContainText("taking");
+    await expect(page.getByTestId("th-shadow")).toBeAttached();
+    // The next lamp costs a lot of bricks: fast-forward until it is affordable, then back to real time.
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-test-speed-20").click();
+    await page.keyboard.press("Escape");
+    await expect(shadow.getByTestId("bh-lamps")).toHaveAttribute(
+      "aria-disabled",
+      "false",
+      { timeout: 60_000 }
+    );
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-test-speed-1").click();
+    await page.keyboard.press("Escape");
+    await shadow.getByTestId("bh-lamps").click();
+    await expect(page.getByTestId("th-lights-on")).toBeAttached({
+      timeout: 5_000,
+    });
+    await expect(page.getByTestId("th-lights")).toHaveAttribute(
+      "data-lamps",
+      /[2-3]/
+    );
+  });
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

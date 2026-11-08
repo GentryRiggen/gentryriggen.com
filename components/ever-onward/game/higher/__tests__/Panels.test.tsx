@@ -22,6 +22,13 @@ import ForkPanel from "../ForkPanel";
 import KnowHowPanel from "../KnowHowPanel";
 import PlayroomPanel from "../PlayroomPanel";
 import SwayPanel from "../SwayPanel";
+import CrewPanel from "../CrewPanel";
+import ShadowPanel from "../ShadowPanel";
+import TownPanel from "../TownPanel";
+import {
+  LAMP_ACTION_ID,
+  foremanActionId,
+} from "@/lib/ever-onward/universes/higher/town";
 
 function playroom(bears = 4, extra: Record<string, number> = {}): RunState {
   const run = runAtPhaseStart(0);
@@ -188,10 +195,94 @@ describe("PlayroomPanel", () => {
   });
 });
 
-describe("SwayPanel", () => {
-  it("steadies a leaning tower on a click", async () => {
+describe("the town's panels", () => {
+  const rich = (): RunState => town({ bricks: 1e12 });
+
+  it("show the build pace and today's and tomorrow's day, with no word on which is best", async () => {
     const onAct = jest.fn();
-    render(<SwayPanel def={def} run={town({ sway: 0.8 })} onAct={onAct} />);
+    render(<TownPanel def={def} run={rich()} onAct={onAct} />);
+    expect(screen.getByTestId("bh-pace-3")).toHaveTextContent(/\+20% bricks/);
+    expect(screen.getByTestId("bh-pace-0")).toHaveTextContent(/-10% bricks/);
+    expect(screen.getByTestId("bh-day-sign")).toHaveTextContent(/Today:/);
+    expect(screen.getByTestId("bh-day-next")).toHaveTextContent(/Tomorrow:/);
+    expect(screen.getByTestId("bh-town").textContent).not.toMatch(
+      /best|recommended/i
+    );
+    await userEvent.click(screen.getByTestId("bh-pace-3"));
+    expect(onAct).toHaveBeenCalledWith(paceActionId(3));
+  });
+
+  it("put a foreman on a chosen hat on a click, showing his plus and his minus", async () => {
+    const onAct = jest.fn();
+    render(<CrewPanel def={def} run={rich()} onAct={onAct} />);
+    const sal = screen.getByTestId("bh-foreman-1");
+    expect(sal).toHaveTextContent("Speedy Sal");
+    expect(sal).toHaveTextContent(/\+ \+18% bricks/);
+    expect(sal).toHaveTextContent(/- The tower leans twice as much/);
+    expect(sal).toHaveTextContent(/Clashes with Careful Kim/);
+    expect(screen.getByTestId("bh-crew").textContent).not.toMatch(
+      /best|recommended/i
+    );
+    await userEvent.click(screen.getByTestId("bh-hat-2"));
+    await userEvent.click(sal);
+    expect(onAct).toHaveBeenCalledWith(foremanActionId(2, 1));
+  });
+
+  it("say a hat is waiting for its new foreman, and block him from a second hat", async () => {
+    const onAct = jest.fn();
+    const run = performAction(def, rich(), foremanActionId(0, 1));
+    render(<CrewPanel def={def} run={run} onAct={onAct} />);
+    expect(screen.getByTestId("bh-hat-0")).toHaveTextContent(
+      /Speedy Sal in \d+ sec/
+    );
+    await userEvent.click(screen.getByTestId("bh-hat-1"));
+    await userEvent.click(screen.getByTestId("bh-foreman-1"));
+    expect(onAct).not.toHaveBeenCalled();
+  });
+
+  it("show how dark the town is and what the lamps cost and give", async () => {
+    const onAct = jest.fn();
+    const run = {
+      ...rich(),
+      owned: { mason: 6, crane: 5, scaffolding: 3, "cross-braces": 3 },
+    };
+    render(<ShadowPanel def={def} run={run} onAct={onAct} />);
+    expect(screen.getByTestId("bh-shadow-cut")).toHaveTextContent(
+      /The dark is taking \d+% of your bricks/
+    );
+    expect(screen.getByTestId("bh-lamps")).toHaveTextContent(
+      /Costs [\d.,]+\w* bricks/
+    );
+    expect(screen.getByTestId("bh-park")).toHaveTextContent(
+      /The dark bites 30% less/
+    );
+    await userEvent.click(screen.getByTestId("bh-lamps"));
+    expect(onAct).toHaveBeenCalledWith(LAMP_ACTION_ID);
+  });
+
+  it("render nothing in the playroom", () => {
+    for (const Panel of [TownPanel, CrewPanel, ShadowPanel]) {
+      const { container } = render(
+        <Panel def={def} run={playroom(3)} onAct={jest.fn()} />
+      );
+      expect(container).toBeEmptyDOMElement();
+    }
+  });
+});
+
+describe("SwayPanel", () => {
+  const sky = (extra: Record<string, number> = {}): RunState => {
+    const run = runAtPhaseStart(2);
+    return {
+      ...run,
+      owned: { ...run.owned, "sky-crew": 3 },
+      resources: { ...run.resources, ...extra },
+    };
+  };
+
+  it("steadies a leaning tower on a click in the sky", async () => {
+    const onAct = jest.fn();
+    render(<SwayPanel def={def} run={sky({ sway: 0.8 })} onAct={onAct} />);
     expect(screen.getByTestId("bh-sway")).toHaveAttribute(
       "data-state",
       "wobbling"
@@ -200,16 +291,18 @@ describe("SwayPanel", () => {
     expect(onAct).toHaveBeenCalledWith(STEADY_ACTION_ID);
   });
 
-  it("renders nothing in the playroom, which has the pace dial instead", () => {
-    const { container } = render(
-      <SwayPanel def={def} run={playroom(3)} onAct={jest.fn()} />
-    );
-    expect(container).toBeEmptyDOMElement();
+  it("renders nothing in the playroom or the town, which have the build pace instead", () => {
+    for (const run of [playroom(3), town({ sway: 0.8 })]) {
+      const { container } = render(
+        <SwayPanel def={def} run={run} onAct={jest.fn()} />
+      );
+      expect(container).toBeEmptyDOMElement();
+    }
   });
 
   it("says the tower is standing straight, and the button waits", async () => {
     const onAct = jest.fn();
-    render(<SwayPanel def={def} run={town()} onAct={onAct} />);
+    render(<SwayPanel def={def} run={sky()} onAct={onAct} />);
     const button = screen.getByTestId("bh-steady");
     expect(button).toHaveAttribute("aria-disabled", "true");
     expect(button).toHaveTextContent("Standing straight");

@@ -3,7 +3,7 @@ import type { ActionDef, ConsumableDef, RunState } from "../../engine/types";
 import { formatNumber } from "../../engine/format";
 import { leanCalm } from "./sway";
 import { helperLevels, res } from "./lines";
-import { PHASE_PLAYROOM } from "./resources";
+import { PHASE_PLAYROOM, PHASE_TOWN } from "./resources";
 import { TUNING } from "./tuning";
 
 /**
@@ -49,6 +49,10 @@ export const isPlayroomOpen = (run: RunState): boolean =>
 
 // -------------------------------------------------------------------- pace
 
+/** The pace dial is the one lean machine of the playroom and the town. */
+export const isPaceOpen = (run: RunState): boolean =>
+  run.phase <= 1 && !run.complete && helperLevels(run) >= 2;
+
 /** The pace that is set (the one you chose). */
 export const paceStep = (run: RunState): number =>
   Math.min(
@@ -74,8 +78,10 @@ function blend(run: RunState, pick: (i: number) => number): number {
 
 /** How much the pace changes every payout (1 = as usual). */
 export const paceMult = (run: RunState): number =>
-  run.phase === 0
-    ? blend(run, (i) => PACES[i].pay) * (isRebuilding(run) ? P.rebuildPay : 1)
+  run.phase <= 1
+    ? blend(run, (i) =>
+        run.phase === 1 ? TUNING.town.pacePay[i] : PACES[i].pay
+      ) * (isRebuilding(run) ? P.rebuildPay : 1)
     : 1;
 
 /** Seconds between blocks at the current pace. */
@@ -331,9 +337,9 @@ export const paceDetail = (step: number): string =>
 /** One radio button per pace; the playroom panel draws them itself. */
 export const PACE_ACTIONS: readonly ActionDef[] = PACES.map((pace, i) => ({
   id: paceActionId(i),
-  phases: [PHASE_PLAYROOM],
+  phases: [PHASE_PLAYROOM, PHASE_TOWN],
   isInline: true,
-  visibleWhen: isPlayroomOpen,
+  visibleWhen: isPaceOpen,
   describe: (run) => ({
     label: pace.name,
     detail: paceDetail(i),

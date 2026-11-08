@@ -105,6 +105,39 @@ export const RESOURCES: readonly ResourceDef[] = [
     ],
     { pcPace: TUNING.playroom.startPace, pcEff: TUNING.playroom.startPace }
   ),
+  // The town's dials: foremen on each hat, the one on the way and when he
+  // arrives, who left and arrived last, the shadow's lamps and park, the day
+  // and the next one, and a die of its own.
+  ...hidden([
+    "tfH0",
+    "tfH1",
+    "tfH2",
+    "tfP0",
+    "tfP1",
+    "tfP2",
+    "tfU0",
+    "tfU1",
+    "tfU2",
+    "tfGone",
+    "tfWho",
+    "tfAt",
+    "tfStartAt",
+    "tfStarts",
+    "tfSwaps",
+    "twLamps",
+    "twPark",
+    "twBuys",
+    "twLitAt",
+    "twDay",
+    "twNext",
+    "twEnd",
+    "twDayN",
+    "twRng",
+    "twPoleUntil",
+    "twDayAt",
+    "tfHatOff",
+    "tfHatOn",
+  ]),
   // Overtime: seconds left and times held.
   ...hidden(["otLeft", "otCount"]),
   // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).

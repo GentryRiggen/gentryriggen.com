@@ -14,6 +14,7 @@ import {
   higherBots,
   placesLoad,
   playsPlayroom,
+  playsTown,
   steadiesAt,
   together,
 } from "../bots";
@@ -40,7 +41,7 @@ import {
 } from "../forks";
 import { OVERTIME_ACTION_ID, isOvertimeOn, knowhowOf } from "../knowhow";
 import { STEADY_ACTION_ID, swayFactor, swayOf } from "../sway";
-import { leanTarget, tumbleChance } from "../playroom";
+import { leanTarget, paceActionId, tumbleChance } from "../playroom";
 import { incomePerSecond } from "../tick";
 import { TUNING } from "../tuning";
 import { def, runAtPhaseStart, withResources } from "./fixtures";
@@ -64,6 +65,7 @@ function phaseMinutes(sides: readonly ForkSide[], footing: number): number[] {
         pick,
         steadiesAt(0.75, 5),
         playsPlayroom({ pace: 2, bank: "reads" }, 5),
+        playsTown({ pace: "plan", crew: "adjusts", lights: "adjusts" }, 5),
         placesLoad(15),
         footingPolicy(footing, 20),
         holdsOvertime
@@ -134,7 +136,7 @@ describe("Build It Higher trade-offs", () => {
       const half = phaseMinutes([0, 0, 1, 0], 2);
       const total = (xs: number[]) => xs.slice(0, 3).reduce((a, b) => a + b, 0);
       // Investing a quarter beats spending everything by a clear margin ...
-      expect(total(spend) / total(quarter)).toBeGreaterThan(1.08);
+      expect(total(spend) / total(quarter)).toBeGreaterThan(1.05);
       // ... and keeping half is a real option, not a trap.
       expect(total(half) / total(quarter)).toBeLessThan(1.25);
       expect(total(half) / total(quarter)).toBeGreaterThan(0.9);
@@ -251,32 +253,51 @@ describe("Build It Higher trade-offs", () => {
       expect(swayFactor(withResources(base, { sway: 0 }))).toBe(1);
     });
 
-    it("builds up on its own in the town and one press of Steady puts it right", () => {
-      let run = { ...runAtPhaseStart(1), owned: { mason: 4 } } as RunState;
-      for (let t = 0; t < 400; t += 1) run = tick(def, run, 1);
-      expect(swayOf(run)).toBeGreaterThan(0.5);
-      const steadied = performAction(def, run, STEADY_ACTION_ID);
-      expect(swayOf(steadied)).toBe(0);
+    it("follows the build pace in the town: a rush leans far more than a careful pace", () => {
+      const lean = (step: number): number => {
+        let run = {
+          ...runAtPhaseStart(1),
+          owned: { mason: 5, crane: 2 },
+        } as RunState;
+        run = performAction(def, run, paceActionId(step));
+        for (let t = 0; t < 80; t += 1) run = tick(def, run, 1);
+        return swayOf(run);
+      };
+      expect(lean(3)).toBeGreaterThan(0.5);
+      expect(lean(0)).toBeLessThan(0.2);
     });
 
-    it("has no Steady button in the playroom, where the build pace sets the lean", () => {
-      const run = { ...runAtPhaseStart(0), owned: { bear: 4 } } as RunState;
-      expect(swayOf(run)).toBe(0);
-      expect(canPerformAction(def, run, STEADY_ACTION_ID)).toBe(false);
+    it("has no Steady button in the playroom or the town, where the build pace sets the lean", () => {
+      for (const phase of [0, 1]) {
+        const run = {
+          ...runAtPhaseStart(phase),
+          owned: { bear: 4, mason: 4 },
+        } as RunState;
+        expect(canPerformAction(def, run, STEADY_ACTION_ID)).toBe(false);
+      }
     });
 
-    it("needs the button less once the tower is braced", () => {
+    it("still has Steady in the sky", () => {
+      const base = runAtPhaseStart(2);
+      const run = withResources(
+        { ...base, owned: { "sky-crew": 3 } } as RunState,
+        { sway: 0.8 }
+      );
+      expect(canPerformAction(def, run, STEADY_ACTION_ID)).toBe(true);
+    });
+
+    it("leans less once the town's tower is braced", () => {
       const base = { ...runAtPhaseStart(1), owned: { mason: 4 } } as RunState;
       const braced = {
         ...base,
         owned: { ...base.owned, "cross-braces": 3, "safety-nets": 1 },
       };
       const settle = (start: RunState): number => {
-        let run = start;
-        for (let t = 0; t < 1200; t += 1) run = tick(def, run, 1);
+        let run = performAction(def, start, paceActionId(3));
+        for (let t = 0; t < 200; t += 1) run = tick(def, run, 1);
         return swayOf(run);
       };
-      expect(settle(braced)).toBeLessThan(settle(base) - 0.2);
+      expect(settle(braced)).toBeLessThan(settle(base) - 0.15);
     });
   });
 

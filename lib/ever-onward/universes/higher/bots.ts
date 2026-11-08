@@ -27,6 +27,23 @@ import {
 } from "./playroom";
 import { STEADY_ACTION_ID, leanCalm, swayOf } from "./sway";
 import { tendingValue } from "./tick";
+import {
+  HATS,
+  LAMP_ACTION_ID,
+  PARK_ACTION_ID,
+  foremanActionId,
+  hasPark,
+  hatIds,
+  hatKey,
+  isTownOpen,
+  lampPrice,
+  lampsLeft,
+  lampsOf,
+  parkPrice,
+  pendingIds,
+  townLeanTarget,
+} from "./town";
+import { FOREMEN } from "./foremen";
 import { TUNING } from "./tuning";
 import { UPGRADES } from "./upgrades";
 import { higherUniverse } from ".";
@@ -58,7 +75,7 @@ export const takesFork =
 export const steadiesAt =
   (threshold: number, window = 1): Actions =>
   (run, available) =>
-    run.phase <= 2 &&
+    run.phase === 2 &&
     swayOf(run) >= threshold &&
     isWindowStart(run, window) &&
     available.includes(STEADY_ACTION_ID)
@@ -149,6 +166,197 @@ export const playsPlayroom =
     return paceStep(run) !== want && available.includes(id) ? [id] : [];
   };
 
+/**
+ * How a bot plays the Town's dials. `pace` is a fixed step or "plan" (the
+ * best for the day and the foremen it has). `crew` is nobody, a fixed trio of
+ * foreman ids, or "adjusts" (reads today and tomorrow and changes hats when
+ * the change pays for the shift it costs). `lights` is "never", "always"
+ * (whenever it can afford it) or "adjusts" (when the lights pay back well
+ * inside what is left of the Town).
+ */
+export interface TownStyle {
+  pace: number | "plan";
+  crew: "none" | readonly number[] | "adjusts";
+  lights: "never" | "always" | "adjusts";
+}
+
+interface Probe {
+  ids?: readonly number[];
+  day?: number;
+  pace?: number;
+  lamps?: number;
+  park?: boolean;
+}
+
+/** The run as it would be settled with these foremen, this day, pace and lights. */
+function probe(run: RunState, o: Probe): RunState {
+  const r = { ...run.resources };
+  if (o.ids)
+    for (let h = 0; h < HATS; h += 1) {
+      r[hatKey(h)] = o.ids[h] ?? 0;
+      r[`tfP${h}`] = 0;
+    }
+  if (o.day !== undefined) r.twDay = o.day;
+  if (o.pace !== undefined) {
+    r.pcPace = o.pace;
+    r.pcEff = o.pace;
+  }
+  if (o.lamps !== undefined) r.twLamps = o.lamps;
+  if (o.park !== undefined) r.twPark = o.park ? 1 : 0;
+  const settled = { ...run, resources: r };
+  r.sway = townLeanTarget(settled);
+  return settled;
+}
+
+/** What a second of building is worth once settled, at the best pace. */
+function settledValue(run: RunState, o: Probe): number {
+  const paces = o.pace === undefined ? [0, 1, 2, 3] : [o.pace];
+  return Math.max(
+    ...paces.map((pace) => tendingValue(probe(run, { ...o, pace })))
+  );
+}
+
+const FOREMAN_IDS = FOREMEN.map((f) => f.id);
+const TRIOS: readonly (readonly number[])[] = FOREMAN_IDS.flatMap((a) =>
+  FOREMAN_IDS.filter((b) => b > a).flatMap((b) =>
+    FOREMAN_IDS.filter((c) => c > b).map((c) => [a, b, c] as const)
+  )
+);
+
+/** The crew's value now and tomorrow, weighted by how long each lasts. */
+function crewValue(
+  run: RunState,
+  ids: readonly number[],
+  extra: Probe = {}
+): number {
+  const today = run.resources.twDay ?? 0;
+  const tomorrow = run.resources.twNext ?? 0;
+  const left = Math.max(1, (run.resources.twEnd ?? 0) - run.time);
+  const day = TUNING.town.daySeconds;
+  return (
+    (left * settledValue(run, { ...extra, ids, day: today }) +
+      day * settledValue(run, { ...extra, ids, day: tomorrow })) /
+    (left + day)
+  );
+}
+
+/** The hats' foremen, counting the ones already on their way. */
+const crewNow = (run: RunState): number[] =>
+  hatIds(run).map((id, h) => id || pendingIds(run)[h]);
+
+/** Seconds the rest of the Town should take at today's pay (a bot's guess). */
+function townSecondsLeft(run: RunState): number {
+  const end = UPGRADES.find((u) => u.id === "skyscraper");
+  if (!end) return 600;
+  const need = upgradeCost(run, end) - (run.resources.bricks ?? 0);
+  return Math.max(30, need / Math.max(1, tendingValue(run)));
+}
+
+function pickCrew(run: RunState): Actions {
+  return (_, available) => {
+    if (pendingIds(run).some((id) => id > 0)) return [];
+    const cur = hatIds(run);
+    const horizon =
+      Math.max(1, (run.resources.twEnd ?? 0) - run.time) +
+      TUNING.town.daySeconds;
+    // Fill empty hats first with the best trio that keeps who is there.
+    const keep = cur.filter((id) => id > 0);
+    let best = TRIOS[0];
+    let bestValue = -Infinity;
+    for (const trio of TRIOS) {
+      if (!keep.every((id) => trio.includes(id)) && keep.length < HATS)
+        continue;
+      const v = crewValue(run, trio);
+      if (v > bestValue) {
+        best = trio;
+        bestValue = v;
+      }
+    }
+    if (keep.length < HATS) {
+      const need = best.filter((id) => !cur.includes(id));
+      const hat = cur.findIndex((id) => id === 0);
+      const id = foremanActionId(hat, need[0]);
+      return available.includes(id) ? [id] : [];
+    }
+    // All hats are filled: change one only when it pays for the shift.
+    const nowValue = crewValue(run, cur);
+    let pick: { id: string; net: number } | null = null;
+    for (let h = 0; h < HATS; h += 1) {
+      const empty = cur.map((id, i) => (i === h ? 0 : id));
+      const lost =
+        TUNING.town.shiftSeconds *
+        Math.max(0, nowValue - crewValue(run, empty));
+      for (const id of FOREMAN_IDS) {
+        if (cur.includes(id)) continue;
+        const swapped = cur.map((x, i) => (i === h ? id : x));
+        const net = horizon * (crewValue(run, swapped) - nowValue) - lost;
+        if (net > 0.05 * horizon * nowValue && (!pick || net > pick.net))
+          pick = { id: foremanActionId(h, id), net };
+      }
+    }
+    return pick && available.includes(pick.id) ? [pick.id] : [];
+  };
+}
+
+/** The bot's Town: pace, hats and lights by a style, looking every `window` seconds. */
+export const playsTown =
+  (style: TownStyle, window = 1): Actions =>
+  (run, available) => {
+    if (!isTownOpen(run) || !isWindowStart(run, window)) return [];
+    const out: string[] = [];
+    // Hats.
+    if (style.crew === "adjusts") out.push(...pickCrew(run)(run, available));
+    else if (style.crew !== "none") {
+      const cur = crewNow(run);
+      style.crew.forEach((want, h) => {
+        if (cur[h] === 0) {
+          const id = foremanActionId(h, want);
+          if (available.includes(id)) out.push(id);
+        }
+      });
+    }
+    // Pace.
+    const today = run.resources.twDay ?? 0;
+    const step =
+      style.pace === "plan"
+        ? [0, 1, 2, 3].reduce(
+            (best, p) =>
+              tendingValue(probe(run, { pace: p, day: today })) >
+              tendingValue(probe(run, { pace: best, day: today })) * 1.02
+                ? p
+                : best,
+            paceStepOf(run)
+          )
+        : style.pace;
+    const paceId = paceActionId(step);
+    if (step !== paceStepOf(run) && available.includes(paceId))
+      out.push(paceId);
+    // Lights.
+    if (style.lights !== "never") {
+      const lamp = lampsLeft(run);
+      const id = lamp ? LAMP_ACTION_ID : PARK_ACTION_ID;
+      const price = lamp ? lampPrice(run) : parkPrice(run);
+      const open = lamp || !hasPark(run);
+      if (open && available.includes(id)) {
+        if (style.lights === "always") out.push(id);
+        else {
+          const after = lamp
+            ? { lamps: lampsOf(run) + 1 }
+            : { lamps: lampsOf(run), park: true };
+          const gain =
+            crewValue(run, hatIds(run), after) - crewValue(run, hatIds(run));
+          if (gain > 0 && price / gain < LIGHT_PAYBACK * townSecondsLeft(run))
+            out.push(id);
+        }
+      }
+    }
+    return out;
+  };
+
+/** Lights are bought when they would pay back in this share of what is left of the Town. */
+const LIGHT_PAYBACK = 0.2;
+const paceStepOf = (run: RunState): number => paceStep(run);
+
 /** Places the load that helps most, looking every `window` seconds. */
 export const placesLoad =
   (window = 1): Actions =>
@@ -219,6 +427,26 @@ const site = (base: Strategy, actions: Actions): Strategy => ({
 /** A player who builds quickly and banks when one more block risks more than it adds. */
 const READS: PlayroomStyle = { pace: 2, bank: "reads" };
 
+/** A player who reads the day, changes hats when it pays, and lights the town when it pays back. */
+const TOWN_ADJUSTS: TownStyle = {
+  pace: "plan",
+  crew: "adjusts",
+  lights: "adjusts",
+};
+
+/** A player who never touches the town's dials. */
+const TOWN_IGNORES: TownStyle = { pace: 1, crew: "none", lights: "never" };
+
+/** A player who puts three foremen on the hats, lights the town when they can, and walks away. */
+const TOWN_SET_AND_LEAVE: TownStyle = {
+  pace: 2,
+  crew: [2, 4, 6],
+  lights: "always",
+};
+
+/** A player who rushes with the fast foremen and never lights a lamp. */
+const TOWN_GREEDY: TownStyle = { pace: 2, crew: [1, 3, 5], lights: "never" };
+
 /** A player who never touches the dials. */
 const IGNORES: PlayroomStyle = { pace: 1, bank: "never" };
 
@@ -232,12 +460,14 @@ export function higherBots(): BotSet {
     steady: number,
     window: number,
     load: number,
-    dials: PlayroomStyle = READS
+    dials: PlayroomStyle = READS,
+    town: TownStyle = TOWN_ADJUSTS
   ): Actions =>
     together(
       takesFork(),
       steadiesAt(steady, window),
       playsPlayroom(dials, window),
+      playsTown(town, window),
       placesLoad(load),
       footingPolicy(1, Math.max(window, 10)),
       holdsOvertime
@@ -249,7 +479,8 @@ export function higherBots(): BotSet {
     idle: {
       ...base.idle,
       projects: "best",
-      actions: takesFork(1),
+      // Sets three hats once and leaves the rest alone.
+      actions: together(takesFork(1), playsTown(TOWN_SET_AND_LEAVE, 30)),
       greetAfter: Infinity,
     },
     dawdler: site(base.dawdler, hands(0.9, 60, 60)),
@@ -257,7 +488,7 @@ export function higherBots(): BotSet {
       [0, 1, 2].map((phase) => [
         phase,
         {
-          naive: site(base.tapper, hands(0.97, 1, 1, GREEDY)),
+          naive: site(base.tapper, hands(0.97, 1, 1, GREEDY, TOWN_GREEDY)),
           careful: site(base.tapper, hands(0.7, 1, 1)),
         },
       ])
@@ -272,6 +503,7 @@ export function higherBots(): BotSet {
               takesFork(),
               steadiesAt(0.8),
               playsPlayroom(IGNORES),
+              playsTown(TOWN_IGNORES),
               footingPolicy(1, 10)
             )
           ),
@@ -279,7 +511,7 @@ export function higherBots(): BotSet {
         },
       ])
     ),
-    naiveOil: site(base.tapper, hands(0.97, 1, 1, GREEDY)),
+    naiveOil: site(base.tapper, hands(0.97, 1, 1, GREEDY, TOWN_GREEDY)),
     cheapskateOil: tapper,
   };
 }

@@ -132,6 +132,62 @@ export const TUNING = {
     /** The streak plate lights at this many blocks. */
     plateAt: 5,
   },
+  /**
+   * The Town's dials (town.ts, foremen.ts): the build pace it shares with the
+   * playroom, three foremen's hats, and the shadow a tall tower throws.
+   */
+  town: {
+    /** The town's own pay before foremen and the dark (keeps the part's length). */
+    base: 0.74,
+    /** What each build pace pays in the town (careful to rush). */
+    pacePay: [0.9, 1, 1.1, 1.2] as readonly number[],
+    /** How much harder the tall town's lean pushes than the playroom's. */
+    leanScale: 1.8,
+    /** Braces and footings never calm the town's lean below this share. */
+    calmFloor: 0.2,
+    /** A fresh site leans this share of full; every helper level adds to it. */
+    leanBase: 0.7,
+    /** Helper levels at which the tower is as tall (for leaning) as it gets. */
+    leanLevels: 14,
+    /** Hats, and how long a foreman takes to change over (a whole shift). */
+    hats: 3,
+    /** An empty hat (or one waiting for a swap) is the site's regular foreman: this much pay. */
+    regularPay: 1.18,
+    shiftSeconds: 40,
+    /** Two foremen who get on, or clash: their pay is this much more or less. */
+    pairLike: 1.1,
+    pairClash: 0.9,
+    /** The hat toss shows this long after a swap. */
+    showSeconds: 5,
+    /** A day lasts this long; tomorrow's is on the sign all day. */
+    daySeconds: 120,
+    /** Market day: taps pay this much more. */
+    marketTap: 3,
+    /** Night shift: the shadow bites this much harder. */
+    nightDark: 1.8,
+    /** Windy day: the tower leans this much more. */
+    windyLean: 2.2,
+    /** Festival: a lit town pays this much more for each step of light. */
+    festivalPerLit: 0.18,
+    /** A steadying pole holds the lean at half for this long. */
+    poleSeconds: 60,
+    /** Tower height (levels / 2) at which the shadow is at its longest. */
+    shadeFull: 8,
+    /** The darkest town pays this much less. */
+    cutMax: 0.58,
+    /** How much of the dark each street lamp, and the park, take away. */
+    lampRelief: 0.2,
+    parkRelief: 0.3,
+    /** Lamps, then the park: price in seconds of the site's pay. */
+    lampSeconds: [80, 150, 260] as readonly number[],
+    parkSeconds: 500,
+    /** Lamps and the park never cost less than this many bricks a second's worth. */
+    priceFloor: 40,
+    /** Every step of light (the park counts as two) costs this share of the bricks, all the time. */
+    lightUpkeep: 0.05,
+    /** The lights-on moment shows this long. */
+    lightsShowSeconds: 5,
+  },
   /** Foundations: the spend-now-or-invest choice of the first three parts. */
   footing: {
     /** Shares that can be kept back: none, a quarter, half. */
@@ -197,10 +253,10 @@ export const TUNING = {
       cost: 3000,
       /** Steel: helpers pay this much; know-how comes this fast. */
       steelPay: 2,
-      steelKnow: 0.5,
+      steelKnow: 0.75,
       /** Timber: helpers pay this much; know-how this fast; sway this much. */
       timberPay: 1.5,
-      timberKnow: 1.6,
+      timberKnow: 1.2,
       timberSway: 0.5,
     },
     sky: {

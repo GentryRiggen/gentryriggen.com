@@ -23,11 +23,20 @@ import {
   toddlerStage,
 } from "./playroom";
 import { sceneInfo, sceneKey } from "./scene";
+import {
+  FOREMAN_ACTION_IDS,
+  LIGHT_ACTION_IDS,
+  darkness,
+  isTownOpen,
+} from "./town";
 import { STEADY_ACTION_ID, SWAY_CONSUMABLE, hasSway, swayOf } from "./sway";
 import { TUNING } from "./tuning";
 
 /** The sway plate lights when the tower leans this much. */
 const LEAN_PLATE = 0.45;
+
+/** The shadow plate lights when the dark takes this much of the pay's range. */
+const SHADOW_PLATE = 0.12;
 
 /** Systems asking for the player's attention: the tap, the lean and the load. */
 export function higherPlates(run: RunState): string[] {
@@ -36,6 +45,7 @@ export function higherPlates(run: RunState): string[] {
   if (isForkOpen(run, fork.id) && !isForkChosen(run, fork.id))
     plates.push("fork");
   if (hasSway(run) && swayOf(run) >= LEAN_PLATE) plates.push("sway");
+  if (isTownOpen(run) && darkness(run) >= SHADOW_PLATE) plates.push("shadow");
   if (isPlayroomOpen(run) && streakOf(run) >= TUNING.playroom.plateAt)
     plates.push("streak");
   if (isPlayroomOpen(run) && toddlerStage(run) !== "away")
@@ -55,7 +65,8 @@ export function higherPlates(run: RunState): string[] {
 /** Plates that only count as spinning while the player tends them. */
 export const HIGHER_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> =
   {
-    sway: [STEADY_ACTION_ID],
+    sway: [STEADY_ACTION_ID, ...PACE_ACTION_IDS],
+    shadow: LIGHT_ACTION_IDS,
     streak: [BANK_ACTION_ID],
     toddler: [BANK_ACTION_ID, ...PACE_ACTION_IDS],
     load: LOAD_ACTION_IDS,
@@ -71,6 +82,8 @@ export const HIGHER_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> =
  */
 export const HIGHER_DECISION_ACTIONS: readonly string[] = [
   ...PACE_ACTION_IDS,
+  ...FOREMAN_ACTION_IDS,
+  ...LIGHT_ACTION_IDS,
   ...FORK_ACTION_IDS,
   ...FOOTING_ACTION_IDS,
   ...LOAD_ACTION_IDS,

@@ -1,5 +1,14 @@
 import type { HigherSceneInfo } from "@/lib/ever-onward/universes/higher";
 import Px, { Bird, Person } from "./Px";
+import {
+  DayDecor,
+  DaySign,
+  Foremen,
+  Lights,
+  LightsOnMoment,
+  NightSky,
+  Shadow,
+} from "./TownMoments";
 
 const GROUND = 262;
 const TX = 200;
@@ -109,7 +118,7 @@ export default function TownLayer({ info }: { info: HigherSceneInfo }) {
     <g>
       <Px x={-1200} y={-1200} w={2800} h={1462} c="#9fd6ff" />
       <Px x={-1200} y={150} w={2800} h={120} c="#bfe6ff" o={0.5} />
-      <circle cx="340" cy="46" r="18" fill="#ffe66d" />
+      {info.day !== 2 && <circle cx="340" cy="46" r="18" fill="#ffe66d" />}
       {/* far hills and houses */}
       <Px x={-1200} y={216} w={2800} h={50} c="#7ec27a" />
       {[18, 60, 108, 290, 336, 372].map((x, i) => (
@@ -161,7 +170,12 @@ export default function TownLayer({ info }: { info: HigherSceneInfo }) {
           </g>
         </g>
       )}
-      {/* the tower, leaning and wobbling when it needs steadying */}
+      {info.day === 2 && <NightSky />}
+      {/* the shadow dims the town; lamps and the park shine through it */}
+      <Shadow shade={info.shade} />
+      <DayDecor day={info.day} />
+      <Lights info={info} />
+      {/* the tower, leaning with the build pace */}
       <g transform={`rotate(${info.lean * 0.6} ${TX} ${GROUND})`}>
         <g className={info.lean >= 3 ? "bh-wobble" : undefined}>
           <Px
@@ -411,6 +425,9 @@ export default function TownLayer({ info }: { info: HigherSceneInfo }) {
           />
         ))}
       </g>
+      <Foremen info={info} />
+      <DaySign day={info.day} />
+      {info.lit && <LightsOnMoment info={info} />}
       {info.loadHere && (
         <g className="bh-pulse">
           <Px x={TX + 64} y={GROUND - 14} w={18} h={14} c="#c8a165" />

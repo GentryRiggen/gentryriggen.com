@@ -1,4 +1,5 @@
 import type { HigherSceneInfo } from "@/lib/ever-onward/universes/higher";
+import { DAYS } from "@/lib/ever-onward/universes/higher/town";
 import { pixelClass } from "../../game/retro/retroStyles";
 
 interface Moment {
@@ -42,6 +43,36 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
         text: BANK_WORDS[info.banking - 1],
         banner: "bg-amber-500 text-amber-950 border-amber-100",
         edge: "border-amber-300",
+      });
+  }
+  if (info.phase === "town") {
+    if (info.dayNew && info.day > 0)
+      moments.push({
+        key: `day-${info.days}`,
+        text: `${DAYS[info.day].name.toUpperCase()}!`,
+        banner: "bg-sky-700 text-sky-50 border-sky-200",
+        edge: "",
+      });
+    if (info.tossed > 0)
+      moments.push({
+        key: `toss-${info.tosses}`,
+        text: "HAT TOSS!",
+        banner: "bg-orange-600 text-orange-50 border-orange-200",
+        edge: "",
+      });
+    if (info.arrived > 0)
+      moments.push({
+        key: `arrive-${info.arrivals}`,
+        text: "NEW FOREMAN!",
+        banner: "bg-emerald-600 text-emerald-50 border-emerald-200",
+        edge: "border-emerald-300",
+      });
+    if (info.lit)
+      moments.push({
+        key: `lit-${info.lights}`,
+        text: "LIGHTS ON!",
+        banner: "bg-amber-400 text-amber-950 border-amber-100",
+        edge: "border-amber-200",
       });
   }
   return moments;
