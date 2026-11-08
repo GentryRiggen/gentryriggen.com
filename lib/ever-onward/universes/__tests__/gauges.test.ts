@@ -62,7 +62,7 @@ describe("HUD gauges", () => {
     run.phase = 1;
     run.resources.sway = 0.1;
     expect(higherUniverse.gauge?.(run)).toMatchObject({
-      label: "SWAY",
+      label: "LEAN",
       display: "10%",
       status: "",
     });

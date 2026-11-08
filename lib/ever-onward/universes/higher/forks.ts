@@ -215,7 +215,7 @@ export function helperForkMult(run: RunState): number {
 export const tapForkMult = (run: RunState): number =>
   run.phase === 3 && forkSide(run, "top") === 0 ? T.top.stairsTap : 1;
 
-/** How much faster the tower sways with the chosen side (1 = as usual). */
+/** How much faster the tower leans with the chosen side (1 = as usual). */
 export function swayForkMult(run: RunState): number {
   const side = forkSide(run, currentFork(run).id);
   if (side === null) return 1;

@@ -34,13 +34,13 @@ export function higherAlert(run: RunState): string | null {
   }
   if (run.phase === 1) {
     if (swayOf(run) >= WOBBLE_AT)
-      return "The tower is wobbling! The crew works at half speed. Slow the pace, or put Careful Kim on a hat. Braces, a good footing and hard hats make it wobble less.";
+      return "The tower is wobbling! The crew works at half speed. Slow the pace or change a hat. Braces, a good footing and hard hats make it wobble less.";
     if (
       isTownOpen(run) &&
       daySecondsLeft(run) <= 20 &&
       dayNext(run).id !== dayNow(run).id
     )
-      return `${dayNext(run).name} tomorrow in ${daySecondsLeft(run)} seconds. ${dayNext(run).note} Changing a hat takes a whole shift.`;
+      return `${dayNext(run).name} tomorrow! It starts in ${daySecondsLeft(run)} seconds. ${dayNext(run).note}`;
     if (
       isTownOpen(run) &&
       darkCutText(run) &&

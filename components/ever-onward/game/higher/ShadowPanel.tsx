@@ -5,6 +5,7 @@ import { formatNumber } from "@/lib/ever-onward/engine/format";
 import {
   LAMP_ACTION_ID,
   PARK_ACTION_ID,
+  SWITCH_ACTION_ID,
   darkCutText,
   darkness,
   hasPark,
@@ -12,7 +13,11 @@ import {
   lampPrice,
   lampsLeft,
   lampsOf,
+  lightLevel,
+  lightsSwitchedOn,
+  litSteps,
   parkPrice,
+  powerBill,
 } from "@/lib/ever-onward/universes/higher/town";
 import { TUNING } from "@/lib/ever-onward/universes/higher/tuning";
 import type { PanelProps } from "../../universes/types";
@@ -37,6 +42,10 @@ export default function ShadowPanel({ def, run, onAct }: PanelProps) {
   const canPark = canPerformAction(def, run, PARK_ACTION_ID);
   const T = TUNING.town;
   const lit = lampsOf(run);
+  const hasLights = litSteps(run) > 0;
+  const isOn = lightsSwitchedOn(run);
+  const bill = powerBill(run);
+  const bulb = T.lightUpkeep;
   return (
     <PanelFrame
       label="The shadow over the town"
@@ -67,6 +76,34 @@ export default function ShadowPanel({ def, run, onAct }: PanelProps) {
         The taller the tower, the darker the town, and a dark town sends fewer
         bricks.
       </p>
+      {hasLights ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            data-testid="bh-switch"
+            aria-pressed={isOn}
+            onClick={() => onAct(SWITCH_ACTION_ID)}
+            className={`${pixelClass} min-h-11 touch-manipulation border-4 px-3 py-2 text-left text-[10px] ${retroFocusClass} ${
+              isOn
+                ? "border-amber-200 bg-amber-400 text-amber-950 shadow-[3px_3px_0_#78350f] active:translate-y-0.5 active:shadow-none"
+                : "border-slate-500 bg-slate-800 text-slate-200 shadow-[3px_3px_0_#0f172a] active:translate-y-0.5 active:shadow-none"
+            }`}
+          >
+            Lights: {isOn ? "ON" : "OFF"}
+          </button>
+          <p
+            data-testid="bh-power-bill"
+            data-bill={Math.round(bill * 100)}
+            className="font-mono text-xs text-slate-300"
+          >
+            Power bill: -{pct(bill)} of your bricks, every second
+            {lightLevel(run) > 0.05 && lightLevel(run) < 0.95
+              ? " (warming up)"
+              : ""}
+            . Free to switch, takes about {T.lightWarmSeconds} sec.
+          </p>
+        </div>
+      ) : null}
       <div className="grid gap-2 sm:grid-cols-2">
         <button
           type="button"
@@ -88,11 +125,11 @@ export default function ShadowPanel({ def, run, onAct }: PanelProps) {
           </span>
           <span className="block font-mono text-xs leading-snug font-bold normal-case">
             {lampsLeft(run)
-              ? `+ The dark bites ${pct(T.lampRelief)} less`
+              ? `+ ${Math.round(T.lampRelief * 100)} points off the dark meter`
               : "+ The street glows"}
             <br />
             {lampsLeft(run)
-              ? `- Costs ${formatNumber(lampPrice(run))} bricks`
+              ? `- Costs ${formatNumber(lampPrice(run))} bricks and ${pct(bulb)} of your bricks, every second`
               : "- Nothing more to buy"}
           </span>
         </button>
@@ -115,16 +152,17 @@ export default function ShadowPanel({ def, run, onAct }: PanelProps) {
           <span className="block font-mono text-xs leading-snug font-bold normal-case">
             {hasPark(run)
               ? "+ Trees and lanterns glow"
-              : `+ The dark bites ${pct(T.parkRelief)} less`}
+              : `+ ${Math.round(T.parkRelief * 100)} points off the dark meter, the tower leans ${pct(1 - T.parkLean)} less`}
             <br />
             {hasPark(run)
               ? "- Nothing more to buy"
-              : `- Costs ${formatNumber(parkPrice(run))} bricks`}
+              : `- Costs ${formatNumber(parkPrice(run))} bricks and ${pct(bulb * 2)} of your bricks, every second`}
           </span>
         </button>
       </div>
       <p className="font-mono text-xs text-slate-300">
-        Lights are for keeps. A festival pays more for every step of light.
+        Lamps and the park are for keeps, but they only work while the lights
+        are on. A festival pays more for every step of light that is on.
       </p>
     </PanelFrame>
   );

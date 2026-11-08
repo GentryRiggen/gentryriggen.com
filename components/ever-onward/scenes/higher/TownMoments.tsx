@@ -156,10 +156,18 @@ export function Foremen({ info }: { info: HigherSceneInfo }) {
   );
 }
 
-/** The tower's shadow: the whole town dims, and a long shade lies across the ground. */
+/** How much navy lies over the whole town at each shade (0 bright, 5 pitch dark). */
+const SHADE_OPACITY = [0, 0.16, 0.34, 0.54, 0.7, 0.8] as const;
+
+/**
+ * The tower's shadow: the whole town (the tower, the crew and the sun too)
+ * goes navy, and a long shade lies across the ground. Drawn over the tower,
+ * so lamps and the park (drawn after it) are the only things that shine.
+ */
 export function Shadow({ shade }: { shade: number }) {
   if (shade <= 0) return null;
   const reach = 60 + shade * 34;
+  const level = Math.min(SHADE_OPACITY.length - 1, shade);
   return (
     <g data-testid="th-shadow" data-shade={shade} pointerEvents="none">
       <rect
@@ -167,13 +175,13 @@ export function Shadow({ shade }: { shade: number }) {
         y={-1200}
         width="2800"
         height="1500"
-        fill="#160d3a"
-        fillOpacity={Math.min(0.62, shade * 0.14)}
+        fill="#0a1236"
+        fillOpacity={SHADE_OPACITY[level]}
       />
       <polygon
         points={`${TX - 26},${GROUND - 2} ${TX - 26 - reach},${GROUND - 2} ${TX - 36 - reach},${GROUND + 34} ${TX - 8},${GROUND + 34}`}
-        fill="#08041c"
-        fillOpacity={Math.min(0.7, 0.2 + shade * 0.1)}
+        fill="#05031a"
+        fillOpacity={Math.min(0.75, 0.25 + shade * 0.1)}
       />
     </g>
   );
@@ -181,10 +189,19 @@ export function Shadow({ shade }: { shade: number }) {
 
 /** Street lamps along the street and a park in the foreground. */
 export function Lights({ info }: { info: HigherSceneInfo }) {
-  const { lamps, park } = info;
+  const { lamps, park, glow, shade } = info;
   const fresh = info.lit;
+  // Cold lamps (the switch is off) are dark glass; warm ones throw a bigger
+  // pool of light the darker the town is.
+  const warm = glow / 4;
+  const halo = 17 + shade * 4;
   return (
-    <g data-testid="th-lights" data-lamps={lamps} data-park={park ? 1 : 0}>
+    <g
+      data-testid="th-lights"
+      data-lamps={lamps}
+      data-park={park ? 1 : 0}
+      data-glow={glow}
+    >
       {LAMP_X.slice(0, lamps).map((x, i) => (
         <g
           key={x}
@@ -192,24 +209,42 @@ export function Lights({ info }: { info: HigherSceneInfo }) {
             fresh && i === lamps - 1 && !park ? "bh-lamp-pop" : undefined
           }
         >
-          <circle
-            cx={x + 2}
-            cy={GROUND - 26}
-            r="17"
-            fill={GOLD}
-            fillOpacity="0.28"
-          />
-          <g className="bh-pulse">
-            <circle
-              cx={x + 2}
-              cy={GROUND - 26}
-              r="9"
-              fill="#fff3b0"
-              fillOpacity="0.5"
-            />
-          </g>
+          {glow > 0 && (
+            <g>
+              <circle
+                cx={x + 2}
+                cy={GROUND - 26}
+                r={halo}
+                fill={GOLD}
+                fillOpacity={0.12 + warm * (0.16 + shade * 0.03)}
+              />
+              <ellipse
+                cx={x + 2}
+                cy={GROUND + 2}
+                rx={halo + 8}
+                ry="7"
+                fill={GOLD}
+                fillOpacity={warm * (0.18 + shade * 0.03)}
+              />
+              <g className="bh-pulse">
+                <circle
+                  cx={x + 2}
+                  cy={GROUND - 26}
+                  r="9"
+                  fill="#fff3b0"
+                  fillOpacity={0.5 * warm}
+                />
+              </g>
+            </g>
+          )}
           <Px x={x} y={GROUND - 24} w={4} h={24} c="#3b3b4a" />
-          <Px x={x - 3} y={GROUND - 31} w={10} h={7} c="#fff3b0" />
+          <Px
+            x={x - 3}
+            y={GROUND - 31}
+            w={10}
+            h={7}
+            c={glow > 0 ? "#fff3b0" : "#6b6b7a"}
+          />
           <Px x={x - 4} y={GROUND - 33} w={12} h={3} c="#3b3b4a" />
         </g>
       ))}
@@ -248,14 +283,22 @@ export function Lights({ info }: { info: HigherSceneInfo }) {
           <g className="bh-twinkle">
             {[304, 356, 394].map((x) => (
               <g key={x}>
-                <circle
-                  cx={x + 2}
-                  cy={GROUND - 4}
-                  r="9"
-                  fill={GOLD}
-                  fillOpacity="0.35"
+                {glow > 0 && (
+                  <circle
+                    cx={x + 2}
+                    cy={GROUND - 4}
+                    r={9 + shade * 2}
+                    fill={GOLD}
+                    fillOpacity={0.15 + 0.25 * warm}
+                  />
+                )}
+                <Px
+                  x={x}
+                  y={GROUND - 7}
+                  w={4}
+                  h={5}
+                  c={glow > 0 ? "#fff3b0" : "#6b6b7a"}
                 />
-                <Px x={x} y={GROUND - 7} w={4} h={5} c="#fff3b0" />
               </g>
             ))}
           </g>

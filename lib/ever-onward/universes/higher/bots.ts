@@ -32,6 +32,8 @@ import {
   HATS,
   LAMP_ACTION_ID,
   PARK_ACTION_ID,
+  SWITCH_ACTION_ID,
+  darknessGoal,
   foremanActionId,
   hasPark,
   hatIds,
@@ -40,6 +42,8 @@ import {
   lampPrice,
   lampsLeft,
   lampsOf,
+  lightsSwitchedOn,
+  litSteps,
   parkPrice,
   pendingIds,
   townLeanTarget,
@@ -176,6 +180,8 @@ interface Probe {
   pace?: number;
   lamps?: number;
   park?: boolean;
+  /** The lights switch (settled: fully warm or fully cold). */
+  on?: boolean;
 }
 
 /** The run as it would be settled with these foremen, this day, pace and lights. */
@@ -193,7 +199,12 @@ function probe(run: RunState, o: Probe): RunState {
   }
   if (o.lamps !== undefined) r.twLamps = o.lamps;
   if (o.park !== undefined) r.twPark = o.park ? 1 : 0;
+  if (o.on !== undefined) {
+    r.twOff = o.on ? 0 : 1;
+    r.twCool = o.on ? 0 : 1;
+  } else r.twCool = r.twOff ?? 0;
   const settled = { ...run, resources: r };
+  r.twDark = darknessGoal(settled);
   r.sway = townLeanTarget(settled);
   return settled;
 }
@@ -201,8 +212,14 @@ function probe(run: RunState, o: Probe): RunState {
 /** What a second of building is worth once settled, at the best pace. */
 function settledValue(run: RunState, o: Probe): number {
   const paces = o.pace === undefined ? [0, 1, 2, 3] : [o.pace];
+  // With lights to switch, the player picks the better side of the switch.
+  const lit =
+    (o.lamps ?? lampsOf(run)) + ((o.park ?? hasPark(run)) ? 1 : 0) > 0;
+  const sides = o.on === undefined && lit ? [true, false] : [o.on];
   return Math.max(
-    ...paces.map((pace) => tendingValue(probe(run, { ...o, pace })))
+    ...paces.flatMap((pace) =>
+      sides.map((on) => tendingValue(probe(run, { ...o, pace, on })))
+    )
   );
 }
 
@@ -340,11 +357,21 @@ export const playsTown =
         }
       }
     }
+    // The lights switch: on when today's pay is better with them lit.
+    if (style.lights === "adjusts" && litSteps(run) > 0) {
+      const today = run.resources.twDay ?? 0;
+      const on = lightsSwitchedOn(run);
+      const lit = settledValue(run, { day: today, on: true });
+      const dark = settledValue(run, { day: today, on: false });
+      const want = lit > dark * 1.01 ? true : dark > lit * 1.01 ? false : on;
+      if (want !== on && available.includes(SWITCH_ACTION_ID))
+        out.push(SWITCH_ACTION_ID);
+    }
     return out;
   };
 
 /** Lights are bought when they would pay back in this share of what is left of the Town. */
-const LIGHT_PAYBACK = 0.2;
+const LIGHT_PAYBACK = 0.6;
 const paceStepOf = (run: RunState): number => paceStep(run);
 
 /** Places the load that helps most, looking every `window` seconds. */
@@ -427,11 +454,11 @@ const TOWN_ADJUSTS: TownStyle = {
 /** A player who never touches the town's dials. */
 const TOWN_IGNORES: TownStyle = { pace: 1, crew: "none", lights: "never" };
 
-/** A player who puts three foremen on the hats, lights the town when they can, and walks away. */
+/** A player who puts three foremen on the hats and walks away, never paying for lamps. */
 const TOWN_SET_AND_LEAVE: TownStyle = {
   pace: 2,
   crew: [2, 4, 6],
-  lights: "always",
+  lights: "never",
 };
 
 /** A player who rushes with the fast foremen and never lights a lamp. */

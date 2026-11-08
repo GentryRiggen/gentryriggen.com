@@ -25,8 +25,12 @@ import { TUNING } from "./tuning";
  * arrives.
  *
  * The shadow: the taller the tower, the darker the town, and a dark town
- * sends fewer bricks. Street lamps and a park take some of the dark away, for
- * bricks you could have spent on the climb.
+ * sends fewer bricks. Street lamps and a park take points off the dark, for
+ * bricks you could have spent on the climb and a power bill that runs every
+ * second the lights are on. A free lights switch (about ten seconds to warm
+ * up or cool down) decides when the lamps work, so a festival or a night
+ * shift rewards on, and a bright, quiet day rewards off. The dark itself
+ * eases to its goal, so a new day never snaps the pay.
  *
  * The day: market, night shift, wind or a festival. Tomorrow is always on the
  * sign, so there is time to change hats.
@@ -70,7 +74,7 @@ export const DAYS: readonly DayDef[] = [
   {
     id: "night",
     name: "Night shift",
-    note: `Work goes on in the dark: the shadow bites ${T.nightDark} times as hard.`,
+    note: "Work goes on in the dark: the town is much darker all day.",
   },
   {
     id: "windy",
@@ -210,36 +214,53 @@ export const hasPark = (run: RunState): boolean => res(run, "twPark") >= 1;
 export const litSteps = (run: RunState): number =>
   lampsOf(run) + (hasPark(run) ? 2 : 0);
 
-/** How much of the dark the lamps and the park take away, 0 to 0.95. */
+/** The lights switch is flipped on (lamps and the park only work while it is). */
+export const lightsSwitchedOn = (run: RunState): boolean =>
+  res(run, "twOff") < 1;
+
+/** How warm the lights are, 0 (cold) to 1 (full): they ease to the switch over a few seconds. */
+export const lightLevel = (run: RunState): number =>
+  1 - clamp01(res(run, "twCool"));
+
+/** How many points of the dark meter (0 to 1) the lamps and the park take away now. */
 export const reliefOf = (run: RunState): number =>
   Math.min(
     0.95,
-    lampsOf(run) * T.lampRelief + (hasPark(run) ? T.parkRelief : 0)
+    (lampsOf(run) * T.lampRelief + (hasPark(run) ? T.parkRelief : 0)) *
+      lightLevel(run)
   );
 
 /** The shadow the tower throws before anyone lights anything, 0 to 1. */
 export const shadeRaw = (run: RunState): number =>
   clamp01(towerHeight(run) / T.shadeFull);
 
-/** How dark the town is now, 0 (bright) to 1 (pitch dark). */
-export function darkness(run: RunState): number {
+/** How dark the town is heading, 0 (bright) to 1 (pitch dark). */
+export function darknessGoal(run: RunState): number {
   if (run.phase !== 1) return 0;
-  const night = dayNow(run).id === "night" ? T.nightDark : 1;
-  return clamp01(
-    shadeRaw(run) * crewDark(hatIds(run)) * night * (1 - reliefOf(run))
-  );
+  const night = dayNow(run).id === "night" ? T.nightDark : 0;
+  const pressure = (shadeRaw(run) + night) * crewDark(hatIds(run));
+  return clamp01(pressure - reliefOf(run));
 }
+
+/** How dark the town is now: it eases to its goal, so a new day never snaps. */
+export const darkness = (run: RunState): number =>
+  run.phase === 1 ? clamp01(res(run, "twDark")) : 0;
 
 /** What the dark does to the pay (1 = nothing, down to 1 - cutMax). */
 export const shadowMult = (run: RunState): number =>
   1 - T.cutMax * darkness(run);
 
-/** What the lamps' power bill leaves of the pay (1 with no lights). */
-export const upkeepMult = (run: RunState): number =>
-  1 - T.lightUpkeep * litSteps(run);
+/** The share of your bricks the power bill takes every second now (0 with the lights off). */
+export const powerBill = (run: RunState): number =>
+  T.lightUpkeep * litSteps(run) * lightLevel(run);
+
+/** What the lamps' power bill leaves of the pay (1 with no lights, or with them off). */
+export const upkeepMult = (run: RunState): number => 1 - powerBill(run);
 
 const festival = (run: RunState): number =>
-  dayNow(run).id === "festival" ? 1 + T.festivalPerLit * litSteps(run) : 1;
+  dayNow(run).id === "festival"
+    ? 1 + T.festivalPerLit * litSteps(run) * lightLevel(run)
+    : 1;
 
 /** What the crew's pay is multiplied by in the town (foremen, the dark, the festival). */
 export const townPay = (run: RunState): number =>
@@ -282,6 +303,17 @@ export const justLit = (run: RunState): boolean =>
   res(run, "twLitAt") > 0 &&
   run.time - res(run, "twLitAt") < T.lightsShowSeconds;
 
+export const flipsSoFar = (run: RunState): number => res(run, "twFlips");
+
+/** The switch was just flipped: 1 for on, 2 for off, 0 when not lately. */
+export const justFlipped = (run: RunState): number =>
+  res(run, "twFlipAt") > 0 &&
+  run.time - res(run, "twFlipAt") < T.lightsShowSeconds
+    ? lightsSwitchedOn(run)
+      ? 1
+      : 2
+    : 0;
+
 function lightUp(run: RunState): void {
   const r = run.resources;
   r.twLitAt = run.time;
@@ -300,8 +332,10 @@ export function leanFor(run: RunState, pace: number): number {
     (1 - T.leanBase) * Math.min(1, helperLevels(run) / T.leanLevels);
   const wind = dayNow(run).id === "windy" ? T.windyLean : 1;
   const pole = res(run, "twPoleUntil") > run.time ? 0.5 : 1;
+  const play = hasPark(run) ? T.parkLean : 1;
   return clamp01(
     lean *
+      play *
       T.leanScale *
       height *
       Math.max(T.calmFloor, leanCalm(run)) *
@@ -332,6 +366,19 @@ export function tickTown(run: RunState, dt: number): void {
         Math.min(1, dt / TUNING.playroom.leanSeconds)
   );
   if (!isTownOpen(run)) return;
+  // The lights warm up or cool down, and the dark eases to where they leave it.
+  const cool = res(run, "twCool");
+  const wantCool = lightsSwitchedOn(run) ? 0 : 1;
+  const warm = dt / T.lightWarmSeconds;
+  r.twCool =
+    cool < wantCool
+      ? Math.min(wantCool, cool + warm)
+      : Math.max(wantCool, cool - warm);
+  const dark = res(run, "twDark");
+  const goal = darknessGoal(run);
+  const ease = dt / T.darkEaseSeconds;
+  r.twDark =
+    dark < goal ? Math.min(goal, dark + ease) : Math.max(goal, dark - ease);
   tickHats(run);
   if (!r.twEnd) {
     r.twDay = 0;
@@ -361,6 +408,9 @@ export function resetTown(run: RunState): void {
   r.twDay = 0;
   r.twNext = 0;
   r.twPoleUntil = 0;
+  r.twOff = 0;
+  r.twCool = 0;
+  r.twDark = 0;
 }
 
 // ------------------------------------------------------------ words and ids
@@ -373,9 +423,11 @@ export const darkCutText = (run: RunState): string =>
 
 export const LAMP_ACTION_ID = "town-lamps";
 export const PARK_ACTION_ID = "town-park";
+export const SWITCH_ACTION_ID = "town-switch";
 export const LIGHT_ACTION_IDS: readonly string[] = [
   LAMP_ACTION_ID,
   PARK_ACTION_ID,
+  SWITCH_ACTION_ID,
 ];
 
 const FOREMAN_ACTIONS: readonly ActionDef[] = Array.from(
@@ -406,7 +458,7 @@ const LIGHT_ACTIONS: readonly ActionDef[] = [
     visibleWhen: isTownOpen,
     describe: (run) => ({
       label: "Street lamps",
-      detail: `Lamps along the street. The dark bites ${pct(T.lampRelief)} less each time. Costs bricks you could spend on the climb, and ${pct(T.lightUpkeep)} of your bricks every second for the power.`,
+      detail: `Lamps along the street. Takes ${Math.round(T.lampRelief * 100)} points off the dark meter each time. Costs bricks you could spend on the climb, and ${pct(T.lightUpkeep)} of your bricks every second for the power while the lights are on.`,
       cost: lampsLeft(run)
         ? { resource: "bricks", amount: lampPrice(run) }
         : undefined,
@@ -424,7 +476,7 @@ const LIGHT_ACTIONS: readonly ActionDef[] = [
     visibleWhen: isTownOpen,
     describe: (run) => ({
       label: "A park with lights",
-      detail: `Trees, a pond and lanterns. The dark bites ${pct(T.parkRelief)} less. Costs a lot of bricks you could spend on the climb, and ${pct(T.lightUpkeep * 2)} of your bricks every second for the lanterns.`,
+      detail: `Trees, a pond and lanterns. Takes ${Math.round(T.parkRelief * 100)} points off the dark meter, and the tower leans ${pct(1 - T.parkLean)} less because the crew rests and plays there. Costs a lot of bricks you could spend on the climb, and ${pct(T.lightUpkeep * 2)} of your bricks every second for the lanterns while the lights are on.`,
       cost: hasPark(run)
         ? undefined
         : { resource: "bricks", amount: parkPrice(run) },
@@ -433,6 +485,24 @@ const LIGHT_ACTIONS: readonly ActionDef[] = [
     perform: (run) => {
       run.resources.twPark = 1;
       lightUp(run);
+    },
+  },
+  {
+    id: SWITCH_ACTION_ID,
+    phases: [PHASE_TOWN],
+    isInline: true,
+    visibleWhen: (run) => isTownOpen(run) && litSteps(run) > 0,
+    describe: (run) => ({
+      label: lightsSwitchedOn(run)
+        ? "Switch the lights off"
+        : "Switch the lights on",
+      detail: `Free. The lights take about ${T.lightWarmSeconds} sec to warm up or cool down. Only lit lights ease the dark and pay a festival bonus, and only lit lights run up the power bill.`,
+    }),
+    perform: (run) => {
+      const r = run.resources;
+      r.twOff = lightsSwitchedOn(run) ? 1 : 0;
+      r.twFlipAt = run.time;
+      r.twFlips = flipsSoFar(run) + 1;
     },
   },
 ];

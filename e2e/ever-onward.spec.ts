@@ -178,6 +178,17 @@ test.describe("Ever Onward", () => {
       "data-lamps",
       /[2-3]/
     );
+    // The lights switch: lit lights run up a power bill, and switching them off cools them down.
+    await expect(shadow.getByTestId("bh-power-bill")).toContainText(
+      "of your bricks, every second"
+    );
+    await shadow.getByTestId("bh-switch").click();
+    await expect(shadow.getByTestId("bh-switch")).toContainText("OFF");
+    await expect(page.getByTestId("th-lights")).toHaveAttribute(
+      "data-glow",
+      /[0-3]/,
+      { timeout: 15_000 }
+    );
   });
   test("the sky's forecast, cable strain, tie-down and no-crane climb work in the panels and the picture", async ({
     page,

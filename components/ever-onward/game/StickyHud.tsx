@@ -233,7 +233,7 @@ export default function StickyHud({
               title={alert}
               aria-label={alert}
               onClick={onSelectAlert}
-              className={`${pixelClass} -my-2.5 min-h-11 shrink-0 animate-pulse touch-manipulation border-2 border-red-500 bg-red-950 px-2 py-1 text-[10px] leading-none text-red-200 motion-reduce:animate-none ${retroFocusClass}`}
+              className={`${pixelClass} -my-2.5 min-h-11 max-w-[55%] shrink-0 animate-pulse truncate touch-manipulation border-2 border-red-500 bg-red-950 px-2 py-1 text-[10px] leading-none text-red-200 motion-reduce:animate-none ${retroFocusClass}`}
             >
               ⚠ {alert.split("!")[0]}!
             </button>

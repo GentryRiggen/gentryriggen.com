@@ -84,10 +84,10 @@ export const FOREMEN: readonly Foreman[] = [
     payDark: 0,
     tap: 1,
     lean: 1,
-    dark: 0.4,
+    dark: 0.7,
     likes: [2, 6],
     clashes: [5],
-    plus: "The shadow bites 60% less",
+    plus: "The shadow bites 30% less",
     minus: "-8% bricks, he keeps stopping to polish lamps",
   },
   {
@@ -110,20 +110,20 @@ export const FOREMEN: readonly Foreman[] = [
     hat: "#6cc070",
     pay: 1.12,
     payDark: 0,
-    tap: 0.4,
+    tap: 0.7,
     lean: 1.5,
     dark: 1,
     likes: [4],
     clashes: [3],
     plus: "+12% bricks from the crew",
-    minus: "Your taps pay 60% less and the tower leans 50% more",
+    minus: "Your taps pay 30% less and the tower leans 50% more",
   },
 ];
 
 export const foreman = (id: number): Foreman | undefined =>
   FOREMEN.find((f) => f.id === id);
 
-/** +12% or -12% for a pair that gets on or clashes. */
+/** +10% or -10% for a pair that gets on or clashes (on both the crew's pay and your taps). */
 export function pairMult(a: Foreman, b: Foreman): number {
   if (a.likes.includes(b.id) || b.likes.includes(a.id)) return T.pairLike;
   if (a.clashes.includes(b.id) || b.clashes.includes(a.id)) return T.pairClash;
@@ -156,7 +156,10 @@ export const crewPay = (ids: readonly number[], darkness: number): number =>
   ) * pairsMult(ids);
 
 export const crewTap = (ids: readonly number[]): number =>
-  crew(ids).reduce((m, f) => m * f.tap, 1) * pairsMult(ids);
+  Math.max(
+    T.tapFloor,
+    crew(ids).reduce((m, f) => m * f.tap, 1) * pairsMult(ids)
+  );
 
 export const crewLean = (ids: readonly number[]): number =>
   crew(ids).reduce((m, f) => m * f.lean, 1);
@@ -171,10 +174,10 @@ export function pairNotes(f: Foreman): { likes: string; clashes: string } {
   const pct = (n: number): string => `${Math.round(Math.abs(n - 1) * 100)}%`;
   return {
     likes: f.likes.length
-      ? `Gets on with ${names(f.likes)}: +${pct(T.pairLike)} bricks together`
+      ? `Gets on with ${names(f.likes)}: +${pct(T.pairLike)} bricks and taps together`
       : "",
     clashes: f.clashes.length
-      ? `Clashes with ${names(f.clashes)}: -${pct(T.pairClash)} bricks together`
+      ? `Clashes with ${names(f.clashes)}: -${pct(T.pairClash)} bricks and taps together`
       : "",
   };
 }

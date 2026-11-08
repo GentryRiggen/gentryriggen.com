@@ -13,6 +13,8 @@ import {
 const GROUND = 262;
 const TX = 200;
 const FLOOR_H = 7;
+/** Window colours, from a bright day to a dark town: the windows dim as the shadow grows. */
+const WINDOW_LIT = ["#ffe9a0", "#e6cf88", "#a8955f", "#6f6446"] as const;
 const CRANE_CLASS = ["bh-arm", "bh-arm-b", "bh-arm-c"] as const;
 
 interface Look {
@@ -118,7 +120,15 @@ export default function TownLayer({ info }: { info: HigherSceneInfo }) {
     <g>
       <Px x={-1200} y={-1200} w={2800} h={1462} c="#9fd6ff" />
       <Px x={-1200} y={150} w={2800} h={120} c="#bfe6ff" o={0.5} />
-      {info.day !== 2 && <circle cx="340" cy="46" r="18" fill="#ffe66d" />}
+      {info.day !== 2 && (
+        <circle
+          cx="340"
+          cy="46"
+          r="18"
+          fill={info.shade >= 4 ? "#b9bdd6" : "#ffe66d"}
+          fillOpacity={1 - info.shade * 0.12}
+        />
+      )}
       {/* far hills and houses */}
       <Px x={-1200} y={216} w={2800} h={50} c="#7ec27a" />
       {[18, 60, 108, 290, 336, 372].map((x, i) => (
@@ -171,10 +181,7 @@ export default function TownLayer({ info }: { info: HigherSceneInfo }) {
         </g>
       )}
       {info.day === 2 && <NightSky />}
-      {/* the shadow dims the town; lamps and the park shine through it */}
-      <Shadow shade={info.shade} />
       <DayDecor day={info.day} />
-      <Lights info={info} />
       {/* the tower, leaning with the build pace */}
       <g transform={`rotate(${info.lean * 0.6} ${TX} ${GROUND})`}>
         <g className={info.lean >= 3 ? "bh-wobble" : undefined}>
@@ -226,7 +233,7 @@ export default function TownLayer({ info }: { info: HigherSceneInfo }) {
                       y={y}
                       w={7}
                       h={4}
-                      c={eye ? "#1c2432" : "#ffe9a0"}
+                      c={eye ? "#1c2432" : WINDOW_LIT[Math.min(3, info.shade)]}
                     />
                     {hello && !lonely && (
                       <g className="bh-wave">
@@ -426,6 +433,9 @@ export default function TownLayer({ info }: { info: HigherSceneInfo }) {
         ))}
       </g>
       <Foremen info={info} />
+      {/* the shadow dims the whole town; lamps and the park shine through it */}
+      <Shadow shade={info.shade} />
+      <Lights info={info} />
       <DaySign day={info.day} />
       {info.lit && <LightsOnMoment info={info} />}
       {info.loadHere && (

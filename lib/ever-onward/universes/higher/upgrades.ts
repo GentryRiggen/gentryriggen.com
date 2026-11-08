@@ -52,7 +52,7 @@ function ratePreview(run: RunState, id: string): string {
 }
 
 /**
- * "The tower sways 30% slower" then "Sway speed ×0.77 → ×0.54", for a brace
+ * "The tower leans 30% less" then "Lean amount ×0.77 → ×0.54", for a brace
  * or a one-off that calms the tower.
  */
 function swayPreview(run: RunState, id: string): string {
@@ -78,8 +78,8 @@ function swayPreview(run: RunState, id: string): string {
   }
   const before = swayCalm(run);
   const next = swayCalm(after);
-  const slower = before > 0 ? Math.round((1 - next / before) * 100) : 0;
-  return `The tower sways ${slower}% slower\nSway speed ×${round(before)} → ×${round(next)}\nA leaning tower slows the crew`;
+  const less = before > 0 ? Math.round((1 - next / before) * 100) : 0;
+  return `The tower leans ${less}% less\nLean amount ×${round(before)} → ×${round(next)}\nA leaning tower slows the crew`;
 }
 
 const RAW_UPGRADES: readonly UpgradeDef[] = [
@@ -218,8 +218,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   {
     id: "cross-braces",
     name: "Cross-braces",
-    description:
-      "Big iron X shapes inside the walls. The tower sways more slowly.",
+    description: "Big iron X shapes inside the walls. The tower leans less.",
     phases: [PHASE_TOWN],
     currency: "bricks",
     baseCost: 500,
@@ -247,7 +246,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "safety-nets",
     name: "Safety nets",
     description:
-      "Wide nets slung round every floor. The crews feel steadier, and the tower sways half as fast.",
+      "Wide nets slung round every floor. The crews feel steadier, and the tower leans half as much.",
     phases: [PHASE_TOWN],
     currency: "bricks",
     baseCost: 40000,
@@ -290,7 +289,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       "A glass room at the very top, with a flag and a view of the whole town. The tower is the tallest thing in the valley, and there is still more sky.",
     phases: [PHASE_TOWN],
     currency: "bricks",
-    baseCost: 2800000,
+    baseCost: 3800000,
     costGrowth: 1,
     kind: "mechanic",
     visibleWhen: ownsAtLeast("neon-sign", 1),

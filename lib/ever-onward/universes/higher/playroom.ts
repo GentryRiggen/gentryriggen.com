@@ -258,7 +258,11 @@ function tumble(run: RunState): void {
   r.pcTumbles = tumblesSoFar(run) + 1;
 }
 
-/** An untapped tower with a streak is still shaken, once a second, by a stomp. */
+/**
+ * An untapped tower with a streak is still shaken by a stomp, rolled once per
+ * block it would have stacked, so a quiet tower is never rolled more often
+ * than a tapped one.
+ */
 function stompCheck(run: RunState, dt: number): void {
   const r = run.resources;
   if (toddlerStage(run) !== "stomping" || streakOf(run) <= 0) {
@@ -266,8 +270,9 @@ function stompCheck(run: RunState, dt: number): void {
     return;
   }
   r.pcIdle = res(run, "pcIdle") + dt;
-  while (r.pcIdle >= P.stompCheckSeconds) {
-    r.pcIdle -= P.stompCheckSeconds;
+  const gap = stackSeconds(run);
+  while (r.pcIdle >= gap) {
+    r.pcIdle -= gap;
     if (roll(run) < tumbleChance(run)) {
       tumble(run);
       r.pcIdle = 0;

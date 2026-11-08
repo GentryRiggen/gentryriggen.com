@@ -12,7 +12,7 @@ import {
   together,
   type TownStyle,
 } from "../bots";
-import { FOREMEN, crewPay, pairMult } from "../foremen";
+import { FOREMEN, crewPay, crewTap, pairMult } from "../foremen";
 import { sceneInfo } from "../scene";
 import { incomePerSecond, manualPerTap } from "../tick";
 import {
@@ -20,6 +20,10 @@ import {
   HATS,
   LAMP_ACTION_ID,
   PARK_ACTION_ID,
+  SWITCH_ACTION_ID,
+  lightLevel,
+  powerBill,
+  darknessGoal,
   darkness,
   dayNext,
   dayNow,
@@ -27,6 +31,7 @@ import {
   hatIds,
   isTownOpen,
   lampPrice,
+  townLeanTarget,
   townPay,
 } from "../town";
 import { TUNING } from "../tuning";
@@ -40,7 +45,7 @@ function town(
   extra: Record<string, number> = {}
 ): RunState {
   const base = runAtPhaseStart(1);
-  return tick(
+  const run = tick(
     def,
     {
       ...base,
@@ -49,6 +54,8 @@ function town(
     },
     0.1
   );
+  // The dark eases in over a few seconds; these tests start from the settled dark.
+  return withResources(run, { twDark: darknessGoal(run) });
 }
 
 const tall = { mason: 6, crane: 5, scaffolding: 3, "cross-braces": 3 };
@@ -121,7 +128,7 @@ describe("the foremen", () => {
       resources: { ...town({ mason: 4 }).resources, tfH0: id },
     });
     expect(incomePerSecond(worn(1))).toBeGreaterThan(incomePerSecond(worn(2)));
-    expect(manualPerTap(worn(3))).toBeGreaterThan(manualPerTap(worn(6)) * 4);
+    expect(manualPerTap(worn(3))).toBeGreaterThan(manualPerTap(worn(6)) * 2.5);
   });
 });
 
@@ -129,21 +136,21 @@ describe("the shadow", () => {
   it("grows with the height of the tower and takes pay away", () => {
     const low = town({ mason: 3 });
     const high = town(tall);
-    expect(darkness(high)).toBeGreaterThan(darkness(low) + 0.3);
+    expect(darknessGoal(high)).toBeGreaterThan(darknessGoal(low) + 0.3);
     expect(townPay(high)).toBeLessThan(townPay(low));
   });
 
   it("is eased by lamps and by the park, for bricks", () => {
     const run = town(tall);
-    const before = darkness(run);
+    const before = darknessGoal(run);
     const lit = performAction(def, run, LAMP_ACTION_ID);
-    expect(darkness(lit)).toBeLessThan(before);
+    expect(darknessGoal(lit)).toBeLessThan(before);
     expect(lit.resources.bricks).toBeCloseTo(
       run.resources.bricks - lampPrice(run),
       0
     );
     const park = performAction(def, lit, PARK_ACTION_ID);
-    expect(darkness(park)).toBeLessThan(darkness(lit));
+    expect(darknessGoal(park)).toBeLessThan(darknessGoal(lit));
     expect(performAction(def, park, PARK_ACTION_ID)).toBe(park);
     const poor = withResources(run, { bricks: 1 });
     expect(canPerformAction(def, poor, LAMP_ACTION_ID)).toBe(false);
@@ -165,16 +172,105 @@ describe("the shadow", () => {
     const run = town({ mason: 5, crane: 2, scaffolding: 1 });
     const night = withResources(run, { twDay: 2 });
     expect(dayNow(night).id).toBe("night");
-    expect(darkness(night)).toBeGreaterThan(darkness(run));
+    expect(darknessGoal(night)).toBeGreaterThan(darknessGoal(run));
     expect(
-      darkness({ ...run, resources: { ...run.resources, tfH0: 4 } })
-    ).toBeLessThan(darkness(run) * 0.5);
+      darknessGoal({ ...run, resources: { ...run.resources, tfH0: 4 } })
+    ).toBeLessThan(darknessGoal(run) * 0.8);
   });
 
   it("is something Night-owl Olly works in: he pays more in the dark and less in the light", () => {
     const olly = (run: RunState): number =>
-      crewPay([5], darkness(run)) / crewPay([], darkness(run));
+      crewPay([5], darknessGoal(run)) / crewPay([], darknessGoal(run));
     expect(olly(town(tall))).toBeGreaterThan(olly(town({ mason: 3 })));
+  });
+});
+
+describe("the lights switch", () => {
+  const lit = (): RunState => {
+    let run = town(tall);
+    run = performAction(def, run, LAMP_ACTION_ID);
+    run = performAction(def, run, LAMP_ACTION_ID);
+    return run;
+  };
+  const settle = (run: RunState, seconds: number): RunState => {
+    let next = run;
+    for (let t = 0; t < seconds; t += 1) next = tick(def, next, 1);
+    return next;
+  };
+
+  it("only shows once something is lit, and is free", () => {
+    expect(canPerformAction(def, town(tall), SWITCH_ACTION_ID)).toBe(false);
+    const run = lit();
+    expect(canPerformAction(def, run, SWITCH_ACTION_ID)).toBe(true);
+    const off = performAction(def, run, SWITCH_ACTION_ID);
+    expect(off.resources.bricks).toBe(run.resources.bricks);
+  });
+
+  it("cools over about ten seconds: no relief, no power bill, no festival bonus while off", () => {
+    const run = lit();
+    const on = settle(run, 12);
+    expect(powerBill(on)).toBeCloseTo(T.lightUpkeep * 2, 5);
+    const off = performAction(def, on, SWITCH_ACTION_ID);
+    // Right away the lights are still warm.
+    expect(lightLevel(off)).toBe(1);
+    const cold = settle(off, T.lightWarmSeconds + 2);
+    expect(lightLevel(cold)).toBe(0);
+    expect(powerBill(cold)).toBe(0);
+    expect(darknessGoal(cold)).toBeGreaterThan(darknessGoal(on));
+    const fest = (r: RunState): number =>
+      incomePerSecond(withResources(r, { twDay: 4, twDark: darknessGoal(r) }));
+    const quiet = (r: RunState): number =>
+      incomePerSecond(withResources(r, { twDay: 0, twDark: darknessGoal(r) }));
+    expect(fest(on) / quiet(on)).toBeGreaterThan(1 + T.festivalPerLit);
+    expect(fest(cold) / quiet(cold)).toBeCloseTo(1, 4);
+  });
+
+  it("makes the dark ease in over a few seconds, never snapping at a new day", () => {
+    const run = settle(lit(), 30);
+    const night = withResources(run, { twDay: 2 });
+    expect(darknessGoal(night)).toBeGreaterThan(darkness(night) + 0.1);
+    const later = settle(night, 1);
+    expect(darkness(later)).toBeGreaterThan(darkness(night));
+    expect(darkness(later)).toBeLessThan(darknessGoal(night));
+    expect(darkness(settle(night, 30))).toBeCloseTo(darknessGoal(night), 2);
+  });
+
+  it("changes pay by day: a festival rewards on, a quiet bright day rewards off", () => {
+    const base = settle(
+      performAction(def, town({ mason: 4 }), LAMP_ACTION_ID),
+      30
+    );
+    const pay = (r: RunState, day: number, off: boolean): number => {
+      const next = withResources(r, {
+        twDay: day,
+        twOff: off ? 1 : 0,
+        twCool: off ? 1 : 0,
+      });
+      return incomePerSecond(
+        withResources(next, { twDark: darknessGoal(next) })
+      );
+    };
+    expect(pay(base, 4, false)).toBeGreaterThan(pay(base, 4, true));
+    expect(pay(base, 0, true)).toBeGreaterThan(pay(base, 0, false));
+  });
+});
+
+describe("what the cards say", () => {
+  it("an empty hat is the regular foreman: plain pay, so a plus is a real plus", () => {
+    expect(crewPay([], 0)).toBe(1);
+    expect(crewPay([1], 0) / crewPay([], 0)).toBeCloseTo(1.18, 5);
+    expect(crewPay([2], 0) / crewPay([], 0)).toBeCloseTo(0.9, 5);
+  });
+
+  it("slow taps never fall below the floor, and Bertha costs 30%", () => {
+    expect(crewTap([6])).toBeCloseTo(0.7, 5);
+    expect(crewTap([6, 6, 6])).toBeGreaterThanOrEqual(T.tapFloor);
+  });
+
+  it("a park makes the tower lean less, and the card says so", () => {
+    const run = town(tall);
+    const park = performAction(def, run, PARK_ACTION_ID);
+    expect(townLeanTarget(park)).toBeLessThan(townLeanTarget(run));
   });
 });
 

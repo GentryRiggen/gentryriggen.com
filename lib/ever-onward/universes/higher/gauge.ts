@@ -55,7 +55,7 @@ export function higherGauge(run: RunState): GaugeView | null {
   const sway = swayOf(run);
   const wobbling = sway >= WOBBLE_AT;
   return {
-    label: "SWAY",
+    label: "LEAN",
     current: sway,
     max: 1,
     isLow: isWobbly(run),

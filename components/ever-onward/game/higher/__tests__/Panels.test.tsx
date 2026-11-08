@@ -33,6 +33,7 @@ import ShadowPanel from "../ShadowPanel";
 import TownPanel from "../TownPanel";
 import {
   LAMP_ACTION_ID,
+  SWITCH_ACTION_ID,
   foremanActionId,
 } from "@/lib/ever-onward/universes/higher/town";
 
@@ -260,10 +261,48 @@ describe("the town's panels", () => {
       /Costs [\d.,]+\w* bricks/
     );
     expect(screen.getByTestId("bh-park")).toHaveTextContent(
-      /The dark bites 30% less/
+      /25 points off the dark meter/
     );
     await userEvent.click(screen.getByTestId("bh-lamps"));
     expect(onAct).toHaveBeenCalledWith(LAMP_ACTION_ID);
+  });
+
+  it("show the power bill on every light card, and a switch once something is lit", async () => {
+    const onAct = jest.fn();
+    const base = {
+      ...rich(),
+      owned: { mason: 6, crane: 5, scaffolding: 3, "cross-braces": 3 },
+    };
+    const { rerender } = render(
+      <ShadowPanel def={def} run={base} onAct={onAct} />
+    );
+    expect(screen.getByTestId("bh-lamps")).toHaveTextContent(
+      /of your bricks, every second/
+    );
+    expect(screen.getByTestId("bh-park")).toHaveTextContent(
+      /of your bricks, every second/
+    );
+    expect(screen.queryByTestId("bh-switch")).toBeNull();
+    const lit = {
+      ...base,
+      resources: { ...base.resources, twLamps: 2 },
+    };
+    rerender(<ShadowPanel def={def} run={lit} onAct={onAct} />);
+    expect(screen.getByTestId("bh-power-bill")).toHaveTextContent(
+      /Power bill: -32% of your bricks, every second/
+    );
+    expect(screen.getByTestId("bh-switch")).toHaveTextContent("Lights: ON");
+    await userEvent.click(screen.getByTestId("bh-switch"));
+    expect(onAct).toHaveBeenCalledWith(SWITCH_ACTION_ID);
+    const off = {
+      ...lit,
+      resources: { ...lit.resources, twOff: 1, twCool: 1 },
+    };
+    rerender(<ShadowPanel def={def} run={off} onAct={onAct} />);
+    expect(screen.getByTestId("bh-switch")).toHaveTextContent("Lights: OFF");
+    expect(screen.getByTestId("bh-power-bill")).toHaveTextContent(
+      /Power bill: -0% of your bricks/
+    );
   });
 
   it("render nothing in the playroom", () => {

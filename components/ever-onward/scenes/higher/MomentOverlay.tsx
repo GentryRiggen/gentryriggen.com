@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { HigherSceneInfo } from "@/lib/ever-onward/universes/higher";
 import { DAYS } from "@/lib/ever-onward/universes/higher/town";
 import { pixelClass } from "../../game/retro/retroStyles";
@@ -9,6 +12,9 @@ interface Moment {
   banner: string;
   edge: string;
 }
+
+/** When moments overlap, each one holds the banner this long before the next. */
+const TURN_MS = 1400;
 
 const BANK_WORDS = ["BANKED!", "BIG BANK!", "JACKPOT!"] as const;
 
@@ -66,6 +72,16 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
         text: "NEW FOREMAN!",
         banner: "bg-emerald-600 text-emerald-50 border-emerald-200",
         edge: "border-emerald-300",
+      });
+    if (info.flipped > 0)
+      moments.push({
+        key: `flip-${info.flips}`,
+        text: info.flipped === 1 ? "LIGHTS WARMING UP" : "LIGHTS OFF",
+        banner:
+          info.flipped === 1
+            ? "bg-amber-300 text-amber-950 border-amber-100"
+            : "bg-slate-800 text-slate-100 border-slate-400",
+        edge: info.flipped === 1 ? "border-amber-200" : "border-slate-500",
       });
     if (info.lit)
       moments.push({
@@ -134,12 +150,26 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
 /**
  * Big HTML banners over the scene. The picture is an SVG that shrinks to a
  * thin strip on a phone, so its own words get tiny; these keep their size and
- * run the full width, with a flash round the screen edge.
+ * run the full width, with a flash round the screen edge. When two moments
+ * overlap, the newest shows first and the others take turns after it.
  */
 export default function MomentOverlay({ info }: { info: HigherSceneInfo }) {
   const moments = momentsFor(info);
+  const keys = moments.map((m) => m.key).join("|");
+  const [cycle, setCycle] = useState({ keys, turn: 0 });
+  if (cycle.keys !== keys) setCycle({ keys, turn: 0 });
+  const isMany = moments.length > 1;
+  useEffect(() => {
+    if (!isMany) return;
+    const id = window.setInterval(
+      () => setCycle((c) => ({ ...c, turn: c.turn + 1 })),
+      TURN_MS
+    );
+    return () => window.clearInterval(id);
+  }, [isMany, keys]);
   if (moments.length === 0) return null;
-  const latest = moments[moments.length - 1];
+  const turn = cycle.keys === keys ? cycle.turn : 0;
+  const latest = moments[moments.length - 1 - (turn % moments.length)];
   return (
     <div
       aria-hidden="true"

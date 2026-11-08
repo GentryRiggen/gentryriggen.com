@@ -121,8 +121,6 @@ export const TUNING = {
      */
     toddlerLeanMult: 6,
     toddlerBaseMult: 2,
-    /** A standing streak is checked this often while the toddler stomps, even untapped. */
-    stompCheckSeconds: 1,
     /** The scene shows a tumble or a bank for this long. */
     showSeconds: 5,
     /** A pillow from a delivery halves tumbles for this many seconds. */
@@ -136,7 +134,7 @@ export const TUNING = {
    */
   town: {
     /** The town's own pay before foremen and the dark (keeps the part's length). */
-    base: 0.74,
+    base: 0.775,
     /** What each build pace pays in the town (careful to rush). */
     pacePay: [0.9, 1, 1.1, 1.2] as readonly number[],
     /** How much harder the tall town's lean pushes than the playroom's. */
@@ -149,8 +147,8 @@ export const TUNING = {
     leanLevels: 14,
     /** Hats, and how long a foreman takes to change over (a whole shift). */
     hats: 3,
-    /** An empty hat (or one waiting for a swap) is the site's regular foreman: this much pay. */
-    regularPay: 1.18,
+    /** An empty hat (or one waiting for a swap) is the site's regular foreman: plain pay. */
+    regularPay: 1,
     shiftSeconds: 40,
     /** Two foremen who get on, or clash: their pay is this much more or less. */
     pairLike: 1.1,
@@ -161,8 +159,8 @@ export const TUNING = {
     daySeconds: 120,
     /** Market day: taps pay this much more. */
     marketTap: 3,
-    /** Night shift: the shadow bites this much harder. */
-    nightDark: 1.8,
+    /** Night shift: the dark meter reads this much higher before any lamp (a night is dark). */
+    nightDark: 0.35,
     /** Windy day: the tower leans this much more. */
     windyLean: 2.2,
     /** Festival: a lit town pays this much more for each step of light. */
@@ -170,19 +168,27 @@ export const TUNING = {
     /** A steadying pole holds the lean at half for this long. */
     poleSeconds: 60,
     /** Tower height (levels / 2) at which the shadow is at its longest. */
-    shadeFull: 8,
+    shadeFull: 14,
     /** The darkest town pays this much less. */
-    cutMax: 0.58,
+    cutMax: 0.6,
     /** How much of the dark each street lamp, and the park, take away. */
-    lampRelief: 0.2,
-    parkRelief: 0.3,
+    lampRelief: 0.3,
+    parkRelief: 0.25,
+    /** The park is a place to play: the tower leans this much (a share) as usual. */
+    parkLean: 0.8,
+    /** Taps never pay less than this share, however many foremen slow them. */
+    tapFloor: 0.6,
+    /** The lights take this long to warm up or cool down when switched. */
+    lightWarmSeconds: 10,
+    /** The dark (and the pay it takes) eases to a new level over this long. */
+    darkEaseSeconds: 10,
     /** Lamps, then the park: price in seconds of the site's pay. */
-    lampSeconds: [80, 150, 260] as readonly number[],
-    parkSeconds: 500,
+    lampSeconds: [60, 110, 190] as readonly number[],
+    parkSeconds: 360,
     /** Lamps and the park never cost less than this many bricks a second's worth. */
     priceFloor: 40,
     /** Every step of light (the park counts as two) costs this share of the bricks, all the time. */
-    lightUpkeep: 0.05,
+    lightUpkeep: 0.16,
     /** The lights-on moment shows this long. */
     lightsShowSeconds: 5,
   },

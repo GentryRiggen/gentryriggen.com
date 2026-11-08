@@ -48,11 +48,14 @@ import {
   hasPark,
   hatIds,
   isTownOpen,
+  flipsSoFar,
   justArrived,
+  justFlipped,
   justLit,
   justNewDay,
   justTossed,
   lampsOf,
+  lightLevel,
   lightsSoFar,
   pendingIds,
   swapStarts,
@@ -105,6 +108,10 @@ export interface HigherSceneInfo {
   /** The lights have just come on, and how many times they have. */
   lit: boolean;
   lights: number;
+  /** How warm the lights are, 0 (cold) to 4 (full), and the switch just flipped (0 no, 1 on, 2 off) and how many times. */
+  glow: number;
+  flipped: number;
+  flips: number;
   /** Today's day and tomorrow's (an index into the days: quiet, market, night, windy, festival). */
   day: number;
   tomorrow: number;
@@ -211,6 +218,9 @@ export function sceneInfo(run: RunState): HigherSceneInfo {
     park: run.phase === 1 && hasPark(run),
     lit: run.phase === 1 && justLit(run),
     lights: lightsSoFar(run),
+    glow: run.phase === 1 ? Math.round(lightLevel(run) * 4) : 0,
+    flipped: run.phase === 1 ? justFlipped(run) : 0,
+    flips: flipsSoFar(run),
     day: isTownOpen(run) ? DAYS.indexOf(dayNow(run)) : 0,
     tomorrow: isTownOpen(run) ? DAYS.indexOf(dayNext(run)) : 0,
     wx: forecastOf(run),

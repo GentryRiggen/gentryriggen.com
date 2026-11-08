@@ -92,7 +92,8 @@ export default function CrewPanel({ def, run, onAct }: PanelProps) {
       </div>
       <p className="font-mono text-xs text-slate-300">
         Changing a hat takes a whole shift ({TUNING.town.shiftSeconds} sec). The
-        old foreman leaves right away and the hat waits for the new one.
+        old foreman leaves right away and the hat waits for the new one. A
+        waiting hat has the regular foreman: plain pay, no plus and no minus.
       </p>
       <ul className="grid gap-2 sm:grid-cols-2">
         {FOREMEN.map((f) => {

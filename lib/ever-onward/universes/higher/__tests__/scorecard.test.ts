@@ -23,10 +23,17 @@ jest.setTimeout(180_000);
  *
  * The Sky's wind, cable strain and no-crane climb cost another point and a
  * half (more reveal and log events, idle / eager 1.95x, one decision gap near
- * minute 6). 80.8 is the sky's 81.1 minus a margin; gates stay uncapped.
+ * minute 6). The sky scored 81.2.
+ *
+ * The town's fix round (a lights switch, honest foreman pay, an eased dark)
+ * earned it back to 81.8 with every gate uncapped. 81.3 is that minus half a
+ * point. What is still short of the town's old 84.4: reveals (M1: a story
+ * line or two per minute, a few plates a few seconds after their reveal) and
+ * idle / eager 1.99x (an unattended Town takes about 70 min, the dials are
+ * worth a lot).
  */
 const GATE_CAP = 59;
-const UNCAPPED_FLOOR = 80.8;
+const UNCAPPED_FLOOR = 81.3;
 
 const HOUR = 3600;
 

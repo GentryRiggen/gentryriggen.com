@@ -106,11 +106,11 @@ export const OVERTIME_ACTIONS: readonly ActionDef[] = [
 /** "×2", "×1.5": a project's multiplier, no more digits than it needs. */
 const times = (n: number): string => `×${Number(n.toFixed(2))}`;
 
-/** "half as fast" for 0.5, "×0.7 as fast" otherwise. */
-const asFast = (n: number): string =>
-  n === 0.5 ? "half as fast" : `${times(n)} as fast`;
+/** "half as much" for 0.5, "×0.7 as much" otherwise. */
+const asMuch = (n: number): string =>
+  n === 0.5 ? "half as much" : `${times(n)} as much`;
 
-/** Hard hats and the wind tunnel: the tower sways half as fast. */
+/** Hard hats and the wind tunnel: the tower leans half as much. */
 export const knowhowSwayMult = (run: RunState): number =>
   (run.phase === 1 && isProjectDone(run, "hard-hats")) ||
   (run.phase === 2 && isProjectDone(run, "wind-tunnel"))
@@ -158,11 +158,11 @@ export const HIGHER_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_TOWN,
     name: "Hard hats for everyone",
     description:
-      "Yellow hats, a whistle and a little safety talk. The crews work steadier, so the tower sways half as fast.",
+      "Yellow hats, a whistle and a little safety talk. The crews work steadier, so the tower leans half as much.",
     tradeOff: "Know-how spent here is not there for overtime.",
     costs: cost(K.costs[0]),
     revealWhen: (run) => owned(run, "cross-braces") >= 1,
-    effectPreview: () => `The tower sways ${asFast(TUNING.sway.projectMult)}`,
+    effectPreview: () => `The tower leans ${asMuch(TUNING.sway.projectMult)}`,
     botValue: 0.3,
   },
   {
