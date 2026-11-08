@@ -1,16 +1,8 @@
 import { ownsAtLeast } from "../../engine/goal";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
-import { coolPerSecond } from "./meter";
-import {
-  BENCH_ID,
-  KETTLE_ID,
-  hasKettle,
-  kettleShown,
-  tendsSoFar,
-  trustFraction,
-  trustMult,
-} from "./quiet";
+import { streetRise } from "./town";
+import { BENCH_ID, trustFraction, trustMult } from "./quiet";
 import {
   PHASE_FRIEND,
   PHASE_IDS,
@@ -64,13 +56,23 @@ const helperPreview = (run: RunState, id: string): string =>
     `${noun(run)}/sec`
   );
 
-/** "The cheer meter cools ×1.6 as fast" then "Meter cools 5% → 8% a second". */
-function coolPreview(run: RunState, id: string): string {
-  const before = coolPerSecond(run);
-  const next = coolPerSecond(plusOne(run, id));
+/** "Every place pays ×1.2" then "Real smiles get painted over 15% faster". */
+function maskPreview(run: RunState, id: string): string {
+  const next = plusOne(run, id);
+  const faster = Math.round(TUNING.world.maskPaint * 100);
+  return [
+    rateEffect(incomePerSecond(run), incomePerSecond(next), `${noun(run)}/sec`),
+    `− Real smiles get painted over ${faster}% faster`,
+  ].join("\n");
+}
+
+/** "Floats cheer a street ×1.4 as fast" then "Street mood rises 3% → 4.2% a second". */
+function risePreview(run: RunState, id: string): string {
+  const before = streetRise(run);
+  const next = streetRise(plusOne(run, id));
   const pct = (n: number): string => `${Number((n * 100).toFixed(1))}%`;
   const faster = before > 0 ? Number((next / before).toFixed(1)) : 1;
-  return `The cheer meter cools ×${faster} as fast\nMeter cools ${pct(before)} → ${pct(next)} a second\nA worn-out crowd pays less`;
+  return `Floats cheer a street ×${faster} as fast\nStreet mood rises ${pct(before)} → ${pct(next)} a second\nA skipped street still turns grumpy`;
 }
 
 type Gate = (run: RunState) => boolean;
@@ -187,7 +189,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "puppy",
     name: "A wagging puppy",
     description:
-      "It tumbles over its own paws and the friend laughs out loud. It also fetches, if you throw the ball.",
+      "It tumbles over its own paws and the friend laughs out loud. It is also very good at games, once there are games to play.",
     phase: PHASE_FRIEND,
     currency: "smiles",
     baseCost: 630,
@@ -198,13 +200,13 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       id: "bracelet",
       name: "A friendship bracelet",
       description:
-        "Made of three colors of string. It opens the friendship bank: set some smiles aside as time together, and every later laugh grows bigger.",
+        "Made of three colors of string. It opens what you do together: jokes, games or just listening, and the friend's face shows what they need next.",
       phase: PHASE_FRIEND,
       currency: "smiles",
       baseCost: 270,
       gate: has("puppy", 1),
     },
-    () => "Opens the friendship bank\nSave smiles now, bigger laughs later"
+    () => "Opens what you do together\nJokes, games or listening"
   ),
   line({
     id: "lemonade",
@@ -271,7 +273,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       id: "bench",
       name: "Resting benches",
       description:
-        "Cheering is tiring work, even for a town. Each set of benches cools the cheer meter a good deal faster.",
+        "A bench in the shade of every street, so a crowd waits happily for the next float. Each set makes a street cheer up faster.",
       phase: PHASE_TOWN,
       currency: "cheers",
       baseCost: 1800,
@@ -280,7 +282,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       gate: has("clown", 2),
     }),
     kind: "mechanic",
-    effectPreview: (run) => coolPreview(run, "bench"),
+    effectPreview: (run) => risePreview(run, "bench"),
   },
   line({
     id: "smile-factory",
@@ -347,7 +349,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       id: "mask-booth",
       name: "A smile-mask booth",
       description:
-        "Pick a mask with a happy mouth and wear it all day. Nobody looks tired in a mask, and the cheer meter cools a good deal faster.",
+        "Pick a mask with a happy mouth and wear it all day. Nobody can tell who is under one. Every set pays more, and every set paints a bit more.",
       phase: PHASE_WORLD,
       currency: "grins",
       baseCost: 28000,
@@ -356,7 +358,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       gate: has("loudspeaker", 1),
     }),
     kind: "mechanic",
-    effectPreview: (run) => coolPreview(run, "mask-booth"),
+    effectPreview: (run) => maskPreview(run, "mask-booth"),
   },
   line({
     id: "cheer-tower",
@@ -415,8 +417,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   scale({
     id: "long-silence",
     name: "A long silence",
-    description:
-      "Some things do not need saying. Every moment, and every answer, is worth more.",
+    description: "Some things do not need saying. Every moment is worth more.",
     phase: PHASE_QUIET,
     currency: "patience",
     baseCost: 450,
@@ -455,22 +456,6 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   }),
   once(
     {
-      id: KETTLE_ID,
-      name: "A kettle on the stove",
-      description:
-        "It pours a cup when you are busy, after a pause. Your own answer is still better.",
-      phase: PHASE_QUIET,
-      currency: "patience",
-      baseCost: 250,
-      gate: (run) => kettleShown(run),
-    },
-    (run) =>
-      hasKettle(run)
-        ? "Answers a waiting friend for you"
-        : `Answers a waiting friend for you after a pause (answers so far: ${tendsSoFar(run)})`
-  ),
-  once(
-    {
       id: BENCH_ID,
       name: "Room on the bench",
       description:
@@ -502,14 +487,11 @@ export const UPGRADES: readonly UpgradeDef[] = RAW_UPGRADES.map((u) => {
   );
   return {
     ...u,
-    badge:
-      u.id === KETTLE_ID
-        ? "NEW ABILITY"
-        : CHAPTER_EFFECTS[u.id]
-          ? u.id === "set-down"
-            ? "LAST STEP"
-            : "NEXT CHAPTER"
-          : u.badge,
+    badge: CHAPTER_EFFECTS[u.id]
+      ? u.id === "set-down"
+        ? "LAST STEP"
+        : "NEXT CHAPTER"
+      : u.badge,
     effectPreview:
       u.effectPreview ??
       (CHAPTER_EFFECTS[u.id] ? () => CHAPTER_EFFECTS[u.id] : undefined),

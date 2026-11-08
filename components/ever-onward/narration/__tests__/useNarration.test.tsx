@@ -75,6 +75,17 @@ describe("useNarration", () => {
     expect(result.current.toast).toBeNull();
   });
 
+  it("keeps the toast out of the way while the scene is held", () => {
+    const { result, rerender } = renderHook(
+      ({ story, isHeld }) => useNarration({ def, run: runWith(story), isHeld }),
+      { initialProps: { story: [] as string[], isHeld: true } }
+    );
+    rerender({ story: ["coast-hello"], isHeld: true });
+    expect(result.current.toast).toBeNull();
+    rerender({ story: ["coast-hello"], isHeld: false });
+    expect(result.current.toast?.clipId).toBe("light/coast-hello");
+  });
+
   it("plays without a toast when auto-play is on", () => {
     act(() => setNarrationSettings({ isAutoPlay: true }));
     const { result, rerender } = setup([]);

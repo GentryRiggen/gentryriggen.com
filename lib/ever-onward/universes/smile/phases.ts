@@ -57,7 +57,8 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Fill the town with cheer and earn the key.",
     manualResource: "cheers",
     manualLabel: "Cheer the street",
-    tapDoes: "cheer the street. Tap too fast and the crowd gets tired",
+    tapDoes:
+      "cheer the street. The stand and the parade make every tap pay more",
     isDone: (run) => owned(run, "key-to-town") >= 1,
     onEnter: (run) => {
       carry(0, 1)(run);
@@ -74,7 +75,8 @@ export const PHASES: readonly PhaseDef[] = [
     goal: "Spread cheer to every place and launch the satellite.",
     manualResource: "grins",
     manualLabel: "Spread the cheer",
-    tapDoes: "spread the cheer. Tap too fast and the world gets tired",
+    tapDoes:
+      "spread the cheer. A louder loudspeaker pays more, and paints real smiles over",
     isDone: (run) => owned(run, "cheer-satellite") >= 1,
     onEnter: (run) => {
       carry(1, 2)(run);

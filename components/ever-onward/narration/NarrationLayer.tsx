@@ -8,6 +8,7 @@ interface NarrationLayerProps {
   def: UniverseDef;
   run: RunState;
   isSuppressed: boolean;
+  isHeld?: boolean;
 }
 
 /** Mounts narration for a running game: watches the story, shows the toast. */
@@ -15,11 +16,13 @@ export default function NarrationLayer({
   def,
   run,
   isSuppressed,
+  isHeld = false,
 }: NarrationLayerProps) {
   const { toast, playToast, dismissToast } = useNarration({
     def,
     run,
     isSuppressed,
+    isHeld,
   });
   return (
     <NarrationToast

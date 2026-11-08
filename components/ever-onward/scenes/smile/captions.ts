@@ -3,6 +3,29 @@ import type { SmileSceneInfo } from "@/lib/ever-onward/universes/smile";
 const plural = (n: number, word: string): string =>
   `${n} ${word}${n === 1 ? "" : "s"}`;
 
+const PRICE_NAMES = ["free", "cheap", "fair", "dear", "pricey"] as const;
+
+/** The town's headline: the day first, then the stand. */
+function townLine(info: SmileSceneInfo): string {
+  if (info.price < 0) return "The town, out on the street";
+  const day = info.day.startsWith("rain")
+    ? "Rain on a street"
+    : info.day.startsWith("party")
+      ? "A street party"
+      : info.day === "hot"
+        ? "A hot day"
+        : "The town, out on the street";
+  return `${day} · lemonade is ${PRICE_NAMES[info.price]}`;
+}
+
+const SEAT_CAPTION = [
+  "far end of the bench",
+  "a long way along",
+  "halfway along",
+  "one seat away",
+  "side by side",
+] as const;
+
 /** The one line that says what the picture is showing. */
 export function captionFor(info: SmileSceneInfo): string {
   switch (info.phase) {
@@ -13,14 +36,20 @@ export function captionFor(info: SmileSceneInfo): string {
           : "A friend on a step, a little less sad",
         ...(info.a > 0 ? [plural(info.a, "balloon bunch")] : []),
         ...(info.b > 0 ? [plural(info.b, "puppy")] : []),
-        ...(info.ball ? ["the puppy has the ball"] : []),
+        ...(info.hint >= 0
+          ? [
+              ["telling jokes", "playing a game", "listening"][info.doing],
+              ...(info.lit ? ["they lit up"] : []),
+              ...(info.sigh ? ["a little sigh"] : []),
+            ]
+          : []),
       ].join(" · ");
     case "town":
       return [
-        info.parade ? "A parade!" : "The town, out on the street",
+        townLine(info),
         ...(info.a > 0 ? [plural(info.a, "clown")] : []),
         ...(info.c > 0 ? [plural(info.c, "smile factory")] : []),
-        ...(info.tired ? ["everyone is worn out"] : []),
+        ...(info.moods.includes("0") ? ["a street is grumpy"] : []),
       ].join(" · ");
     case "world":
       return [
@@ -29,12 +58,16 @@ export function captionFor(info: SmileSceneInfo): string {
           : "Smiling posters everywhere",
         ...(info.a > 0 ? [plural(info.a, "poster")] : []),
         ...(info.b > 0 ? [plural(info.b, "loudspeaker")] : []),
-        ...(info.tired ? ["everyone is worn out"] : []),
+        ...(info.real <= 4
+          ? ["most smiles are painted on"]
+          : info.real <= 8
+            ? ["some smiles are painted on"]
+            : []),
       ].join(" · ");
     default:
       return info.visitorHere
         ? "One small, real smile"
-        : `Two on a bench · ${info.trust}% trust${info.wanting ? " · the friend wants something" : ""}`;
+        : `Two on a bench · ${SEAT_CAPTION[info.seat]} · ${info.trust}% trust${info.away ? " · they moved away" : ""}`;
   }
 }
 
@@ -44,7 +77,7 @@ export function sceneLabelFor(info: SmileSceneInfo): string {
     case "friend":
       return "A robot sitting on a step beside a sad friend, with balloons, a puppy and a lemonade stand";
     case "town":
-      return "A town street with clowns, a marching band, a smile factory and fireworks";
+      return "A town street with a lemonade stand, parade floats on four streets, clowns, a band and a smile factory";
     case "world":
       return "A street covered with smiling posters and loudspeakers, and a crowd of smiling faces";
     default:

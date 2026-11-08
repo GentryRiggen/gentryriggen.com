@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.36.0",
+    date: "2026-11-07",
+    title: "Make Everyone Smile, with real choices",
+    highlights: [
+      "With One Sad Friend, the bank switch and the fetch machine are gone. Now you pick what to do together: tell jokes, play games or just listen",
+      "Doing the same thing again and again wears thin, so mix it up. Read their face to see what they want",
+      "In the Town, the cheer meter is gone. You set a lemonade stand price, plan a parade route and watch out for grumpy streets",
+      "In the World, you get a loudspeaker, and you learn the difference between real smiles and painted smiles. Beware the HypnoDrones",
+      "How many real smiles you keep changes how The Quiet goes",
+      "In The Quiet, the guessing machine is gone. Now you sit closer on the bench and read how they are sitting",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
     version: "1.35.0",
     date: "2026-11-07",
     title: "The farm, the whole world and the window box",

@@ -58,7 +58,6 @@ const QUIET: Record<string, Place> = {
   blanket: at(190, 200, "Blanket"),
   rain: at(200, 90, "Rain"),
   candle: at(112, 196, "Candle"),
-  kettle: at(338, 190, "Kettle"),
   "room-on-bench": at(218, 170, "Room on the bench"),
 };
 

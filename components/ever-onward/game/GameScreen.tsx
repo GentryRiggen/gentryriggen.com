@@ -775,7 +775,12 @@ export default function GameScreen({
         />
       )}
 
-      <NarrationLayer def={def} run={run} isSuppressed={overlay !== null} />
+      <NarrationLayer
+        def={def}
+        run={run}
+        isSuppressed={overlay !== null}
+        isHeld={def.isSceneBusy?.(run) ?? false}
+      />
       <LogToast run={run} isSuppressed={isCovered} />
       {overlay === "phase" && (
         <PhaseCutscene

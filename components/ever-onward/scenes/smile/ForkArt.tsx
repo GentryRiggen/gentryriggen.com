@@ -190,6 +190,9 @@ function JustSit() {
   );
 }
 
+/** Drawn lower than the banner's strip, so a moment never covers it. */
 export function QuietForkArt({ side }: ForkArtProps) {
-  return side === 0 ? <FewWords /> : <JustSit />;
+  return (
+    <g transform="translate(0 24)">{side === 0 ? <FewWords /> : <JustSit />}</g>
+  );
 }

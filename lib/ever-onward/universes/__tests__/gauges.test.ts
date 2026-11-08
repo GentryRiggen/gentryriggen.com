@@ -25,25 +25,44 @@ describe("HUD gauges", () => {
     expect(growUniverse.gauge?.(run)).toBeNull();
   });
 
-  test("Smile shows the cheer meter as a percent, WARM then TIRED", () => {
+  test("Smile shows the share of real smiles as a percent, PAINTED once most are not", () => {
     const run = newRun(smileUniverse);
     run.phase = 0;
     expect(smileUniverse.gauge?.(run)).toBeNull();
-    run.phase = 1;
-    run.resources.mtHeat = 0.2;
+    run.phase = 2;
+    expect(smileUniverse.gauge?.(run)).toBeNull();
+    run.flags["world-open"] = true;
+    run.resources.wsReal = 0.8;
     expect(smileUniverse.gauge?.(run)).toMatchObject({
-      label: "CHEER",
-      display: "20%",
+      label: "REAL",
+      display: "80%",
       isLow: false,
     });
-    run.resources.mtHeat = 0.75;
-    expect(smileUniverse.gauge?.(run)).toMatchObject({ status: "WARM" });
-    run.resources.mtHeat = 1;
-    run.resources.mtTired = 1;
+    run.resources.wsReal = 0.3;
     expect(smileUniverse.gauge?.(run)).toMatchObject({
-      status: "TIRED",
+      status: "PAINTED",
+      isLow: true,
+    });
+    run.resources.wsReal = 0.1;
+    expect(smileUniverse.gauge?.(run)).toMatchObject({
+      status: "PAINTED",
       isCritical: true,
     });
+  });
+
+  test("Smile shows the town's mood once its stand and route are open, GRUMPY when a street is left out", () => {
+    const run = newRun(smileUniverse);
+    run.phase = 1;
+    expect(smileUniverse.gauge?.(run)).toBeNull();
+    run.flags["town-open"] = true;
+    for (let i = 0; i < 4; i += 1) run.resources[`tnH${i}`] = 1;
+    expect(smileUniverse.gauge?.(run)).toMatchObject({
+      label: "MOOD",
+      display: "100%",
+      status: "",
+    });
+    run.resources.tnH3 = 0;
+    expect(smileUniverse.gauge?.(run)).toMatchObject({ status: "GRUMPY" });
   });
 
   test("Higher shows the sway, LEANS then WOBBLY", () => {

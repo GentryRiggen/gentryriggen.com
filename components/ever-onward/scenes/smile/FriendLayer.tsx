@@ -1,5 +1,6 @@
 import type { SmileSceneInfo } from "@/lib/ever-onward/universes/smile/scene";
 import { FriendForkArt } from "./ForkArt";
+import TogetherLayer from "./TogetherLayer";
 import {
   BALLOON_COLORS,
   Balloon,
@@ -23,6 +24,8 @@ const HOUSES: readonly (readonly [number, number, string, string])[] = [
 
 /** How cheerful the friend looks: more helpers, more smile. */
 function moodOf(info: SmileSceneInfo): Mood {
+  if (info.sigh) return "frown";
+  if (info.lit) return "grin";
   const helpers = info.a + info.b + info.c + info.d;
   if (helpers === 0) return "frown";
   if (helpers < 5) return "flat";
@@ -93,7 +96,7 @@ function Balloons({ count }: { count: number }) {
   );
 }
 
-function Puppies({ count, hasBall }: { count: number; hasBall: boolean }) {
+function Puppies({ count }: { count: number }) {
   const n = Math.min(4, Math.ceil(count / 2));
   const spots = PUPPY_SPOTS.slice(0, n);
   return (
@@ -108,12 +111,6 @@ function Puppies({ count, hasBall }: { count: number; hasBall: boolean }) {
           <Tail key={x} x={x - 2} y={y - 2} />
         ))}
       </g>
-      {hasBall && (
-        <g className="ms-bob">
-          <rect x="94" y="246" width="9" height="9" fill="#ff5d73" />
-          <rect x="96" y="248" width="3" height="3" fill="#ffd0d8" />
-        </g>
-      )}
     </g>
   );
 }
@@ -274,23 +271,26 @@ export default function FriendLayer({ info }: LayerProps) {
       {/* The step, the friend and the robot. */}
       <rect x="140" y="186" width="120" height="14" fill="#a8a29e" />
       <rect x="150" y="200" width="100" height="14" fill="#8d8780" />
-      <rect x="164" y="160" width="22" height="26" fill="#6c8ef5" />
-      <Face x={164} y={mood === "frown" ? 146 : 142} size={22} mood={mood} />
-      {info.extraA > 0 && (
-        <g fill="#ff5d73">
-          <rect x="182" y="176" width="4" height="4" />
-          <rect x="182" y="180" width="4" height="3" fill="#ffd23f" />
-          <rect x="182" y="183" width="4" height="3" fill="#4cc9f0" />
-        </g>
-      )}
+      <g className={info.sigh ? "ms-t-slump" : undefined}>
+        <rect x="164" y="160" width="22" height="26" fill="#6c8ef5" />
+        <Face x={164} y={mood === "frown" ? 146 : 142} size={22} mood={mood} />
+        {info.extraA > 0 && (
+          <g fill="#ff5d73">
+            <rect x="182" y="176" width="4" height="4" />
+            <rect x="182" y="180" width="4" height="3" fill="#ffd23f" />
+            <rect x="182" y="183" width="4" height="3" fill="#4cc9f0" />
+          </g>
+        )}
+      </g>
       <Robot x={216} y={164} />
       <Balloons count={info.a} />
       <JokeBooks level={info.scaling} />
       <Lemonade count={info.c} />
-      {info.b > 0 && <Puppies count={info.b} hasBall={info.ball} />}
+      {info.b > 0 && <Puppies count={info.b} />}
       {info.d > 0 && <MagicHat count={info.d} />}
       {info.extraA > 0 && <BondJar tier={info.bond} />}
       {info.fork > 0 && <FriendForkArt side={info.fork === 1 ? 0 : 1} />}
+      <TogetherLayer info={info} />
       {info.a > 3 && (
         <g fill="#ff9eb0">
           <rect x="196" y="120" width="3" height="3" className="ms-confetti" />

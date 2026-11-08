@@ -1,6 +1,8 @@
 import type { SmileSceneInfo } from "@/lib/ever-onward/universes/smile/scene";
 import { WorldForkArt } from "./ForkArt";
-import { Face, INK, PixelText, SKIN_SHADE, type Mood } from "./parts";
+import { INK, PixelText } from "./parts";
+import WorldFaces from "./WorldFaces";
+import WorldMoments from "./WorldMoments";
 
 interface LayerProps {
   info: SmileSceneInfo;
@@ -213,14 +215,14 @@ function Sign() {
     <g>
       <rect
         x="84"
-        y="196"
+        y="182"
         width="232"
         height="26"
         fill="#fff4f6"
         stroke="#e23b5a"
         strokeWidth="3"
       />
-      <PixelText x={200} y={214} fill="#e23b5a">
+      <PixelText x={200} y={200} fill="#e23b5a">
         NO BAD DAYS
       </PixelText>
     </g>
@@ -239,41 +241,6 @@ function Satellite() {
       <g className="ms-glow" fill="#ffe29a" fillOpacity="0.5">
         <rect x="186" y="20" width="12" height="60" />
       </g>
-    </g>
-  );
-}
-
-function Crowd({ info }: LayerProps) {
-  const n = Math.min(14, 8 + info.a + info.b + info.c);
-  const mood: Mood = info.tired ? "flat" : "grin";
-  return (
-    <g>
-      {Array.from({ length: n }, (_, i) => (
-        <g key={i}>
-          <Face
-            x={6 + i * 28}
-            y={270 - (i % 3) * 4}
-            size={14}
-            mood={mood}
-            fill={i % 3 === 0 ? SKIN_SHADE : "#ffd9a8"}
-            isSweaty={info.heat >= 3 || info.tired}
-          />
-          {info.extraA > 0 && i % 2 === 0 && (
-            <rect
-              x={6 + i * 28 + 1}
-              y={270 - (i % 3) * 4 + 6}
-              width="12"
-              height="7"
-              fill="#fff"
-            />
-          )}
-        </g>
-      ))}
-      {info.a >= 3 && (
-        <g className="ms-frown">
-          <Face x={196} y={258} size={16} mood="frown" fill="#d9c7b8" />
-        </g>
-      )}
     </g>
   );
 }
@@ -317,7 +284,8 @@ export default function WorldLayer({ info }: LayerProps) {
           <rect x="358" y="144" width="5" height="2" fill={INK} />
         </g>
       )}
-      <Crowd info={info} />
+      <WorldFaces info={info} />
+      <WorldMoments info={info} />
     </g>
   );
 }
