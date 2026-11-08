@@ -13,6 +13,7 @@ import {
   isGliding,
   lastBurn,
   moodName,
+  sunMood,
   secondsToFlare,
   flaresSoFar,
 } from "@/lib/ever-onward/universes/light/sunEdge";
@@ -24,9 +25,24 @@ import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 
 const D = TUNING.dials;
 const STEPS = DISTANCES.length;
+/** Segments in a bar: a bar is as long as the real thing is, out of the most any step has. */
+const SEGMENTS = 10;
 
-/** Glow bars for how much light a step gathers (1 to 5), never a number to multiply. */
-const lightBars = (step: number): number => step + 1;
+/** Glow segments for how much light a step gathers, as long as the light really is. */
+const lightBars = (step: number): number =>
+  Math.max(1, Math.round((D.light[step] / Math.max(...D.light)) * SEGMENTS));
+
+/** The most heat any step has under any mood (the longest flame bar). */
+const MOST_HEAT =
+  Math.max(...D.heat) * Math.max(...D.moods.map((m) => m.reach)) +
+  Math.max(...D.moods.map((m) => m.stray));
+
+/** Flame segments for how hot a step is under the sun's mood now, as long as the heat really is. */
+const heatBars = (step: number, mood: number): number =>
+  Math.round(
+    ((D.heat[step] * D.moods[mood].reach + D.moods[mood].stray) / MOST_HEAT) *
+      SEGMENTS
+  );
 
 const pct = (n: number): string => `${Math.round(n * 100)}%`;
 
@@ -47,6 +63,7 @@ function SunEdgePanel({ def, run, onAct }: PanelProps) {
   const gliding = isGliding(run);
   const where = distanceNow(run);
   const flares = flaresSoFar(run);
+  const mood = sunMood(run);
 
   return (
     <PanelFrame
@@ -96,7 +113,7 @@ function SunEdgePanel({ def, run, onAct }: PanelProps) {
               role="radio"
               aria-checked={checked}
               aria-disabled={!checked && !doable}
-              aria-label={`${step.label}: ${lightBars(i)} of 5 for light, ${i} of 4 for flare heat`}
+              aria-label={`${step.label}: ${lightBars(i)} of ${SEGMENTS} for light, ${heatBars(i, mood)} of ${SEGMENTS} for flare heat`}
               data-testid={`lm-sunedge-${i}`}
               onClick={() => {
                 if (!checked && doable) onAct(distanceActionId(i));
@@ -109,7 +126,7 @@ function SunEdgePanel({ def, run, onAct }: PanelProps) {
             >
               <span className="block">{step.label}</span>
               <span className="flex gap-0.5" aria-hidden="true">
-                {Array.from({ length: STEPS }, (_, bar) => (
+                {Array.from({ length: SEGMENTS }, (_, bar) => (
                   <span
                     key={bar}
                     className={`h-2 flex-1 ${bar < lightBars(i) ? "bg-yellow-300" : "bg-slate-600/50"}`}
@@ -117,10 +134,10 @@ function SunEdgePanel({ def, run, onAct }: PanelProps) {
                 ))}
               </span>
               <span className="flex gap-0.5" aria-hidden="true">
-                {Array.from({ length: STEPS - 1 }, (_, bar) => (
+                {Array.from({ length: SEGMENTS }, (_, bar) => (
                   <span
                     key={bar}
-                    className={`h-2 flex-1 ${bar < i ? "bg-red-500" : "bg-slate-600/50"}`}
+                    className={`h-2 flex-1 ${bar < heatBars(i, mood) ? "bg-red-500" : "bg-slate-600/50"}`}
                   />
                 ))}
               </span>

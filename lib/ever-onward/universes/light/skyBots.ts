@@ -1,6 +1,10 @@
 import type { RunState } from "../../engine/types";
 import {
+  COPYING,
+  MIRRORS,
   RECALL_ACTION,
+  SHIELDS,
+  SPEED,
   STAT_COUNT,
   downActionId,
   isDialsOpen,
@@ -17,6 +21,7 @@ import {
   forecastSize,
   sunMood,
 } from "./sunEdge";
+import { tier } from "./tick";
 import { TUNING } from "./tuning";
 
 /**
@@ -116,13 +121,20 @@ export const STAGE_SPLITS: readonly (readonly number[])[] = [
   [3, 2, 2, 1],
 ];
 /** The distance (a step of the sun's edge) a reader flies in each of the sun's moods. */
-export const MOOD_DISTANCE: readonly number[] = [4, 2, 1];
+export const MOOD_DISTANCE: readonly number[] = [4, 2, 2];
+/**
+ * The shield points a reader holds in each mood: one under a quiet or usual
+ * sun, three under a restless one, whose flares reach even the far edge. The
+ * shield foundry makes a point stronger, so a restless sun then needs one
+ * less.
+ */
+export const MOOD_SHIELDS: readonly number[] = [1, 1, 3];
 /** The smallest forecast flare (0 small, 1 medium) a reader pulls back for. */
 export const RETREAT_FROM_SIZE = 1;
-/** Where a reader pulls the fleet back to when a flare is forecast. */
-export const RETREAT_DISTANCE = 1;
+/** Where a reader pulls the fleet back to when a flare is forecast: out of its reach. */
+export const RETREAT_DISTANCE = 0;
 /** The share of the fleet gone wild at which a reader brings them home. */
-export const RECALL_SHARE = 0.18;
+export const RECALL_SHARE = 0.12;
 
 export interface Reading {
   /** Changes the split as the stars thin out (off: keeps `split`, or the start). */
@@ -133,6 +145,12 @@ export interface Reading {
   forecast?: boolean;
   /** Brings the wild ones home. */
   recalls?: boolean;
+  /** Moves shield points with the sun's mood (off: keeps the stage's one; a number: holds that many). */
+  shields?: boolean | number;
+  /** The share gone wild that makes it bring them home (default `RECALL_SHARE`). */
+  recallShare?: number;
+  /** The distance it flies in each mood (default `MOOD_DISTANCE`). */
+  moodDist?: readonly number[];
   /** What it keeps while a signal is off. */
   split?: readonly number[];
   dist?: number;
@@ -140,23 +158,59 @@ export interface Reading {
   onlyEvery?: number;
 }
 
+/** The shield points a reader wants in the sun's mood now. */
+export function shieldsWanted(run: RunState): number {
+  const mood = sunMood(run);
+  const foundry = tier(run, "nav") >= 2 && mood === 2 ? 1 : 0;
+  return MOOD_SHIELDS[mood] - foundry;
+}
+
+/** Where a shield point comes from (the first with a point to spare); the first is also where one goes back to. */
+const SHIELD_FROM: readonly number[] = [MIRRORS, SPEED, COPYING];
+
+/** The split with `shields` points on shields, the others taken from (or given to) other stats. */
+function withShields(split: readonly number[], shields: number): number[] {
+  const out = [...split];
+  let diff = shields - out[SHIELDS];
+  out[SHIELDS] = shields;
+  while (diff > 0) {
+    const from = SHIELD_FROM.find((stat) => out[stat] > 0);
+    if (from === undefined) break;
+    out[from] -= 1;
+    diff -= 1;
+  }
+  if (diff < 0) out[SHIELD_FROM[0]] -= diff;
+  return out;
+}
+
 /** The setting a reader wants right now. */
 export function readingSetting(run: RunState, how: Reading = {}): Setting {
   const stars = run.resources.stars ?? 1000;
   const stage = stars > STAGE_MARKS[0] ? 0 : stars > STAGE_MARKS[1] ? 1 : 2;
-  const split =
+  const staged =
     how.stage === false ? (how.split ?? D.startSplit) : STAGE_SPLITS[stage];
+  const held = typeof how.shields === "number" ? how.shields : null;
+  // A player who ignores the sun's mood does not read it for shields either.
+  const split =
+    how.shields === false || (how.mood === false && held === null)
+      ? staged
+      : withShields(staged, held ?? shieldsWanted(run));
   const mood = sunMood(run);
-  // A quiet sun needs no shield, a restless one needs a second.
+  // Brushing the sun while it is quiet, Near it otherwise (a restless sun is
+  // met with shields, which settle in seconds, not with a long flight out).
   let dist =
-    how.mood === false ? (how.dist ?? D.startDistance) : MOOD_DISTANCE[mood];
+    how.mood === false
+      ? (how.dist ?? D.startDistance)
+      : (how.moodDist ?? MOOD_DISTANCE)[mood];
   const coming = how.forecast === false ? null : forecastSize(run);
   if (coming !== null && coming >= RETREAT_FROM_SIZE)
     dist = Math.min(dist, RETREAT_DISTANCE);
   return {
     split,
     dist,
-    recall: how.recalls !== false && wildShare(run) > RECALL_SHARE,
+    recall:
+      how.recalls !== false &&
+      wildShare(run) > (how.recallShare ?? RECALL_SHARE),
   };
 }
 

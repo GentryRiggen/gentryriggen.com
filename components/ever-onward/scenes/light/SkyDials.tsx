@@ -6,10 +6,11 @@ const fmt = (n: number): string => n.toFixed(1);
 /** The little robot that sends the probes out, and where they set off from. */
 const ROBOT = { x: 262, y: 262 } as const;
 const HAND = { x: ROBOT.x - 12, y: ROBOT.y - 22 } as const;
-/** The red cluster wild probes break off to, up in the corner of the picture. */
-const CLUSTER = { x: 62, y: 70 } as const;
+/** The red pack wild probes break off to, low on the left (clear of the shouts up top). */
+const CLUSTER = { x: 78, y: 188 } as const;
 const MAX_STREAM = 12;
-const MAX_WILD_DOTS = 10;
+/** Wild probes in the pack by level (1 a few strays .. 4 most of the fleet). */
+const WILD_DOTS = [0, 3, 6, 9, 12] as const;
 
 /** How long one probe's flight takes, by speed points (0..8): faster looks faster. */
 const FLIGHT = [
@@ -75,15 +76,19 @@ interface Shout {
   testId: string;
 }
 
+/** What a flare did, in the banner's small line (lost and saved come in 5% steps). */
+function flareSub(lost: number, saved: number): string {
+  if (lost <= 0) return "the fleet is safe";
+  const burned = `${lost * 5}% burned`;
+  return saved > 0 ? `${burned}, shields saved ${saved * 5}%` : burned;
+}
+
 /** The one moment on show: a flare outranks a stray break-away, which outranks a homecoming. */
 function shoutFor(info: LightSceneInfo): Shout | null {
   if (info.flareHit > 0)
     return {
       lines: ["FLARE!"],
-      sub:
-        info.flareLost > 0
-          ? `${info.flareLost * 10}% burned${info.flareSaved > 0 ? ", shields held" : ""}`
-          : "the fleet is safe",
+      sub: flareSub(info.flareLost, info.flareSaved),
       fill: info.flareLost > 0 ? "#ff8a3d" : "#9be8ff",
       stroke: "#2b0a00",
       testId: "lm-banner-flare",
@@ -251,55 +256,75 @@ function Robot({ info }: { info: LightSceneInfo }) {
   );
 }
 
-/** Red probes that broke away and keep their light for themselves. */
+/** Red probes that broke away and keep their light for themselves: a pack you can count at a glance. */
 function WildCluster({ info }: { info: LightSceneInfo }) {
-  const dots = Math.min(MAX_WILD_DOTS, info.wild * 2 + 1);
+  const dots = WILD_DOTS[Math.min(4, Math.max(1, info.wild))];
+  const reach = 16 + info.wild * 9;
   return (
     <g data-testid="lm-wild-cluster" data-level={info.wild}>
       <circle
         cx={CLUSTER.x}
         cy={CLUSTER.y}
-        r={fmt(14 + info.wild * 5)}
+        r={fmt(reach + 20)}
         fill="#ff2d2d"
-        fillOpacity="0.16"
+        fillOpacity="0.22"
+        stroke="#ff8a8a"
+        strokeWidth="2"
+        strokeDasharray="6 5"
         className="sk-wild-glow"
       />
       <g transform={`translate(${CLUSTER.x} ${CLUSTER.y})`}>
         <g className="sk-wild">
           {Array.from({ length: dots }, (_, i) => {
             const a = rad((i * 360) / dots + 20);
-            const r = 6 + (i % 3) * 5 + info.wild * 2;
+            const r = reach * (0.35 + 0.65 * ((i % 3) / 2));
             return (
               <g
                 key={i}
                 transform={`translate(${fmt(r * Math.cos(a))} ${fmt(r * Math.sin(a))})`}
               >
-                <circle
-                  r="3.6"
-                  fill="#ff4b4b"
-                  stroke="#ffd0d0"
-                  strokeWidth="1"
-                />
                 <line
                   x1="0"
                   y1="0"
-                  x2={fmt(-5 * Math.cos(a))}
-                  y2={fmt(-5 * Math.sin(a))}
+                  x2={fmt(-14 * Math.cos(a))}
+                  y2={fmt(-14 * Math.sin(a))}
                   stroke="#ff9a9a"
-                  strokeWidth="1"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
                 />
+                <circle
+                  r="8.5"
+                  fill="#ff3b3b"
+                  stroke="#ffe3e3"
+                  strokeWidth="1.8"
+                />
+                <rect x="-4.5" y="-3" width="3" height="3" fill="#2b0505" />
+                <rect x="1.5" y="-3" width="3" height="3" fill="#2b0505" />
               </g>
             );
           })}
         </g>
       </g>
+      <text
+        x={CLUSTER.x}
+        y={fmt(CLUSTER.y + reach + 40)}
+        textAnchor="middle"
+        fontSize="14"
+        fill="#ff9a9a"
+        stroke="#2b0505"
+        strokeWidth="4"
+        paintOrder="stroke"
+        className="font-[family-name:var(--font-eo-pixel)]"
+      >
+        wild
+      </text>
       {info.tether > 0 && (
         <g data-testid="lm-tether">
           <line
             x1={CLUSTER.x}
             y1={CLUSTER.y}
             x2={HAND.x - 30}
-            y2={HAND.y - 60}
+            y2={HAND.y - 20}
             stroke="#52ff8a"
             strokeWidth="3.5"
             strokeDasharray="6 5"
@@ -310,7 +335,7 @@ function WildCluster({ info }: { info: LightSceneInfo }) {
             x1={CLUSTER.x}
             y1={CLUSTER.y}
             x2={HAND.x - 30}
-            y2={HAND.y - 60}
+            y2={HAND.y - 20}
             stroke="#52ff8a"
             strokeOpacity="0.25"
             strokeWidth="10"
@@ -327,7 +352,8 @@ export default function SkyDials({ info }: { info: LightSceneInfo }) {
   if (info.dialsOpen <= 0) return null;
   const probes = info.probes;
   const sunScale = 0.7 + 0.3 * info.sunDist;
-  const hot = Math.max(0, info.sunDist - 5);
+  // Near is a warm edge, Close a hot one, Brushing the picture glowing: 1, 3 and 5.
+  const hot = Math.max(0, info.sunDist - 3);
   const shout = shoutFor(info);
   const flare = info.flareHit;
   const lost = info.flareLost;
@@ -342,8 +368,8 @@ export default function SkyDials({ info }: { info: LightSceneInfo }) {
           cy={SUN.y}
           r="250"
         >
-          <stop offset="0.5" stopColor="#ffffff" stopOpacity="0" />
-          <stop offset="1" stopColor="#ffffff" stopOpacity="1" />
+          <stop offset="0.35" stopColor="#ff8a3d" stopOpacity="0" />
+          <stop offset="1" stopColor="#ffd9a0" stopOpacity="1" />
         </radialGradient>
       </defs>
       {/* the sun's mood: a restless sun spits fire off its edge */}
@@ -469,7 +495,7 @@ export default function SkyDials({ info }: { info: LightSceneInfo }) {
           width="2800"
           height="2800"
           fill="url(#sk-hot)"
-          opacity={fmt(0.15 * hot)}
+          opacity={fmt(Math.min(0.85, 0.14 * hot))}
         />
       )}
       {shout && <ShoutText shout={shout} />}

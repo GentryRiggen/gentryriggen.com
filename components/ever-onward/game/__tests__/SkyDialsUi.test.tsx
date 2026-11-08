@@ -58,8 +58,43 @@ describe("SunEdgePanel", () => {
     expect(screen.getByTestId("lm-sun-forecast")).toBeInTheDocument();
     for (let i = 0; i < 5; i += 1)
       expect(screen.getByTestId(`lm-sunedge-${i}`)).toHaveAccessibleName(
-        /for light, \d of 4 for flare heat/
+        /for light, \d+ of 10 for flare heat/
       );
+  });
+
+  it("draws light and heat as long as they really are, not in even steps", () => {
+    const bars = (mood: number): { light: number[]; heat: number[] } => {
+      const { unmount } = render(
+        <SunEdgePanel
+          def={def}
+          run={skyRun({ skMood: mood })}
+          onAct={() => undefined}
+        />
+      );
+      const read = (kind: string): number[] =>
+        [0, 1, 2, 3, 4].map((i) =>
+          Number(
+            screen
+              .getByTestId(`lm-sunedge-${i}`)
+              .getAttribute("aria-label")
+              ?.match(new RegExp(`(\\d+) of 10 for ${kind}`))?.[1]
+          )
+        );
+      const out = { light: read("light"), heat: read("flare heat") };
+      unmount();
+      return out;
+    };
+    const usual = bars(1);
+    // Brushing is several times as hot as Near, and Far has no heat under a usual sun.
+    expect(usual.heat[0]).toBe(0);
+    expect(usual.heat[4]).toBeGreaterThanOrEqual(2 * usual.heat[2]);
+    // The light does not climb in even steps either.
+    expect(usual.light[4] - usual.light[3]).toBeLessThan(
+      usual.light[3] - usual.light[0]
+    );
+    // A restless sun reaches even the far edge; a quiet one's reach is short.
+    expect(bars(2).heat[0]).toBeGreaterThan(0);
+    expect(bars(0).heat[4]).toBeLessThan(usual.heat[4]);
   });
 
   it("never says which step is best, nor shows both sides of a sum", () => {

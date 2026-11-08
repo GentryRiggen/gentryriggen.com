@@ -264,7 +264,7 @@ export interface LightSceneInfo {
   flareFore: number;
   /** A flare's moment: 0 none, then 1 small, 2 medium, 3 big. */
   flareHit: number;
-  /** What it burned, in tens of percent of the fleet (0..9), and what shields saved (0..9). */
+  /** What it burned, in twentieths of the fleet (0..20, so 5% steps), and what shields saved. */
   flareLost: number;
   flareSaved: number;
   /** 1 for a few seconds when probes go wild, and when they come home. */
@@ -468,11 +468,11 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     flareHit: isDialsOpen(run) ? (hitSize(run) ?? -1) + 1 : 0,
     flareLost:
       isDialsOpen(run) && hitSize(run) !== null
-        ? Math.min(9, Math.floor(lastBurn(run) * 10))
+        ? Math.min(20, Math.round(lastBurn(run) * 20))
         : 0,
     flareSaved:
       isDialsOpen(run) && hitSize(run) !== null
-        ? Math.min(9, Math.floor(lastSaved(run) * 10))
+        ? Math.min(20, Math.round(lastSaved(run) * 20))
         : 0,
     goneWild: isDialsOpen(run) && isGoneWild(run) ? 1 : 0,
     homeAgain: isDialsOpen(run) && isHome(run) ? 1 : 0,

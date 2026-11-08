@@ -20,6 +20,7 @@ import { TUNING } from "./tuning";
 import {
   SKY_DIALS_FLAG,
   copyMult,
+  holdMoment,
   mirrorMult,
   speedMult,
   tickDesign,
@@ -702,15 +703,23 @@ export const probeEnergyPerSecond = (run: RunState): number =>
 
 /** The share of new copies that go wild. */
 export const wildCopies = (run: RunState): number =>
-  wildFraction(run, ifProject(run, "probe-school", SP.schoolWild));
+  wildFraction(
+    run,
+    res(run, "skGrandSchool") > 0
+      ? 1
+      : ifProject(run, "probe-school", SP.schoolWild)
+  );
 
 function tickSky(run: RunState, dt: number): void {
   const r = run.resources;
-  // Overdrive belongs to the night; a minute left over from an old save ends.
-  r.odLeft = 0;
   refundRemovedSkyUpgrades(run);
-  if (run.flags[SKY_DIALS_FLAG] !== true && res(run, "probes") >= 1)
+  if (run.flags[SKY_DIALS_FLAG] !== true && res(run, "probes") >= 1) {
+    // A save from before the sky had its sun: projects bought then were
+    // bought without their new downsides, so those stay off for good.
+    r.skGrandPolish = hasProject(run, "mirror-polish") ? 1 : 0;
+    r.skGrandSchool = hasProject(run, "probe-school") ? 1 : 0;
     openSkyDials(run);
+  }
   tickDesign(run, dt, () => {
     r.knowhow = res(run, "knowhow") + SP.perHome;
   });
@@ -741,6 +750,7 @@ function tickSky(run: RunState, dt: number): void {
     ) {
       r.skWilds = res(run, "skWilds") + 1;
       r.skWildLeft = TUNING.dials.wildBannerSeconds;
+      holdMoment(run, TUNING.dials.wildBannerSeconds);
     }
     taken = Math.min(remaining, starsPerSecond(run) * dt);
     r.starsTaken += taken;

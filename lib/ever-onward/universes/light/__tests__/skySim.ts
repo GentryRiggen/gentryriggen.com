@@ -37,9 +37,15 @@ export interface SkyResult {
   flares: number;
   /** The most wild probes there were at once, as a share of the fleet. */
   peakWild: number;
+  /** The biggest share of the fleet any one flare burned. */
+  worstBurn: number;
+  /** True when the sky was finished (not cut off by `maxSeconds`). */
+  isDone: boolean;
 }
 
 export interface Habits {
+  /** Seconds after which a habit that has not finished is cut off (default 3000). */
+  maxSeconds?: number;
   sky?: OilChoice;
   choose?: (run: RunState, affordable: UpgradeDef[]) => UpgradeDef | undefined;
 }
@@ -49,6 +55,8 @@ export function playSky(seed: number, habits: Habits): SkyResult {
   const start = skyStart(seed);
   const strategy = skyPlayer({ sky: habits.sky });
   let peakWild = 0;
+  let worstBurn = 0;
+  let flaresSeen = 0;
   const result = simulate(def, {
     strategy: {
       ...strategy,
@@ -56,12 +64,17 @@ export function playSky(seed: number, habits: Habits): SkyResult {
       ...(habits.choose ? { choose: habits.choose } : {}),
     },
     // A habit that has not finished by now is far behind; it is scored as this long.
-    maxSeconds: 3000,
+    maxSeconds: habits.maxSeconds ?? 3000,
     step: 1,
     startRun: cloneRun(start),
     seed,
     stopWhen: (run) => {
       if (run.phase >= 3) return true;
+      const flares = run.resources.skFlares ?? 0;
+      if (flares > flaresSeen) {
+        flaresSeen = flares;
+        worstBurn = Math.max(worstBurn, run.resources.skHitLost ?? 0);
+      }
       const wild = run.resources.skWild ?? 0;
       peakWild = Math.max(
         peakWild,
@@ -74,6 +87,8 @@ export function playSky(seed: number, habits: Habits): SkyResult {
     seconds: (result.finishTime ?? result.endTime) - start.time,
     flares: result.finalRun.resources.skFlares ?? 0,
     peakWild,
+    worstBurn,
+    isDone: result.finalRun.phase >= 3,
   };
 }
 

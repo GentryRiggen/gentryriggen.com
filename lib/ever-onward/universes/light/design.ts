@@ -156,7 +156,10 @@ const foundryBoost = (run: RunState): number =>
 
 /** The share of a flare's burn that gets through the shields (1 with none). */
 export const shieldLeak = (run: RunState): number =>
-  1 / (1 + D.shieldStep * foundryBoost(run) * pointsOf(run, SHIELDS));
+  Math.max(
+    D.shieldLeakMin,
+    1 - D.shieldCut * foundryBoost(run) * pointsOf(run, SHIELDS)
+  );
 
 /**
  * The share of new copies that go wild. Nothing up to `wildFree` copying
@@ -201,6 +204,14 @@ export function wildLevel(run: RunState): number {
 export const isGoneWild = (run: RunState): boolean =>
   res(run, "skWildLeft") > 0;
 export const isHome = (run: RunState): boolean => res(run, "skHomeLeft") > 0;
+
+/**
+ * A shout is on in the picture for `seconds`: pop-ups wait until it is over
+ * and a moment more (`momentAfter`), so none ever covers it.
+ */
+export function holdMoment(run: RunState, seconds: number): void {
+  run.resources.skBusy = Math.max(res(run, "skBusy"), seconds + D.momentAfter);
+}
 
 /** Sets the starting split and clears the settle. */
 export function startDesign(run: RunState): void {
@@ -280,6 +291,7 @@ export function tickDesign(
       r.skWild = 0;
       r.skRecalls = res(run, "skRecalls") + 1;
       r.skHomeLeft = D.homeBannerSeconds;
+      holdMoment(run, D.homeBannerSeconds);
       onHome();
     }
   }

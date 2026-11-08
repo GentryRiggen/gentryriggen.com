@@ -2,7 +2,13 @@ import { cloneRun, newRun, performAction, tick } from "../../../engine/engine";
 import type { RunState } from "../../../engine/types";
 import { def, runAtPhaseStart, withDials } from "./fixtures";
 import { SEEDS, meanSpeed, playAll, skyStart } from "./skySim";
-import { clicksToward, playsSky } from "../skyBots";
+import {
+  MOOD_SHIELDS,
+  RECALL_SHARE,
+  clicksToward,
+  playsSky,
+  shieldsWanted,
+} from "../skyBots";
 import {
   COPYING,
   MIRRORS,
@@ -27,9 +33,11 @@ import {
   distanceActionId,
   distanceNow,
   forecastSize,
+  heatNow,
   isSkyMomentBusy,
   lightMult,
   sunMood,
+  tickSunEdge,
 } from "../sunEdge";
 import { starsPerSecond } from "../tick";
 import { TUNING } from "../tuning";
@@ -45,6 +53,8 @@ jest.setTimeout(900_000);
 
 const D = TUNING.dials;
 const MARGIN = 1.05;
+/** No flare may burn this share of the fleet or more. */
+const BURN_LIMIT = 0.6;
 
 /** A sky run with the dials open and a fleet flying. */
 function openSky(resources: Record<string, number> = {}): RunState {
@@ -195,11 +205,125 @@ describe("the sun's edge", () => {
     expect(restless.resources.skMood).toBe(2);
   });
 
-  it("holds pop-ups back only in a shout's first seconds", () => {
-    let run = openSky({ skHitLeft: D.hitSeconds });
+  it("holds pop-ups back for a whole shout and a moment after, never longer", () => {
+    let run = openSky({ skHitLeft: D.hitSeconds, skBusy: 0 });
+    // A flare that has just burned holds them for the banner and a bit more.
+    run = openSky({ skDist: 1, skDistNow: 1, skFlareIn: 0.5 });
+    run = wait(run, 1);
+    expect(run.resources.skHitLeft).toBeGreaterThan(0);
     expect(isSkyMomentBusy(run)).toBe(true);
-    run = wait(run, 5);
+    // Still held after the banner has gone, until the moment after is over.
+    run = wait(run, D.hitSeconds);
+    expect(run.resources.skHitLeft).toBe(0);
+    expect(isSkyMomentBusy(run)).toBe(true);
+    run = wait(run, D.momentAfter + 1);
     expect(isSkyMomentBusy(run)).toBe(false);
+  });
+
+  it("holds pop-ups for stray probes going wild and for the wild ones coming home", () => {
+    let run = openSky({ skWild: 20 });
+    run = performAction(def, run, RECALL_ACTION);
+    run = wait(run, D.recallSeconds + 1);
+    expect(run.resources.skHomeLeft).toBeGreaterThan(0);
+    expect(isSkyMomentBusy(run)).toBe(true);
+    run = wait(run, D.homeBannerSeconds + D.momentAfter + 1);
+    expect(isSkyMomentBusy(run)).toBe(false);
+  });
+});
+
+describe("what a flare reaches", () => {
+  const atMood = (mood: number, step: number): RunState =>
+    openSky({ skMood: mood, skDist: step, skDistNow: step });
+
+  it("a restless sun reaches even the far edge, and a quiet sun's reach is short", () => {
+    expect(heatNow(atMood(1, 0))).toBe(0);
+    expect(heatNow(atMood(2, 0))).toBeGreaterThan(0);
+    expect(heatNow(atMood(0, 4))).toBeLessThan(heatNow(atMood(1, 4)));
+    expect(heatNow(atMood(2, 4))).toBeGreaterThan(heatNow(atMood(1, 4)));
+  });
+
+  it("never burns 60% of the fleet, however hot, big and unshielded", () => {
+    const bare = atMood(2, 4);
+    bare.resources.skE3 = 0;
+    bare.resources.skT3 = 0;
+    for (const size of [0, 1, 2])
+      expect(burnShare(bare, size)).toBeLessThan(BURN_LIMIT);
+  });
+
+  it("is re-planned when the sun changes its mood (a big flare planned while restless does not land on a quiet sun)", () => {
+    let run = openSky({ skMood: 2, skMoodLeft: 0.5, skFlareIn: 300 });
+    run.resources.skFlareSize = 2;
+    run = tick(def, run, 1);
+    expect(sunMood(run)).not.toBe(2);
+    const odds = D.moods[sunMood(run)].odds;
+    // a size the new mood can draw
+    expect(odds[run.resources.skFlareSize]).toBeGreaterThan(0);
+    const mood = D.moods[sunMood(run)];
+    expect(run.resources.skFlareIn).toBeLessThanOrEqual(
+      Math.max(300 - 1, mood.gapMin + mood.gapSpread)
+    );
+  });
+
+  it("locks the forecast of a flare when it is planned: buying charts later does not flip it", () => {
+    const run = openSky({ skFlareIn: 20, skMood: 1, skMoodLeft: 1e6 });
+    const shown = run.resources.skFlareFore;
+    const charted = cloneRun(run);
+    charted.owned["nav-1"] = 1;
+    const later = tick(def, charted, 1);
+    expect(later.resources.skFlareFore).toBe(shown);
+  });
+
+  it("burns the wild probes too, so they do not climb on burns alone", () => {
+    let run = openSky({
+      skWild: 30,
+      skDist: 4,
+      skDistNow: 4,
+      skFlareIn: 0.5,
+      skFlareSize: 2,
+      skMood: 2,
+      skMoodLeft: 1e6,
+    });
+    run = tick(def, run, 1);
+    expect(run.resources.skFlares).toBe(1);
+    expect(run.resources.skWild).toBeLessThan(30);
+  });
+
+  it("mends most of what it burned over a minute, so the fleet can always grow back", () => {
+    let run = openSky({
+      skDist: 4,
+      skDistNow: 4,
+      skFlareIn: 0.5,
+      skFlareSize: 2,
+      skMood: 2,
+      skMoodLeft: 1e6,
+      skFlareFore: 2,
+    });
+    const before = run.resources.probes;
+    run = tick(def, run, 1);
+    const burned = before - run.resources.probes;
+    expect(burned).toBeGreaterThan(0);
+    // no more flares while it mends
+    run.resources.skFlareIn = 1e9;
+    expect(run.resources.skRepair).toBeGreaterThan(0);
+    // A little growth runs alongside; the mended ones are most of what came back.
+    run = wait(run, D.repairSeconds * 3);
+    expect(run.resources.skRepair).toBeLessThan(0.1 * burned);
+  });
+
+  it("does not move with run.rng, which a player's timing changes", () => {
+    const a = openSky();
+    const b = openSky();
+    delete a.resources.skSeed;
+    delete b.resources.skSeed;
+    delete a.resources.nightSeed;
+    delete b.resources.nightSeed;
+    delete a.resources.hbSeed;
+    delete b.resources.hbSeed;
+    a.rng = 111;
+    b.rng = 999;
+    tickSunEdge(a, 1, () => undefined);
+    tickSunEdge(b, 1, () => undefined);
+    expect(a.resources.skSeed).toBe(b.resources.skSeed);
   });
 });
 
@@ -250,6 +374,54 @@ describe("saves from before the dials", () => {
     expect(after.resources.energy).toBeGreaterThanOrEqual((5250 + 3792) * 9.5);
   });
 
+  it("gives back the know-how of an overdrive that was running in the sky", () => {
+    const base = newRun(def);
+    const run: RunState = {
+      ...base,
+      phase: 2,
+      owned: { collector: 4, probe: 1 },
+      resources: { ...base.resources, probes: 20, odLeft: 40, knowhow: 0 },
+    };
+    const after = tick(def, run, 1);
+    expect(after.resources.odLeft).toBe(0);
+    expect(after.resources.knowhow).toBeGreaterThanOrEqual(
+      TUNING.overdrive.nightCost
+    );
+  });
+
+  it("keeps the new downsides off the projects bought before the sun had any", () => {
+    const base = newRun(def);
+    const owned = (flags: Record<string, boolean>): RunState => ({
+      ...base,
+      phase: 2,
+      owned: { collector: 6, probe: 1 },
+      flags,
+      resources: { ...base.resources, probes: 20, skDist: 3, skDistNow: 3 },
+    });
+    const old = tick(
+      def,
+      owned({
+        "project-mirror-polish": true,
+        "project-probe-school": true,
+      }),
+      1
+    );
+    const fresh = withDials(
+      owned({
+        "project-mirror-polish": true,
+        "project-probe-school": true,
+      })
+    );
+    for (const run of [old, fresh]) {
+      run.resources.skDist = 3;
+      run.resources.skDistNow = 3;
+    }
+    // The old save's flares are not made worse by polish, nor its copies wilder by school.
+    expect(old.resources.skGrandPolish).toBe(1);
+    expect(old.resources.skGrandSchool).toBe(1);
+    expect(burnShare(old, 1)).toBeLessThan(burnShare(fresh, 1));
+  });
+
   it("opens the dials by itself for a fleet already flying", () => {
     const base = newRun(def);
     const run = tick(
@@ -269,6 +441,11 @@ describe("saves from before the dials", () => {
 
 // ------------------------------------------------------ the dials are a real game
 
+let readingRuns: ReturnType<typeof playAll> | undefined;
+/** The reading player's sky on every seed, played once for the whole file. */
+const readerResults = (): ReturnType<typeof playAll> =>
+  (readingRuns ??= playAll({ sky: playsSky() }));
+
 describe("reading the sky beats every simple habit", () => {
   let reading: ReturnType<typeof playAll>;
   /** How much longer the sky takes with this habit than when reading (above 1: reading is faster). */
@@ -281,7 +458,7 @@ describe("reading the sky beats every simple habit", () => {
   };
 
   beforeAll(() => {
-    reading = playAll({ sky: playsSky() });
+    reading = readerResults();
   });
 
   it("is played on twelve seeds, to the end of the sky", () => {
@@ -331,12 +508,10 @@ describe("reading the sky beats every simple habit", () => {
   });
 
   it("beats a player who ignores the sun's mood, whatever distance it flies at", () => {
-    expect(against(playsSky({ mood: false, dist: 2 }))).toBeGreaterThanOrEqual(
-      MARGIN
-    );
-    expect(against(playsSky({ mood: false, dist: 3 }))).toBeGreaterThanOrEqual(
-      MARGIN
-    );
+    for (const dist of [1, 2, 3, 4])
+      expect(against(playsSky({ mood: false, dist }))).toBeGreaterThanOrEqual(
+        MARGIN
+      );
   });
 
   it("beats a player who never looks at the flare forecast", () => {
@@ -363,3 +538,154 @@ function clicksOnly(split: readonly number[], dist: number) {
       ? clicksToward(run, available, { split, dist })
       : [];
 }
+
+// --------------------------------------------- nothing near the sun soft-locks
+
+describe("parking the fleet at any distance never soft-locks the sky", () => {
+  /** Each park runs to the end, uncapped but for a very long wait. */
+  const PARK_LIMIT = 8000;
+  const parks = new Map<number, ReturnType<typeof playAll>>();
+  const parkAt = (dist: number): ReturnType<typeof playAll> => {
+    const cached = parks.get(dist);
+    if (cached) return cached;
+    const runs = playAll({
+      maxSeconds: PARK_LIMIT,
+      sky: clicksOnly([...D.startSplit], dist),
+    });
+    parks.set(dist, runs);
+    return runs;
+  };
+  const mean = (list: readonly number[]): number =>
+    list.reduce((sum, n) => sum + n, 0) / list.length;
+
+  for (const dist of [0, 1, 2, 3, 4]) {
+    it(`parked at step ${dist} with the starting split and never touching a dial, every seed finishes within about 1.5x of reading`, () => {
+      const reading = readerResults();
+      const parked = parkAt(dist);
+      expect(parked.every((r) => r.isDone)).toBe(true);
+      const ratios = parked.map((r, i) => r.seconds / reading[i].seconds);
+      expect(mean(ratios)).toBeLessThan(1.7);
+      expect(Math.max(...ratios)).toBeLessThan(2.5);
+    });
+
+    it(`parked at step ${dist}, no single flare burns 60% of the fleet`, () => {
+      expect(Math.max(...parkAt(dist).map((r) => r.worstBurn))).toBeLessThan(
+        BURN_LIMIT
+      );
+    });
+  }
+
+  it("the reading player is never burned that hard either", () => {
+    expect(Math.max(...readerResults().map((r) => r.worstBurn))).toBeLessThan(
+      BURN_LIMIT
+    );
+  });
+
+  it("idle (touching nothing at all) finishes too", () => {
+    const idle = playAll({ maxSeconds: PARK_LIMIT, sky: () => [] });
+    expect(idle.every((r) => r.isDone)).toBe(true);
+  });
+});
+
+// ------------------------------------------- shields' best value moves with the sun
+
+describe("shields are worth what the sun makes them worth", () => {
+  const reading = (): ReturnType<typeof playAll> => readerResults();
+  const against = (sky: ReturnType<typeof playsSky>): number =>
+    meanSpeed(playAll({ sky }), reading());
+
+  it("a fixed one shield point loses to reading the sun, and so does every other fixed number", () => {
+    expect(against(playsSky({ shields: false }))).toBeGreaterThanOrEqual(
+      MARGIN
+    );
+    for (const held of [0, 1, 2, 3])
+      expect(against(playsSky({ shields: held }))).toBeGreaterThanOrEqual(
+        MARGIN
+      );
+  });
+
+  it("what a point saves swings with mood and distance: nothing at the far edge of a usual sun, a lot at Close under a restless one", () => {
+    /** The fleet a point of shield saves each minute, over the flares the mood throws. */
+    const savedPerMinute = (mood: number, step: number): number => {
+      const bare = openSky({ skMood: mood, skDist: step, skDistNow: step });
+      const shielded = cloneRun(bare);
+      bare.resources.skE3 = 0;
+      bare.resources.skT3 = 0;
+      shielded.resources.skE3 = 3;
+      shielded.resources.skT3 = 3;
+      const { odds, gapMin, gapSpread } = D.moods[mood];
+      const perFlare = odds.reduce(
+        (sum, chance, size) =>
+          sum + chance * (burnShare(bare, size) - burnShare(shielded, size)),
+        0
+      );
+      return (perFlare * 60) / (gapMin + gapSpread / 2);
+    };
+    expect(savedPerMinute(1, 0)).toBe(0);
+    expect(savedPerMinute(0, 0)).toBe(0);
+    for (const step of [2, 3, 4]) {
+      expect(savedPerMinute(2, step)).toBeGreaterThan(savedPerMinute(1, step));
+      expect(savedPerMinute(1, step)).toBeGreaterThan(savedPerMinute(0, step));
+    }
+    // a restless sun reaches even the far edge, where shields then matter
+    expect(savedPerMinute(2, 0)).toBeGreaterThan(0.05);
+    // and what a point is worth at Close under a restless sun is many times a quiet sun's
+    expect(savedPerMinute(2, 3)).toBeGreaterThan(4 * savedPerMinute(0, 3));
+  });
+
+  it("a reader holds the most under a restless sun, and fewer when it is quiet or usual", () => {
+    const wanted = (mood: number): number =>
+      shieldsWanted(openSky({ skMood: mood, skFlareIn: 1e9 }));
+    expect(wanted(0)).toBe(MOOD_SHIELDS[0]);
+    expect(wanted(2)).toBe(MOOD_SHIELDS[2]);
+    expect(wanted(2)).toBeGreaterThan(wanted(1));
+    expect(wanted(2)).toBeGreaterThan(wanted(0));
+  });
+
+  it("the shield foundry changes the answer, not only the strength: a restless sun needs one point fewer", () => {
+    const plain = openSky({ skMood: 2, skFlareIn: 1e9 });
+    const forged = cloneRun(plain);
+    forged.owned["nav-1"] = 1;
+    forged.owned["nav-2"] = 1;
+    expect(shieldsWanted(forged)).toBe(shieldsWanted(plain) - 1);
+    // and that one fewer point protects as well as one more did before
+    const at = (run: RunState, points: number): RunState => {
+      const r = cloneRun(run);
+      r.resources.skE3 = points;
+      r.resources.skT3 = points;
+      return r;
+    };
+    expect(shieldLeak(at(forged, 2))).toBeCloseTo(shieldLeak(at(plain, 3)), 5);
+  });
+});
+
+// -------------------------------------------- the readers play the real best
+
+describe("the reading player plays the best there is", () => {
+  const against = (sky: ReturnType<typeof playsSky>): number =>
+    meanSpeed(playAll({ sky }), readerResults());
+
+  it("recalls at about a tenth of the fleet gone wild (the neighbours are not better)", () => {
+    expect(RECALL_SHARE).toBeGreaterThanOrEqual(0.1);
+    expect(RECALL_SHARE).toBeLessThanOrEqual(0.18);
+    for (const recallShare of [0.08, 0.18, 0.25])
+      expect(against(playsSky({ recallShare }))).toBeGreaterThan(0.99);
+  });
+
+  it("flies by the sun's mood (no other table of distances is better)", () => {
+    for (const moodDist of [
+      [4, 2, 0],
+      [4, 3, 1],
+      [3, 2, 1],
+      [4, 2, 2],
+      [4, 4, 1],
+    ])
+      expect(against(playsSky({ moodDist }))).toBeGreaterThan(0.985);
+  });
+
+  it("holds the shields that read the sun (no other table is better)", () => {
+    expect(
+      meanSpeed(playAll({ sky: playsSky({ shields: 2 }) }), readerResults())
+    ).toBeGreaterThanOrEqual(MARGIN);
+  });
+});

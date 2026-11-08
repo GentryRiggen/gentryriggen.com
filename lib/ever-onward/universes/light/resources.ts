@@ -265,12 +265,6 @@ export const RESOURCES: readonly ResourceDef[] = [
     phases: HIDDEN,
   },
   { id: "skFlareFore", label: "Next flare as forecast", phases: HIDDEN },
-  { id: "skFlareWrong", label: "What a wrong forecast says", phases: HIDDEN },
-  {
-    id: "skFlareSureRoll",
-    label: "Whether the forecast is right",
-    phases: HIDDEN,
-  },
   {
     id: "skDistChanges",
     label: "Times the sun's edge was changed",
@@ -304,6 +298,23 @@ export const RESOURCES: readonly ResourceDef[] = [
     label: "Last flare, share the shields saved",
     phases: HIDDEN,
   },
+  {
+    id: "skBusy",
+    label: "Seconds pop-ups wait for a sky shout",
+    phases: HIDDEN,
+  },
+  {
+    id: "skGrandPolish",
+    label: "Mirror polish bought before its downside",
+    phases: HIDDEN,
+  },
+  {
+    id: "skGrandSchool",
+    label: "Probe school bought before its downside",
+    phases: HIDDEN,
+  },
+  { id: "skDazzle", label: "Collectors dazzled by a flare", phases: HIDDEN },
+  { id: "skRepair", label: "Burned probes being mended", phases: HIDDEN },
   { id: "skWild", label: "Wild probes", phases: HIDDEN },
   { id: "skWilds", label: "Times probes went wild", phases: HIDDEN },
   { id: "skWildLeft", label: "Gone wild moment, seconds left", phases: HIDDEN },

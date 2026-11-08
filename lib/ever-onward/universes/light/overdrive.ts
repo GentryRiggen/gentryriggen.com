@@ -66,10 +66,16 @@ export function tickOverdrive(
 ): void {
   if (res(run, "odLeft") <= 0) return;
   const r = run.resources;
-  // The part of the story ended mid-run: it finishes as it stands.
-  const isHere = run.phase === 1;
-  if (isHere && steadiness() < O.cleanAbove) r.odClean = 0;
-  r.odLeft = isHere ? Math.max(0, res(run, "odLeft") - dt) : 0;
+  // The part of the story moved on mid-run (or the save is from when the sky
+  // had its own): the minute ends, and what it cost comes back in full.
+  if (run.phase !== 1) {
+    r.knowhow = res(run, "knowhow") + O.nightCost;
+    r.odLeft = 0;
+    r.odClean = 0;
+    return;
+  }
+  if (steadiness() < O.cleanAbove) r.odClean = 0;
+  r.odLeft = Math.max(0, res(run, "odLeft") - dt);
   if (r.odLeft > 0) return;
   r.odRuns = res(run, "odRuns") + 1;
   if (isOverdriveSteady(run)) {

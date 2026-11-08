@@ -6,7 +6,7 @@ export const TUNING = {
    * again (and added forks, the fund and overdrive), so the whole run is
    * priced up to stay about two hours.
    */
-  costScale: { coast: 1, night: 135, sky: 8, last: 4.6 } as Record<
+  costScale: { coast: 1, night: 135, sky: 9.5, last: 4.6 } as Record<
     string,
     number
   >,
@@ -508,19 +508,36 @@ export const TUNING = {
     mirrorStep: 0.25,
     copyBase: 0,
     copyStep: 0.5,
-    /** A shield point leaves 1 / (1 + this x points) of a flare's burn. */
-    shieldStep: 1.1,
+    /**
+     * Each shield point takes this much off a flare's burn, the same for
+     * every point (so a point is worth a lot where flares burn a lot and
+     * nothing where they do not), down to at least `shieldLeakMin` left.
+     */
+    shieldCut: 0.3,
+    shieldLeakMin: 0.08,
     /** The shield foundry makes every shield point this much stronger. */
     foundryShield: 1.5,
     /** Where the sun's edge steps start and how fast the fleet moves between them. */
     startDistance: 1,
-    distanceStepSeconds: 30,
+    distanceStepSeconds: 20,
     /** Light each distance gathers (step 0 far, 4 brushing the sun). */
-    light: [0.7, 1, 1.5, 2.2, 3.5] as readonly number[],
-    /** How hot each distance is: the share of a flare that reaches the fleet. */
-    heat: [0, 0.1, 0.25, 0.5, 0.9] as readonly number[],
+    light: [0.7, 1, 1.5, 2.0, 2.6] as readonly number[],
+    /** How hot each distance is under a usual sun: the share of a flare that reaches the fleet (see `reach` and `stray` for the other moods). */
+    heat: [0, 0.1, 0.22, 0.38, 0.6] as readonly number[],
     /** How hard each size of flare burns, unshielded and at heat 1. */
-    flareBurn: [1, 2.5, 5] as readonly number[],
+    flareBurn: [1, 4, 8] as readonly number[],
+    /** No flare burns this share of the fleet or more, however hot and big (the burn bends toward it). */
+    burnCap: 0.58,
+    /** The share of the probes a flare burns that are mended, and about how long that takes. */
+    repairShare: 0.65,
+    repairSeconds: 60,
+    /**
+     * A flare also dazzles the collectors: light is cut by its burn share
+     * times `dazzleHit` (at most `dazzleMax`), back to full over `dazzleSeconds`.
+     */
+    dazzleHit: 1.5,
+    dazzleMax: 0.7,
+    dazzleSeconds: 40,
     /**
      * The sun's moods, which come and go on their own: how soon its flares
      * come (a gap of `gapMin` plus up to `gapSpread` seconds) and how big
@@ -529,23 +546,29 @@ export const TUNING = {
     moods: [
       {
         name: "quiet",
-        gapMin: 200,
+        gapMin: 150,
         gapSpread: 100,
         lead: 50,
-        odds: [0.9, 0.1, 0],
+        reach: 0.7,
+        stray: 0,
+        odds: [0.7, 0.25, 0.05],
       },
       {
         name: "usual",
         gapMin: 70,
         gapSpread: 50,
-        lead: 35,
-        odds: [0.4, 0.4, 0.2],
+        lead: 45,
+        reach: 1,
+        stray: 0,
+        odds: [0.25, 0.4, 0.35],
       },
       {
         name: "restless",
         gapMin: 30,
         gapSpread: 30,
         lead: 8,
+        reach: 1.2,
+        stray: 0.15,
         odds: [0.02, 0.28, 0.7],
       },
     ] as readonly {
@@ -554,6 +577,9 @@ export const TUNING = {
       gapSpread: number;
       /** How many seconds ahead its flares are forecast (a restless sun gives little warning). */
       lead: number;
+      /** How much of a step's heat a flare of this mood reaches, and the heat it reaches even at the far edge. */
+      reach: number;
+      stray: number;
       odds: readonly number[];
     }[],
     /** A mood lasts this long, and the sun starts out "usual". */
@@ -568,10 +594,12 @@ export const TUNING = {
     /** How long the flare and wild moments stay on in the picture. */
     hitSeconds: 6,
     wildBannerSeconds: 6,
+    /** Pop-ups (story cards) wait this long after a banner is gone. */
+    momentAfter: 2,
     homeBannerSeconds: 6,
     /** Copying above this many points sends copies wild: this share of them, times the points over, squared. */
     wildFree: 2,
-    wildShare: 0.04,
+    wildShare: 0.06,
     wildMax: 0.95,
     /** Wild probes grow on their own at this share of a probe's growth (and take no stars for you). */
     wildGrowth: 1,

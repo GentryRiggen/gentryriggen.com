@@ -282,7 +282,8 @@ const sky: StoryMessage[] = [
   {
     id: "sky-edge",
     phase: PHASE_SKY,
-    // After the first flare has passed, so it lands on a quiet screen.
+    // Fires with the first flare; its card waits (the scene is held busy) until
+    // the FLARE! banner and a moment after are gone, and its clock starts then.
     when: (run) => (run.resources.skFlares ?? 0) >= 1,
     text: "The sun does not mind visitors. It just throws a flare now and then, the way anyone clears their throat. Closer is brighter, and farther is calmer, and a few shields never hurt.",
   },
