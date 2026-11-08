@@ -8,6 +8,18 @@ import { HELPER_LINES, owned } from "./lines";
 import { PHASE_IDS, RETURN_VISITOR_ID, type HigherPhaseId } from "./resources";
 import { isLoadHere } from "./deliveries";
 import {
+  KEEPSAKE_COUNT,
+  endingWarmth,
+  isOnTheStairs,
+  isSettingDown,
+  justLeft,
+  justPicked,
+  keepsakeState,
+  leftBehind,
+  loadOf,
+  pickedUp,
+} from "./keepsakes";
+import {
   bankTier,
   banksSoFar,
   isPlayroomOpen,
@@ -152,8 +164,20 @@ export interface HigherSceneInfo {
   overtime: boolean;
   /** How tall the tower is, 0 to 12, from the helpers and scaling bought. */
   height: number;
-  /** The top: how far down the robot is, in twentieths. */
+  /** The top: how far down the robot is, in percent. */
   descent: number;
+  /** The keepsakes, a digit each: "-" not on the stairs, 0 on them, 1 marked, 2 carried, 3 left. */
+  carry: string;
+  /** Weight in the pack (0 to 4), and whether the robot has stopped to set something down. */
+  load: number;
+  setting: boolean;
+  /** Something was just picked up or left, and how many have been. */
+  packed: boolean;
+  parted: boolean;
+  packs: number;
+  parts: number;
+  /** How warm the ending is so far (what is carried). */
+  warmth: number;
   /** A load is waiting on the site. */
   loadHere: boolean;
   /** The kid is on the grass. */
@@ -251,7 +275,26 @@ export function sceneInfo(run: RunState): HigherSceneInfo {
     ),
     overtime: isOvertimeOn(run),
     height: Math.min(12, Math.floor((levels + scaling) / 2)),
-    descent: Math.round(descentShare(run) * 20),
+    descent: Math.round(descentShare(run) * 100),
+    carry:
+      run.phase === 3
+        ? Array.from({ length: KEEPSAKE_COUNT }, (_, i) =>
+            isOnTheStairs(run, i)
+              ? ["0", "1", "2", "3"][
+                  ["open", "marked", "carried", "left"].indexOf(
+                    keepsakeState(run, i)
+                  )
+                ]
+              : "-"
+          ).join("")
+        : "-".repeat(KEEPSAKE_COUNT),
+    load: run.phase === 3 ? loadOf(run) : 0,
+    setting: run.phase === 3 && isSettingDown(run),
+    packed: run.phase === 3 && justPicked(run),
+    parted: run.phase === 3 && justLeft(run),
+    packs: pickedUp(run),
+    parts: leftBehind(run),
+    warmth: run.phase === 3 ? endingWarmth(run) : 0,
     loadHere: isLoadHere(run),
     visitorHere: run.flags[visitorHereFlag(RETURN_VISITOR_ID)] === true,
   };

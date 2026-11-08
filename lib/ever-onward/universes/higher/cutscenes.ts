@@ -281,6 +281,6 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
   [PHASE_TOP]: [
     "Lamps, songbirds and a tune all help the steps come easier.",
     "Take the stairs yourself, or ride the old lift. Not both.",
-    "When a moment comes, pick the one that suits what you have.",
+    "Whatever the robot carries slows every step. A light pack is quick, and a full one makes a warmer ending.",
   ],
 };

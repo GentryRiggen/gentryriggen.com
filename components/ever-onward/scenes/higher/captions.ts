@@ -59,7 +59,7 @@ export function captionFor(info: HigherSceneInfo): string {
     default:
       return info.visitorHere
         ? "A kid on the grass, with a block"
-        : `On the way down · ${info.descent * 5}%`;
+        : `On the way down · ${info.descent}%`;
   }
 }
 

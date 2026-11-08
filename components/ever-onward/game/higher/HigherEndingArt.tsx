@@ -1,4 +1,11 @@
 import type { RunState } from "@/lib/ever-onward/engine/types";
+import {
+  KEEPSAKES,
+  carriedIndexes,
+  carriedWords,
+  endingWarmth,
+} from "@/lib/ever-onward/universes/higher/keepsakes";
+import KeepsakeSprite from "../../scenes/higher/KeepsakeArt";
 import Px, { Person } from "../../scenes/higher/Px";
 
 const STARS: readonly (readonly [number, number])[] = [
@@ -20,7 +27,8 @@ const STARS: readonly (readonly [number, number])[] = [
  * anyone who prefers reduced motion.
  */
 export default function HigherEndingArt({ run }: { run: RunState }) {
-  void run;
+  const carried = carriedIndexes(run);
+  const warmth = endingWarmth(run);
   return (
     <div
       aria-hidden="true"
@@ -76,10 +84,38 @@ export default function HigherEndingArt({ run }: { run: RunState }) {
         <g className="bh-hop">
           <Person x={232} y={206} body="#6cc070" />
         </g>
+        {carried.length > 0 && (
+          <g data-testid="lm-ending-keepsakes" data-count={carried.length}>
+            <g className="bh-glow">
+              <ellipse
+                cx={290}
+                cy={204}
+                rx={30 + carried.length * 10}
+                ry={16 + warmth * 2}
+                fill="#ffd45e"
+                fillOpacity={0.2 + Math.min(0.3, warmth * 0.04)}
+              />
+            </g>
+            {carried.map((id, n) => (
+              <g
+                key={id}
+                transform={`translate(${290 + (n - (carried.length - 1) / 2) * 20 - 8} 194) scale(1.3)`}
+              >
+                <KeepsakeSprite id={KEEPSAKES[id].id} x={0} y={0} />
+              </g>
+            ))}
+          </g>
+        )}
         <Px x={240} y={224} w={10} h={10} c="#f2b134" />
         <Px x={254} y={228} w={8} h={8} c="#ff8fb1" />
       </svg>
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black to-transparent" />
+      <p
+        data-testid="lm-ending-carried"
+        className="absolute inset-x-0 bottom-2 px-4 text-center font-mono text-xs text-amber-100"
+      >
+        It carried {carriedWords(run)} all the way down.
+      </p>
     </div>
   );
 }

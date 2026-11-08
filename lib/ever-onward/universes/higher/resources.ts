@@ -187,6 +187,18 @@ export const RESOURCES: readonly ResourceDef[] = [
       skEff: TUNING.sky.startStrain,
     }
   ),
+  // The top's keepsakes: one state each (0 on the stairs, 1 marked to bring,
+  // 2 carried, 3 left), the stop to set one down, how many were picked up and
+  // left (with when) and which was last.
+  ...hidden([
+    ...Array.from({ length: 16 }, (_, i) => `kp${i}`),
+    "kpPauseUntil",
+    "kpPicks",
+    "kpLefts",
+    "kpPickAt",
+    "kpLeftAt",
+    "kpLast",
+  ]),
   // Overtime: seconds left and times held.
   ...hidden(["otLeft", "otCount"]),
   // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).

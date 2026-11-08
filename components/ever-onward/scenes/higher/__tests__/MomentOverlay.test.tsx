@@ -42,3 +42,15 @@ describe("the sky's banner", () => {
     );
   });
 });
+
+describe("the top's banner", () => {
+  const topInfo = (flags: Partial<HigherSceneInfo>): HigherSceneInfo =>
+    ({ ...sceneInfo(runAtPhaseStart(3)), ...flags }) as HigherSceneInfo;
+
+  it("says a keepsake was packed, or left with a goodbye, as a small tag", () => {
+    expect(shown(topInfo({ packed: true, packs: 1 }))).toBe("PACKED IT!");
+    expect(shown(topInfo({ parted: true, parts: 1 }))).toBe("GOODBYE!");
+    render(<MomentOverlay info={topInfo({ packed: true, packs: 1 })} />);
+    expect(screen.getByTestId("hs-moment-text").className).toContain("text-xs");
+  });
+});

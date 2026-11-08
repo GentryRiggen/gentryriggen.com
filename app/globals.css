@@ -4364,6 +4364,127 @@ html:has(.jim-app) body {
   }
 }
 
+/* ---- Build It Higher: the top's keepsakes (picked up, carried, left) ---- */
+.bh-plod,
+.bh-kp-pop,
+.bh-kp-spark,
+.bh-kp-lift,
+.bh-kp-bye {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The robot plods: slower and lower the more it carries. */
+@keyframes bh-plod {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1.5px);
+  }
+}
+.bh-plod {
+  animation: bh-plod 2s ease-in-out infinite;
+}
+
+/* The pack swells when something drops in. */
+@keyframes bh-kp-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  35% {
+    transform: scale(1.4);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.bh-kp-pop {
+  transform-origin: 100% 100%;
+  animation: bh-kp-pop 0.8s ease-out;
+}
+
+/* A sparkle ring where it was picked up. */
+@keyframes bh-kp-spark {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+.bh-kp-spark {
+  animation: bh-kp-spark 1.6s ease-out forwards;
+}
+
+/* The keepsake itself hops up and into the pack. */
+@keyframes bh-kp-lift {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-12px) scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-4px) scale(0.3);
+    opacity: 0;
+  }
+}
+.bh-kp-lift {
+  animation: bh-kp-lift 1.3s ease-in forwards;
+}
+
+/* A soft goodbye: it shimmers, drifts up and leaves a faint ghost on the step. */
+@keyframes bh-kp-bye {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  20%,
+  50% {
+    opacity: 0.6;
+  }
+  35%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px);
+    opacity: 0.2;
+  }
+}
+.bh-kp-bye {
+  animation: bh-kp-bye 3.4s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bh-plod,
+  .bh-kp-pop,
+  .bh-kp-spark,
+  .bh-kp-lift,
+  .bh-kp-bye {
+    animation: none;
+  }
+
+  /* What cannot animate away must not stay painted. */
+  .bh-kp-spark,
+  .bh-kp-lift {
+    opacity: 0;
+  }
+
+  .bh-kp-bye {
+    opacity: 0.2;
+  }
+}
+
 /* ---- Build It Higher: the playroom's dials (pace, streak, tumble, bank) ---- */
 .bh-shout,
 .bh-tumble-block,

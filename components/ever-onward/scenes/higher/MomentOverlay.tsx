@@ -146,6 +146,29 @@ function momentsFor(info: HigherSceneInfo): Moment[] {
         edge: "border-yellow-300",
       });
   }
+  if (info.phase === "top") {
+    if (info.setting)
+      moments.push({
+        key: `setting-${info.parts}`,
+        text: "SETTING IT DOWN",
+        banner: "bg-slate-700 text-slate-50 border-slate-300",
+        edge: "",
+      });
+    if (info.parted)
+      moments.push({
+        key: `parted-${info.parts}`,
+        text: "GOODBYE!",
+        banner: "bg-violet-700 text-violet-50 border-violet-200",
+        edge: "border-violet-400",
+      });
+    if (info.packed)
+      moments.push({
+        key: `packed-${info.packs}`,
+        text: "PACKED IT!",
+        banner: "bg-amber-400 text-amber-950 border-yellow-100",
+        edge: "border-yellow-300",
+      });
+  }
   return moments;
 }
 
@@ -153,15 +176,15 @@ const FULL_BANNER =
   "inset-x-0 top-1/2 -translate-y-1/2 border-y-4 px-2 py-2 text-xl sm:text-2xl";
 
 /**
- * The sky's moments are drawn in the picture itself (the whip, the falling
- * beam, the gust), so its banner is a tag at the top edge (smaller on a phone)
+ * The sky's and the top's moments are drawn in the picture itself (the whip,
+ * the falling beam, the gust, the sparkle and the pack), so their banner is a tag at the top edge (smaller on a phone)
  * and the picture stays clear.
  */
 const SKY_BANNER =
   "left-1/2 top-1 w-max max-w-[92%] -translate-x-1/2 rounded border-2 px-2 py-1 text-xs sm:top-3 sm:border-4 sm:px-4 sm:py-2 sm:text-2xl";
 
 const placeFor = (info: HigherSceneInfo): string =>
-  info.phase === "sky" ? SKY_BANNER : FULL_BANNER;
+  info.phase === "sky" || info.phase === "top" ? SKY_BANNER : FULL_BANNER;
 
 /**
  * Big HTML banners over the scene. The picture is an SVG that shrinks to a

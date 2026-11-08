@@ -31,9 +31,9 @@ export const TUNING = {
     "sky-crew": 40,
     "cloud-crane": 150,
     "cable-spinner": 700,
-    "stair-lamp": 0.35,
-    songbird: 2.6,
-    hum: 16,
+    "stair-lamp": 0.525,
+    songbird: 3.9,
+    hum: 24,
   } as Readonly<Record<string, number>>,
   /**
    * Sway: how a tall tower leans, and its calm (braces, footing, projects).
@@ -307,8 +307,6 @@ export const TUNING = {
   deliveries: {
     firstWaitSeconds: 40,
     waitSeconds: 80,
-    /** The way down is quiet, with a small moment more often. */
-    topWaitSeconds: 55,
     /** Seconds of income each load is worth. */
     materialSeconds: 12,
     poleSeconds: 5,
@@ -386,6 +384,39 @@ export const TUNING = {
     descentPerQuiet: 0.000015,
     /** A block lantern makes each unit of quiet count this much more. */
     lanternBoost: 1,
+    /**
+     * Keepsakes to carry down (keepsakes.ts). The pack holds `packSize` of
+     * weight; every unit of weight carried slows each step by `slowPerWeight`
+     * (the old lift carries it, so only `liftEase` of that). Each sits on the
+     * way down at `share` of the descent. Setting one down stops the robot
+     * for `setDownSeconds`; the scene shows a pickup or a goodbye for
+     * `showSeconds`.
+     */
+    keepsakes: {
+      packSize: 4,
+      slowPerWeight: 1,
+      liftEase: 0.5,
+      setDownSeconds: 8,
+      showSeconds: 5,
+      items: [
+        { id: "glove", share: 0.0045, weight: 1 },
+        { id: "marble", share: 0.0062, weight: 1 },
+        { id: "feather", share: 0.0571, weight: 1 },
+        { id: "bolt", share: 0.0914, weight: 2 },
+        { id: "medal", share: 0.1403, weight: 2 },
+        { id: "blueprint", share: 0.1975, weight: 1 },
+        { id: "whistle", share: 0.2263, weight: 1 },
+        { id: "key", share: 0.2551, weight: 1 },
+        { id: "ribbon", share: 0.3243, weight: 1 },
+        { id: "hat", share: 0.3641, weight: 2 },
+        { id: "bulb", share: 0.404, weight: 1 },
+        { id: "star", share: 0.6032, weight: 1 },
+        { id: "button", share: 0.7578, weight: 1 },
+        { id: "crayon", share: 0.8898, weight: 1 },
+        { id: "pebble", share: 0.9285, weight: 1 },
+        { id: "daisy", share: 0.94, weight: 1 },
+      ] as readonly { id: string; share: number; weight: number }[],
+    },
   },
   /** Start-of-phase gift for each level of the box of blocks, in seconds of helper income. */
   headStartSeconds: 20,

@@ -1,4 +1,5 @@
 import type { EventSource } from "../../engine/types";
+import { keepEvents, keepLine } from "./keepsakes";
 import { overtimeSoFar } from "./knowhow";
 import {
   lightsLine,
@@ -54,6 +55,7 @@ export const HIGHER_EVENTS: readonly EventSource[] = [
   { id: "sky-tie", count: tiesSoFar, line: tieLine },
   { id: "sky-nocrane-win", count: ncWins, line: noCraneWinLine },
   { id: "sky-nocrane-fail", count: ncFails, line: noCraneFailLine },
+  { id: "top-keepsake", count: keepEvents, line: keepLine },
   {
     id: "playroom-bank",
     count: banksSoFar,

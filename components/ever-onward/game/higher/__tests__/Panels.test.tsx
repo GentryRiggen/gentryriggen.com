@@ -21,6 +21,8 @@ import {
   strainActionId,
 } from "@/lib/ever-onward/universes/higher/sky";
 import DeliveryPanel from "../DeliveryPanel";
+import PackPanel from "../PackPanel";
+import { keepActionId } from "@/lib/ever-onward/universes/higher/keepsakes";
 import FootingPanel from "../FootingPanel";
 import ForkPanel from "../ForkPanel";
 import KnowHowPanel from "../KnowHowPanel";
@@ -442,5 +444,60 @@ describe("DeliveryPanel", () => {
     expect(screen.getByTestId("bh-load-1")).toHaveTextContent(/softer tumbles/);
     await userEvent.click(screen.getByTestId("bh-load-1-place"));
     expect(onAct).toHaveBeenCalledWith(loadActionId(1));
+  });
+});
+
+describe("PackPanel", () => {
+  const TOP = {
+    pcBanks: 3,
+    tfSwaps: 2,
+    twFlips: 2,
+    skGusts: 5,
+    skSnaps: 1,
+    skNcWins: 1,
+  };
+  const top = (extra: Record<string, number> = {}): RunState => {
+    const run = runAtPhaseStart(3);
+    return { ...run, resources: { ...run.resources, ...TOP, ...extra } };
+  };
+
+  it("renders nothing outside the way down", () => {
+    const { container } = render(
+      <PackPanel def={def} run={playroom()} onAct={jest.fn()} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows a card for each keepsake with a plus and a minus, and no verdict", () => {
+    render(<PackPanel def={def} run={top({ descent: 6 })} onAct={jest.fn()} />);
+    const panel = screen.getByTestId("bh-pack");
+    expect(panel).toHaveAttribute("data-load", "0");
+    const card = screen.getByTestId("bh-keep-bolt");
+    expect(card).toHaveTextContent(/Adds .* light in the last picture/);
+    expect(card).toHaveTextContent(/Slows steps by about 67% \(weight 2\)/);
+    expect(panel.textContent?.toLowerCase()).not.toMatch(
+      /best|recommend|should/
+    );
+    expect(screen.getByTestId("bh-pack-slow")).toHaveTextContent(
+      /pack is empty/i
+    );
+  });
+
+  it("marks a keepsake on a click, and says No room when the pack is full", async () => {
+    const onAct = jest.fn();
+    render(
+      <PackPanel
+        def={def}
+        run={top({ descent: 6, kp3: 1, kp4: 1 })}
+        onAct={onAct}
+      />
+    );
+    expect(screen.getByTestId("bh-keep-btn-blueprint")).toHaveTextContent(
+      /no room/i
+    );
+    await userEvent.click(screen.getByTestId("bh-keep-btn-blueprint"));
+    expect(onAct).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByTestId("bh-keep-btn-bolt"));
+    expect(onAct).toHaveBeenCalledWith(keepActionId(3));
   });
 });

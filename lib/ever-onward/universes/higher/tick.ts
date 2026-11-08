@@ -5,6 +5,7 @@ import { addToFooting, gainOf, savedShare, tickFooting } from "./footing";
 import { grossIncome, grossTap } from "./income";
 import { tickKnowhow } from "./knowhow";
 import { stepDown } from "./descent";
+import { isSettingDown, tickKeepsakes } from "./keepsakes";
 import { res } from "./lines";
 import { paceMult, tickPlayroom, wakeTower } from "./playroom";
 import { MANUAL_RESOURCES, RETURN_VISITOR_ID } from "./resources";
@@ -72,12 +73,17 @@ export function tickHigher(run: RunState, dt: number): void {
     const kept = netIncome(run) * savedShare(run);
     earn(run, incomePerSecond(run) * dt);
     tickFooting(run, kept, dt);
-  } else earn(run, incomePerSecond(run) * dt);
+  } else {
+    // The robot stands still while it sets something down.
+    if (!isSettingDown(run)) earn(run, incomePerSecond(run) * dt);
+    tickKeepsakes(run);
+  }
   tickKnowhow(run, dt);
   tickDeliveries(run, dt);
 }
 
 export function manualHigher(run: RunState): void {
+  if (run.phase === 3 && isSettingDown(run)) return;
   earn(run, manualPerTap(run));
   wakeTower(run);
   if (run.phase <= 2) addToFooting(run, netTap(run) * savedShare(run));

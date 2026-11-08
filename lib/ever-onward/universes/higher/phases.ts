@@ -1,6 +1,7 @@
 import type { PhaseDef, RunState } from "../../engine/types";
 import { CUTSCENES, TIPS } from "./cutscenes";
 import { resetDeliveries } from "./deliveries";
+import { resetKeepsakes } from "./keepsakes";
 import { resetSky } from "./sky";
 import { resetTown } from "./town";
 import { HELPER_LINES } from "./lines";
@@ -41,6 +42,7 @@ function freshSite(run: RunState): void {
   resetDeliveries(run);
   resetTown(run);
   resetSky(run);
+  resetKeepsakes(run);
 }
 
 /** What a part's leftovers are worth in the next part's own stuff. */

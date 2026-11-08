@@ -42,6 +42,6 @@ describe("Higher sceneInfo", () => {
   it("shows how far down the robot is on the last part", () => {
     const run = runAtPhaseStart(3);
     expect(sceneInfo(run).descent).toBe(0);
-    expect(sceneInfo(withResources(run, { descent: 50 })).descent).toBe(10);
+    expect(sceneInfo(withResources(run, { descent: 50 })).descent).toBe(50);
   });
 });

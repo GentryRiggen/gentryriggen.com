@@ -257,6 +257,58 @@ test.describe("Ever Onward", () => {
     }
   });
 
+  test("the top lets you choose what to carry, and the pack shows in the picture", async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Build It Higher" })
+      .click();
+    await page.getByTestId("eo-jump-higher-3-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 240_000,
+    });
+    // The way down has no deliveries any more: what to carry is its one choice.
+    await expect(page.getByTestId("bh-deliveries")).toHaveCount(0);
+    const pack = page.getByTestId("bh-pack");
+    await expect(pack).toBeVisible();
+    await expect(pack).toHaveAttribute("data-load", "0");
+    // The little things are always on the stairs, glowing in the picture.
+    await expect(page.getByTestId("tp-keep-marble").first()).toHaveAttribute(
+      "data-state",
+      "open"
+    );
+    await expect(page.getByTestId("tp-keep-daisy").first()).toBeAttached();
+    // Each card shows a plus and a minus. Marking one marks it in the picture.
+    const marble = page.getByTestId("bh-keep-marble");
+    await expect(marble).toContainText("Adds");
+    await expect(marble).toContainText("Slows steps");
+    await page.getByTestId("bh-keep-btn-marble").click();
+    await expect(page.getByTestId("tp-keep-marble").first()).toHaveAttribute(
+      "data-state",
+      "marked"
+    );
+    await expect(page.getByTestId("bh-keep-btn-marble")).toHaveText(
+      /bringing it/i
+    );
+    // Changing your mind before the robot gets there is free.
+    await page.getByTestId("bh-keep-btn-marble").click();
+    await expect(page.getByTestId("tp-keep-marble").first()).toHaveAttribute(
+      "data-state",
+      "open"
+    );
+    await expect(page.getByTestId("tp-robot").first()).toHaveAttribute(
+      "data-load",
+      "0"
+    );
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

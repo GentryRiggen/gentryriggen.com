@@ -14,6 +14,7 @@ import type { CueName } from "../audio/everOnwardSynth";
 import DeliveryPanel from "../game/higher/DeliveryPanel";
 import FootingPanel from "../game/higher/FootingPanel";
 import ForkPanel from "../game/higher/ForkPanel";
+import PackPanel from "../game/higher/PackPanel";
 import HigherEndingArt from "../game/higher/HigherEndingArt";
 import KnowHowPanel from "../game/higher/KnowHowPanel";
 import StarIcon from "../game/higher/StarIcon";
@@ -57,6 +58,7 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   const rose = (id: string) =>
     (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
   if (rose("dlCount")) cues.push("arrive");
+  if (rose("kpPicks")) cues.push("chime");
   if (rose("otCount")) cues.push("chime");
   if (rose("pcBanks")) cues.push("chime");
   if (rose("pcTumbles")) cues.push("buzz");
@@ -70,7 +72,7 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 /** The Build It Higher screens: scene, panels, ending, sounds. */
 export const HIGHER_UI: UniverseUi = {
   Scene: HigherScene,
-  primaryPanels: [PlayroomPanel, TownPanel, WindPanel, StrainPanel],
+  primaryPanels: [PlayroomPanel, TownPanel, WindPanel, StrainPanel, PackPanel],
   panels: [
     CrewPanel,
     ShadowPanel,

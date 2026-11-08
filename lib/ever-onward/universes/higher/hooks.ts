@@ -22,6 +22,7 @@ import {
   streakOf,
   toddlerStage,
 } from "./playroom";
+import { KEEP_ACTION_IDS, LEAVE_ACTION_IDS, isPackDue } from "./keepsakes";
 import { sceneInfo, sceneKey } from "./scene";
 import {
   FOREMAN_ACTION_IDS,
@@ -65,6 +66,7 @@ export function higherPlates(run: RunState): string[] {
     plates.push("streak");
   if (isPlayroomOpen(run) && toddlerStage(run) !== "away")
     plates.push("toddler");
+  if (isPackDue(run)) plates.push("pack");
   if (isFootingOpen(run)) plates.push("footing");
   if (hasAffordableProject(run)) plates.push("project");
   if (isLoadHere(run)) plates.push("load");
@@ -86,6 +88,7 @@ export const HIGHER_PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> =
     streak: [BANK_ACTION_ID],
     toddler: [BANK_ACTION_ID, ...PACE_ACTION_IDS],
     load: LOAD_ACTION_IDS,
+    pack: [...KEEP_ACTION_IDS, ...LEAVE_ACTION_IDS],
     fork: FORK_ACTION_IDS,
     overtime: [OVERTIME_ACTION_ID],
   };
@@ -105,6 +108,8 @@ export const HIGHER_DECISION_ACTIONS: readonly string[] = [
   ...FOREMAN_ACTION_IDS,
   ...LIGHT_ACTION_IDS,
   ...FORK_ACTION_IDS,
+  ...KEEP_ACTION_IDS,
+  ...LEAVE_ACTION_IDS,
   ...FOOTING_ACTION_IDS,
   ...LOAD_ACTION_IDS,
   OVERTIME_ACTION_ID,

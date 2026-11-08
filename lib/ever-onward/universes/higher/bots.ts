@@ -3,6 +3,7 @@ import { shownProjects, upgradeCost } from "../../engine/engine";
 import type { Strategy } from "../../engine/sim";
 import type { RunState } from "../../engine/types";
 import { bestLoad, loadActionId } from "./deliveries";
+import { packsFor, type PackStyle } from "./keepbots";
 import {
   footingActionId,
   footingChanges,
@@ -487,7 +488,8 @@ export function higherBots(): BotSet {
     load: number,
     dials: PlayroomStyle = READS,
     town: TownStyle = TOWN_ADJUSTS,
-    sky: SkyStyle = SKY_READS
+    sky: SkyStyle = SKY_READS,
+    pack: PackStyle = "reads"
   ): Actions =>
     together(
       takesFork(),
@@ -495,6 +497,7 @@ export function higherBots(): BotSet {
       playsTown(town, window),
       playsSky(sky, window),
       placesLoad(load),
+      packsFor(pack, Math.max(window, 5)),
       footingPolicy(1, Math.max(window, 10)),
       holdsOvertime
     );
