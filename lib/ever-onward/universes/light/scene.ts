@@ -18,6 +18,27 @@ import { gardenCode, hasRainBarrel } from "./garden";
 import { LET_GO } from "./upgrades";
 import { hasFork, windRamp } from "./forkState";
 import {
+  batteryCount,
+  batteryFlow,
+  chargeShare01,
+  dayShare,
+  districtsDark,
+  eveningLevel,
+  gridBanner,
+  isGridGlowing,
+  isRushNow,
+} from "./grid";
+import {
+  buildingCrews,
+  crewsAt,
+  crewsOnTheRoad,
+  hasCrew,
+  isOut,
+  isStormHit,
+  isWeatherOpen,
+  schoolCrews,
+} from "./weather";
+import {
   COAST_LIGHTHOUSES,
   PHASE_COAST,
   PHASE_LAST,
@@ -30,14 +51,13 @@ import {
 import {
   boatHeadingOf,
   flameFraction,
-  gridSteadiness,
   headingOf,
   isBoatOut,
   isFleetGlowing,
   isFlareOn,
-  isGridGlowing,
-  isRushOn,
+  isGridInPlay,
   isStorming,
+  lampStep,
   keeperCount,
   level,
   lighthouseCount,
@@ -132,7 +152,41 @@ export interface LightSceneInfo {
   linesTier: number;
   subsTier: number;
   bulbsTier: number;
-  gridTier: number;
+  /** Batteries built (all sizes) and how full they are, 0..1 in tenths. */
+  batteries: number;
+  charge: number;
+  /** 1 once the grid's day begins (the planet has a sun and a dusk). */
+  gridOpen: number;
+  /** Where the day is, in twentieths (0..19), and 1 during the evening rush. */
+  dayStep: number;
+  rushOn: number;
+  /** Tonight's rush: 0 mild to 3 scorching. */
+  eveningLevel: number;
+  /** The batteries: 0 resting, 1 charging, 2 giving power to the rush. */
+  flow: number;
+  /** Districts dark right now, 0..10. */
+  dark: number;
+  /** The moment on show: 0 none, 1 LIT ALL NIGHT, 2 BLACKOUT. */
+  gridBanner: number;
+  /** Crews on each post (there, not on the road) and any on the road. */
+  crewBuild: number;
+  crewSchool: number;
+  /** 1 once the weather desk is open (the three towns have watch towers). */
+  weatherOpen: number;
+  /** Crews on watch at each of the three towns (there, not on the road). */
+  watch0: number;
+  watch1: number;
+  watch2: number;
+  crewRoad: number;
+  /** Bit i is set while town i has no lights (a storm hit it). */
+  townsOut: number;
+  /** 1 for a few seconds after a storm hit, and the town it hit. */
+  stormHit: number;
+  stormTown: number;
+  /** 1 while a crew is watching the town the storm hit. */
+  stormHeld: number;
+  /** The streetlights, 0 (soft) to 3 (dazzling). */
+  lampStep: number;
   /** 1 once storm crews are hired (sandbag line by the towns). */
   stormCrews: number;
   /** 1 once the weather vane stands on the control post. */
@@ -163,10 +217,6 @@ export interface LightSceneInfo {
   raceControl: number;
   /** 1 while the scout probe is away from the dock. */
   raceScout: number;
-  /** Grid steadiness, 0..1 (steps of 10%): low means the lights flicker. */
-  gridSteadiness: number;
-  /** 1 while the evening rush is on. */
-  rush: number;
   /** 1 while a solar flare can be caught. */
   flare: number;
   /** How true the probe fleet flies, 0..1 (steps of 10%). */
@@ -283,7 +333,38 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     linesTier: tier(run, "lines"),
     subsTier: tier(run, "subs"),
     bulbsTier: tier(run, "bulbs"),
-    gridTier: tier(run, "grid"),
+    batteries: Math.min(14, batteryCount(run)),
+    charge: step(chargeShare01(run), 10),
+    gridOpen: isGridInPlay(run) ? 1 : 0,
+    dayStep: isGridInPlay(run)
+      ? Math.min(19, Math.floor(dayShare(run) * 20))
+      : 0,
+    rushOn: isRushNow(run) ? 1 : 0,
+    eveningLevel: isGridInPlay(run) ? eveningLevel(run) : 0,
+    flow: batteryFlow(run),
+    dark: districtsDark(run),
+    gridBanner: gridBanner(run),
+    crewBuild: run.phase === 1 ? buildingCrews(run) : 0,
+    crewSchool: run.phase === 1 ? schoolCrews(run) : 0,
+    weatherOpen: isWeatherOpen(run) ? 1 : 0,
+    watch0: run.phase === 1 ? crewsAt(run, 0) : 0,
+    watch1: run.phase === 1 ? crewsAt(run, 1) : 0,
+    watch2: run.phase === 1 ? crewsAt(run, 2) : 0,
+    crewRoad: run.phase === 1 ? crewsOnTheRoad(run) : 0,
+    townsOut:
+      run.phase === 1
+        ? [0, 1, 2].reduce(
+            (mask, t) => (isOut(run, t) ? mask | (1 << t) : mask),
+            0
+          )
+        : 0,
+    stormHit: isStormHit(run) ? 1 : 0,
+    stormTown: Math.round(run.resources.wxLastTown ?? 0),
+    stormHeld:
+      isStormHit(run) && hasCrew(run, Math.round(run.resources.wxLastTown ?? 0))
+        ? 1
+        : 0,
+    lampStep: run.phase === 1 ? lampStep(run) : 0,
     stormCrews: level(run, "storm-crews") > 0 ? 1 : 0,
     weatherVane: level(run, "weather-vane") > 0 ? 1 : 0,
     tollOpen: isTollOpen(run) ? 1 : 0,
@@ -299,8 +380,6 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     raceFins: hasRacingFins(run) ? 1 : 0,
     raceControl: hasMissionControl(run) ? 1 : 0,
     raceScout: isScoutOut(run) ? 1 : 0,
-    gridSteadiness: step(finite(gridSteadiness(run)) / 100, 10),
-    rush: isRushOn(run) ? 1 : 0,
     flare: isFlareOn(run) ? 1 : 0,
     fleetHeading: step(finite(headingOf(run)) / 100, 10),
     aimLevel: level(run, "aim"),

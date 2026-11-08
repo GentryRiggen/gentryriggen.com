@@ -111,8 +111,8 @@
   },
   "light/cut-night-end": {
     "file": "/ever-onward/voice/light/cut-night-end.mp3",
-    "hash": "4064f5acc50d",
-    "durationGuess": 19
+    "hash": "ed614749c6b9",
+    "durationGuess": 23
   },
   "light/cut-sky-1": {
     "file": "/ever-onward/voice/light/cut-sky-1.mp3",
@@ -306,8 +306,8 @@
   },
   "light/night-lamps": {
     "file": "/ever-onward/voice/light/night-lamps.mp3",
-    "hash": "090f3f50fe36",
-    "durationGuess": 17
+    "hash": "10f2f0e980c4",
+    "durationGuess": 21
   },
   "light/night-ideas": {
     "file": "/ever-onward/voice/light/night-ideas.mp3",
@@ -349,10 +349,20 @@
     "hash": "3ce02b01fbed",
     "durationGuess": 9
   },
-  "light/night-smart": {
-    "file": "/ever-onward/voice/light/night-smart.mp3",
-    "hash": "fdbd91e0e532",
+  "light/night-battery": {
+    "file": "/ever-onward/voice/light/night-battery.mp3",
+    "hash": "99c5c91e269b",
     "durationGuess": 9
+  },
+  "light/night-lit-first": {
+    "file": "/ever-onward/voice/light/night-lit-first.mp3",
+    "hash": "276b350af65b",
+    "durationGuess": 11
+  },
+  "light/night-dark-first": {
+    "file": "/ever-onward/voice/light/night-dark-first.mp3",
+    "hash": "0fdea5824b04",
+    "durationGuess": 14
   },
   "light/night-news-3": {
     "file": "/ever-onward/voice/light/night-news-3.mp3",
@@ -366,8 +376,8 @@
   },
   "light/night-weather": {
     "file": "/ever-onward/voice/light/night-weather.mp3",
-    "hash": "f458b1b24c2e",
-    "durationGuess": 19
+    "hash": "1cc75150f23e",
+    "durationGuess": 24
   },
   "light/night-vane": {
     "file": "/ever-onward/voice/light/night-vane.mp3",

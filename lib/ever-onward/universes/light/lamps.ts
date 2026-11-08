@@ -1,16 +1,16 @@
 import type { ActionDef } from "../../engine/types";
 import { PHASE_NIGHT } from "./resources";
-import { isLampsOpen, lampStep, setLamps } from "./tick";
+import { isLampsOpen, lampLockLeft, lampStep, setLamps } from "./tick";
 import { TUNING } from "./tuning";
 
 /**
- * The streetlights: No More Night's one knob, how bright the cities shine.
- * Brighter pays more for every megawatt, but the grid strains harder, each
- * town wants a little more power and the busy crews learn less. Softer pays
- * less, eases the grid, lights more towns with the same plants and gives the
- * crews time to learn (know-how for projects). No step loses anything: the
- * right one changes as the night goes (soft while saving up for a project,
- * dazzling while building, soft again to light the last towns).
+ * The streetlights: how bright the cities shine. Brighter pays more for every
+ * megawatt, but the evening rush hits harder, each town wants a little more
+ * power and the busy crews learn less. Softer pays less, eases the rush,
+ * lights more towns with the same plants and gives the crews time to learn
+ * (know-how for projects). A change takes a few seconds to settle, and the
+ * right step moves with how big tonight's rush is, so it is worth setting
+ * each evening.
  */
 
 const LABELS = ["Soft glow", "Gentle", "Bright", "Dazzling"] as const;
@@ -33,7 +33,7 @@ export function lampNote(step: number): string {
     `Pays ${pct(s.pay)}`,
     learn(s.knowhow),
     `towns want ${change(s.demand, "less", "more")}`,
-    `the grid strains ${change(s.strain, "less", "more")}`,
+    `the evening rush hits ${change(s.peak, "less", "harder")}`,
   ].join(" · ");
 }
 
@@ -56,7 +56,7 @@ export const LAMP_ACTIONS: readonly ActionDef[] = LAMP_STEPS.map((step, i) => ({
   describe: (run) => ({
     label: step.label,
     detail: step.note,
-    isBlocked: lampStep(run) === i,
+    isBlocked: lampStep(run) === i || lampLockLeft(run) > 0,
   }),
   perform: (run) => setLamps(run, i),
 }));

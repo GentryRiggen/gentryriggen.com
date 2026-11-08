@@ -24,7 +24,14 @@ import { noteBuy, tankerDeal, tickTanker } from "./tanker";
 import { tickFund } from "./fund";
 import { hasFork, windRamp } from "./forkState";
 import { overdriveBoost, overdriveStrain, tickOverdrive } from "./overdrive";
-import { outageFactor, tickWeather } from "./weather";
+import { districtsDark, tickGrid } from "./grid";
+import {
+  buildMult,
+  outageFactor,
+  schoolMult,
+  tickCrews,
+  tickWeather,
+} from "./weather";
 
 const {
   coast: C,
@@ -384,12 +391,6 @@ export const forkSupplyMult = (run: RunState): number =>
     ? FK.night.coalSupply
     : 1 + (FK.night.windSupply - 1) * windRamp(run);
 
-/** Coal strains the grid; the wind eases it as it is built. */
-export const forkStrainMult = (run: RunState): number =>
-  hasFork(run, "coal")
-    ? FK.night.coalStrain
-    : 1 + (FK.night.windStrain - 1) * windRamp(run);
-
 /** Megawatts of everything built, with the lines' bonus. */
 export function supplyMW(run: RunState): number {
   const raw = N.gensMW.reduce(
@@ -423,12 +424,21 @@ export const lampStep = (run: RunState): number => {
 export const lampEffect = (run: RunState) =>
   LAMPS.steps[run.phase === 1 ? lampStep(run) : LAMPS.defaultStep];
 
-/** Sets the brightness (the streetlights' radio buttons). */
+/** Seconds until the streetlights can change again (0: they can). */
+export const lampLockLeft = (run: RunState): number =>
+  Math.max(0, res(run, "lampLock"));
+
+/**
+ * Sets the brightness (the streetlights' radio buttons). A new setting
+ * takes a few seconds to settle, and the streetlights cannot change again
+ * until it has: a choice is a commitment.
+ */
 export function setLamps(run: RunState, step: number): void {
   const next = Math.min(LAMPS.steps.length - 1, Math.max(0, Math.round(step)));
-  if (next === lampStep(run)) return;
+  if (next === lampStep(run) || lampLockLeft(run) > 0) return;
   run.resources.lamps = next;
   run.resources.lampChanges = res(run, "lampChanges") + 1;
+  run.resources.lampLock = TUNING.grid.lampLockSeconds;
 }
 
 /** Demand at a given brightness (for the knob's "lights up the rest" hint). */
@@ -448,7 +458,8 @@ export const cityPay = (run: RunState): number =>
   N.payPerMW *
   ifProject(run, "smart-meters", P.meterPay) *
   lampEffect(run).pay *
-  outageFactor(run);
+  outageFactor(run) *
+  buildMult(run);
 
 /**
  * Know-how a second. Night: every plant's crew learns a little. Sky: every
@@ -463,15 +474,12 @@ export const knowhowPerSecond = (run: RunState): number =>
       plantCount(run) *
       ifProject(run, "night-school", P.schoolBoost) *
       lampEffect(run).knowhow *
+      schoolMult(run) *
       speed(run);
 
 /** Know-how a second at a given brightness. */
 export const knowhowAtStep = (run: RunState, step: number): number =>
   (knowhowPerSecond(run) / lampEffect(run).knowhow) * LAMPS.steps[step].knowhow;
-
-/** Know-how for balancing an uneasy grid by hand. */
-export const balanceKnowhow = (run: RunState): number =>
-  hasProject(run, "line-patrols") ? P.patrolBalance : P.perBalance;
 
 /** Cities powered right now (fractional), 0..TOTAL_CITIES. */
 export function citiesLit(run: RunState): number {
@@ -479,48 +487,16 @@ export function citiesLit(run: RunState): number {
   return (delivered / demandMW(run)) * TOTAL_CITIES;
 }
 
-/** Steadiness 0..100; a save from before the grid existed counts as steady. */
-export const gridSteadiness = (run: RunState): number =>
-  run.resources.grid ?? 100;
-
 /**
- * Steady glow: the grid is looked after (at least `glowAt` steady), so the
- * cities sparkle and pay a little more. It is a bonus for tending, so a
- * grid left alone loses the bonus, never more than that.
+ * What overdrive reads at night (0..100): the lights are all on, or some
+ * district has gone dark. Hot plants make the rush bigger and stop charging.
  */
-export const isGridGlowing = (run: RunState): boolean =>
-  isGridInPlay(run) && gridSteadiness(run) >= N.glowAt;
+export const nightSteadiness = (run: RunState): number =>
+  districtsDark(run) > 0 ? 0 : 100;
 
-/** What cities pay while the grid is this steady: floor..1, +bonus in glow. */
-export const gridFactor = (run: RunState): number =>
-  (N.gridFloor + (1 - N.gridFloor) * (gridSteadiness(run) / 100)) *
-  (isGridGlowing(run) ? 1 + glowBonus(run) : 1);
-
-/** The steady glow's bonus (lamplighters: smaller). */
-export const glowBonus = (run: RunState): number =>
-  hasProject(run, "lamplighters") ? P.lampGlowBonus : N.glowBonus;
-
-export const isGridAuto = (run: RunState): boolean => tier(run, "grid") >= 2;
-export const isRushOn = (run: RunState): boolean => res(run, "rush") > 0;
+/** The grid opens once the plants make this much (see grid.ts). */
 export const isGridInPlay = (run: RunState): boolean =>
   run.phase === 1 && supplyMW(run) >= N.gridVisibleSupplyMW;
-
-/** How hard the grid is worked, 0..1 (on a log scale: every plant counts). */
-export const gridLoad = (run: RunState): number =>
-  Math.min(1, Math.log10(1 + supplyMW(run)) / Math.log10(1 + demandMW(run)));
-
-/** Steadiness lost per second right now (percent), rush included. */
-export function strainPerSecond(run: RunState): number {
-  return (
-    (N.strainBase + N.strainPerLoad * gridLoad(run)) *
-    N.balancerSaving ** Math.min(1, tier(run, "grid")) *
-    ifProject(run, "line-patrols", P.patrolStrain) *
-    ifProject(run, "co-op", P.coopStrain) *
-    lampEffect(run).strain *
-    forkStrainMult(run) *
-    overdriveStrain(run)
-  );
-}
 
 export const crankPower = (run: RunState): number =>
   (N.crankBase + N.crankPerLevel * level(run, "crank")) * tapMult(run) +
@@ -530,32 +506,19 @@ export const powerPerSecond = (run: RunState): number =>
   Math.min(supplyMW(run), demandMW(run)) *
   cityPay(run) *
   speed(run) *
-  gridFactor(run) *
   overdriveBoost(run);
 
-/** Power the evening rush pays when claimed: a slice of income plus taps. */
-export const rushBonus = (run: RunState): number =>
-  N.rushBonusSeconds *
-  (powerPerSecond(run) + crankPower(run) * 3) *
-  ifProject(run, "rush-pricing", P.rushPay);
-
 /**
- * Strain builds. The evening rush opens once its timer runs out and then
- * waits, as long as it takes, until it is claimed (see `ride-rush`).
+ * The night's pay and know-how run on `delivered` megawatts. The grid's
+ * clock moves the day along: a share of the plants' power charges the
+ * batteries, the evening rush draws them down, and a rush that is not met
+ * puts districts out (see grid.ts).
  */
-function updateGrid(run: RunState, dt: number): void {
-  const r = run.resources;
-  if (!isGridInPlay(run)) return;
-  r.grid = Math.max(0, gridSteadiness(run) - strainPerSecond(run) * dt);
-  if (isGridAuto(run) && r.grid < N.autoBalanceBelow) r.grid = N.autoBalanceTo;
-  if (r.rush > 0) return;
-  r.rushCooldown -= dt;
-  if (r.rushCooldown <= 0) r.rush = 1;
-}
-
 function tickNight(run: RunState, dt: number): void {
-  updateGrid(run, dt);
+  tickCrews(run, dt);
+  run.resources.lampLock = Math.max(0, res(run, "lampLock") - dt);
   tickWeather(run, dt, () => incomePerSecond(run));
+  const gridMult = tickGrid(run, dt, () => incomePerSecond(run));
   const supply = supplyMW(run);
   const demand = demandMW(run);
   const delivered = Math.min(supply, demand);
@@ -566,12 +529,7 @@ function tickNight(run: RunState, dt: number): void {
   run.resources.night = Math.max(0, 100 * (1 - lit / TOTAL_CITIES));
   // Cities only pay for the power that reaches them.
   run.resources.power +=
-    delivered *
-    cityPay(run) *
-    speed(run) *
-    gridFactor(run) *
-    overdriveBoost(run) *
-    dt;
+    delivered * cityPay(run) * speed(run) * overdriveBoost(run) * gridMult * dt;
   run.resources.knowhow = res(run, "knowhow") + knowhowPerSecond(run) * dt;
 }
 
@@ -691,10 +649,7 @@ function updateSkyEvents(run: RunState, dt: number): void {
   if (r.flareCooldown <= 0) r.flare = 1;
 }
 
-/** The wait before the next evening rush (or flare) once one is claimed. */
-export const nextRushIn = (run: RunState): number =>
-  (N.rushGapMin + nextRandom(run) * N.rushGapSpread) *
-  ifProject(run, "rush-pricing", P.rushGap);
+/** The wait before the next solar flare once one is caught. */
 export const nextFlareIn = (run: RunState): number =>
   (S.flareGapMin + nextRandom(run) * S.flareGapSpread) *
   ifProject(run, "flare-watch", SP.flareGap) *
@@ -881,7 +836,7 @@ export function tickLight(run: RunState, dt: number): void {
   tickGarden(run, dt);
   tickFund(run, dt, () => fundIncome(run));
   tickOverdrive(run, dt, () =>
-    run.phase === 1 ? gridSteadiness(run) : headingOf(run)
+    run.phase === 1 ? nightSteadiness(run) : headingOf(run)
   );
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);

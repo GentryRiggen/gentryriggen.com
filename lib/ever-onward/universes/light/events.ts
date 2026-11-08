@@ -20,7 +20,7 @@ export const LIGHT_EVENTS: readonly EventSource[] = [
       frontsSoFar(run) + (weatherStage(run) === "forecast" ? 1 : 0),
     line: (run) =>
       weatherStage(run) === "forecast"
-        ? `A storm is coming! The forecast says ${TOWNS[likeliestTown(run)] ?? TOWNS[0]} is likeliest. Send a crew to get ready.`
+        ? `A storm is coming! The forecast says ${TOWNS[likeliestTown(run)] ?? TOWNS[0]} is likeliest. Post a crew on watch to get ready.`
         : null,
     tone: () => "info",
   },

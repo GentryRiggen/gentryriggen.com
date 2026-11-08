@@ -15,9 +15,11 @@ export function captionFor(info: LightSceneInfo): string {
       return `Towns lit: ${info.townsLit}/${TOWN_COUNT} · Power ${Math.round(
         info.powered * 100
       )}%${
-        info.gridSteadiness < 0.7
-          ? ` · Grid ${Math.round(info.gridSteadiness * 100)}%`
-          : ""
+        info.dark > 0
+          ? ` · ${info.dark} dark`
+          : info.batteries > 0
+            ? ` · Batteries ${Math.round(info.charge * 100)}%`
+            : ""
       }`;
     case "sky":
       return `Collectors ${info.collectors}/6 · Stars left ${num(

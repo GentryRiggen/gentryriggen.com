@@ -9,14 +9,15 @@ import type { RunState } from "../../../engine/types";
 import { def } from "./fixtures";
 import { lightBots } from "../bots";
 import { LAMP_STEPS, lampActionId } from "../lamps";
+import { rushExcessAt } from "../grid";
 import { TUNING } from "../tuning";
 import {
   demandMW,
   isLampsOpen,
   knowhowPerSecond,
+  lampEffect,
   lampStep,
   powerPerSecond,
-  strainPerSecond,
 } from "../tick";
 
 jest.setTimeout(120_000);
@@ -42,7 +43,7 @@ describe("the streetlights", () => {
     expect(isLampsOpen(newRun(def))).toBe(false);
   });
 
-  it("trades pay against know-how, strain and the towns' demand", () => {
+  it("trades pay against know-how, the evening rush and the towns' demand", () => {
     const at = (step: number) =>
       performAction(def, nightRun(), lampActionId(step));
     const soft = at(0);
@@ -52,7 +53,9 @@ describe("the streetlights", () => {
     expect(powerPerSecond(dazzling)).toBeGreaterThan(powerPerSecond(bright));
     expect(knowhowPerSecond(soft)).toBeGreaterThan(knowhowPerSecond(bright));
     expect(knowhowPerSecond(dazzling)).toBeLessThan(knowhowPerSecond(bright));
-    expect(strainPerSecond(soft)).toBeLessThan(strainPerSecond(dazzling));
+    expect(rushExcessAt(soft, 1, lampEffect(soft).peak)).toBeLessThan(
+      rushExcessAt(dazzling, 1, lampEffect(dazzling).peak)
+    );
     expect(demandMW(soft)).toBeLessThan(demandMW(dazzling));
   });
 
@@ -131,11 +134,11 @@ describe("the streetlights' words", () => {
         `towns want ${diff(t.demand)} ${t.demand < 1 ? "less" : "more"}`
       );
       expect(step.note).toContain(
-        `the grid strains ${diff(t.strain)} ${t.strain < 1 ? "less" : "more"}`
+        `the evening rush hits ${diff(t.peak)} ${t.peak < 1 ? "less" : "harder"}`
       );
     });
     expect(LAMP_STEPS[0].note).toContain("2x as fast");
     expect(LAMP_STEPS[3].note).toContain("50% as fast");
-    expect(LAMP_STEPS[3].note).toContain("Pays 130%");
+    expect(LAMP_STEPS[3].note).toContain("Pays 125%");
   });
 });

@@ -5,6 +5,7 @@ import type {
   TeaserDef,
   VisitorDef,
 } from "../../engine/types";
+import { batteryCapacity } from "./grid";
 import { PHASE_COAST, PHASE_NIGHT, PHASE_SKY, TOTAL_STARS } from "./resources";
 import { tankCapacity, visitorGift } from "./tick";
 
@@ -65,11 +66,11 @@ export const VISITORS: readonly VisitorDef[] = [
     arrivesWhen: (run) => owned(run, "gen3") >= 4,
     giftText: (run) =>
       run.phase === 1
-        ? `${incomeText(run)} and a steady grid`
+        ? `${incomeText(run)} and every battery topped up`
         : incomeText(run),
     give: (run) => {
       giveIncome(run);
-      if (run.phase === 1) run.resources.grid = 100;
+      if (run.phase === 1) run.resources.pgCharge = batteryCapacity(run);
     },
   },
   {

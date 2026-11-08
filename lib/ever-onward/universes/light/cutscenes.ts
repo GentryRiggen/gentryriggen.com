@@ -218,8 +218,8 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
   ],
   [PHASE_NIGHT]: [
     "Build generators early: they make power while you rest.",
-    "Balance the grid when it gets uneasy: a steady glow pays more.",
-    "Ride the evening rush when it arrives. It waits for you.",
+    "At dusk everybody switches on. Batteries carry that rush, so keep them in step with your plants.",
+    "Each crew builds, learns or watches for storms. A crew on watch is not building.",
   ],
   [PHASE_SKY]: [
     "Add sun collectors: they gather light for you.",

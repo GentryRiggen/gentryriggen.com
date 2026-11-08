@@ -10,6 +10,7 @@ import { CUTSCENES, TIPS } from "./cutscenes";
 import { TUNING } from "./tuning";
 import { syncDisplay } from "./tick";
 import { closeFund } from "./fund";
+import { resetGrid } from "./grid";
 
 const headStart = (run: RunState): number => run.mods.headStart ?? 0;
 
@@ -49,9 +50,7 @@ export const PHASES: readonly PhaseDef[] = [
       closeFund(run);
       run.resources.power += 20 * headStart(run);
       run.resources.night = 100;
-      run.resources.grid = 100;
-      run.resources.rush = 0;
-      run.resources.rushCooldown = TUNING.night.rushFirst;
+      resetGrid(run);
       syncDisplay(run);
     },
   },

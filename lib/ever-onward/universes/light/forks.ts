@@ -1,5 +1,6 @@
 import { cloneRun } from "../../engine/engine";
 import type { ActionDef, RunState } from "../../engine/types";
+import { rushExcessAt } from "./grid";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 import { hasFork, markFork, type ForkId, type ForkSideId } from "./forkState";
 import { previewLines, type Stat } from "./preview";
@@ -14,7 +15,6 @@ import {
   powerPerSecond,
   resolvePerSecond,
   steadyFlame,
-  strainPerSecond,
   syncDisplay,
 } from "./tick";
 import { TUNING } from "./tuning";
@@ -106,9 +106,9 @@ export const FORKS: readonly ForkDef[] = [
     stats: [
       { label: "Power/sec", read: powerPerSecond },
       {
-        label: "Grid strain",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "A usual evening rush",
+        read: (run) => rushExcessAt(run, 1, 1) * 100,
+        suffix: "% extra",
       },
     ],
     sides: [
@@ -118,7 +118,7 @@ export const FORKS: readonly ForkDef[] = [
         tagline: "Cheap now, smoky later",
         wry: "Quick, cheap, and the sky will remember this.",
         gives: `Every plant makes ${times(K.night.coalSupply)} at once.`,
-        catches: `Smog over the cities, and the grid strains ${more(K.night.coalStrain)} faster.`,
+        catches: `Smog over the cities, and the evening rush asks ${more(K.night.coalPeak)} more of the batteries.`,
         price: K.costs.coal,
       },
       {
@@ -126,7 +126,7 @@ export const FORKS: readonly ForkDef[] = [
         name: "Wind",
         tagline: "Slow to build, clean",
         wry: "Takes a season to raise. The sky doesn't mind waiting.",
-        gives: `Over ${Math.round((K.night.windRampSeconds / 60) * 10) / 10} minutes the farms grow in, and every plant makes ${times(K.night.windSupply)}. The grid strains ${less(K.night.windStrain)} less.`,
+        gives: `Over ${Math.round((K.night.windRampSeconds / 60) * 10) / 10} minutes the farms grow in, and every plant makes ${times(K.night.windSupply)}. The evening rush asks ${less(K.night.windPeak)} less of the batteries.`,
         catches: `Costs ${times(K.costs.wind / K.costs.coal)} what coal does, and nothing happens at first.`,
         price: K.costs.wind,
       },

@@ -11,6 +11,7 @@ import {
   demandAtStep,
   isLampsOpen,
   knowhowPerSecond,
+  lampLockLeft,
   lampStep,
   powerPerSecond,
   supplyMW,
@@ -107,8 +108,9 @@ function StreetlightsPanel({ def, run, onAct }: PanelProps) {
       resultTestId="lm-lamps-result"
     >
       <p className="font-mono text-sm text-slate-200">
-        Brighter streets pay more. Softer ones light more towns with the same
-        power, and give your crews quiet time to learn.
+        Brighter streets pay more, and make the evening rush hit harder. Softer
+        ones light more towns with the same power, ease the rush, and give your
+        crews quiet time to learn.
       </p>
       <div
         role="radiogroup"
@@ -158,6 +160,9 @@ function StreetlightsPanel({ def, run, onAct }: PanelProps) {
                   {Math.floor(at.cities)}{" "}
                   {Math.floor(at.cities) === 1 ? "town" : "towns"} lit
                 </span>
+                <span className="block">
+                  rush hits {Math.round(STEPS[i].peak * 100)}%
+                </span>
               </span>
             </button>
           );
@@ -169,6 +174,8 @@ function StreetlightsPanel({ def, run, onAct }: PanelProps) {
       <p className="font-mono text-sm font-bold text-yellow-100 tabular-nums">
         Now: {short(now.power)} power and {short(now.knowhow)} know-how a
         second.
+        {lampLockLeft(run) > 0 &&
+          ` The lights are settling: ${Math.ceil(lampLockLeft(run))} s until you can change them.`}
       </p>
     </PanelFrame>
   );

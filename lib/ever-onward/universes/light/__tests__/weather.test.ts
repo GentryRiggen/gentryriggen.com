@@ -18,14 +18,26 @@ import {
   isWeatherOpen,
   outageLeft,
   outageFactor,
+  POST_BUILD,
+  POST_SCHOOL,
+  POST_WATCH,
+  buildMult,
+  crewCount,
+  crewPostActionId,
+  crewsHeaded,
+  crewsPlaced,
+  isThere,
+  postOf,
   readiness,
+  schoolMult,
+  setPost,
   stageSecondsLeft,
   lastStorm,
-  shieldActionId,
-  shieldedCount,
   stormResultLine,
+  travelLeft,
   weatherStage,
 } from "../weather";
+import { TUNING } from "../tuning";
 import { incomePerSecond } from "../tick";
 
 const nightRun = (owned: Record<string, number> = {}): RunState => {
@@ -70,12 +82,26 @@ const readyCrew = (run: RunState, town: number): RunState => {
   const sent = shield(run, town);
   return {
     ...sent,
-    resources: { ...sent.resources, [`wxReady${town}`]: 1 },
+    resources: {
+      ...sent.resources,
+      crewTravel0: 0,
+      [`wxReady${town}`]: 1,
+    },
   };
 };
 
+/** Crew 1 goes on watch at `town` (it spends a while on the road first). */
 const shield = (run: RunState, town: number): RunState =>
-  performAction(def, run, shieldActionId(town));
+  performAction(def, run, crewPostActionId(0, POST_WATCH + town));
+
+/** Crew 1 has arrived but only just. */
+const justThere = (run: RunState, town: number): RunState => {
+  const sent = shield(run, town);
+  return {
+    ...sent,
+    resources: { ...sent.resources, crewTravel0: 0 },
+  };
+};
 
 /** Plays out the forecast; returns the run just after landfall. */
 function toLandfall(run: RunState): RunState {
@@ -167,10 +193,10 @@ describe("the weather desk", () => {
     expect(lastStorm(run).town).toBe(target);
   });
 
-  it("pays a bonus when the storm lands on a ready crew, and half on one just there", () => {
+  it("pays a bonus when the storm lands on a ready crew, and less on one just there", () => {
     const forecast = stormWillHit(toForecast(tick(def, nightRun(), 1)), 0);
     const ready = readyCrew(forecast, 0);
-    expect(shieldedCount(ready)).toBe(1);
+    expect(crewsPlaced(ready)).toBe(1);
     const after = idle(toLandfall(ready), 30);
     const storm = lastStorm(after);
     expect(storm.kind).toBe("held");
@@ -180,12 +206,15 @@ describe("the weather desk", () => {
     expect(stormResultLine(after)).toMatch(
       /The storm hit Rivertown, and your crew was ready: \+/
     );
-    // a crew that arrives in the last moment still earns half
+    // a crew that has only just arrived still earns a share
     let late = forecast;
     while (stageSecondsLeft(late) > 1.5) late = tick(def, late, 1);
-    const rushed = toLandfall(shield(late, 0));
-    expect(lastStorm(rushed).payout).toBeGreaterThan(storm.payout * 0.45);
-    expect(lastStorm(rushed).payout).toBeLessThan(storm.payout * 0.6);
+    const rushed = toLandfall(justThere(late, 0));
+    expect(lastStorm(rushed).payout).toBeGreaterThan(storm.payout * 0.25);
+    expect(lastStorm(rushed).payout).toBeLessThan(storm.payout * 0.4);
+    // one still on the road when it lands has missed it
+    const onTheRoad = toLandfall(shield(late, 0));
+    expect(lastStorm(onTheRoad).kind).toBe("flicker");
     // the bonus flowed into the grid's power: more than the income alone
     const unmet = idle(toLandfall(stormWillHit(forecast, 1)), 30);
     expect(after.resources.power).toBeGreaterThan(unmet.resources.power);
@@ -211,7 +240,7 @@ describe("the weather desk", () => {
       0
     );
     // a crew fixes it fast, and learns from it
-    const fixing = shield(missed, 0);
+    const fixing = justThere(missed, 0);
     const fixed = idle(fixing, 15);
     expect(isOut(fixed, 0)).toBe(false);
     expect(fixed.resources.wxFixes).toBe(1);
@@ -245,7 +274,7 @@ describe("the weather desk", () => {
     expect(lowest).toBeGreaterThanOrEqual(1000);
   });
 
-  it("forms a new storm about every two minutes of play", () => {
+  it("forms a new storm about every two and a half minutes of play", () => {
     let run = tick(def, nightRun(), 1);
     const forecastAt: number[] = [];
     let was = weatherStage(run);
@@ -258,8 +287,8 @@ describe("the weather desk", () => {
     const gaps = forecastAt.slice(1).map((t, i) => t - forecastAt[i]);
     expect(gaps.length).toBeGreaterThan(3);
     for (const gap of gaps) {
-      expect(gap).toBeGreaterThanOrEqual(90);
-      expect(gap).toBeLessThanOrEqual(125);
+      expect(gap).toBeGreaterThanOrEqual(125);
+      expect(gap).toBeLessThanOrEqual(185);
     }
   });
 
@@ -271,32 +300,63 @@ describe("the weather desk", () => {
     );
   });
 
-  it("has one crew, two with storm crews, and moves the one at the least likely town", () => {
-    const one = toForecast(tick(def, nightRun(), 1));
-    const a = shield(shield(one, 0), 1);
-    expect(shieldedCount(a)).toBe(1);
-    expect(a.resources.wxShield1).toBeGreaterThan(0);
-    expect(a.resources.wxShield0).toBe(0);
-
-    const two = toForecast(tick(def, nightRun({ "storm-crews": 1 }), 1));
-    const b = shield(shield(two, 0), 1);
-    expect(shieldedCount(b)).toBe(2);
-    const least = chanceOf(b, 0) <= chanceOf(b, 1) ? 0 : 1;
-    const c = shield(b, 2);
-    expect(shieldedCount(c)).toBe(2);
-    expect(c.resources[`wxShield${least}`]).toBe(0);
-    // tapping a town with a crew calls it back
-    expect(shieldedCount(shield(c, 2))).toBe(1);
+  it("has two crews, three with the third crew, each building, at school or on watch", () => {
+    const two = tick(def, nightRun(), 1);
+    expect(crewCount(two)).toBe(2);
+    expect(crewCount(tick(def, nightRun({ "storm-crews": 1 }), 1))).toBe(3);
+    // every crew starts out building
+    expect([0, 1].map((c) => postOf(two, c))).toEqual([POST_BUILD, POST_BUILD]);
+    expect(buildMult(two)).toBeCloseTo(1 + 2 * TUNING.crews.buildBoost);
+    // a crew at the school learns instead, and stops building
+    const school = performAction(def, two, crewPostActionId(1, POST_SCHOOL));
+    expect(travelLeft(school, 1)).toBe(TUNING.grid.moveSeconds);
+    expect(isThere(school, 1)).toBe(false);
+    // nothing changes while it is on the road
+    expect(buildMult(school)).toBeCloseTo(1 + TUNING.crews.buildBoost);
+    expect(schoolMult(school)).toBe(1);
+    const arrived = idle(school, TUNING.grid.moveSeconds + 1);
+    expect(isThere(arrived, 1)).toBe(true);
+    expect(schoolMult(arrived)).toBeCloseTo(1 + TUNING.crews.schoolBoost);
+    expect(buildMult(arrived)).toBeCloseTo(1 + TUNING.crews.buildBoost);
+    // a crew that is already there cannot be sent there again
+    expect(
+      canPerformAction(def, arrived, crewPostActionId(1, POST_SCHOOL))
+    ).toBe(false);
+    // the third crew is not on the list until it is hired
+    expect(canPerformAction(def, two, crewPostActionId(2, POST_SCHOOL))).toBe(
+      false
+    );
   });
 
-  it("lets a crew go ahead while the storm forms, and it gets ready", () => {
+  it("only opens the watch posts with the weather desk", () => {
+    const nothing = nightRun({ gen2: 1 });
+    const early = tick(
+      def,
+      { ...nothing, owned: { ...nothing.owned, gen1: 3 } },
+      1
+    );
+    expect(isWeatherOpen(early)).toBe(false);
+    setPost(early, 0, POST_WATCH);
+    expect(postOf(early, 0)).toBe(POST_BUILD);
+    const open = tick(def, nightRun(), 1);
+    setPost(open, 0, POST_WATCH + 2);
+    expect(postOf(open, 0)).toBe(POST_WATCH + 2);
+    // an odd post is ignored
+    setPost(open, 1, 99);
+    expect(postOf(open, 1)).toBe(POST_BUILD);
+  });
+
+  it("makes a move a commitment: the crew builds nothing on the road, and starts over there", () => {
     const forming = tick(def, nightRun(), 1);
-    expect(weatherStage(forming)).toBe("forming");
-    expect(canPerformAction(def, forming, shieldActionId(0))).toBe(true);
     const sent = shield(forming, 0);
-    expect(readiness(sent, 0)).toBe(0);
-    expect(readiness(idle(sent, 20), 0)).toBeCloseTo(0.5, 1);
-    expect(readiness(idle(sent, 45), 0)).toBe(1);
+    expect(buildMult(sent)).toBeCloseTo(1 + TUNING.crews.buildBoost);
+    expect(crewsHeaded(sent, 0)).toBe(1);
+    expect(crewsPlaced(sent)).toBe(0);
+    // called away again, it goes back on the road and its readiness resets
+    const there = idle(sent, TUNING.grid.moveSeconds + 20);
+    expect(readiness(there, 0)).toBeGreaterThan(0.2);
+    const away = performAction(def, there, crewPostActionId(0, POST_BUILD));
+    expect(readiness(idle(away, 1), 0)).toBe(0);
   });
 
   it("plays on from a save made mid-forecast before the forecast had steps", () => {
@@ -317,11 +377,14 @@ describe("the weather desk", () => {
     const byVane = toLandfall(sure);
     expect(lastStorm(byVane).kind).toBe("vane");
 
-    const byHand = toLandfall(readyCrew(sure, likeliest));
+    const sentByHand = readyCrew(sure, likeliest);
+    const byHand = toLandfall(sentByHand);
     expect(lastStorm(byHand).kind).toBe("held");
-    expect(lastStorm(byVane).payout).toBeCloseTo(
-      lastStorm(byHand).payout * 0.6,
-      5
+    // the same share of a minute of the income each had at the time (a crew
+    // on watch is not building, so its income is a little lower)
+    expect(lastStorm(byVane).payout / incomePerSecond(sure)).toBeCloseTo(
+      (lastStorm(byHand).payout / incomePerSecond(sentByHand)) * 0.6,
+      2
     );
     // without the vane an untended storm just flickers
     const noVane = toLandfall(
@@ -335,16 +398,16 @@ describe("the weather desk", () => {
     expect(lastStorm(mixed).kind).toBe("vane");
   });
 
-  it("sizes the bonus at about 45 seconds of income", () => {
+  it("sizes the bonus at about a minute of income", () => {
     const forecast = stormWillHit(toForecast(tick(def, nightRun(), 1)), 0);
     const after = toLandfall(readyCrew(forecast, 0));
     const seconds = lastStorm(after).payout / incomePerSecond(forecast);
-    expect(seconds).toBeGreaterThan(30);
-    expect(seconds).toBeLessThan(60);
+    expect(seconds).toBeGreaterThan(45);
+    expect(seconds).toBeLessThan(75);
   });
 
   it("survives a save round trip, mid-forecast", () => {
-    const forecast = shield(toForecast(tick(def, nightRun(), 1)), 1);
+    const forecast = justThere(toForecast(tick(def, nightRun(), 1)), 1);
     const save = newSave();
     save.universes.light = {
       run: forecast,
@@ -356,7 +419,7 @@ describe("the weather desk", () => {
     const parsed = parseSave(JSON.parse(JSON.stringify(save)));
     const loaded = reconcileRun(def, parsed!.universes.light.run);
     expect(weatherStage(loaded)).toBe("forecast");
-    expect(shieldedCount(loaded)).toBe(1);
+    expect(crewsPlaced(loaded)).toBe(1);
     expect([0, 1, 2].map((t) => chanceOf(loaded, t))).toEqual(
       [0, 1, 2].map((t) => chanceOf(forecast, t))
     );

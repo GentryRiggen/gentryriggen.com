@@ -1,18 +1,16 @@
 "use client";
 
-import { memo, useMemo } from "react";
-import { canPerformAction } from "@/lib/ever-onward/engine/engine";
+import { memo } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
 import type { RunState, UniverseDef } from "@/lib/ever-onward/engine/types";
 import {
   TOWNS,
   chanceOf,
-  crewActionId,
   crewCount,
-  crewThatMoves,
+  crewsAt,
+  crewsHeaded,
   crewsPlaced,
   forecastStep,
-  hasCrew,
   hasWeatherVane,
   isOut,
   lastStorm,
@@ -26,12 +24,12 @@ import {
   weatherStage,
 } from "@/lib/ever-onward/universes/light/weather";
 import PanelFrame from "./retro/PanelFrame";
-import { pixelClass, retroFocusClass } from "./retro/retroStyles";
+import { pixelClass } from "./retro/retroStyles";
 
 interface WeatherDeskProps {
-  def: UniverseDef;
+  def?: UniverseDef;
   run: RunState;
-  onAct: (id: string) => void;
+  onAct?: (id: string) => void;
 }
 
 const SEGMENTS = 20;
@@ -153,51 +151,39 @@ function CrewArt({ isReady }: { isReady: boolean }) {
 interface TownCardProps {
   run: RunState;
   town: number;
-  /** The crew that moves if one is sent here (null: a free crew goes). */
-  mover: number | null;
-  onSend: () => void;
-  isDoable: boolean;
 }
 
-function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
+/** One town: the storm's chance, who is watching it, and its lights. */
+function TownCard({ run, town }: TownCardProps) {
   const name = TOWNS[town];
   const isForecast = weatherStage(run) === "forecast";
   const chance = chanceOf(run, town);
-  const isHere = hasCrew(run, town);
+  const here = crewsAt(run, town);
+  const headed = crewsHeaded(run, town);
   const ready = readiness(run, town);
   const isDark = isOut(run, town);
   const isLikely = isForecast && chance >= 40;
   const frame = isDark
     ? "border-slate-500 bg-slate-950 shadow-[3px_3px_0_#0f172a]"
-    : isHere
+    : here > 0
       ? "border-emerald-300 bg-emerald-950/70 shadow-[3px_3px_0_#064e3b]"
-      : "border-sky-400 bg-slate-900/80 shadow-[3px_3px_0_#0c4a6e] hover:bg-slate-800/80 active:translate-y-0.5 active:shadow-none";
-  const action = isHere
-    ? "Call back"
-    : mover !== null
-      ? `Move crew here`
-      : "Send a crew";
+      : "border-sky-400 bg-slate-900/80 shadow-[3px_3px_0_#0c4a6e]";
   const details = [
     isForecast ? `${chance}% chance of the storm` : null,
     isDark ? "its lights are out" : null,
-    isHere ? `crew ${Math.round(ready * 100)}% ready` : null,
-    mover !== null ? `moves the crew from ${TOWNS[mover]}` : null,
+    here > 0 ? `crew ${Math.round(ready * 100)}% ready` : null,
+    headed > here ? "a crew is on the road" : null,
   ]
     .filter(Boolean)
     .join(", ");
   return (
-    <button
-      type="button"
+    <div
       data-testid={`lm-town-${town}`}
       data-dark={isDark}
-      aria-pressed={isHere}
-      aria-label={`Crew at ${name}`}
+      role="group"
+      aria-label={name}
       aria-describedby={`lm-town-${town}-about`}
-      aria-disabled={!isDoable}
-      onClick={() => {
-        if (isDoable) onSend();
-      }}
-      className={`flex min-h-56 min-w-0 touch-manipulation flex-col items-center justify-between gap-1.5 border-4 p-2 text-center transition-transform ${retroFocusClass} ${frame}`}
+      className={`flex min-h-44 min-w-0 flex-col items-center justify-between gap-1.5 border-4 p-2 text-center ${frame}`}
     >
       <span id={`lm-town-${town}-about`} className="sr-only">
         {details}
@@ -208,8 +194,8 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
       <span className={isDark ? "opacity-40 grayscale" : ""}>
         <TownArt town={town} />
       </span>
-      {/* A fixed-height slot, so the cards (and their buttons) stay the
-          same size whatever the storm is doing. */}
+      {/* A fixed-height slot, so the cards stay the same size whatever the
+          storm is doing. */}
       <span className="flex h-12 w-full flex-col items-center justify-center gap-1">
         {isForecast ? (
           <>
@@ -236,7 +222,7 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
         {isDark && <>Lights out {clock(outageSecondsLeft(run, town))}</>}
       </span>
       <span className="flex min-h-6 w-full items-center gap-1">
-        {isHere ? (
+        {here > 0 ? (
           <>
             <CrewArt isReady={ready >= 1} />
             <Segments
@@ -247,20 +233,11 @@ function TownCard({ run, town, mover, onSend, isDoable }: TownCardProps) {
           </>
         ) : (
           <span className="w-full font-mono text-[10px] text-slate-400">
-            no crew
+            {headed > 0 ? "crew on the road" : "no crew"}
           </span>
         )}
       </span>
-      <span
-        className={`${pixelClass} flex min-h-12 w-full items-center justify-center border-2 px-1 py-2 text-[10px] leading-tight ${
-          isHere
-            ? "border-emerald-300 bg-emerald-400 text-emerald-950"
-            : "border-sky-300 bg-sky-950 text-sky-100"
-        }`}
-      >
-        {action}
-      </span>
-    </button>
+    </div>
   );
 }
 
@@ -332,18 +309,8 @@ function StormTrack({ run }: { run: RunState }) {
  * both choices. A town hit with no crew goes dark for a while (a crew fixes
  * it fast); nothing is ever lost or missed.
  */
-function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
+function WeatherDesk({ run }: WeatherDeskProps) {
   const stage = weatherStage(run);
-  // Which crew a tap would move only changes when a crew or a chance does.
-  const moverKey = [
-    crewCount(run),
-    ...TOWNS.map((_, t) => `${hasCrew(run, t) ? 1 : 0}:${chanceOf(run, t)}`),
-  ].join("|");
-  const movers = useMemo(
-    () => TOWNS.map((_, t) => crewThatMoves(run, t)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on what it reads
-    [moverKey]
-  );
   if (stage === "closed" || run.complete) return null;
 
   const isForecast = stage === "forecast";
@@ -419,27 +386,18 @@ function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
 
       <div className="grid grid-cols-3 gap-2">
         {TOWNS.map((_, town) => (
-          <TownCard
-            key={town}
-            run={run}
-            town={town}
-            mover={movers[town]}
-            isDoable={canPerformAction(def, run, crewActionId(town))}
-            onSend={() => onAct(crewActionId(town))}
-          />
+          <TownCard key={town} run={run} town={town} />
         ))}
       </div>
 
       <p className="font-mono text-sm text-sky-50">
         {isForecast
           ? step < FORECAST_STEPS
-            ? "The storm's path gets surer each step. Move a crew now on a guess, or wait for a surer forecast: a crew needs time to get ready."
+            ? "The storm's path gets surer each step. Put a crew on a town now on a guess, or wait for a surer forecast: a crew needs time to get ready."
             : "Last forecast: this is about where it lands."
-          : `A storm is forming out at sea. You can send ${
-              crews === 1 ? "your crew" : "your crews"
-            } ahead. A crew takes about ${Math.round(
+          : `A storm is forming out at sea. Post a crew on a town ahead of it in the Crews panel. A crew on watch takes about ${Math.round(
               readySeconds(run)
-            )} seconds to get ready.`}
+            )} seconds to get ready once it is there.`}
       </p>
 
       <div className="space-y-1.5">
@@ -461,10 +419,10 @@ function WeatherDesk({ def, run, onAct }: WeatherDeskProps) {
       </div>
 
       <p className="font-mono text-xs text-slate-300">
-        Crews out: {placed} of {crews}. They stay where you put them, so move
-        one only when the forecast says so. A town with no crew goes dark for a
-        while when a storm hits: it costs a little power until a crew, or time,
-        puts it right.
+        Crews on watch: {placed} of {crews}. They stay where you put them, and a
+        crew on watch builds nothing. A town with no crew goes dark for a while
+        when a storm hits: it costs a little power until a crew, or time, puts
+        it right.
         {hasWeatherVane(run) &&
           ` The weather vane also watches ${vaneTown} for you, for 60% of the bonus.`}
       </p>

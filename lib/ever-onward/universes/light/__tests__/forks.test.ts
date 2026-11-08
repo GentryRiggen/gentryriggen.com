@@ -18,6 +18,7 @@ import {
   type ForkDef,
 } from "../forks";
 import { hasFork, windRamp } from "../forkState";
+import { rushExcessAt } from "../grid";
 import { sceneInfo } from "..";
 import {
   autoFlashRate,
@@ -28,7 +29,6 @@ import {
   powerPerSecond,
   resolvePerSecond,
   shipsPerFlash,
-  strainPerSecond,
   supplyMW,
   tankCapacity,
 } from "../tick";
@@ -156,14 +156,14 @@ describe("the forks in the road", () => {
     expect(tankCapacity(crews)).toBeGreaterThan(0);
   });
 
-  it("night: coal pays at once and strains the grid; wind grows in and eases it", () => {
+  it("night: coal pays at once and makes the evening rush bigger; wind grows in and eases it", () => {
     const fork = forkNamed("night");
     const run = runAt(fork);
     const coal = performAction(def, run, forkActionId("coal"));
     expect(powerPerSecond(coal)).toBeGreaterThan(powerPerSecond(run) * 1.4);
-    // More supply also works the grid harder, so at least this much more.
-    expect(strainPerSecond(coal)).toBeGreaterThanOrEqual(
-      strainPerSecond(run) * K.night.coalStrain - 1e-9
+    expect(rushExcessAt(coal, 1, 1)).toBeCloseTo(
+      rushExcessAt(run, 1, 1) * K.night.coalPeak,
+      9
     );
     let wind = performAction(def, run, forkActionId("wind"));
     // Nothing at first: it takes a while to build.
@@ -178,7 +178,7 @@ describe("the forks in the road", () => {
     expect(windRamp(wind)).toBe(1);
     expect(powerPerSecond(wind)).toBeGreaterThan(half);
     expect(supplyMW(wind)).toBeGreaterThan(supplyMW(coal));
-    expect(strainPerSecond(wind)).toBeLessThan(strainPerSecond(run));
+    expect(rushExcessAt(wind, 1, 1)).toBeLessThan(rushExcessAt(run, 1, 1));
     expect(sceneInfo(wind).windBuilt).toBe(1);
     expect(K.costs.wind).toBeGreaterThan(K.costs.coal * 2);
   });

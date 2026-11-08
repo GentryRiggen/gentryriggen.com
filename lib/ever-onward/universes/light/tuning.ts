@@ -44,12 +44,12 @@ export const TUNING = {
       crewsOil: 1.3,
     },
     night: {
-      /** Coal: every plant makes this much more at once, and the grid strains more. */
+      /** Coal: every plant makes this much more at once, and the evening rush is bigger. */
       coalSupply: 1.8,
-      coalStrain: 1.6,
-      /** Wind: slow to build, then this much more, and the grid strains less. */
+      coalPeak: 1.35,
+      /** Wind: slow to build, then this much more, and the evening rush is smaller. */
       windSupply: 2.6,
-      windStrain: 0.7,
+      windPeak: 0.75,
       windRampSeconds: 150,
     },
     sky: {
@@ -88,6 +88,8 @@ export const TUNING = {
     crank: 2.9,
     gen1: 2.9,
     gen2: 2.9,
+    "batt-1": 2.9,
+    "batt-2": 2.9,
     // The sky's first steps: the mirror, the first probe and the first copying
     // (the gate to the rest of the chain).
     "mirror-1": 3,
@@ -282,29 +284,63 @@ export const TUNING = {
     /** Each substation carries this much more of every plant's power. */
     substationBonus: 1.5,
     bulbSaving: 0.66,
-    /** The grid: cities dim (never to zero) when it is left strained. */
-    gridFloor: 0.6,
-    /**
-     * Steady glow: while the grid is at least this steady the cities sparkle
-     * and pay this much more. A bonus for looking after it, not a tax.
-     */
-    glowAt: 75,
-    glowBonus: 0.15,
-    /** Steadiness lost per second (percent): a base plus more as the grid works harder. */
-    strainBase: 0.2,
-    strainPerLoad: 0.4,
-    /** Load balancer halves the strain; smart grid fixes itself below this. */
-    balancerSaving: 0.5,
-    autoBalanceBelow: 55,
-    autoBalanceTo: 90,
-    /** The grid is worth a button once this much power is made (MW). */
+    /** The grid (see grid.ts) opens once this much power is made (MW). */
     gridVisibleSupplyMW: 16,
-    /** Evening rush: a claimable bonus that waits until it is claimed. */
-    rushGapMin: 100,
-    rushGapSpread: 100,
-    rushFirst: 90,
-    /** Seconds of income the rush pays when claimed. */
-    rushBonusSeconds: 25,
+  },
+  /**
+   * The grid: plants, power lines and batteries have to stay in step. A day
+   * is `daySeconds` long; at dusk everybody switches on and the evening rush
+   * wants more than the plants make. Batteries soak up spare power by day
+   * and carry the rush; power lines limit how fast they can. Short of that,
+   * districts snap dark for a little while. See grid.ts.
+   */
+  grid: {
+    daySeconds: 120,
+    /** The clock starts here when the grid opens (the first rush is near). */
+    firstClock: 40,
+    /** Seconds into the day the sun goes down, the rush starts and its length. */
+    duskAt: 62,
+    rushAt: 78,
+    rushSeconds: 24,
+    /** How much more than usual the rush wants, drawn each evening, and how likely. */
+    excess: [0.12, 0.25, 0.4, 0.6] as readonly number[],
+    odds: [0.2, 0.35, 0.3, 0.15] as readonly number[],
+    /** The first evenings are gentle: mild, then usual. */
+    gentleEvenings: 2,
+    /** While the batteries are not full, this share of the plants' power goes into them. */
+    chargeShare: 0.22,
+    /** Share of the power that goes into a battery that comes back out. */
+    efficiency: 0.8,
+    /**
+     * What the batteries hold, in MW-seconds, with 1 to 8 steps of the
+     * battery chain bought: each step holds about 2.7 times the one before,
+     * so the bank keeps up with plants that grow by tens.
+     */
+    batteryHolds: [
+      100, 270, 730, 1970, 5310, 14350, 38740, 104600,
+    ] as readonly number[],
+    /** Batteries keep this share back at the rush, so they never run to nothing. */
+    reserveShare: 0.04,
+    /** The lines let the batteries give back this much of the plants' power, and more per line. */
+    rateBase: 0.25,
+    ratePerLine: 0.15,
+    /** Districts that can go dark, and how long they take to come back on. */
+    districts: 10,
+    recoverySeconds: 24,
+    /** Surviving the rush pays this many seconds of income, and know-how. */
+    litSeconds: 40,
+    litKnowhow: 2,
+    /** The banners last this long. */
+    bannerSeconds: 6,
+    /** A change of streetlights (or a crew's move) takes this long. */
+    lampLockSeconds: 8,
+    /** Crews: how long a move to a new post takes. */
+    moveSeconds: 9,
+    /** Co-op and rush pricing make the rush this much bigger. */
+    coopPeak: 1.12,
+    pricingPeak: 1.1,
+    /** Overdrive: the rush is this much bigger, and nothing charges. */
+    hotPeak: 1.25,
   },
   /** Know-how and the night's projects (see projects.ts). */
   projects: {
@@ -312,27 +348,21 @@ export const TUNING = {
     knowhowPerPlant: 0.028,
     /** Night school: know-how comes this much faster. */
     schoolBoost: 1.5,
-    /** Know-how for balancing an uneasy grid by hand (line patrols: less). */
-    perBalance: 3,
-    patrolBalance: 1,
-    /** Know-how for riding an evening rush. */
-    perRush: 2,
     /** Smart meters: cities pay more, towns want more. */
     meterPay: 1.2,
     meterDemand: 1.05,
-    /** Lamplighters: towns want less, the steady glow pays less. */
+    /** Lamplighters: towns want less, a lit night pays less. */
     lampDemand: 0.94,
-    lampGlowBonus: 0.08,
-    /** Line patrols: the grid strains slower. */
-    patrolStrain: 0.7,
-    /** Rush-hour pricing: a bigger rush, a little less often. */
+    lampLitPay: 0.8,
+    /** Line patrols: the lines carry the batteries' power this much faster; school crews learn less. */
+    patrolRate: 1.35,
+    patrolSchool: 0.7,
+    /** Rush-hour pricing: a lit night pays more, the rush is a little bigger. */
     rushPay: 1.5,
-    rushGap: 1.25,
     /** Fish ladders: every dam makes more. */
     ladderBoost: 1.4,
-    /** The power co-op: steam plants make more, the grid strains more. */
+    /** The power co-op: steam plants make more, the evening rush is bigger. */
     coopBoost: 1.25,
-    coopStrain: 1.15,
     /** Wind maps: every wind and sun farm makes more. */
     windBoost: 1.25,
     /** The sky's projects (see projects.ts), paid in know-how too. */
@@ -378,25 +408,38 @@ export const TUNING = {
   },
   /**
    * The streetlights (No More Night's knob): how bright the cities shine.
-   * Brighter pays more per megawatt, but the grid works harder, every city
-   * wants a little more and the busy crews learn less. Softer pays less but
+   * Brighter pays more per megawatt, but the evening rush hits harder, every
+   * city wants a little more and the busy crews learn less. Softer pays less but
    * eases the grid, lights more towns with the same power, and gives the
    * crews quiet time to learn (know-how). "Bright" is how the night always
    * played.
    */
   lamps: {
     steps: [
-      { pay: 0.9, demand: 0.88, strain: 0.7, knowhow: 2 },
-      { pay: 0.95, demand: 0.94, strain: 0.85, knowhow: 1.4 },
-      { pay: 1, demand: 1, strain: 1, knowhow: 1 },
-      { pay: 1.3, demand: 1.06, strain: 1.3, knowhow: 0.5 },
+      { pay: 0.8, demand: 0.88, peak: 0.5, knowhow: 2 },
+      { pay: 0.9, demand: 0.94, peak: 0.75, knowhow: 1.4 },
+      { pay: 1, demand: 1, peak: 1, knowhow: 1 },
+      { pay: 1.25, demand: 1.06, peak: 1.5, knowhow: 0.5 },
     ] as readonly {
       pay: number;
       demand: number;
-      strain: number;
+      peak: number;
       knowhow: number;
     }[],
     defaultStep: 2,
+  },
+  /**
+   * The crews (see weather.ts): each one is building, learning at the
+   * school, or watching a town for the storm. A crew that moves to a new post
+   * spends `grid.moveSeconds` on the road first.
+   */
+  crews: {
+    /** Crews to start with; the storm-crews buy adds one. */
+    base: 2,
+    /** Each building crew adds this share to the power cities pay. */
+    buildBoost: 0.1,
+    /** Each crew at the school adds this share to the know-how a second. */
+    schoolBoost: 0.6,
   },
   /** The Weather Desk, a side machine of No More Night (see weather.ts). */
   weather: {
@@ -405,8 +448,8 @@ export const TUNING = {
     /** Seconds after it opens until the first front forms. */
     firstFormSeconds: 40,
     /** Seconds a front takes to form. */
-    formMin: 35,
-    formSpread: 25,
+    formMin: 70,
+    formSpread: 50,
     /** The forecast comes in steps, the storm's path firming up each time. */
     forecastSteps: 3,
     stepSeconds: 20,
@@ -420,13 +463,13 @@ export const TUNING = {
     /** Each town is at least this likely; the rest is shared out at random. */
     minChance: 5,
     /** Chances are drawn as random ** skew, so one town is usually likely. */
-    skew: 2,
+    skew: 1.3,
     /** Seconds of income a storm pays when it lands on a ready crew. */
-    bonusSeconds: 45,
+    bonusSeconds: 60,
     /** A crew that has only just arrived earns this share of the bonus. */
-    unreadyShare: 0.5,
+    unreadyShare: 0.3,
     /** Seconds a crew takes to get ready, and to fix a dark town. */
-    readySeconds: 40,
+    readySeconds: 60,
     fixSeconds: 12,
     /** Spare parts: crews get ready and fix in this share of the time. */
     sparePartsFactor: 0.5,

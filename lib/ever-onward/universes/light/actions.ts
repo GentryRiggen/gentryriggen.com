@@ -13,19 +13,10 @@ import {
   isCourseAuto,
   isCourseInPlay,
   isFlareOn,
-  gridFactor,
-  gridSteadiness,
-  isGridAuto,
-  isGridGlowing,
   isFleetGlowing,
-  isGridInPlay,
   isOilCheap,
   isOilDear,
-  isRushOn,
   nextFlareIn,
-  nextRushIn,
-  rushBonus,
-  balanceKnowhow,
   tankCapacity,
   isBeamOpen,
   calmSkyIncomePerSecond,
@@ -35,15 +26,18 @@ import { TUNING } from "./tuning";
 import { LAMP_ACTIONS } from "./lamps";
 import { BEAM_ACTIONS } from "./beam";
 import {
+  MAX_CREWS,
+  POST_COUNT,
   TOWNS,
-  chanceOf,
-  crewActionId,
+  POST_BUILD,
+  POST_SCHOOL,
+  POST_WATCH,
   crewCount,
-  hasCrew,
-  hasWeatherVane,
+  crewPostActionId,
+  isCrewsOpen,
   isWeatherOpen,
-  toggleCrew,
-  weatherStage,
+  postOf,
+  setPost,
 } from "./weather";
 import { TOLL_ACTIONS } from "./toll";
 import { noteBuy } from "./tanker";
@@ -141,61 +135,6 @@ const BUY_OIL: ActionDef = {
     const wasDark = run.resources.oil <= 0;
     run.resources.oil += paid / Math.max(run.resources.oilPrice, 0.01);
     noteBuy(run, wasDark);
-  },
-};
-
-/** Steadiness at or above this has nothing to fix. */
-const GRID_STEADY = 75;
-
-/** The grid strains as cities light; a free fix, whenever you like. */
-const BALANCE_GRID: ActionDef = {
-  id: "balance-grid",
-  phases: [PHASE_NIGHT],
-  visibleWhen: (run) => isGridInPlay(run) && !isGridAuto(run),
-  describe: (run) => {
-    const steadiness = gridSteadiness(run);
-    const pays = Math.round(gridFactor(run) * 100);
-    const tone = steadiness < 50 ? "bad" : steadiness < 80 ? "neutral" : "good";
-    const text =
-      steadiness < 50 ? "dimming" : steadiness < 80 ? "uneasy" : "steady";
-    return {
-      label:
-        steadiness >= GRID_STEADY
-          ? "The grid is steady and glowing"
-          : "Balance the grid",
-      detail: `Steadiness ${Math.floor(steadiness)}% · cities pay ${pays}%${
-        isGridGlowing(run) ? " (steady glow +15%)" : ""
-      }${isRushOn(run) ? " · rush hour is waiting" : ""}`,
-      isBlocked: steadiness >= GRID_STEADY,
-      hint: { text, tone },
-      trendResource: "grid",
-    };
-  },
-  perform: (run) => {
-    run.resources.grid = 100;
-    run.resources.knowhow = (run.resources.knowhow ?? 0) + balanceKnowhow(run);
-  },
-};
-
-/** A claimable bonus while the evening rush is on; claiming it never costs. */
-const RIDE_RUSH: ActionDef = {
-  id: "ride-rush",
-  phases: [PHASE_NIGHT],
-  visibleWhen: (run) => isRushOn(run),
-  describe: (run) => ({
-    label: "Ride the evening rush",
-    detail: `Everyone is switching on at once, and it will wait for you: +${formatNumber(
-      Math.floor(rushBonus(run))
-    )} power`,
-    hint: { text: "bonus", tone: "good" },
-  }),
-  perform: (run) => {
-    run.resources.power += rushBonus(run);
-    run.resources.knowhow =
-      (run.resources.knowhow ?? 0) + TUNING.projects.perRush;
-    run.resources.rushRides = (run.resources.rushRides ?? 0) + 1;
-    run.resources.rush = 0;
-    run.resources.rushCooldown = nextRushIn(run);
   },
 };
 
@@ -303,31 +242,37 @@ const FLASH_LAMP: ActionDef = {
   },
 };
 
-/** One crew button per town; the weather desk draws them itself. */
-const SEND_CREW: readonly ActionDef[] = TOWNS.map((name, town) => ({
-  id: crewActionId(town),
-  phases: [PHASE_NIGHT],
-  isInline: true,
-  visibleWhen: isWeatherOpen,
-  describe: (run) => {
-    const isHere = hasCrew(run, town);
-    const crews = crewCount(run);
-    const chance =
-      weatherStage(run) === "forecast"
-        ? `${chanceOf(run, town)}% chance the storm lands here · `
-        : "";
-    return {
-      label: isHere
-        ? `Call the crew back from ${name}`
-        : `Send a crew to ${name}`,
-      detail: `${chance}${crews} ${crews === 1 ? "crew" : "crews"}${
-        hasWeatherVane(run) ? " · the weather vane covers you" : ""
-      }`,
-      hint: isHere ? { text: "crew here", tone: "good" as const } : undefined,
-    };
-  },
-  perform: (run) => toggleCrew(run, town),
-}));
+/** Where a post is, in words. */
+const postName = (post: number): string =>
+  post === POST_BUILD
+    ? "building"
+    : post === POST_SCHOOL
+      ? "the school"
+      : `${TOWNS[post - POST_WATCH]} on storm watch`;
+
+/** One button per crew and post; the crews panel draws them itself. */
+const CREW_POSTS: readonly ActionDef[] = Array.from(
+  { length: MAX_CREWS },
+  (_, crew) =>
+    Array.from({ length: POST_COUNT }, (_, post): ActionDef => ({
+      id: crewPostActionId(crew, post),
+      phases: [PHASE_NIGHT],
+      isInline: true,
+      visibleWhen: (run) =>
+        isCrewsOpen(run) &&
+        crew < crewCount(run) &&
+        (post < POST_WATCH || isWeatherOpen(run)),
+      describe: (run) => ({
+        label: `Crew ${crew + 1}: ${postName(post)}`,
+        detail:
+          postOf(run, crew) === post
+            ? "Already there."
+            : "It spends a little while on the road first.",
+        isBlocked: postOf(run, crew) === post,
+      }),
+      perform: (run) => setPost(run, crew, post),
+    }))
+).flat();
 
 /** One launch button per route; the race panel draws them itself. */
 const LAUNCH_ROUTE: readonly ActionDef[] = ROUTES.map((route, index) => ({
@@ -390,8 +335,9 @@ const PICK_BLOOMS: ActionDef = {
 };
 
 /**
- * The second thing know-how buys: a minute of everything paying double, with
- * the grid (or the fleet) slipping faster. Steady all minute, half comes back.
+ * The second thing know-how buys: a minute of everything paying double. At
+ * night nothing charges the batteries and the evening rush is bigger; in the
+ * sky the fleet slips faster. Steady all minute, half comes back.
  */
 const OVERDRIVE: ActionDef = {
   id: OVERDRIVE_ACTION,
@@ -400,7 +346,6 @@ const OVERDRIVE: ActionDef = {
   describe: (run) => {
     const O = TUNING.overdrive;
     const isNight = run.phase === 1;
-    const thing = isNight ? "grid" : "fleet";
     if (isOverdriveOn(run)) {
       const isSteady = isOverdriveSteady(run);
       return {
@@ -410,7 +355,9 @@ const OVERDRIVE: ActionDef = {
         detail: `${Math.ceil(overdriveSecondsLeft(run))} s left · ${
           isSteady
             ? `steady so far: half your know-how comes back`
-            : `the ${thing} slipped: no know-how comes back`
+            : isNight
+              ? "a district went dark: no know-how comes back"
+              : "the fleet slipped: no know-how comes back"
         }`,
         isBlocked: true,
         hint: isSteady
@@ -421,7 +368,11 @@ const OVERDRIVE: ActionDef = {
     const last = lastOverdrive(run);
     return {
       label: isNight ? "Run the plants hot" : "Full burn",
-      detail: `${last === 1 ? "Last run held steady. " : last === 2 ? "Last run slipped. " : ""}Everything pays ${O.boost}× for ${O.seconds} s, but the ${thing} slips ${O.strain}× as fast. Keep it above ${O.cleanAbove}% and half the know-how comes back.`,
+      detail: `${last === 1 ? "Last run held steady. " : last === 2 ? "Last run slipped. " : ""}Everything pays ${O.boost}× for ${O.seconds} s, ${
+        isNight
+          ? `but nothing charges the batteries and the evening rush is ${Math.round((TUNING.grid.hotPeak - 1) * 100)}% bigger. Keep every district lit all minute and half the know-how comes back.`
+          : `but the fleet slips ${O.strain}× as fast. Keep it above ${O.cleanAbove}% and half the know-how comes back.`
+      }`,
       cost: { resource: "knowhow", amount: overdriveCost(run) },
     };
   },
@@ -474,13 +425,11 @@ export const ACTIONS: readonly ActionDef[] = [
   ...FUND_IN,
   FUND_OUT,
   BUY_OIL,
-  BALANCE_GRID,
-  RIDE_RUSH,
   CORRECT_COURSE,
   CATCH_FLARE,
   STEER_BOAT,
   FLASH_LAMP,
-  ...SEND_CREW,
+  ...CREW_POSTS,
   ...LAUNCH_ROUTE,
   WATER_GARDEN,
   PICK_BLOOMS,

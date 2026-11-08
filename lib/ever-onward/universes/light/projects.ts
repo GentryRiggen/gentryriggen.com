@@ -7,14 +7,13 @@ import {
   demandMW,
   driftPerSecond,
   flareBonus,
-  glowBonus,
   knowhowPerSecond,
+  incomePerSecond,
   powerPerSecond,
   probeEnergyPerSecond,
-  rushBonus,
-  strainPerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
+import { litBonus, litNights, rushCarry, rushExcessAt } from "./grid";
 import {
   BAROMETERS_ID,
   SPARE_PARTS_ID,
@@ -74,15 +73,16 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     id: "line-patrols",
     phase: PHASE_NIGHT,
     name: "Line patrols",
-    description: "Crews walk the lines at dusk. The grid strains 30% slower.",
-    tradeOff: `Balancing by hand teaches less: +${P.patrolBalance} know-how, not +${P.perBalance}.`,
+    description:
+      "Crews walk the lines at dusk. The lines carry the batteries' power 35% faster.",
+    tradeOff: `Patrols keep the crews busy: the school teaches ${pct(1 - P.patrolSchool)} less.`,
     costs: cost(70, 1500),
     revealWhen: (run) => owned(run, "gen2") >= 2,
     effectPreview: projectPreviewOf("line-patrols", [
       {
-        label: "Grid strain",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "Batteries can give at once",
+        read: rushCarry,
+        suffix: " MW",
       },
     ]),
     botValue: 0.15,
@@ -109,12 +109,15 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_NIGHT,
     name: "Rush-hour pricing",
     description:
-      "Power costs a bit more at rush hour. Every rush pays 50% more.",
-    tradeOff: "The rush comes a quarter less often.",
+      "Power costs a bit more at rush hour. Every night you keep lit pays 50% more.",
+    tradeOff: "The evening rush asks 10% more of the batteries.",
     costs: cost(90),
-    revealWhen: (run) => (run.resources.rushRides ?? 0) >= 3,
+    revealWhen: (run) => litNights(run) >= 3,
     effectPreview: projectPreviewOf("rush-pricing", [
-      { label: "A rush pays", read: rushBonus },
+      {
+        label: "A lit night pays",
+        read: (run) => litBonus(run, incomePerSecond(run)),
+      },
     ]),
     botValue: 0.1,
   },
@@ -124,15 +127,14 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     name: "Town lamplighters",
     description:
       "Neighbours switch off what nobody needs. Towns want 6% less power, so more of them light up.",
-    tradeOff: `The steady glow pays +${pct(P.lampGlowBonus)}, not +${pct(TUNING.night.glowBonus)}.`,
+    tradeOff: `Less to switch on at night: a lit night pays ${pct(1 - P.lampLitPay)} less.`,
     costs: cost(120),
     revealWhen: (run) => owned(run, "gen2") >= 5,
     effectPreview: projectPreviewOf("lamplighters", [
       { label: "Power demand", read: demandMW, suffix: " MW" },
       {
-        label: "Steady-grid bonus",
-        read: glowBonus,
-        format: (v) => `+${pct(v)}`,
+        label: "A lit night pays",
+        read: (run) => litBonus(run, incomePerSecond(run)),
       },
     ]),
     botValue: 0.15,
@@ -142,16 +144,16 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_NIGHT,
     name: "Power co-op",
     description: "The steam plants share their coal. Each one makes 25% more.",
-    tradeOff: "The grid strains 15% faster.",
+    tradeOff: "The evening rush asks 12% more of the batteries.",
     costs: cost(190),
     // Every steam plant built, the dam still a way off: something to do.
     revealWhen: (run) => owned(run, "gen2") >= 7,
     effectPreview: projectPreviewOf("co-op", [
       POWER_PER_SECOND,
       {
-        label: "Grid strain",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "A usual evening rush",
+        read: (run) => rushExcessAt(run, 1, 1) * 100,
+        suffix: "% extra",
       },
     ]),
   },

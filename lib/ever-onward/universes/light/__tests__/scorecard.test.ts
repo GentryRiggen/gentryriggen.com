@@ -41,9 +41,14 @@ const GATE_CAP = 59;
  * fewer, bigger keeper steps and the tide clock gone) scored 76.6 uncapped,
  * up from 73.6, and the Coast now passes every gate it used to trip (M1, M4,
  * M5, M15): 14 keepers instead of 40 cut its buys from 63 to 40, and the
- * dials' clicks a minute stay under 3.3. The floor is that score minus 1.
+ * dials' clicks a minute stay under 3.3.
+ *
+ * No More Night's grid and crews (batteries and the evening rush, the crews'
+ * posts, the streetlights as a dial) scored 76.7 uncapped: the same total,
+ * with the night's chores, tension and decisions all in their bands (the
+ * night is 21 minutes, up from 19). The floor is that score minus 1.
  */
-const UNCAPPED_FLOOR = 75.6;
+const UNCAPPED_FLOOR = 75.7;
 /** Gates knowingly failing; no other gate may fail. */
 const KNOWN_REWORK_GATES: readonly string[] = [
   // The whole run is about 1.3 h; later parts add the length (the band is 2-3 h).

@@ -114,6 +114,44 @@ test.describe("Ever Onward", () => {
     );
   });
 
+  test("the night's grid and crews show in the panels and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-jump-light-1-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 60_000,
+    });
+    // The grid panel: the day, tonight's rush and what carries it. It shows
+    // the numbers and never says which streetlights to pick.
+    const grid = page.getByTestId("lm-grid");
+    await expect(grid).toBeVisible();
+    await expect(grid.getByTestId("lm-day-strip")).toBeAttached();
+    await expect(grid.getByTestId("lm-grid-tonight")).toContainText(/evening/);
+    await expect(grid.getByTestId("lm-grid-batteries")).toBeVisible();
+    await expect(grid).not.toContainText(/best|recommend/i);
+    // The crews: each on a post; a tap sends one, and it spends time on the road.
+    const crews = page.getByTestId("lm-crews");
+    await expect(crews).toBeVisible();
+    // The test mode's player has already posted its crews; send crew 2 to
+    // whichever of building and the school it is not at.
+    const crew = page.getByTestId("lm-crew-1");
+    const at = await crew.getAttribute("data-post");
+    const other = at === "0" ? 1 : 0;
+    await crews.getByTestId(`lm-crew-1-post-${other}`).click();
+    await expect(crew).toHaveAttribute("data-moving", "true");
+    await expect(crew).toHaveAttribute("data-post", String(other));
+    // The picture: the sky's clock, the battery bank and the crews at their posts.
+    await expect(page.getByTestId("lm-night-sky")).toBeAttached();
+    await expect(page.getByTestId("lm-bank")).toBeAttached();
+    await expect(page.getByTestId("lm-station-build")).toBeAttached();
+    await expect(page.getByTestId("lm-station-school")).toBeAttached();
+  });
+
   test("the old window box turns the blind, and the picture shows the light and the leaves", async ({
     page,
   }) => {

@@ -11,11 +11,10 @@ import {
 import type { RunState } from "../../../engine/types";
 import { def } from "./fixtures";
 import { lanternOf, sceneInfo } from "../scene";
+import { isGridGlowing } from "../grid";
 import {
   collectorEnergyPerSecond,
-  gridFactor,
   isFleetGlowing,
-  isGridGlowing,
   resolvePerSecond,
   starsPerSecond,
   steerBonus,
@@ -142,20 +141,15 @@ const night = (resources: Record<string, number>): RunState => {
 };
 
 describe("the steady glow", () => {
-  it("pays the cities 15% more while the grid is steady, and only then", () => {
-    const steady = night({ grid: 80 });
-    const wobbly = night({ grid: 70 });
-    expect(isGridGlowing(steady)).toBe(true);
-    expect(isGridGlowing(wobbly)).toBe(false);
-    const steadyPay = gridFactor(steady);
-    // the same steadiness without the glow would pay this much
-    expect(steadyPay / (0.6 + 0.4 * 0.8)).toBeCloseTo(1.15, 5);
-    expect(sceneInfo(steady).glow).toBe(1);
-    expect(sceneInfo(wobbly).glow).toBe(0);
-  });
-
-  it("is never a tax: the worst a neglected grid pays is the old floor", () => {
-    expect(gridFactor(night({ grid: 0 }))).toBeCloseTo(0.6, 5);
+  it("sparkles the cities after a night kept lit, until a blackout puts it out", () => {
+    const lit = night({ pgLast: 1 });
+    lit.owned = { gen1: 3 };
+    const dark = night({ pgLast: 2 });
+    dark.owned = { gen1: 3 };
+    expect(isGridGlowing(lit)).toBe(true);
+    expect(isGridGlowing(dark)).toBe(false);
+    expect(sceneInfo(lit).glow).toBe(1);
+    expect(sceneInfo(dark).glow).toBe(0);
   });
 
   it("speeds the fleet up 15% while it flies true", () => {

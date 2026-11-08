@@ -19,7 +19,8 @@ import {
   WEATHER_VANE_ID,
   chanceOf,
   lastStorm,
-  shieldActionId,
+  POST_WATCH,
+  crewPostActionId,
   weatherStage,
 } from "../weather";
 import {
@@ -201,7 +202,11 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
       return next;
     };
     const byVane = land(sure);
-    const sent = performAction(def, sure, shieldActionId(likeliest));
+    const sent = performAction(
+      def,
+      sure,
+      crewPostActionId(0, POST_WATCH + likeliest)
+    );
     const byHand = land({
       ...sent,
       resources: { ...sent.resources, [`wxReady${likeliest}`]: 1 },

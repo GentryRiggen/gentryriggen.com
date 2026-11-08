@@ -22,8 +22,8 @@ import {
   driftPerSecond,
   knowhowPerSecond,
   powerPerSecond,
-  strainPerSecond,
 } from "../tick";
+import { rushExcessAt } from "../grid";
 import { TUNING } from "../tuning";
 
 const O = TUNING.overdrive;
@@ -34,8 +34,15 @@ function nightRun(knowhow = 100): RunState {
   return reconcileRun(def, {
     ...base,
     phase: 1,
-    owned: { gen1: 5, gen2: 3 },
-    resources: { ...base.resources, night: 99, power: 5000, knowhow },
+    // Three battery steps, full, so the first evenings are met.
+    owned: { gen1: 5, gen2: 3, "batt-1": 1, "batt-2": 1, "batt-3": 1 },
+    resources: {
+      ...base.resources,
+      night: 99,
+      power: 5000,
+      knowhow,
+      pgCharge: 730,
+    },
   });
 }
 
@@ -98,14 +105,27 @@ describe("know-how has two hungry sinks", () => {
 });
 
 describe("overdrive", () => {
-  it("doubles what the night pays and triples the grid's strain, for a minute", () => {
-    const run = nightRun();
+  it("doubles what the night pays, makes the rush bigger and stops the charging, for a minute", () => {
+    const run = tick(def, nightRun(), 1);
     const before = powerPerSecond(run);
-    const strain = strainPerSecond(run);
+    const rush = rushExcessAt(run, 1, 1);
     const driven = performAction(def, run, OVERDRIVE_ACTION);
     expect(isOverdriveOn(driven)).toBe(true);
     expect(powerPerSecond(driven)).toBeCloseTo(before * O.boost, 5);
-    expect(strainPerSecond(driven)).toBeCloseTo(strain * O.strain, 5);
+    expect(rushExcessAt(driven, 1, 1)).toBeCloseTo(
+      rush * TUNING.grid.hotPeak,
+      9
+    );
+    // nothing charges while it runs
+    const drained = {
+      ...driven,
+      resources: { ...driven.resources, pgCharge: 0 },
+    };
+    expect(tick(def, drained, 5).resources.pgCharge).toBe(0);
+    expect(
+      tick(def, { ...run, resources: { ...run.resources, pgCharge: 0 } }, 5)
+        .resources.pgCharge
+    ).toBeGreaterThan(0);
     let t = driven;
     for (let i = 0; i < O.seconds; i += 1) t = tick(def, t, 1);
     expect(isOverdriveOn(t)).toBe(false);
@@ -114,12 +134,12 @@ describe("overdrive", () => {
 
   it("gives half the know-how back to a run that held steady", () => {
     let run = performAction(def, nightRun(100), OVERDRIVE_ACTION);
-    for (let i = 0; i < O.seconds + 1; i += 1) {
-      // A player who tends the grid every few seconds.
-      if (i % 5 === 0)
-        run = { ...run, resources: { ...run.resources, grid: 100 } };
-      run = tick(def, run, 1);
-    }
+    // A minute that starts after the rush is over keeps every light on.
+    run = {
+      ...run,
+      resources: { ...run.resources, pgClock: 104, pgStarted: 1 },
+    };
+    for (let i = 0; i < O.seconds + 1; i += 1) run = tick(def, run, 1);
     const spent = 100 - O.nightCost;
     const gained = run.resources.knowhow - spent;
     // The plants also teach a little while they run.
@@ -128,9 +148,19 @@ describe("overdrive", () => {
     expect(run.resources.odKind).toBe(1);
   });
 
-  it("gives nothing back when the grid slips, and the plants still paid double", () => {
+  it("gives nothing back when a district goes dark, and the plants still paid double", () => {
     let run = performAction(def, nightRun(100), OVERDRIVE_ACTION);
-    run = { ...run, resources: { ...run.resources, grid: O.cleanAbove - 5 } };
+    run = {
+      ...run,
+      resources: {
+        ...run.resources,
+        pgStarted: 1,
+        pgClock: 104,
+        pgDark: 3,
+        pgDarkFrom: 3,
+        pgDarkLeft: 10,
+      },
+    };
     const power = run.resources.power;
     for (let i = 0; i < O.seconds + 1; i += 1) run = tick(def, run, 1);
     expect(run.resources.odCleanRuns ?? 0).toBe(0);

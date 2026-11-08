@@ -23,6 +23,8 @@ import ForkPanel from "../game/ForkPanel";
 import HarborPanel from "../game/HarborPanel";
 import FundPanel from "../game/FundPanel";
 import ProjectsPanel from "../game/ProjectsPanel";
+import CrewsPanel from "../game/CrewsPanel";
+import GridPanel from "../game/GridPanel";
 import StreetlightsPanel from "../game/StreetlightsPanel";
 import WeatherDesk from "../game/WeatherDesk";
 import LightScene from "../scenes/light/LightScene";
@@ -83,6 +85,9 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
     (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
   // A storm front landing on the weather desk.
   if (rose("wxFronts")) cues.push("thunder");
+  // An evening rush kept lit, and one that put districts out.
+  if (rose("pgLits")) cues.push("chime");
+  if (rose("pgBlackouts")) cues.push("thunder");
   // A tanker tying up at the quay, and barrels rolling into the tanks.
   if (rose("tkVisits")) cues.push("arrive");
   if (rose("tkBuys")) cues.push("splash");
@@ -97,7 +102,13 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
   topPanels: [LampPanel, HarborPanel],
-  primaryPanels: [StreetlightsPanel, ProbeRaces, MemoryGarden],
+  primaryPanels: [
+    GridPanel,
+    StreetlightsPanel,
+    CrewsPanel,
+    ProbeRaces,
+    MemoryGarden,
+  ],
   panels: [
     CoastForkPanel,
     LaterForkPanel,

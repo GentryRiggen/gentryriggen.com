@@ -884,6 +884,377 @@ html:has(.jim-app) body {
   animation: lmSpin 3s linear infinite;
 }
 
+/* No More Night's grid: sparks on the wires, batteries, crews, blackouts. */
+@keyframes ln-spark {
+  to {
+    stroke-dashoffset: -14.5;
+  }
+}
+.ln-spark {
+  filter: drop-shadow(0 0 2px currentColor);
+  animation: ln-spark 2.2s linear infinite;
+}
+.ln-spark-fast {
+  animation-duration: 0.45s;
+}
+.ln-spark-in {
+  animation-direction: reverse;
+  animation-duration: 1.3s;
+}
+
+@keyframes ln-charge {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ln-charge {
+  animation: ln-charge 1s ease-in-out infinite;
+}
+
+@keyframes ln-drain {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 0.35;
+  }
+  60% {
+    opacity: 0.9;
+  }
+}
+.ln-drain {
+  animation: ln-drain 0.55s steps(3) infinite;
+}
+
+/* A district goes dark: a stutter, then out (the dark itself is a class). */
+@keyframes ln-snap {
+  0% {
+    opacity: 1;
+  }
+  15% {
+    opacity: 0.12;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.1;
+  }
+  65% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.1;
+  }
+}
+.ln-snap {
+  animation: ln-snap 0.9s linear both;
+}
+
+/* The dark that falls on a district flickers on, then stays. */
+@keyframes ln-band {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.ln-band {
+  animation: ln-band 0.9s linear both;
+}
+
+/* The sky flashes red once when the lights go out. */
+@keyframes ln-flash {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-flash {
+  opacity: 0;
+  animation: ln-flash 1.3s ease-out 1 both;
+}
+
+@keyframes ln-alarm {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.ln-alarm {
+  opacity: 0;
+  animation: ln-alarm 0.7s ease-in-out 5;
+}
+
+/* A lit night: warm rings roll out, and the sky glows once. */
+@keyframes ln-wave {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(7);
+  }
+}
+.ln-wave {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ln-wave 2.6s ease-out 1 both;
+}
+@keyframes ln-warm {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.18;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-warm {
+  opacity: 0;
+  animation: ln-warm 3s ease-out 1 both;
+}
+
+/* Crews at their posts. */
+@keyframes ln-hammer {
+  0%,
+  100% {
+    transform: rotate(-35deg);
+  }
+  50% {
+    transform: rotate(40deg);
+  }
+}
+.ln-hammer {
+  transform-box: fill-box;
+  transform-origin: 20% 100%;
+  animation: ln-hammer 0.5s ease-in-out infinite;
+}
+@keyframes ln-weld {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.1;
+  }
+}
+.ln-weld {
+  animation: ln-weld 0.4s steps(2) infinite;
+}
+@keyframes ln-look {
+  0%,
+  100% {
+    transform: translateX(-0.9px);
+  }
+  50% {
+    transform: translateX(0.9px);
+  }
+}
+.ln-look {
+  animation: ln-look 1.6s ease-in-out infinite;
+}
+@keyframes ln-page {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.7px);
+  }
+}
+.ln-page {
+  animation: ln-page 1.2s ease-in-out infinite;
+}
+@keyframes ln-bulb {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ln-bulb {
+  animation: ln-bulb 1.4s ease-in-out infinite;
+}
+@keyframes ln-walk {
+  0%,
+  100% {
+    transform: translateX(-9px);
+  }
+  50% {
+    transform: translateX(9px);
+  }
+}
+.ln-walk {
+  animation: ln-walk 2.2s ease-in-out infinite;
+}
+
+/* A storm on a town: the bolt, the leaning pole, the wire and its sparks. */
+@keyframes ln-bolt {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  8%,
+  30% {
+    opacity: 1;
+  }
+  18% {
+    opacity: 0.2;
+  }
+}
+.ln-bolt {
+  opacity: 0;
+  animation: ln-bolt 1.4s linear 3 both;
+}
+@keyframes ln-pole {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(32deg);
+  }
+}
+.ln-pole {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ln-pole 0.8s ease-in 1 both;
+}
+@keyframes ln-wire {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.ln-wire {
+  animation: ln-wire 0.3s steps(2) infinite;
+}
+@keyframes ln-spark-fly-a {
+  to {
+    transform: translate(-13px, -14px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-b {
+  to {
+    transform: translate(14px, -11px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-c {
+  to {
+    transform: translate(-6px, -20px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-d {
+  to {
+    transform: translate(9px, -18px);
+    opacity: 0;
+  }
+}
+.ln-spark-a {
+  animation: ln-spark-fly-a 0.7s ease-out infinite;
+}
+.ln-spark-b {
+  animation: ln-spark-fly-b 0.7s ease-out 0.15s infinite;
+}
+.ln-spark-c {
+  animation: ln-spark-fly-c 0.7s ease-out 0.3s infinite;
+}
+.ln-spark-d {
+  animation: ln-spark-fly-d 0.7s ease-out 0.45s infinite;
+}
+@keyframes ln-dome {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+}
+.ln-dome {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ln-dome 1.2s ease-out 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ln-spark,
+  .ln-charge,
+  .ln-drain,
+  .ln-snap,
+  .ln-band,
+  .ln-flash,
+  .ln-alarm,
+  .ln-wave,
+  .ln-warm,
+  .ln-hammer,
+  .ln-weld,
+  .ln-look,
+  .ln-page,
+  .ln-bulb,
+  .ln-walk,
+  .ln-bolt,
+  .ln-pole,
+  .ln-wire,
+  .ln-spark-a,
+  .ln-spark-b,
+  .ln-spark-c,
+  .ln-spark-d,
+  .ln-dome {
+    animation: none;
+  }
+  /* The flashes and rings are drawn hidden, so nothing is left covering the scene. */
+  .ln-flash,
+  .ln-alarm,
+  .ln-wave,
+  .ln-warm {
+    opacity: 0;
+  }
+  .ln-bolt {
+    opacity: 1;
+  }
+}
+
 /* A layer fading out stops animating: nobody is looking at it. */
 .lm-paused,
 .lm-paused * {

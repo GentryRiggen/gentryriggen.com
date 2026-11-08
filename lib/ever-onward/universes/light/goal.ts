@@ -10,12 +10,10 @@ import {
 } from "./resources";
 import {
   flameFraction,
-  gridSteadiness,
   headingOf,
   isBeamOpen,
   isCourseAuto,
   isCourseInPlay,
-  isGridAuto,
   isGridInPlay,
   isReadyToFlash,
   lighthouseCount,
@@ -23,6 +21,7 @@ import {
 } from "./tick";
 import { TUNING } from "./tuning";
 import { LET_GO, UPGRADES } from "./upgrades";
+import { batteryCapacity, chargeShare01 } from "./grid";
 import { fundBalance, fundKind, isFundOpen } from "./fund";
 
 const LIGHTHOUSE = UPGRADES.find((u) => u.id === "lighthouse");
@@ -190,18 +189,12 @@ function percentMeter(
 /**
  * The number this part asks the player to look after, kept on the HUD so a
  * dim flame or a drifting fleet is never hidden in the details: the grid at
- * night, the fleet's heading in the sky, the flame at the end.
+ * night is the batteries, the fleet's heading in the sky, the flame at the end.
  */
 function watchedMeter(run: RunState): GaugeView | null {
-  if (run.phase === 1 && isGridInPlay(run) && !isGridAuto(run)) {
-    const view = percentMeter(
-      "GRID",
-      gridSteadiness(run) / 100,
-      0.5,
-      0.15,
-      TUNING.night.glowAt
-    );
-    return { ...view, status: view.isCritical ? "SHAKY" : view.status };
+  if (run.phase === 1 && isGridInPlay(run) && batteryCapacity(run) > 0) {
+    const view = percentMeter("BATTERY", chargeShare01(run), 0.5, 0.1);
+    return { ...view, status: view.isCritical ? "EMPTY" : view.status };
   }
   if (run.phase === 2 && isCourseInPlay(run) && !isCourseAuto(run)) {
     const view = percentMeter(

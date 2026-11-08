@@ -25,8 +25,6 @@ import {
   driftPerSecond,
   isCourseAuto,
   starBounty,
-  isGridAuto,
-  strainPerSecond,
   fare,
   idleBurn,
   lensShips,
@@ -57,8 +55,9 @@ import {
   frontsSoFar,
   hasWeatherVane,
   openWeather,
-  shieldSlots,
+  crewCount,
 } from "./weather";
+import { batterySecondsOfGrid, isGridOpen, rushCarry, rushCover } from "./grid";
 
 const coast = [PHASE_COAST] as const;
 const night = [PHASE_NIGHT] as const;
@@ -478,6 +477,60 @@ function collectorPreview(stats: readonly Stat[]): (run: RunState) => string {
   };
 }
 
+const BATTERY_STATS = [
+  {
+    label: "Batteries hold",
+    read: batterySecondsOfGrid,
+    suffix: " s of the grid",
+  },
+  {
+    label: "A hot rush met",
+    read: (run: RunState) => rushCover(run, 2) * 100,
+    suffix: "%",
+  },
+];
+
+/**
+ * The batteries are a chain: each step holds about 2.7 times the one before
+ * (see `TUNING.grid.batteryHolds`), and shows once the plants are big enough
+ * to want it. They soak up the day's spare power and carry the evening rush,
+ * so a bigger bank keeps pace with bigger plants, and costs about half what
+ * those plants did.
+ */
+const BATTERY_NAMES: readonly [string, string][] = [
+  [
+    "A battery cabinet",
+    "Soaks up spare power by day and gives it back at the evening rush.",
+  ],
+  ["A rack of batteries", "Almost three times what the cabinet holds."],
+  ["A battery shed", "Almost three times as much again."],
+  ["A battery barn", "Room for the steam plants' whole evening."],
+  ["A battery hall", "Cells from wall to wall, humming quietly to themselves."],
+  ["A battery yard", "Rows and rows of cells, all charging in the sun."],
+  ["A battery farm", "It takes a whole field to hold this much."],
+  [
+    "A mountain of batteries",
+    "The biggest bank there is. It keeps a whole country lit.",
+  ],
+];
+
+const BATTERY_STEPS = chain({
+  base: "batt",
+  phases: night,
+  currency: "power",
+  stats: BATTERY_STATS,
+  steps: BATTERY_NAMES.map(([name, description], i) => ({
+    name,
+    description,
+    // Shows once the plants are within reach of filling it.
+    showWhen: (run: RunState) =>
+      i === 0
+        ? isGridOpen(run)
+        : supplyMW(run) * 14 >= TUNING.grid.batteryHolds[i],
+    badge: i === 0 ? "NEW ABILITY" : undefined,
+  })),
+});
+
 const nightUpgrades: UpgradeDef[] = [
   {
     id: "crank",
@@ -511,11 +564,15 @@ const nightUpgrades: UpgradeDef[] = [
     base: "lines",
     phases: night,
     currency: "power",
-    stats: [{ label: "Power supply", read: supplyMW, suffix: " MW" }],
+    stats: [
+      { label: "Power supply", read: supplyMW, suffix: " MW" },
+      { label: "Batteries can give at once", read: rushCarry, suffix: " MW" },
+    ],
     steps: [
       {
         name: "Run a power line",
-        description: "Every line carries 50% more power to the cities.",
+        description:
+          "Every line carries 50% more power to the cities, and lets the batteries give more at once.",
         showWhen: (run) => owned(run, "gen1") >= 3,
       },
       {
@@ -593,36 +650,7 @@ const nightUpgrades: UpgradeDef[] = [
       },
     ],
   }),
-  ...chain({
-    base: "grid",
-    phases: night,
-    currency: "power",
-    stats: [
-      {
-        label: "Grid strain",
-        why: "A steady grid pays more",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
-      },
-      {
-        label: "Grid balancing",
-        read: (run) => (isGridAuto(run) ? 1 : 0),
-        format: (v) => (v > 0 ? "automatic" : "by hand"),
-      },
-    ],
-    steps: [
-      {
-        name: "Load balancer",
-        description: "The grid strains half as fast.",
-        showWhen: (run) => owned(run, "gen2") >= 2,
-      },
-      {
-        name: "Smart grid",
-        description: "The grid balances itself. No more hand-fixing.",
-        showWhen: (run) => owned(run, "gen2") >= 4,
-      },
-    ],
-  }),
+  ...BATTERY_STEPS,
   {
     id: "gen3",
     name: "River dam",
@@ -651,8 +679,9 @@ const nightUpgrades: UpgradeDef[] = [
   },
   {
     id: STORM_CREWS_ID,
-    name: "Storm crews",
-    description: "More hands for the sandbags: shield two towns at once.",
+    name: "A third crew",
+    description:
+      "One more crew to put to work: building, learning at the school, or watching for the storm.",
     phases: night,
     currency: "power",
     baseCost: COSTS[STORM_CREWS_ID],
@@ -663,7 +692,7 @@ const nightUpgrades: UpgradeDef[] = [
       run.flags[WEATHER_OPEN_FLAG] === true && owned(run, "gen3") >= 3,
     onBuy: sync,
     effectPreview: previewOf(STORM_CREWS_ID, [
-      { label: "Towns to shield", read: shieldSlots },
+      { label: "Crews to post", read: crewCount, isPlain: true },
     ]),
   },
   {
@@ -1061,8 +1090,7 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "collector",
   "probe",
   "letgo-porch",
-  "grid-1",
-  "grid-2",
+  "batt-1",
   WEATHER_VANE_ID,
   MISSION_CONTROL_ID,
   RAIN_BARREL_ID,
@@ -1101,13 +1129,9 @@ export const UPGRADES: readonly UpgradeDef[] = [
   priority: upgrade.id.startsWith("mirror-") ? 2 : upgrade.priority,
   badge:
     upgrade.badge ??
-    ([
-      "grid-2",
-      "nav-2",
-      WEATHER_VANE_ID,
-      MISSION_CONTROL_ID,
-      RAIN_BARREL_ID,
-    ].includes(upgrade.id)
+    (["nav-2", WEATHER_VANE_ID, MISSION_CONTROL_ID, RAIN_BARREL_ID].includes(
+      upgrade.id
+    )
       ? "NEW ABILITY"
       : undefined),
   kind: MECHANICS.has(upgrade.id) ? "mechanic" : "scale",

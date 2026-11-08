@@ -16,7 +16,6 @@ import {
   boatArrived,
   flameOf,
   steadyFlame,
-  strainPerSecond,
   tankCapacity,
 } from "../tick";
 import { sceneInfo } from "..";
@@ -58,51 +57,6 @@ describe("one click fills the tank", () => {
     );
     expect(first.resources.oil).toBeCloseTo(20, 5);
     expect(canPerformAction(def, first, "buy-oil")).toBe(false);
-  });
-});
-
-describe("bonus windows wait for the player", () => {
-  const night = (): RunState => {
-    const start = runAtPhaseStart(1);
-    return {
-      ...start,
-      owned: { ...start.owned, gen1: 3 },
-      resources: { ...start.resources, supply: 9, rush: 0, rushCooldown: 1 },
-    };
-  };
-
-  it("opens, then stays open however long it is ignored", () => {
-    let run = night();
-    for (let i = 0; i < 600; i += 1) run = tick(def, run, 1);
-    expect(run.resources.rush).toBe(1);
-    expect(canPerformAction(def, run, "ride-rush")).toBe(true);
-  });
-
-  it("does not start the next one until this one is claimed", () => {
-    const run = night();
-    run.resources.rush = 1;
-    run.resources.rushCooldown = 0;
-    const later = tick(def, tick(def, run, 1), 1);
-    expect(later.resources.rushCooldown).toBe(0);
-    const claimed = performAction(def, later, "ride-rush");
-    expect(claimed.resources.rush).toBe(0);
-    expect(claimed.resources.rushCooldown).toBeGreaterThanOrEqual(100);
-  });
-
-  it("does not make the grid strain faster", () => {
-    const calm = night();
-    const busy = night();
-    busy.resources.rush = 1;
-    expect(strainPerSecond(busy)).toBe(strainPerSecond(calm));
-  });
-
-  it("pays about 25 seconds of income, not more", () => {
-    const run = night();
-    run.resources.rush = 1;
-    const after = performAction(def, run, "ride-rush");
-    const bonus = after.resources.power - run.resources.power;
-    const perSecond = tick(def, run, 1).resources.power - run.resources.power;
-    expect(bonus).toBeLessThanOrEqual(perSecond * 30 + 100);
   });
 });
 

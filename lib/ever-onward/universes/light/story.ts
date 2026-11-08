@@ -143,7 +143,7 @@ const nightStory: StoryMessage[] = [
     id: "night-lamps",
     phase: PHASE_NIGHT,
     when: (run) => res(run, "supply") >= 16,
-    text: "The mayor asks how bright the streetlights should be. Bright streets pay well. Soft ones light more towns with the same power, and your crews get a quiet hour to learn. You can change your mind any time.",
+    text: "The mayor asks how bright the streetlights should be. Bright streets pay well, but at dusk everybody switches on at once, and bright streets make that rush harder. Soft ones light more towns and give your crews a quiet hour to learn. Changing takes a few seconds to settle.",
   },
   {
     id: "night-ideas",
@@ -194,10 +194,22 @@ const nightStory: StoryMessage[] = [
     text: "Five steam plants in a row, all puffing at once. From far away it looks like a very polite thundercloud.",
   },
   {
-    id: "night-smart",
+    id: "night-battery",
     phase: PHASE_NIGHT,
-    when: (run) => owned(run, "grid-2") >= 1,
-    text: "The grid learns to balance itself. It does a small, happy wobble anyway, just to let you know it is trying.",
+    when: (run) => owned(run, "batt-1") >= 1,
+    text: "The first battery hums. It saves a little of the afternoon for later, which is more than most people manage.",
+  },
+  {
+    id: "night-lit-first",
+    phase: PHASE_NIGHT,
+    when: (run) => (run.resources.pgLits ?? 0) >= 1,
+    text: "The evening rush comes, every kettle in town goes on at once, and not one light so much as blinks. Somewhere a kettle takes the credit.",
+  },
+  {
+    id: "night-dark-first",
+    phase: PHASE_NIGHT,
+    when: (run) => (run.resources.pgBlackouts ?? 0) >= 1,
+    text: "The lights go out, a district at a time, and then come back, a district at a time. Everyone agrees it was very dramatic. Nobody is hurt, and the batteries make a note.",
   },
   {
     id: "night-news-3",
@@ -221,7 +233,7 @@ const nightStory: StoryMessage[] = [
     id: "night-weather",
     phase: PHASE_NIGHT,
     when: (run) => run.flags["weather-open"] === true,
-    text: "A weather balloon bumps your window with a note: storms roll in from the sea, and three towns would love some sandbags. You pin a map to the wall. The rain does not read maps, but it does seem to be reading you.",
+    text: "A weather balloon bumps your window with a note: storms roll in from the sea, and three towns would love some sandbags. Your crews cannot be everywhere: a crew on watch is not building. You pin a map to the wall. The rain does not read maps, but it does seem to be reading you.",
   },
   {
     id: "night-vane",

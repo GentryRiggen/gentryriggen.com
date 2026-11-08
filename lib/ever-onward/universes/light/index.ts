@@ -17,6 +17,8 @@ import { ALL_PROJECTS } from "./projects";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
 import { isCoastMomentBusy } from "./tanker";
+import { isGridMomentBusy } from "./grid";
+import { isStormHit } from "./weather";
 import { LIGHT_EVENTS } from "./events";
 import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
 import { UPGRADES } from "./upgrades";
@@ -41,7 +43,10 @@ export const lightUniverse: UniverseDef = {
   visitors: VISITORS,
   countdown: lightCountdown,
   alert: lightAlert,
-  isSceneBusy: isCoastMomentBusy,
+  // A big moment on in the picture holds pop-ups back: the coast's tanker and
+  // dark lamp, the night's blackout and lit night, a storm just landed.
+  isSceneBusy: (run) =>
+    isCoastMomentBusy(run) || isGridMomentBusy(run) || isStormHit(run),
   goalMeter: lightGoal,
   gauge: lightGauge,
   prestige: PRESTIGE,

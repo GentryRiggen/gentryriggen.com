@@ -1,10 +1,9 @@
 import { genericBots, type BotSet } from "../../engine/bots";
 import type { Strategy } from "../../engine/sim";
-import type { RunState } from "../../engine/types";
+import type { RunState, UpgradeDef } from "../../engine/types";
 import {
   barrelOil,
   demandAtStep,
-  isGridAuto,
   isBeamOpen,
   beamStep,
   isLampsOpen,
@@ -13,7 +12,6 @@ import {
   goingRate,
   supplyMW,
   tankCapacity,
-  tier,
 } from "./tick";
 import { lampActionId } from "./lamps";
 import { beamActionId, beamNumbers, bestBeamStep } from "./beam";
@@ -56,22 +54,36 @@ import {
 } from "./toll";
 import { isTankerIn } from "./tanker";
 import {
+  POST_BUILD,
+  POST_SCHOOL,
+  POST_WATCH,
   chanceOf,
-  crewActionId,
   crewCount,
-  crewThatMoves,
-  crewsPlaced,
+  crewPostActionId,
+  forecastStep,
   frontsSoFar,
-  hasCrew,
-  isOut,
   isWeatherOpen,
+  postOf,
   readyAtLandfall,
   readyShare,
-  stageLength,
-  stageSecondsLeft,
+  secondsToLandfall,
   weatherStage,
 } from "./weather";
+import {
+  bestLampForTonight,
+  gridClock,
+  isGridOpen,
+  isRushNow,
+  rushOutcome,
+  rushExcessAt,
+  secondsToRush,
+  batteryCharge,
+  batteryCapacity,
+  dailyChargeRoom,
+} from "./grid";
 import { TUNING } from "./tuning";
+
+const W = TUNING.weather;
 
 /** The smallest share of the tank a bot bothers to buy in one click. */
 const MIN_BARREL_SHARE = 0.4;
@@ -83,7 +95,10 @@ const MIN_DRY_BARREL_SHARE = 0.25;
 /** Seconds in one stretch of attention for the garden (the bots' deterministic skips count these). */
 const GARDEN_WINDOW_SECONDS = 30;
 
-type OilChoice = (run: RunState, available: readonly string[]) => string[];
+export type OilChoice = (
+  run: RunState,
+  available: readonly string[]
+) => string[];
 
 const buysOilWhen =
   (
@@ -125,16 +140,14 @@ const cheapskateOil = buysOilWhen(
 );
 
 /**
- * Looks after what needs hands: the grid and the fleet's heading when they dip
- * under `below` percent, and claims the evening rush and the solar flare when
- * `claims` (a busy or relaxed player may let them pass).
+ * Looks after what needs hands: the fleet's heading when it dips under
+ * `below` percent, and claims the solar flare when `claims` (a busy or
+ * relaxed player may let it pass).
  */
 const looksAfterThings =
   (below: number, claims: boolean): OilChoice =>
   (run, available) => {
     const picks: string[] = [];
-    if (available.includes("balance-grid") && run.resources.grid < below)
-      picks.push("balance-grid");
     if (available.includes("correct-course") && run.resources.heading < below)
       picks.push("correct-course");
     // The first ship: steer it when it drifts, and the one flash that ends it.
@@ -144,67 +157,97 @@ const looksAfterThings =
     )
       picks.push("steer-boat");
     if (available.includes("flash-lamp")) picks.push("flash-lamp");
-    // The windows wait for the player, so a claiming bot takes them at once.
-    if (claims && available.includes("ride-rush")) picks.push("ride-rush");
+    // The window waits for the player, so a claiming bot takes it at once.
     if (claims && available.includes("catch-flare")) picks.push("catch-flare");
     return picks;
   };
 
 /**
- * Sends the repair crews by the forecast. At every step it weighs each town
- * by its chance times how ready a crew there would be at landfall (a crew
- * that moves starts over), and moves the crew worth least to the town worth
- * most when that gains enough. Between storms it sends a crew to fix a dark
- * town. A bot with real attention misses now and then: it skips every
- * `skipEvery`th front (counted by the desk, so the sim stays deterministic),
- * and `onlyEvery` makes a distracted player tend just one front in so many.
+ * Posts the crews. By default they build; with a project waiting only on
+ * know-how they learn; and in a storm forecast the ones worth it go to the
+ * likeliest towns. A crew on watch is a crew not building, so a bot weighs
+ * what a town is worth (its chance, how ready a crew would be, the bonus and
+ * the outage it saves) against the building it gives up while it is away.
+ * A bot with real attention misses now and then: it skips every `skipEvery`th
+ * front (counted by the desk, so the sim stays deterministic), and `onlyEvery`
+ * makes a distracted player tend just one front in so many.
  */
-const tendsWeather =
-  (options: { skipEvery?: number; onlyEvery?: number } = {}): OilChoice =>
+export const tendsCrews =
+  (
+    options: {
+      skipEvery?: number;
+      onlyEvery?: number;
+      watches?: boolean;
+      learns?: boolean;
+      fromStep?: number;
+    } = {}
+  ): OilChoice =>
   (run, available) => {
-    if (!isWeatherOpen(run)) return [];
+    if (run.phase !== 1) return [];
+    const crews = crewCount(run);
     const front = frontsSoFar(run);
     const { skipEvery, onlyEvery } = options;
-    if (skipEvery && front % skipEvery === skipEvery - 1) return [];
-    if (onlyEvery && front % onlyEvery !== 0) return [];
-    const towns = [0, 1, 2];
-    const send = (town: number): string[] => {
-      const id = crewActionId(town);
-      return available.includes(id) ? [id] : [];
-    };
-    // It looks only when the forecast changes: the first moments of each
-    // forecast step, and just after a landfall (to fix a dark town).
-    if (!isFreshForecast(run)) return [];
-    if (weatherStage(run) !== "forecast") {
-      const dark = towns.find((t) => isOut(run, t) && !hasCrew(run, t));
-      return dark === undefined ? [] : send(dark);
+    const isInattentive =
+      (skipEvery && front % skipEvery === skipEvery - 1) ||
+      (onlyEvery && front % onlyEvery !== 0);
+    // The last crew goes to the school while a project waits only on
+    // know-how, and stays until it is done (no flip-flopping).
+    const schoolCrew = crews - 1;
+    const isLearning =
+      options.learns !== false &&
+      wantsKnowhow(run, 120, {
+        hasOverdrive: false,
+        isStaying: postOf(run, schoolCrew) === POST_SCHOOL,
+      });
+    const wanted: number[] = [];
+    if (
+      options.watches !== false &&
+      !isInattentive &&
+      isWeatherOpen(run) &&
+      weatherStage(run) === "forecast" &&
+      forecastStep(run) >= (options.fromStep ?? WATCH_FROM_STEP)
+    ) {
+      const left = secondsToLandfall(run);
+      const worth = (town: number): number =>
+        (chanceOf(run, town) / 100) *
+          (readyShare(readyAtLandfall(run, town, true)) * W.bonusSeconds +
+            W.outageShare * W.outageSeconds) -
+        TUNING.crews.buildBoost * (left + 2 * TUNING.grid.moveSeconds);
+      [0, 1, 2]
+        .sort((a, b) => worth(b) - worth(a))
+        .forEach((town) => {
+          if (wanted.length < crews - 1 && worth(town) > 0)
+            wanted.push(POST_WATCH + town);
+        });
     }
-    const value = (town: number, isMoving: boolean): number =>
-      chanceOf(run, town) * readyShare(readyAtLandfall(run, town, isMoving));
-    const free = towns.filter((t) => !hasCrew(run, t));
-    const best = free.sort((a, b) => value(b, true) - value(a, true))[0];
-    if (best === undefined) return [];
-    if (crewsPlaced(run) < crewCount(run)) return send(best);
-    const mover = crewThatMoves(run, best);
-    if (mover === null) return send(best);
-    const gain = value(best, true) - value(mover, false);
-    return gain >= WEATHER_MOVE_GAIN ? send(best) : [];
+    // Crews already on a wanted post stay; the others fill the rest.
+    const posts: number[] = Array.from({ length: crews }, (_, c) =>
+      postOf(run, c)
+    );
+    const baseOf = (crew: number): number =>
+      crew === schoolCrew && isLearning ? POST_SCHOOL : POST_BUILD;
+    const open = [...wanted];
+    const taken = new Set<number>();
+    posts.forEach((post, c) => {
+      const at = open.indexOf(post);
+      if (at >= 0) {
+        open.splice(at, 1);
+        taken.add(c);
+      }
+    });
+    const picks: string[] = [];
+    posts.forEach((post, c) => {
+      if (taken.has(c)) return;
+      const target = open.shift() ?? baseOf(c);
+      if (target === post) return;
+      const id = crewPostActionId(c, target);
+      if (available.includes(id)) picks.push(id);
+    });
+    return picks;
   };
 
-/** Seconds after a forecast changes (or a storm lands) that a bot looks. */
-const FRESH_SECONDS = 2;
-
-/** The forecast (or the calm after a landfall) has just changed. */
-function isFreshForecast(run: RunState): boolean {
-  const elapsed = stageLength(run) - stageSecondsLeft(run);
-  const sinceChange =
-    weatherStage(run) === "forecast" ? elapsed % STEP_SECONDS : elapsed;
-  return sinceChange < FRESH_SECONDS;
-}
-const STEP_SECONDS = TUNING.weather.stepSeconds;
-
-/** Points of (chance x readiness) a move must gain to be worth it. */
-const WEATHER_MOVE_GAIN = 4;
+/** The forecast step a bot starts weighing the towns from. */
+const WATCH_FROM_STEP = 1;
 
 /** Seconds in one stretch of attention for the harbor desk. */
 const TOLL_WINDOW = 20;
@@ -301,29 +344,74 @@ const tendsGarden =
     return [...picks, ...waters];
   };
 
+/** Seconds before the rush a reading player sets the streetlights (they take a while to settle). */
+const EVENING_LOOK = TUNING.grid.lampLockSeconds + 3;
+
 /**
  * Sets the streetlights by the situation: soft enough to light the last
  * towns the moment the plants can (the phase ends); soft while a project on
- * offer waits only on know-how (quiet crews learn faster); otherwise as
- * bright as the grid allows (dazzling with a load balancer or a smart grid).
- * `patience` is how many seconds of soft-glow learning a project may be away
- * and still be worth softening for.
+ * offer waits only on know-how (quiet crews learn faster); otherwise
+ * dazzling, and when the evening nears (`reads`) the brightest that still
+ * gets through tonight's rush with every district lit. `patience` is how
+ * many seconds of soft-glow learning a project may be away and still be
+ * worth softening for. `fixed` never reads and never changes (a test's
+ * player who set the knob once); `skipEvery` and `onlyEvery` are the days it
+ * does not look.
  */
-const setsLamps =
-  (options: { patience?: number } = {}): OilChoice =>
+export const setsLamps =
+  (
+    options: {
+      patience?: number;
+      reads?: boolean;
+      fixed?: number;
+      skipEvery?: number;
+      onlyEvery?: number;
+    } = {}
+  ): OilChoice =>
   (run, available) => {
     if (!isLampsOpen(run)) return [];
     const supply = supplyMW(run);
     const finishing = [3, 2, 1, 0].find(
       (step) => supply >= demandAtStep(run, step)
     );
+    const days = run.resources.pgDays ?? 0;
+    const { skipEvery, onlyEvery } = options;
+    const isInattentive =
+      (skipEvery && days % skipEvery === skipEvery - 1) ||
+      (onlyEvery && days % onlyEvery !== 0);
+    const clock = gridClock(run);
+    // The reading is done as the evening nears and held through the rush.
+    const isDusk =
+      isGridOpen(run) &&
+      clock >= TUNING.grid.rushAt - EVENING_LOOK &&
+      clock < TUNING.grid.rushAt;
+    const isRush = isRushNow(run);
+    const base =
+      options.fixed ??
+      (wantsKnowhow(run, options.patience ?? 120, { hasOverdrive: false })
+        ? 0
+        : DAZZLING);
+    const reading =
+      options.fixed === undefined &&
+      options.reads !== false &&
+      !isInattentive &&
+      isDusk
+        ? Math.min(base, bestLampForTonight(run))
+        : base;
+    // Through the rush the streetlights are left as the evening set them.
+    if (isRush && options.fixed === undefined && finishing === undefined)
+      return [];
     const want =
-      finishing ??
-      (wantsKnowhow(run, options.patience ?? 120) ? 0 : brightest(run));
+      finishing !== undefined && options.fixed === undefined
+        ? finishing
+        : reading;
     if (want === lampStep(run)) return [];
     const id = lampActionId(want);
     return available.includes(id) ? [id] : [];
   };
+
+/** The brightest step: it pays the most when the evening is easy. */
+const DAZZLING = 3;
 
 /** A move to another brightness must beat today's by this much (no flicker). */
 const BEAM_SWITCH_GAIN = 1.25;
@@ -349,17 +437,15 @@ const setsBeam: OilChoice = (run, available) => {
 };
 
 /** The night's streetlights and the coast's lamp: each only acts in its own part. */
-const setsAllLamps = (options: { patience?: number } = {}): OilChoice => {
+const setsAllLamps = (
+  options: Parameters<typeof setsLamps>[0] = {}
+): OilChoice => {
   const night = setsLamps(options);
   return (run, available) => [
     ...night(run, available),
     ...setsBeam(run, available),
   ];
 };
-
-/** As bright as the grid can take without a lot of balancing. */
-const brightest = (run: RunState): number =>
-  isGridAuto(run) || tier(run, "grid") >= 1 ? 3 : 2;
 
 /** Projects that lift income enough to dim the lights for. */
 const WORTH_DIMMING_FOR: ReadonlySet<string> = new Set([
@@ -374,9 +460,13 @@ const WORTH_DIMMING_FOR: ReadonlySet<string> = new Set([
  * A big project on offer has its power but waits on know-how, and soft-glow
  * learning would get there within `patience` seconds.
  */
-function wantsKnowhow(run: RunState, patience: number): boolean {
+function wantsKnowhow(
+  run: RunState,
+  patience: number,
+  options: { isStaying?: boolean; hasOverdrive?: boolean } = {}
+): boolean {
   // Overdrive is a second thing know-how buys, all night once the plants run.
-  if (isOverdriveOpen(run)) return true;
+  if (options.hasOverdrive !== false && isOverdriveOpen(run)) return true;
   const softRate = knowhowAtStep(run, 0);
   return shownProjects(lightUniverse, run).some((p) => {
     if (!WORTH_DIMMING_FOR.has(p.id)) return false;
@@ -390,7 +480,7 @@ function wantsKnowhow(run: RunState, patience: number): boolean {
       (run.resources.knowhow ?? 0);
     // Once dimmed for it, stay dimmed until it is done (no flip-flopping
     // while the power dips for a purchase).
-    const isDimmed = lampStep(run) === 0;
+    const isDimmed = options.isStaying ?? lampStep(run) === 0;
     return (
       (powerOk || isDimmed) &&
       missing > 0 &&
@@ -456,11 +546,19 @@ export const runsOverdrive =
   (startAt: number): OilChoice =>
   (run, available) => {
     if (!available.includes(OVERDRIVE_ACTION)) return [];
-    const steady =
-      run.phase === 1
-        ? (run.resources.grid ?? 100)
-        : (run.resources.heading ?? 100);
-    if (steady < startAt) return [];
+    // At night the question is the next rush: start only when it is far
+    // enough off to be over before it, and the batteries are full so the
+    // minute without charging leaves them ready.
+    if (run.phase === 1) {
+      const room = TUNING.overdrive.seconds + 12;
+      if (isGridOpen(run) && (isRushNow(run) || secondsToRush(run) < room))
+        return [];
+      if (
+        batteryCapacity(run) > 0 &&
+        batteryCharge(run) < batteryCapacity(run) * (startAt / 100)
+      )
+        return [];
+    } else if ((run.resources.heading ?? 100) < startAt) return [];
     const readyProjects = shownProjects(lightUniverse, run).filter((p) =>
       p.costs.every(
         (c) =>
@@ -530,6 +628,50 @@ const lastPhaseActions: OilChoice = (run, available) => [
   ...(available.includes("flash-lamp") ? ["flash-lamp"] : []),
 ];
 
+/** The cover of a usual evening with the streetlights as they stand at their brightest-but-one. */
+function usualCover(run: RunState): number {
+  const stored = Math.min(batteryCapacity(run), dailyChargeRoom(run));
+  return rushOutcome(run, rushExcessAt(run, 1, 1), stored).covered;
+}
+
+/** The shop order when nothing says otherwise: priority, then the cheapest. */
+const cheapestFirst = (
+  run: RunState,
+  affordable: UpgradeDef[]
+): UpgradeDef | undefined =>
+  [...affordable].sort(
+    (a, b) =>
+      (b.priority ?? 0) - (a.priority ?? 0) ||
+      upgradeCost(run, a) - upgradeCost(run, b)
+  )[0];
+
+const isBattery = (id: string): boolean => id.startsWith("batt-");
+
+/**
+ * Buys by the shop's usual order, but keeps the batteries in step with the
+ * plants: when a usual evening's rush is less than `target` met, a battery
+ * comes first, and when it is far short the bot saves up for one instead of
+ * buying another plant (which would only make the rush bigger).
+ */
+export const buysBatteries =
+  (target = 0.9) =>
+  (run: RunState, affordable: UpgradeDef[]): UpgradeDef | undefined => {
+    if (run.phase !== 1 || !isGridOpen(run))
+      return cheapestFirst(run, affordable);
+    const cover = usualCover(run);
+    if (cover >= target) return cheapestFirst(run, affordable);
+    const batteries = affordable
+      .filter((u) => isBattery(u.id))
+      .sort((a, b) => upgradeCost(run, a) - upgradeCost(run, b));
+    if (batteries.length > 0) return batteries[0];
+    const isSaving =
+      cover < target * 0.6 &&
+      visibleUpgrades(lightUniverse, run).some(
+        (u) => isBattery(u.id) && !isMaxed(run, u)
+      );
+    return isSaving ? undefined : cheapestFirst(run, affordable);
+  };
+
 const withOil = (
   strategy: Strategy,
   actions: OilChoice,
@@ -559,6 +701,30 @@ const withOil = (
   ),
 });
 
+/**
+ * A player for the night alone (the dials' tests): the eager tapper with the
+ * shop order, oil, and exactly the streetlight and crew habits given.
+ */
+export function nightPlayer(habits: {
+  lamps?: OilChoice;
+  crews?: OilChoice;
+}): Strategy {
+  const tapper = genericBots(lightUniverse).tapper;
+  return withOil(
+    { ...tapper, choose: buysBatteries() },
+    savvyOil,
+    looksAfterThings(74, true),
+    habits.crews ?? (() => []),
+    () => [],
+    () => [],
+    () => [],
+    habits.lamps ?? (() => []),
+    () => [],
+    () => [],
+    choosesFork
+  );
+}
+
 /** Tends at `below` percent and claims, or not: one dial of a skill pair. */
 const tender = (base: Strategy, below: number, claims: boolean): Strategy =>
   withOil(base, savvyOil, looksAfterThings(below, claims));
@@ -574,7 +740,19 @@ export function lightBots(
 ): BotSet {
   const fundShare = options.fundShare ?? DEFAULT_FUND_SHARE;
   const fundWait = options.fundWait ?? DEFAULT_FUND_WAIT;
-  const base = genericBots(lightUniverse);
+  const generic = genericBots(lightUniverse);
+  // Every player buys plants and batteries in step (the shop's order, mostly).
+  const shops = (strategy: Strategy): Strategy => ({
+    ...strategy,
+    choose: buysBatteries(),
+  });
+  const base = {
+    ...generic,
+    tapper: shops(generic.tapper),
+    realistic: shops(generic.realistic),
+    idle: shops(generic.idle),
+    dawdler: shops(generic.dawdler),
+  };
   // The idle bot presses no chore button outside the last phase (where the
   // ending is the story): it taps early and watches. It does take a fork in
   // the road, which is a shop purchase with a picture, not a chore.
@@ -590,16 +768,40 @@ export function lightBots(
     ignores: tender(base.tapper, 74, false),
     claims: tender(base.tapper, 74, true),
   };
+  // At night the careful player reads each evening and posts the crews; the
+  // naive one sets the streetlights once and leaves every crew building.
+  const nightPair = {
+    naive: withOil(
+      base.tapper,
+      savvyOil,
+      looksAfterThings(15, true),
+      () => [],
+      () => [],
+      () => [],
+      () => [],
+      setsAllLamps({ patience: 30, fixed: 2 })
+    ),
+    careful: withOil(
+      base.tapper,
+      savvyOil,
+      looksAfterThings(74, true),
+      tendsCrews(),
+      () => [],
+      () => [],
+      () => [],
+      setsAllLamps({ patience: 30 })
+    ),
+  };
   return {
     tapper: withOil(
       base.tapper,
       savvyOil,
       looksAfterThings(74, true),
-      tendsWeather({ skipEvery: 10 }),
+      tendsCrews({ skipEvery: 10 }),
       setsToll({ skipEvery: 8 }),
       racesProbes({ comet: 0.7, plain: 0, skipEvery: 8 }),
       tendsGarden({ skipEvery: 6 }),
-      setsAllLamps({ patience: 30 }),
+      setsAllLamps({ patience: 30, skipEvery: 8 }),
       investsInFund(fundShare, fundWait),
       runsOverdrive(85),
       choosesFork
@@ -608,11 +810,11 @@ export function lightBots(
       base.realistic,
       savvyOil,
       looksAfterThings(42, true),
-      tendsWeather({ skipEvery: 5 }),
+      tendsCrews({ skipEvery: 5 }),
       setsToll({ skipEvery: 4 }),
       racesProbes({ comet: 0.85, plain: 1, skipEvery: 4 }),
       tendsGarden({ skipEvery: 3 }),
-      setsAllLamps({ patience: 30 }),
+      setsAllLamps({ patience: 30, skipEvery: 4 }),
       investsInFund(fundShare, fundWait),
       runsOverdrive(80),
       choosesFork
@@ -630,11 +832,11 @@ export function lightBots(
         base.dawdler,
         savvyOil,
         looksAfterThings(35, false),
-        tendsWeather({ onlyEvery: 3 }),
+        tendsCrews({ onlyEvery: 3 }),
         setsToll({ onlyEvery: 3 }),
         racesProbes({ comet: 2, plain: 1, onlyEvery: 3 }),
         tendsGarden({ onlyEvery: 3 }),
-        setsAllLamps({ patience: 30 }),
+        setsAllLamps({ patience: 30, onlyEvery: 3 }),
         investsInFund(fundShare, fundWait * 2),
         () => [],
         choosesFork
@@ -644,14 +846,14 @@ export function lightBots(
     // In the last phase "tending" is tapping the flame: a player who barely
     // taps against one who does.
     skill: {
-      1: tendPair,
+      1: nightPair,
       2: tendPair,
       3: {
         naive: { ...base.tapper, tapRate: () => 0.5, actions: idleActions },
         careful: { ...base.tapper, actions: idleActions },
       },
     },
-    claim: { 1: claimPair, 2: claimPair },
+    claim: { 2: claimPair },
     naiveOil: withOil(base.tapper, naiveOil),
     cheapskateOil: withOil(base.tapper, cheapskateOil),
   };

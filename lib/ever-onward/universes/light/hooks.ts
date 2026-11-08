@@ -3,18 +3,15 @@ import { sceneInfo } from "./scene";
 import { LAMP_ACTION_IDS } from "./lamps";
 import { BEAM_ACTION_IDS } from "./beam";
 import {
-  gridSteadiness,
   headingOf,
   isCourseAuto,
   isCourseInPlay,
   isFlareOn,
-  isGridAuto,
   isBoatOut,
   isGridInPlay,
   flameFraction,
   isOilCheap,
   isBeamOpen,
-  isRushOn,
   isLampsOpen,
   isStorming,
   level,
@@ -45,7 +42,19 @@ import {
 } from "./fund";
 import { FORK_ACTION_IDS, chosenSide, forkOf } from "./forks";
 import { OVERDRIVE_ACTION, isOverdriveOn, isOverdriveOpen } from "./overdrive";
-import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
+import {
+  CREW_POST_ACTION_IDS,
+  isCrewsOpen,
+  isWeatherOpen,
+  withoutStorms,
+} from "./weather";
+import {
+  batteryCapacity,
+  chargeShare01,
+  isDusk,
+  isRushNow,
+  withoutEvenings,
+} from "./grid";
 
 /**
  * Scorecard hooks: what the simulator reads to count plates, watch the oil
@@ -74,10 +83,10 @@ export function lightPlates(run: RunState): string[] {
       plates.push("toll");
   } else if (run.phase === 1) {
     plates.push("crank");
-    if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
-      plates.push("grid");
-    if (isRushOn(run)) plates.push("rush");
     if (isLampsOpen(run)) plates.push("lamps");
+    // Dusk and the rush: the streetlights are worth a look before it hits.
+    if (isDusk(run) || isRushNow(run)) plates.push("evening");
+    if (isCrewsOpen(run)) plates.push("crews");
     // Offered once the first front has come and gone (so it is not a crowd of
     // beats at the moment the desk opens).
     if (isWeatherOpen(run) && (run.resources.wxFronts ?? 0) >= 1)
@@ -112,13 +121,13 @@ export function lightPlates(run: RunState): string[] {
 /** Plates that need the player's hands count only while they are tended. */
 export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   oilMarket: ["buy-oil"],
-  grid: ["balance-grid"],
-  rush: ["ride-rush"],
   lamps: LAMP_ACTION_IDS,
+  evening: LAMP_ACTION_IDS,
+  weather: CREW_POST_ACTION_IDS,
+  crews: CREW_POST_ACTION_IDS,
   lamp: BEAM_ACTION_IDS,
   toll: TOLL_ACTION_IDS,
   race: LAUNCH_ACTION_IDS,
-  weather: SHIELD_ACTION_IDS,
   course: ["correct-course"],
   flare: ["catch-flare"],
   boat: ["steer-boat", "flash-lamp"],
@@ -138,7 +147,7 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   "buy-oil",
   ...TOLL_ACTION_IDS,
   ...LAUNCH_ACTION_IDS,
-  ...SHIELD_ACTION_IDS,
+  ...CREW_POST_ACTION_IDS,
   WATER_ACTION,
   ...LAMP_ACTION_IDS,
   ...BEAM_ACTION_IDS,
@@ -165,12 +174,10 @@ export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
   },
   {
     id: "grid",
-    label: "Grid steadiness",
+    label: "Battery charge",
     level: (run) =>
-      isGridInPlay(run) && !isGridAuto(run)
-        ? Math.min(1, Math.max(0, gridSteadiness(run) / 100))
-        : null,
-    // Cities visibly pay less under 50%: that is where a player acts.
+      isGridInPlay(run) && batteryCapacity(run) > 0 ? chargeShare01(run) : null,
+    // Half full or less: the rush may find them short.
     lowZone: { lo: 0.05, hi: 0.5 },
   },
   {
@@ -212,7 +219,14 @@ function sceneKey(run: RunState): string {
     s.linesTier,
     s.subsTier,
     s.bulbsTier,
-    s.gridTier,
+    s.batteries,
+    s.gridOpen,
+    s.crewBuild,
+    s.crewSchool,
+    s.weatherOpen,
+    s.watch0,
+    s.watch1,
+    s.watch2,
     s.stormCrews,
     s.tollOpen,
     s.tollStep,
@@ -249,6 +263,7 @@ export const lightIncomeView = (run: RunState): RunState => {
   const draft =
     isOverdriveOn(run) ||
     isWeatherOpen(run) ||
+    isGridInPlay(run) ||
     isProbesOpen(run) ||
     isGardenOpen(run)
       ? cloneRun(run)
@@ -256,6 +271,7 @@ export const lightIncomeView = (run: RunState): RunState => {
   // A minute of overdrive is a burst, not the income the scorecard measures.
   if (isOverdriveOn(draft)) draft.resources.odLeft = 0;
   if (isWeatherOpen(draft)) withoutStorms(draft);
+  if (isGridInPlay(draft)) withoutEvenings(draft);
   if (isProbesOpen(draft)) withoutProbeRaces(draft);
   if (isGardenOpen(draft)) withoutGarden(draft);
   return draft;

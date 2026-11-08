@@ -5,6 +5,8 @@ import MemoryGarden from "../../game/MemoryGarden";
 import ProbeRaces from "../../game/ProbeRaces";
 import HarborPanel from "../../game/HarborPanel";
 import ProjectsPanel from "../../game/ProjectsPanel";
+import CrewsPanel from "../../game/CrewsPanel";
+import GridPanel from "../../game/GridPanel";
 import StreetlightsPanel from "../../game/StreetlightsPanel";
 import WeatherDesk from "../../game/WeatherDesk";
 import { uiFor } from "..";
@@ -24,7 +26,9 @@ describe("the universe UI registry", () => {
     expect(panels[1].name).toBe("LaterForkPanel");
     expect(topPanels).toEqual([LampPanel, HarborPanel]);
     expect(primaryPanels).toEqual([
+      GridPanel,
       StreetlightsPanel,
+      CrewsPanel,
       ProbeRaces,
       MemoryGarden,
     ]);
