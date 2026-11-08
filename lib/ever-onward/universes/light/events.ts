@@ -1,5 +1,5 @@
 import type { EventSource } from "../../engine/types";
-import { gardenResultLine, picksSoFar } from "./garden";
+import { goodbyeLine, letsSoFar } from "./warmth";
 import { flareLine, homeLine, wildLine } from "./skyLines";
 import { flaresSoFar } from "./sunEdge";
 import { recallsSoFar, wildsSoFar } from "./design";
@@ -46,5 +46,5 @@ export const LIGHT_EVENTS: readonly EventSource[] = [
   },
   { id: "wild", count: wildsSoFar, line: wildLine, tone: () => "bad" },
   { id: "home", count: recallsSoFar, line: homeLine, tone: () => "good" },
-  { id: "garden-pick", count: picksSoFar, line: gardenResultLine },
+  { id: "goodbye", count: letsSoFar, line: goodbyeLine, tone: () => "good" },
 ];

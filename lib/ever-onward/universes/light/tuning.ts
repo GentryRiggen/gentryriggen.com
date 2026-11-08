@@ -61,11 +61,11 @@ export const TUNING = {
       mirrorsFlare: 0.85,
     },
     last: {
-      /** Let it go: resolve comes faster and the flame fades faster. */
-      releaseResolve: 1.8,
-      releaseFade: 1.6,
-      /** Keep it: the flame holds, and every tap is worth more resolve. */
-      keepFade: 0.4,
+      /** Let it go: resolve comes faster, but every light burns more warmth. */
+      releaseResolve: 1.5,
+      releaseBurn: 1.3,
+      /** Keep it: the lights burn less warmth, and every tap is worth more resolve. */
+      keepBurn: 0.7,
       keepTaps: 2,
     },
     /** What each side costs. */
@@ -235,31 +235,6 @@ export const TUNING = {
       /** "DARK!" shows this long. */
       darkBannerSeconds: 6,
     },
-  },
-  /** The Memory Garden, a side machine of The Last Light (see garden.ts). */
-  garden: {
-    /** Seconds a seed takes to bloom with no water at all. */
-    growSeconds: 170,
-    /** A seed counts as sprouted (and the story says so) from this share. */
-    sproutAt: 0.1,
-    /** A plant is a bud from this share of its growth on. */
-    budAt: 0.34,
-    /** A picked plant starts again from here, and grows at this pace. */
-    regrowTo: 0.34,
-    regrowPace: 0.5,
-    /** A watering keeps a plant watered this long; the can then rests. */
-    wetSeconds: 100,
-    waterCooldown: 40,
-    /** Watered seconds count this much extra (2.2x in all). */
-    wetBoost: 1.2,
-    /** The rain barrel waters thirsty plants this often, for this long. */
-    rainEvery: 45,
-    rainWetSeconds: 14,
-    /** A bloom is worth this many seconds of letting go, and a little flame. */
-    pickSeconds: 3,
-    pickFlame: 20,
-    /** The picked resolve flows in over this many seconds, like a glow. */
-    surgeSeconds: 4,
   },
   night: {
     perCityMW: 150,
@@ -611,50 +586,86 @@ export const TUNING = {
     wildNotice: 0.04,
   },
   last: {
-    /** The flame (0..flameFull) starts here, whatever came before. */
-    startFlame: 600,
+    /** The warmth (0..flameFull, kept in `flame`) starts here, whatever came before. */
+    startFlame: 300,
     flameFull: 1000,
+    /** The warmth never goes below this share: the lantern is never out. */
+    warmFloor: 0.08,
+    /** How fast the warmth moves to where the lights leave it (a share a second). */
+    warmRate: 0.06,
+    /** The hearth's own warmth with no lights burning, and what each hearth step adds. */
+    hearthBase: 0.6,
+    hearthStep: 0.05,
+    /** Each tap stokes the flame a little; the stoke fades, so mashing gains nothing past the cap. */
+    stokePerTap: 0.012,
+    stokeMax: 0.1,
+    stokeFade: 0.02,
+    /** Resolve per second (the pace of the quiet), per tap, and the share of it that even a cold flame gives. */
+    resolvePerSecond: 0.2,
+    resolvePerTap: 0.02,
+    coldResolve: 0.35,
+    /** The crossing itself gives hope: resolve a second for each full pace of the boat. */
+    hopePerSecond: 0.5,
+    /** Letting go pays this share of a ripe light's worth when cold, rising to all of it when warm. */
+    lumpCold: 0.2,
+    /** Letting go takes this long (no second light goes meanwhile), and the light's burn fades over `riseSeconds`. */
+    goSeconds: 30,
+    riseSeconds: 10,
+    /** "GOODBYE, LITTLE LIGHT" and the flower stay on the picture this long. */
+    goodbyeSeconds: 7,
+    /** The boat sails this many seconds with full warmth, and at this share of that when the flame is out. */
+    boatSeconds: 2500,
+    boatFloor: 0.12,
+    /** The boat is "surging" in the picture from this warmth. */
+    surgeAt: 0.75,
+    /** Fog creeps in below this warmth. */
+    fogBelow: 0.4,
     /**
-     * Share of the flame lost each second for every light still lit, plus
-     * `darkness` more lights' worth (the dark itself): it never reaches zero
-     * by itself, and the lights going out lets it climb, not run away.
+     * The cold winds: every so often the lights burn harder for a spell. A
+     * wind is forecast `lead` seconds ahead and has a size (mild, chilly,
+     * bitter) that multiplies every burn while it blows.
      */
-    decayPerLight: 0.003,
-    darkness: 3,
+    chill: {
+      first: 80,
+      gapMin: 50,
+      gapSpread: 60,
+      lead: 20,
+      seconds: 30,
+      mult: [1.7, 2.6, 3.8] as const,
+      /** Cupping your hands round the flame costs this many seconds of resolve, and a wind bites this share as hard. */
+      shelterSeconds: 15,
+      shelterBite: 0.25,
+      odds: [0.45, 0.35, 0.2] as const,
+    },
+    /** What a hearth step, a slow burn and warm company change. */
+    hearthTiers: 6,
+    /** Each sail step makes the boat this much faster (they stack). */
+    sailMult: 1.4,
+    slowBurn: 0.85,
+    companyMult: 1.3,
+    /** Each step of the crossing song makes its hope this much bigger (they stack). */
+    songMult: 1.3,
     /**
-     * Share of the way to a full flame one tap brings: a few taps warm a cold
-     * lantern, and tapping a warm one does little, so tending is a top-up now
-     * and then, not a mash.
+     * The eleven remembered lights, nearest to farthest. `burn` is the warmth
+     * share it costs each second; `company` is the resolve a second it keeps
+     * you while it burns; `memory` is what it pays to let it go (the most, if
+     * the flame is warm). Each run moves every number by up to `spread`
+     * either way, from the run's own seed.
      */
-    tapWarmth: 0.15,
-    /** Resolve per second (the pace of letting go), and per tap. */
-    resolvePerSecond: 1,
-    resolvePerTap: 0.06,
-    /** A cold flame still lets go, at this share of the pace (never zero). */
-    flameFloor: 0.75,
-    /** Each light let go makes the next easier: this much more resolve. */
-    reliefPerLetGo: 0.25,
-    /** Gifts: porch/bridge-like (fade), festival-like (burst), moon-like (taps). */
-    fadeSaving: 0.6,
-    tapGift: 0.6,
-    burstFlame: 600,
-    brightDecay: 0.12,
-    /** The first ship's boat appears when this many lights are left. */
-    boatAtLights: 3,
-    /** Heading lost per second (percent), and what one tap on the beam gives. */
-    boatDrift: 0.6,
-    boatSteer: 45,
-    /** The boat sails at this share of its pace when off course (never zero). */
-    boatFloor: 0.3,
-    /** Seconds the crossing takes with the beam true. */
-    boatSeconds: 120,
-    /**
-     * Steering earns resolve: while the boat is out, a true heading makes
-     * letting go this much faster (never below 1x). The bonus is full from
-     * `steerTrue` and fades to nothing at `steerFrom`.
-     */
-    steerBonus: 0.5,
-    steerFrom: 40,
-    steerTrue: 80,
+    spread: 0.5,
+    lonely: 0.6,
+    lights: [
+      { burn: 0.02, company: 0.096, memory: 20 },
+      { burn: 0.03, company: 0.112, memory: 20 },
+      { burn: 0.07, company: 0.352, memory: 60 },
+      { burn: 0.035, company: 0.08, memory: 30 },
+      { burn: 0.022, company: 0.16, memory: 40 },
+      { burn: 0.08, company: 0.32, memory: 60 },
+      { burn: 0.03, company: 0.144, memory: 40 },
+      { burn: 0.018, company: 0.128, memory: 40 },
+      { burn: 0.014, company: 0.048, memory: 30 },
+      { burn: 0.06, company: 0.256, memory: 60 },
+      { burn: 0.022, company: 0.064, memory: 40 },
+    ] as const,
   },
 } as const;

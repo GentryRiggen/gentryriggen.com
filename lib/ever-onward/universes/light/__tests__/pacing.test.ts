@@ -52,25 +52,50 @@ describe("upgrades are few and gated", () => {
     expect(worst).toBeLessThanOrEqual(3);
   });
 
-  it("gives a place of its own only to the battery chain, one step on offer at a time", () => {
+  it("gives a place of its own only to the battery chain and the last part's chains, one step of each on offer at a time", () => {
     const own = def.upgrades.filter((u) => u.hasOwnSlot);
-    expect(own.map((u) => u.id)).toEqual(
-      Array.from({ length: 8 }, (_, i) => `batt-${i + 1}`)
+    const bases = new Set(own.map((u) => u.id.replace(/-\d+$/, "")));
+    expect([...bases].sort()).toEqual(
+      ["batt", "company", "hearth", "sail", "slowburn", "song"].sort()
     );
+    const worst: Record<string, number> = {};
+    simulate(def, {
+      maxSeconds: 6 * 3600,
+      step: 1,
+      strategy: REALISTIC,
+      stopWhen: (run) => {
+        const offered: Record<string, number> = {};
+        for (const u of visibleUpgrades(def, run)) {
+          if (!u.hasOwnSlot || upgradeLevel(run, u.id) > 0) continue;
+          const base = u.id.replace(/-\d+$/, "");
+          offered[base] = (offered[base] ?? 0) + 1;
+        }
+        for (const [base, n] of Object.entries(offered))
+          worst[base] = Math.max(worst[base] ?? 0, n);
+        return false;
+      },
+    });
+    for (const n of Object.values(worst)) expect(n).toBeLessThanOrEqual(1);
+  });
+
+  it("never has more than four of the last part's chains on offer together", () => {
     let worst = 0;
     simulate(def, {
       maxSeconds: 6 * 3600,
       step: 1,
       strategy: REALISTIC,
       stopWhen: (run) => {
-        const offered = visibleUpgrades(def, run).filter(
-          (u) => u.hasOwnSlot && upgradeLevel(run, u.id) === 0
-        );
-        worst = Math.max(worst, offered.length);
+        if (run.phase === 3)
+          worst = Math.max(
+            worst,
+            visibleUpgrades(def, run).filter(
+              (u) => u.hasOwnSlot && upgradeLevel(run, u.id) === 0
+            ).length
+          );
         return false;
       },
     });
-    expect(worst).toBeLessThanOrEqual(1);
+    expect(worst).toBeLessThanOrEqual(4);
   });
 
   it("keeps repeatables to a handful per phase", () => {

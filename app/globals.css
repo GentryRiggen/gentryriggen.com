@@ -2494,7 +2494,7 @@ html:has(.jim-app) body {
   }
 }
 
-/* Ever Onward: the Memory Garden (swaying flowers, a soft glow, drops). */
+/* Ever Onward: the flowers of The Last Light (swaying, a soft glow). */
 @keyframes gd-sway {
   0%,
   100% {
@@ -2515,20 +2515,6 @@ html:has(.jim-app) body {
   }
 }
 
-@keyframes gd-drip {
-  0% {
-    transform: translateY(-6px);
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(18px);
-    opacity: 0;
-  }
-}
-
 .gd-sway {
   transform-box: fill-box;
   transform-origin: 50% 100%;
@@ -2539,15 +2525,209 @@ html:has(.jim-app) body {
   animation: gd-glow 3.4s ease-in-out infinite;
 }
 
-.gd-drip {
-  animation: gd-drip 1.8s ease-in infinite;
+@media (prefers-reduced-motion: reduce) {
+  .gd-sway,
+  .gd-glow {
+    animation: none;
+  }
+}
+
+/*
+ * Ever Onward: The Last Light's warmth. A lantern rising from the lamp that
+ * was let go, the flower blooming where it stood (ring and sparks), the small
+ * banner at the top edge, fog on the water, cold wind streaks, and the boat
+ * surging when the flame is warm.
+ */
+@keyframes ll-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-170px) scale(0.55);
+  }
+}
+.ll-rise {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation: ll-rise 6.5s ease-out both;
+}
+
+@keyframes ll-bloom {
+  0% {
+    transform: scale(0);
+  }
+  55% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.ll-bloom {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-bloom 1.6s ease-out both;
+}
+
+@keyframes ll-ring {
+  0% {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+.ll-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ll-ring 1.6s ease-out 2 both;
+}
+
+@keyframes ll-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--ll-dx), var(--ll-dy));
+  }
+}
+.ll-spark {
+  animation: ll-spark 1.8s ease-out 2 both;
+}
+
+@keyframes ll-banner {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ll-banner {
+  animation: ll-banner 7s ease-in-out both;
+}
+
+@keyframes ll-fog {
+  0%,
+  100% {
+    transform: translateX(-26px);
+  }
+  50% {
+    transform: translateX(26px);
+  }
+}
+.ll-fog {
+  animation: ll-fog 13s ease-in-out infinite;
+}
+.ll-fog-b {
+  animation: ll-fog 17s ease-in-out infinite reverse;
+}
+
+@keyframes ll-gust {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  20% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-190px);
+  }
+}
+.ll-gust {
+  opacity: 0.5;
+  animation: ll-gust 2s linear infinite;
+}
+
+@keyframes ll-lean {
+  0%,
+  100% {
+    transform: skewX(-14deg);
+  }
+  50% {
+    transform: skewX(-6deg);
+  }
+}
+.ll-lean {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-lean 0.5s ease-in-out infinite;
+}
+
+@keyframes ll-wake {
+  0% {
+    opacity: 0.85;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+.ll-wake {
+  animation: ll-wake 0.7s ease-out infinite;
+}
+
+@keyframes ll-surge {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-1.5px) rotate(-6deg);
+  }
+}
+.ll-surge {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-surge 0.55s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gd-sway,
-  .gd-glow,
-  .gd-drip {
+  .ll-rise,
+  .ll-ring,
+  .ll-spark,
+  .ll-fog,
+  .ll-fog-b,
+  .ll-gust,
+  .ll-lean,
+  .ll-wake,
+  .ll-surge,
+  .ll-bloom,
+  .ll-banner {
     animation: none;
+  }
+  /* Nothing hangs in mid-air or covers the picture: the lantern and the sparks are gone. */
+  .ll-rise,
+  .ll-ring,
+  .ll-spark {
+    opacity: 0;
+  }
+  .ll-gust {
+    opacity: 0.45;
+  }
+  .ll-lean {
+    transform: skewX(-10deg);
   }
 }
 

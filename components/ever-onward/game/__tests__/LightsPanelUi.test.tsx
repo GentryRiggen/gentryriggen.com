@@ -1,0 +1,115 @@
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import {
+  newRun,
+  performAction,
+  reconcileRun,
+  tick,
+} from "@/lib/ever-onward/engine/engine";
+import type { RunState } from "@/lib/ever-onward/engine/types";
+import { lightUniverse as def } from "@/lib/ever-onward/universes/light";
+import { startWarmth } from "@/lib/ever-onward/universes/light/warmth";
+import LightsPanel from "../LightsPanel";
+
+function lastRun(resources: Record<string, number> = {}): RunState {
+  const base = newRun(def);
+  const run = reconcileRun(def, {
+    ...base,
+    phase: 3,
+    resources: { ...base.resources, lights: 12, flame: 400, ...resources },
+  });
+  startWarmth(run);
+  Object.assign(run.resources, resources);
+  return run;
+}
+
+/** Renders the panel the way the game does: `onAct` performs the action and re-renders. */
+function renderPanel(start: RunState) {
+  let run = start;
+  const view = render(
+    <LightsPanel def={def} run={run} onAct={() => undefined} />
+  );
+  const onAct = (id: string) => {
+    run = performAction(def, run, id);
+    view.rerender(<LightsPanel def={def} run={run} onAct={onAct} />);
+  };
+  view.rerender(<LightsPanel def={def} run={run} onAct={onAct} />);
+  return { view, current: () => run };
+}
+
+describe("LightsPanel", () => {
+  it("is absent outside the last part and after the ending", () => {
+    const early = reconcileRun(def, { ...newRun(def), phase: 2 });
+    render(<LightsPanel def={def} run={early} onAct={() => undefined} />);
+    expect(screen.queryByTestId("lm-lights")).toBeNull();
+  });
+
+  it("shows every burning light with its warmth cost and company as marks, never numbers or advice", () => {
+    render(<LightsPanel def={def} run={lastRun()} onAct={() => undefined} />);
+    const panel = screen.getByTestId("lm-lights");
+    expect(panel).toHaveAttribute("data-lit", "11");
+    for (let i = 0; i < 11; i += 1)
+      expect(screen.getByTestId(`lm-light-${i}`)).toBeInTheDocument();
+    // two rows of marks a light, read out as "n of 5"
+    const stadium = screen.getByTestId("lm-light-2");
+    expect(within(stadium).getAllByText(/\d of 5/)).toHaveLength(2);
+    expect(panel).not.toHaveTextContent(/best|recommend|should/i);
+  });
+
+  it("lets a light go with one tap, takes it off the list and makes the next one wait", async () => {
+    const { current } = renderPanel(lastRun());
+    await userEvent.click(screen.getByTestId("lm-letgo-3"));
+    expect(current().owned["letgo-bridges"]).toBe(1);
+    expect(screen.queryByTestId("lm-light-3")).toBeNull();
+    expect(screen.getByTestId("lm-lights")).toHaveAttribute("data-lit", "10");
+    expect(screen.getByTestId("lm-lights-note")).toHaveTextContent(/rising/);
+    expect(screen.getByTestId("lm-letgo-4")).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
+  });
+
+  it("names the cold wind when it is coming or blowing, and says the air is still otherwise", () => {
+    const still = lastRun({ wmChillIn: 90, wmChillLeft: 0, wmChillSize: 1 });
+    const { view } = renderPanel(still);
+    expect(screen.getByTestId("lm-wind")).toHaveTextContent(/air is still/i);
+    const coming = lastRun({ wmChillIn: 12, wmChillLeft: 0, wmChillSize: 2 });
+    view.rerender(
+      <LightsPanel def={def} run={coming} onAct={() => undefined} />
+    );
+    expect(screen.getByTestId("lm-wind")).toHaveTextContent(
+      /bitter wind is coming/i
+    );
+    expect(screen.getByTestId("lm-wind")).toHaveAttribute("data-windy", "yes");
+    const blowing = lastRun({ wmChillLeft: 20, wmChillSize: 0 });
+    view.rerender(
+      <LightsPanel def={def} run={blowing} onAct={() => undefined} />
+    );
+    expect(screen.getByTestId("lm-wind")).toHaveTextContent(
+      /mild wind is blowing/i
+    );
+  });
+
+  it("says so when every light has gone", () => {
+    const owned = Object.fromEntries(
+      [
+        "porch",
+        "signs",
+        "stadium",
+        "bridges",
+        "harbor",
+        "towers",
+        "festival",
+        "fire",
+        "moon",
+        "sun",
+        "night",
+      ].map((n) => [`letgo-${n}`, 1])
+    );
+    const run = tick(def, { ...lastRun(), owned }, 1);
+    render(<LightsPanel def={def} run={run} onAct={() => undefined} />);
+    expect(screen.getByTestId("lm-lights")).toHaveTextContent(
+      /Every light has gone/
+    );
+  });
+});

@@ -30,7 +30,7 @@ for (const def of ALL_UNIVERSES) {
   });
 }
 
-test("Light goals follow cities, consumed stars and lights released", () => {
+test("Light goals follow cities, consumed stars and the boat on its way home", () => {
   const run = newRun(lightUniverse);
   run.phase = 1;
   run.resources.night = 50;
@@ -39,9 +39,8 @@ test("Light goals follow cities, consumed stars and lights released", () => {
   run.resources.stars = 750;
   expect(lightUniverse.goalMeter?.(run)?.current).toBe(250);
   run.phase = 3;
-  run.resources.lights = 6;
-  expect(lightUniverse.goalMeter?.(run)?.current).toBe(6);
-  run.resources.lights = 1;
+  run.resources.boatProgress = 42.5;
+  expect(lightUniverse.goalMeter?.(run)?.current).toBe(42);
   run.resources.boatProgress = 100;
   expect(lightUniverse.goalMeter?.(run)?.next).toMatch(/flash/i);
 });

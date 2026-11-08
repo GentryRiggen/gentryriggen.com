@@ -27,7 +27,13 @@ import {
   wildShare,
 } from "./design";
 import { lightMult, openSkyDials, tickSunEdge } from "./sunEdge";
-import { tickGarden } from "./garden";
+import {
+  letGoCount,
+  resolvePerSecond as lastResolvePerSecond,
+  stoke,
+  tapResolve,
+  tickWarmth,
+} from "./warmth";
 import {
   growthRate,
   rivalToll,
@@ -54,14 +60,7 @@ import {
   tickWeather,
 } from "./weather";
 
-const {
-  coast: C,
-  night: N,
-  sky: S,
-  last: L,
-  projects: P,
-  lamps: LAMPS,
-} = TUNING;
+const { coast: C, night: N, sky: S, projects: P, lamps: LAMPS } = TUNING;
 const SP = P.sky;
 const FK = TUNING.fork;
 
@@ -753,136 +752,17 @@ function tickSky(run: RunState, dt: number): void {
 
 // ----------------------------------------------------------- The Last Light
 
-export const lightsLetGo = (run: RunState): number =>
-  Object.keys(run.owned).filter((id) => id.startsWith("letgo-")).length;
-
-/** What each light you let go leaves behind. */
-export type LetGoGift = "fade" | "burst" | "taps";
-
-/** In the order the lights are offered: three on offer always differ a little. */
-export const LET_GO_GIFTS: Readonly<Record<string, LetGoGift>> = {
-  "letgo-porch": "fade",
-  "letgo-signs": "burst",
-  "letgo-stadium": "taps",
-  "letgo-bridges": "fade",
-  "letgo-harbor": "taps",
-  "letgo-towers": "burst",
-  "letgo-festival": "burst",
-  "letgo-fire": "fade",
-  "letgo-moon": "taps",
-  "letgo-sun": "fade",
-  "letgo-night": "burst",
-};
-
-const giftsOwned = (run: RunState, gift: LetGoGift): number =>
-  Object.entries(LET_GO_GIFTS).filter(
-    ([id, g]) => g === gift && level(run, id) > 0
-  ).length;
-
-/** The flame, 0..flameFull; a save from before the flame starts it lit. */
-export const flameOf = (run: RunState): number =>
-  Math.min(L.flameFull, Math.max(0, run.resources.flame ?? L.startFlame));
-
-export const flameFraction = (run: RunState): number =>
-  flameOf(run) / L.flameFull;
-
-/** Share of the flame lost each second. */
-export function fadeRate(run: RunState): number {
-  return (
-    (res(run, "lights") + L.darkness) *
-    L.decayPerLight *
-    L.fadeSaving ** giftsOwned(run, "fade") *
-    (hasFork(run, "release")
-      ? FK.last.releaseFade
-      : hasFork(run, "keep")
-        ? FK.last.keepFade
-        : 1) *
-    (1 - L.brightDecay * (run.mods.bright ?? 0))
-  );
-}
-
-/** A tap is worth more for every moon-like light let go. */
-export const tapGiftMult = (run: RunState): number =>
-  (1 + L.tapGift * giftsOwned(run, "taps")) *
-  (hasFork(run, "keep") ? FK.last.keepTaps : 1);
-
-/**
- * Share of the way to full one tap brings. The "taps" gifts make a tap let go
- * more (resolve), not warm more, or a keen tapper would hold the flame full.
- */
-export const tapWarmth = (run: RunState): number =>
-  Math.min(1, L.tapWarmth * tapMult(run));
-
-/** Flame one tap adds: a share of what is missing, so a cold flame leaps. */
-export const lastTapFlame = (run: RunState): number =>
-  (L.flameFull - flameOf(run)) * tapWarmth(run);
-
-export const lastTapResolve = (run: RunState): number =>
-  L.resolvePerTap * tapGiftMult(run);
-
-/** Flame the lantern holds at when tapped `tapsPerSecond` times a second. */
-export const steadyFlame = (run: RunState, tapsPerSecond = 3): number => {
-  const warming = tapWarmth(run) * tapsPerSecond;
-  return (L.flameFull * warming) / Math.max(warming + fadeRate(run), 1e-6);
-};
-
-/**
- * Steering earns resolve: while the boat is out and still sailing, keeping
- * its heading true makes letting go faster (1x when it has lost the beam,
- * up to 1 + `steerBonus` when it is true). Never slower than usual.
- */
-export function steerBonus(run: RunState): number {
-  if (!isBoatOut(run) || boatArrived(run)) return 1;
-  const truth =
-    (boatHeadingOf(run) - L.steerFrom) / (L.steerTrue - L.steerFrom);
-  return 1 + L.steerBonus * Math.min(1, Math.max(0, truth));
-}
-
-/** Resolve per second: a cold flame is slow (never stopped), letting go helps. */
-export function resolvePerSecond(run: RunState): number {
-  const warmth = L.flameFloor + (1 - L.flameFloor) * flameFraction(run);
-  return (
-    L.resolvePerSecond *
-    steerBonus(run) *
-    (1 + L.reliefPerLetGo * lightsLetGo(run)) *
-    (hasFork(run, "release") ? FK.last.releaseResolve : 1) *
-    warmth *
-    speed(run)
-  );
-}
-
-export const isBoatOut = (run: RunState): boolean =>
-  run.phase === 3 && res(run, "lights") <= L.boatAtLights;
-
-export const boatHeadingOf = (run: RunState): number =>
-  Math.min(100, Math.max(0, run.resources.boatHeading ?? 100));
-
-export const boatArrived = (run: RunState): boolean =>
-  res(run, "boatProgress") >= 100;
-
-/** How fast the boat sails: floor..1 of full pace, by how true its heading is. */
-export const boatPace = (run: RunState): number =>
-  L.boatFloor + (1 - L.boatFloor) * (boatHeadingOf(run) / 100);
-
-/** The last light is up and the first ship waits for one flash. */
-export const isReadyToFlash = (run: RunState): boolean =>
-  run.phase === 3 &&
-  res(run, "lights") <= 1 &&
-  boatArrived(run) &&
-  run.flags.finished !== true;
-
-function tickLast(run: RunState, dt: number): void {
-  const r = run.resources;
-  const flame = flameOf(run);
-  r.flame = Math.min(L.flameFull, flame * Math.exp(-fadeRate(run) * dt));
-  r.resolve += resolvePerSecond(run) * dt;
-  if (!isBoatOut(run) || boatArrived(run)) return;
-  r.boatHeading = Math.max(0, boatHeadingOf(run) - L.boatDrift * dt);
-  r.boatProgress = Math.min(
-    100,
-    res(run, "boatProgress") + (100 / L.boatSeconds) * boatPace(run) * dt
-  );
-}
+// The warmth, the lights and the boat live in warmth.ts; these names are kept
+// here because the rest of the game reads them from the tick.
+export {
+  boatArrived,
+  boatPace,
+  isBoatOut,
+  isReadyToFlash,
+  letGoCount as lightsLetGo,
+  resolvePerSecond,
+  warmthOf as flameFraction,
+} from "./warmth";
 
 // ------------------------------------------------------------------- Shared
 
@@ -892,7 +772,7 @@ export function syncDisplay(run: RunState): void {
   r.lighthouses = lighthouseCount(run);
   r.keepers = keeperCount(run);
   r.collectors = level(run, "collector");
-  r.lights = Math.max(0, TOTAL_LIGHTS - lightsLetGo(run));
+  r.lights = Math.max(0, TOTAL_LIGHTS - letGoCount(run));
   if (run.phase >= 1) {
     r.supply = supplyMW(run);
     r.demand = demandMW(run);
@@ -905,13 +785,12 @@ export function syncDisplay(run: RunState): void {
 
 export function tickLight(run: RunState, dt: number): void {
   const phase = run.phase;
-  tickGarden(run, dt);
   tickFund(run, dt, () => fundIncome(run));
   tickOverdrive(run, dt, () => nightSteadiness(run));
   if (phase === 0) tickCoast(run, dt);
   else if (phase === 1) tickNight(run, dt);
   else if (phase === 2) tickSky(run, dt);
-  else tickLast(run, dt);
+  else tickWarmth(run, dt);
   syncDisplay(run);
 }
 
@@ -931,8 +810,8 @@ export function manualLight(run: RunState): void {
   } else if (phase === 2) {
     r.energy += aimEnergy(run);
   } else {
-    r.flame = Math.min(L.flameFull, flameOf(run) + lastTapFlame(run));
-    r.resolve += lastTapResolve(run);
+    stoke(run, tapMult(run));
+    r.resolve += tapResolve(run) * tapMult(run);
   }
 }
 
@@ -998,7 +877,7 @@ export function fundIncome(run: RunState): number {
   if (run.phase === 0) return calmIncomePerSecond(run);
   if (run.phase === 1) return incomePerSecond(run);
   if (run.phase === 2) return calmSkyIncomePerSecond(run);
-  return resolvePerSecond(run);
+  return lastResolvePerSecond(run);
 }
 
 /** The gift every income visitor brings: a small slice of the phase's income. */

@@ -58,8 +58,15 @@ const GATE_CAP = 59;
  * sky's overdrive are gone) scored 76.8 uncapped, up from 76.5, with the sky
  * about 17 minutes for a reading player and every sky gate in its band bar
  * the known decision gaps. The floor stays where it was.
+ *
+ * The Last Light's warmth (the remembered lights, each costing warmth and
+ * keeping you company; sails, a hearth, warm company and a crossing song to
+ * buy with resolve; the memory garden gone) scored 78.3 uncapped, up from
+ * 76.8, with the last part about 20 minutes and its decision gaps now in
+ * band (longest 112 s, 16% of the time in gaps over a minute, where it was
+ * 159 s and 76%). The floor is that score minus 1.3.
  */
-const UNCAPPED_FLOOR = 75.7;
+const UNCAPPED_FLOOR = 77;
 /** Gates knowingly failing; no other gate may fail. */
 const KNOWN_REWORK_GATES: readonly string[] = [
   // The whole run is about 1.3 h; later parts add the length (the band is 2-3 h).
@@ -79,7 +86,6 @@ interface DeadPhaseCeiling {
  */
 const KNOWN_DEAD_PHASES: Readonly<Record<string, DeadPhaseCeiling>> = {
   sky: { deadShare: 0.89, longest: 150 },
-  last: { deadShare: 0.8, longest: 179 },
 };
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
@@ -165,6 +171,15 @@ describe("Keep the Light On engagement scorecard", () => {
       expect(row.stats.deadShare).toBeLessThanOrEqual(ceiling.deadShare);
       expect(row.stats.longest).toBeLessThanOrEqual(ceiling.longest);
     }
+  });
+
+  it("keeps the last light's decisions at a steady pace, with no gate failing in the last part", () => {
+    const m16 = good.metrics.find((m) => m.id === "M16")!;
+    const last = m16.perPhase.find((r) => r.phase === "last")!;
+    expect(last.gate).toBe(true);
+    expect(last.stats.longest).toBeLessThanOrEqual(150);
+    expect(last.stats.deadShare).toBeLessThanOrEqual(0.4);
+    expect(good.failingGates.filter((g) => g.includes("(last)"))).toEqual([]);
   });
 
   it("reports all 16 metrics with weights summing to 100", () => {

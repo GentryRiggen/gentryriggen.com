@@ -23,14 +23,12 @@ import { sceneInfo } from "..";
 import {
   autoFlashRate,
   calmSkyIncomePerSecond,
-  fadeRate,
-  lastTapResolve,
   powerPerSecond,
-  resolvePerSecond,
   shipsPerFlash,
   supplyMW,
   tankCapacity,
 } from "../tick";
+import { burnMult, resolvePerSecond, tapResolve } from "../warmth";
 import { lightSceneDiff } from "../hooks";
 import { burnShare } from "../sunEdge";
 import { TUNING } from "../tuning";
@@ -205,7 +203,7 @@ describe("the forks in the road", () => {
     );
   });
 
-  it("last: letting go is faster but colder; keeping holds the flame and rewards taps", () => {
+  it("last: letting go earns resolve faster but every light burns more; keeping burns less and rewards taps", () => {
     const fork = forkNamed("last");
     const run = runAt(fork);
     const letGo = performAction(def, run, forkActionId("release"));
@@ -213,11 +211,9 @@ describe("the forks in the road", () => {
     expect(resolvePerSecond(letGo)).toBeCloseTo(
       resolvePerSecond(run) * K.last.releaseResolve
     );
-    expect(fadeRate(letGo)).toBeGreaterThan(fadeRate(run));
-    expect(fadeRate(keep)).toBeLessThan(fadeRate(run) * 0.5);
-    expect(lastTapResolve(keep)).toBeCloseTo(
-      lastTapResolve(run) * K.last.keepTaps
-    );
+    expect(burnMult(letGo)).toBeGreaterThan(burnMult(run));
+    expect(burnMult(keep)).toBeLessThan(burnMult(run) * 0.8);
+    expect(tapResolve(keep)).toBeCloseTo(tapResolve(run) * K.last.keepTaps);
     expect(resolvePerSecond(keep)).toBeCloseTo(resolvePerSecond(run), 5);
   });
 

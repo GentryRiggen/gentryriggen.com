@@ -3,14 +3,12 @@ import { sceneInfo } from "./scene";
 import { LAMP_ACTION_IDS } from "./lamps";
 import { BEAM_ACTION_IDS } from "./beam";
 import {
-  isBoatOut,
   isGridInPlay,
   flameFraction,
   isOilCheap,
   isBeamOpen,
   isLampsOpen,
   isStorming,
-  level,
   tankCapacity,
 } from "./tick";
 import { trafficShare } from "./toll";
@@ -31,12 +29,12 @@ import {
 import { TOLL_ACTION_IDS, isTollOpen, tollLockLeft } from "./toll";
 import { isTankerIn } from "./tanker";
 import {
-  GARDEN_ACTION_IDS,
-  WATER_ACTION,
-  isGardenOpen,
-  picksSoFar,
-  withoutGarden,
-} from "./garden";
+  LET_GO_ACTION_IDS,
+  SHELTER_ACTION,
+  chillForecast,
+  isChillBlowing,
+  litCount,
+} from "./warmth";
 import {
   FUND_ACTION_IDS,
   FUND_CHOICE_IDS,
@@ -105,14 +103,10 @@ export function lightPlates(run: RunState): string[] {
     }
   } else {
     plates.push("tend");
-    const hasLetGoOnOffer = run.revealed.some(
-      (id) => id.startsWith("letgo-") && level(run, id) === 0
-    );
-    if (hasLetGoOnOffer) plates.push("letGo");
-    if (isBoatOut(run)) plates.push("boat");
-    // Offered once the second bloom is picked (so it is not a crowd of beats
-    // at the moment the first seed is planted).
-    if (isGardenOpen(run) && picksSoFar(run) >= 2) plates.push("garden");
+    if (litCount(run) > 0) plates.push("lights");
+    plates.push("boat");
+    // A cold wind is worth a look while it is forecast or blowing.
+    if (isChillBlowing(run) || chillForecast(run) !== null) plates.push("wind");
   }
   if (isFundOpen(run) && fundBalance(run) > 0) plates.push("fund");
   const fork = forkOf(run);
@@ -134,8 +128,9 @@ export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   design: DESIGN_ACTION_IDS,
   flare: DISTANCE_ACTION_IDS,
   wild: [RECALL_ACTION],
-  boat: ["steer-boat", "flash-lamp"],
-  garden: GARDEN_ACTION_IDS,
+  boat: ["flash-lamp"],
+  lights: LET_GO_ACTION_IDS,
+  wind: [SHELTER_ACTION],
   fund: FUND_ACTION_IDS,
   overdrive: [OVERDRIVE_ACTION],
   fork: FORK_ACTION_IDS,
@@ -154,7 +149,8 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   ...DISTANCE_ACTION_IDS,
   RECALL_ACTION,
   ...CREW_POST_ACTION_IDS,
-  WATER_ACTION,
+  ...LET_GO_ACTION_IDS,
+  SHELTER_ACTION,
   ...LAMP_ACTION_IDS,
   ...BEAM_ACTION_IDS,
   ...FUND_CHOICE_IDS,
@@ -165,9 +161,9 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
   {
     id: "flame",
-    label: "The flame",
+    label: "The warmth",
     level: (run) => (run.phase === 3 ? flameFraction(run) : null),
-    // Low is when the lantern is dim and the light lets go slowly.
+    // Low is when too many lights burn and the boat is slow in the fog.
     lowZone: { lo: 0.02, hi: 0.3 },
   },
   {
@@ -210,6 +206,11 @@ function sceneKey(run: RunState): string {
     s.probes,
     s.lightsRemaining,
     s.letGoMask,
+    s.hearthTier,
+    s.sailTier,
+    s.slowburnTier,
+    s.companyTier,
+    s.songTier,
     // every chain step and generator now draws something
     s.wickTier,
     s.feesTier,
@@ -252,8 +253,6 @@ function sceneKey(run: RunState): string {
     s.enginesTier,
     s.appetiteTier,
     s.boatVisible,
-    s.gardenCode,
-    s.rainBarrel,
     s.finished,
     s.forkCoast,
     s.forkNight,
@@ -274,8 +273,7 @@ export const lightIncomeView = (run: RunState): RunState => {
     isOverdriveOn(run) ||
     isWeatherOpen(run) ||
     isGridInPlay(run) ||
-    isDialsOpen(run) ||
-    isGardenOpen(run)
+    isDialsOpen(run)
       ? cloneRun(run)
       : run;
   // A minute of overdrive is a burst, not the income the scorecard measures.
@@ -283,6 +281,5 @@ export const lightIncomeView = (run: RunState): RunState => {
   if (isWeatherOpen(draft)) withoutStorms(draft);
   if (isGridInPlay(draft)) withoutEvenings(draft);
   if (isDialsOpen(draft)) withoutFlares(draft);
-  if (isGardenOpen(draft)) withoutGarden(draft);
   return draft;
 };

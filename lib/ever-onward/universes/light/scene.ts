@@ -29,8 +29,19 @@ import {
   lastSaved,
   sunMood,
 } from "./sunEdge";
-import { gardenCode, hasRainBarrel } from "./garden";
-import { LET_GO } from "./upgrades";
+import {
+  LIGHT_COUNT,
+  chillForecast,
+  chillSize,
+  fogOf,
+  goodbyeIndex,
+  hearthTier,
+  isChillBlowing,
+  isSurging,
+  letGoMask,
+  companyPips,
+  isLit,
+} from "./warmth";
 import { hasFork, windRamp } from "./forkState";
 import {
   batteryCount,
@@ -64,7 +75,6 @@ import {
   TOTAL_STARS,
 } from "./resources";
 import {
-  boatHeadingOf,
   flameFraction,
   isBoatOut,
   isGridInPlay,
@@ -131,14 +141,26 @@ export interface LightSceneInfo {
   windBuilt: number;
   /** 1 once the first ship's boat is out in the dark. */
   boatVisible: number;
-  /** The memory garden: one base-4 digit a plot (see `gardenCode`). */
-  gardenCode: number;
-  /** 1 once the rain barrel stands by the flowers. */
-  rainBarrel: number;
   /** How far across the dark the boat is, 0..1 (steps of 1%). */
   boatProgress: number;
-  /** How true its heading is, 0..1 (steps of 5%): 1 is straight at the beam. */
-  boatHeading: number;
+  /** 1 while the flame is warm enough for the boat to surge. */
+  surge: number;
+  /** The fog on the water, 0..4 (0 none, 4 thick): it creeps in as the flame cools. */
+  fog: number;
+  /** How much company each lit light keeps: one base-4 digit a light (see `brightCode`). */
+  brightCode: number;
+  /** The light whose goodbye is showing (1 up), or 0. */
+  goodbye: number;
+  /** The cold wind: 0 none, 1-3 forecast (mild to bitter), 4-6 blowing. */
+  chill: number;
+  /** Hearth steps bought, 0 to 6. */
+  hearthTier: number;
+  /** Steps of the boat's sails, the lamp glass and warm company, so each shows in the picture. */
+  sailTier: number;
+  slowburnTier: number;
+  companyTier: number;
+  /** Steps of the crossing song, 0 to 4: notes drift over the boat. */
+  songTier: number;
   /** 1 while the steady glow is on: sparkling cities. */
   glow: number;
   /** 1 once the last flash is made and the boat has turned for home. */
@@ -255,10 +277,30 @@ export interface LightSceneInfo {
   navTier: number;
   enginesTier: number;
   appetiteTier: number;
-  /** Bit i is set once the i-th light of LET_GO has been let go. */
+  /** Bit i is set once the i-th remembered light has been let go. */
   letGoMask: number;
   /** The lantern colour picked at the start, 1 to 3 (the first if none). */
   lantern: number;
+}
+
+/**
+ * One base-4 digit a lit light: how much company it keeps this run (0 a
+ * little .. 3 a lot), so the picture can draw the big ones big. It changes
+ * only when a light goes, never every tick.
+ */
+function brightCode(run: RunState): number {
+  if (run.phase !== 3) return 0;
+  let code = 0;
+  for (let i = 0; i < LIGHT_COUNT; i += 1)
+    if (isLit(run, i)) code += Math.min(3, companyPips(run, i) - 1) * 4 ** i;
+  return code;
+}
+
+/** 0 none, 1-3 a forecast wind (mild to bitter), 4-6 a wind blowing. */
+function chillCode(run: RunState): number {
+  if (isChillBlowing(run)) return 4 + chillSize(run);
+  const coming = chillForecast(run);
+  return coming === null ? 0 : 1 + coming;
 }
 
 /** Lantern colours to pick from, in the order they are offered. */
@@ -337,10 +379,17 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     forkLast: hasFork(run, "release") ? 1 : hasFork(run, "keep") ? 2 : 0,
     windBuilt: step(windRamp(run), 4),
     boatVisible: isBoatOut(run) ? 1 : 0,
-    gardenCode: gardenCode(run),
-    rainBarrel: hasRainBarrel(run) ? 1 : 0,
     boatProgress: step(clamp01(finite(r.boatProgress ?? 0) / 100), 100),
-    boatHeading: step(boatHeadingOf(run) / 100, 20),
+    surge: isSurging(run) ? 1 : 0,
+    fog: run.phase === 3 ? Math.round(fogOf(run) * 4) : 0,
+    brightCode: brightCode(run),
+    goodbye: (goodbyeIndex(run) ?? -1) + 1,
+    chill: chillCode(run),
+    hearthTier: hearthTier(run),
+    sailTier: tier(run, "sail"),
+    slowburnTier: tier(run, "slowburn"),
+    companyTier: tier(run, "company"),
+    songTier: tier(run, "song"),
     glow: isGridGlowing(run) ? 1 : 0,
     finished: run.flags.finished ? 1 : 0,
     lantern: lanternOf(run),
@@ -434,9 +483,6 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     navTier: tier(run, "nav"),
     enginesTier: tier(run, "engines"),
     appetiteTier: tier(run, "appetite"),
-    letGoMask: LET_GO.reduce(
-      (mask, light, i) => (level(run, light.id) > 0 ? mask | (1 << i) : mask),
-      0
-    ),
+    letGoMask: letGoMask(run),
   };
 }

@@ -135,7 +135,7 @@ export const TEASERS: readonly TeaserDef[] = [
   },
   {
     // A look at the next part, so the end of the sky is not an empty shop.
-    upgradeId: "letgo-porch",
+    upgradeId: "hearth-1",
     phase: PHASE_SKY,
     name: "Something quiet",
     showWhen: (run) => res(run, "stars") <= 300,

@@ -1,5 +1,5 @@
 import type { RunState, StoryMessage } from "../../engine/types";
-import { hasSprouted, picksSoFar } from "./garden";
+import { boatProgressOf, isReadyToFlash, letGoCount } from "./warmth";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
@@ -352,55 +352,43 @@ const last: StoryMessage[] = [
   {
     id: "last-hello",
     phase: PHASE_LAST,
-    text: "The sky is empty. All that light is in your hands, and light does not keep. It leaks, a little every second, from every lamp you ever lit.",
+    text: "The sky is empty. Every light you ever lit is still burning, and every one of them costs a little warmth to keep. Warmth is how a lost boat finds its way.",
   },
   {
     id: "last-choice",
     phase: PHASE_LAST,
     when: (run) => run.time > 6,
-    text: "You cannot keep every light. You can only keep one, and each light you let go leaves the others a little warmer. Take your time. Any order is a good order.",
+    text: "You do not have to keep them all. Each light you let go gives back some warmth, a flower and a little resolve. Take your time. Any order is a good order.",
   },
   {
     id: "last-first-go",
     phase: PHASE_LAST,
-    when: (run) => res(run, "lights") <= 10,
-    text: "One light goes out. It does not hurt. It sighs, like someone settling into a chair at the end of a long day.",
+    when: (run) => letGoCount(run) >= 1,
+    text: "One light lifts off like a lantern at a festival. It does not hurt. It sighs, like someone settling into a chair at the end of a long day.",
   },
   {
-    id: "last-garden",
+    id: "last-flower",
     phase: PHASE_LAST,
-    when: hasSprouted,
-    text: "Where the first light went out, a seed is sitting in the dark soil, and it has just sprouted. It is the memory of that light, and it wants a little water and a little time. Every light you let go will leave one.",
-  },
-  {
-    id: "last-bloom",
-    phase: PHASE_LAST,
-    when: (run) => picksSoFar(run) >= 1,
-    text: "You pick the first memory flower. It does not fade in your hand. It glows a little, like the light it came from, and the lantern leans over to look. Some things you let go of turn into something you can keep.",
-  },
-  {
-    id: "last-barrel",
-    phase: PHASE_LAST,
-    when: (run) => owned(run, "rain-barrel") >= 1,
-    text: "A rain barrel stands by the flower beds. When you are busy elsewhere, the barrel remembers. You can still do the watering yourself, if you like. Most gardeners do.",
+    when: (run) => letGoCount(run) >= 2,
+    text: "Where each light stood, a flower has bloomed. Each one is the memory of a light, and it glows a little, like the light it came from. Some things you let go of turn into something you can keep.",
   },
   {
     id: "last-halfway",
     phase: PHASE_LAST,
-    when: (run) => res(run, "lights") <= 6,
+    when: (run) => letGoCount(run) >= 5,
     text: "Half the lights are gone. Strangely, the ones still lit seem brighter. Maybe they were always that bright, and there was too much around them.",
   },
   {
     id: "last-quiet",
     phase: PHASE_LAST,
-    when: (run) => res(run, "lights") <= 3,
-    text: "It is quiet now. Far out on the dark water there is a small boat carrying a lantern, the colour you chose, looking for the shore. Tap the old beam to keep it true, and every goodbye comes a little easier.",
+    when: (run) => boatProgressOf(run) >= 50,
+    text: "The little boat is halfway to the shore. It carries a lantern, the colour you chose. It does not know your name. It only knows the warmth, and which way it comes from.",
   },
   {
     id: "last-one",
     phase: PHASE_LAST,
-    when: (run) => res(run, "lights") <= 1,
-    text: "One light left. The old lantern in the old lighthouse. You realize you know exactly why you picked this one.",
+    when: (run) => isReadyToFlash(run),
+    text: "The boat has reached the edge of the dark. Whatever you kept, you kept for this. One flash is all it needs.",
   },
   {
     id: "last-remember",

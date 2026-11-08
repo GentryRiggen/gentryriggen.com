@@ -9,9 +9,7 @@ import {
   LAKE,
   AIM_DISH,
   LAMP,
-  LAST_LIGHTS,
   QUAY,
-  GARDEN,
   RELAY_RADIUS,
   SUN,
   planetPoint,
@@ -47,28 +45,6 @@ const fixed =
   (x: number, y: number, text: string): Place =>
   () =>
     at(x, y, text);
-
-const LET_GO_TEXT: Record<string, string> = {
-  "letgo-porch": "Porch lights out",
-  "letgo-signs": "Shop signs out",
-  "letgo-stadium": "Stadium dark",
-  "letgo-bridges": "Bridge lights out",
-  "letgo-harbor": "Harbor lamps out",
-  "letgo-towers": "Tower windows dark",
-  "letgo-festival": "Lanterns out",
-  "letgo-fire": "Campfires out",
-  "letgo-moon": "Moon mirror dark",
-  "letgo-sun": "Collectors dark",
-  "letgo-night": "Stars go dark",
-};
-const LET_GO_ORDER = Object.keys(LET_GO_TEXT);
-
-const letGo =
-  (id: string): Place =>
-  () => {
-    const dot = LAST_LIGHTS[LET_GO_ORDER.indexOf(id)] ?? LAST_LIGHTS[0];
-    return at(dot.x, dot.y - 14, LET_GO_TEXT[id]);
-  };
 
 const farLight = (i: number): number => FAR_LIGHT_X + i * FAR_LIGHT_GAP;
 
@@ -137,8 +113,30 @@ const PLACES: Record<string, Place> = {
   "appetite-1": fixed(SUN.x + 70, SUN.y + 30, "Hungry probes"),
   "appetite-2": fixed(SUN.x + 70, SUN.y + 30, "Wider arms"),
 };
-PLACES["rain-barrel"] = fixed(GARDEN.barrelX, GARDEN.y - 20, "Rain barrel");
-for (const id of Object.keys(LET_GO_TEXT)) PLACES[id] = letGo(id);
+// The Last Light
+Object.assign(PLACES, {
+  "hearth-1": fixed(200, 248, "A bigger log"),
+  "hearth-2": fixed(200, 248, "Dry kindling"),
+  "hearth-3": fixed(200, 248, "Stone hearth"),
+  "hearth-4": fixed(200, 248, "Chimney draws"),
+  "hearth-5": fixed(200, 248, "Banked fire"),
+  "hearth-6": fixed(200, 248, "Iron stove"),
+  "sail-1": fixed(320, 236, "Patched sail"),
+  "sail-2": fixed(320, 236, "Taller mast"),
+  "sail-3": fixed(320, 236, "Oars out"),
+  "sail-4": fixed(320, 236, "Lookout at the bow"),
+  "sail-5": fixed(320, 236, "Good crew"),
+  "slowburn-1": fixed(90, 188, "Heavier glass"),
+  "slowburn-2": fixed(90, 188, "Shutters closed"),
+  "slowburn-3": fixed(90, 188, "Wool wraps"),
+  "song-1": fixed(320, 224, "A hummed tune"),
+  "song-2": fixed(320, 224, "Sea shanty"),
+  "song-3": fixed(320, 224, "Lullaby for the water"),
+  "song-4": fixed(320, 224, "The old song"),
+  "company-1": fixed(300, 188, "Warm gold"),
+  "company-2": fixed(300, 188, "Old stories"),
+  "company-3": fixed(300, 188, "Patient hands"),
+});
 
 /** The callout for a purchase, or null for an id the scene has no spot for. */
 export function calloutFor(

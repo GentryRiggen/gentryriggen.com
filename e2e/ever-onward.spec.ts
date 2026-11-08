@@ -202,6 +202,42 @@ test.describe("Ever Onward", () => {
     await expect(page.getByTestId("lm-sky-dials")).toBeAttached();
   });
 
+  test("the last light's remembered lights show in the panel and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-jump-light-3-start").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 60_000,
+    });
+    // Jumping to the start of a part plays its opening card first.
+    await passCutscene(page);
+    // The lights: each shows what it costs in warmth and the company it keeps
+    // as marks, never a number to divide, and never which one to let go.
+    const lights = page.getByTestId("lm-lights");
+    await expect(lights).toBeVisible();
+    await expect(lights).toHaveAttribute("data-lit", "11");
+    await expect(lights.getByTestId("lm-wind")).toBeVisible();
+    await expect(lights).not.toContainText(/best|recommend/i);
+    // The picture: lamps along the shore, the boat in its golden haze.
+    await expect(page.getByTestId("lm-last-lamp").first()).toBeAttached();
+    expect(
+      await page.getByTestId("lm-last-lamp").count()
+    ).toBeGreaterThanOrEqual(11);
+    await expect(page.getByTestId("lm-boat-haze").first()).toBeAttached();
+    // Letting one go: a lantern lifts off, a flower blooms, the count drops.
+    await lights.getByTestId("lm-letgo-3").click();
+    await expect(lights).toHaveAttribute("data-lit", "10");
+    await expect(page.getByTestId("lm-goodbye").first()).toBeAttached();
+    await expect(page.getByTestId("lm-scene-flower").first()).toBeAttached();
+    // The next one waits a moment while this one rises.
+    await expect(lights.getByTestId("lm-lights-note")).toContainText(/rising/);
+  });
+
   test("the old window box turns the blind, and the picture shows the light and the leaves", async ({
     page,
   }) => {

@@ -1,5 +1,4 @@
 import type { ResourceDef } from "../../engine/types";
-import { PLOT_COUNT } from "./garden";
 
 export const PHASE_COAST = "coast";
 export const PHASE_NIGHT = "night";
@@ -336,43 +335,42 @@ export const RESOURCES: readonly ResourceDef[] = [
     id: "resolve",
     label: "Resolve",
     phases: [PHASE_LAST],
-    purpose: "Spend it to let lights go dark.",
+    purpose: "Spend it to warm the hearth.",
   },
   {
     id: "flame",
-    label: "Flame",
-    initial: 600,
+    label: "Warmth",
+    initial: 300,
     phases: [PHASE_LAST],
-    // The flame holds 0-1000; the player reads it as a percent.
+    // The warmth holds 0-1000; the player reads it as a percent.
     format: (v) => `${Math.round(v / 10)}%`,
   },
-  // The Memory Garden (The Last Light): growth, watering and tallies, read by garden.ts
-  ...Array.from({ length: PLOT_COUNT }, (_, plot): ResourceDef[] => [
-    { id: `gdP${plot}`, label: `Plant ${plot + 1} growth`, phases: HIDDEN },
-    { id: `gdWet${plot}`, label: `Plant ${plot + 1} watered`, phases: HIDDEN },
-    {
-      id: `gdPicked${plot}`,
-      label: `Plant ${plot + 1} picked`,
-      phases: HIDDEN,
-    },
-  ]).flat(),
-  { id: "gdCool", label: "Watering can rests", phases: HIDDEN },
-  { id: "gdRain", label: "Next rain barrel shower", phases: HIDDEN },
-  { id: "gdPicks", label: "Blooms picked", phases: HIDDEN },
-  { id: "gdWaterings", label: "Times watered", phases: HIDDEN },
+  // Warmth (The Last Light): the settle after a goodbye,
+  // the cold winds and the boat, read by warmth.ts
+  { id: "wmSeed", label: "Lights' own seed", phases: HIDDEN },
+  { id: "wmChillSeed", label: "Cold winds' stream", phases: HIDDEN },
+  { id: "wmChillIn", label: "Seconds to the next cold wind", phases: HIDDEN },
   {
-    id: "gdLastKind",
-    label: "Garden last done (1 water, 2 pick)",
+    id: "wmChillLeft",
+    label: "Seconds the cold wind has left",
     phases: HIDDEN,
   },
-  { id: "gdLastBlooms", label: "Last pick, blooms", phases: HIDDEN },
-  { id: "gdLastPayout", label: "Last pick, resolve", phases: HIDDEN },
-  { id: "gdPending", label: "Pick glow still flowing in", phases: HIDDEN },
-  { id: "gdSurgeRate", label: "Pick glow flow rate", phases: HIDDEN },
-  { id: "gdEarned", label: "Resolve from the garden", phases: HIDDEN },
-  { id: "gdPaused", label: "Garden paused (simulator)", phases: HIDDEN },
-  // The first ship's boat (shown through its action, not as a number).
-  { id: "boatHeading", label: "Boat heading", initial: 100, phases: HIDDEN },
+  { id: "wmChillSize", label: "Size of the next cold wind", phases: HIDDEN },
+  { id: "wmShield", label: "Flame cupped against this wind", phases: HIDDEN },
+  { id: "wmShelters", label: "Winds sheltered from", phases: HIDDEN },
+  { id: "wmStoke", label: "Flame stoked by taps", phases: HIDDEN },
+  { id: "wmLock", label: "Seconds until another light may go", phases: HIDDEN },
+  {
+    id: "wmRise",
+    label: "Seconds the last light has left to rise",
+    phases: HIDDEN,
+  },
+  { id: "wmRiseIdx", label: "The light rising (1 up)", phases: HIDDEN },
+  { id: "wmBye", label: "Goodbye banner seconds left", phases: HIDDEN },
+  { id: "wmByeIdx", label: "The light of the goodbye (1 up)", phases: HIDDEN },
+  { id: "wmLastLump", label: "Resolve the last goodbye paid", phases: HIDDEN },
+  { id: "wmLets", label: "Lights let go", phases: HIDDEN },
+  // The first ship's boat (shown in the picture and the goal, not as a number).
   { id: "boatProgress", label: "Boat progress", phases: HIDDEN },
   // The lantern colour the player picked at the start (1 to 3, 0 = not picked,
   // which shows as the first). Stays on this device in the save; never sent.

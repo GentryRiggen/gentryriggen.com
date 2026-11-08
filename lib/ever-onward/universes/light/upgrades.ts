@@ -15,12 +15,6 @@ import {
   collectorEnergyPerSecond,
   copySpeed,
   crankPower,
-  flameFraction,
-  flameOf,
-  lastTapResolve,
-  steadyFlame,
-  LET_GO_GIFTS,
-  type LetGoGift,
   demandMW,
   starBounty,
   fare,
@@ -37,7 +31,13 @@ import {
   powerPerSecond,
   aimEnergy,
 } from "./tick";
-import { RAIN_BARREL_ID, picksSoFar, restingPace, startRain } from "./garden";
+import {
+  boatGear,
+  burnMult,
+  hearthWarmth,
+  companyMult,
+  songMult,
+} from "./warmth";
 import { openSkyDials } from "./sunEdge";
 import { burnShare, forecastSure } from "./sunEdge";
 import {
@@ -68,65 +68,6 @@ const savingFor =
   (id: string) =>
   (run: RunState): boolean =>
     (run.resources.coins ?? 0) >= COSTS[id] * SAVING_SHARE;
-
-/** The lights you can let go in The Last Light, nearest to farthest. */
-export const LET_GO: readonly { id: string; name: string; text: string }[] = [
-  {
-    id: "letgo-porch",
-    name: "Let the porch lights go dark",
-    text: "Every porch light that ever waited for someone to come home.",
-  },
-  {
-    id: "letgo-signs",
-    name: "Let the shop signs go dark",
-    text: "OPEN, OPEN, OPEN. You can rest now.",
-  },
-  {
-    id: "letgo-stadium",
-    name: "Let the stadium lights go dark",
-    text: "They were loud and bright. They were good at it.",
-  },
-  {
-    id: "letgo-bridges",
-    name: "Let the bridge lights go dark",
-    text: "The bridges hold on without them.",
-  },
-  {
-    id: "letgo-harbor",
-    name: "Let the harbor lamps go dark",
-    text: "A row of small lamps, each one a ship's welcome.",
-  },
-  {
-    id: "letgo-towers",
-    name: "Let the tower windows go dark",
-    text: "Ten thousand windows, one after another.",
-  },
-  {
-    id: "letgo-festival",
-    name: "Let the festival lanterns go dark",
-    text: "They floated up once a year. That was enough.",
-  },
-  {
-    id: "letgo-fire",
-    name: "Let the campfires go dark",
-    text: "Warm, crackly, and good for stories.",
-  },
-  {
-    id: "letgo-moon",
-    name: "Let the moon's mirror go dark",
-    text: "It only ever borrowed the light anyway.",
-  },
-  {
-    id: "letgo-sun",
-    name: "Let the sun collectors go dark",
-    text: "You built them. You can thank them.",
-  },
-  {
-    id: "letgo-night",
-    name: "Let the last few stars go dark",
-    text: "They were never yours. Let them be dim.",
-  },
-];
 
 const sync = (run: RunState): void => syncDisplay(run);
 
@@ -937,105 +878,133 @@ const skyUpgrades: UpgradeDef[] = [
   }),
 ];
 
-/** What each gift reads like on its card. */
-const GIFT_TEXT = {
-  fade: "The flame holds on much longer.",
-  burst: "The flame leaps up, bright for a good while.",
-  taps: "Every tap of the flame is worth a lot more.",
-} as const;
-
-const GIFT_STATS: Record<LetGoGift, readonly Stat[]> = {
-  fade: [
-    {
-      label: "Flame holds at",
-      read: (run) => (steadyFlame(run) / TUNING.last.flameFull) * 100,
-      suffix: "%",
-    },
-  ],
-  // The leap happens in `onBuy`, which a preview does not run: see
-  // `burstLine` below.
-  burst: [],
-  taps: [
-    {
-      label: "Resolve per tap",
-      read: lastTapResolve,
-    },
-  ],
-};
-
-const letGoUpgrades: UpgradeDef[] = LET_GO.map((light) => {
-  const gift = LET_GO_GIFTS[light.id];
-  return {
-    id: light.id,
-    name: light.name,
-    description: `${light.text} ${GIFT_TEXT[gift]} Every light let go makes the next easier.`,
-    phases: last,
-    currency: "resolve",
-    baseCost: COSTS[light.id],
-    costGrowth: 1,
-    priority: 0,
-    onBuy: (run: RunState) => {
-      if (gift === "burst")
-        run.resources.flame = Math.min(
-          TUNING.last.flameFull,
-          flameOf(run) + TUNING.last.burstFlame
-        );
-      sync(run);
-    },
-    effectPreview: (run: RunState) =>
-      [
-        previewOf(light.id, [
-          {
-            label: "Lights lit",
-            read: (r) => r.resources.lights,
-            format: short,
-            isPlain: true,
-          },
-          ...GIFT_STATS[gift],
-        ])(run),
-        gift === "burst" ? burstLine(run) : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-  };
-});
-
-/** "Flame now 60% → 85%": the leap a burst gift gives the moment it is bought. */
-function burstLine(run: RunState): string {
-  const now = flameFraction(run) * 100;
-  const leapt =
-    (Math.min(TUNING.last.flameFull, flameOf(run) + TUNING.last.burstFlame) /
-      TUNING.last.flameFull) *
-    100;
-  return `Flame now ${short(now)}% → ${short(leapt)}%`;
-}
-
-/** The garden's helper: it opens once the first flower has been picked. */
-const rainBarrel: UpgradeDef = {
-  id: RAIN_BARREL_ID,
-  name: "Rain barrel",
-  description:
-    "A barrel by the flower beds that waters the thirsty ones now and then. Watering by hand still helps, on top.",
+/** The hearth and its helpers: what resolve buys in The Last Light. */
+const HEARTH_STEPS = chain({
+  base: "hearth",
   phases: last,
   currency: "resolve",
-  baseCost: COSTS[RAIN_BARREL_ID],
-  costGrowth: 1,
-  // Halfway through the garden's life (after a few picks), and ranked with
-  // the lights, so a player who wants it can have it while it still helps.
-  priority: 0,
-  visibleWhen: (run) => picksSoFar(run) >= 3,
-  onBuy: (run: RunState) => {
-    startRain(run);
-    sync(run);
-  },
-  effectPreview: previewOf(RAIN_BARREL_ID, [
+  stats: [
     {
-      label: "Unwatered flowers grow",
-      read: (run) => restingPace(run) * 100,
+      label: "Warmth with no lights",
+      read: (run) => hearthWarmth(run) * 100,
       suffix: "%",
     },
-  ]),
-};
+  ],
+  steps: [
+    ["A bigger log", "A thicker log on the fire. The hearth stays warmer."],
+    ["Dry kindling", "A stack of dry sticks, ready for the cold nights."],
+    ["A stone hearth", "Stones hold the heat long after the fire is low."],
+    ["A chimney that draws", "The fire breathes better, and so does the room."],
+    ["A banked fire", "Ash over the embers, glowing all night."],
+    [
+      "An old iron stove",
+      "It has kept a hundred winters out. It can keep one more.",
+    ],
+  ].map(([name, description], i) => ({
+    name,
+    description,
+    badge: i === 0 ? "NEW ABILITY" : undefined,
+  })),
+});
+
+const SAIL_STEPS = chain({
+  base: "sail",
+  phases: last,
+  currency: "resolve",
+  stats: [
+    {
+      label: "Boat speed",
+      read: (run) => boatGear(run) * 100,
+      suffix: "%",
+    },
+  ],
+  steps: [
+    [
+      "A patched sail",
+      "Old cloth, mended with care. It catches a little wind.",
+    ],
+    ["A taller mast", "More sail, more reach. The boat leans into the dark."],
+    ["Oars for calm water", "Two strong arms, rowing when the wind falls."],
+    [
+      "A lookout at the bow",
+      "A sharp pair of eyes who can see the lantern light.",
+    ],
+    ["A good crew", "They have crossed worse. They know the way by heart."],
+  ].map(([name, description]) => ({ name, description })),
+});
+
+const SONG_STEPS = chain({
+  base: "song",
+  phases: last,
+  currency: "resolve",
+  stats: [
+    {
+      label: "Hope of the crossing",
+      read: (run) => songMult(run) * 100,
+      suffix: "%",
+    },
+  ],
+  steps: [
+    ["A hummed tune", "Out on the water, someone hums. The boat hums back."],
+    ["A sea shanty", "Everyone knows the chorus. It carries over the waves."],
+    ["A lullaby for the water", "The sea goes still to listen."],
+    ["The old lighthouse song", "Keepers have sung it for a hundred years."],
+  ].map(([name, description], i) => ({
+    name,
+    description,
+    // The songs begin when the company's chain is done, so no more than four chains are ever on offer.
+    showWhen: (run: RunState) => i > 0 || owned(run, "company-3") > 0,
+  })),
+});
+
+const SLOWBURN_STEPS = chain({
+  base: "slowburn",
+  phases: last,
+  currency: "resolve",
+  stats: [
+    {
+      label: "Warmth each light burns",
+      read: (run) => burnMult(run) * 100,
+      suffix: "%",
+    },
+  ],
+  steps: [
+    ["Heavier glass", "Thick glass round every lamp. Less warmth leaks out."],
+    ["Shuttered windows", "Shutters close against the draught."],
+    ["Wool wraps", "Every lamp gets a little woollen coat."],
+  ].map(([name, description]) => ({ name, description })),
+});
+
+const COMPANY_STEPS = chain({
+  base: "company",
+  phases: last,
+  currency: "resolve",
+  stats: [
+    {
+      label: "Company each light keeps",
+      read: (run) => companyMult(run) * 100,
+      suffix: "%",
+    },
+  ],
+  steps: [
+    ["Warm gold", "A kinder glow. Every light that burns is better company."],
+    ["Old stories", "Each lamp has a story. You have time to hear them now."],
+    ["Patient hands", "You have learned how to sit with a light and keep it."],
+  ].map(([name, description]) => ({ name, description })),
+});
+
+/** Every chain of the last part has a place of its own: the shop shows the next step of each. */
+const lastUpgrades: UpgradeDef[] = [
+  ...HEARTH_STEPS,
+  ...SAIL_STEPS,
+  ...SLOWBURN_STEPS,
+  ...COMPANY_STEPS,
+  ...SONG_STEPS,
+].map((step) => ({
+  ...step,
+  hasOwnSlot: true,
+  priority: step.id.startsWith("sail-") ? 2 : 1,
+}));
 
 /** Scorecard tags: the upgrades that bring a new system or action. */
 const MECHANICS: ReadonlySet<string> = new Set([
@@ -1045,10 +1014,9 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "gen1",
   "collector",
   "probe",
-  "letgo-porch",
+  "hearth-1",
   "batt-1",
   WEATHER_VANE_ID,
-  RAIN_BARREL_ID,
   "nav-1",
   "nav-2",
 ]);
@@ -1073,10 +1041,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
   ...coastUpgrades,
   ...nightUpgrades,
   ...skyUpgrades,
-  // Before the lights: the shop always has three on offer, so the barrel
-  // takes the next free slot once it has been earned, not the last one.
-  rainBarrel,
-  ...letGoUpgrades,
+  ...lastUpgrades,
 ].map((upgrade) => ({
   ...upgrade,
   baseCost: upgrade.baseCost * costScaleOf(upgrade),
@@ -1084,7 +1049,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
   priority: upgrade.id.startsWith("mirror-") ? 2 : upgrade.priority,
   badge:
     upgrade.badge ??
-    (["nav-2", WEATHER_VANE_ID, RAIN_BARREL_ID].includes(upgrade.id)
+    (["nav-2", WEATHER_VANE_ID].includes(upgrade.id)
       ? "NEW ABILITY"
       : undefined),
   kind: MECHANICS.has(upgrade.id) ? "mechanic" : "scale",

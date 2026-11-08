@@ -5,6 +5,9 @@ import { lightUniverse } from "..";
 import { tankCapacity } from "../tick";
 import { choosesFork } from "../bots";
 import { openSkyDials } from "../sunEdge";
+import { letsLightsGo } from "../warmthBots";
+
+const letsEachLightGo = letsLightsGo({ order: "index", after: 180 });
 
 export const def = lightUniverse;
 
@@ -18,10 +21,10 @@ const MIN = 60;
 export function oilActions(run: RunState, available: readonly string[]) {
   // A fork in the road is one click in the shop, like any other buy.
   const picks: string[] = choosesFork(run, available);
-  // Looks after what needs hands at the end.
+  // Looks after what needs hands at the end: lets the lights go in the order
+  // they are listed (a few minutes in), and makes the one flash.
+  picks.push(...letsEachLightGo(run, available));
   if (available.includes("flash-lamp")) picks.push("flash-lamp");
-  if (available.includes("steer-boat") && run.resources.boatHeading < 50)
-    picks.push("steer-boat");
   if (!available.includes("buy-oil")) return picks;
   const capacity = tankCapacity(run);
   const { oil, oilPrice } = run.resources;

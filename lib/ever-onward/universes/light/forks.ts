@@ -8,14 +8,11 @@ import {
   autoCoinsPerSecond,
   calmSkyIncomePerSecond,
   calmTapCoins,
-  lastTapResolve,
   lighthouseCount,
-  lightsLetGo,
   powerPerSecond,
-  resolvePerSecond,
-  steadyFlame,
   syncDisplay,
 } from "./tick";
+import { burnMult, letGoCount, resolvePerSecond, tapResolve } from "./warmth";
 import { burnShare } from "./sunEdge";
 import { TUNING } from "./tuning";
 
@@ -174,13 +171,13 @@ export const FORKS: readonly ForkDef[] = [
     title: "Hold on, or let go?",
     question: "What do you do with the one light that is left to choose?",
     currency: "resolve",
-    isOpen: (run) => lightsLetGo(run) >= 4,
+    isOpen: (run) => letGoCount(run) >= 4,
     stats: [
       { label: "Resolve/sec", read: resolvePerSecond },
-      { label: "Resolve per tap", read: lastTapResolve },
+      { label: "Resolve per tap", read: tapResolve },
       {
-        label: "Flame holds at",
-        read: (run) => (steadyFlame(run) / TUNING.last.flameFull) * 100,
+        label: "Warmth each light burns",
+        read: (run) => burnMult(run) * 100,
         suffix: "%",
       },
     ],
@@ -191,7 +188,7 @@ export const FORKS: readonly ForkDef[] = [
         tagline: "Open your hands",
         wry: "Holding on was the heavy part.",
         gives: `Resolve comes ${times(K.last.releaseResolve)} as fast.`,
-        catches: `The flame fades ${more(K.last.releaseFade)} faster. It gets cold.`,
+        catches: `Every light burns ${more(K.last.releaseBurn)} more warmth. It gets cold.`,
         price: K.costs.release,
       },
       {
@@ -199,8 +196,8 @@ export const FORKS: readonly ForkDef[] = [
         name: "Keep it",
         tagline: "Hold the flame",
         wry: "Somebody might still be out there.",
-        gives: `The flame fades ${less(K.last.keepFade)} slower, and every tap is worth ${times(K.last.keepTaps)} resolve.`,
-        catches: "Letting go is no faster than before.",
+        gives: `Every light burns ${less(K.last.keepBurn)} less warmth, and every tap is worth ${times(K.last.keepTaps)} resolve.`,
+        catches: "Resolve comes no faster than before.",
         price: K.costs.keep,
       },
     ],

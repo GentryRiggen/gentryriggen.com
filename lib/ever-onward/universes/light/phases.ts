@@ -12,6 +12,7 @@ import { TUNING } from "./tuning";
 import { syncDisplay } from "./tick";
 import { closeFund } from "./fund";
 import { resetGrid } from "./grid";
+import { startWarmth } from "./warmth";
 
 const headStart = (run: RunState): number => run.mods.headStart ?? 0;
 
@@ -81,11 +82,11 @@ export const PHASES: readonly PhaseDef[] = [
     tips: TIPS[PHASE_LAST],
     title: "The Last Light",
     intro:
-      "The sky is empty and very quiet. Light does not last forever, and every flame you tend is a choice. One small flame is left, and one small boat is still out on the dark water. It is up to you which lights stay.",
-    goal: "Tend the flame and bring the last ship home.",
+      "The sky is empty and very quiet. Every light you ever lit is still burning, and every one of them costs a little warmth to keep. One small boat is out on the dark water, and warmth is how it finds the way. It is up to you which lights stay, and when each one goes.",
+    goal: "Keep the flame warm and bring the last ship home.",
     manualResource: "resolve",
-    manualLabel: "Tend the flame",
-    tapDoes: "warm the flame. A warm flame earns resolve faster",
+    manualLabel: "Stoke the flame",
+    tapDoes: "stoke the flame. A warm flame earns resolve faster",
     isDone: () => false,
     onEnter: (run) => {
       // The flame starts here whatever came before, so the ending is the same
@@ -95,8 +96,8 @@ export const PHASES: readonly PhaseDef[] = [
       run.resources.flame = TUNING.last.startFlame;
       run.resources.resolve = 0;
       run.resources.ships = 0;
-      run.resources.boatHeading = 100;
       run.resources.boatProgress = 0;
+      startWarmth(run);
       syncDisplay(run);
     },
   },

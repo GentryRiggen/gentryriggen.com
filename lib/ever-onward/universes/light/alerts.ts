@@ -1,6 +1,4 @@
 import type { RunState } from "../../engine/types";
-import { FLAME_COLD } from "./goal";
-import { flameFraction } from "./tick";
 
 /**
  * A warning the player should see right now, or null. The coast's lamp
@@ -9,10 +7,7 @@ import { flameFraction } from "./tick";
  */
 export function lightAlert(run: RunState): string | null {
   if (run.complete) return null;
-  if (run.phase === 3)
-    return flameFraction(run) <= FLAME_COLD
-      ? "The flame is cold! Tap Tend to warm it. A warm flame earns resolve faster."
-      : null;
+  // The last part never scolds: a cold flame is something to read, not a warning.
   if (run.phase !== 0) return null;
   if ((run.resources.oil ?? 0) > 0) return null;
   return "Out of oil! The lamp is dark, and ships are keeping away. Buy oil to light it.";

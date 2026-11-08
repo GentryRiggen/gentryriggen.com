@@ -7,9 +7,9 @@ import {
   LIGHTHOUSE_ROWS,
 } from "@/lib/ever-onward/start/sprites";
 import {
-  keepsakeNames,
-  picksSoFar,
-} from "@/lib/ever-onward/universes/light/garden";
+  flowerNames,
+  letsSoFar,
+} from "@/lib/ever-onward/universes/light/warmth";
 import { lanternOf } from "@/lib/ever-onward/universes/light";
 import { chosenSide, forkOf } from "@/lib/ever-onward/universes/light/forks";
 import type { CueName } from "../audio/everOnwardSynth";
@@ -17,7 +17,7 @@ import { SCORES, TITLE_SCORE, UNEASE } from "../audio/scores";
 import EmberIcon from "../game/EmberIcon";
 import LampPanel from "../game/LampPanel";
 import LanternPicker from "../game/LanternPicker";
-import MemoryGarden from "../game/MemoryGarden";
+import LightsPanel from "../game/LightsPanel";
 import ProbeDesignPanel from "../game/ProbeDesignPanel";
 import SunEdgePanel from "../game/SunEdgePanel";
 import ForkPanel from "../game/ForkPanel";
@@ -96,8 +96,8 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
   if (rose("skFlares")) cues.push("thunder");
   if (rose("skWilds")) cues.push("splash");
   if (rose("skRecalls")) cues.push("arrive");
-  // A memory flower picked in the garden.
-  if (rose("gdPicks")) cues.push("chime");
+  // A light let go: a lantern rises and a flower blooms.
+  if (rose("wmLets")) cues.push("chime");
   return cues;
 }
 
@@ -110,7 +110,7 @@ export const LIGHT_UI: UniverseUi = {
     CrewsPanel,
     SunEdgePanel,
     ProbeDesignPanel,
-    MemoryGarden,
+    LightsPanel,
   ],
   panels: [
     CoastForkPanel,
@@ -141,13 +141,13 @@ export const LIGHT_UI: UniverseUi = {
   PrestigeIcon: EmberIcon,
   logbook: {
     afterTide: function LightKeepsakes({ run }) {
-      if (picksSoFar(run) <= 0) return null;
+      if (letsSoFar(run) <= 0) return null;
       return (
         <p
           data-testid="lm-keepsakes"
           className="font-mono text-xs text-emerald-200"
         >
-          Keepsakes: {keepsakeNames(run).join(", ")}.
+          Flowers: {flowerNames(run).join(", ")}.
         </p>
       );
     },

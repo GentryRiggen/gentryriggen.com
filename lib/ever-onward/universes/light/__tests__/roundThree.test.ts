@@ -12,11 +12,7 @@ import type { RunState } from "../../../engine/types";
 import { def } from "./fixtures";
 import { lanternOf, sceneInfo } from "../scene";
 import { isGridGlowing } from "../grid";
-import {
-  collectorEnergyPerSecond,
-  resolvePerSecond,
-  steerBonus,
-} from "../tick";
+import { collectorEnergyPerSecond, resolvePerSecond } from "../tick";
 import { lightCountdown } from "../visitors";
 
 const idle = (run: RunState, seconds: number): RunState => {
@@ -162,38 +158,27 @@ describe("collectors come in bigger steps", () => {
   });
 });
 
-describe("steering the boat earns resolve", () => {
-  const boat = (heading: number, lights = 2): RunState => {
+describe("the crossing earns hope", () => {
+  const sailing = (warm: number, sails = 0): RunState => {
     const run = { ...newRun(def), phase: 3 };
     return {
       ...run,
-      resources: {
-        ...run.resources,
-        lights,
-        boatHeading: heading,
-        boatProgress: 10,
-      },
+      owned: Object.fromEntries(
+        Array.from({ length: sails }, (_, i) => [`sail-${i + 1}`, 1])
+      ),
+      resources: { ...run.resources, flame: warm * 1000, boatProgress: 10 },
     };
   };
 
-  it("is 1.5x when true, fades to 1x, and is never below 1x", () => {
-    expect(steerBonus(boat(100))).toBeCloseTo(1.5, 5);
-    expect(steerBonus(boat(80))).toBeCloseTo(1.5, 5);
-    expect(steerBonus(boat(60))).toBeCloseTo(1.25, 5);
-    expect(steerBonus(boat(40))).toBe(1);
-    expect(steerBonus(boat(0))).toBe(1);
+  it("pays more resolve to a warm flame than a cold one", () => {
+    expect(resolvePerSecond(sailing(0.9))).toBeGreaterThan(
+      resolvePerSecond(sailing(0.1)) * 1.2
+    );
   });
 
-  it("only counts while the boat is out and still sailing", () => {
-    expect(steerBonus(boat(100, 6))).toBe(1);
-    const arrived = boat(100);
-    arrived.resources.boatProgress = 100;
-    expect(steerBonus(arrived)).toBe(1);
-  });
-
-  it("makes letting go faster for a player who steers", () => {
-    expect(resolvePerSecond(boat(100))).toBeGreaterThan(
-      resolvePerSecond(boat(0)) * 1.4
+  it("pays more resolve for every sail, because the boat goes faster", () => {
+    expect(resolvePerSecond(sailing(0.8, 3))).toBeGreaterThan(
+      resolvePerSecond(sailing(0.8, 0)) * 1.1
     );
   });
 });

@@ -26,7 +26,7 @@ describe("describeChanges", () => {
     after.resources.flame = 570;
     expect(describeChanges(def, before, after, "resolve")).toEqual([
       "+3 resolve",
-      "Flame 42% → 57%",
+      "Warmth 42% → 57%",
     ]);
   });
 
@@ -34,7 +34,7 @@ describe("describeChanges", () => {
     const before = newRun(def);
     before.phase = 3;
     const after = cloneRun(before);
-    after.resources.gdPending = 50;
+    after.resources.wmLastLump = 50;
     expect(describeChanges(def, before, after)).toEqual([]);
   });
 

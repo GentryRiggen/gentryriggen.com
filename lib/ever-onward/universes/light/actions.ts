@@ -1,17 +1,11 @@
 import type { ActionDef } from "../../engine/types";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT } from "./resources";
 import {
-  boatArrived,
-  boatHeadingOf,
-  isBoatOut,
-  isReadyToFlash,
-  steerBonus,
   barrelOil,
   isOilCheap,
   isOilDear,
   tankCapacity,
   isBeamOpen,
-  resolvePerSecond,
   incomePerSecond,
 } from "./tick";
 import { short } from "./preview";
@@ -38,18 +32,7 @@ import { TOLL_ACTIONS } from "./toll";
 import { noteBuy } from "./tanker";
 import { DESIGN_ACTIONS, RECALL } from "./design";
 import { DISTANCE_ACTIONS } from "./sunEdge";
-import {
-  PICK_ACTION,
-  WATER_ACTION,
-  bloomCount,
-  pickWorthShown,
-  canWaterNow,
-  growingCount,
-  isGardenOpen,
-  pickBlooms,
-  waterCooldownLeft,
-  waterGarden,
-} from "./garden";
+import { LET_GO_ACTIONS, SHELTER, isReadyToFlash, letAllGo } from "./warmth";
 import { formatNumber } from "../../engine/format";
 import { FORK_ACTIONS } from "./forks";
 import {
@@ -127,38 +110,6 @@ const BUY_OIL: ActionDef = {
   },
 };
 
-/** Heading at or above this has nothing to steer. */
-const BOAT_TRUE = 80;
-
-/** The first ship's boat drifts in the dark; tap the old beam to steer it. */
-const STEER_BOAT: ActionDef = {
-  id: "steer-boat",
-  phases: [PHASE_LAST],
-  visibleWhen: (run) => isBoatOut(run) && !boatArrived(run),
-  describe: (run) => {
-    const heading = boatHeadingOf(run);
-    const home = Math.floor(run.resources.boatProgress ?? 0);
-    const tone =
-      heading < 40 ? "bad" : heading < BOAT_TRUE ? "neutral" : "good";
-    const text =
-      heading < 40 ? "lost" : heading < BOAT_TRUE ? "drifting" : "true";
-    return {
-      label:
-        heading >= BOAT_TRUE ? "The boat is on its way" : "Tap the old beam",
-      detail: `The boat is ${home}% of the way home · heading ${Math.floor(heading)}% · letting go ${steerBonus(run).toFixed(1)}x faster`,
-      isBlocked: heading >= BOAT_TRUE,
-      hint: { text, tone },
-      trendResource: "boatHeading",
-    };
-  },
-  perform: (run) => {
-    run.resources.boatHeading = Math.min(
-      100,
-      boatHeadingOf(run) + TUNING.last.boatSteer
-    );
-  },
-};
-
 /** The game's first action, at the very end: one flash, the boat turns home. */
 const FLASH_LAMP: ActionDef = {
   id: "flash-lamp",
@@ -167,10 +118,12 @@ const FLASH_LAMP: ActionDef = {
   describe: () => ({
     label: "Flash the lamp, once",
     detail:
-      "The boat is waiting at the edge of the dark, with one lantern lit.",
+      "The boat is home, waiting at the edge of the dark with one lantern lit. Whatever still burns will lift off with the flash.",
     hint: { text: "the first ship", tone: "good" },
   }),
   perform: (run) => {
+    // Whatever still burns lifts off together with the flash.
+    letAllGo(run);
     run.resources.ships = 1;
     run.flags.finished = true;
   },
@@ -216,49 +169,6 @@ const CREW_POSTS: readonly ActionDef[] = Array.from(
       },
     }))
 ).flat();
-
-/** The memory garden's two buttons; its panel draws them itself. */
-const WATER_GARDEN: ActionDef = {
-  id: WATER_ACTION,
-  phases: [PHASE_LAST],
-  isInline: true,
-  visibleWhen: isGardenOpen,
-  describe: (run) => {
-    const wait = Math.ceil(waterCooldownLeft(run));
-    return {
-      label: "Water the garden",
-      detail:
-        growingCount(run) === 0
-          ? "Everything is in bloom. Nothing is thirsty."
-          : wait > 0
-            ? "The can is filling up again."
-            : "Every thirsty plant drinks and grows faster for a little while.",
-      isBlocked: !canWaterNow(run),
-    };
-  },
-  perform: waterGarden,
-};
-
-const PICK_BLOOMS: ActionDef = {
-  id: PICK_ACTION,
-  phases: [PHASE_LAST],
-  isInline: true,
-  visibleWhen: isGardenOpen,
-  describe: (run) => {
-    const ready = bloomCount(run);
-    return {
-      label: "Pick the blooms",
-      detail:
-        ready > 0
-          ? `${ready} ${ready === 1 ? "flower is" : "flowers are"} ready: about +${formatNumber(
-              pickWorthShown(ready, resolvePerSecond(run))
-            )} resolve.`
-          : "Nothing in bloom yet. They wait for you when they are.",
-      isBlocked: ready <= 0,
-    };
-  },
-  perform: (run) => pickBlooms(run, resolvePerSecond(run)),
-};
 
 /**
  * The second thing know-how buys: a minute of everything paying double. The
@@ -342,14 +252,13 @@ export const ACTIONS: readonly ActionDef[] = [
   ...FUND_IN,
   FUND_OUT,
   BUY_OIL,
-  STEER_BOAT,
   FLASH_LAMP,
   ...CREW_POSTS,
   ...DESIGN_ACTIONS,
   RECALL,
   ...DISTANCE_ACTIONS,
-  WATER_GARDEN,
-  PICK_BLOOMS,
+  ...LET_GO_ACTIONS,
+  SHELTER,
   ...LAMP_ACTIONS,
   ...BEAM_ACTIONS,
   ...TOLL_ACTIONS,

@@ -36,13 +36,7 @@ import type { ForkDef, ForkSide } from "./forks";
 import { fundIncome } from "./tick";
 import { playsSky } from "./skyBots";
 import { OVERDRIVE_ACTION, isOverdriveOpen, overdriveCost } from "./overdrive";
-import {
-  PICK_ACTION,
-  WATER_ACTION,
-  bloomCount,
-  growingCount,
-  thirstyCount,
-} from "./garden";
+import { letsLightsGo } from "./warmthBots";
 import { tollActionId, tollLockLeft, tollStep } from "./toll";
 import { bestTollStep, tollNet } from "./tollRead";
 import { isTankerIn } from "./tanker";
@@ -91,9 +85,6 @@ const PANIC_SHARE = 0.05;
 /** ... or this much when the lamp is nearly dry. */
 const MIN_DRY_BARREL_SHARE = 0.25;
 
-/** Seconds in one stretch of attention for the garden (the bots' deterministic skips count these). */
-const GARDEN_WINDOW_SECONDS = 30;
-
 export type OilChoice = (
   run: RunState,
   available: readonly string[]
@@ -138,23 +129,9 @@ const cheapskateOil = buysOilWhen(
     (price < 1.2 && oil < capacity * 0.8) || oil < capacity * 0.04
 );
 
-/**
- * Looks after what needs hands at the end: steers the first ship's boat when
- * its heading dips under `below` percent, and makes the one flash.
- */
-const looksAfterThings =
-  (below: number): OilChoice =>
-  (run, available) => {
-    const picks: string[] = [];
-    // The first ship: steer it when it drifts, and the one flash that ends it.
-    if (
-      available.includes("steer-boat") &&
-      (run.resources.boatHeading ?? 100) < below
-    )
-      picks.push("steer-boat");
-    if (available.includes("flash-lamp")) picks.push("flash-lamp");
-    return picks;
-  };
+/** Looks after what needs hands at the end: the one flash that brings the boat home. */
+const looksAfterThings: OilChoice = (_run, available) =>
+  available.includes("flash-lamp") ? ["flash-lamp"] : [];
 
 /** How sure the forecast must be before a crew is sent at each step (the last step takes any that pays). */
 const SURE_ENOUGH = [60, 45, 0] as const;
@@ -309,35 +286,6 @@ const setsToll =
     if (step === undefined && gain < TOLL_SWITCH_GAIN) return [];
     const id = tollActionId(want);
     return available.includes(id) ? [id] : [];
-  };
-
-/**
- * Waters the garden and picks the blooms. A bot with real attention looks in
- * on it in windows of 20 seconds and misses one window in every `skipEvery`
- * (counted by the clock, so the sim stays deterministic); a distracted one
- * (`onlyEvery`) looks in just one window in so many. Blooms wait and growth
- * only slows without water, so a miss costs nothing but time.
- */
-const tendsGarden =
-  (options: { skipEvery?: number; onlyEvery?: number } = {}): OilChoice =>
-  (run, available) => {
-    const window = Math.floor(run.time / GARDEN_WINDOW_SECONDS);
-    const { skipEvery, onlyEvery } = options;
-    if (skipEvery && window % skipEvery === skipEvery - 1) return [];
-    if (onlyEvery && window % onlyEvery !== 0) return [];
-    // Picks when a few blooms are ready, waters when every plant looks dry:
-    // nobody taps the can while the soil is still wet.
-    const picks =
-      bloomCount(run) >= 2 && available.includes(PICK_ACTION)
-        ? [PICK_ACTION]
-        : [];
-    const waters =
-      growingCount(run) > 0 &&
-      thirstyCount(run) === growingCount(run) &&
-      available.includes(WATER_ACTION)
-        ? [WATER_ACTION]
-        : [];
-    return [...picks, ...waters];
   };
 
 /** Seconds before the rush a reading player sets the streetlights (they take a while to settle). */
@@ -616,14 +564,9 @@ const combine =
   (run, available) =>
     choices.flatMap((choose) => choose(run, available));
 
-/** The ending: steer the boat when it drifts, make the one flash. */
-const lastPhaseActions: OilChoice = (run, available) => [
-  ...(available.includes("steer-boat") &&
-  (run.resources.boatHeading ?? 100) < 50
-    ? ["steer-boat"]
-    : []),
-  ...(available.includes("flash-lamp") ? ["flash-lamp"] : []),
-];
+/** The ending: make the one flash. */
+const lastPhaseActions: OilChoice = (_run, available) =>
+  available.includes("flash-lamp") ? ["flash-lamp"] : [];
 
 /**
  * How much of an evening's rush of this size (0 mild to 3 scorching, with the
@@ -670,11 +613,11 @@ export const buysBatteries =
 const withOil = (
   strategy: Strategy,
   actions: OilChoice,
-  care: OilChoice = looksAfterThings(45),
+  care: OilChoice = looksAfterThings,
   weather: OilChoice = () => [],
   toll: OilChoice = () => [],
   race: OilChoice = () => [],
-  garden: OilChoice = () => [],
+  lights: OilChoice = () => [],
   lamps: OilChoice = () => [],
   fund: OilChoice = () => [],
   know: OilChoice = () => [],
@@ -689,7 +632,7 @@ const withOil = (
     weather,
     toll,
     race,
-    garden,
+    lights,
     lamps,
     fund,
     know
@@ -708,7 +651,7 @@ export function nightPlayer(habits: {
   return withOil(
     { ...tapper, choose: buysBatteries() },
     savvyOil,
-    looksAfterThings(74),
+    looksAfterThings,
     habits.crews ?? (() => []),
     () => [],
     () => [],
@@ -729,11 +672,32 @@ export function skyPlayer(habits: { sky?: OilChoice }): Strategy {
   return withOil(
     { ...tapper, choose: buysBatteries() },
     savvyOil,
-    looksAfterThings(74),
+    looksAfterThings,
     () => [],
     () => [],
     habits.sky ?? (() => []),
     () => [],
+    () => [],
+    () => [],
+    () => [],
+    choosesFork
+  );
+}
+
+/**
+ * A player for the last part alone (the lights' tests): the eager tapper with
+ * the shop order, the flash, and exactly the lights habit given.
+ */
+export function lastPlayer(habits: { lights?: OilChoice }): Strategy {
+  const tapper = genericBots(lightUniverse).tapper;
+  return withOil(
+    { ...tapper, choose: buysBatteries() },
+    savvyOil,
+    looksAfterThings,
+    () => [],
+    () => [],
+    () => [],
+    habits.lights ?? (() => []),
     () => [],
     () => [],
     () => [],
@@ -768,9 +732,14 @@ export function lightBots(
   // The idle bot presses no chore button outside the last phase (where the
   // ending is the story): it taps early and watches. It does take a fork in
   // the road, which is a shop purchase with a picture, not a chore.
+  // It does let the lights go in the order they are listed, after a few
+  // minutes: that is the ending, not a chore.
+  const idleLights = letsLightsGo({ order: "index", after: 240 });
   const idleActions: OilChoice = (run, available) => [
     ...choosesFork(run, available),
-    ...(run.phase >= 3 ? lastPhaseActions(run, available) : []),
+    ...(run.phase >= 3
+      ? [...idleLights(run, available), ...lastPhaseActions(run, available)]
+      : []),
   ];
   // In the sky the naive player reads the stars and the sun's mood but never
   // looks at the flare forecast; the careful one reads all three.
@@ -778,7 +747,7 @@ export function lightBots(
     naive: withOil(
       base.tapper,
       savvyOil,
-      looksAfterThings(15),
+      looksAfterThings,
       () => [],
       () => [],
       playsSky({ forecast: false })
@@ -786,7 +755,7 @@ export function lightBots(
     careful: withOil(
       base.tapper,
       savvyOil,
-      looksAfterThings(74),
+      looksAfterThings,
       () => [],
       () => [],
       playsSky()
@@ -798,7 +767,7 @@ export function lightBots(
     naive: withOil(
       base.tapper,
       savvyOil,
-      looksAfterThings(15),
+      looksAfterThings,
       () => [],
       () => [],
       () => [],
@@ -808,7 +777,7 @@ export function lightBots(
     careful: withOil(
       base.tapper,
       savvyOil,
-      looksAfterThings(74),
+      looksAfterThings,
       tendsCrews(),
       () => [],
       () => [],
@@ -820,11 +789,11 @@ export function lightBots(
     tapper: withOil(
       base.tapper,
       savvyOil,
-      looksAfterThings(74),
+      looksAfterThings,
       tendsCrews({ skipEvery: 10 }),
       setsToll({ skipEvery: 8 }),
       playsSky({ skipEvery: 8 }),
-      tendsGarden({ skipEvery: 6 }),
+      letsLightsGo({ skipEvery: 6 }),
       setsAllLamps({ patience: 30, skipEvery: 8 }),
       investsInFund(fundShare, fundWait),
       runsOverdrive(85),
@@ -833,11 +802,11 @@ export function lightBots(
     realistic: withOil(
       base.realistic,
       savvyOil,
-      looksAfterThings(42),
+      looksAfterThings,
       tendsCrews({ skipEvery: 5 }),
       setsToll({ skipEvery: 4 }),
       playsSky({ skipEvery: 4 }),
-      tendsGarden({ skipEvery: 3 }),
+      letsLightsGo({ skipEvery: 3 }),
       setsAllLamps({ patience: 30, skipEvery: 4 }),
       investsInFund(fundShare, fundWait),
       runsOverdrive(80),
@@ -855,11 +824,11 @@ export function lightBots(
       ...withOil(
         base.dawdler,
         savvyOil,
-        looksAfterThings(35),
+        looksAfterThings,
         tendsCrews({ onlyEvery: 3 }),
         setsToll({ onlyEvery: 3 }),
         playsSky({ onlyEvery: 3 }),
-        tendsGarden({ onlyEvery: 3 }),
+        letsLightsGo({ onlyEvery: 3 }),
         setsAllLamps({ patience: 30, onlyEvery: 3 }),
         investsInFund(fundShare, fundWait * 2),
         () => [],

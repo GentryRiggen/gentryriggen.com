@@ -62,14 +62,16 @@ export const RELAY_RADIUS = 118;
 
 // ------------------------------------------------------------------- Last
 
-/**
- * The memory flowers by the lantern: eleven slots in a gentle arc, and the
- * rain barrel at the left end (kept above the caption bar on a phone).
- */
-export const GARDEN = { x: 96, gap: 20, y: 268, barrelX: 70 } as const;
-
 export const LIGHT_COUNT = 11;
+/** The shore: where the lamps stand (their bases) and where the lantern waits. */
+export const SHORE_Y = 210;
+/**
+ * The eleven remembered lamps along the shore, six to the left of the old
+ * lantern and five to the right. The flowers bloom at their feet.
+ */
 export const LAST_LIGHTS: readonly Point[] = Array.from(
   { length: LIGHT_COUNT },
-  (_, i) => ({ x: 30 + i * 34, y: 120 + 45 * Math.sin(i * 2.1) })
+  (_, i) => ({ x: i < 6 ? 22 + i * 27 : 246 + (i - 6) * 28, y: SHORE_Y })
 );
+/** The boat's lane across the dark water, from the far right to the old lantern. */
+export const BOAT_LANE = { startX: 372, endX: 250, y: 262 } as const;

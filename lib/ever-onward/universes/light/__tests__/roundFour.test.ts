@@ -13,7 +13,7 @@ import { newSave, parseSave } from "../../../engine/save";
 import type { RunState, UpgradeDef } from "../../../engine/types";
 import { def } from "./fixtures";
 import { TUNING } from "../tuning";
-import { flameOf } from "../tick";
+import { litCount, warmthOf } from "../warmth";
 import {
   WEATHER_OPEN_FLAG,
   WEATHER_VANE_ID,
@@ -23,17 +23,16 @@ import {
   crewPostActionId,
   weatherStage,
 } from "../weather";
-import { REMOVED_SKY_COSTS, REMOVED_SKY_SCALE } from "../costs";
+import {
+  REMOVED_LAST_COSTS,
+  REMOVED_LAST_SCALE,
+  REMOVED_SKY_COSTS,
+  REMOVED_SKY_SCALE,
+} from "../costs";
 
 const RACING_FINS_ID = "fins-1";
 const MISSION_CONTROL_ID = "mission-control";
-import {
-  PICK_ACTION,
-  RAIN_BARREL_ID,
-  WATER_ACTION,
-  picksSoFar,
-  progressOf,
-} from "../garden";
+const RAIN_BARREL_ID = "rain-barrel";
 
 const upgrade = (id: string): UpgradeDef =>
   def.upgrades.find((u) => u.id === id)!;
@@ -236,41 +235,38 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
     expect(tick(def, run, 1).resources.energy).toBeLessThan(paid * 1.5);
   });
 
-  it("the rain barrel shows after three real picks, and watering by hand still helps", () => {
-    let run = at(3, {}, { resolve: 5000, lights: 12, flame: 600 });
-    for (const id of ["letgo-porch", "letgo-signs", "letgo-stadium"])
-      run = {
-        ...run,
-        owned: { ...run.owned, [id]: 1 },
-        resources: { ...run.resources, lights: run.resources.lights - 1 },
-      };
-    run = wait(run, TUNING.garden.growSeconds + 5);
-    expect(shown(RAIN_BARREL_ID, run)).toBe(false);
-    run = performAction(def, run, PICK_ACTION);
-    expect(picksSoFar(run)).toBe(3);
-    expect(shown(RAIN_BARREL_ID, run)).toBe(true);
+  it("pays back the cut rain barrel at what it cost, once, in the last part", () => {
+    const run = tick(
+      def,
+      at(3, { [RAIN_BARREL_ID]: 1 }, { resolve: 0, lights: 12 }),
+      1
+    );
+    expect(run.owned[RAIN_BARREL_ID]).toBeUndefined();
+    expect(run.resources.resolve).toBeGreaterThanOrEqual(
+      REMOVED_LAST_COSTS[RAIN_BARREL_ID] * REMOVED_LAST_SCALE
+    );
+    const again = tick(def, run, 1);
+    expect(again.resources.resolve).toBeLessThan(
+      run.resources.resolve + REMOVED_LAST_COSTS[RAIN_BARREL_ID]
+    );
+  });
 
-    const barrel: RunState = {
-      ...run,
-      owned: { ...run.owned, [RAIN_BARREL_ID]: 1 },
-    };
-    let watered = barrel;
-    // a stretch short enough that nothing is back in bloom yet
-    for (let t = 0; t < 80; t += 1) {
-      watered = tick(def, watered, 1);
-      watered = performAction(def, watered, WATER_ACTION);
-    }
-    const alone = wait(barrel, 80);
-    const growth = (r: RunState) =>
-      [0, 1, 2].reduce((sum, plot) => sum + progressOf(r, plot), 0);
-    expect(growth(watered)).toBeGreaterThan(growth(alone));
+  it("keeps the lights an old save already let go gone, and starts a save with no warmth numbers cold-free", () => {
+    const old = tick(
+      def,
+      at(3, { "letgo-porch": 1, "letgo-signs": 1 }, { lights: 10, flame: 500 }),
+      1
+    );
+    expect(litCount(old)).toBe(9);
+    expect(old.resources.lights).toBe(10);
+    expect(warmthOf(old)).toBeGreaterThan(0);
   });
 });
 
 describe("the flame", () => {
-  it("still answers a tap when it is full: the tap lets go a little", () => {
+  it("still answers a tap when it is full: the tap earns a little resolve", () => {
     const full = at(3, {}, { flame: TUNING.last.flameFull, lights: 12 });
-    expect(flameOf(full)).toBe(TUNING.last.flameFull);
+    expect(warmthOf(full)).toBe(1);
     // TapButton shows a "+gain" floater whenever this is above 0
     expect(manualGain(def, full)).toBeGreaterThan(0);
   });

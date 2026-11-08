@@ -85,12 +85,12 @@ describe("HUD gauges", () => {
     expect(higherUniverse.gauge?.(run)).toBeNull();
   });
 
-  test("Light keeps the flame on the HUD at the end, LOW then COLD", () => {
+  test("Light keeps the warmth on the HUD at the end, LOW then COLD", () => {
     const run = newRun(lightUniverse);
     run.phase = 3;
     run.resources.flame = 800;
     expect(lightUniverse.gauge?.(run)).toMatchObject({
-      label: "FLAME",
+      label: "WARMTH",
       display: "80%",
       isLow: false,
     });
@@ -102,7 +102,8 @@ describe("HUD gauges", () => {
       status: "COLD",
       isCritical: true,
     });
-    expect(lightUniverse.alert?.(run)).toMatch(/Tap Tend/);
+    // The last part never scolds: a cold flame is something to read, not a warning.
+    expect(lightUniverse.alert?.(run)).toBeNull();
   });
 
   test("Light shows the jar's savings when nothing needs watching", () => {
