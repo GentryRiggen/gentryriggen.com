@@ -23,6 +23,11 @@ const SLIDE_BASE =
 const FRIEND_SLIDE_BASE =
   "transition-[translate] duration-700 ease-out motion-reduce:transition-none";
 
+/** The mark over their head: drawn small, then scaled so a phone can read it. */
+const MARK_Y = SEAT_Y - 146;
+const MARK_SCALE = 1.5;
+const MARK_DX = 0;
+
 const COAT = "#7d93b0";
 const COAT_LIGHT = "#a3b6d0";
 const COAT_DARK = "#5b6b82";
@@ -71,10 +76,24 @@ function Mouth({ mood, x, y }: { mood: Mood; x: number; y: number }) {
 
 /** A small mark over their head that echoes the body language. */
 function TellMark({ tell, cx }: { tell: number; cx: number }) {
-  const y = SEAT_Y - 128;
+  return (
+    <g
+      transform={`translate(${cx + MARK_DX} ${MARK_Y}) scale(${MARK_SCALE}) translate(${-(cx + MARK_DX)} ${-MARK_Y})`}
+    >
+      <TellGlyph tell={tell} cx={cx + MARK_DX} y={MARK_Y} />
+    </g>
+  );
+}
+
+function TellGlyph({ tell, cx, y }: { tell: number; cx: number; y: number }) {
   if (tell === 3)
     return (
-      <g aria-hidden="true" className="ms-t-pulse" fill="#ff7a90">
+      <g
+        aria-hidden="true"
+        data-testid="eo-bench-tell-heart"
+        className="ms-bob"
+        fill="#ff7a90"
+      >
         <rect x={cx - 14} y={y} width="8" height="8" />
         <rect x={cx - 2} y={y} width="8" height="8" />
         <rect x={cx - 14} y={y + 6} width="20" height="8" />
@@ -366,7 +385,7 @@ function Truck() {
   );
 }
 
-/** A banner across the whole strip, so it reads at any size. */
+/** A banner across the top of the strip, above both of them, so it reads at any size without covering anyone. */
 function Banner({
   text,
   fill,
@@ -383,20 +402,20 @@ function Banner({
       <rect
         className="ms-qb-band"
         x="-1200"
-        y="22"
+        y="62"
         width="2800"
-        height="112"
+        height="30"
         fill={band}
       />
       <text
         x="200"
-        y="100"
+        y="87"
         textAnchor="middle"
         className="ms-t-shout font-[family-name:var(--font-eo-pixel)]"
-        fontSize="64"
+        fontSize="26"
         fill={fill}
         stroke={stroke}
-        strokeWidth="7"
+        strokeWidth="4"
         paintOrder="stroke"
       >
         {text}

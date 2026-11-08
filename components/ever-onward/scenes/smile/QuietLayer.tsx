@@ -290,8 +290,11 @@ export default function QuietLayer({ info }: LayerProps) {
       <BenchLayer info={info} mood={mood} />
       {info.b > 0 && <Blanket level={info.b} />}
       {info.fork > 0 && <QuietForkArt side={info.fork === 1 ? 0 : 1} />}
-      {info.a > 0 && <Tea cups={info.a} />}
-      {info.d > 0 && <Candles count={info.d} />}
+      {/* On the ground in front of the bench, inside the cropped strip. */}
+      <g transform="translate(0 -34)">
+        {info.a > 0 && <Tea cups={info.a} />}
+        {info.d > 0 && <Candles count={info.d} />}
+      </g>
       {info.c > 0 && <Rain level={info.c} />}
       {info.visitorHere && (
         <g>

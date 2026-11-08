@@ -139,7 +139,7 @@ export const FORKS: readonly ForkDef[] = [
     sides: [
       {
         name: "A few words",
-        blurb: `Sitting closer pays ${times(T.quiet.wordsClose)} as much trust, and every word is a small gift.`,
+        blurb: `Side by side, trust builds ${times(1 + TUNING.quiet.closeGain * T.quiet.wordsClose)} as fast, not ${times(1 + TUNING.quiet.closeGain)}, and every word is a small gift.`,
         catchLine: "You have to be there. The helpers pay as they always did.",
       },
       {

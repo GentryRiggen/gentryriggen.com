@@ -142,11 +142,15 @@ export const paintAt = (
   isBroadcast = false
 ): number => W.pressure[level] * paintMult(run, isBroadcast) + driftOf(run);
 
-/** Real smiles that come back a second at a level. */
+/**
+ * Real smiles that come back a second at a level, from every source (the
+ * hush, the benches, the boxes). Once HypnoDrones fly, all of it is cut.
+ */
 export const healAt = (run: RunState, level: number): number =>
-  W.heal[level] * (isDone(run, "hypno-drones") ? W.dronesHeal : 1) +
-  (isDone(run, "listening-benches") ? W.benchesHeal : 0) +
-  forkHealRate(run);
+  (W.heal[level] +
+    (isDone(run, "listening-benches") ? W.benchesHeal : 0) +
+    forkHealRate(run)) *
+  (isDone(run, "hypno-drones") ? W.dronesHeal : 1);
 
 /** The net change in real smiles a second at a level (below 0 is losing them). */
 export const netAt = (

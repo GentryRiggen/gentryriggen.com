@@ -331,9 +331,10 @@ describe("The frontier: finishing fast costs real smiles, keeping them costs tim
   /** A player who takes the drones' projects and plays the dial as `dial`. */
   function withProjects(
     dial: NonNullable<Strategy["actions"]>,
-    taste: string[]
+    taste: string[],
+    worldSide?: 0 | 1
   ): Strategy {
-    const strategy = worldPlayer(hard, dial, "greedy");
+    const strategy = worldPlayer(hard, dial, "greedy", worldSide);
     const fallback = takesProjects("greedy");
     strategy.projects = (run, shown) =>
       run.phase !== 2
@@ -372,6 +373,11 @@ describe("The frontier: finishing fast costs real smiles, keeping them costs tim
     // the real smiles heal (with or without the listening benches).
     hushedDrones: () => withProjects(holdsLevel(0), DRONE_TASTE),
     softDrones: () => withProjects(holdsLevel(1), DRONE_TASTE),
+    // The same on the Listening boxes side, where the boxes heal as well.
+    hushedBoxesDrones: () => withProjects(holdsLevel(0), DRONE_TASTE, 1),
+    softBoxesDrones: () => withProjects(holdsLevel(1), DRONE_TASTE, 1),
+    keeperBoxes: () =>
+      worldPlayer(hard, followsTheDay({ base: 2, floor: 0.7 }), "steady", 1),
     greedyThenHushed8: () => greedyThenHushed(8),
     greedyThenHushed10: () => greedyThenHushed(10),
     greedyThenHushed12: () => greedyThenHushed(12),
@@ -443,6 +449,8 @@ describe("The frontier: finishing fast costs real smiles, keeping them costs tim
     for (const key of [
       "hushedDrones",
       "softDrones",
+      "hushedBoxesDrones",
+      "softBoxesDrones",
       "greedyThenHushed8",
       "greedyThenHushed10",
       "greedyThenHushed12",
@@ -455,9 +463,16 @@ describe("The frontier: finishing fast costs real smiles, keeping them costs tim
     }
   });
 
+  it("on the Listening boxes side, HypnoDrones still beat nobody who keeps the smiles", () => {
+    for (const key of ["hushedBoxesDrones", "softBoxesDrones"] as const) {
+      expect(results[key].total).toBeGreaterThan(results.keeperBoxes.total);
+      expect(results[key].total).toBeGreaterThan(results.keeper.total);
+    }
+  });
+
   it("keeping the smiles pays off in the Quiet: the minder finishes sooner overall than the greedy player", () => {
     expect(results.keeper.total).toBeLessThan(results.greedy.total);
-    expect(results.careful.total).toBeLessThan(results.greedy.total * 1.02);
+    expect(results.careful.total).toBeLessThan(results.greedy.total);
     expect(results.keeper.total).toBeLessThan(results.hushed.total);
   });
 

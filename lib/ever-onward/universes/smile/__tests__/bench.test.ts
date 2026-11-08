@@ -11,8 +11,12 @@ import {
   CLOSER_ACTION_ID,
   QUIET_ACTION_IDS,
   closeMult,
+  eventLift,
+  eventLook,
   isAway,
+  isBenchBusy,
   isMoving,
+  isTruckNear,
   landCount,
   openness,
   pullCount,
@@ -48,6 +52,8 @@ function openRun(seed: number, trust = 0): RunState {
     resources: {
       ...base.resources,
       trust,
+      // A few words (the words side), the side the bots take.
+      fkQuiet: 1,
       // Every smile kept: the bench is at its warmest.
       wsKept: 1,
       qbSeat: 0,
@@ -84,15 +90,99 @@ function builds(
   return { gained: run.resources.trust - start, pulls: pullCount(run) };
 }
 
+/** Seconds until the real smile, for someone who taps three times a second. */
+function secondsToSmile(policy: Policy, seed: number, trust: number): number {
+  let run = openRun(seed, trust);
+  for (let t = 0; t < 1800; t += 1) {
+    if (trustFraction(run) >= 1) return t;
+    for (const id of policy(run, available(run))) {
+      if (canPerformAction(def, run, id)) run = performAction(def, run, id);
+    }
+    for (let k = 0; k < 3; k += 1) run = manualAction(def, run);
+    run = tick(def, run, 1);
+  }
+  return 1800;
+}
+
 const SEEDS = [3, 7, 11, 19, 23, 31, 41, 53];
 const mean = (policy: Policy, trust: number): number =>
   SEEDS.reduce((sum, seed) => sum + builds(policy, seed, trust).gained, 0) /
   SEEDS.length;
 
+const meanSeconds = (policy: Policy, trust: number): number =>
+  SEEDS.reduce((sum, seed) => sum + secondsToSmile(policy, seed, trust), 0) /
+  SEEDS.length;
+
 /** Looks every 4 seconds, the way a player glances at the bench. */
 const reads: Policy = readsBench(4);
 const neverMoves: Policy = () => [];
+
+/**
+ * The shortcuts: go to a seat and stay there (every second, as keen as can
+ * be), and with \`backOffForTrucks\` take one seat back while a truck is near.
+ */
+const sitsAt =
+  (seat: number, backOffForTrucks = false): Policy =>
+  (run, ids) => {
+    const want =
+      backOffForTrucks && isTruckNear(run) ? Math.max(0, seat - 1) : seat;
+    const here = seatOf(run);
+    const id =
+      here < want ? CLOSER_ACTION_ID : here > want ? BACK_ACTION_ID : "";
+    return ids.includes(id) ? [id] : [];
+  };
 const alwaysCloser: Policy = scootsAsFastAsAllowed;
+
+describe("The bench's small rules", () => {
+  it("shows each thing for exactly as long as it changes how open they are", () => {
+    const at = (event: number, seconds: number): RunState => {
+      const run = openRun(3, 40);
+      run.resources.qbEv = event;
+      run.resources.qbEvT = seconds;
+      run.resources.qbNext = 999;
+      return run;
+    };
+    const cases: [number, number][] = [
+      [1, Q.bird.seconds],
+      [2, Q.snack.seconds],
+      [3, Q.truck.warn + Q.truck.hold + Q.truck.fade],
+    ];
+    for (const [event, end] of cases) {
+      expect(eventLook(at(event, end - 0.5))).not.toBe("");
+      expect(eventLook(at(event, end + 0.5))).toBe("");
+      expect(Math.abs(eventLift(at(event, end + 0.5)))).toBeLessThan(1e-9);
+    }
+    expect(eventLift(at(1, Q.bird.seconds - 0.1))).toBeLessThan(0.01);
+  });
+
+  it("does not pull them away on the tick that reaches full trust", () => {
+    const run = openRun(3, 99.9999);
+    run.resources.qbSeat = 4;
+    run.resources.qbCrowd = Q.crowdSeconds;
+    run.resources.qbNext = 999;
+    run.resources.trust = 100;
+    const after = tick(def, run, 1);
+    expect(pullCount(after)).toBe(0);
+    expect(trustFraction(after)).toBe(1);
+  });
+
+  it("costs a friend who has hardly begun to trust you only a little to be pulled away", () => {
+    const run = openRun(3, 3);
+    run.resources.qbSeat = 4;
+    run.resources.qbCrowd = Q.crowdSeconds;
+    run.resources.qbNext = 999;
+    run.resources.wsKept = 0;
+    run.resources.qbPhase = 0;
+    const after = tick(def, run, 1);
+    if (pullCount(after) > 0)
+      expect(3 - after.resources.trust).toBeLessThan(Q.pullFloor * 0.4);
+  });
+
+  it("holds new-message pop-ups for the whole Quiet and no other part", () => {
+    expect(isBenchBusy(openRun(3, 10))).toBe(true);
+    expect(isBenchBusy(runAtPhaseStart(2))).toBe(false);
+  });
+});
 
 describe("The bench", () => {
   it("scoots one seat at a time, and the move takes a moment", () => {
@@ -114,7 +204,10 @@ describe("The bench", () => {
 
   it("builds trust faster the closer you sit", () => {
     const run = openRun(3, 90);
-    const near = { ...run, resources: { ...run.resources, qbSeat: Q.seats } };
+    const near = {
+      ...run,
+      resources: { ...run.resources, qbSeat: Q.seats, fkQuiet: 2 },
+    };
     expect(closeMult(near)).toBeCloseTo(1 + Q.closeGain);
     expect(closeMult(run)).toBe(1);
     const gain = (r: RunState): number => {
@@ -227,6 +320,24 @@ describe("The bench", () => {
         if (process.env.BENCH_LOG) console.log(trust, { read, greedy, still });
         expect(read).toBeGreaterThan(greedy * 1.1);
         expect(read).toBeGreaterThan(still * margin);
+      });
+    }
+
+    // Late in the Quiet the answer is not "sit close and mind the trucks":
+    // the mood moves on its own, so only reading the friend keeps up.
+    for (const trust of [50, 55, 60]) {
+      it(`from ${trust}% trust, reading finishes 10% sooner than every seat to sit at, trucks or not`, () => {
+        const read = meanSeconds(reads, trust);
+        const shortcuts: Record<string, number> = {};
+        for (const seat of [1, 2, 3, 4]) {
+          shortcuts[`sit${seat}`] = meanSeconds(sitsAt(seat), trust);
+          shortcuts[`truck${seat}`] = meanSeconds(sitsAt(seat, true), trust);
+        }
+        shortcuts.always = meanSeconds(alwaysCloser, trust);
+        shortcuts.never = meanSeconds(neverMoves, trust);
+        if (process.env.BENCH_LOG) console.log(trust, { read, ...shortcuts });
+        for (const [name, seconds] of Object.entries(shortcuts))
+          expect([name, seconds > read * 1.1]).toEqual([name, true]);
       });
     }
 

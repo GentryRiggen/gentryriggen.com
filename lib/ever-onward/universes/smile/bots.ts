@@ -157,11 +157,13 @@ export const takesProjects =
 /** Buys the given side of the current part's fork the moment it is open. */
 const ENGAGED_SIDES: readonly ForkSide[] = [0, 0, 0, 0];
 export const takesFork =
-  (side?: ForkSide): Actions =>
+  (side?: ForkSide, worldSide?: ForkSide): Actions =>
   (run, available) => {
     const id = forkActionId(
       currentFork(run).id,
-      side ?? ENGAGED_SIDES[run.phase] ?? 0
+      (run.phase === 2 ? (worldSide ?? side) : side) ??
+        ENGAGED_SIDES[run.phase] ??
+        0
     );
     return available.includes(id) ? [id] : [];
   };
@@ -423,13 +425,14 @@ export const scootsAsFastAsAllowed: Actions = (run, available) =>
 export function worldPlayer(
   base: Strategy,
   dial: Actions,
-  taste: keyof typeof PROJECT_TASTES = "steady"
+  taste: keyof typeof PROJECT_TASTES = "steady",
+  worldSide?: ForkSide
 ): Strategy {
   return {
     ...base,
     projects: takesProjects(taste),
     actions: alongside(
-      takesFork(),
+      takesFork(undefined, worldSide),
       holdsParade,
       readsFace(10),
       minesTown(),

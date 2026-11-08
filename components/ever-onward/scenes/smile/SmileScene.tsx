@@ -52,6 +52,18 @@ const LAYERS: readonly (readonly [
   ["quiet", QuietLayer],
 ];
 
+/**
+ * What each part shows of the 400x300 drawing. The Quiet is a long, low strip
+ * (the bench and two figures), so it crops to it: on a phone's short scene the
+ * friend and their body language come out three times as big.
+ */
+const VIEW_BOX: Record<SmilePhaseId, string> = {
+  friend: "0 0 400 300",
+  town: "0 0 400 300",
+  world: "0 0 400 300",
+  quiet: "0 50 400 194",
+};
+
 const SmileSceneView = memo(function SmileSceneView({
   info,
   seen,
@@ -70,7 +82,7 @@ const SmileSceneView = memo(function SmileSceneView({
   return (
     <div className="relative h-full w-full">
       <svg
-        viewBox="0 0 400 300"
+        viewBox={VIEW_BOX[info.phase]}
         role="img"
         aria-label={sceneLabelFor(info)}
         data-testid={testId}

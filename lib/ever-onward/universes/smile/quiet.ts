@@ -36,6 +36,9 @@ export const QUIET_ACTION_IDS: readonly string[] = [
 
 const SEED_MIX = 0x6265;
 
+/** The trust (of 100) from which a pull costs at least `pullFloor`. */
+const PULL_FLOOR_FULL_AT = 10;
+
 export const EV_NONE = 0;
 export const EV_BIRD = 1;
 export const EV_SNACK = 2;
@@ -99,7 +102,7 @@ export const closeness = (run: RunState): number => seatOf(run) / Q.seats;
 
 /** What sitting where you are does to trust per patience. */
 export const closeMultAt = (run: RunState, seat: number): number =>
-  1 + Q.closeGain * forkCloseMult(run) * (seat / Q.seats);
+  1 + Q.closeGain * forkCloseMult(run) * (seat / Q.seats) ** Q.closeCurve;
 
 export const closeMult = (run: RunState): number =>
   closeMultAt(run, seatOf(run));
@@ -143,7 +146,12 @@ export function eventLift(run: RunState): number {
   const t = eventAge(run);
   switch (eventOf(run)) {
     case EV_BIRD:
-      return Q.bird.lift * Math.exp(-t / Q.bird.settle);
+      return t >= Q.bird.seconds
+        ? 0
+        : (Q.bird.lift *
+            (Math.exp(-t / Q.bird.settle) -
+              Math.exp(-Q.bird.seconds / Q.bird.settle))) /
+            (1 - Math.exp(-Q.bird.seconds / Q.bird.settle));
     case EV_SNACK:
       return (
         Q.snack.lift * Math.min(1, t / 2) * Math.max(0, 1 - t / Q.snack.seconds)
@@ -163,16 +171,18 @@ export function wander(run: RunState): number {
   const phase = res(run, "qbPhase");
   return (
     (Q.wander / 2) *
-    (Math.sin(run.time / 9 + phase) + Math.sin(run.time / 23 + phase * 2.3))
+    (Math.sin(run.time / 11 + phase) + Math.sin(run.time / 30 + phase * 2.3))
   );
 }
 
 /**
  * How open they are to company, around 0 to 1: trust, plus the mood of the
- * moment. This is the truth; the player only sees it as body language.
+ * moment, less how guarded they are after what the world did (the fewer real
+ * smiles it kept, the longer it takes before they will have you any closer). This is the truth; the player only sees it as body language.
  */
 export const openness = (run: RunState): number =>
-  Q.openBase +
+  Q.openBase -
+  Q.guarded * (1 - keptOf(run)) +
   Q.openFromTrust * trustFraction(run) +
   eventLift(run) +
   wander(run);
@@ -184,12 +194,12 @@ export function eventLook(
   const t = eventAge(run);
   switch (eventOf(run)) {
     case EV_BIRD:
-      return t < 14 ? "bird" : "";
+      return t < Q.bird.seconds ? "bird" : "";
     case EV_SNACK:
-      return t < 12 ? "snack" : "";
+      return t < Q.snack.seconds ? "snack" : "";
     case EV_TRUCK:
       if (t < Q.truck.warn) return "warn";
-      return t < Q.truck.warn + Q.truck.hold + 2 ? "truck" : "";
+      return t < Q.truck.warn + Q.truck.hold + Q.truck.fade ? "truck" : "";
     default:
       return "";
   }
@@ -200,6 +210,14 @@ export const isTruckNear = (run: RunState): boolean => {
   const look = eventLook(run);
   return look === "warn" || look === "truck";
 };
+
+/**
+ * True for the whole Quiet. The bench is read from the friend's body language
+ * and the little things that happen around it (a bird, a truck, a big moment),
+ * and on a phone the scene is a thin strip, so "new message" pop-ups hold back
+ * rather than cover it. The story and the log keep every line.
+ */
+export const isBenchBusy = (run: RunState): boolean => isQuietOpen(run);
 
 /** Whether they would be comfortable at `seat` right now. */
 export const isComfortable = (run: RunState, seat: number): boolean =>
@@ -227,7 +245,7 @@ export const TELL_WORDS: readonly string[] = [
   "They pull their coat in tight and turn away.",
   "Arms folded, eyes on the far end of the street.",
   "They glance over, and their shoulders loosen a little.",
-  "Shoulders low, leaning your way, glad of the company.",
+  "Arms down, shoulders low, leaning your way, a hint of a smile.",
 ];
 
 export const SEAT_WORDS: readonly string[] = [
@@ -257,6 +275,8 @@ export const pullWhy = (run: RunState): number => res(run, "qbPullWhy");
 // -------------------------------------------------------------- the tick
 
 function pullAway(run: RunState, why: 0 | 1): void {
+  // A real smile settles first: nothing pulls away at full trust.
+  if (isRealSmile(run)) return;
   const r = run.resources;
   r.qbSeat = 0;
   r.qbMove = 0;
@@ -266,7 +286,10 @@ function pullAway(run: RunState, why: 0 | 1): void {
   r.qbPullWhy = why;
   r.qbPulls = pullCount(run) + 1;
   const trust = res(run, "trust");
-  r.trust = Math.max(0, trust - Math.max(Q.pullFloor, Q.pullShare * trust));
+  // The least a pull costs shrinks with the trust there is, so a friend who
+  // has hardly begun to trust you is not wiped out by a few early mistakes.
+  const floor = Q.pullFloor * Math.min(1, trust / PULL_FLOOR_FULL_AT);
+  r.trust = Math.max(0, trust - Math.max(floor, Q.pullShare * trust));
 }
 
 function arrive(run: RunState): void {

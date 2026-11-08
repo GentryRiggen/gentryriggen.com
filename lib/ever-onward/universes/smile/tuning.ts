@@ -67,7 +67,7 @@ export const TUNING = {
    */
   world: {
     startLevel: 2,
-    pay: [0.55, 0.8, 1, 1.35, 1.8] as readonly number[],
+    pay: [0.55, 0.8, 1, 1.35, 1.4] as readonly number[],
     pressure: [0, 0, 0.0007, 0.0016, 0.004] as readonly number[],
     heal: [0.002, 0.0009, 0, 0, 0] as readonly number[],
     floor: 0.03,
@@ -90,10 +90,10 @@ export const TUNING = {
     filtersPay: 1.25,
     filtersDrift: 0.0004,
     guideLoss: 0.1,
-    dronesPay: 2.2,
+    dronesPay: 2.05,
     dronesDrift: 0.0015,
     dronesLoss: 0.3,
-    /** While HypnoDrones fly, the hush heals only this share of what it did. */
+    /** Once HypnoDrones are built, every way real smiles come back (the hush, the benches, the boxes) keeps only this share, for good. */
     dronesHeal: 0.25,
     benchesPay: 0.95,
     benchesHeal: 0.0004,
@@ -191,7 +191,7 @@ export const TUNING = {
       boxPaint: 0.6,
       boxHeal: 0.0008,
     },
-    quiet: { cost: 15, wordsClose: 4, silenceHelpers: 1.2 },
+    quiet: { cost: 15, wordsClose: 8, silenceHelpers: 1.05 },
   },
   /**
    * The bench in the quiet: how fast patience turns into trust, what sitting
@@ -199,7 +199,7 @@ export const TUNING = {
    * moment around.
    */
   quiet: {
-    growthPerPatience: 9.7e-5,
+    growthPerPatience: 1.98e-4,
     /** The bench: a part of the bar owned from the start (Room on the bench). */
     benchBoost: 1,
     /** Seats of closeness: 0 is the far end, `seats` is side by side. */
@@ -207,26 +207,30 @@ export const TUNING = {
     /** Seconds to scoot one seat, either way. */
     stepSeconds: 2.5,
     /** Extra trust per patience at the closest seat (a share of the base). */
-    closeGain: 2.5,
+    closeGain: 1.5,
+    /** How the gain grows with the seat: 1 is evenly, more is mostly at the closest seats. */
+    closeCurve: 2.5,
     /** Openness needed to sit at each seat (seat 0 needs none). */
-    comfort: [0, 0.12, 0.24, 0.36, 0.48],
+    comfort: [0, 0.13, 0.27, 0.45, 0.64],
     /** Openness from nothing at all, and from each share of trust. */
     openBase: 0.1,
+    /** How guarded they are when the world kept no real smiles (taken off their openness). */
+    guarded: 0.25,
     openFromTrust: 0.72,
     /** How far the slow wander of their mood goes either way. */
-    wander: 0.05,
+    wander: 0.11,
     /** Trust per patience in the Quiet scales from this (all painted) up to 1 (all real). */
-    keptFloor: 0.1,
+    keptFloor: 0.3,
     /** Seconds sat somewhere they are not comfortable before they pull away. */
-    crowdSeconds: 4,
+    crowdSeconds: 6,
     /** Trust lost when they pull away (a share of what there is, at least the floor, of 100), and how long they stay at the far end. */
-    pullShare: 0.05,
+    pullShare: 0.045,
     pullFloor: 0.3,
     awaySeconds: 7,
     /** Seconds between things happening on the bench (min, max). */
     eventGap: [20, 36],
-    /** A bird lands: openness lift, and how fast it settles (seconds). */
-    bird: { lift: 0.2, settle: 12 },
+    /** A bird lands: openness lift, how fast it settles, and when it flies off (seconds, the cue ends with the lift). */
+    bird: { lift: 0.2, settle: 12, seconds: 16 },
     /** They share a snack: openness lift, and how long it lasts (seconds). */
     snack: { lift: 0.16, seconds: 18 },
     /** A noisy truck: seconds of warning, openness drop, seconds held and to fade. */

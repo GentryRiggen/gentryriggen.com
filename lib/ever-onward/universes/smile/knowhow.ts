@@ -242,7 +242,7 @@ export const SMILE_PROJECTS: readonly ProjectDef[] = [
     costs: cost(K.costs[2]),
     revealWhen: (run) => owned(run, "cheer-tower") >= 1,
     effectPreview: () =>
-      `+ Every place pays ${mult(W.dronesPay)} the grins\n− ${Math.round(W.dronesLoss * 100)}% of real smiles painted over at once, and ${perMin(W.dronesDrift)} more a minute`,
+      `+ Every place pays ${mult(W.dronesPay)} the grins\n− ${Math.round(W.dronesLoss * 100)}% of real smiles painted over at once, and ${perMin(W.dronesDrift)} more a minute\n− Real smiles come back a quarter as fast, for good`,
     onDone: (run) => launchDrones(run),
   },
   {

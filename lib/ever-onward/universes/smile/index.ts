@@ -3,6 +3,7 @@ import type { UniverseDef } from "../../engine/types";
 import { SMILE_ACTIONS } from "./actions";
 import { smileAlert } from "./alerts";
 import { smileGauge } from "./gauge";
+import { isBenchBusy } from "./quiet";
 import {
   SMILE_CONSUMABLES,
   SMILE_DECISION_ACTIONS,
@@ -47,6 +48,7 @@ export const smileUniverse: UniverseDef = {
   visitors: VISITORS,
   countdown: smileCountdown,
   alert: smileAlert,
+  isSceneBusy: isBenchBusy,
   gauge: smileGauge,
   prestige: PRESTIGE,
   map: SMILE_MAP,
