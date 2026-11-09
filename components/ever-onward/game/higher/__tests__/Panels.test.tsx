@@ -11,12 +11,33 @@ import {
   forkCost,
 } from "@/lib/ever-onward/universes/higher/forks";
 import { OVERTIME_ACTION_ID } from "@/lib/ever-onward/universes/higher/knowhow";
-import { STEADY_ACTION_ID } from "@/lib/ever-onward/universes/higher/sway";
+import {
+  BANK_ACTION_ID,
+  paceActionId,
+} from "@/lib/ever-onward/universes/higher/playroom";
+import {
+  NC_START_ACTION_ID,
+  TIE_ACTION_ID,
+  strainActionId,
+} from "@/lib/ever-onward/universes/higher/sky";
 import DeliveryPanel from "../DeliveryPanel";
+import PackPanel from "../PackPanel";
+import { keepActionId } from "@/lib/ever-onward/universes/higher/keepsakes";
 import FootingPanel from "../FootingPanel";
 import ForkPanel from "../ForkPanel";
 import KnowHowPanel from "../KnowHowPanel";
-import SwayPanel from "../SwayPanel";
+import PlayroomPanel from "../PlayroomPanel";
+import WindPanel from "../WindPanel";
+import StrainPanel from "../StrainPanel";
+import NoCranePanel from "../NoCranePanel";
+import CrewPanel from "../CrewPanel";
+import ShadowPanel from "../ShadowPanel";
+import TownPanel from "../TownPanel";
+import {
+  LAMP_ACTION_ID,
+  SWITCH_ACTION_ID,
+  foremanActionId,
+} from "@/lib/ever-onward/universes/higher/town";
 
 function playroom(bears = 4, extra: Record<string, number> = {}): RunState {
   const run = runAtPhaseStart(0);
@@ -121,28 +142,254 @@ describe("FootingPanel", () => {
   });
 });
 
-describe("SwayPanel", () => {
-  it("steadies a leaning tower on a click", async () => {
+describe("PlayroomPanel", () => {
+  it("shows four paces with what each pays and costs, and picks one on a click", async () => {
     const onAct = jest.fn();
-    render(
-      <SwayPanel def={def} run={playroom(3, { sway: 0.8 })} onAct={onAct} />
+    render(<PlayroomPanel def={def} run={playroom(3)} onAct={onAct} />);
+    const rush = screen.getByTestId("bh-pace-3");
+    expect(rush).toHaveTextContent("Rush");
+    expect(rush).toHaveTextContent(/\+30% pay/);
+    expect(rush).toHaveTextContent(/Leans a lot/);
+    expect(screen.getByTestId("bh-pace-0")).toHaveTextContent(/-8% pay/);
+    expect(screen.getByTestId("bh-pace-1")).toHaveAttribute(
+      "aria-checked",
+      "true"
     );
-    expect(screen.getByTestId("bh-sway")).toHaveAttribute(
-      "data-state",
-      "wobbling"
-    );
-    await userEvent.click(screen.getByTestId("bh-steady"));
-    expect(onAct).toHaveBeenCalledWith(STEADY_ACTION_ID);
+    await userEvent.click(rush);
+    expect(onAct).toHaveBeenCalledWith(paceActionId(3));
+    expect(screen.queryByText(/best|recommended/i)).toBeNull();
   });
 
-  it("says the tower is standing straight, and the button waits", async () => {
+  it("shows the streak, the tumble chance and banks only a real streak", async () => {
     const onAct = jest.fn();
-    render(<SwayPanel def={def} run={playroom(3)} onAct={onAct} />);
-    const button = screen.getByTestId("bh-steady");
-    expect(button).toHaveAttribute("aria-disabled", "true");
-    expect(button).toHaveTextContent("Standing straight");
-    await userEvent.click(button);
+    const { rerender } = render(
+      <PlayroomPanel def={def} run={playroom(3)} onAct={onAct} />
+    );
+    expect(screen.getByTestId("bh-bank")).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
+    await userEvent.click(screen.getByTestId("bh-bank"));
     expect(onAct).not.toHaveBeenCalled();
+    rerender(
+      <PlayroomPanel
+        def={def}
+        run={playroom(3, { pcStreak: 6 })}
+        onAct={onAct}
+      />
+    );
+    expect(screen.getByTestId("bh-streak")).toHaveTextContent(
+      /6 blocks in a row/
+    );
+    expect(screen.getByTestId("bh-streak-chance")).toHaveTextContent(
+      /tumbles the top \d+% of the time/
+    );
+    await userEvent.click(screen.getByTestId("bh-bank"));
+    expect(onAct).toHaveBeenCalledWith(BANK_ACTION_ID);
+  });
+
+  it("warns when the toddler is coming, and renders nothing in the town", () => {
+    const run = playroom(3, { pcTodNext: 5 });
+    render(
+      <PlayroomPanel def={def} run={{ ...run, time: 0 }} onAct={jest.fn()} />
+    );
+    expect(screen.getByTestId("bh-playroom")).toHaveAttribute(
+      "data-toddler",
+      "coming"
+    );
+    const { container } = render(
+      <PlayroomPanel def={def} run={town()} onAct={jest.fn()} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe("the town's panels", () => {
+  const rich = (): RunState => town({ bricks: 1e12 });
+
+  it("show the build pace and today's and tomorrow's day, with no word on which is best", async () => {
+    const onAct = jest.fn();
+    render(<TownPanel def={def} run={rich()} onAct={onAct} />);
+    expect(screen.getByTestId("bh-pace-3")).toHaveTextContent(/\+20% bricks/);
+    expect(screen.getByTestId("bh-pace-0")).toHaveTextContent(/-10% bricks/);
+    expect(screen.getByTestId("bh-day-sign")).toHaveTextContent(/Today:/);
+    expect(screen.getByTestId("bh-day-next")).toHaveTextContent(/Tomorrow:/);
+    expect(screen.getByTestId("bh-town").textContent).not.toMatch(
+      /best|recommended/i
+    );
+    await userEvent.click(screen.getByTestId("bh-pace-3"));
+    expect(onAct).toHaveBeenCalledWith(paceActionId(3));
+  });
+
+  it("put a foreman on a chosen hat on a click, showing his plus and his minus", async () => {
+    const onAct = jest.fn();
+    render(<CrewPanel def={def} run={rich()} onAct={onAct} />);
+    const sal = screen.getByTestId("bh-foreman-1");
+    expect(sal).toHaveTextContent("Speedy Sal");
+    expect(sal).toHaveTextContent(/\+ \+18% bricks/);
+    expect(sal).toHaveTextContent(/- The tower leans twice as much/);
+    expect(sal).toHaveTextContent(/Clashes with Careful Kim/);
+    expect(screen.getByTestId("bh-crew").textContent).not.toMatch(
+      /best|recommended/i
+    );
+    await userEvent.click(screen.getByTestId("bh-hat-2"));
+    await userEvent.click(sal);
+    expect(onAct).toHaveBeenCalledWith(foremanActionId(2, 1));
+  });
+
+  it("say a hat is waiting for its new foreman, and block him from a second hat", async () => {
+    const onAct = jest.fn();
+    const run = performAction(def, rich(), foremanActionId(0, 1));
+    render(<CrewPanel def={def} run={run} onAct={onAct} />);
+    expect(screen.getByTestId("bh-hat-0")).toHaveTextContent(
+      /Speedy Sal in \d+ sec/
+    );
+    await userEvent.click(screen.getByTestId("bh-hat-1"));
+    await userEvent.click(screen.getByTestId("bh-foreman-1"));
+    expect(onAct).not.toHaveBeenCalled();
+  });
+
+  it("show how dark the town is and what the lamps cost and give", async () => {
+    const onAct = jest.fn();
+    const run = {
+      ...rich(),
+      owned: { mason: 6, crane: 5, scaffolding: 3, "cross-braces": 3 },
+    };
+    render(<ShadowPanel def={def} run={run} onAct={onAct} />);
+    expect(screen.getByTestId("bh-shadow-cut")).toHaveTextContent(
+      /The dark is taking \d+% of your bricks/
+    );
+    expect(screen.getByTestId("bh-lamps")).toHaveTextContent(
+      /Costs [\d.,]+\w* bricks/
+    );
+    expect(screen.getByTestId("bh-park")).toHaveTextContent(
+      /25 points off the dark meter/
+    );
+    await userEvent.click(screen.getByTestId("bh-lamps"));
+    expect(onAct).toHaveBeenCalledWith(LAMP_ACTION_ID);
+  });
+
+  it("show the power bill on every light card, and a switch once something is lit", async () => {
+    const onAct = jest.fn();
+    const base = {
+      ...rich(),
+      owned: { mason: 6, crane: 5, scaffolding: 3, "cross-braces": 3 },
+    };
+    const { rerender } = render(
+      <ShadowPanel def={def} run={base} onAct={onAct} />
+    );
+    expect(screen.getByTestId("bh-lamps")).toHaveTextContent(
+      /of your bricks, every second/
+    );
+    expect(screen.getByTestId("bh-park")).toHaveTextContent(
+      /of your bricks, every second/
+    );
+    expect(screen.queryByTestId("bh-switch")).toBeNull();
+    const lit = {
+      ...base,
+      resources: { ...base.resources, twLamps: 2 },
+    };
+    rerender(<ShadowPanel def={def} run={lit} onAct={onAct} />);
+    expect(screen.getByTestId("bh-power-bill")).toHaveTextContent(
+      /Power bill: -32% of your bricks, every second/
+    );
+    expect(screen.getByTestId("bh-switch")).toHaveTextContent("Lights: ON");
+    await userEvent.click(screen.getByTestId("bh-switch"));
+    expect(onAct).toHaveBeenCalledWith(SWITCH_ACTION_ID);
+    const off = {
+      ...lit,
+      resources: { ...lit.resources, twOff: 1, twCool: 1 },
+    };
+    rerender(<ShadowPanel def={def} run={off} onAct={onAct} />);
+    expect(screen.getByTestId("bh-switch")).toHaveTextContent("Lights: OFF");
+    expect(screen.getByTestId("bh-power-bill")).toHaveTextContent(
+      /Power bill: -0% of your bricks/
+    );
+  });
+
+  it("render nothing in the playroom", () => {
+    for (const Panel of [TownPanel, CrewPanel, ShadowPanel]) {
+      const { container } = render(
+        <Panel def={def} run={playroom(3)} onAct={jest.fn()} />
+      );
+      expect(container).toBeEmptyDOMElement();
+    }
+  });
+});
+
+describe("the sky's panels", () => {
+  const sky = (extra: Record<string, number> = {}, cranes = 2): RunState => {
+    const run = runAtPhaseStart(2);
+    const open = tick(
+      def,
+      { ...run, owned: { ...run.owned, "sky-crew": 3, "cloud-crane": cranes } },
+      0.1
+    );
+    return { ...open, resources: { ...open.resources, ...extra } };
+  };
+
+  it("show the forecast in three steps, and tie down on a click", async () => {
+    const onAct = jest.fn();
+    render(<WindPanel def={def} run={sky({ skWx: 1 })} onAct={onAct} />);
+    expect(screen.getByTestId("bh-wind")).toHaveAttribute("data-forecast", "1");
+    expect(screen.getByTestId("bh-forecast-0")).toHaveTextContent("Calm sky");
+    expect(screen.getByTestId("bh-forecast-1")).toHaveAttribute(
+      "aria-current",
+      "step"
+    );
+    expect(screen.getByTestId("bh-forecast-2")).toHaveTextContent(
+      "Gust coming!"
+    );
+    expect(screen.getByTestId("bh-tie")).toHaveTextContent(/Earns nothing/);
+    await userEvent.click(screen.getByTestId("bh-tie"));
+    expect(onAct).toHaveBeenCalledWith(TIE_ACTION_ID);
+  });
+
+  it("count down a sure gust and say how strong it is", () => {
+    const run = sky({
+      skWx: 2,
+      skWxAt: runAtPhaseStart(2).time + 6,
+      skStrong: 1,
+    });
+    render(<WindPanel def={def} run={run} onAct={jest.fn()} />);
+    expect(screen.getByTestId("bh-forecast-note")).toHaveTextContent(
+      /strong gust in \d+ sec/
+    );
+  });
+
+  it("give each strain a card with its pay and its snaps, and never say which is best", async () => {
+    const onAct = jest.fn();
+    render(<StrainPanel def={def} run={sky()} onAct={onAct} />);
+    for (let i = 0; i < 4; i += 1)
+      expect(screen.getByTestId(`bh-strain-${i}`)).toHaveTextContent(/beams/);
+    expect(screen.getByTestId("bh-strain")).not.toHaveTextContent(
+      /best|recommend|should/i
+    );
+    await userEvent.click(screen.getByTestId("bh-strain-3"));
+    expect(onAct).toHaveBeenCalledWith(strainActionId(3));
+  });
+
+  it("open the no-crane climb with the first cloud crane", async () => {
+    const none = render(
+      <NoCranePanel def={def} run={sky({}, 0)} onAct={jest.fn()} />
+    );
+    expect(none.container).toBeEmptyDOMElement();
+    none.unmount();
+    const onAct = jest.fn();
+    render(<NoCranePanel def={def} run={sky()} onAct={onAct} />);
+    await userEvent.click(screen.getByTestId("bh-nocrane-start"));
+    expect(onAct).toHaveBeenCalledWith(NC_START_ACTION_ID);
+  });
+
+  it("render nothing in the playroom or the town", () => {
+    for (const Panel of [WindPanel, StrainPanel, NoCranePanel])
+      for (const run of [playroom(3), town()]) {
+        const { container, unmount } = render(
+          <Panel def={def} run={run} onAct={jest.fn()} />
+        );
+        expect(container).toBeEmptyDOMElement();
+        unmount();
+      }
   });
 });
 
@@ -189,15 +436,70 @@ describe("DeliveryPanel", () => {
     render(
       <DeliveryPanel
         def={def}
-        run={playroom(3, { dlStage: 1, sway: 0.95, ftStock: 1e9 })}
+        run={playroom(3, { dlStage: 1, pcLean: 0.95, ftStock: 1e9 })}
         onAct={onAct}
       />
     );
     expect(screen.getByTestId("bh-load-1")).toHaveAttribute("data-best", "yes");
-    expect(screen.getByTestId("bh-load-1")).toHaveTextContent(
-      /straighter tower/
-    );
+    expect(screen.getByTestId("bh-load-1")).toHaveTextContent(/softer tumbles/);
     await userEvent.click(screen.getByTestId("bh-load-1-place"));
     expect(onAct).toHaveBeenCalledWith(loadActionId(1));
+  });
+});
+
+describe("PackPanel", () => {
+  const TOP = {
+    pcBanks: 3,
+    tfSwaps: 2,
+    twFlips: 2,
+    skGusts: 5,
+    skSnaps: 1,
+    skNcWins: 1,
+  };
+  const top = (extra: Record<string, number> = {}): RunState => {
+    const run = runAtPhaseStart(3);
+    return { ...run, resources: { ...run.resources, ...TOP, ...extra } };
+  };
+
+  it("renders nothing outside the way down", () => {
+    const { container } = render(
+      <PackPanel def={def} run={playroom()} onAct={jest.fn()} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("shows a card for each keepsake with a plus and a minus, and no verdict", () => {
+    render(
+      <PackPanel def={def} run={top({ descent: 0.1 })} onAct={jest.fn()} />
+    );
+    const panel = screen.getByTestId("bh-pack");
+    expect(panel).toHaveAttribute("data-load", "0");
+    const card = screen.getByTestId("bh-keep-bolt");
+    expect(card).toHaveTextContent(/Adds .* light in the last picture/);
+    expect(card).toHaveTextContent(/Slows steps by about 29% \(weight 2\)/);
+    expect(panel.textContent?.toLowerCase()).not.toMatch(
+      /best|recommend|should/
+    );
+    expect(screen.getByTestId("bh-pack-slow")).toHaveTextContent(
+      /pack is empty/i
+    );
+  });
+
+  it("marks a keepsake on a click, and says No room when the pack is full", async () => {
+    const onAct = jest.fn();
+    render(
+      <PackPanel
+        def={def}
+        run={top({ descent: 0.1, kp2: 1, kp4: 1, kp5: 1 })}
+        onAct={onAct}
+      />
+    );
+    expect(screen.getByTestId("bh-keep-btn-blueprint")).toHaveTextContent(
+      /no room/i
+    );
+    await userEvent.click(screen.getByTestId("bh-keep-btn-blueprint"));
+    expect(onAct).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByTestId("bh-keep-btn-bolt"));
+    expect(onAct).toHaveBeenCalledWith(keepActionId(2));
   });
 });

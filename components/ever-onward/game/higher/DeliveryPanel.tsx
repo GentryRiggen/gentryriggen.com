@@ -16,13 +16,6 @@ import type { PanelProps } from "../../universes/types";
 import PanelFrame from "../retro/PanelFrame";
 import { pixelClass, retroFocusClass } from "../retro/retroStyles";
 
-const TITLES = [
-  "A delivery!",
-  "A delivery!",
-  "A delivery!",
-  "A quiet moment",
-] as const;
-
 /**
  * Deliveries: every minute or so a load waits to be placed. Three cards say
  * exactly what each gives, and one is marked as the best right now. A load
@@ -36,7 +29,7 @@ export default function DeliveryPanel({ def, run, onAct }: PanelProps) {
   return (
     <PanelFrame
       label="Deliveries"
-      title={TITLES[run.phase]}
+      title="A delivery!"
       icon="▣"
       tone="amber"
       status={here ? "Something has arrived" : "On its way"}

@@ -1,4 +1,5 @@
 import type { ResourceDef } from "../../engine/types";
+import { TUNING } from "./tuning";
 
 export const PHASE_PLAYROOM = "playroom";
 export const PHASE_TOWN = "town";
@@ -30,8 +31,11 @@ export const FULL_DESCENT = 100;
 
 const HIDDEN: readonly string[] = [];
 
-const hidden = (ids: readonly string[]): ResourceDef[] =>
-  ids.map((id) => ({ id, label: id, phases: HIDDEN }));
+const hidden = (
+  ids: readonly string[],
+  initial?: Readonly<Record<string, number>>
+): ResourceDef[] =>
+  ids.map((id) => ({ id, label: id, phases: HIDDEN, initial: initial?.[id] }));
 
 export const RESOURCES: readonly ResourceDef[] = [
   {
@@ -73,6 +77,129 @@ export const RESOURCES: readonly ResourceDef[] = [
   },
   // Sway: how far the tower leans, 0 (upright) to 1 (wobbling).
   ...hidden(["sway"]),
+  // The playroom's dials: pace (set and where the dial is), lean, the streak,
+  // the clock that stacks blocks, the tower awake until, the random stream,
+  // the toddler's next visit, tumbles and banks (with when and how much).
+  ...hidden(
+    [
+      "pcPace",
+      "pcEff",
+      "pcLean",
+      "pcStreak",
+      "pcAcc",
+      "pcArmed",
+      "pcRng",
+      "pcTodNext",
+      "pcChanges",
+      "pcSoftUntil",
+      "pcTumbles",
+      "pcTumbleAt",
+      "pcRebuildUntil",
+      "pcPauseUntil",
+      "pcLostN",
+      "pcBanks",
+      "pcBankAt",
+      "pcBankN",
+      "pcBankPays",
+      "pcIdle",
+    ],
+    { pcPace: TUNING.playroom.startPace, pcEff: TUNING.playroom.startPace }
+  ),
+  // The town's dials: foremen on each hat, the one on the way and when he
+  // arrives, who left and arrived last, the shadow's lamps and park, the day
+  // and the next one, and a die of its own.
+  ...hidden([
+    "tfH0",
+    "tfH1",
+    "tfH2",
+    "tfP0",
+    "tfP1",
+    "tfP2",
+    "tfU0",
+    "tfU1",
+    "tfU2",
+    "tfGone",
+    "tfWho",
+    "tfAt",
+    "tfStartAt",
+    "tfStarts",
+    "tfSwaps",
+    "twLamps",
+    "twPark",
+    "twDark",
+    "twOff",
+    "twFlipAt",
+    "twFlips",
+    "twCool",
+    "twBuys",
+    "twLitAt",
+    "twDay",
+    "twNext",
+    "twEnd",
+    "twDayN",
+    "twRng",
+    "twPoleUntil",
+    "twDayAt",
+    "tfHatOff",
+    "tfHatOn",
+  ]),
+  // The sky's dials: the cable's strain (set and where it is), the forecast
+  // and when it next moves, the gust blowing until, the tie-down state and
+  // when it changes, the load on the hook, drops and snaps (with when), the
+  // no-crane climb and its badges, and a die of its own.
+  ...hidden(
+    [
+      "skStrain",
+      "skEff",
+      "skChanges",
+      "skWx",
+      "skWxAt",
+      "skGustUntil",
+      "skGustHit",
+      "skStrong",
+      "skGusts",
+      "skTie",
+      "skTieAt",
+      "skTiedAt",
+      "skTies",
+      "skHook",
+      "skStallUntil",
+      "skRestringUntil",
+      "skSoftUntil",
+      "skDrops",
+      "skDropAt",
+      "skDropN",
+      "skSnaps",
+      "skSnapAt",
+      "skNc",
+      "skNcUntil",
+      "skNcTries",
+      "skNcWins",
+      "skNcWinAt",
+      "skNcFails",
+      "skRestUntil",
+      "skNcFailAt",
+      "skRng",
+      "skWxRng",
+    ],
+    {
+      skStrain: TUNING.sky.startStrain,
+      skEff: TUNING.sky.startStrain,
+    }
+  ),
+  // The top's keepsakes: one state each (0 on the stairs, 1 marked to bring,
+  // 2 carried, 3 left), the stop to set one down, how many were picked up and
+  // left (with when) and which was last.
+  ...hidden([
+    ...Array.from({ length: 8 }, (_, i) => `kp${i}`),
+    "kpSeen",
+    "kpPauseUntil",
+    "kpPicks",
+    "kpLefts",
+    "kpPickAt",
+    "kpLeftAt",
+    "kpLast",
+  ]),
   // Overtime: seconds left and times held.
   ...hidden(["otLeft", "otCount"]),
   // Forks: 0 not chosen, 1 the first side, 2 the second (one per phase).

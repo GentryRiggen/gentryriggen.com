@@ -1,4 +1,10 @@
 import type { HigherSceneInfo } from "@/lib/ever-onward/universes/higher";
+import {
+  KEEPSAKES,
+  keepsakeShare,
+  keepsakeStairShare,
+} from "@/lib/ever-onward/universes/higher/keepsakes";
+import KeepsakeSprite from "./KeepsakeArt";
 import Px, { Bird, Person } from "./Px";
 
 /** The corners of the zigzag stair, top to bottom. */
@@ -22,17 +28,229 @@ function robotAt(share: number): { x: number; y: number } {
   return { x: x0 + (x1 - x0) * f, y: y0 + (y1 - y0) * f };
 }
 
-function Robot({ x, y, pack }: { x: number; y: number; pack: number }) {
+/** Slower, deeper steps the more it carries (full class names for Tailwind). */
+const PLOD = [
+  "",
+  "bh-plod [animation-duration:1.3s]",
+  "bh-plod [animation-duration:1.8s]",
+  "bh-plod [animation-duration:2.4s]",
+  "bh-plod [animation-duration:3s]",
+] as const;
+
+/** The robot is drawn this much bigger on the stairs so its pack reads on a phone. */
+const ROBOT_SCALE = 1.5;
+
+/** A keepsake's sprite on the robot's back is drawn at this size (a box of 12). */
+const PACKED_SCALE = 0.8;
+
+function Robot({
+  x,
+  y,
+  pack,
+  load,
+  packs,
+  carried,
+}: {
+  x: number;
+  y: number;
+  pack: number;
+  load: number;
+  packs: number;
+  carried: readonly number[];
+}) {
+  // The pack fills as it is loaded, and the robot bows under the weight.
+  const sack = pack + load * 1.6;
+  const bow = load * 4;
   return (
-    <g className="eo-scene-robot">
-      <Px x={x - 4} y={y - 16} w={9} h={8} c="#9fb4c8" />
-      <Px x={x - 2} y={y - 14} w={2} h={2} c="#1c2432" />
-      <Px x={x + 1} y={y - 14} w={2} h={2} c="#1c2432" />
-      <Px x={x} y={y - 20} w={1} h={4} c="#9fb4c8" />
-      <Px x={x - 5} y={y - 8} w={11} h={9} c="#6f8aa3" />
-      <Px x={x - 5 - pack} y={y - 8} w={pack} h={7} c="#a4813f" />
-      <Px x={x - 3} y={y + 1} w={3} h={4} c="#4a5d70" />
-      <Px x={x + 2} y={y + 1} w={3} h={4} c="#4a5d70" />
+    <g
+      className={PLOD[Math.min(4, load)]}
+      data-testid="tp-robot"
+      data-load={load}
+    >
+      <g
+        transform={`translate(${x} ${y + 5}) scale(${ROBOT_SCALE}) rotate(${bow}) translate(${-x} ${-(y + 5)})`}
+        className="eo-scene-robot"
+      >
+        <Px x={x - 4} y={y - 16} w={9} h={8} c="#9fb4c8" />
+        <Px x={x - 2} y={y - 14} w={2} h={2} c="#1c2432" />
+        <Px x={x + 1} y={y - 14} w={2} h={2} c="#1c2432" />
+        <Px x={x} y={y - 20} w={1} h={4} c="#9fb4c8" />
+        <Px x={x - 5} y={y - 8} w={11} h={9} c="#6f8aa3" />
+        <g key={`pop-${packs}`} className="bh-kp-pop" data-testid="tp-pack">
+          <Px
+            x={x - 5 - sack}
+            y={y - 8 - load}
+            w={sack}
+            h={7 + load}
+            c="#a4813f"
+          />
+          <Px x={x - 5 - sack} y={y - 8 - load} w={sack} h={2} c="#c79a52" />
+          {carried.map((id, n) => (
+            <g
+              key={id}
+              transform={`translate(${x - 4 - sack + n * 4} ${y - 17 - load}) scale(${PACKED_SCALE})`}
+            >
+              <KeepsakeSprite id={KEEPSAKES[id].id} x={0} y={0} />
+            </g>
+          ))}
+        </g>
+        <Px x={x - 3} y={y + 1} w={3} h={4} c="#4a5d70" />
+        <Px x={x + 2} y={y + 1} w={3} h={4} c="#4a5d70" />
+      </g>
+    </g>
+  );
+}
+
+/** Where a keepsake rests on the stairs. */
+function siteOf(index: number): { x: number; y: number } {
+  const at = robotAt(keepsakeStairShare(index));
+  return { x: at.x, y: at.y - 3 };
+}
+
+/** One keepsake on the stairs, in whichever state it is in. */
+function Keepsake({
+  index,
+  state,
+  plays,
+}: {
+  index: number;
+  state: string;
+  plays: boolean;
+}) {
+  const k = KEEPSAKES[index];
+  const { x, y } = siteOf(index);
+  const big = `translate(${x} ${y}) scale(1.6) translate(-6 -6)`;
+  if (state === "2") {
+    // Only the one just picked up plays its moment; a remount shows none again.
+    if (!plays)
+      return <g data-testid={`tp-keep-${k.id}`} data-state="carried" />;
+    return (
+      <g data-testid={`tp-keep-${k.id}`} data-state="carried">
+        <g className="bh-kp-spark">
+          <circle
+            cx={x}
+            cy={y}
+            r="9"
+            fill="none"
+            stroke="#fff4cf"
+            strokeWidth="2"
+          />
+          <circle
+            cx={x}
+            cy={y}
+            r="15"
+            fill="none"
+            stroke="#ffd45e"
+            strokeWidth="1.5"
+          />
+          {[0, 1, 2, 3, 4, 5].map((n) => (
+            <Px
+              key={n}
+              x={x - 1 + Math.round(Math.cos((n * Math.PI) / 3) * 16)}
+              y={y - 1 + Math.round(Math.sin((n * Math.PI) / 3) * 16)}
+              w={3}
+              h={3}
+              c="#fff4cf"
+            />
+          ))}
+        </g>
+        <g className="bh-kp-lift">
+          <g transform={big}>
+            <KeepsakeSprite id={k.id} x={0} y={0} />
+          </g>
+        </g>
+      </g>
+    );
+  }
+  if (state === "3" && !plays)
+    return (
+      <g data-testid={`tp-keep-${k.id}`} data-state="left" opacity="0.2">
+        <g transform={`translate(0 -10) ${big}`}>
+          <KeepsakeSprite id={k.id} x={0} y={0} />
+        </g>
+      </g>
+    );
+  if (state === "3")
+    return (
+      <g data-testid={`tp-keep-${k.id}`} data-state="left">
+        <g className="bh-kp-spark">
+          <circle
+            cx={x}
+            cy={y}
+            r="14"
+            fill="none"
+            stroke="#d6b8ff"
+            strokeWidth="3"
+          />
+          <circle
+            cx={x}
+            cy={y}
+            r="22"
+            fill="none"
+            stroke="#ffd1e8"
+            strokeWidth="2"
+          />
+        </g>
+        <g className="bh-kp-bye">
+          <circle cx={x} cy={y} r="13" fill="#d6b8ff" fillOpacity="0.4" />
+          <g transform={big}>
+            <KeepsakeSprite id={k.id} x={0} y={0} />
+          </g>
+          {[-1, 0, 1].map((n) => (
+            <Px
+              key={n}
+              x={x - 1 + n * 11}
+              y={y - 20 - Math.abs(n) * 5}
+              w={4}
+              h={4}
+              c="#fff4cf"
+            />
+          ))}
+        </g>
+      </g>
+    );
+  const marked = state === "1";
+  return (
+    <g data-testid={`tp-keep-${k.id}`} data-state={marked ? "marked" : "open"}>
+      <g className="bh-glow">
+        <circle
+          cx={x}
+          cy={y}
+          r={marked ? 17 : 14}
+          fill="#ffd45e"
+          fillOpacity={marked ? 0.6 : 0.5}
+        />
+        <circle
+          cx={x}
+          cy={y}
+          r={marked ? 11 : 8}
+          fill="#fff4cf"
+          fillOpacity="0.6"
+        />
+      </g>
+      {marked && (
+        <circle
+          cx={x}
+          cy={y}
+          r="16"
+          fill="none"
+          stroke="#fff4cf"
+          strokeWidth="1.5"
+          strokeDasharray="4 3"
+        />
+      )}
+      <g className="bh-bob">
+        <g transform={big}>
+          <KeepsakeSprite id={k.id} x={0} y={0} />
+        </g>
+      </g>
+      {marked && (
+        <g className="bh-bob">
+          <Px x={x - 2} y={y - 24} w={5} h={2} c="#fff4cf" />
+          <Px x={x - 1} y={y - 22} w={3} h={2} c="#fff4cf" />
+          <Px x={x} y={y - 20} w={1} h={2} c="#fff4cf" />
+        </g>
+      )}
     </g>
   );
 }
@@ -40,19 +258,21 @@ function Robot({ x, y, pack }: { x: number; y: number; pack: number }) {
 /** The top: a long way down, a quiet town and one small block to carry. */
 export default function TopLayer({ info }: { info: HigherSceneInfo }) {
   const own = info.own;
-  const share = info.descent / 20;
+  const share = info.descent / 100;
   const lamps = Math.min(6, own["stair-lamp"] ?? 0);
   const birds = Math.min(6, own.songbird ?? 0);
   const notes = Math.min(6, own.hum ?? 0);
   const lighter = Math.min(4, own["light-load"] ?? 0);
   const lift = info.fork === 2;
   const down = (own["set-down"] ?? 0) > 0;
-  const robot = robotAt(down ? 1 : share);
+  const robot = robotAt(down ? 1 : info.walk / 300);
   const dawn = share >= 0.8;
   const dusk = share >= 0.4;
   const sky = dawn ? "#f6c68a" : dusk ? "#5a4f8f" : "#141a45";
   const lower = dawn ? "#fbe3b4" : dusk ? "#c47f8c" : "#2a3270";
-  const pack = Math.max(2, 7 - lighter * 1.2);
+  const pack = Math.max(2, 5 - lighter);
+  const keeps = info.carry;
+  const carried = [...keeps].flatMap((c, i) => (c === "2" ? [i] : []));
   return (
     <g>
       <Px x={-1200} y={-1200} w={2800} h={1460} c={sky} />
@@ -167,6 +387,23 @@ export default function TopLayer({ info }: { info: HigherSceneInfo }) {
           </g>
         </g>
       )}
+      {/* keepsakes along the way: glowing, picked up, or left with a goodbye */}
+      {!down &&
+        [...keeps].map((state, i) =>
+          state === "-" ? null : (
+            <Keepsake
+              key={KEEPSAKES[i].id}
+              index={i}
+              // One the robot has walked past (a film still has no ticks) is left.
+              state={
+                (state === "0" || state === "1") && keepsakeShare(i) <= share
+                  ? "3"
+                  : state
+              }
+              plays={i === info.lastKeep && (info.packed || info.parted)}
+            />
+          )
+        )}
       {/* lamps on the landings */}
       {lamps > 0 && (
         <g className="bh-glow">
@@ -222,7 +459,14 @@ export default function TopLayer({ info }: { info: HigherSceneInfo }) {
         ))}
       </g>
       {/* the robot, its block and the tune it hums */}
-      <Robot x={robot.x} y={robot.y} pack={pack} />
+      <Robot
+        x={robot.x}
+        y={robot.y}
+        pack={pack}
+        load={info.load}
+        packs={info.packs}
+        carried={carried}
+      />
       {(own["block-lantern"] ?? 0) > 0 && (
         <g className="bh-glow">
           <circle
@@ -263,6 +507,28 @@ export default function TopLayer({ info }: { info: HigherSceneInfo }) {
       {/* the block on the grass, and a kid who wants to play */}
       {down && (
         <g>
+          {carried.length > 0 && (
+            <g data-testid="tp-laid-out" data-count={carried.length}>
+              <g className="bh-glow">
+                <ellipse
+                  cx={150}
+                  cy={GROUND - 8}
+                  rx={30 + carried.length * 6}
+                  ry={16 + info.warmth * 2}
+                  fill="#ffd45e"
+                  fillOpacity={0.18 + Math.min(0.25, info.warmth * 0.04)}
+                />
+              </g>
+              {carried.map((id, n) => (
+                <g
+                  key={id}
+                  transform={`translate(${130 + n * 20 - carried.length * 4} ${GROUND - 16}) scale(1.2)`}
+                >
+                  <KeepsakeSprite id={KEEPSAKES[id].id} x={0} y={0} />
+                </g>
+              ))}
+            </g>
+          )}
           <Px x={196} y={GROUND - 7} w={7} h={7} c="#a4813f" />
           {info.visitorHere && (
             <g>

@@ -71,12 +71,12 @@ export const FORKS: readonly ForkDef[] = [
     sides: [
       {
         name: "Tall and thin",
-        blurb: `Helpers pay ${times(T.play.tallPay)} as much. It also leans ${times(T.play.tallSway)} as fast, so keep an eye on it.`,
-        catchLine: "It wobbles. You will be steadying it a lot.",
+        blurb: `Helpers pay ${times(T.play.tallPay)} as much. It also leans ${times(T.play.tallSway)} as much, so the top tumbles sooner.`,
+        catchLine: "It wobbles. Tumbles come much sooner.",
       },
       {
         name: "Wide and sturdy",
-        blurb: `Helpers pay ${times(T.play.widePay)} as much, and the tower leans less than half as fast.`,
+        blurb: `Helpers pay ${times(T.play.widePay)} as much, and the tower leans less than half as much.`,
         catchLine: "Slower to climb. Everything pays less than tall and thin.",
       },
     ],
@@ -95,7 +95,7 @@ export const FORKS: readonly ForkDef[] = [
       {
         name: "A steel frame",
         blurb: `Helpers pay ${times(T.town.steelPay)} as much. The crews are so busy riveting that they learn slowly: know-how comes in ${times(T.town.steelKnow)}.`,
-        catchLine: "Half the know-how, so fewer projects and overtime.",
+        catchLine: "A quarter less know-how, so fewer projects and overtime.",
       },
       {
         name: "Timber beams",
@@ -215,7 +215,7 @@ export function helperForkMult(run: RunState): number {
 export const tapForkMult = (run: RunState): number =>
   run.phase === 3 && forkSide(run, "top") === 0 ? T.top.stairsTap : 1;
 
-/** How much faster the tower sways with the chosen side (1 = as usual). */
+/** How much faster the tower leans with the chosen side (1 = as usual). */
 export function swayForkMult(run: RunState): number {
   const side = forkSide(run, currentFork(run).id);
   if (side === null) return 1;

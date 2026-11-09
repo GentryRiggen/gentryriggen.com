@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.37.0",
+    date: "2026-11-08",
+    title: "Build It Higher, with real choices",
+    highlights: [
+      "In the Playroom, you now pick how fast to build: easy, steady or a rush. Rushing is quicker, but the tower leans more, and a good streak of careful blocks helps you out",
+      "In the Town, you give each crew a foreman by handing out hats. A foreman needs a shift to put the hat on, so choose with care",
+      "The town also has a shadow that dims the streets. A lights switch turns the lamps on, and lamps cost bricks",
+      "In the Sky, you check the wind forecast before each climb. Wind and a heavy load strain the cables, so watch the strain dial",
+      "Some climbs have no crane. You go up the slow way, and tying everything down keeps it from blowing off",
+      "At the Top, a few little keepsakes wait on the stairs. Pick the ones to carry down: a full pack slows you a little and makes the last picture warmer",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
     version: "1.36.0",
     date: "2026-11-07",
     title: "Make Everyone Smile, with real choices",

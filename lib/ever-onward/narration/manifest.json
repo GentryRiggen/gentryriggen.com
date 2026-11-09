@@ -1436,8 +1436,8 @@
   },
   "higher/cut-playroom-end": {
     "file": "/ever-onward/voice/higher/cut-playroom-end.mp3",
-    "hash": "1ad491ca6b38",
-    "durationGuess": 22
+    "hash": "7022fea5ab3b",
+    "durationGuess": 24
   },
   "higher/cut-town-1": {
     "file": "/ever-onward/voice/higher/cut-town-1.mp3",
@@ -1526,8 +1526,8 @@
   },
   "higher/cut-sky-end": {
     "file": "/ever-onward/voice/higher/cut-sky-end.mp3",
-    "hash": "f7255afe67ce",
-    "durationGuess": 21
+    "hash": "233f7f037056",
+    "durationGuess": 23
   },
   "higher/cut-top-1": {
     "file": "/ever-onward/voice/higher/cut-top-1.mp3",
@@ -1571,8 +1571,8 @@
   },
   "higher/cut-top-end": {
     "file": "/ever-onward/voice/higher/cut-top-end.mp3",
-    "hash": "cdcab2cc355b",
-    "durationGuess": 19
+    "hash": "807e20101b37",
+    "durationGuess": 23
   },
   "higher/play-hello": {
     "file": "/ever-onward/voice/higher/play-hello.mp3",
@@ -1731,7 +1731,32 @@
   },
   "higher/sky-lean": {
     "file": "/ever-onward/voice/higher/sky-lean.mp3",
-    "hash": "a96765ff0042",
+    "hash": "67b360337996",
+    "durationGuess": 11
+  },
+  "higher/sky-dropped": {
+    "file": "/ever-onward/voice/higher/sky-dropped.mp3",
+    "hash": "d7dcf93d288e",
+    "durationGuess": 11
+  },
+  "higher/sky-snapped": {
+    "file": "/ever-onward/voice/higher/sky-snapped.mp3",
+    "hash": "feea6ece27c0",
+    "durationGuess": 13
+  },
+  "higher/sky-badge": {
+    "file": "/ever-onward/voice/higher/sky-badge.mp3",
+    "hash": "9f923e074a59",
+    "durationGuess": 12
+  },
+  "higher/sky-badges": {
+    "file": "/ever-onward/voice/higher/sky-badges.mp3",
+    "hash": "732a87432231",
+    "durationGuess": 12
+  },
+  "higher/sky-weathered": {
+    "file": "/ever-onward/voice/higher/sky-weathered.mp3",
+    "hash": "a5dd62e29bc0",
     "durationGuess": 10
   },
   "higher/sky-shadow": {

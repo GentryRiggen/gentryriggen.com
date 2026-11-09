@@ -30,6 +30,18 @@ export const STEADY_ONEOFF_IDS: readonly string[] = [
   "ballast-ring",
 ];
 
+/** Every upgrade of the Town: the tower's height (and so its shadow) counts them. */
+export const TOWN_UPGRADE_IDS: readonly string[] = [
+  "mason",
+  "scaffolding",
+  "cross-braces",
+  "crane",
+  "safety-nets",
+  "concrete-truck",
+  "neon-sign",
+  "skyscraper",
+];
+
 export const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 export const res = (run: RunState, id: string): number =>
   run.resources[id] ?? 0;

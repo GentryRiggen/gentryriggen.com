@@ -92,14 +92,64 @@ describe("Build It Higher scenes", () => {
     }
   );
 
-  it("draws the tower leaning when it needs steadying", () => {
+  it("draws the tower leaning when the pace makes it lean", () => {
     const run = runAtPhaseStart(0);
     const leaning = {
       ...run,
-      resources: { ...run.resources, sway: 0.9 },
+      resources: { ...run.resources, pcLean: 0.9 },
     };
     expect(markup(leaning)).not.toBe(markup(run));
     expect(markup(leaning)).toContain("bh-wobble");
+  });
+
+  describe("the sky's moments", () => {
+    const sky = (extra: Record<string, number>): RunState => {
+      const run = runAtPhaseStart(2);
+      return {
+        ...run,
+        time: 100,
+        owned: { ...run.owned, "sky-crew": 3, "cloud-crane": 2 },
+        resources: { ...run.resources, ...extra },
+      };
+    };
+    const words = (run: RunState): string => {
+      const { unmount } = render(<HigherScene run={run} />);
+      const text = screen.queryByTestId("hs-moment-text")?.textContent ?? "";
+      unmount();
+      return text;
+    };
+
+    it("darkens the sky a step at a time, then sweeps a gust across", () => {
+      const calm = markup(sky({}));
+      const clouds = markup(sky({ skWx: 1, skWxAt: 108 }));
+      const sure = markup(sky({ skWx: 2, skWxAt: 104 }));
+      const gust = markup(sky({ skGusts: 1, skGustUntil: 103 }));
+      expect(new Set([calm, clouds, sure, gust]).size).toBe(4);
+      expect(clouds).toContain('data-wx="1"');
+      expect(sure).toContain('data-wx="2"');
+      expect(gust).toContain("sk-gust");
+      expect(calm).not.toContain("sk-gust");
+    });
+
+    it("shouts DROPPED!, SNAP!, TIED DOWN and MADE IT! in full-width banners", () => {
+      expect(words(sky({ skDrops: 1, skDropAt: 99 }))).toBe("DROPPED!");
+      expect(words(sky({ skSnaps: 1, skSnapAt: 99 }))).toBe("SNAP!");
+      expect(words(sky({ skTies: 1, skTiedAt: 99, skTie: 2 }))).toBe(
+        "TIED DOWN"
+      );
+      expect(words(sky({ skNcWins: 1, skNcWinAt: 99 }))).toBe("MADE IT!");
+      expect(words(sky({ skWx: 2, skWxAt: 104, skStrong: 1 }))).toBe(
+        "STRONG GUST COMING!"
+      );
+    });
+
+    it("draws the falling beam, the whipping cable, the clamps and a badge", () => {
+      expect(markup(sky({ skDrops: 1, skDropAt: 99 }))).toContain("sk-drop");
+      expect(markup(sky({ skSnaps: 1, skSnapAt: 99 }))).toContain("sk-snap");
+      expect(markup(sky({ skTie: 2 }))).toContain("sk-straps");
+      expect(markup(sky({ skNcWins: 2 }))).toContain('data-badges="2"');
+      expect(markup(sky({ skNc: 1, skNcUntil: 150 }))).toContain('data-on="1"');
+    });
   });
 
   it("draws the kid on the grass once the block is set down", () => {
