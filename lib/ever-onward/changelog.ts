@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.38.0",
+    date: "2026-11-08",
+    title: "Keep the Light On, with real choices",
+    highlights: [
+      "On the Coast, you set a harbor toll and watch the oil market. Tankers come and go, so the price moves and you decide when to sell",
+      "In No More Night, you read the grid, fill the batteries and get ready for the evening rush. You also pick what your crews do",
+      "In the Sky, you design your own probe and choose how close to fly to the sun. Closer pays more but is riskier, and wild probes show up now and then",
+      "In the Last Light, you keep things warm, choose which lights to let go, and sail through the winds. The goodbye is bigger than before",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
     version: "1.36.0",
     date: "2026-11-07",
     title: "Make Everyone Smile, with real choices",
