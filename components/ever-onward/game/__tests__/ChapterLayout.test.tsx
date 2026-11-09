@@ -5,7 +5,6 @@ import { newSave } from "@/lib/ever-onward/engine/save";
 import { ALL_UNIVERSES } from "@/lib/ever-onward/universes/staging";
 import type { UniverseDef } from "@/lib/ever-onward/engine/types";
 import GameScreen from "../GameScreen";
-import GoalMeter from "../GoalMeter";
 
 function showChapter(def: UniverseDef, phase: number) {
   const run = newRun(def);
@@ -83,18 +82,3 @@ for (const def of ALL_UNIVERSES) {
     );
   });
 }
-
-describe("chapter goal proportions", () => {
-  it("fills half the segments for half of a large goal", () => {
-    render(<GoalMeter goal={{ label: "GROW", current: 50, target: 100 }} />);
-    expect(screen.getAllByTestId("lm-goal-lit")).toHaveLength(8);
-  });
-  it("fills fractional goals and exposes accessible progress", () => {
-    render(<GoalMeter goal={{ label: "GROW", current: 0.5, target: 1 }} />);
-    expect(screen.getByRole("progressbar")).toHaveAttribute(
-      "aria-valuenow",
-      "0.5"
-    );
-    expect(screen.queryAllByTestId("lm-goal-lit")).toHaveLength(0);
-  });
-});

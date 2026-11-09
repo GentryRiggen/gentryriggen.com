@@ -58,7 +58,7 @@ export const COSTS: Record<string, number> = {
   "appetite-1": 3000,
   "appetite-2": 12030,
   lens: 85,
-  keeper: 15,
+  keeper: 25,
   lighthouse: 1500,
   contract: 2000000,
   crank: 72,

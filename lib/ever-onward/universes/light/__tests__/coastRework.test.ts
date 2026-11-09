@@ -93,13 +93,13 @@ describe("keepers and lighthouses compound", () => {
   it("caps keepers at 14", () => {
     const keeper = def.upgrades.find((u) => u.id === "keeper")!;
     expect(keeper.maxLevel).toBe(14);
-    expect(keeper.baseCost).toBe(15);
+    expect(keeper.baseCost).toBe(25);
   });
 
   it("costs what the table says (the Coast is priced directly)", () => {
     const keeper = def.upgrades.find((u) => u.id === "keeper")!;
     const lens = def.upgrades.find((u) => u.id === "lens")!;
-    expect(keeper.baseCost).toBe(15);
+    expect(keeper.baseCost).toBe(25);
     expect(lens.baseCost).toBe(85);
   });
 });
