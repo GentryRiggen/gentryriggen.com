@@ -167,7 +167,7 @@ export default function StickyHud({
   const line =
     explained &&
     explain(explained, { resourceLabel, resourcePurpose, goal, gauge });
-  const chip = `-my-1 flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 px-1.5 ${retroFocusClass}`;
+  const chip = `-my-1 flex min-h-11 touch-manipulation items-center gap-1.5 px-1.5 ${retroFocusClass}`;
 
   return (
     <div
@@ -186,7 +186,7 @@ export default function StickyHud({
             data-testid="lm-hud-money"
             aria-label={`${resourceLabel}: what is it for?`}
             onClick={() => toggle("money")}
-            className={`${chip} min-w-0 -ml-1.5`}
+            className={`${chip} -ml-1.5 min-w-0 overflow-hidden`}
           >
             <span aria-hidden="true" className="text-lg">
               {ICONS[resourceId] ?? ""}
