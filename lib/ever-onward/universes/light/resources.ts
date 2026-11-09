@@ -390,6 +390,11 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "wmOwed", label: "Resolve a goodbye still owes", phases: HIDDEN },
   { id: "wmLastLump", label: "Resolve the last goodbye paid", phases: HIDDEN },
   { id: "wmLets", label: "Lights let go", phases: HIDDEN },
+  {
+    id: "wmByeNet",
+    label: "1 when the last goodbye was a light burning down alone",
+    phases: HIDDEN,
+  },
   // The first ship's boat (shown in the picture and the goal, not as a number).
   { id: "boatProgress", label: "Boat progress", phases: HIDDEN },
   // The lantern colour the player picked at the start (1 to 3, 0 = not picked,
@@ -397,7 +402,8 @@ export const RESOURCES: readonly ResourceDef[] = [
   { id: "lantern", label: "Lantern colour", phases: HIDDEN },
   {
     id: "lights",
-    label: "Lights left",
+    label: "Lights",
+    format: (value) => `${Math.round(value)} left`,
     initial: TOTAL_LIGHTS,
     phases: [PHASE_LAST],
   },

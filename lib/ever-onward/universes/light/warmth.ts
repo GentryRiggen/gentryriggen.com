@@ -548,6 +548,7 @@ export function letGo(run: RunState, index: number): void {
   r.wmHold = L.goodbyeSeconds + L.goodbyeAfter;
   r.wmByeIdx = index + 1;
   r.wmLets = res(run, "wmLets") + 1;
+  r.wmByeNet = 0;
   r.wmNet = 0;
   r.lights = Math.max(0, TOTAL_LIGHTS - letGoCount(run));
 }
@@ -623,13 +624,29 @@ function payOwed(run: RunState, dt: number): void {
  */
 function burnDownIfLeftAlone(run: RunState): void {
   if (res(run, "wmNet") < L.netSeconds || lockLeft(run) > 0) return;
-  const heaviest = INDEXES.filter((i) => isLit(run, i)).reduce(
+  const heaviest = heaviestLit(run);
+  if (heaviest < 0 || boatArrived(run)) return;
+  letGo(run, heaviest);
+  run.resources.wmByeNet = 1;
+  run.resources.wmNets = res(run, "wmNets") + 1;
+}
+
+/** The lit light that burns the most warmth: the one the kind safety net takes first. */
+function heaviestLit(run: RunState): number {
+  return INDEXES.filter((i) => isLit(run, i)).reduce(
     (best, i) => (best < 0 || burnOf(run, i) > burnOf(run, best) ? i : best),
     -1
   );
-  if (heaviest < 0 || boatArrived(run)) return;
-  letGo(run, heaviest);
-  run.resources.wmNets = res(run, "wmNets") + 1;
+}
+
+/** Seconds of warning the card of a tired light shows before it burns down. */
+export const TIRED_WARNING_SECONDS = 20;
+
+/** True when light `index` is about to burn down by itself (a few seconds from the safety net). */
+export function isTired(run: RunState, index: number): boolean {
+  if (!isLit(run, index) || boatArrived(run)) return false;
+  if (res(run, "wmNet") < L.netSeconds - TIRED_WARNING_SECONDS) return false;
+  return heaviestLit(run) === index;
 }
 
 /** Runs the warmth, the company, the wind and the boat for `dt` seconds. */
@@ -700,5 +717,7 @@ export function goodbyeLine(run: RunState): string | null {
   const index = Math.round(res(run, "wmByeIdx")) - 1;
   if (index < 0 || index >= LIGHT_COUNT) return null;
   const lump = Math.max(1, Math.round(lastLump(run)));
+  if (res(run, "wmByeNet") > 0)
+    return `The ${LIGHTS[index].name.toLowerCase()} burned down on their own. A flower blooms where they stood: +${lump} resolve.`;
   return `You let the ${LIGHTS[index].name.toLowerCase()} go. A flower blooms where they stood: +${lump} resolve.`;
 }

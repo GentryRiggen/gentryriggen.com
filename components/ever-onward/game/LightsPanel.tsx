@@ -18,6 +18,7 @@ import {
   isCarried,
   isChillBlowing,
   isLit,
+  isTired,
   letGoActionId,
   litCount,
   lockLeft,
@@ -148,6 +149,14 @@ function LightsPanel({ def, run, onAct }: PanelProps) {
                 <p className="font-mono text-xs font-bold leading-tight text-amber-100">
                   {light.name}
                 </p>
+                {isTired(run, i) && (
+                  <p
+                    data-testid={`lm-tired-${i}`}
+                    className="font-mono text-[10px] font-bold leading-tight text-amber-300"
+                  >
+                    Getting tired
+                  </p>
+                )}
                 {isHit && (
                   <p
                     data-testid={`lm-bitten-${i}`}

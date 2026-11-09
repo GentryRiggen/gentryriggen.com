@@ -26,7 +26,7 @@ interface UseNarrationOptions {
   run: RunState;
   /** True while a full-screen moment is up; messages then stay silent. */
   isSuppressed?: boolean;
-  /** True while the scene is busy: a toast stays out of the way until clear (and lapses as usual). */
+  /** True while the scene is busy: a toast stays out of the way until clear (its timer starts only once it is visible). */
   isHeld?: boolean;
 }
 

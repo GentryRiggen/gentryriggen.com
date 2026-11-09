@@ -6,6 +6,7 @@ import {
   tick,
 } from "../../../engine/engine";
 import type { RunState } from "../../../engine/types";
+import { describeChanges } from "../../../engine/changes";
 import { sceneInfo } from "..";
 import { def, runAtPhaseStart } from "./fixtures";
 import { TUNING } from "../tuning";
@@ -24,6 +25,9 @@ import {
   companyOf,
   flowerNames,
   goodbyeIndex,
+  goodbyeLine,
+  isTired,
+  TIRED_WARNING_SECONDS,
   fogLevel,
   isBitten,
   isCarried,
@@ -358,6 +362,41 @@ describe("a light left alone", () => {
     expect(isLit(run, heaviest)).toBe(false);
     expect(run.resources.wmNets).toBe(1);
     expect(goodbyeIndex(run)).toBe(heaviest);
+  });
+
+  it("says so honestly: it burned down on its own, you did not let it go", () => {
+    const burned = wait(start(), L.netSeconds + 2);
+    expect(goodbyeLine(burned)).toMatch(/burned down on their own/);
+    expect(goodbyeLine(burned)).not.toMatch(/You let/);
+    const chosen = performAction(def, start(), letGoActionId(3));
+    expect(goodbyeLine(chosen)).toMatch(/^You let the /);
+  });
+
+  it("marks the light that is about to go as tired, shortly before and not earlier", () => {
+    const early = wait(start(), L.netSeconds - TIRED_WARNING_SECONDS - 5);
+    expect(
+      Array.from({ length: LIGHT_COUNT }, (_, i) => isTired(early, i))
+    ).not.toContain(true);
+    const late = wait(start(), L.netSeconds - 5);
+    const tired = Array.from({ length: LIGHT_COUNT }, (_, i) => i).filter((i) =>
+      isTired(late, i)
+    );
+    expect(tired).toHaveLength(1);
+    const after = wait(late, 10);
+    expect(isLit(after, tired[0])).toBe(false);
+    expect(isTired(after, tired[0])).toBe(false);
+  });
+
+  it("reads the lights count as 'N left' with no minus sign", () => {
+    const before = start();
+    const after = performAction(def, before, letGoActionId(3));
+    const lines = describeChanges(
+      def,
+      { ...before, phase: 3 },
+      { ...after, phase: 3 }
+    );
+    expect(lines.some((l) => /11 left → 10 left/.test(l))).toBe(true);
+    expect(lines.join(" ")).not.toMatch(/-1/);
   });
 
   it("waits the same time again for the next, and never for a player who is letting go", () => {

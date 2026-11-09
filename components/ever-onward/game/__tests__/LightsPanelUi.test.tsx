@@ -144,3 +144,16 @@ describe("LightsPanel", () => {
     );
   });
 });
+
+describe("LightsPanel, a light getting tired", () => {
+  it("tags the one light about to burn down by itself, and only then", () => {
+    const { unmount } = render(
+      <LightsPanel def={def} run={lastRun()} onAct={() => undefined} />
+    );
+    expect(screen.queryByText("Getting tired")).toBeNull();
+    unmount();
+    const late = lastRun({ wmNet: 140 });
+    render(<LightsPanel def={def} run={late} onAct={() => undefined} />);
+    expect(screen.getAllByText("Getting tired")).toHaveLength(1);
+  });
+});
