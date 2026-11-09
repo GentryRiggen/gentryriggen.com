@@ -54,10 +54,9 @@ import Resources from "./Resources";
 import type { Spend } from "./SpendFloater";
 import useCompactHud from "./useCompactHud";
 import StickyHud, { FOLD_EASE } from "./StickyHud";
-import LogToast from "./LogToast";
 import StoryTicker from "./StoryTicker";
 import TapButton from "./TapButton";
-import UpgradeList, { upgradeElementId } from "./UpgradeList";
+import UpgradeList from "./UpgradeList";
 import UpgradesDialog from "./UpgradesDialog";
 import UpgradesIcon from "./UpgradesIcon";
 import VisitorCard from "./VisitorCard";
@@ -77,6 +76,7 @@ import { formatDuration } from "@/lib/ever-onward/engine/format";
 import type { Overlay } from "./useGame";
 import { useNetRate } from "./useNetRate";
 import { useNextUpgrade } from "./useNextUpgrade";
+import { useToldStory } from "./useToldStory";
 import { useReducedMotion } from "./useAnimatedNumber";
 
 /** How long a later part's tap hint stays up, in seconds of play. */
@@ -200,11 +200,13 @@ export default function GameScreen({
   const mainRef = useRef<HTMLElement>(null);
   const isReduced = useReducedMotion();
   const next = useNextUpgrade(def, run);
+  // Story lines are told one at a time, never in a pile.
+  const toldRun = useToldStory(def, run);
   const [spend, setSpend] = useState<Spend | null>(null);
   const [effect, setEffect] = useState<Effect | null>(null);
   const [lastBuy, setLastBuy] = useState<LastBuy | null>(null);
 
-  const { isCompact, isFolded, togglePeek } = useCompactHud(!run.complete);
+  const { isFolded } = useCompactHud(!run.complete);
   // The HUD's height goes into CSS variables on the root before the first
   // paint: `--eo-hud-now` (its height right now) pins the scene just below
   // it, and `--eo-hud-h` (its full, open height) spaces the page. The page's
@@ -379,11 +381,6 @@ export default function GameScreen({
     });
   };
 
-  const handleSelectNext = () => {
-    if (!next) return;
-    scrollToElement(document.getElementById(upgradeElementId(next.upgrade.id)));
-  };
-
   const handleSelectAlert = () => {
     scrollToElement(
       // The Coast keeps its oil in the lamp panel.
@@ -449,6 +446,7 @@ export default function GameScreen({
       <div
         ref={sceneRef}
         inert={isCovered}
+        data-testid="lm-scene-wrap"
         data-folded={isFolded}
         className={`sticky top-[var(--eo-hud-now,var(--eo-hud-h))] z-20 w-full transition-[height,margin] ${FOLD_EASE} lg:top-0 lg:transition-none ${
           isFolded
@@ -564,7 +562,7 @@ export default function GameScreen({
 
         <StoryTicker
           def={def}
-          run={run}
+          run={toldRun}
           endingIds={ui.ending.storyIds}
           isCovered={isCovered}
         />
@@ -720,15 +718,10 @@ export default function GameScreen({
           trend={trend}
           spend={spend}
           effect={effect}
-          next={next}
           goal={goal}
           gauge={gauge}
           alert={alert}
-          onSelectNext={handleSelectNext}
           onSelectAlert={handleSelectAlert}
-          isCompact={isCompact}
-          isFolded={isFolded}
-          onToggleCompact={togglePeek}
         />
       )}
 
@@ -777,11 +770,10 @@ export default function GameScreen({
 
       <NarrationLayer
         def={def}
-        run={run}
+        run={toldRun}
         isSuppressed={overlay !== null}
         isHeld={def.isSceneBusy?.(run) ?? false}
       />
-      <LogToast run={run} isSuppressed={isCovered} />
       {overlay === "phase" && (
         <PhaseCutscene
           def={def}

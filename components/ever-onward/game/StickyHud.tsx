@@ -1,21 +1,13 @@
 "use client";
 
-import type { Ref } from "react";
+import { useEffect, useState, type Ref } from "react";
 import { formatNumber } from "@/lib/ever-onward/engine/format";
-import type { NextUpgrade } from "@/lib/ever-onward/engine/pull";
 import type { GaugeView, GoalView } from "@/lib/ever-onward/engine/types";
 import type { RateTrend } from "@/lib/ever-onward/engine/rate";
 import AnimatedValue from "./AnimatedValue";
 import EffectFloater, { type Effect } from "./EffectFloater";
 import RateReadout from "./RateReadout";
-import GaugeMeter from "./GaugeMeter";
-import GoalMeter from "./GoalMeter";
-import NextUpgradeBar from "./NextUpgradeBar";
-import {
-  pixelClass,
-  retroFocusClass,
-  retroLabelClass,
-} from "./retro/retroStyles";
+import { pixelClass, retroFocusClass } from "./retro/retroStyles";
 import SpendFloater, { type Spend } from "./SpendFloater";
 
 interface StickyHudProps {
@@ -25,28 +17,21 @@ interface StickyHudProps {
   isCovered: boolean;
   resourceId: string;
   resourceLabel: string;
-  /** What the money is for, in a few words, or omitted. */
+  /** What the money is for, in a few words, shown when the money is tapped. */
   resourcePurpose?: string;
   value: number;
   rate: number;
   trend: RateTrend;
   spend: Spend | null;
   effect: Effect | null;
-  next: NextUpgrade | null;
-  /** The part's goal, shown as the big top line, or null. */
+  /** The part's goal, a small icon and count, or null. */
   goal?: GoalView | null;
-  /** A resource to keep in sight (the lamp oil), or null. */
+  /** A resource to keep in sight (the lamp oil), an icon and a bar, or null. */
   gauge?: GaugeView | null;
   /** A warning to keep in sight (e.g. out of oil), or null. */
   alert?: string | null;
-  onSelectNext: () => void;
   /** Takes the player to the thing that fixes the warning. */
   onSelectAlert?: () => void;
-  /** Folded to one slim row (phones, scrolled down). */
-  isCompact?: boolean;
-  /** Scrolled down: the row offers to open or fold the bar. */
-  isFolded?: boolean;
-  onToggleCompact?: () => void;
 }
 
 const ICONS: Record<string, string> = {
@@ -55,16 +40,39 @@ const ICONS: Record<string, string> = {
   energy: "✨",
 };
 
-type MiniTone = "ok" | "low" | "critical";
+/** Icons for the goal, by its unit; anything else gets a flag. */
+const GOAL_ICONS: Record<string, string> = {
+  lighthouses: "\u{1F5FC}",
+  cities: "\u{1F3D9}\u{FE0F}",
+  stars: "⭐",
+  "% of the way": "⛵",
+};
 
-/** A tiny bar for the slim row (share is 0 to 1). */
-function MiniBar({ share, tone }: { share: number; tone: MiniTone }) {
+/** Icons for the watched gauge, by its label; anything else gets a dial. */
+const GAUGE_ICONS: Record<string, string> = {
+  OIL: "\u{1F6E2}\u{FE0F}",
+  WATER: "\u{1F4A7}",
+  LEAN: "⚖\u{FE0F}",
+  WIND: "\u{1F4A8}",
+  MOOD: "\u{1F642}",
+  REAL: "\u{1F3A8}",
+};
+
+export const goalIcon = (goal: GoalView): string =>
+  GOAL_ICONS[goal.unit ?? ""] ?? "\u{1F3C1}";
+export const gaugeIcon = (gauge: GaugeView): string =>
+  GAUGE_ICONS[gauge.label] ?? "\u{1F39A}\u{FE0F}";
+
+type Tone = "ok" | "low" | "critical";
+
+/** A tiny bar (share is 0 to 1). */
+function MiniBar({ share, tone }: { share: number; tone: Tone }) {
   return (
     <progress
       aria-hidden="true"
       value={Math.min(1, Math.max(0, Number.isFinite(share) ? share : 0))}
       max={1}
-      className={`block h-2.5 w-10 appearance-none overflow-hidden border-2 border-slate-600 [&::-webkit-progress-bar]:bg-slate-900 ${
+      className={`block h-2.5 w-10 appearance-none overflow-hidden border-2 border-slate-600 sm:w-14 [&::-webkit-progress-bar]:bg-slate-900 ${
         {
           ok: "[&::-webkit-progress-value]:bg-amber-400 [&::-moz-progress-bar]:bg-amber-400",
           low: "border-orange-400 [&::-webkit-progress-value]:bg-orange-500 [&::-moz-progress-bar]:bg-orange-500",
@@ -76,64 +84,50 @@ function MiniBar({ share, tone }: { share: number; tone: MiniTone }) {
   );
 }
 
-/** The goal in the slim row: "4/8" and a tiny bar. */
-function MiniGoal({ goal }: { goal: GoalView }) {
-  const target = goal.target > 0 ? goal.target : 1;
-  const share = (goal.current + (goal.progress ?? 0)) / target;
-  return (
-    <span data-testid="lm-hud-mini-goal" className="flex items-center gap-1">
-      <span
-        className={`${pixelClass} text-[10px] leading-none tabular-nums text-amber-100`}
-      >
-        {formatNumber(goal.current)}/{formatNumber(goal.target)}
-      </span>
-      <MiniBar share={share} tone="ok" />
-    </span>
-  );
+type Explained = "money" | "goal" | "gauge";
+
+/** How long a tapped icon's explanation stays up. */
+const EXPLAIN_MS = 4000;
+
+const lower = (text: string): string =>
+  text.charAt(0).toLowerCase() + text.slice(1);
+
+const titleCase = (text: string): string =>
+  text.charAt(0) + text.slice(1).toLowerCase();
+
+/** One plain line saying what a tapped icon means. */
+export function explain(
+  which: Explained,
+  props: Pick<
+    StickyHudProps,
+    "resourceLabel" | "resourcePurpose" | "goal" | "gauge"
+  >
+): string {
+  const { resourceLabel, resourcePurpose, goal, gauge } = props;
+  if (which === "goal" && goal) {
+    const count = `${formatNumber(goal.current)} of ${formatNumber(goal.target)}${goal.unit ? ` ${goal.unit}` : ""}`;
+    return `Goal: ${lower(titleCase(goal.label))}. ${count}.${goal.next ? ` ${goal.next}.` : ""}`;
+  }
+  if (which === "gauge" && gauge) {
+    const amount =
+      gauge.display ??
+      `${formatNumber(Math.floor(gauge.current))} / ${formatNumber(Math.floor(gauge.max))}`;
+    const state = gauge.isCritical
+      ? " Nearly empty!"
+      : gauge.isLow
+        ? " Getting low."
+        : "";
+    return `${titleCase(gauge.label)}: ${amount}.${state}`;
+  }
+  return resourcePurpose
+    ? `${resourceLabel}: ${lower(resourcePurpose)}`
+    : resourceLabel;
 }
-
-/** The watched gauge in the slim row: its name and a tiny coloured bar. */
-function MiniGauge({ gauge }: { gauge: GaugeView }) {
-  const tone = gauge.isCritical ? "critical" : gauge.isLow ? "low" : "ok";
-  return (
-    <span
-      data-testid="lm-hud-mini-gauge"
-      data-tone={tone}
-      className="flex items-center gap-1"
-    >
-      <span
-        className={`${pixelClass} text-[10px] leading-none ${
-          tone === "critical"
-            ? "text-red-300"
-            : tone === "low"
-              ? "text-orange-300"
-              : "text-cyan-200"
-        }`}
-      >
-        {gauge.label.split(" ")[0]}
-      </span>
-      {gauge.hasBar !== false && (
-        <MiniBar share={gauge.current / (gauge.max || 1)} tone={tone} />
-      )}
-    </span>
-  );
-}
-
-/** One easing for the whole fold, so the bar and the scene move together. */
-export const FOLD_EASE =
-  "duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none";
-
-/** Slim-row bits ease in when the bar folds. */
-const FADE_IN =
-  "animate-[lmHudIn_300ms_cubic-bezier(0.2,0,0,1)_both] motion-reduce:animate-none";
-
-/** What the HUD shows for a resource's value. */
-export const formatPrimary = (value: number): string =>
-  formatNumber(Math.floor(value));
 
 /**
- * The compact bar pinned to the top of the screen, always: the currency
- * counting up, its income and the progress toward the next upgrade.
+ * The bar pinned to the top of the screen: one row. The money (counting up,
+ * with its income) is the big thing; the part's goal and the one gauge to
+ * watch are small icons with a tiny bar. Tapping any of them says what it is.
  */
 export default function StickyHud({
   hudRef,
@@ -146,37 +140,56 @@ export default function StickyHud({
   trend,
   spend,
   effect,
-  next,
   goal = null,
   gauge = null,
   alert = null,
-  onSelectNext,
   onSelectAlert,
-  isCompact = false,
-  isFolded = false,
-  onToggleCompact,
 }: StickyHudProps) {
+  const [explained, setExplained] = useState<Explained | null>(null);
+  const toggle = (which: Explained) =>
+    setExplained((current) => (current === which ? null : which));
+
+  useEffect(() => {
+    if (!explained) return;
+    const timer = window.setTimeout(() => setExplained(null), EXPLAIN_MS);
+    return () => window.clearTimeout(timer);
+  }, [explained]);
+
+  const gaugeTone: Tone = gauge?.isCritical
+    ? "critical"
+    : gauge?.isLow
+      ? "low"
+      : "ok";
+  const goalShare = goal
+    ? (goal.current + (goal.progress ?? 0)) /
+      (goal.target > 0 ? goal.target : 1)
+    : 0;
+  const line =
+    explained &&
+    explain(explained, { resourceLabel, resourcePurpose, goal, gauge });
+  const chip = `-my-1 flex min-h-11 shrink-0 touch-manipulation items-center gap-1.5 px-1.5 ${retroFocusClass}`;
+
   return (
     <div
       ref={hudRef}
       data-testid="lm-hud"
-      data-compact={isCompact}
       role="region"
       aria-label="Status"
       aria-hidden={isCovered}
       inert={isCovered}
-      className="fixed inset-x-0 top-0 z-30 border-b-4 border-amber-500/80 bg-slate-950 pt-[calc(env(safe-area-inset-top)+0.5rem)] shadow-[0_4px_0_#78350f] lg:left-[45%]"
+      className="fixed inset-x-0 top-0 z-30 border-b-4 border-amber-500/80 bg-slate-950 pt-[env(safe-area-inset-top)] shadow-[0_4px_0_#78350f] lg:left-[45%]"
     >
-      <div className="relative mx-auto max-w-xl px-4 py-2">
-        <div className="flex items-center justify-between gap-3">
-          <p className="flex min-w-0 items-baseline gap-2">
-            <span aria-hidden="true" className="text-base">
+      <div className="relative mx-auto max-w-xl px-3 py-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            data-testid="lm-hud-money"
+            aria-label={`${resourceLabel}: what is it for?`}
+            onClick={() => toggle("money")}
+            className={`${chip} min-w-0 -ml-1.5`}
+          >
+            <span aria-hidden="true" className="text-lg">
               {ICONS[resourceId] ?? ""}
-            </span>
-            <span
-              className={`${retroLabelClass} truncate leading-none transition-[max-width,opacity,margin] ${FOLD_EASE} ${isCompact ? "-mr-2 max-w-0 opacity-0" : "max-w-48 opacity-100"}`}
-            >
-              {resourceLabel}
             </span>
             <AnimatedValue
               value={value}
@@ -184,105 +197,87 @@ export default function StickyHud({
               testId="lm-hud-value"
               className={`${pixelClass} shrink-0 text-xl leading-none text-amber-100 [text-shadow:1px_1px_0_#78350f]`}
             />
-            {/* The rate gives way (clipped) before it can run under the
-                slim row's goal on a narrow phone. */}
             <RateReadout
               rate={rate}
               trend={trend}
               testId="lm-hud-rate"
-              className="min-w-0 truncate font-mono font-bold text-sm"
+              className="min-w-0 truncate font-mono text-sm font-bold"
             />
-          </p>
-          {isFolded && (
-            <button
-              type="button"
-              data-testid="lm-hud-toggle"
-              aria-expanded={!isCompact}
-              aria-label={
-                isCompact ? "Show the goal and details" : "Fold the bar"
-              }
-              onClick={onToggleCompact}
-              className={`-my-2.5 flex min-h-11 shrink-0 touch-manipulation items-center gap-2 px-1 ${FADE_IN} ${retroFocusClass}`}
-            >
-              {isCompact && goal && (
-                <span className={FADE_IN}>
-                  <MiniGoal goal={goal} />
-                </span>
-              )}
-              {/* A bar-less gauge (a savings jar) is only its name here, so
-                  it stays in the open bar and leaves room for the money. */}
-              {isCompact && gauge && gauge.hasBar !== false && (
-                <span className={FADE_IN}>
-                  <MiniGauge gauge={gauge} />
-                </span>
-              )}
-              <span
-                aria-hidden="true"
-                className={`${pixelClass} text-xs leading-none text-amber-300`}
+          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {alert && (
+              <button
+                type="button"
+                data-testid="lm-hud-alert"
+                title={alert}
+                aria-label={alert}
+                onClick={onSelectAlert}
+                className={`${chip} animate-pulse border-2 border-red-500 bg-red-950 text-base motion-reduce:animate-none`}
               >
-                {isCompact ? "▾" : "▴"}
-              </span>
-            </button>
-          )}
-          {/* A small chip in the same row, so the bar never changes height
-              when the warning comes and goes. The full text is in the page. */}
-          {alert && (
-            <button
-              type="button"
-              data-testid="lm-hud-alert"
-              title={alert}
-              aria-label={alert}
-              onClick={onSelectAlert}
-              className={`${pixelClass} -my-2.5 min-h-11 min-w-0 animate-pulse touch-manipulation truncate border-2 border-red-500 bg-red-950 px-2 py-1 text-[10px] leading-none text-red-200 motion-reduce:animate-none ${retroFocusClass}`}
-            >
-              ⚠ {alert.split("!")[0]}!
-            </button>
-          )}
-        </div>
-        {/* The details slide shut rather than vanish. They stay in the page
-            (hidden once shut), so their full height can still be measured. */}
-        <div
-          data-testid="lm-hud-details"
-          data-hud-clip=""
-          inert={isCompact}
-          className={`grid transition-[grid-template-rows,opacity,visibility] ${FOLD_EASE} ${
-            isCompact
-              ? "invisible grid-rows-[0fr] opacity-0"
-              : "visible grid-rows-[1fr] opacity-100"
-          }`}
-        >
-          <div className="min-h-0 overflow-hidden">
-            <div data-hud-details="" className="flow-root">
-              {resourcePurpose && (
-                <p
-                  data-testid="lm-hud-purpose"
-                  className="truncate font-mono text-xs leading-snug text-slate-300"
-                >
-                  {resourceLabel}:{" "}
-                  {resourcePurpose.charAt(0).toLowerCase() +
-                    resourcePurpose.slice(1)}
-                </p>
-              )}
-              {goal && <GoalMeter goal={goal} />}
-              {gauge && (
-                <div className="mt-2">
-                  <GaugeMeter gauge={gauge} testId="lm-hud-gauge" />
-                </div>
-              )}
-              {/* Reserves the bar's height when there is no next upgrade yet. */}
-              <div className={goal ? "min-h-8" : "min-h-10"}>
-                {next && (
-                  <NextUpgradeBar
-                    next={next}
-                    onSelect={onSelectNext}
-                    testId="lm-hud-next"
-                    isSmall={goal !== null}
+                <span aria-hidden="true">⚠️</span>
+              </button>
+            )}
+            {gauge && (
+              <button
+                type="button"
+                data-testid="lm-hud-gauge"
+                data-tone={gaugeTone}
+                aria-label={explain("gauge", {
+                  resourceLabel,
+                  goal,
+                  gauge,
+                })}
+                onClick={() => toggle("gauge")}
+                className={chip}
+              >
+                <span aria-hidden="true" className="text-base">
+                  {gaugeIcon(gauge)}
+                </span>
+                {gauge.hasBar === false ? (
+                  <span
+                    className={`${pixelClass} text-[10px] leading-none text-cyan-200`}
+                  >
+                    {formatNumber(Math.floor(gauge.current))}
+                  </span>
+                ) : (
+                  <MiniBar
+                    share={gauge.current / (gauge.max || 1)}
+                    tone={gaugeTone}
                   />
                 )}
-              </div>
-            </div>
+              </button>
+            )}
+            {goal && (
+              <button
+                type="button"
+                data-testid="lm-goal"
+                aria-label={explain("goal", { resourceLabel, goal, gauge })}
+                onClick={() => toggle("goal")}
+                className={chip}
+              >
+                <span aria-hidden="true" className="text-base">
+                  {goalIcon(goal)}
+                </span>
+                <span
+                  data-testid="lm-goal-count"
+                  className={`${pixelClass} text-[10px] leading-none tabular-nums text-amber-100`}
+                >
+                  {formatNumber(goal.current)}/{formatNumber(goal.target)}
+                </span>
+                <MiniBar share={goalShare} tone="ok" />
+              </button>
+            )}
           </div>
         </div>
+        {line && (
+          <p
+            data-testid="lm-hud-explain"
+            role="status"
+            className="absolute inset-x-3 top-full mt-1 border-2 border-amber-500/80 bg-slate-950 px-2 py-1.5 font-mono text-xs leading-snug text-slate-100 shadow-[0_4px_0_#78350f]"
+          >
+            {line}
+          </p>
+        )}
         <SpendFloater spend={spend} />
         <EffectFloater
           effect={effect}
@@ -293,3 +288,11 @@ export default function StickyHud({
     </div>
   );
 }
+
+/** One easing for the scene's fold on phones. */
+export const FOLD_EASE =
+  "duration-300 ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none";
+
+/** What the HUD shows for a resource's value. */
+export const formatPrimary = (value: number): string =>
+  formatNumber(Math.floor(value));

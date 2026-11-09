@@ -189,7 +189,7 @@ const coastUpgrades: UpgradeDef[] = [
     phases: coast,
     currency: "coins",
     baseCost: COSTS.keeper,
-    costGrowth: 1.36,
+    costGrowth: 1.6,
     // Saves from before the cap (40 keepers at 1.18) are refunded at what they paid.
     refundGrowth: 1.18,
     maxLevel: TUNING.coast.keeperMax,

@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.39.0",
+    date: "2026-11-08",
+    title: "A calmer start and a tidier top bar",
+    highlights: [
+      "The top bar is one short row now: your money, plus small icons for the goal and anything you need to watch. Tap an icon to see what it means",
+      "The game no longer picks your next upgrade for you. You choose",
+      "Story lines come one at a time, with a breather in between, instead of four in a row",
+      "On the Coast, keepers cost more as you hire them, so upgrades come at a calmer pace",
+      "The same news no longer pops up twice",
+    ],
+  },
+  {
     version: "1.38.0",
     date: "2026-11-08",
     title: "Keep the Light On, with real choices",

@@ -1,9 +1,8 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import type { LogEntry, RunState } from "@/lib/ever-onward/engine/types";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
-import LogToast, { LOG_TOAST_MS } from "../LogToast";
 import StoryTicker from "../StoryTicker";
 import { storyEntries } from "../storyEntries";
 
@@ -52,35 +51,5 @@ describe("the running log", () => {
     const drawer = screen.getByRole("dialog", { name: "Story & log" });
     expect(drawer).toHaveTextContent("The storm hit Harbor");
     expect(drawer).toHaveTextContent("2m 05s");
-  });
-
-  it("pops up a new log line for a few seconds, but not the ones already there", () => {
-    jest.useFakeTimers();
-    try {
-      const { rerender } = render(<LogToast run={runWith([storm])} />);
-      expect(screen.queryByTestId("lm-log-toast")).not.toBeInTheDocument();
-
-      const haul: LogEntry = {
-        text: "Nets full! You set them early: +40 coins!",
-        at: 200,
-        after: 1,
-        tone: "good",
-      };
-      rerender(<LogToast run={runWith([storm, haul])} />);
-      expect(screen.getByTestId("lm-log-toast")).toHaveTextContent(
-        "Nets full!"
-      );
-
-      act(() => jest.advanceTimersByTime(LOG_TOAST_MS + 10));
-      expect(screen.queryByTestId("lm-log-toast")).not.toBeInTheDocument();
-    } finally {
-      jest.useRealTimers();
-    }
-  });
-
-  it("holds the pop-up back while a cutscene covers the game", () => {
-    const { rerender } = render(<LogToast run={runWith([])} isSuppressed />);
-    rerender(<LogToast run={runWith([storm])} isSuppressed />);
-    expect(screen.queryByTestId("lm-log-toast")).not.toBeInTheDocument();
   });
 });

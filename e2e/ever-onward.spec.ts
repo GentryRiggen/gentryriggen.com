@@ -934,11 +934,8 @@ test.describe("Ever Onward", () => {
       await expect(value).toBeVisible();
       await expect(page.getByTestId("lm-hud-rate")).toContainText("/s");
 
-      // Scrolled down, the bar folds to one slim row; a tap peeks at it.
-      await expect(hud).toHaveAttribute("data-compact", "true");
-      await expect(page.getByTestId("lm-hud-next")).toBeHidden();
-      await page.getByTestId("lm-hud-toggle").click();
-      await expect(page.getByTestId("lm-hud-next")).toBeVisible();
+      // The bar is one row and never picks an upgrade for the player.
+      await expect(page.getByTestId("lm-hud-next")).toHaveCount(0);
 
       // The tap button floats at the bottom centre and keeps earning.
       const tap = page.getByRole("button", { name: "Flash the light" });
@@ -946,8 +943,6 @@ test.describe("Ever Onward", () => {
       await tap.click();
 
       await page.evaluate(() => window.scrollTo(0, 0));
-      await expect(hud).toHaveAttribute("data-compact", "false");
-      await expect(page.getByTestId("lm-hud-next")).toBeVisible();
       await expect(hud).toBeInViewport();
       await expect(tap).toBeInViewport();
     });
@@ -1009,14 +1004,14 @@ test.describe("Ever Onward", () => {
       const pageTop = () =>
         buy.evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
       await page.evaluate(() => window.scrollTo(0, 10));
-      await expect(page.getByTestId("lm-hud")).toHaveAttribute(
-        "data-compact",
+      await expect(page.getByTestId("lm-scene-wrap")).toHaveAttribute(
+        "data-folded",
         "false"
       );
       const before = await pageTop();
       await page.evaluate(() => window.scrollTo(0, 200));
-      await expect(page.getByTestId("lm-hud")).toHaveAttribute(
-        "data-compact",
+      await expect(page.getByTestId("lm-scene-wrap")).toHaveAttribute(
+        "data-folded",
         "true"
       );
       expect(await pageTop()).toBeCloseTo(before, 0);
@@ -1038,7 +1033,7 @@ test.describe("Ever Onward", () => {
         owned: { gen1: 4 },
       },
     ]) {
-      test(`the folded bar's money and goal never overlap on ${scene.name}`, async ({
+      test(`the bar's money and icons never overlap on ${scene.name}`, async ({
         page,
       }) => {
         await page.addInitScript((s) => {
@@ -1080,12 +1075,8 @@ test.describe("Ever Onward", () => {
         await page.evaluate(() =>
           window.scrollTo(0, document.documentElement.scrollHeight)
         );
-        const hud = page.getByTestId("lm-hud");
-        await expect(hud).toHaveAttribute("data-compact", "true");
-        const toggle = page.getByTestId("lm-hud-toggle");
-        await expect(toggle).toBeVisible();
-        // Let the fold's fade-in finish before measuring.
-        await page.waitForTimeout(400);
+        const icons = page.getByTestId("lm-goal");
+        await expect(icons).toBeVisible();
 
         const box = (id: string) =>
           page
@@ -1093,18 +1084,18 @@ test.describe("Ever Onward", () => {
             .evaluate((el) => el.getBoundingClientRect().toJSON());
         const value = await box("lm-hud-value");
         const rate = await box("lm-hud-rate");
-        const right = await toggle.evaluate((el) => {
-          // The left edge of what the toggle actually draws.
-          const kids = [...el.querySelectorAll("*")].map((k) =>
-            k.getBoundingClientRect()
-          );
-          return Math.min(...kids.map((r) => r.left));
+        const right = await page.getByTestId("lm-hud").evaluate((hud) => {
+          // The left edge of the first icon on the right.
+          const chips = ["lm-hud-alert", "lm-hud-gauge", "lm-goal"]
+            .map((id) => hud.querySelector(`[data-testid="${id}"]`))
+            .filter((el): el is Element => el !== null);
+          return Math.min(...chips.map((c) => c.getBoundingClientRect().left));
         });
         expect(value.right).toBeLessThanOrEqual(rate.left + 0.5);
         expect(rate.right).toBeLessThanOrEqual(right);
         const viewport = page.viewportSize()!.width;
-        const toggleBox = await box("lm-hud-toggle");
-        expect(toggleBox.right).toBeLessThanOrEqual(viewport);
+        const goalBox = await box("lm-goal");
+        expect(goalBox.right).toBeLessThanOrEqual(viewport);
       });
     }
   });

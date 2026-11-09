@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { newSave } from "@/lib/ever-onward/engine/save";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import type { RunState } from "@/lib/ever-onward/engine/types";
@@ -57,16 +58,33 @@ describe("sticky HUD", () => {
     expect(screen.getByTestId("lm-res-ships")).not.toBeVisible();
   });
 
-  it("makes the part's goal the big top line, with a segmented bar", () => {
+  it("shows the part's goal as a small icon and count, explained on a tap", async () => {
     const run = { ...newRun(lightUniverse), taps: 1, time: 5 };
     run.owned = { lighthouse: 2 };
     run.resources.lighthouses = 3;
     renderScreen(run);
     const goal = within(screen.getByTestId("lm-hud")).getByTestId("lm-goal");
-    expect(goal).toHaveTextContent("LIGHT THE COAST");
-    expect(screen.getByTestId("lm-goal-count")).toHaveTextContent("3 / 8");
-    expect(goal).toHaveTextContent(/Next lighthouse: .* coins/);
-    expect(within(goal).getAllByTestId("lm-goal-lit")).toHaveLength(3);
+    expect(screen.getByTestId("lm-goal-count")).toHaveTextContent("3/8");
+    expect(goal).toHaveAccessibleName(/Goal: light the coast\. 3 of 8/);
+    await userEvent.setup().click(goal);
+    expect(screen.getByTestId("lm-hud-explain")).toHaveTextContent(
+      /Next lighthouse: .* coins/
+    );
+  });
+
+  it("says what the money is for when it is tapped", async () => {
+    renderScreen({ ...newRun(lightUniverse), taps: 1, time: 5 });
+    await userEvent.setup().click(screen.getByTestId("lm-hud-money"));
+    expect(screen.getByTestId("lm-hud-explain")).toHaveTextContent(
+      /Coins: buys keepers/
+    );
+  });
+
+  it("never picks an upgrade for the player", () => {
+    const run = { ...newRun(lightUniverse), taps: 1, time: 5 };
+    run.revealed = lightUniverse.upgrades.map((u) => u.id);
+    renderScreen(run);
+    expect(screen.queryByTestId("lm-hud-next")).toBeNull();
   });
 
   it("keeps the one tap button reachable at all times", () => {
@@ -75,17 +93,6 @@ describe("sticky HUD", () => {
     expect(screen.queryByTestId("lm-hud-tap")).toBeNull();
     screen.getByRole("button", { name: "Flash the light" }).click();
     expect(onTap).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows how far along the next upgrade is", () => {
-    const run = { ...newRun(lightUniverse), taps: 1, time: 5 };
-    run.revealed = lightUniverse.upgrades
-      .filter((u) => !u.phases || u.phases.includes("coast"))
-      .map((u) => u.id);
-    renderScreen(run);
-    expect(screen.getByTestId("lm-hud-next")).toHaveAccessibleName(
-      /Next goal: .*0%/
-    );
   });
 
   describe("the oil gauge", () => {
@@ -104,16 +111,14 @@ describe("sticky HUD", () => {
         "lm-hud-gauge"
       );
       expect(gauge).toHaveAttribute("data-tone", "ok");
-      expect(within(gauge).getByTestId("lm-hud-gauge-count")).toHaveTextContent(
-        /^\d+ \/ \d/
-      );
+      expect(gauge).toHaveAccessibleName(/^Oil: \d+ \/ \d/);
     });
 
-    it("turns red and says EMPTY when the tank is dry", () => {
+    it("turns red and says it is nearly empty when the tank is dry", () => {
       renderScreen(withKeeper(0));
       const gauge = screen.getByTestId("lm-hud-gauge");
       expect(gauge).toHaveAttribute("data-tone", "critical");
-      expect(gauge).toHaveTextContent("EMPTY");
+      expect(gauge).toHaveAccessibleName(/Nearly empty!/);
     });
 
     it("is not there before the first keeper", () => {
