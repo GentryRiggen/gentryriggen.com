@@ -488,6 +488,245 @@ test.describe("Ever Onward", () => {
     );
   });
 
+  test("the playroom's build pace and streak work in the panel and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Build It Higher" })
+      .click();
+    await page.getByTestId("eo-jump-higher-0-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    const panel = page.getByTestId("bh-playroom");
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId("ph-playroom-scene")).toBeAttached();
+    await panel.getByTestId("bh-pace-1").click();
+    await expect(page.getByTestId("ph-pace-sign")).toHaveText("EASY", {
+      timeout: 10_000,
+    });
+    await expect(panel.getByTestId("bh-streak-chance")).toContainText(
+      "tumbles the top"
+    );
+    await panel.getByTestId("bh-pace-3").click();
+    await expect(panel.getByTestId("bh-pace-3")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    await expect(page.getByTestId("ph-pace-sign")).toHaveText("RUSH!", {
+      timeout: 10_000,
+    });
+    await expect(panel.getByTestId("bh-bank")).toBeVisible();
+    await expect(page.getByTestId("bh-steady")).toHaveCount(0);
+  });
+
+  test("the town's foremen, shadow and build pace work in the panels and the picture", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Build It Higher" })
+      .click();
+    await page.getByTestId("eo-jump-higher-1-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    // Build pace and the day's sign (no Steady button any more).
+    const town = page.getByTestId("bh-town");
+    await expect(town).toBeVisible();
+    await expect(page.getByTestId("bh-steady")).toHaveCount(0);
+    await expect(town.getByTestId("bh-day-next")).toContainText("Tomorrow");
+    await town.getByTestId("bh-pace-3").click();
+    await expect(town.getByTestId("bh-pace-3")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    // The hats: pick a foreman, the hat stands empty for a shift, the scene tosses the old hat.
+    const crew = page.getByTestId("bh-crew");
+    await expect(crew).toBeVisible();
+    await crew.getByTestId("bh-hat-1").click();
+    await crew
+      .locator('[data-testid^="bh-foreman-"][aria-disabled="false"]')
+      .first()
+      .click();
+    await expect(page.getByTestId("th-toss")).toBeAttached({ timeout: 5_000 });
+    await expect(crew).toHaveAttribute("data-waiting", "1");
+    await expect(page.getByTestId("th-foremen")).toBeAttached();
+    // The shadow: the town is dim, and the lamps come on with a LIGHTS ON! moment.
+    const shadow = page.getByTestId("bh-shadow");
+    await expect(shadow).toBeVisible();
+    await expect(shadow.getByTestId("bh-shadow-cut")).toContainText("taking");
+    await expect(page.getByTestId("th-shadow")).toBeAttached();
+    // The next lamp costs a lot of bricks: fast-forward until it is affordable, then back to real time.
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-test-speed-20").click();
+    await page.keyboard.press("Escape");
+    await expect(shadow.getByTestId("bh-lamps")).toHaveAttribute(
+      "aria-disabled",
+      "false",
+      { timeout: 60_000 }
+    );
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-test-speed-1").click();
+    await page.keyboard.press("Escape");
+    await shadow.getByTestId("bh-lamps").click();
+    await expect(page.getByTestId("th-lights-on")).toBeAttached({
+      timeout: 5_000,
+    });
+    await expect(page.getByTestId("th-lights")).toHaveAttribute(
+      "data-lamps",
+      /[2-3]/
+    );
+    // The lights switch: lit lights run up a power bill, and switching them off cools them down.
+    await expect(shadow.getByTestId("bh-power-bill")).toContainText(
+      "of your bricks, every second"
+    );
+    await shadow.getByTestId("bh-switch").click();
+    await expect(shadow.getByTestId("bh-switch")).toContainText("OFF");
+    await expect(page.getByTestId("th-lights")).toHaveAttribute(
+      "data-glow",
+      /[0-3]/,
+      { timeout: 15_000 }
+    );
+  });
+  test("the sky's forecast, cable strain, tie-down and no-crane climb work in the panels and the picture", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Build It Higher" })
+      .click();
+    await page.getByTestId("eo-jump-higher-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    await expect(page.getByTestId("bh-steady")).toHaveCount(0);
+    // The forecast sits in the panel, and the sky is drawn under it.
+    const wind = page.getByTestId("bh-wind");
+    await expect(wind).toBeVisible();
+    await expect(wind.getByTestId("bh-forecast-0")).toHaveText("Calm sky");
+    await expect(page.getByTestId("sk-storm")).toBeAttached();
+    // The cable's strain is a dial with a card for each step.
+    const strain = page.getByTestId("bh-strain");
+    await expect(strain).toBeVisible();
+    await strain.getByTestId("bh-strain-3").click();
+    await expect(strain.getByTestId("bh-strain-3")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    await expect(page.getByTestId("sk-cables")).toHaveAttribute(
+      "data-strain",
+      "3",
+      { timeout: 10_000 }
+    );
+    // Tying down clamps the tower on with a TIED DOWN banner.
+    await wind.getByTestId("bh-tie").click();
+    await expect(page.getByTestId("sk-straps")).toBeAttached();
+    await expect(page.getByTestId("hs-moment-text")).toHaveText("TIED DOWN", {
+      timeout: 10_000,
+    });
+    await expect(wind).toHaveAttribute("data-tie", "tied");
+    await wind.getByTestId("bh-tie").click();
+    await expect(wind).toHaveAttribute("data-tie", "free", { timeout: 10_000 });
+    // The no-crane climb turns the crane off, and can be given up.
+    const climb = page.getByTestId("bh-nocrane");
+    await expect(climb).toBeVisible();
+    // The jump's bot may already have earned every badge; then there is no
+    // climb left to start, and the card says so.
+    const start = climb.getByTestId("bh-nocrane-start");
+    if (await start.isEnabled()) {
+      await start.click();
+      await expect(page.getByTestId("sk-nocrane")).toHaveAttribute(
+        "data-on",
+        "1"
+      );
+      await climb.getByTestId("bh-nocrane-stop").click();
+      await expect(page.getByTestId("sk-nocrane")).toHaveAttribute(
+        "data-on",
+        "0"
+      );
+    } else {
+      await expect(start).toContainText(/all badges earned/i);
+    }
+  });
+
+  test("the top lets you choose what to carry, and the pack shows in the picture", async ({
+    page,
+  }) => {
+    test.setTimeout(300_000);
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page
+      .getByTestId("eo-test-mode")
+      .getByRole("button", { name: "Build It Higher" })
+      .click();
+    await page.getByTestId("eo-jump-higher-3-in").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 240_000,
+    });
+    // The way down has no deliveries any more: what to carry is its one choice.
+    await expect(page.getByTestId("bh-deliveries")).toHaveCount(0);
+    const pack = page.getByTestId("bh-pack");
+    await expect(pack).toBeVisible();
+    await expect(pack).toHaveAttribute("data-load", "0");
+    // The next few keepsakes show as cards, glowing on the stairs in the picture.
+    const first = page
+      .locator('[data-testid^="bh-keep-"][data-state="open"]')
+      .first();
+    await expect(first).toBeVisible();
+    const id = (await first.getAttribute("data-testid"))!.replace(
+      "bh-keep-",
+      ""
+    );
+    await expect(page.getByTestId(`tp-keep-${id}`).first()).toHaveAttribute(
+      "data-state",
+      "open"
+    );
+    await expect(page.getByTestId("tp-keep-daisy").first()).toBeAttached();
+    // Each card shows a plus and a minus. Marking one marks it in the picture.
+    await expect(first).toContainText("Adds");
+    await expect(first).toContainText("Slows steps");
+    await page.getByTestId(`bh-keep-btn-${id}`).click();
+    await expect(page.getByTestId(`tp-keep-${id}`).first()).toHaveAttribute(
+      "data-state",
+      "marked"
+    );
+    await expect(page.getByTestId(`bh-keep-btn-${id}`)).toHaveText(
+      /bringing it/i
+    );
+    // Changing your mind before the robot gets there is free.
+    await page.getByTestId(`bh-keep-btn-${id}`).click();
+    await expect(page.getByTestId(`tp-keep-${id}`).first()).toHaveAttribute(
+      "data-state",
+      "open"
+    );
+    await expect(page.getByTestId("tp-robot").first()).toHaveAttribute(
+      "data-load",
+      "0"
+    );
+  });
+
   test("Test mode on the hub opens a locked universe", async ({ page }) => {
     await page.addInitScript(() => {
       window.localStorage.setItem("analytics-exclude", "1");

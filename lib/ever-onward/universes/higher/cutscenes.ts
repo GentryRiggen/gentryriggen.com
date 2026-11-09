@@ -264,7 +264,7 @@ export const CUTSCENES: Readonly<Record<string, readonly CutsceneFrame[]>> = {
 /** Short, true tips for each part's closing card. */
 export const TIPS: Readonly<Record<string, readonly string[]>> = {
   [PHASE_PLAYROOM]: [
-    "Press Steady when the tower leans, and the crew goes back to full speed.",
+    "Rush when it is safe and go careful when the toddler comes. Bank a streak before the top tumbles.",
     "Keep a quarter of your blocks for the base, and every later payout grows.",
     "When a box arrives, read the cards and place the one that helps most.",
   ],
@@ -274,13 +274,13 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
     "Foundations pay off later, floors pay off now. A quarter is a good start.",
   ],
   [PHASE_SKY]: [
-    "A damper and a good anchor keep the tower from swaying.",
+    "The sky shows the wind before it comes. Watch the clouds, and watch the cable.",
     "A space elevator pays more. Cloud terraces let the light through.",
-    "Place each delivery where it helps most: stuff now, a straighter tower, or anchors for later.",
+    "Place each delivery where it helps most: stuff now, a spare cable, or anchors for later.",
   ],
   [PHASE_TOP]: [
     "Lamps, songbirds and a tune all help the steps come easier.",
     "Take the stairs yourself, or ride the old lift. Not both.",
-    "When a moment comes, pick the one that suits what you have.",
+    "Whatever the robot carries slows every step. A light pack is quick, and a full one makes a warmer ending.",
   ],
 };

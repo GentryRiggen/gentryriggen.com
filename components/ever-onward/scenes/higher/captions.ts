@@ -4,6 +4,15 @@ import type { HigherSceneInfo } from "@/lib/ever-onward/universes/higher";
 const count = (n: number, word: string, many = `${word}s`): string =>
   `${n} ${n === 1 ? word : many}`;
 
+const DAY_WORDS = ["", "market day", "night shift", "windy day", "festival"];
+
+const PACE_WORDS = [
+  "building carefully",
+  "building",
+  "building quickly",
+  "rushing",
+];
+
 /** The one line that says what the picture is showing. */
 export function captionFor(info: HigherSceneInfo): string {
   const own = info.own;
@@ -14,24 +23,43 @@ export function captionFor(info: HigherSceneInfo): string {
       return [
         `A tower of ${3 + info.height} blocks`,
         ...(own.bear ? [count(own.bear, "teddy", "teddies")] : []),
+        ...(info.pace !== 1 ? [PACE_WORDS[info.pace]] : []),
+        ...(info.streak >= 3 ? [`${info.streak} in a row`] : []),
+        ...(info.toddler === 2 ? ["toddler stomping"] : []),
         ...lean,
       ].join(" · ");
     case "town":
       return [
         `A tower of ${4 + info.height * 2} floors`,
         ...(own.mason ? [count(own.mason, "mason")] : []),
+        ...(info.day > 0 ? [DAY_WORDS[info.day]] : []),
+        ...(info.shade >= 3
+          ? ["a dark town"]
+          : info.shade >= 1
+            ? ["a shadow"]
+            : []),
+        ...(info.lamps + (info.park ? 1 : 0) > 0 ? ["lights on"] : []),
         ...lean,
       ].join(" · ");
     case "sky":
       return [
         "Above the clouds",
         ...(own["sky-crew"] ? [count(own["sky-crew"], "crew")] : []),
-        ...lean,
+        ...(info.noCrane ? ["no crane"] : []),
+        ...(info.tie >= 1 ? ["tied down"] : []),
+        ...(info.gust
+          ? ["gust blowing"]
+          : info.wx === 2
+            ? ["gust coming"]
+            : info.wx === 1
+              ? ["clouds gathering"]
+              : []),
+        ...(info.badges > 0 ? [count(info.badges, "badge")] : []),
       ].join(" · ");
     default:
       return info.visitorHere
         ? "A kid on the grass, with a block"
-        : `On the way down · ${info.descent * 5}%`;
+        : `On the way down · ${info.descent}%`;
   }
 }
 

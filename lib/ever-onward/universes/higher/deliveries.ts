@@ -1,12 +1,13 @@
 import { formatNumber } from "../../engine/format";
 import type { ActionDef, RunState } from "../../engine/types";
-import { stepDown } from "./descent";
 import { addToFooting, footingStock, gainFor, isFootingOpen } from "./footing";
 import { loadForkMult } from "./forks";
 import { referenceIncome } from "./income";
 import { KNOWHOW, dockMult } from "./knowhow";
 import { HELPER_LINES, owned, res } from "./lines";
 import { MANUAL_RESOURCES } from "./resources";
+import { playroomLean, softenTumbles } from "./playroom";
+import { spareCable } from "./sky";
 import { relieveSway, swayOf } from "./sway";
 import { TUNING } from "./tuning";
 
@@ -38,13 +39,13 @@ export interface LoadDef {
   note: string;
 }
 
-/** The three loads of each part, by phase index. */
+/** The three loads of each of the first three parts (the way down has none), by phase index. */
 export const LOADS: readonly (readonly [LoadDef, LoadDef, LoadDef])[] = [
   [
     { name: "A box of blocks", note: "Blocks to spend right now." },
     {
-      name: "A steadying pillow",
-      note: "Straightens the tower and brings a few blocks.",
+      name: "A soft pillow",
+      note: "A few blocks, and a minute of softer tumbles.",
     },
     {
       name: "A wide base block",
@@ -65,27 +66,19 @@ export const LOADS: readonly (readonly [LoadDef, LoadDef, LoadDef])[] = [
   [
     { name: "A bundle of beams", note: "Beams to spend right now." },
     {
-      name: "A steadying cable",
-      note: "Straightens the tower and brings a few beams.",
+      name: "A spare cable",
+      note: "A few beams, and a minute of fewer drops and snaps.",
     },
     {
       name: "An anchor bolt",
       note: "Goes into the anchors: every payout grows.",
     },
   ],
-  [
-    { name: "A few more steps", note: "Quiet to spend right now." },
-    {
-      name: "Watch the birds",
-      note: "Pays more for every songbird you keep.",
-    },
-    { name: "Hum a tune", note: "Pays more for every hum you have." },
-  ],
 ];
 
-/** Deliveries open once the first helper line has begun. */
+/** Deliveries open once the first helper line has begun (the way down has none). */
 export const isDeliveriesOpen = (run: RunState): boolean =>
-  owned(run, HELPER_LINES[run.phase][0]) >= 1;
+  run.phase <= 2 && owned(run, HELPER_LINES[run.phase][0]) >= 1;
 
 export const isLoadHere = (run: RunState): boolean =>
   isDeliveriesOpen(run) && res(run, "dlStage") === 1;
@@ -98,11 +91,6 @@ const loadMult = (run: RunState): number => loadForkMult(run) * dockMult(run);
 /** Pays, as units of the part's own resource (or know-how, or footing). */
 export function loadPays(run: RunState, option: number, value: number): number {
   const v = Math.max(1, value) * loadMult(run);
-  if (run.phase === 3) {
-    const level = owned(run, option === 1 ? "songbird" : "hum");
-    if (option === 0) return D.materialSeconds * v;
-    return (D.poleSeconds + 6 * level) * v;
-  }
   if (option === 0) return D.materialSeconds * v;
   if (option === 1) return D.poleSeconds * v;
   if (run.phase === 1) return D.planKnowhow * loadMult(run);
@@ -111,11 +99,18 @@ export function loadPays(run: RunState, option: number, value: number): number {
 
 /** A guess at how much each load helps, in seconds of income, for the hint. */
 function loadWorth(run: RunState, option: number, value: number): number {
-  const v = Math.max(1, value);
-  if (run.phase === 3) return loadPays(run, option, value) / v;
   if (option === 0) return D.materialSeconds * loadMult(run);
   if (option === 1)
-    return (D.poleSeconds + 21 * swayOf(run)) * Math.max(1, loadMult(run));
+    return (
+      (D.poleSeconds +
+        21 *
+          (run.phase === 0
+            ? playroomLean(run)
+            : run.phase === 2
+              ? 0.4
+              : swayOf(run))) *
+      Math.max(1, loadMult(run))
+    );
   if (run.phase === 1) return 30 * loadMult(run);
   if (!isFootingOpen(run)) return 0;
   const stock = footingStock(run);
@@ -141,24 +136,24 @@ export function loadPaysText(
 ): string {
   const pays = formatNumber(Math.floor(loadPays(run, option, value)));
   if (run.phase === 1 && option === 2) return `+${pays} know-how`;
-  if (run.phase !== 3 && option === 2)
+  if (option === 2)
     return `+${pays} into the ${run.phase === 0 ? "base" : "anchors"}`;
   const word = MANUAL_RESOURCES[run.phase];
-  return `+${pays} ${word}${option === 1 && run.phase !== 3 ? " and a straighter tower" : ""}`;
+  return `+${pays} ${word}${option === 1 && run.phase === 0 ? " and softer tumbles" : option === 1 && run.phase === 2 ? " and fewer snaps and drops" : option === 1 && run.phase === 1 ? " and a straighter tower" : ""}`;
 }
 
 /** Places the load. */
 export function placeLoad(run: RunState, option: number, value: number): void {
   const pays = loadPays(run, option, value);
-  if (run.phase === 3) {
-    stepDown(run, pays);
-  } else if (option === 2 && run.phase === 1)
+  if (option === 2 && run.phase === 1)
     run.resources[KNOWHOW] = res(run, KNOWHOW) + pays;
   else if (option === 2) addToFooting(run, pays);
   else {
     const key = MANUAL_RESOURCES[run.phase];
     run.resources[key] = res(run, key) + pays;
-    if (option === 1) relieveSway(run, TUNING.sway.poleRelief);
+    if (option === 1 && run.phase === 0) softenTumbles(run);
+    else if (option === 1 && run.phase === 2) spareCable(run);
+    else if (option === 1) relieveSway(run, TUNING.sway.poleRelief);
   }
   run.resources.dlStage = 0;
   run.resources.dlTime = 0;
@@ -178,12 +173,7 @@ export function tickDeliveries(run: RunState, dt: number): void {
   if (!isDeliveriesOpen(run) || res(run, "dlStage") === 1) return;
   const time = res(run, "dlTime") + dt;
   // The first load of a part comes sooner (dlLast is cleared when a part begins).
-  const wait =
-    res(run, "dlLast") === 0
-      ? D.firstWaitSeconds
-      : run.phase === 3
-        ? D.topWaitSeconds
-        : D.waitSeconds;
+  const wait = res(run, "dlLast") === 0 ? D.firstWaitSeconds : D.waitSeconds;
   if (time >= wait) {
     run.resources.dlStage = 1;
     run.resources.dlTime = 0;
@@ -201,10 +191,11 @@ export function loadActions(
     describe: (run) => {
       const here = isLoadHere(run);
       const v = value(run);
+      const card = LOADS[run.phase]?.[option];
       return {
-        label: LOADS[run.phase][option].name,
+        label: card?.name ?? "A delivery",
         detail: here
-          ? `${LOADS[run.phase][option].note} About ${loadPaysText(run, option, v)}.`
+          ? `${card?.note ?? ""} About ${loadPaysText(run, option, v)}.`
           : "The next load is on its way.",
         isBlocked: !here,
         hint:

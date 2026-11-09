@@ -2,6 +2,8 @@ import { higherGoal } from "./goal";
 import type { UniverseDef } from "../../engine/types";
 import { HIGHER_ACTIONS } from "./actions";
 import { higherAlert } from "./alerts";
+import { isKeepMomentBusy } from "./keepsakes";
+import { isSkyMomentBusy } from "./sky";
 import { higherGauge } from "./gauge";
 import {
   HIGHER_CONSUMABLES,
@@ -46,6 +48,7 @@ export const higherUniverse: UniverseDef = {
   visitors: VISITORS,
   countdown: higherCountdown,
   alert: higherAlert,
+  isSceneBusy: (run) => isSkyMomentBusy(run) || isKeepMomentBusy(run),
   gauge: higherGauge,
   prestige: PRESTIGE,
   map: HIGHER_MAP,

@@ -1,15 +1,20 @@
 import type { RunState } from "../../engine/types";
+import { walkMult } from "./keepsakes";
 import { owned, res } from "./lines";
 import { FULL_DESCENT } from "./resources";
 import { TUNING } from "./tuning";
 
-/** The robot's way down: quiet is spent on steps, and steps bring the ground closer. */
+/**
+ * The robot's way down: quiet is spent on steps, and steps bring the ground
+ * closer (less so while it carries a heavy pack).
+ */
 export function stepDown(run: RunState, amount: number): void {
   run.resources.quiet = res(run, "quiet") + amount;
   run.resources.descent = Math.min(
     FULL_DESCENT,
     res(run, "descent") +
       amount *
+        walkMult(run) *
         TUNING.top.descentPerQuiet *
         (1 + TUNING.top.lanternBoost * owned(run, "block-lantern"))
   );

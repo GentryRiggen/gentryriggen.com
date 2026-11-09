@@ -1,7 +1,7 @@
 import { ownsAtLeast } from "../../engine/goal";
 import { rateEffect } from "../../engine/purchaseFeedback";
 import type { RunState, UpgradeDef } from "../../engine/types";
-import { swayCalm } from "./sway";
+import { leanCalm, swayCalm } from "./sway";
 import {
   PHASE_IDS,
   PHASE_PLAYROOM,
@@ -52,7 +52,7 @@ function ratePreview(run: RunState, id: string): string {
 }
 
 /**
- * "The tower sways 30% slower" then "Sway speed ×0.77 → ×0.54", for a brace
+ * "The tower leans 30% less" then "Lean amount ×0.77 → ×0.54", for a brace
  * or a one-off that calms the tower.
  */
 function swayPreview(run: RunState, id: string): string {
@@ -60,11 +60,26 @@ function swayPreview(run: RunState, id: string): string {
     ...run,
     owned: { ...run.owned, [id]: owned(run, id) + 1 },
   };
+  const round = (n: number): string => String(Math.round(n * 100) / 100);
+  if (run.phase === 0) {
+    // The playroom's lean comes from the build pace; braces only go so far.
+    const floor = TUNING.playroom.calmFloor;
+    const was = Math.max(floor, leanCalm(run));
+    const now = Math.max(floor, leanCalm(after));
+    const less = Math.round((1 - now / was) * 100);
+    return `The tower leans ${less}% less\nLean amount ×${round(was)} → ×${round(now)}\nA leaning tower tumbles sooner`;
+  }
+  if (run.phase === 2) {
+    const floor = TUNING.sky.calmFloor;
+    const was = Math.max(floor, leanCalm(run));
+    const now = Math.max(floor, leanCalm(after));
+    const less = Math.round((1 - now / was) * 100);
+    return `Gusts drop and snap ${less}% less\nRisk ×${round(was)} → ×${round(now)}\nA gust on a tight cable still snaps it`;
+  }
   const before = swayCalm(run);
   const next = swayCalm(after);
-  const round = (n: number): string => String(Math.round(n * 100) / 100);
-  const slower = before > 0 ? Math.round((1 - next / before) * 100) : 0;
-  return `The tower sways ${slower}% slower\nSway speed ×${round(before)} → ×${round(next)}\nA leaning tower slows the crew`;
+  const less = before > 0 ? Math.round((1 - next / before) * 100) : 0;
+  return `The tower leans ${less}% less\nLean amount ×${round(before)} → ×${round(next)}\nA leaning tower slows the crew`;
 }
 
 const RAW_UPGRADES: readonly UpgradeDef[] = [
@@ -98,7 +113,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "rug-corners",
     name: "Tape on the rug corners",
     description:
-      "The rug stops sliding, so the tower sways more slowly. Less steadying for you.",
+      "The rug stops sliding, so the tower leans less at every pace. Fewer tumbles for you.",
     phases: [PHASE_PLAYROOM],
     currency: "blocks",
     baseCost: 90,
@@ -126,7 +141,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "cushion-fort",
     name: "A cushion fort",
     description:
-      "Sofa cushions around the bottom. Soft and wide, and the tower sways half as fast.",
+      "Sofa cushions around the bottom. Soft and wide, and the tower leans half as much.",
     phases: [PHASE_PLAYROOM],
     currency: "blocks",
     baseCost: 3000,
@@ -203,8 +218,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
   {
     id: "cross-braces",
     name: "Cross-braces",
-    description:
-      "Big iron X shapes inside the walls. The tower sways more slowly.",
+    description: "Big iron X shapes inside the walls. The tower leans less.",
     phases: [PHASE_TOWN],
     currency: "bricks",
     baseCost: 500,
@@ -232,7 +246,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "safety-nets",
     name: "Safety nets",
     description:
-      "Wide nets slung round every floor. The crews feel steadier, and the tower sways half as fast.",
+      "Wide nets slung round every floor. The crews feel steadier, and the tower leans half as much.",
     phases: [PHASE_TOWN],
     currency: "bricks",
     baseCost: 40000,
@@ -262,7 +276,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
       "It says TOWER in letters taller than a bus. The whole town comes to look, and everything pays more.",
     phases: [PHASE_TOWN],
     currency: "bricks",
-    baseCost: 1000000,
+    baseCost: 700000,
     costGrowth: 1,
     kind: "mechanic",
     visibleWhen: ownsAtLeast("concrete-truck", 2),
@@ -310,7 +324,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "damper",
     name: "A tuned damper",
     description:
-      "A huge steel ball hung inside the tower. It swings against the wind, so the tower sways more slowly.",
+      "A huge steel ball hung inside the tower. It swings against the wind, so a gust drops fewer beams and snaps fewer cables.",
     phases: [PHASE_SKY],
     currency: "beams",
     baseCost: 1500,
@@ -338,7 +352,7 @@ const RAW_UPGRADES: readonly UpgradeDef[] = [
     id: "ballast-ring",
     name: "A ring of ballast",
     description:
-      "Round weights hung from the lower floors, like a skirt. The tower sways half as fast.",
+      "Round weights hung from the lower floors, like a skirt. A gust drops and snaps half as much.",
     phases: [PHASE_SKY],
     currency: "beams",
     baseCost: 25000,

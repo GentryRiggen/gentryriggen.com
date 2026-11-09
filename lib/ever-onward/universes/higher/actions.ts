@@ -2,13 +2,21 @@ import type { ActionDef } from "../../engine/types";
 import { loadActions } from "./deliveries";
 import { FOOTING_ACTIONS } from "./footing";
 import { FORK_ACTIONS } from "./forks";
+import { KEEP_ACTIONS, LEAVE_ACTIONS } from "./keepsakes";
 import { OVERTIME_ACTIONS } from "./knowhow";
-import { STEADY_ACTION } from "./sway";
+import { PACE_ACTIONS, bankAction } from "./playroom";
+import { SKY_ACTIONS } from "./sky";
+import { TOWN_ACTIONS } from "./town";
 import { tendingValue } from "./tick";
 
 export const HIGHER_ACTIONS: readonly ActionDef[] = [
-  STEADY_ACTION,
+  ...SKY_ACTIONS,
+  ...PACE_ACTIONS,
+  ...TOWN_ACTIONS,
+  bankAction(tendingValue),
   ...FORK_ACTIONS,
+  ...KEEP_ACTIONS,
+  ...LEAVE_ACTIONS,
   ...FOOTING_ACTIONS,
   ...OVERTIME_ACTIONS,
   ...loadActions(tendingValue),

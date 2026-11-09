@@ -5173,10 +5173,38 @@ html:has(.jim-app) body {
   .bh-climb,
   .bh-shadow,
   .bh-sway,
+  .bh-shout,
+  .bh-flash,
+  .bh-flash-gold,
+  .bh-poof,
+  .bh-tumble-block,
+  .bh-ring,
+  .bh-spark,
+  .bh-confetti,
+  .bh-star-rise,
+  .bh-star-pop,
+  .bh-toddler-run,
+  .bh-toddler-stomp,
+  .bh-quake,
+  .bh-banner,
+  .bh-edge,
+  .bh-hat-toss,
+  .bh-hat-drop,
+  .bh-lamp-pop,
+  .bh-lights-ring,
+  .bh-wind,
+  .bh-beam-drop,
+  .bh-whip,
   .bh-creak,
   .bh-glow,
   .bh-note {
     animation: none;
+  }
+
+  /* A flash that cannot animate must not stay painted: hide the full-scene flashes. */
+  .bh-flash,
+  .bh-flash-gold {
+    opacity: 0;
   }
 
   /* Things that move across the picture rest where they can still be seen. */
@@ -5190,6 +5218,604 @@ html:has(.jim-app) body {
   .bh-note {
     opacity: 1;
   }
+}
+
+/* ---- Build It Higher: the top's keepsakes (picked up, carried, left) ---- */
+.bh-plod,
+.bh-kp-pop,
+.bh-kp-spark,
+.bh-kp-lift,
+.bh-kp-bye {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The robot plods: slower and lower the more it carries. */
+@keyframes bh-plod {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1.5px);
+  }
+}
+.bh-plod {
+  animation: bh-plod 2s ease-in-out infinite;
+}
+
+/* The pack swells when something drops in. */
+@keyframes bh-kp-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  35% {
+    transform: scale(1.4);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.bh-kp-pop {
+  transform-origin: 100% 100%;
+  animation: bh-kp-pop 0.8s ease-out;
+}
+
+/* A sparkle ring where it was picked up. */
+@keyframes bh-kp-spark {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+.bh-kp-spark {
+  animation: bh-kp-spark 1.6s ease-out forwards;
+}
+
+/* The keepsake itself hops up and into the pack. */
+@keyframes bh-kp-lift {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-12px) scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-4px) scale(0.3);
+    opacity: 0;
+  }
+}
+.bh-kp-lift {
+  animation: bh-kp-lift 1.3s ease-in forwards;
+}
+
+/* A soft goodbye: it shimmers, drifts up and leaves a faint ghost on the step. */
+@keyframes bh-kp-bye {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  20%,
+  50% {
+    opacity: 0.6;
+  }
+  35%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px);
+    opacity: 0.2;
+  }
+}
+.bh-kp-bye {
+  animation: bh-kp-bye 3.4s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bh-plod,
+  .bh-kp-pop,
+  .bh-kp-spark,
+  .bh-kp-lift,
+  .bh-kp-bye {
+    animation: none;
+  }
+
+  /* What cannot animate away must not stay painted. */
+  .bh-kp-spark,
+  .bh-kp-lift {
+    opacity: 0;
+  }
+
+  .bh-kp-bye {
+    opacity: 0.2;
+  }
+}
+
+/* ---- Build It Higher: the playroom's dials (pace, streak, tumble, bank) ---- */
+.bh-shout,
+.bh-tumble-block,
+.bh-poof,
+.bh-ring,
+.bh-spark,
+.bh-star-rise,
+.bh-star-pop,
+.bh-toddler-stomp {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes bh-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  12% {
+    transform: scale(1.35);
+  }
+  22% {
+    transform: scale(1);
+  }
+  85% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(-6px);
+    opacity: 0;
+  }
+}
+.bh-shout {
+  animation: bh-shout 5s ease-out forwards;
+}
+
+@keyframes bh-flash {
+  0%,
+  40%,
+  80% {
+    opacity: 0.45;
+  }
+  20%,
+  60%,
+  100% {
+    opacity: 0;
+  }
+}
+.bh-flash {
+  animation: bh-flash 1.2s steps(1, end) forwards;
+}
+
+@keyframes bh-flash-gold {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.bh-flash-gold {
+  animation: bh-flash-gold 1.6s ease-out forwards;
+}
+
+@keyframes bh-poof {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  60% {
+    transform: scale(1.4);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+.bh-poof {
+  animation: bh-poof 2.2s ease-out forwards;
+}
+
+@keyframes bh-tumble-block {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translate(calc(var(--bh-dx) * 0.5), -26px)
+      rotate(calc(var(--bh-rot) * 0.4));
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--bh-dx), var(--bh-dy)) rotate(var(--bh-rot));
+    opacity: 0;
+  }
+}
+.bh-tumble-block {
+  animation: bh-tumble-block 1.8s ease-in forwards;
+}
+.bh-tumble-0 {
+  --bh-dx: -70px;
+  --bh-dy: 120px;
+  --bh-rot: -200deg;
+}
+.bh-tumble-1 {
+  --bh-dx: 80px;
+  --bh-dy: 110px;
+  --bh-rot: 240deg;
+}
+.bh-tumble-2 {
+  --bh-dx: -110px;
+  --bh-dy: 90px;
+  --bh-rot: -320deg;
+}
+.bh-tumble-3 {
+  --bh-dx: 120px;
+  --bh-dy: 100px;
+  --bh-rot: 180deg;
+}
+
+@keyframes bh-ring {
+  0% {
+    transform: scale(0.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4.2);
+    opacity: 0;
+  }
+}
+.bh-ring {
+  animation: bh-ring 1.6s ease-out 3 both;
+}
+
+@keyframes bh-spark {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--bh-sx), var(--bh-sy)) scale(0.4);
+    opacity: 0;
+  }
+}
+.bh-spark {
+  animation: bh-spark 1.3s ease-out 3 both;
+}
+.bh-spark-0 {
+  --bh-sx: 70px;
+  --bh-sy: 0px;
+}
+.bh-spark-1 {
+  --bh-sx: 50px;
+  --bh-sy: 50px;
+}
+.bh-spark-2 {
+  --bh-sx: 0px;
+  --bh-sy: 70px;
+}
+.bh-spark-3 {
+  --bh-sx: -50px;
+  --bh-sy: 50px;
+}
+.bh-spark-4 {
+  --bh-sx: -70px;
+  --bh-sy: 0px;
+}
+.bh-spark-5 {
+  --bh-sx: -50px;
+  --bh-sy: -50px;
+}
+.bh-spark-6 {
+  --bh-sx: 0px;
+  --bh-sy: -70px;
+}
+.bh-spark-7 {
+  --bh-sx: 50px;
+  --bh-sy: -50px;
+}
+
+@keyframes bh-confetti {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(14px, 310px) rotate(300deg);
+    opacity: 0.2;
+  }
+}
+.bh-confetti {
+  animation: bh-confetti 2.2s ease-in 2 both;
+}
+
+@keyframes bh-star-rise {
+  0% {
+    transform: translateY(24px) scale(0.2);
+    opacity: 0;
+  }
+  30% {
+    transform: translateY(0) scale(1.6);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-4px) scale(1.2);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-16px) scale(1.3);
+    opacity: 0;
+  }
+}
+.bh-star-rise {
+  animation: bh-star-rise 4.5s ease-out forwards;
+}
+
+@keyframes bh-star-pop {
+  0% {
+    transform: scale(0.2);
+  }
+  60% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.bh-star-pop {
+  animation: bh-star-pop 0.4s ease-out both;
+}
+
+@keyframes bh-toddler-run {
+  0% {
+    transform: translateX(372px);
+  }
+  50% {
+    transform: translateX(70px);
+  }
+  100% {
+    transform: translateX(372px);
+  }
+}
+.bh-toddler-run {
+  animation: bh-toddler-run 3.6s ease-in-out infinite;
+}
+
+@keyframes bh-toddler-stomp {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.bh-toddler-stomp {
+  animation: bh-toddler-stomp 0.3s ease-in-out infinite;
+}
+
+@keyframes bh-quake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-1.5px, 1px);
+  }
+  75% {
+    transform: translate(1.5px, -1px);
+  }
+}
+.bh-quake {
+  animation: bh-quake 0.18s linear infinite;
+}
+
+/* The faster the pace, the faster the teddies hop. */
+.bh-pace-0 .bh-hop,
+.bh-pace-0 .bh-hop-b {
+  animation-duration: 1.8s;
+}
+.bh-pace-2 .bh-hop,
+.bh-pace-2 .bh-hop-b {
+  animation-duration: 0.6s;
+}
+.bh-pace-3 .bh-hop,
+.bh-pace-3 .bh-hop-b {
+  animation-duration: 0.35s;
+}
+
+/* Full-width moment banners: HTML over the scene, so a phone's short strip still shouts. */
+@keyframes bh-banner {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  20% {
+    transform: scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.bh-banner {
+  animation: bh-banner 4.6s ease-out forwards;
+}
+
+@keyframes bh-edge {
+  0%,
+  30%,
+  60% {
+    opacity: 0.95;
+  }
+  15%,
+  45%,
+  100% {
+    opacity: 0;
+  }
+}
+.bh-edge {
+  animation: bh-edge 1.8s steps(1, end) forwards;
+}
+
+/* ---- Build It Higher: the town's foremen, shadow and lights ---- */
+.bh-hat-toss,
+.bh-hat-drop,
+.bh-lamp-pop,
+.bh-lights-ring,
+.bh-wind {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes bh-hat-toss {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(10px, -64px) rotate(360deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(26px, 40px) rotate(780deg);
+    opacity: 0;
+  }
+}
+.bh-hat-toss {
+  animation: bh-hat-toss 2.2s ease-in-out forwards;
+}
+
+@keyframes bh-hat-drop {
+  0% {
+    transform: translateY(-70px) rotate(-200deg) scale(1.6);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(0) rotate(0deg) scale(1.4);
+    opacity: 1;
+  }
+  65% {
+    transform: translateY(-9px) rotate(8deg) scale(1.2);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+.bh-hat-drop {
+  animation: bh-hat-drop 1.1s ease-out both;
+}
+
+@keyframes bh-lamp-pop {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.bh-lamp-pop {
+  animation: bh-lamp-pop 0.6s ease-out both;
+}
+
+@keyframes bh-lights-ring {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(5);
+    opacity: 0;
+  }
+}
+.bh-lights-ring {
+  animation: bh-lights-ring 1.6s ease-out 2 both;
+}
+
+@keyframes bh-wind {
+  0% {
+    transform: translateX(-60px);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(460px);
+    opacity: 0;
+  }
+}
+.bh-wind {
+  animation: bh-wind 1.8s linear infinite;
+}
+
+/* ---- Build It Higher: the sky's wind, tie-down, drop, snap and climb ---- */
+.bh-beam-drop,
+.bh-whip {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes bh-beam-drop {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(34px, 250px) rotate(900deg);
+    opacity: 0;
+  }
+}
+.bh-beam-drop {
+  animation: bh-beam-drop 2.4s ease-in forwards;
+}
+
+@keyframes bh-whip {
+  0%,
+  100% {
+    transform: rotate(-24deg) scale(1.1);
+  }
+  25% {
+    transform: rotate(30deg) scale(0.9);
+  }
+  50% {
+    transform: rotate(-18deg) scale(1.2);
+  }
+  75% {
+    transform: rotate(20deg) scale(1);
+  }
+}
+.bh-whip {
+  animation: bh-whip 0.5s ease-in-out 5 both;
 }
 
 /* ---- Ever Onward intro films (components/ever-onward/game/film) ---- */

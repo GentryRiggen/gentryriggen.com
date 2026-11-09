@@ -14,6 +14,7 @@ import { pixelClass } from "../../game/retro/retroStyles";
 import type { SceneProps } from "../../universes/types";
 import CaptionLine from "../CaptionLine";
 import { captionFor, sceneLabelFor } from "./captions";
+import MomentOverlay from "./MomentOverlay";
 import PlayroomLayer from "./PlayroomLayer";
 import SkyLayer from "./SkyLayer";
 import TopLayer from "./TopLayer";
@@ -136,6 +137,7 @@ const HigherSceneView = memo(function HigherSceneView({
         })}
         <ArtifactLayer map={HIGHER_MAP} found={found} depth={depth} />
       </svg>
+      <MomentOverlay info={info} />
       <p
         aria-hidden="true"
         data-testid="lm-scene-caption"

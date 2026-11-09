@@ -13,7 +13,9 @@ import {
   holdsOvertime,
   higherBots,
   placesLoad,
-  steadiesAt,
+  playsPlayroom,
+  playsTown,
+  playsSky,
   together,
 } from "../bots";
 import {
@@ -38,7 +40,8 @@ import {
   type ForkSide,
 } from "../forks";
 import { OVERTIME_ACTION_ID, isOvertimeOn, knowhowOf } from "../knowhow";
-import { STEADY_ACTION_ID, swayFactor, swayOf } from "../sway";
+import { swayFactor, swayOf } from "../sway";
+import { leanTarget, paceActionId, tumbleChance } from "../playroom";
 import { incomePerSecond } from "../tick";
 import { TUNING } from "../tuning";
 import { def, runAtPhaseStart, withResources } from "./fixtures";
@@ -60,7 +63,9 @@ function phaseMinutes(sides: readonly ForkSide[], footing: number): number[] {
       ...base,
       actions: together(
         pick,
-        steadiesAt(0.75, 5),
+        playsSky({ strain: "reads", tie: "reads", crane: "reads" }, 5),
+        playsPlayroom({ pace: 2, bank: "reads" }, 5),
+        playsTown({ pace: "plan", crew: "adjusts", lights: "adjusts" }, 5),
         placesLoad(15),
         footingPolicy(footing, 20),
         holdsOvertime
@@ -131,7 +136,7 @@ describe("Build It Higher trade-offs", () => {
       const half = phaseMinutes([0, 0, 1, 0], 2);
       const total = (xs: number[]) => xs.slice(0, 3).reduce((a, b) => a + b, 0);
       // Investing a quarter beats spending everything by a clear margin ...
-      expect(total(spend) / total(quarter)).toBeGreaterThan(1.08);
+      expect(total(spend) / total(quarter)).toBeGreaterThan(1.05);
       // ... and keeping half is a real option, not a trap.
       expect(total(half) / total(quarter)).toBeLessThan(1.25);
       expect(total(half) / total(quarter)).toBeGreaterThan(0.9);
@@ -210,7 +215,37 @@ describe("Build It Higher trade-offs", () => {
     });
   });
 
-  describe("sway (a managed risk, never a punishment)", () => {
+  describe("the playroom's lean", () => {
+    const crew = (extra: Record<string, number> = {}): RunState => {
+      const base = runAtPhaseStart(0);
+      return {
+        ...base,
+        owned: { bear: 3, ...extra },
+        resources: { ...base.resources, pcPace: 3, pcEff: 3 },
+      };
+    };
+
+    it("is leaned on less by the wide fork, by every rug corner and by the fort", () => {
+      const plain = leanTarget(crew());
+      expect(leanTarget(withResources(crew(), { fkPlay: 2 }))).toBeLessThan(
+        plain * 0.5
+      );
+      expect(leanTarget(withResources(crew(), { fkPlay: 1 }))).toBeGreaterThan(
+        plain
+      );
+      let last = plain;
+      for (const level of [1, 2, 3]) {
+        const now = leanTarget(crew({ "rug-corners": level }));
+        expect(now).toBeLessThan(last);
+        last = now;
+      }
+      expect(
+        leanTarget(crew({ "rug-corners": 3, "cushion-fort": 1 }))
+      ).toBeLessThan(last * 0.6);
+    });
+  });
+
+  describe("sway (the town's lean, never a punishment)", () => {
     it("never takes more than half of the pay, however long it is left", () => {
       const base = runAtPhaseStart(1);
       const wobbling = withResources(base, { sway: 1 });
@@ -218,38 +253,38 @@ describe("Build It Higher trade-offs", () => {
       expect(swayFactor(withResources(base, { sway: 0 }))).toBe(1);
     });
 
-    it("builds up on its own and one press of Steady puts it right", () => {
-      let run = { ...runAtPhaseStart(0), owned: { bear: 4 } } as RunState;
-      for (let t = 0; t < 400; t += 1) run = tick(def, run, 1);
-      expect(swayOf(run)).toBeGreaterThan(0.5);
-      const steadied = performAction(def, run, STEADY_ACTION_ID);
-      expect(swayOf(steadied)).toBe(0);
+    it("follows the build pace in the town: a rush leans far more than a careful pace", () => {
+      const lean = (step: number): number => {
+        let run = {
+          ...runAtPhaseStart(1),
+          owned: { mason: 5, crane: 2 },
+        } as RunState;
+        run = performAction(def, run, paceActionId(step));
+        for (let t = 0; t < 80; t += 1) run = tick(def, run, 1);
+        return swayOf(run);
+      };
+      expect(lean(3)).toBeGreaterThan(0.5);
+      expect(lean(0)).toBeLessThan(0.2);
     });
 
-    it("needs the button less once the tower is braced", () => {
-      const base = { ...runAtPhaseStart(0), owned: { bear: 4 } } as RunState;
+    it("has no Steady button anywhere: the playroom and town have the build pace, the sky its wind and cable", () => {
+      expect((def.actions ?? []).some((action) => action.id === "steady")).toBe(
+        false
+      );
+    });
+
+    it("leans less once the town's tower is braced", () => {
+      const base = { ...runAtPhaseStart(1), owned: { mason: 4 } } as RunState;
       const braced = {
         ...base,
-        owned: { ...base.owned, "rug-corners": 3, "cushion-fort": 1 },
+        owned: { ...base.owned, "cross-braces": 3, "safety-nets": 1 },
       };
       const settle = (start: RunState): number => {
-        let run = start;
-        for (let t = 0; t < 1200; t += 1) run = tick(def, run, 1);
+        let run = performAction(def, start, paceActionId(3));
+        for (let t = 0; t < 200; t += 1) run = tick(def, run, 1);
         return swayOf(run);
       };
-      expect(settle(braced)).toBeLessThan(settle(base) - 0.2);
-    });
-
-    it("is a tower that is wider to carry less of a lean", () => {
-      const base = runAtPhaseStart(0);
-      const tall = withResources(base, { fkPlay: 1 });
-      const wide = withResources(base, { fkPlay: 2 });
-      const grow = (start: RunState): number => {
-        let run = { ...start, owned: { bear: 3 } } as RunState;
-        for (let t = 0; t < 60; t += 1) run = tick(def, run, 1);
-        return swayOf(run);
-      };
-      expect(grow(tall)).toBeGreaterThan(grow(wide) * 3);
+      expect(settle(braced)).toBeLessThan(settle(base) - 0.15);
     });
   });
 
@@ -277,12 +312,28 @@ describe("Build It Higher trade-offs", () => {
     it("says the pole is best when the tower leans, and the blocks when it is straight and well founded", () => {
       const straight = withResources(here(), { ftStock: 1e9 });
       expect(bestLoad(straight, 100)).toBe(0);
-      const leaning = withResources(straight, { sway: 0.95 });
+      const leaning = withResources(straight, { pcLean: 0.95 });
       expect(bestLoad(leaning, 100)).toBe(1);
     });
 
-    it("straightens the tower when the pole is placed", () => {
-      const leaning = withResources(here(), { sway: 0.9 });
+    it("softens the next tumbles when the pillow is placed in the playroom", () => {
+      const run = withResources(here(), { pcStreak: 5 });
+      const before = tumbleChance(run);
+      const placed = performAction(def, run, loadActionId(1));
+      expect(tumbleChance(placed)).toBeCloseTo(before / 2, 6);
+      expect(placed.resources.dlStage).toBe(0);
+    });
+
+    it("straightens the tower when the pole is placed in the town", () => {
+      const base = runAtPhaseStart(1);
+      const leaning = withResources(
+        {
+          ...base,
+          owned: { mason: 3 },
+          resources: { ...base.resources, dlStage: 1 },
+        },
+        { sway: 0.9 }
+      );
       const placed = performAction(def, leaning, loadActionId(1));
       expect(swayOf(placed)).toBeLessThan(0.3);
       expect(placed.resources.dlStage).toBe(0);
@@ -296,8 +347,8 @@ describe("Build It Higher trade-offs", () => {
     });
   });
 
-  describe("no luck", () => {
-    it("never draws a random number, so a whole run is the same every time", () => {
+  describe("no luck in the run's own stream", () => {
+    it("never draws from the run's random numbers (the tumbles and the toddler have their own), so a whole run is the same every time", () => {
       const run = simulate(def, {
         strategy: higherBots().tapper,
         maxSeconds: 8 * HOUR,

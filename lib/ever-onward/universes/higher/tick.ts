@@ -5,9 +5,13 @@ import { addToFooting, gainOf, savedShare, tickFooting } from "./footing";
 import { grossIncome, grossTap } from "./income";
 import { tickKnowhow } from "./knowhow";
 import { stepDown } from "./descent";
+import { isSettingDown, tickKeepsakes } from "./keepsakes";
 import { res } from "./lines";
+import { paceMult, tickPlayroom, wakeTower } from "./playroom";
 import { MANUAL_RESOURCES, RETURN_VISITOR_ID } from "./resources";
-import { swayFactor, tickSway } from "./sway";
+import { hoisted, skyPay, tickSky } from "./sky";
+import { swayFactor } from "./sway";
+import { tickTown, townPay, townTap } from "./town";
 
 export { stacked } from "./income";
 
@@ -17,12 +21,25 @@ export { stacked } from "./income";
  */
 function netIncome(run: RunState): number {
   if (run.phase > 2) return grossIncome(run);
-  return grossIncome(run) * swayFactor(run) * (1 + gainOf(run));
+  return (
+    grossIncome(run) *
+    swayFactor(run) *
+    paceMult(run) *
+    skyPay(run) *
+    townPay(run) *
+    (1 + gainOf(run))
+  );
 }
 
 /** What one tap pays after the footing, before the kept share is taken out. */
 function netTap(run: RunState): number {
-  return run.phase > 2 ? grossTap(run) : grossTap(run) * (1 + gainOf(run));
+  return run.phase > 2
+    ? grossTap(run)
+    : grossTap(run) *
+        paceMult(run) *
+        townTap(run) *
+        skyPay(run, true) *
+        (1 + gainOf(run));
 }
 
 /** The phase's main resource per second from helpers alone (the kept share out). */
@@ -44,21 +61,31 @@ function earn(run: RunState, amount: number): void {
   }
   const key = MANUAL_RESOURCES[run.phase];
   run.resources[key] = res(run, key) + amount;
+  // In the sky what was just hoisted hangs on the hook, where a gust can take it.
+  if (run.phase === 2) hoisted(run, amount);
 }
 
 export function tickHigher(run: RunState, dt: number): void {
   if (run.phase <= 2) {
-    tickSway(run, dt);
+    tickTown(run, dt);
+    tickSky(run, dt);
+    tickPlayroom(run, dt);
     const kept = netIncome(run) * savedShare(run);
     earn(run, incomePerSecond(run) * dt);
     tickFooting(run, kept, dt);
-  } else earn(run, incomePerSecond(run) * dt);
+  } else {
+    // The robot stands still while it sets something down.
+    if (!isSettingDown(run)) earn(run, incomePerSecond(run) * dt);
+    tickKeepsakes(run);
+  }
   tickKnowhow(run, dt);
   tickDeliveries(run, dt);
 }
 
 export function manualHigher(run: RunState): void {
+  if (run.phase === 3 && isSettingDown(run)) return;
   earn(run, manualPerTap(run));
+  wakeTower(run);
   if (run.phase <= 2) addToFooting(run, netTap(run) * savedShare(run));
 }
 
