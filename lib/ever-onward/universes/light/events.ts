@@ -1,7 +1,9 @@
 import type { EventSource } from "../../engine/types";
-import { gardenResultLine, picksSoFar } from "./garden";
-import { resultLine, runsHome } from "./probes";
-import { haulResultLine, haulsSoFar } from "./tide";
+import { goodbyeLine, letsSoFar } from "./warmth";
+import { flareLine, homeLine, wildLine } from "./skyLines";
+import { flaresSoFar } from "./sunEdge";
+import { recallsSoFar, wildsSoFar } from "./design";
+import { tankerLine, tankerVisits } from "./tanker";
 import {
   frontsSoFar,
   lastStorm,
@@ -20,7 +22,7 @@ export const LIGHT_EVENTS: readonly EventSource[] = [
       frontsSoFar(run) + (weatherStage(run) === "forecast" ? 1 : 0),
     line: (run) =>
       weatherStage(run) === "forecast"
-        ? `A storm is coming! The forecast says ${TOWNS[likeliestTown(run)] ?? TOWNS[0]} is likeliest. Send a crew to get ready.`
+        ? `A storm is coming! The forecast says ${TOWNS[likeliestTown(run)] ?? TOWNS[0]} is likeliest. Post a crew on watch to get ready.`
         : null,
     tone: () => "info",
   },
@@ -30,7 +32,19 @@ export const LIGHT_EVENTS: readonly EventSource[] = [
     line: stormResultLine,
     tone: (run) => (lastStorm(run).kind === "flicker" ? "bad" : "good"),
   },
-  { id: "haul", count: haulsSoFar, line: haulResultLine },
-  { id: "probe", count: runsHome, line: resultLine },
-  { id: "garden-pick", count: picksSoFar, line: gardenResultLine },
+  {
+    id: "tanker",
+    count: tankerVisits,
+    line: tankerLine,
+    tone: () => "good",
+  },
+  {
+    id: "flare",
+    count: flaresSoFar,
+    line: flareLine,
+    tone: (run) => ((run.resources.skHitLost ?? 0) >= 0.25 ? "bad" : "good"),
+  },
+  { id: "wild", count: wildsSoFar, line: wildLine, tone: () => "bad" },
+  { id: "home", count: recallsSoFar, line: homeLine, tone: () => "good" },
+  { id: "goodbye", count: letsSoFar, line: goodbyeLine, tone: () => "good" },
 ];

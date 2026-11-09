@@ -11,15 +11,8 @@ import {
 import type { RunState } from "../../../engine/types";
 import { def } from "./fixtures";
 import { lanternOf, sceneInfo } from "../scene";
-import {
-  collectorEnergyPerSecond,
-  gridFactor,
-  isFleetGlowing,
-  isGridGlowing,
-  resolvePerSecond,
-  starsPerSecond,
-  steerBonus,
-} from "../tick";
+import { isGridGlowing } from "../grid";
+import { collectorEnergyPerSecond, resolvePerSecond } from "../tick";
 import { lightCountdown } from "../visitors";
 
 const idle = (run: RunState, seconds: number): RunState => {
@@ -37,7 +30,7 @@ describe("visitors", () => {
   it("arrive on a milestone, never on a timer", () => {
     const quiet = idle(newRun(def), 3 * 3600);
     expect(waitingVisitors(def, quiet)).toHaveLength(0);
-    const grown = tick(def, withOwned(quiet, { keeper: 6 }), 1);
+    const grown = tick(def, withOwned(quiet, { keeper: 4 }), 1);
     expect(waitingVisitors(def, grown).map((v) => v.id)).toEqual([
       "visitor-mail",
     ]);
@@ -46,7 +39,7 @@ describe("visitors", () => {
   });
 
   it("wait as long as it takes, and give their gift once", () => {
-    const here = tick(def, withOwned(newRun(def), { keeper: 6 }), 1);
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
     const waited = idle(here, 2 * 3600);
     expect(waitingVisitors(def, waited)).toHaveLength(1);
     const greeted = greetVisitor(def, waited, "visitor-mail");
@@ -60,7 +53,7 @@ describe("visitors", () => {
   });
 
   it("pay a late hello in the currency of the part they are greeted in", () => {
-    const here = tick(def, withOwned(newRun(def), { keeper: 6 }), 1);
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
     const later: RunState = {
       ...here,
       phase: 2,
@@ -78,7 +71,7 @@ describe("visitors", () => {
   });
 
   it("bring a small gift: at most about 15 seconds of income", () => {
-    const here = tick(def, withOwned(newRun(def), { keeper: 6 }), 1);
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
     const gift =
       greetVisitor(def, here, "visitor-mail").resources.coins -
       here.resources.coins;
@@ -142,39 +135,15 @@ const night = (resources: Record<string, number>): RunState => {
 };
 
 describe("the steady glow", () => {
-  it("pays the cities 15% more while the grid is steady, and only then", () => {
-    const steady = night({ grid: 80 });
-    const wobbly = night({ grid: 70 });
-    expect(isGridGlowing(steady)).toBe(true);
-    expect(isGridGlowing(wobbly)).toBe(false);
-    const steadyPay = gridFactor(steady);
-    // the same steadiness without the glow would pay this much
-    expect(steadyPay / (0.6 + 0.4 * 0.8)).toBeCloseTo(1.15, 5);
-    expect(sceneInfo(steady).glow).toBe(1);
-    expect(sceneInfo(wobbly).glow).toBe(0);
-  });
-
-  it("is never a tax: the worst a neglected grid pays is the old floor", () => {
-    expect(gridFactor(night({ grid: 0 }))).toBeCloseTo(0.6, 5);
-  });
-
-  it("speeds the fleet up 15% while it flies true", () => {
-    const sky = (heading: number): RunState => {
-      const run = { ...newRun(def), phase: 2 };
-      return {
-        ...run,
-        resources: { ...run.resources, probes: 50, heading },
-      };
-    };
-    expect(isFleetGlowing(sky(90))).toBe(true);
-    expect(isFleetGlowing(sky(60))).toBe(false);
-    const ratio =
-      starsPerSecond(sky(75)) /
-      starsPerSecond({
-        ...sky(75),
-        resources: { ...sky(75).resources, heading: 74.9 },
-      });
-    expect(ratio).toBeGreaterThan(1.15);
+  it("sparkles the cities after a night kept lit, until a blackout puts it out", () => {
+    const lit = night({ pgLast: 1 });
+    lit.owned = { gen1: 3 };
+    const dark = night({ pgLast: 2 });
+    dark.owned = { gen1: 3 };
+    expect(isGridGlowing(lit)).toBe(true);
+    expect(isGridGlowing(dark)).toBe(false);
+    expect(sceneInfo(lit).glow).toBe(1);
+    expect(sceneInfo(dark).glow).toBe(0);
   });
 });
 
@@ -189,38 +158,27 @@ describe("collectors come in bigger steps", () => {
   });
 });
 
-describe("steering the boat earns resolve", () => {
-  const boat = (heading: number, lights = 2): RunState => {
+describe("the crossing earns hope", () => {
+  const sailing = (warm: number, sails = 0): RunState => {
     const run = { ...newRun(def), phase: 3 };
     return {
       ...run,
-      resources: {
-        ...run.resources,
-        lights,
-        boatHeading: heading,
-        boatProgress: 10,
-      },
+      owned: Object.fromEntries(
+        Array.from({ length: sails }, (_, i) => [`sail-${i + 1}`, 1])
+      ),
+      resources: { ...run.resources, flame: warm * 1000, boatProgress: 10 },
     };
   };
 
-  it("is 1.5x when true, fades to 1x, and is never below 1x", () => {
-    expect(steerBonus(boat(100))).toBeCloseTo(1.5, 5);
-    expect(steerBonus(boat(80))).toBeCloseTo(1.5, 5);
-    expect(steerBonus(boat(60))).toBeCloseTo(1.25, 5);
-    expect(steerBonus(boat(40))).toBe(1);
-    expect(steerBonus(boat(0))).toBe(1);
+  it("pays more resolve to a warm flame than a cold one", () => {
+    expect(resolvePerSecond(sailing(0.9))).toBeGreaterThan(
+      resolvePerSecond(sailing(0.1)) * 1.2
+    );
   });
 
-  it("only counts while the boat is out and still sailing", () => {
-    expect(steerBonus(boat(100, 6))).toBe(1);
-    const arrived = boat(100);
-    arrived.resources.boatProgress = 100;
-    expect(steerBonus(arrived)).toBe(1);
-  });
-
-  it("makes letting go faster for a player who steers", () => {
-    expect(resolvePerSecond(boat(100))).toBeGreaterThan(
-      resolvePerSecond(boat(0)) * 1.4
+  it("pays more resolve for every sail, because the boat goes faster", () => {
+    expect(resolvePerSecond(sailing(0.8, 3))).toBeGreaterThan(
+      resolvePerSecond(sailing(0.8, 0)) * 1.1
     );
   });
 });

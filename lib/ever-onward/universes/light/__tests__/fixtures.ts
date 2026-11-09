@@ -4,6 +4,10 @@ import type { RunState } from "../../../engine/types";
 import { lightUniverse } from "..";
 import { tankCapacity } from "../tick";
 import { choosesFork } from "../bots";
+import { openSkyDials } from "../sunEdge";
+import { letsLightsGo } from "../warmthBots";
+
+const letsEachLightGo = letsLightsGo({ order: "index", after: 180 });
 
 export const def = lightUniverse;
 
@@ -11,23 +15,16 @@ const MIN = 60;
 
 /**
  * A player who buys oil when the price is under the usual (2.0) and the tank
- * has room, or whenever it runs low, fixes the grid and the fleet's heading
- * when they dip, and takes the bonuses on offer.
+ * has room, or whenever it runs low, fixes the fleet's heading when it dips,
+ * and takes the bonuses on offer.
  */
 export function oilActions(run: RunState, available: readonly string[]) {
   // A fork in the road is one click in the shop, like any other buy.
   const picks: string[] = choosesFork(run, available);
-  // Looks after what needs hands: the grid and the fleet when they dip, and
-  // takes the bonuses on offer.
-  for (const id of ["balance-grid", "correct-course"]) {
-    const level =
-      id === "balance-grid" ? run.resources.grid : run.resources.heading;
-    if (available.includes(id) && level < 45) picks.push(id);
-  }
-  for (const id of ["ride-rush", "catch-flare", "flash-lamp"])
-    if (available.includes(id)) picks.push(id);
-  if (available.includes("steer-boat") && run.resources.boatHeading < 50)
-    picks.push("steer-boat");
+  // Looks after what needs hands at the end: lets the lights go in the order
+  // they are listed (a few minutes in), and makes the one flash.
+  picks.push(...letsEachLightGo(run, available));
+  if (available.includes("flash-lamp")) picks.push("flash-lamp");
   if (!available.includes("buy-oil")) return picks;
   const capacity = tankCapacity(run);
   const { oil, oilPrice } = run.resources;
@@ -111,3 +108,14 @@ export const MODEST_PRESTIGE: Record<string, number> = {
   "ember-thrift": 1,
   "ember-gift": 1,
 };
+
+/** The run with the sky's dials open (the first probe has flown). */
+export function withDials(run: RunState): RunState {
+  const next = {
+    ...run,
+    flags: { ...run.flags },
+    resources: { ...run.resources },
+  };
+  openSkyDials(next);
+  return next;
+}

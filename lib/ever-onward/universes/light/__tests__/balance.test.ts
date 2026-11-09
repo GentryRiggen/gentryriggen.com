@@ -1,6 +1,7 @@
 import { prestigeUpgradeCost } from "../../../engine/prestige";
 import { newUniverseSave } from "../../../engine/prestige";
 import { simulate } from "../../../engine/sim";
+import type { UpgradeDef } from "../../../engine/types";
 import { ACTIVE, def, MODEST_PRESTIGE, REALISTIC } from "./fixtures";
 
 const MIN = 60;
@@ -25,9 +26,15 @@ function phaseLengths(result: Result): number[] {
 }
 
 /** When each upgrade of `phaseId` first showed up, in order. */
-function revealTimes(result: Result, phaseId: string): number[] {
+function revealTimes(
+  result: Result,
+  phaseId: string,
+  isCounted: (u: UpgradeDef) => boolean = () => true
+): number[] {
   const inPhase = new Set(
-    def.upgrades.filter((u) => u.phases?.includes(phaseId)).map((u) => u.id)
+    def.upgrades
+      .filter((u) => u.phases?.includes(phaseId) && isCounted(u))
+      .map((u) => u.id)
   );
   return result.unlocks
     .filter((u) => inPhase.has(u.id))
@@ -107,10 +114,19 @@ describe("Keep the Light On balance", () => {
     });
 
     it.each(PHASE_IDS)("%s: at most 6 reveals in any 5 minutes", (phaseId) => {
-      const times = revealTimes(realistic, phaseId);
+      // The battery chain has a place of its own (one step on offer at a
+      // time, so it never takes a slot from the shop's three cards): the
+      // shop's cards are counted here, and the chain below.
+      const times = revealTimes(realistic, phaseId, (u) => !u.hasOwnSlot);
       // The Coast is a hands-on opening: its cards arrive with the keepers.
       const most = phaseId === "coast" ? 8 : 6;
       expect(mostInWindow(times, 5 * MIN)).toBeLessThanOrEqual(most);
+    });
+
+    it("night: with the battery chain too, at most 9 reveals in any 5 minutes", () => {
+      expect(
+        mostInWindow(revealTimes(realistic, "night"), 5 * MIN)
+      ).toBeLessThanOrEqual(9);
     });
   });
 

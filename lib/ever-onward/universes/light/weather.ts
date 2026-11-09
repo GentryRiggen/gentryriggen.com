@@ -5,12 +5,19 @@ import type { RunState } from "../../engine/types";
 import { TUNING } from "./tuning";
 
 /**
- * The Weather Desk: a side machine in No More Night. A storm front forms by
+ * The Weather Desk and the crews of No More Night. A storm front forms by
  * itself, then a forecast in three steps: the storm's path firms up as it
  * nears, so the chances for each of three towns sharpen. The player has a
- * repair crew or two to send where they think it will land. A crew needs a
- * little while to get ready (sandbags, ladders), so moving early on a vague
- * forecast and moving late on a sure one is the choice. A storm that lands
+ * few crews (two, three with the storm crews), and each one is building,
+ * learning at the school, or watching a town for the storm. A crew on watch
+ * isn't building, and moving to a new post takes a while on the road. A
+ * crew needs a little while to get ready (sandbags, ladders) once it is
+ * there, so moving early on a vague forecast and moving late on a sure one
+ * is the choice. Every front is small, ordinary or big (shown with the
+ * forecast), and each town pays more or less than the usual, so what a
+ * storm is worth is read, not guessed. A crew sent to watch once the
+ * forecast is up is committed until the storm lands, and every move costs
+ * fuel and wages. A storm that lands
  * on a ready crew pays a bonus. One that lands on a town with no crew puts
  * its lights out for a while: a small dip, never a loss. A crew sent there
  * fixes it fast (and learns from it); left alone it comes back on its own.
@@ -25,6 +32,7 @@ import { TUNING } from "./tuning";
  */
 
 const W = TUNING.weather;
+const C = TUNING.crews;
 /** Makes the desk's stream differ from the run's own. */
 const SEED_MIX = 0x5bd1e995;
 
@@ -41,12 +49,26 @@ export const TOWNS = ["Rivertown", "Hilltop", "Harbor"] as const;
 export const TOWN_COUNT = TOWNS.length;
 const TOWN_INDEXES: readonly number[] = [0, 1, 2];
 
-/** One crew button per town (the ids are older than the crews). */
-export const crewActionId = (town: number): string => `weather-shield-${town}`;
-export const shieldActionId = crewActionId;
-export const CREW_ACTION_IDS: readonly string[] =
-  TOWN_INDEXES.map(crewActionId);
-export const SHIELD_ACTION_IDS = CREW_ACTION_IDS;
+/** The crews' posts: building, the school, then one watch post per town. */
+export const POST_BUILD = 0;
+export const POST_SCHOOL = 1;
+export const POST_WATCH = 2;
+export const POST_COUNT = POST_WATCH + TOWN_COUNT;
+export const MAX_CREWS = C.base + 1;
+const CREW_INDEXES: readonly number[] = Array.from(
+  { length: MAX_CREWS },
+  (_, i) => i
+);
+
+/** One button per crew and post (each crew's own row of posts). */
+export const crewPostActionId = (crew: number, post: number): string =>
+  `crew-${crew}-${post}`;
+export const CREW_POST_ACTION_IDS: readonly string[] = CREW_INDEXES.flatMap(
+  (crew) =>
+    Array.from({ length: POST_COUNT }, (_, post) =>
+      crewPostActionId(crew, post)
+    )
+);
 
 export type WeatherStage = "closed" | "forming" | "forecast";
 
@@ -68,10 +90,60 @@ const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 export const isWeatherOpen = (run: RunState): boolean =>
   run.phase === 1 && run.flags[WEATHER_OPEN_FLAG] === true;
 
-/** Repair crews: 1, or 2 with storm crews. */
+/** Crews: two, or three with the storm crews. */
 export const crewCount = (run: RunState): number =>
-  1 + owned(run, STORM_CREWS_ID);
-export const shieldSlots = crewCount;
+  C.base + owned(run, STORM_CREWS_ID);
+
+/** Where a crew is posted (a crew nobody has moved is building). */
+export const postOf = (run: RunState, crew: number): number => {
+  const post = Math.round(res(run, `crewPost${crew}`));
+  return post >= 0 && post < POST_COUNT ? post : POST_BUILD;
+};
+
+/** Seconds a crew still has on the road to its post (0: it is there). */
+export const travelLeft = (run: RunState, crew: number): number =>
+  Math.max(0, res(run, `crewTravel${crew}`));
+
+/** A crew is on its post, not on the road. */
+export const isThere = (run: RunState, crew: number): boolean =>
+  crew < crewCount(run) && travelLeft(run, crew) <= 0;
+
+const crewsActive = (run: RunState): number[] =>
+  CREW_INDEXES.filter((crew) => crew < crewCount(run));
+
+/** Crews on this post, on the road or not. */
+export const crewsPosted = (run: RunState, post: number): number =>
+  crewsActive(run).filter((crew) => postOf(run, crew) === post).length;
+
+/** Crews working this post right now (not on the road). */
+export const crewsWorking = (run: RunState, post: number): number =>
+  crewsActive(run).filter(
+    (crew) => postOf(run, crew) === post && isThere(run, crew)
+  ).length;
+
+/** Crews still on the road to a new post. */
+export const crewsOnTheRoad = (run: RunState): number =>
+  crewsActive(run).filter((crew) => !isThere(run, crew)).length;
+
+export const buildingCrews = (run: RunState): number =>
+  crewsWorking(run, POST_BUILD);
+export const schoolCrews = (run: RunState): number =>
+  crewsWorking(run, POST_SCHOOL);
+
+/** What every building crew adds to the power cities pay. */
+export const buildMult = (run: RunState): number =>
+  run.phase === 1 ? 1 + C.buildBoost * buildingCrews(run) : 1;
+
+/** What every crew at the school adds to the know-how a second (patrols: less). */
+export const schoolMult = (run: RunState): number =>
+  run.phase === 1
+    ? 1 +
+      C.schoolBoost *
+        (isProjectDone(run, "line-patrols")
+          ? TUNING.projects.patrolSchool
+          : 1) *
+        schoolCrews(run)
+    : 1;
 
 export const hasWeatherVane = (run: RunState): boolean =>
   owned(run, WEATHER_VANE_ID) > 0;
@@ -93,17 +165,33 @@ export const forecastStep = (run: RunState): number =>
     ? Math.min(W.forecastSteps, Math.round(res(run, "wxStep")) + 1)
     : 0;
 
+/** How big the front on the way is: 0 small, 1 ordinary, 2 big. */
+export const stormSize = (run: RunState): number =>
+  Math.min(W.sizes.length - 1, Math.max(0, Math.round(res(run, "wxSize"))));
+export const STORM_SIZE_NAMES = ["small", "ordinary", "big"] as const;
+/** How many times the usual bonus a front of this size pays. */
+export const sizeMult = (size: number): number => W.sizes[size] ?? 1;
+
+/** How much more (or less) a storm on this town pays than the usual. */
+export const townWorth = (town: number): number => W.townWorth[town] ?? 1;
+
 export const chanceOf = (run: RunState, town: number): number =>
   res(run, `wxChance${town}`);
 
-const crewOrder = (run: RunState, town: number): number =>
-  res(run, `wxShield${town}`);
+/** Crews watching this town that have got there. */
+export const crewsAt = (run: RunState, town: number): number =>
+  crewsWorking(run, POST_WATCH + town);
 
 /** A crew is at this town. */
 export const hasCrew = (run: RunState, town: number): boolean =>
-  crewOrder(run, town) > 0;
+  crewsAt(run, town) > 0;
 export const isShielded = hasCrew;
 
+/** Crews posted to a town, there or on the road. */
+export const crewsHeaded = (run: RunState, town: number): number =>
+  crewsPosted(run, POST_WATCH + town);
+
+/** Towns with a crew there. */
 export const crewsPlaced = (run: RunState): number =>
   TOWN_INDEXES.filter((town) => hasCrew(run, town)).length;
 export const shieldedCount = crewsPlaced;
@@ -184,7 +272,9 @@ export function readyAtLandfall(
   town: number,
   isMoving: boolean
 ): number {
-  const left = secondsToLandfall(run);
+  // A crew sent now spends its road time first, and starts over when it gets there.
+  const left =
+    secondsToLandfall(run) - (isMoving ? TUNING.grid.moveSeconds : 0);
   const fixing = isOut(run, town)
     ? fixSeconds(run) * (outageLeft(run, town) / W.outageSeconds)
     : 0;
@@ -205,6 +295,10 @@ export function lastStorm(run: RunState): StormResult {
     payout: res(run, "wxLastPayout"),
   };
 }
+
+/** A storm has just hit: true for a few seconds, for the picture. */
+export const isStormHit = (run: RunState): boolean =>
+  run.phase === 1 && res(run, "wxHitLeft") > 0;
 
 /** The little result line under the map, or null before the first storm. */
 export function stormResultLine(run: RunState): string | null {
@@ -265,6 +359,16 @@ function drawLandfall(chances: readonly number[], roll: number): number {
   return TOWN_COUNT - 1;
 }
 
+/** How big the front is: drawn once, and shown with the forecast. */
+function drawSize(roll: number): number {
+  let cumulative = 0;
+  for (let size = 0; size < W.sizes.length; size += 1) {
+    cumulative += W.sizeOdds[size];
+    if (roll < cumulative) return size;
+  }
+  return W.sizes.length - 1;
+}
+
 /** How sure the forecast is at each step (barometers: surer, sooner). */
 const firmness = (run: RunState): readonly number[] =>
   hasBarometers(run) ? W.firmBarometers : W.firm;
@@ -284,47 +388,38 @@ function showStep(run: RunState): void {
   });
 }
 
-/** The crew that moves when one more is sent and every crew is out. */
-function crewToMove(run: RunState): number | undefined {
-  return TOWN_INDEXES.filter((t) => hasCrew(run, t)).sort(
-    (a, b) =>
-      chanceOf(run, a) - chanceOf(run, b) ||
-      crewOrder(run, a) - crewOrder(run, b)
-  )[0];
-}
-
-/** Which crew would move if one is sent to `town` now (null: a free crew goes). */
-export function crewThatMoves(run: RunState, town: number): number | null {
-  if (hasCrew(run, town) || crewsPlaced(run) < crewCount(run)) return null;
-  return crewToMove(run) ?? null;
-}
-
 /**
- * Sends a crew to a town, or calls it back when one is already there. With
- * every crew out, the one at the town least likely to be hit moves (the
- * oldest on a tie). A crew starts getting ready when it arrives.
+ * Posts a crew somewhere new. It spends a while on the road first, and does
+ * nothing there (no building, no learning, no watching) until it arrives.
+ * A watch post only opens once the weather desk does.
  */
-export function toggleCrew(run: RunState, town: number): void {
-  if (!isWeatherOpen(run) || !TOWN_INDEXES.includes(town)) return;
-  const key = `wxShield${town}`;
-  if (hasCrew(run, town)) {
-    run.resources[key] = 0;
-    run.resources[`wxReady${town}`] = 0;
-    return;
-  }
-  if (crewsPlaced(run) >= crewCount(run)) {
-    const moving = crewToMove(run);
-    if (moving !== undefined) {
-      run.resources[`wxShield${moving}`] = 0;
-      run.resources[`wxReady${moving}`] = 0;
-    }
-  }
-  run.resources.wxShieldSeq = res(run, "wxShieldSeq") + 1;
-  run.resources[key] = run.resources.wxShieldSeq;
-  run.resources[`wxReady${town}`] = 0;
+/**
+ * A crew sent to watch a town once a forecast is up is committed there until
+ * the storm lands: a guess made early is a guess you keep. (A crew that was
+ * already waiting at a town when the forecast came is free to move.)
+ */
+export const isCommitted = (run: RunState, crew: number): boolean =>
+  res(run, `crewLock${crew}`) > 0;
+
+/** What sending a crew somewhere new costs, in power (fuel and wages). */
+export const moveFee = (income: number): number =>
+  TUNING.grid.moveFeeSeconds * income;
+
+export function setPost(run: RunState, crew: number, post: number): void {
+  if (run.phase !== 1 || crew < 0 || crew >= crewCount(run)) return;
+  if (!Number.isInteger(post) || post < 0 || post >= POST_COUNT) return;
+  if (post >= POST_WATCH && !isWeatherOpen(run)) return;
+  if (postOf(run, crew) === post || isCommitted(run, crew)) return;
+  run.resources[`crewPost${crew}`] = post;
+  run.resources[`crewLock${crew}`] =
+    post >= POST_WATCH && weatherStage(run) === "forecast" ? 1 : 0;
+  run.resources[`crewTravel${crew}`] = TUNING.grid.moveSeconds;
   run.resources.wxMoves = res(run, "wxMoves") + 1;
 }
-export const toggleShield = toggleCrew;
+
+/** Crews open with the grid, and with the weather desk. */
+export const isCrewsOpen = (run: RunState): boolean =>
+  run.phase === 1 && (isWeatherOpen(run) || (run.resources.pgStarted ?? 0) > 0);
 
 function beginForecast(run: RunState): void {
   const r = run.resources;
@@ -334,6 +429,7 @@ function beginForecast(run: RunState): void {
   });
   // Where it lands is decided now, honestly, against the first forecast.
   r.wxTarget = drawLandfall(base, draw(run));
+  r.wxSize = drawSize(draw(run));
   run.flags[STEPS_FLAG] = true;
   r.wxStage = 1;
   r.wxStep = 0;
@@ -360,8 +456,13 @@ function landfall(run: RunState, income: number): void {
   const vaneShare =
     hasWeatherVane(run) && town === vanePick(run) ? W.vaneShare : 0;
   const share = Math.max(handShare, vaneShare);
+  for (const crew of CREW_INDEXES) r[`crewLock${crew}`] = 0;
+  // The sandbags are used up: the next front needs a crew to get ready afresh.
+  for (const t of TOWN_INDEXES) r[`wxReady${t}`] = 0;
   r.wxFronts = frontsSoFar(run) + 1;
   r.wxLastTown = town;
+  r.wxLastSize = stormSize(run);
+  r.wxHitLeft = TUNING.grid.bannerSeconds;
   if (share <= 0) {
     r.wxLastKind = KINDS.indexOf("flicker");
     r.wxLastPayout = 0;
@@ -369,7 +470,10 @@ function landfall(run: RunState, income: number): void {
     r[`wxOut${town}`] = W.outageSeconds;
     return;
   }
-  const payout = stormBonus(run, income) * share;
+  const size = stormSize(run);
+  r.wxLastSize = size;
+  const payout =
+    stormBonus(run, income) * share * sizeMult(size) * townWorth(town);
   // The bonus flows in as a short surge, not one lump (see `flowSurge`).
   r.wxPending = res(run, "wxPending") + payout;
   r.wxSurgeRate = res(run, "wxPending") / W.surgeSeconds;
@@ -406,11 +510,25 @@ function workCrews(run: RunState, dt: number): void {
       }
       continue;
     }
-    if (hasCrew(run, town))
-      r[`wxReady${town}`] = Math.min(
-        1,
-        readiness(run, town) + dt / readySeconds(run)
-      );
+    // A town nobody is watching starts over: a crew that comes back gets ready afresh.
+    // Sandbags are only filled for a storm that is on its way, so a crew
+    // that waits at a town before the forecast gets nothing for it.
+    r[`wxReady${town}`] =
+      hasCrew(run, town) && weatherStage(run) === "forecast"
+        ? Math.min(1, readiness(run, town) + dt / readySeconds(run))
+        : hasCrew(run, town)
+          ? readiness(run, town)
+          : 0;
+  }
+}
+
+/** Crews on the road get closer to their posts (the grid opens them). */
+export function tickCrews(run: RunState, dt: number): void {
+  if (run.phase !== 1) return;
+  run.resources.wxHitLeft = Math.max(0, res(run, "wxHitLeft") - dt);
+  for (const crew of CREW_INDEXES) {
+    const left = travelLeft(run, crew);
+    if (left > 0) run.resources[`crewTravel${crew}`] = Math.max(0, left - dt);
   }
 }
 
@@ -421,7 +539,7 @@ function workCrews(run: RunState, dt: number): void {
 export function openWeather(run: RunState): void {
   if (run.flags[WEATHER_OPEN_FLAG] === true) return;
   run.flags[WEATHER_OPEN_FLAG] = true;
-  run.resources.wxSeed = run.rng ^ SEED_MIX;
+  run.resources.wxSeed = (res(run, "nightSeed") || run.rng) ^ SEED_MIX;
   beginForming(run, W.firstFormSeconds);
 }
 

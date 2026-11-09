@@ -6,7 +6,7 @@ export const TUNING = {
    * again (and added forks, the fund and overdrive), so the whole run is
    * priced up to stay about two hours.
    */
-  costScale: { coast: 1, night: 28, sky: 9.5, last: 4.6 } as Record<
+  costScale: { coast: 1, night: 135, sky: 9.5, last: 10.8 } as Record<
     string,
     number
   >,
@@ -27,7 +27,7 @@ export const TUNING = {
       coastShips: 60,
       nightLittleGenerators: 2,
       skyCollectors: 3,
-      lastLights: 10,
+      lastLights: 9,
     },
   },
   /**
@@ -44,28 +44,28 @@ export const TUNING = {
       crewsOil: 1.3,
     },
     night: {
-      /** Coal: every plant makes this much more at once, and the grid strains more. */
+      /** Coal: every plant makes this much more at once, and the evening rush is bigger. */
       coalSupply: 1.8,
-      coalStrain: 1.6,
-      /** Wind: slow to build, then this much more, and the grid strains less. */
+      coalPeak: 1.35,
+      /** Wind: slow to build, then this much more, and the evening rush is smaller. */
       windSupply: 2.6,
-      windStrain: 0.7,
+      windPeak: 0.75,
       windRampSeconds: 150,
     },
     sky: {
-      /** More probes: the fleet grows at once, and drifts off course faster. */
+      /** More probes: the fleet grows at once, and flares burn more of it. */
       swarmProbes: 3,
-      swarmDrift: 1.5,
-      /** Bigger mirrors: every collector catches more, and the fleet is steadier. */
+      swarmFlare: 1.4,
+      /** Bigger mirrors: every collector catches more, and flares burn less of the fleet. */
       mirrorsEnergy: 2.6,
-      mirrorsDrift: 0.85,
+      mirrorsFlare: 0.85,
     },
     last: {
-      /** Let it go: resolve comes faster and the flame fades faster. */
-      releaseResolve: 1.8,
-      releaseFade: 1.6,
-      /** Keep it: the flame holds, and every tap is worth more resolve. */
-      keepFade: 0.4,
+      /** Let it go: resolve comes faster, but every light burns more warmth. */
+      releaseResolve: 1.5,
+      releaseBurn: 1.3,
+      /** Keep it: the lights burn less warmth, and every tap is worth more resolve. */
+      keepBurn: 0.7,
       keepTaps: 2,
     },
     /** What each side costs. */
@@ -88,6 +88,8 @@ export const TUNING = {
     crank: 2.9,
     gen1: 2.9,
     gen2: 2.9,
+    "batt-1": 2.9,
+    "batt-2": 2.9,
     // The sky's first steps: the mirror, the first probe and the first copying
     // (the gate to the rest of the chain).
     "mirror-1": 3,
@@ -97,14 +99,14 @@ export const TUNING = {
   coast: {
     fareGrowth: 1.5,
     /** Keepers (the main repeatable buy) stop here. */
-    keeperMax: 40,
+    keeperMax: 14,
     /** Having this many keepers doubles every keeper's work, once each. */
-    keeperMilestones: [5, 10, 25, 40] as readonly number[],
+    keeperMilestones: [3, 6, 10, 14] as readonly number[],
     keeperMilestoneMult: 2,
     /** Every lighthouse after the first multiplies the ships by this. */
     lighthouseMult: 2,
     /** Each lighthouse costs this many times the one before. */
-    lighthouseGrowth: 7.5,
+    lighthouseGrowth: 8,
     /**
      * The lamp's brightness, the coast's one knob. `pay` multiplies the ships
      * every flash guides (yours and the keepers'), `burn` the oil the lamp
@@ -116,99 +118,123 @@ export const TUNING = {
       steps: [
         { label: "Dim", pay: 0.5, burn: 0.3 },
         { label: "Normal", pay: 1, burn: 1 },
-        { label: "Bright", pay: 1.8, burn: 2.5 },
-        { label: "Blazing", pay: 2.5, burn: 5 },
+        { label: "Bright", pay: 1.7, burn: 3.5 },
+        { label: "Blazing", pay: 2.5, burn: 10 },
       ] as readonly { label: string; pay: number; burn: number }[],
     },
     /** Ships one flash guides at each lens level, the keepers' flashes too. */
     lensShips: [1, 2, 4, 8] as readonly number[],
     /** A tap also brings this share of a second of the keepers' coins. */
     tapShare: 0.04,
-    keeperFlashes: 0.3,
+    keeperFlashes: 0.35,
     /** Each training step multiplies every keeper's flashes. */
     trainingSteps: [2, 2, 2] as readonly number[],
     /** Oil burned per coin of fare a keeper's ship pays, at the Normal step. */
-    burnPerShip: 0.25,
+    burnPerShip: 0.22,
     stormTapBonus: 3,
     /** Ships still come in a storm at this share; shutters and glass raise it (glass: ships shelter and more come). */
     stormPassive: [0.2, 1, 1.5] as readonly number[],
     stormLength: 25,
     stormGapMin: 150,
     stormGapSpread: 150,
+    /** A dry lamp is dark: this share of the ships still find the harbor (so nobody is ever stuck). */
     dimLamp: 0.25,
-    oilMean: 2,
-    oilMin: 0.3,
-    oilMax: 6,
-    oilWobble: 1.0,
-    oilPull: 0.006,
+    oilMean: 1.2,
+    oilMin: 0.15,
+    oilMax: 6.5,
+    oilWobble: 0.55,
+    oilPull: 0.0012,
     trendSeconds: 6,
     tankBase: 40,
     tankPerTier: 80,
     /** Seconds of full-tilt burn a tank holds, and what each tank upgrade adds. */
-    tankSeconds: 60,
-    tankSecondsPerTier: 120,
+    tankSeconds: 150,
+    tankSecondsPerTier: 250,
     tankTapsPerSecond: 3,
+    /** Under this share of a full tank the oil is a rush order: it costs this many times more. */
+    rushBelow: 0.12,
+    rushMult: 1.2,
     cheapPrice: 1.4,
     dearPrice: 2.8,
-    contractPrice: 1.6,
-    wickSaving: 0.6,
+    wickSaving: 0.66,
     /** Each dock building makes every ship pay this much more. */
     dockBonus: 1.5,
-  },
-  /** The Tide Clock, a side machine of the coast (see tide.ts). */
-  tide: {
-    /** One full wave, low to high to low, in seconds of play. */
-    cycleSeconds: 175,
-    /** Seconds of coast income a catch is worth: late nets, then early nets. */
-    catchMinSeconds: 30,
-    catchMaxSeconds: 45,
-    /** Bigger nets multiply the catch by this. */
-    biggerNetsFactor: 1.5,
-    /** Seconds of income the tide mill adds on its own at each high tide. */
-    millSeconds: 14,
-    /** The catch flows in over this many seconds, like a rush of fish. */
-    surgeSeconds: 6,
-  },
-  /** Probe Races, a side machine of the sky (see probes.ts). */
-  probes: {
-    /** Seconds of sky income each route brings home, and how long it takes. */
-    short: { seconds: 75, haulSeconds: 52 },
-    long: { seconds: 180, haulSeconds: 120 },
-    /** The comet route pays between these, by how close the comet is at launch. */
-    comet: { seconds: 110, haulMin: 40, haulMax: 92 },
-    /** The comet drifts out and back in one slow pass of this many seconds. */
-    cometCycleSeconds: 150,
-    /** Racing fins: every run takes this share of its time. */
-    finsTimeFactor: 0.5,
-    /** Mission control's scout brings home this share of a hand-flown haul. */
-    scoutShare: 0.35,
-    /** A haul flows in over this many seconds, like a rush of light. */
-    surgeSeconds: 4,
-  },
-  /** The Memory Garden, a side machine of The Last Light (see garden.ts). */
-  garden: {
-    /** Seconds a seed takes to bloom with no water at all. */
-    growSeconds: 170,
-    /** A seed counts as sprouted (and the story says so) from this share. */
-    sproutAt: 0.1,
-    /** A plant is a bud from this share of its growth on. */
-    budAt: 0.34,
-    /** A picked plant starts again from here, and grows at this pace. */
-    regrowTo: 0.34,
-    regrowPace: 0.5,
-    /** A watering keeps a plant watered this long; the can then rests. */
-    wetSeconds: 100,
-    waterCooldown: 40,
-    /** Watered seconds count this much extra (2.2x in all). */
-    wetBoost: 1.2,
-    /** The rain barrel waters thirsty plants this often, for this long. */
-    rainEvery: 45,
-    rainWetSeconds: 14,
-    /** A bloom is worth this many seconds of letting go, and a little flame. */
-    pickSeconds: 3,
-    pickFlame: 20,
-    /** The picked resolve flows in over this many seconds, like a glow. */
-    surgeSeconds: 4,
+    /** The oil merchant orders a full tank whenever the tank falls under this share. */
+    contractBelow: 0.25,
+    /**
+     * The harbor toll (see toll.ts): the price you set. Every ship pays
+     * `pay` times the fare, but ships pick a harbor by its toll against the
+     * going rate (the rival harbor down the coast, grown by your own
+     * lighthouses and docks). The share that choose you is
+     * `eagerness / (1 + (pay / rate) ^ steepness)`, at most all of them, and
+     * the traffic follows it slowly.
+     */
+    harbor: {
+      steps: [
+        { label: "Low", pay: 0.7 },
+        { label: "Usual", pay: 1 },
+        { label: "High", pay: 1.4 },
+        { label: "Steep", pay: 2 },
+        { label: "Greedy", pay: 2.8 },
+      ] as readonly { label: string; pay: number }[],
+      defaultStep: 1,
+      /** The desk opens with this many keepers. */
+      opensAtKeepers: 3,
+      steepness: 4,
+      eagerness: 1.5,
+      /** Seconds the traffic takes to cover most of the way to a new share. */
+      followSeconds: 25,
+      /** ... and when the lamp is dark (ships steer clear faster than they come back). */
+      darkFollowSeconds: 8,
+      /** The sign takes this long to repaint; a change also puts a few ships off. */
+      changeLockSeconds: 20,
+      changeTraffic: 0.92,
+      /** The rival harbor's toll wanders between these and glides to each new one. */
+      rivalStart: 1.3,
+      rivalMin: 0.7,
+      rivalMax: 2.2,
+      rivalGapMin: 110,
+      rivalGapSpread: 100,
+      rivalGlideSeconds: 30,
+      /** Each lighthouse after the first and each dock building raises the going rate. */
+      lighthouseRate: 0.03,
+      dockRate: 0.04,
+      /**
+       * How much of the rival's price shows up in what ships pay: the rest is
+       * the same for every toll, so it never changes which toll is best, only
+       * keeps a rival's big swing from rocking the whole coast's income.
+       */
+      rivalPayShare: 0.3,
+      /** In a storm, ships have fewer harbors to pick from. */
+      stormRate: 1.35,
+      /** While the lamp is dark, the traffic settles at this share of what it would be. */
+      darkTraffic: 0.6,
+    },
+    /**
+     * Oil tankers (see tanker.ts): now and then one ties up with cheap oil
+     * for a while. The market price drifts as before; the tanker sells at
+     * `dealMin`..`dealMax` of it until it leaves.
+     */
+    tanker: {
+      firstSeconds: 80,
+      gapMin: 130,
+      gapSpread: 200,
+      staySeconds: 35,
+      /** Each tank's worth of oil bought moves what you remember paying this share of the way. */
+      habitMemory: 0.5,
+      /** A tanker's first seconds in port are the moment that holds pop-ups back. */
+      arrivalSeconds: 6,
+      dealMin: 0.3,
+      dealMax: 0.8,
+      /** Barrels roll into the tanks this long after a buy. */
+      barrelSeconds: 4,
+      /** The relit beam bursts for this long. */
+      relitSeconds: 5,
+      /** Narration waits this much longer, so a story card never covers "LIT AGAIN!". */
+      relitHoldSeconds: 8,
+      /** "DARK!" shows this long. */
+      darkBannerSeconds: 6,
+    },
   },
   night: {
     perCityMW: 150,
@@ -226,29 +252,69 @@ export const TUNING = {
     /** Each substation carries this much more of every plant's power. */
     substationBonus: 1.5,
     bulbSaving: 0.66,
-    /** The grid: cities dim (never to zero) when it is left strained. */
-    gridFloor: 0.6,
-    /**
-     * Steady glow: while the grid is at least this steady the cities sparkle
-     * and pay this much more. A bonus for looking after it, not a tax.
-     */
-    glowAt: 75,
-    glowBonus: 0.15,
-    /** Steadiness lost per second (percent): a base plus more as the grid works harder. */
-    strainBase: 0.2,
-    strainPerLoad: 0.4,
-    /** Load balancer halves the strain; smart grid fixes itself below this. */
-    balancerSaving: 0.5,
-    autoBalanceBelow: 55,
-    autoBalanceTo: 90,
-    /** The grid is worth a button once this much power is made (MW). */
+    /** The grid (see grid.ts) opens once this much power is made (MW). */
     gridVisibleSupplyMW: 16,
-    /** Evening rush: a claimable bonus that waits until it is claimed. */
-    rushGapMin: 100,
-    rushGapSpread: 100,
-    rushFirst: 90,
-    /** Seconds of income the rush pays when claimed. */
-    rushBonusSeconds: 25,
+  },
+  /**
+   * The grid: plants, power lines and batteries have to stay in step. A day
+   * is `daySeconds` long; at dusk everybody switches on and the evening rush
+   * wants more than the plants make. Batteries soak up spare power by day
+   * and carry the rush; power lines limit how fast they can. Short of that,
+   * districts snap dark for a little while. See grid.ts.
+   */
+  grid: {
+    daySeconds: 120,
+    /** The clock starts here when the grid opens (the first rush is near). */
+    firstClock: 40,
+    /** Seconds into the day the sun goes down, the rush starts and its length. */
+    duskAt: 62,
+    rushAt: 78,
+    rushSeconds: 24,
+    /** How much more than usual the rush wants, drawn each evening, and how likely. */
+    excess: [0.12, 0.25, 0.4, 0.6] as readonly number[],
+    odds: [0.2, 0.35, 0.3, 0.15] as readonly number[],
+    /** The first evenings are gentle: mild, then usual. */
+    gentleEvenings: 2,
+    /** While the batteries are not full, this share of the plants' power goes into them. */
+    chargeShare: 0.3,
+    /** Share of the power that goes into a battery that comes back out. */
+    efficiency: 0.8,
+    /**
+     * What the batteries hold, in MW-seconds, with 1 to 8 steps of the
+     * battery chain bought: each step holds about 2.7 times the one before,
+     * so the bank keeps up with plants that grow by tens.
+     */
+    batteryHolds: [
+      100, 270, 730, 1970, 5310, 14350, 38740, 104600,
+    ] as readonly number[],
+    /** A bank step shows once the plants make this many seconds' worth of what it holds. */
+    showBankSeconds: 40,
+    /** Batteries keep this share back at the rush, so they never run to nothing. */
+    reserveShare: 0.04,
+    /** The lines let the batteries give back this much of the plants' power, and more per line. */
+    rateBase: 0.25,
+    ratePerLine: 0.15,
+    /** Districts that can go dark, and how long they take to come back on. */
+    districts: 10,
+    recoverySeconds: 24,
+    /** Surviving the rush pays this many seconds of income, and know-how. */
+    litSeconds: 200,
+    litKnowhow: 2,
+    /** The banners last this long. */
+    bannerSeconds: 6,
+    /** Pop-ups wait this long into a rush for the houses to snap dark. */
+    snapSeconds: 5,
+    /** A change of streetlights (or a crew's move) takes this long. */
+    lampLockSeconds: 8,
+    /** Crews: how long a move to a new post takes. */
+    moveSeconds: 6,
+    /** Going out on storm duty costs sandbags and wages, in seconds of what the cities pay (coming home is free). */
+    moveFeeSeconds: 30,
+    /** Co-op and rush pricing make the rush this much bigger. */
+    coopPeak: 1.12,
+    pricingPeak: 1.1,
+    /** Overdrive: the rush is this much bigger, and nothing charges. */
+    hotPeak: 1.25,
   },
   /** Know-how and the night's projects (see projects.ts). */
   projects: {
@@ -256,27 +322,21 @@ export const TUNING = {
     knowhowPerPlant: 0.028,
     /** Night school: know-how comes this much faster. */
     schoolBoost: 1.5,
-    /** Know-how for balancing an uneasy grid by hand (line patrols: less). */
-    perBalance: 3,
-    patrolBalance: 1,
-    /** Know-how for riding an evening rush. */
-    perRush: 2,
     /** Smart meters: cities pay more, towns want more. */
     meterPay: 1.2,
     meterDemand: 1.05,
-    /** Lamplighters: towns want less, the steady glow pays less. */
+    /** Lamplighters: towns want less, a lit night pays less. */
     lampDemand: 0.94,
-    lampGlowBonus: 0.08,
-    /** Line patrols: the grid strains slower. */
-    patrolStrain: 0.7,
-    /** Rush-hour pricing: a bigger rush, a little less often. */
+    lampLitPay: 0.8,
+    /** Line patrols: the lines carry the batteries' power this much faster; school crews learn less. */
+    patrolRate: 1.35,
+    patrolSchool: 0.7,
+    /** Rush-hour pricing: a lit night pays more, the rush is a little bigger. */
     rushPay: 1.5,
-    rushGap: 1.25,
     /** Fish ladders: every dam makes more. */
     ladderBoost: 1.4,
-    /** The power co-op: steam plants make more, the grid strains more. */
+    /** The power co-op: steam plants make more, the evening rush is bigger. */
     coopBoost: 1.25,
-    coopStrain: 1.15,
     /** Wind maps: every wind and sun farm makes more. */
     windBoost: 1.25,
     /** The sky's projects (see projects.ts), paid in know-how too. */
@@ -284,63 +344,70 @@ export const TUNING = {
       /** Know-how a second: every collector, and the fleet's size on a log scale. */
       knowhowPerCollector: 0.02,
       knowhowPerDecade: 0.08,
-      /** Know-how for catching a flare, and for correcting the course. */
+      /** Know-how for a flare weathered (it burned under a quarter of the fleet), and for bringing wild probes home. */
       perFlare: 2,
-      perCourse: 1,
+      perHome: 1,
       /** Star atlas: probes take stars faster. */
       atlasBoost: 1.6,
-      /** Mirror polish: every collector catches more, the fleet drifts faster. */
+      /** Mirror polish: every collector catches more, flares burn more of the fleet. */
       polishBoost: 1.6,
-      polishDrift: 1.25,
+      polishFlare: 1.25,
       /** Relay codes: every star taken pays more. */
       relayBoost: 1.5,
-      /** Probe school: probes copy faster; flares come less often. */
+      /** Probe school: probes copy faster; more of them go wild. */
       schoolBoost: 1.5,
-      schoolFlareGap: 1.3,
-      /** Flare watchers: flares pay more and come sooner. */
-      flarePay: 1.6,
-      flareGap: 0.8,
+      schoolWild: 1.4,
     },
   },
   /**
    * Overdrive, the second thing know-how buys (besides projects): run the
-   * night's plants, or the sky's whole fleet, hot for a minute. Everything
-   * pays `boost` times as much, but the grid (or the fleet's heading) slips
-   * `strain` times as fast. Keep it above `cleanAbove` the whole minute and
+   * night's plants hot for a minute. Everything pays `boost` times as much,
+   * but the evening rush is bigger and nothing charges. Keep it above `cleanAbove` the whole minute and
    * `refund` of the know-how comes back. Nothing here is chance.
    */
   overdrive: {
     seconds: 60,
     boost: 2,
-    strain: 3,
     cleanAbove: 60,
     refund: 0.5,
     nightCost: 30,
-    skyCost: 30,
-    /** It is offered from this many steam plants (night) / probes (sky). */
+    /** It is offered from this many steam plants. */
     nightAtSteamPlants: 2,
   },
   /**
    * The streetlights (No More Night's knob): how bright the cities shine.
-   * Brighter pays more per megawatt, but the grid works harder, every city
-   * wants a little more and the busy crews learn less. Softer pays less but
+   * Brighter pays more per megawatt, but the evening rush hits harder, every
+   * city wants a little more and the busy crews learn less. Softer pays less but
    * eases the grid, lights more towns with the same power, and gives the
    * crews quiet time to learn (know-how). "Bright" is how the night always
    * played.
    */
   lamps: {
     steps: [
-      { pay: 0.9, demand: 0.88, strain: 0.7, knowhow: 2 },
-      { pay: 0.95, demand: 0.94, strain: 0.85, knowhow: 1.4 },
-      { pay: 1, demand: 1, strain: 1, knowhow: 1 },
-      { pay: 1.3, demand: 1.06, strain: 1.3, knowhow: 0.5 },
+      { pay: 0.6, demand: 0.88, peak: 0.45, knowhow: 2 },
+      { pay: 0.8, demand: 0.94, peak: 0.7, knowhow: 1.4 },
+      { pay: 1, demand: 1, peak: 1, knowhow: 1 },
+      { pay: 1.6, demand: 1.06, peak: 1.6, knowhow: 0.5 },
     ] as readonly {
       pay: number;
       demand: number;
-      strain: number;
+      peak: number;
       knowhow: number;
     }[],
     defaultStep: 2,
+  },
+  /**
+   * The crews (see weather.ts): each one is building, learning at the
+   * school, or watching a town for the storm. A crew that moves to a new post
+   * spends `grid.moveSeconds` on the road first.
+   */
+  crews: {
+    /** Crews to start with; the storm-crews buy adds one. */
+    base: 2,
+    /** Each building crew adds this share to the power cities pay. */
+    buildBoost: 0.4,
+    /** Each crew at the school adds this share to the know-how a second. */
+    schoolBoost: 0.6,
   },
   /** The Weather Desk, a side machine of No More Night (see weather.ts). */
   weather: {
@@ -349,8 +416,8 @@ export const TUNING = {
     /** Seconds after it opens until the first front forms. */
     firstFormSeconds: 40,
     /** Seconds a front takes to form. */
-    formMin: 35,
-    formSpread: 25,
+    formMin: 70,
+    formSpread: 50,
     /** The forecast comes in steps, the storm's path firming up each time. */
     forecastSteps: 3,
     stepSeconds: 20,
@@ -364,13 +431,21 @@ export const TUNING = {
     /** Each town is at least this likely; the rest is shared out at random. */
     minChance: 5,
     /** Chances are drawn as random ** skew, so one town is usually likely. */
-    skew: 2,
+    skew: 1.3,
     /** Seconds of income a storm pays when it lands on a ready crew. */
-    bonusSeconds: 45,
+    bonusSeconds: 220,
+    /**
+     * Every front is small, ordinary or big (shown with the forecast): the
+     * bonus is this many times as much, and this often.
+     */
+    sizes: [0.5, 1, 2] as readonly number[],
+    sizeOdds: [0.3, 0.4, 0.3] as readonly number[],
+    /** What a storm on each town pays, against the usual: Rivertown is big, Harbor small. */
+    townWorth: [1.6, 1, 0.6] as readonly number[],
     /** A crew that has only just arrived earns this share of the bonus. */
-    unreadyShare: 0.5,
+    unreadyShare: 0.3,
     /** Seconds a crew takes to get ready, and to fix a dark town. */
-    readySeconds: 40,
+    readySeconds: 45,
     fixSeconds: 12,
     /** Spare parts: crews get ready and fix in this share of the time. */
     sparePartsFactor: 0.5,
@@ -411,67 +486,233 @@ export const TUNING = {
     /** A wave of copies / early arrivals lands when these are bought. */
     copyFleetBump: 1.5,
     engineFleetBump: 1.3,
-    /** Probes wander off course; cheaper to fix by hand than to ignore. */
-    headingFloor: 0.6,
-    /** Steady glow: a fleet in formation takes stars this much faster. */
-    glowAt: 75,
-    glowBonus: 0.15,
-    driftBase: 0.16,
-    driftPerDecade: 0.14,
-    chartsSaving: 0.5,
-    autoCorrectBelow: 55,
-    autoCorrectTo: 90,
-    /** Solar flare: a claimable bonus that waits, like the evening rush. */
-    flareGapMin: 110,
-    flareGapSpread: 110,
-    flareFirst: 100,
-    flareBonusSeconds: 25,
+    /** The sky's first flare comes this long after the first probe flies. */
+    flareFirst: 90,
+  },
+  /**
+   * The sky's three dials (see design.ts and sunEdge.ts). Design points are
+   * split across four things a probe can be good at; the sun's edge is how
+   * close the fleet flies (much more light, and flares that burn probes);
+   * and copying hard sends some probes wild.
+   */
+  dials: {
+    /** Design points to split, and the split the fleet starts with. */
+    points: 8,
+    startSplit: [2, 2, 2, 2] as readonly number[],
+    /** One point takes this long to land in its new place. */
+    settleSeconds: 6,
+    /** What each point of a stat is worth (1 at the starting 2 points). */
+    speedBase: 0.4,
+    speedStep: 0.3,
+    mirrorBase: 0.5,
+    mirrorStep: 0.25,
+    copyBase: 0,
+    copyStep: 0.5,
+    /**
+     * Each shield point takes this much off a flare's burn, the same for
+     * every point (so a point is worth a lot where flares burn a lot and
+     * nothing where they do not), down to at least `shieldLeakMin` left.
+     */
+    shieldCut: 0.3,
+    shieldLeakMin: 0.08,
+    /** The shield foundry makes every shield point this much stronger. */
+    foundryShield: 1.5,
+    /** Where the sun's edge steps start and how fast the fleet moves between them. */
+    startDistance: 1,
+    distanceStepSeconds: 20,
+    /** Light each distance gathers (step 0 far, 4 brushing the sun). */
+    light: [0.7, 1, 1.5, 2.0, 2.6] as readonly number[],
+    /** How hot each distance is under a usual sun: the share of a flare that reaches the fleet (see `reach` and `stray` for the other moods). */
+    heat: [0, 0.1, 0.22, 0.38, 0.6] as readonly number[],
+    /** How hard each size of flare burns, unshielded and at heat 1. */
+    flareBurn: [1, 4, 8] as readonly number[],
+    /** No flare burns this share of the fleet or more, however hot and big (the burn bends toward it). */
+    burnCap: 0.58,
+    /** The share of the probes a flare burns that are mended, and about how long that takes. */
+    repairShare: 0.65,
+    repairSeconds: 60,
+    /**
+     * A flare also dazzles the collectors: light is cut by its burn share
+     * times `dazzleHit` (at most `dazzleMax`), back to full over `dazzleSeconds`.
+     */
+    dazzleHit: 1.5,
+    dazzleMax: 0.7,
+    dazzleSeconds: 40,
+    /**
+     * The sun's moods, which come and go on their own: how soon its flares
+     * come (a gap of `gapMin` plus up to `gapSpread` seconds) and how big
+     * (the odds of small, medium and big).
+     */
+    moods: [
+      {
+        name: "quiet",
+        gapMin: 150,
+        gapSpread: 100,
+        lead: 50,
+        reach: 0.7,
+        stray: 0,
+        odds: [0.7, 0.25, 0.05],
+      },
+      {
+        name: "usual",
+        gapMin: 70,
+        gapSpread: 50,
+        lead: 45,
+        reach: 1,
+        stray: 0,
+        odds: [0.25, 0.4, 0.35],
+      },
+      {
+        name: "restless",
+        gapMin: 30,
+        gapSpread: 30,
+        lead: 8,
+        reach: 1.2,
+        stray: 0.15,
+        odds: [0.02, 0.28, 0.7],
+      },
+    ] as readonly {
+      name: string;
+      gapMin: number;
+      gapSpread: number;
+      /** How many seconds ahead its flares are forecast (a restless sun gives little warning). */
+      lead: number;
+      /** How much of a step's heat a flare of this mood reaches, and the heat it reaches even at the far edge. */
+      reach: number;
+      stray: number;
+      odds: readonly number[];
+    }[],
+    /** A mood lasts this long, and the sun starts out "usual". */
+    moodMin: 150,
+    moodSpread: 150,
+    startMood: 1,
+    /** The chance the forecast has the size right (with sun charts). */
+    forecastSure: 0.6,
+    forecastSureCharts: 0.9,
+    /** Flare watchers show the forecast this much sooner. */
+    watchLead: 15,
+    /** How long the flare and wild moments stay on in the picture. */
+    hitSeconds: 6,
+    wildBannerSeconds: 6,
+    /** Pop-ups (story cards) wait this long after a banner is gone. */
+    momentAfter: 2,
+    homeBannerSeconds: 6,
+    /** Copying above this many points sends copies wild: this share of them, times the points over, squared. */
+    wildFree: 2,
+    wildShare: 0.06,
+    wildMax: 0.95,
+    /** Wild probes grow on their own at this share of a probe's growth (and take no stars for you). */
+    wildGrowth: 1,
+    /** Wild probes crowd the sky: tame growth and star-taking shrink by this share of the wild share. */
+    wildCrowd: 0.6,
+    /** The share of the sunlight wild probes keep (at most, when all are wild). */
+    wildLight: 0.8,
+    /** Bringing them home: design points pulled from copying for this long. */
+    recallPoints: 3,
+    recallSeconds: 20,
+    /** The wild ones are first noticed when they are this share of the fleet. */
+    wildNotice: 0.04,
   },
   last: {
-    /** The flame (0..flameFull) starts here, whatever came before. */
-    startFlame: 600,
+    /** The warmth (0..flameFull, kept in `flame`) starts here, whatever came before. */
+    startFlame: 300,
     flameFull: 1000,
+    /** The warmth never goes below this share: the lantern is never out. */
+    warmFloor: 0.08,
+    /** How fast the warmth moves to where the lights leave it (a share a second). */
+    warmRate: 0.06,
+    /** The hearth's own warmth with no lights burning, and what each hearth step adds. */
+    hearthBase: 0.65,
+    hearthStep: 0.05,
+    /** Resolve per second (the pace of the quiet), per tap, and the share of it that even a cold flame gives. */
+    resolvePerSecond: 0.3,
+    resolvePerTap: 0.04,
+    coldResolve: 0.35,
+    /** The crossing itself gives hope: resolve a second for each full pace of the boat. */
+    hopePerSecond: 1.4,
+    /** Letting go pays this share of a ripe light's worth when cold, rising to all of it when warm. */
+    lumpCold: 0.2,
+    /** Letting go takes this long (no second light goes meanwhile), and the light's burn fades over `riseSeconds`. */
+    goSeconds: 40,
+    riseSeconds: 10,
+    /** "GOODBYE, LITTLE LIGHT" and the flower stay on the picture this long. */
+    /** A goodbye's lump comes in as the flower opens: each second pays 2 / `lumpSeconds` of what is still owed, so most of it is in within `lumpSeconds`. */
+    lumpSeconds: 40,
+    goodbyeSeconds: 7,
+    /** Story cards wait this long more after a goodbye is gone, so none covers it. */
+    goodbyeAfter: 2,
+    /** The boat sails this many seconds with full warmth, and at this share of that when the flame is out. */
+    boatSeconds: 1700,
+    boatFloor: 0.36,
     /**
-     * Share of the flame lost each second for every light still lit, plus
-     * `darkness` more lights' worth (the dark itself): it never reaches zero
-     * by itself, and the lights going out lets it climb, not run away.
+     * Fog slows the boat to `fogPace` of its pace at the coldest, easing off
+     * between `fogFrom` and `fogTo` warmth; a warm flame makes it surge up to
+     * `surgePace` faster between `surgeFrom` and `surgeAt` (the picture shows
+     * the surge from `surgeAt`).
      */
-    decayPerLight: 0.003,
-    darkness: 3,
+    fogPace: 0.35,
+    fogFrom: 0.1,
+    fogTo: 0.45,
+    surgePace: 0.2,
+    surgeFrom: 0.6,
+    surgeAt: 0.75,
+    /** Fog creeps in below this warmth, and a step changes only once the warmth is this much of a step past it. */
+    fogBelow: 0.45,
+    fogHold: 0.2,
     /**
-     * Share of the way to a full flame one tap brings: a few taps warm a cold
-     * lantern, and tapping a warm one does little, so tending is a top-up now
-     * and then, not a mash.
+     * The cold winds: every so often a wind of one kind (sea, town or hills)
+     * blows for a spell, and only the lights that kind bites burn harder
+     * (their burn times `mult`); the rest burn as usual. A wind is forecast
+     * `lead` seconds ahead, with its kind and size, so the player can let
+     * the lights it will bite go first.
      */
-    tapWarmth: 0.15,
-    /** Resolve per second (the pace of letting go), and per tap. */
-    resolvePerSecond: 1,
-    resolvePerTap: 0.06,
-    /** A cold flame still lets go, at this share of the pace (never zero). */
-    flameFloor: 0.75,
-    /** Each light let go makes the next easier: this much more resolve. */
-    reliefPerLetGo: 0.25,
-    /** Gifts: porch/bridge-like (fade), festival-like (burst), moon-like (taps). */
-    fadeSaving: 0.6,
-    tapGift: 0.6,
-    burstFlame: 600,
-    brightDecay: 0.12,
-    /** The first ship's boat appears when this many lights are left. */
-    boatAtLights: 3,
-    /** Heading lost per second (percent), and what one tap on the beam gives. */
-    boatDrift: 0.6,
-    boatSteer: 45,
-    /** The boat sails at this share of its pace when off course (never zero). */
-    boatFloor: 0.3,
-    /** Seconds the crossing takes with the beam true. */
-    boatSeconds: 120,
+    chill: {
+      first: 50,
+      gapMin: 20,
+      gapSpread: 30,
+      lead: 35,
+      seconds: 45,
+      mult: [2.5, 4, 6] as const,
+      /** A light let go while the wind that bites it blows pays this many times its lump (the wind carries the goodbye). */
+      carry: 5,
+      odds: [0.4, 0.35, 0.25] as const,
+    },
     /**
-     * Steering earns resolve: while the boat is out, a true heading makes
-     * letting go this much faster (never below 1x). The bonus is full from
-     * `steerTrue` and fades to nothing at `steerFrom`.
+     * A kind safety net: when no light has been let go for this long, the
+     * heaviest one burns down by itself (the same goodbye, the same flower),
+     * and again after the same wait. A player who only watches still gets
+     * home, and a player who reads never meets it.
      */
-    steerBonus: 0.5,
-    steerFrom: 40,
-    steerTrue: 80,
+    netSeconds: 150,
+    /** What a hearth step, a slow burn and warm company change. */
+    hearthTiers: 6,
+    /** Each sail step makes the boat this much faster (they stack). */
+    sailMult: 1.15,
+    slowBurn: 0.85,
+    companyMult: 1.3,
+    /** Each step of the crossing song makes its hope this much bigger (they stack). */
+    songMult: 1.3,
+    /**
+     * The eleven remembered lights, nearest to farthest. `burn` is the warmth
+     * share it costs each second; `company` is the resolve a second it keeps
+     * you while it burns; `memory` is what it pays to let it go (the most, if
+     * the flame is warm). Each run moves every number by up to `spread`
+     * either way, from the run's own seed.
+     */
+    spread: 0.5,
+    lonely: 0.6,
+    lights: [
+      { burn: 0.02, company: 0.115, memory: 60 },
+      { burn: 0.03, company: 0.134, memory: 60 },
+      { burn: 0.07, company: 0.422, memory: 180 },
+      { burn: 0.035, company: 0.096, memory: 90 },
+      { burn: 0.022, company: 0.192, memory: 120 },
+      { burn: 0.08, company: 0.384, memory: 180 },
+      { burn: 0.03, company: 0.173, memory: 120 },
+      { burn: 0.018, company: 0.154, memory: 120 },
+      { burn: 0.014, company: 0.058, memory: 90 },
+      { burn: 0.06, company: 0.307, memory: 180 },
+      { burn: 0.022, company: 0.077, memory: 120 },
+    ] as const,
   },
 } as const;

@@ -38,7 +38,6 @@ describe("every upgrade lands", () => {
     const tank = (tier: number) => C.tankSeconds + C.tankSecondsPerTier * tier;
     expect(tank(1) / tank(0)).toBeGreaterThanOrEqual(BIG);
     expect(tank(2) / tank(1)).toBeGreaterThanOrEqual(BIG);
-    expect(TUNING.tide.biggerNetsFactor).toBeGreaterThanOrEqual(BIG);
   });
 
   it("every night step is at least half as big again", () => {
@@ -57,17 +56,23 @@ describe("every upgrade lands", () => {
     expect(S.relayBonus).toBeGreaterThanOrEqual(BIG);
     expect(S.appetiteBonus).toBeGreaterThanOrEqual(2);
     expect(1 / S.engineSaving).toBeGreaterThanOrEqual(BIG);
-    expect(1 / TUNING.probes.finsTimeFactor).toBeGreaterThanOrEqual(2);
     const aim = (level: number) => S.aimBase + S.aimPerLevel * level;
     expect(aim(1) / aim(0)).toBeGreaterThanOrEqual(2);
     expect(aim(2) / aim(1)).toBeGreaterThanOrEqual(BIG);
   });
 
-  it("every light let go leaves a gift that is plainly felt", () => {
-    expect(1 / L.fadeSaving).toBeGreaterThanOrEqual(BIG);
-    expect(L.tapGift).toBeGreaterThanOrEqual(0.5);
-    expect(L.burstFlame).toBeGreaterThanOrEqual(0.5 * L.startFlame);
-    expect(L.reliefPerLetGo).toBeGreaterThanOrEqual(0.2);
+  it("every step of the last part's shop is plainly felt", () => {
+    // A song and warm company are each at least a quarter more. A sail is
+    // 15% (five of them make the boat twice as fast): the sails' weight was
+    // moved into the base pace so a player who never buys still gets home in
+    // about twice the time (see warmthDials.test.ts), and each sail still
+    // shows in the picture.
+    expect(L.sailMult).toBeGreaterThanOrEqual(1.15);
+    expect(L.songMult).toBeGreaterThanOrEqual(1.25);
+    expect(L.companyMult).toBeGreaterThanOrEqual(1.25);
+    // A hearth step is a good share of what a light costs in warmth.
+    expect(L.hearthStep).toBeGreaterThanOrEqual(0.04);
+    expect(1 / L.slowBurn).toBeGreaterThanOrEqual(1.15);
   });
 
   it("no collector is bought that the picture does not draw", () => {

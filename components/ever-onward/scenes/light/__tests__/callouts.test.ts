@@ -1,5 +1,4 @@
 import { sceneInfo } from "@/lib/ever-onward/universes/light";
-import { LET_GO } from "@/lib/ever-onward/universes/light/upgrades";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import { COAST_LIGHTHOUSES } from "@/lib/ever-onward/universes/light/resources";
@@ -35,15 +34,14 @@ describe("scene callouts", () => {
     }
   });
 
-  it("points each let-go at the light of the same position in LET_GO", () => {
-    LET_GO.forEach((light, i) => {
-      const callout = calloutFor({ upgradeId: light.id, n: 1 }, info);
-      expect(callout).not.toBeNull();
-      expect(CALLOUT_IDS.indexOf(light.id)).toBeGreaterThan(-1);
-      expect(CALLOUT_IDS.filter((id) => id.startsWith("letgo-"))[i]).toBe(
-        light.id
+  it("has a spot for every step of the last part's shop", () => {
+    for (const base of ["hearth", "sail", "company", "song", "slowburn"]) {
+      const steps = lightUniverse.upgrades.filter((u) =>
+        u.id.startsWith(`${base}-`)
       );
-    });
+      expect(steps.length).toBeGreaterThan(0);
+      for (const step of steps) expect(CALLOUT_IDS).toContain(step.id);
+    }
   });
 
   it("names the same lighthouse count the caption caps at", () => {

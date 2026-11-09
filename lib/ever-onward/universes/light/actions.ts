@@ -1,82 +1,38 @@
 import type { ActionDef } from "../../engine/types";
-import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
+import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT } from "./resources";
 import {
-  boatArrived,
-  boatHeadingOf,
-  isBoatOut,
-  isReadyToFlash,
-  steerBonus,
   barrelOil,
-  flareBonus,
-  headingFactor,
-  headingOf,
-  isCourseAuto,
-  isCourseInPlay,
-  isFlareOn,
-  gridFactor,
-  gridSteadiness,
-  isGridAuto,
-  isGridGlowing,
-  isFleetGlowing,
-  isGridInPlay,
   isOilCheap,
   isOilDear,
-  isRushOn,
-  nextFlareIn,
-  nextRushIn,
-  rushBonus,
-  balanceKnowhow,
   tankCapacity,
   isBeamOpen,
-  calmIncomePerSecond,
-  calmSkyIncomePerSecond,
-  resolvePerSecond,
+  incomePerSecond,
 } from "./tick";
+import { short } from "./preview";
 import { TUNING } from "./tuning";
 import { LAMP_ACTIONS } from "./lamps";
 import { BEAM_ACTIONS } from "./beam";
 import {
+  MAX_CREWS,
+  POST_COUNT,
   TOWNS,
-  chanceOf,
-  crewActionId,
+  POST_BUILD,
+  POST_SCHOOL,
+  POST_WATCH,
   crewCount,
-  hasCrew,
-  hasWeatherVane,
+  crewPostActionId,
+  isCrewsOpen,
   isWeatherOpen,
-  toggleCrew,
-  weatherStage,
+  postOf,
+  setPost,
+  moveFee,
+  isCommitted,
 } from "./weather";
-import {
-  HAUL_ACTION,
-  SET_NETS_ACTION,
-  catchCoins,
-  earlinessIfSetNow,
-  haulIn,
-  isTideOpen,
-  netState,
-  setNets,
-} from "./tide";
-import {
-  ROUTES,
-  isProbeOut,
-  isProbesOpen,
-  launchActionId,
-  launchProbe,
-  routeHaul,
-  routeSeconds,
-} from "./probes";
-import {
-  PICK_ACTION,
-  WATER_ACTION,
-  bloomCount,
-  pickWorthShown,
-  canWaterNow,
-  growingCount,
-  isGardenOpen,
-  pickBlooms,
-  waterCooldownLeft,
-  waterGarden,
-} from "./garden";
+import { TOLL_ACTIONS } from "./toll";
+import { noteBuy } from "./tanker";
+import { DESIGN_ACTIONS, RECALL } from "./design";
+import { DISTANCE_ACTIONS } from "./sunEdge";
+import { LET_GO_ACTIONS, isReadyToFlash, letAllGo } from "./warmth";
 import { formatNumber } from "../../engine/format";
 import { FORK_ACTIONS } from "./forks";
 import {
@@ -147,149 +103,10 @@ const BUY_OIL: ActionDef = {
   // The engine took `paid` coins for what the tank could take or the coins
   // could buy; the oil is exactly what that paid for.
   perform: (run, paid) => {
-    run.resources.oil += paid / Math.max(run.resources.oilPrice, 0.01);
-  },
-};
-
-/** Steadiness at or above this has nothing to fix. */
-const GRID_STEADY = 75;
-
-/** The grid strains as cities light; a free fix, whenever you like. */
-const BALANCE_GRID: ActionDef = {
-  id: "balance-grid",
-  phases: [PHASE_NIGHT],
-  visibleWhen: (run) => isGridInPlay(run) && !isGridAuto(run),
-  describe: (run) => {
-    const steadiness = gridSteadiness(run);
-    const pays = Math.round(gridFactor(run) * 100);
-    const tone = steadiness < 50 ? "bad" : steadiness < 80 ? "neutral" : "good";
-    const text =
-      steadiness < 50 ? "dimming" : steadiness < 80 ? "uneasy" : "steady";
-    return {
-      label:
-        steadiness >= GRID_STEADY
-          ? "The grid is steady and glowing"
-          : "Balance the grid",
-      detail: `Steadiness ${Math.floor(steadiness)}% · cities pay ${pays}%${
-        isGridGlowing(run) ? " (steady glow +15%)" : ""
-      }${isRushOn(run) ? " · rush hour is waiting" : ""}`,
-      isBlocked: steadiness >= GRID_STEADY,
-      hint: { text, tone },
-      trendResource: "grid",
-    };
-  },
-  perform: (run) => {
-    run.resources.grid = 100;
-    run.resources.knowhow = (run.resources.knowhow ?? 0) + balanceKnowhow(run);
-  },
-};
-
-/** A claimable bonus while the evening rush is on; claiming it never costs. */
-const RIDE_RUSH: ActionDef = {
-  id: "ride-rush",
-  phases: [PHASE_NIGHT],
-  visibleWhen: (run) => isRushOn(run),
-  describe: (run) => ({
-    label: "Ride the evening rush",
-    detail: `Everyone is switching on at once, and it will wait for you: +${formatNumber(
-      Math.floor(rushBonus(run))
-    )} power`,
-    hint: { text: "bonus", tone: "good" },
-  }),
-  perform: (run) => {
-    run.resources.power += rushBonus(run);
-    run.resources.knowhow =
-      (run.resources.knowhow ?? 0) + TUNING.projects.perRush;
-    run.resources.rushRides = (run.resources.rushRides ?? 0) + 1;
-    run.resources.rush = 0;
-    run.resources.rushCooldown = nextRushIn(run);
-  },
-};
-
-/** Heading at or above this has nothing to correct. */
-const ON_COURSE = 75;
-
-/** Probes wander as the fleet grows; a free correction points them home. */
-const CORRECT_COURSE: ActionDef = {
-  id: "correct-course",
-  phases: [PHASE_SKY],
-  visibleWhen: (run) => isCourseInPlay(run) && !isCourseAuto(run),
-  describe: (run) => {
-    const heading = headingOf(run);
-    const pace = Math.round(headingFactor(run) * 100);
-    const tone = heading < 50 ? "bad" : heading < 80 ? "neutral" : "good";
-    const text = heading < 50 ? "lost" : heading < 80 ? "drifting" : "true";
-    return {
-      label:
-        heading >= ON_COURSE
-          ? "The fleet is on course, in formation"
-          : "Send a course correction",
-      detail: `Heading ${Math.floor(heading)}% · the fleet works at ${pace}% pace${
-        isFleetGlowing(run) ? " (steady glow +15%)" : ""
-      }${isFlareOn(run) ? " · a flare is out" : ""}`,
-      isBlocked: heading >= ON_COURSE,
-      hint: { text, tone },
-      trendResource: "heading",
-    };
-  },
-  perform: (run) => {
-    run.resources.heading = 100;
-    run.resources.knowhow =
-      (run.resources.knowhow ?? 0) + TUNING.projects.sky.perCourse;
-  },
-};
-
-/** A claimable bonus while a solar flare is out; claiming it never costs. */
-const CATCH_FLARE: ActionDef = {
-  id: "catch-flare",
-  phases: [PHASE_SKY],
-  visibleWhen: (run) => isFlareOn(run),
-  describe: (run) => ({
-    label: "Catch the solar flare",
-    detail: `A burst of sunlight, waiting for you to take it: +${formatNumber(
-      Math.floor(flareBonus(run))
-    )} energy`,
-    hint: { text: "bonus", tone: "good" },
-  }),
-  perform: (run) => {
-    run.resources.energy += flareBonus(run);
-    run.resources.knowhow =
-      (run.resources.knowhow ?? 0) + TUNING.projects.sky.perFlare;
-    run.resources.flaresCaught = (run.resources.flaresCaught ?? 0) + 1;
-    run.resources.flare = 0;
-    run.resources.flareCooldown = nextFlareIn(run);
-  },
-};
-
-/** Heading at or above this has nothing to steer. */
-const BOAT_TRUE = 80;
-
-/** The first ship's boat drifts in the dark; tap the old beam to steer it. */
-const STEER_BOAT: ActionDef = {
-  id: "steer-boat",
-  phases: [PHASE_LAST],
-  visibleWhen: (run) => isBoatOut(run) && !boatArrived(run),
-  describe: (run) => {
-    const heading = boatHeadingOf(run);
-    const home = Math.floor(run.resources.boatProgress ?? 0);
-    const tone =
-      heading < 40 ? "bad" : heading < BOAT_TRUE ? "neutral" : "good";
-    const text =
-      heading < 40 ? "lost" : heading < BOAT_TRUE ? "drifting" : "true";
-    return {
-      label:
-        heading >= BOAT_TRUE ? "The boat is on its way" : "Tap the old beam",
-      detail: `The boat is ${home}% of the way home · heading ${Math.floor(heading)}% · letting go ${steerBonus(run).toFixed(1)}x faster`,
-      isBlocked: heading >= BOAT_TRUE,
-      hint: { text, tone },
-      trendResource: "boatHeading",
-    };
-  },
-  perform: (run) => {
-    run.resources.boatHeading = Math.min(
-      100,
-      boatHeadingOf(run) + TUNING.last.boatSteer
-    );
+    const wasDark = run.resources.oil <= 0;
+    const oil = paid / Math.max(run.resources.oilPrice, 0.01);
+    run.resources.oil += oil;
+    noteBuy(run, wasDark, oil / tankCapacity(run));
   },
 };
 
@@ -301,161 +118,77 @@ const FLASH_LAMP: ActionDef = {
   describe: () => ({
     label: "Flash the lamp, once",
     detail:
-      "The boat is waiting at the edge of the dark, with one lantern lit.",
+      "The boat is home, waiting at the edge of the dark with one lantern lit. Whatever still burns will lift off with the flash.",
     hint: { text: "the first ship", tone: "good" },
   }),
   perform: (run) => {
+    // Whatever still burns lifts off together with the flash.
+    letAllGo(run);
     run.resources.ships = 1;
     run.flags.finished = true;
   },
 };
 
-/** One crew button per town; the weather desk draws them itself. */
-const SEND_CREW: readonly ActionDef[] = TOWNS.map((name, town) => ({
-  id: crewActionId(town),
-  phases: [PHASE_NIGHT],
-  isInline: true,
-  visibleWhen: isWeatherOpen,
-  describe: (run) => {
-    const isHere = hasCrew(run, town);
-    const crews = crewCount(run);
-    const chance =
-      weatherStage(run) === "forecast"
-        ? `${chanceOf(run, town)}% chance the storm lands here · `
-        : "";
-    return {
-      label: isHere
-        ? `Call the crew back from ${name}`
-        : `Send a crew to ${name}`,
-      detail: `${chance}${crews} ${crews === 1 ? "crew" : "crews"}${
-        hasWeatherVane(run) ? " · the weather vane covers you" : ""
-      }`,
-      hint: isHere ? { text: "crew here", tone: "good" as const } : undefined,
-    };
-  },
-  perform: (run) => toggleCrew(run, town),
-}));
+/** Where a post is, in words. */
+const postName = (post: number): string =>
+  post === POST_BUILD
+    ? "building"
+    : post === POST_SCHOOL
+      ? "the school"
+      : `${TOWNS[post - POST_WATCH]} on storm watch`;
 
-/** The tide clock's two buttons; its panel draws them itself. */
-const SET_NETS: ActionDef = {
-  id: SET_NETS_ACTION,
-  phases: [PHASE_COAST],
-  isInline: true,
-  visibleWhen: isTideOpen,
-  describe: (run) => {
-    const state = netState(run);
-    return {
-      label: state === "empty" ? "Set the nets" : "The nets are out",
-      detail:
-        state === "empty"
-          ? earlinessIfSetNow(run) >= 0.85
-            ? "A full rising tide: the biggest catch."
-            : "Set them before high tide. The earlier, the bigger the catch."
-          : "They fill at high tide, and wait for you.",
-      isBlocked: state !== "empty",
-    };
-  },
-  perform: setNets,
-};
-
-const HAUL_IN: ActionDef = {
-  id: HAUL_ACTION,
-  phases: [PHASE_COAST],
-  isInline: true,
-  visibleWhen: isTideOpen,
-  describe: (run) => ({
-    label: "Haul in!",
-    detail:
-      netState(run) === "full"
-        ? `The nets are full: about ${formatNumber(Math.floor(catchCoins(run, calmIncomePerSecond(run))))} coins.`
-        : "Nothing to haul in yet.",
-    isBlocked: netState(run) !== "full",
-  }),
-  perform: (run) => haulIn(run, calmIncomePerSecond(run)),
-};
-
-/** One launch button per route; the race panel draws them itself. */
-const LAUNCH_ROUTE: readonly ActionDef[] = ROUTES.map((route, index) => ({
-  id: launchActionId(index),
-  phases: [PHASE_SKY],
-  isInline: true,
-  visibleWhen: isProbesOpen,
-  describe: (run) => ({
-    label: `Launch: ${route.name}`,
-    detail: isProbeOut(run)
-      ? "The probe is out. It will be back soon."
-      : `${Math.round(routeSeconds(run, index))} s, about ${formatNumber(
-          Math.floor(routeHaul(run, index, calmSkyIncomePerSecond(run)))
-        )} energy.`,
-    isBlocked: isProbeOut(run),
-  }),
-  perform: (run) => launchProbe(run, index, calmSkyIncomePerSecond(run)),
-}));
-/** The memory garden's two buttons; its panel draws them itself. */
-const WATER_GARDEN: ActionDef = {
-  id: WATER_ACTION,
-  phases: [PHASE_LAST],
-  isInline: true,
-  visibleWhen: isGardenOpen,
-  describe: (run) => {
-    const wait = Math.ceil(waterCooldownLeft(run));
-    return {
-      label: "Water the garden",
-      detail:
-        growingCount(run) === 0
-          ? "Everything is in bloom. Nothing is thirsty."
-          : wait > 0
-            ? "The can is filling up again."
-            : "Every thirsty plant drinks and grows faster for a little while.",
-      isBlocked: !canWaterNow(run),
-    };
-  },
-  perform: waterGarden,
-};
-
-const PICK_BLOOMS: ActionDef = {
-  id: PICK_ACTION,
-  phases: [PHASE_LAST],
-  isInline: true,
-  visibleWhen: isGardenOpen,
-  describe: (run) => {
-    const ready = bloomCount(run);
-    return {
-      label: "Pick the blooms",
-      detail:
-        ready > 0
-          ? `${ready} ${ready === 1 ? "flower is" : "flowers are"} ready: about +${formatNumber(
-              pickWorthShown(ready, resolvePerSecond(run))
-            )} resolve.`
-          : "Nothing in bloom yet. They wait for you when they are.",
-      isBlocked: ready <= 0,
-    };
-  },
-  perform: (run) => pickBlooms(run, resolvePerSecond(run)),
-};
+/** One button per crew and post; the crews panel draws them itself. */
+const CREW_POSTS: readonly ActionDef[] = Array.from(
+  { length: MAX_CREWS },
+  (_, crew) =>
+    Array.from({ length: POST_COUNT }, (_, post): ActionDef => ({
+      id: crewPostActionId(crew, post),
+      phases: [PHASE_NIGHT],
+      isInline: true,
+      visibleWhen: (run) =>
+        isCrewsOpen(run) &&
+        crew < crewCount(run) &&
+        (post < POST_WATCH || isWeatherOpen(run)),
+      describe: (run) => ({
+        label: `Crew ${crew + 1}: ${postName(post)}`,
+        detail: isCommitted(run, crew)
+          ? "On watch until the storm lands."
+          : postOf(run, crew) === post
+            ? "Already there."
+            : post >= POST_WATCH
+              ? `The road takes ${TUNING.grid.moveSeconds} s, and the sandbags and wages cost about ${short(moveFee(incomePerSecond(run)))} power.`
+              : `The road takes ${TUNING.grid.moveSeconds} s, and nothing else.`,
+        isBlocked: postOf(run, crew) === post || isCommitted(run, crew),
+      }),
+      perform: (run) => {
+        if (postOf(run, crew) === post || isCommitted(run, crew)) return;
+        // Going out on storm duty costs sandbags and wages; coming home is free.
+        const fee = post >= POST_WATCH ? moveFee(incomePerSecond(run)) : 0;
+        run.resources.power = Math.max(0, (run.resources.power ?? 0) - fee);
+        setPost(run, crew, post);
+      },
+    }))
+).flat();
 
 /**
- * The second thing know-how buys: a minute of everything paying double, with
- * the grid (or the fleet) slipping faster. Steady all minute, half comes back.
+ * The second thing know-how buys: a minute of everything paying double. The
+ * plants run hot, nothing charges the batteries and the evening rush is
+ * bigger. Keep every district lit all minute and half comes back.
  */
 const OVERDRIVE: ActionDef = {
   id: OVERDRIVE_ACTION,
-  phases: [PHASE_NIGHT, PHASE_SKY],
+  phases: [PHASE_NIGHT],
   visibleWhen: isOverdriveOpen,
   describe: (run) => {
     const O = TUNING.overdrive;
-    const isNight = run.phase === 1;
-    const thing = isNight ? "grid" : "fleet";
     if (isOverdriveOn(run)) {
       const isSteady = isOverdriveSteady(run);
       return {
-        label: isNight
-          ? "The plants are running hot"
-          : "The fleet is at full burn",
+        label: "The plants are running hot",
         detail: `${Math.ceil(overdriveSecondsLeft(run))} s left · ${
           isSteady
             ? `steady so far: half your know-how comes back`
-            : `the ${thing} slipped: no know-how comes back`
+            : "a district went dark: no know-how comes back"
         }`,
         isBlocked: true,
         hint: isSteady
@@ -465,9 +198,9 @@ const OVERDRIVE: ActionDef = {
     }
     const last = lastOverdrive(run);
     return {
-      label: isNight ? "Run the plants hot" : "Full burn",
-      detail: `${last === 1 ? "Last run held steady. " : last === 2 ? "Last run slipped. " : ""}Everything pays ${O.boost}× for ${O.seconds} s, but the ${thing} slips ${O.strain}× as fast. Keep it above ${O.cleanAbove}% and half the know-how comes back.`,
-      cost: { resource: "knowhow", amount: overdriveCost(run) },
+      label: "Run the plants hot",
+      detail: `${last === 1 ? "Last run held steady. " : last === 2 ? "Last run slipped. " : ""}Everything pays ${O.boost}× for ${O.seconds} s, but nothing charges the batteries and the evening rush is ${Math.round((TUNING.grid.hotPeak - 1) * 100)}% bigger. Keep every district lit all minute and half the know-how comes back.`,
+      cost: { resource: "knowhow", amount: overdriveCost() },
     };
   },
   perform: (run) => startOverdrive(run),
@@ -519,18 +252,13 @@ export const ACTIONS: readonly ActionDef[] = [
   ...FUND_IN,
   FUND_OUT,
   BUY_OIL,
-  BALANCE_GRID,
-  RIDE_RUSH,
-  CORRECT_COURSE,
-  CATCH_FLARE,
-  STEER_BOAT,
   FLASH_LAMP,
-  ...SEND_CREW,
-  SET_NETS,
-  HAUL_IN,
-  ...LAUNCH_ROUTE,
-  WATER_GARDEN,
-  PICK_BLOOMS,
+  ...CREW_POSTS,
+  ...DESIGN_ACTIONS,
+  RECALL,
+  ...DISTANCE_ACTIONS,
+  ...LET_GO_ACTIONS,
   ...LAMP_ACTIONS,
   ...BEAM_ACTIONS,
+  ...TOLL_ACTIONS,
 ];

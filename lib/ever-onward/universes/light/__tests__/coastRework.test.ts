@@ -12,7 +12,6 @@ import { BEAM_STEPS, bestBeamStep, beamNumbers } from "../beam";
 import { isFundOpen } from "../fund";
 import { FORKS } from "../forks";
 import { lightGoal } from "../goal";
-import { isTideOpen } from "../tide";
 import {
   autoFlashRate,
   beamStep,
@@ -91,9 +90,9 @@ describe("keepers and lighthouses compound", () => {
       );
   });
 
-  it("caps keepers at 40", () => {
+  it("caps keepers at 14", () => {
     const keeper = def.upgrades.find((u) => u.id === "keeper")!;
-    expect(keeper.maxLevel).toBe(40);
+    expect(keeper.maxLevel).toBe(14);
     expect(keeper.baseCost).toBe(15);
   });
 
@@ -184,7 +183,10 @@ describe("the lamp's brightness", () => {
   it("changes which step is best as the oil price moves: blaze when cheap, dim when dear", () => {
     const at = (price: number): number =>
       bestBeamStep(
-        coast({ keeper: 10, lighthouse: 2 }, { oilPrice: price, oil: 500 })
+        coast(
+          { keeper: 10, lighthouse: 2 },
+          { oilPrice: price, oilBase: price, oil: 500 }
+        )
       );
     expect(at(0.3)).toBe(3);
     expect(at(3.5)).toBe(0);
@@ -195,7 +197,7 @@ describe("the lamp's brightness", () => {
   });
 
   it("previews what each step would earn after the oil, and how long the tank lasts", () => {
-    const run = coast({ keeper: 10 }, { oilPrice: 2, oil: 100 });
+    const run = coast({ keeper: 10 }, { oilPrice: 2, oilBase: 2, oil: 100 });
     const numbers = BEAM_STEPS.map((_, i) => beamNumbers(run, i));
     // dimmer: the tank lasts longer
     for (let i = 1; i < numbers.length; i += 1)
@@ -212,33 +214,17 @@ describe("what the Coast no longer has", () => {
     );
   });
 
-  it("has no tide clock: the fish market only builds a market", () => {
-    let run = coast({ keeper: 5, "dock-1": 1 });
-    for (let i = 0; i < 400; i += 1) run = tick(def, run, 1);
-    expect(isTideOpen(run)).toBe(false);
+  it("has no tide clock or nets: the fish market only builds a market", () => {
     expect(def.upgrades.map((u) => u.id)).not.toContain("nets-1");
     expect(def.upgrades.map((u) => u.id)).not.toContain("tide-mill");
+    expect((def.actions ?? []).map((a) => a.id)).not.toContain("tide-set");
+    expect((def.actions ?? []).map((a) => a.id)).not.toContain("tide-haul");
   });
 
   it("shows the fork at four lighthouses, not before", () => {
     const fork = FORKS.find((f) => f.id === "coast")!;
     expect(fork.isOpen(coast({ lighthouse: 2 }, { ships: 1e6 }))).toBe(false);
     expect(fork.isOpen(coast({ lighthouse: 3 }))).toBe(true);
-  });
-
-  it("loads an old mid-Coast save, with the tide clock still ticking", () => {
-    const old = coast(
-      { keeper: 10, lighthouse: 4, "nets-1": 1, "tide-mill": 1, "dock-1": 1 },
-      { coins: 5000 }
-    );
-    old.flags["tide-open"] = true;
-    delete old.resources.lampBeam;
-    const loaded = reconcileRun(def, old);
-    expect(isTideOpen(loaded)).toBe(true);
-    let run = loaded;
-    for (let i = 0; i < 60; i += 1) run = tick(def, run, 1);
-    for (const value of Object.values(run.resources))
-      expect(Number.isFinite(value)).toBe(true);
   });
 });
 

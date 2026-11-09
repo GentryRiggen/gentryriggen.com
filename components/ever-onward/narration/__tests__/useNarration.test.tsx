@@ -86,6 +86,28 @@ describe("useNarration", () => {
     expect(result.current.toast?.clipId).toBe("light/coast-hello");
   });
 
+  it("starts the toast's clock only when it can be seen, so a held one gets its whole time", () => {
+    const { result, rerender } = renderHook(
+      ({ story, isHeld }) => useNarration({ def, run: runWith(story), isHeld }),
+      { initialProps: { story: [] as string[], isHeld: true } }
+    );
+    rerender({ story: ["coast-hello"], isHeld: true });
+    // Held for far longer than a toast lives: it is still waiting its turn.
+    act(() => {
+      jest.advanceTimersByTime(TOAST_MS * 2);
+    });
+    rerender({ story: ["coast-hello"], isHeld: false });
+    expect(result.current.toast?.clipId).toBe("light/coast-hello");
+    act(() => {
+      jest.advanceTimersByTime(TOAST_MS - 1000);
+    });
+    expect(result.current.toast).not.toBeNull();
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(result.current.toast).toBeNull();
+  });
+
   it("plays without a toast when auto-play is on", () => {
     act(() => setNarrationSettings({ isAutoPlay: true }));
     const { result, rerender } = setup([]);

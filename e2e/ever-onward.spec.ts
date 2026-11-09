@@ -77,6 +77,171 @@ test.describe("Ever Onward", () => {
     await expect(panel.getByTestId("eo-bees-honey")).toContainText("Honey");
   });
 
+  test("the coast's harbor toll and oil market show in the panels and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-jump-light-0-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 20_000,
+    });
+    // The harbor desk: the plus and the minus of every toll, and the rival's sign.
+    const harbor = page.getByTestId("lm-harbor");
+    await expect(harbor).toBeVisible();
+    await expect(harbor.getByRole("radio")).toHaveCount(5);
+    await expect(harbor.getByTestId("lm-harbor-rival")).toContainText("x");
+    await expect(harbor.getByTestId("lm-toll-boats-0")).toBeAttached();
+    // The lamp panel keeps its brightness knob beside the oil market, and
+    // never says which step is best.
+    const lamp = page.getByTestId("lm-lamp");
+    await expect(lamp).toBeVisible();
+    await expect(lamp.getByRole("radio")).toHaveCount(4);
+    await expect(lamp).not.toContainText(/best/i);
+    // The picture: the toll sign on the quay, ships on the water, the tank.
+    await expect(page.getByTestId("lm-toll-sign")).toBeAttached();
+    await expect(page.getByTestId("lm-harbor-ships")).toBeAttached();
+    await expect(page.getByTestId("lm-tank-fill")).toBeAttached();
+    // Setting a toll shows in the panel and the sign.
+    await harbor.getByTestId("lm-toll-3").click();
+    await expect(harbor).toHaveAttribute("data-step", "3");
+    await expect(page.getByTestId("lm-toll-sign")).toHaveAttribute(
+      "data-step",
+      "3"
+    );
+  });
+
+  test("the night's grid and crews show in the panels and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-jump-light-1-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 60_000,
+    });
+    // The grid panel: the day, tonight's rush and what carries it. It shows
+    // what you would see (how big tonight looks, how full the bank is) and
+    // never both sides of a sum, nor which streetlights to pick.
+    const grid = page.getByTestId("lm-grid");
+    await expect(grid).toBeVisible();
+    await expect(grid.getByTestId("lm-day-strip")).toBeAttached();
+    await expect(grid.getByTestId("lm-grid-tonight")).toContainText(/evening/);
+    await expect(grid.getByTestId("lm-grid-bars")).toBeAttached();
+    await expect(grid.getByTestId("lm-grid-batteries")).toBeVisible();
+    await expect(grid).not.toContainText(/best|recommend|asks|holds/i);
+    await expect(grid).not.toContainText(/\d+(\.\d)? s\b/);
+    const lamps = page.getByTestId("lm-lamps");
+    await expect(lamps).not.toContainText(/rush hits \d/i);
+    // The crews: each on a post; a tap sends one, and it spends time on the road.
+    const crews = page.getByTestId("lm-crews");
+    await expect(crews).toBeVisible();
+    await expect(crews).toContainText(/sandbags and wages/);
+    // The test mode's player has already posted its crews; send a crew that is
+    // not committed to a storm watch to whichever of building and the school
+    // it is not at.
+    let crewId = 1;
+    if (
+      (await page.getByTestId("lm-crew-1").getAttribute("data-committed")) ===
+      "true"
+    )
+      crewId = 0;
+    const crew = page.getByTestId(`lm-crew-${crewId}`);
+    const at = await crew.getAttribute("data-post");
+    const other = at === "0" ? 1 : 0;
+    await crews.getByTestId(`lm-crew-${crewId}-post-${other}`).click();
+    await expect(crew).toHaveAttribute("data-moving", "true");
+    await expect(crew).toHaveAttribute("data-post", String(other));
+    // The picture: the sky's clock, the battery bank and the crews at their posts.
+    await expect(page.getByTestId("lm-night-sky")).toBeAttached();
+    await expect(page.getByTestId("lm-bank")).toBeAttached();
+    await expect(page.getByTestId("lm-station-build")).toBeAttached();
+    await expect(page.getByTestId("lm-station-school")).toBeAttached();
+  });
+
+  test("the sky's dials show in the panels and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-jump-light-2-late").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 60_000,
+    });
+    // The sun's edge: the mood and the forecast are plain words; the five
+    // steps show light and flare heat as bars, never numbers to work out.
+    const edge = page.getByTestId("lm-sunedge");
+    await expect(edge).toBeVisible();
+    await expect(edge.getByTestId("lm-sun-mood")).toBeVisible();
+    await expect(edge.getByTestId("lm-sun-forecast")).toBeVisible();
+    await expect(edge).not.toContainText(/best|recommend/i);
+    await edge.getByTestId("lm-sunedge-4").click();
+    await expect(edge).toHaveAttribute("data-step", "4");
+    // The probe design: four stats, each with its plus and its minus.
+    const design = page.getByTestId("lm-design");
+    await expect(design).toBeVisible();
+    await expect(design).not.toContainText(/best|recommend/i);
+    const speed = design.getByTestId("lm-design-speed");
+    const before = Number(await speed.getAttribute("data-points"));
+    await design.getByTestId("lm-design-down-speed").click();
+    await expect(speed).toHaveAttribute("data-points", String(before - 1));
+    await expect(design).toHaveAttribute("data-spare", "1");
+    await design.getByTestId("lm-design-up-copying").click();
+    await expect(design).toHaveAttribute("data-spare", "0");
+    await expect(design.getByTestId("lm-wild")).toBeVisible();
+    // The picture: the robot's stream of probes and the sun's dials.
+    await expect(page.getByTestId("lm-sky-dials")).toBeAttached();
+  });
+
+  test("the last light's remembered lights show in the panel and the picture", async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("analytics-exclude", "1");
+    });
+    await startGame(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByTestId("eo-jump-light-3-start").click();
+    await expect(page.getByTestId("eo-test-badge")).toHaveText("Test 1×", {
+      timeout: 60_000,
+    });
+    // Jumping to the start of a part plays its opening card first.
+    await passCutscene(page);
+    // The lights: each shows what it costs in warmth and the company it keeps
+    // as marks, never a number to divide, and never which one to let go.
+    const lights = page.getByTestId("lm-lights");
+    await expect(lights).toBeVisible();
+    await expect(lights).toHaveAttribute("data-lit", "11");
+    await expect(lights.getByTestId("lm-wind")).toBeVisible();
+    await expect(lights).not.toContainText(/best|recommend/i);
+    // The picture: lamps along the shore, the boat in its golden haze.
+    await expect(page.getByTestId("lm-last-lamp").first()).toBeAttached();
+    expect(
+      await page.getByTestId("lm-last-lamp").count()
+    ).toBeGreaterThanOrEqual(11);
+    await expect(page.getByTestId("lm-boat-haze").first()).toBeAttached();
+    // Letting one go: a lantern lifts off, a flower blooms, the count drops.
+    await lights.getByTestId("lm-letgo-3").click();
+    await expect(lights).toHaveAttribute("data-lit", "10");
+    await expect(page.getByTestId("lm-goodbye").first()).toBeAttached();
+    await expect(page.getByTestId("lm-goodbye-lantern").first()).toBeAttached();
+    await expect(page.getByTestId("lm-goodbye-banner").first()).toContainText(
+      "BRIDGE LIGHTS"
+    );
+    await expect(page.getByTestId("lm-scene-flower").first()).toBeAttached();
+    // The next one waits a moment while this one rises.
+    await expect(lights.getByTestId("lm-lights-note")).toContainText(/rising/);
+  });
+
   test("the old window box turns the blind, and the picture shows the light and the leaves", async ({
     page,
   }) => {

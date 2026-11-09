@@ -25,6 +25,9 @@ const customJestConfig = {
     "<rootDir>/.claude/",
     "<rootDir>/firestore-tests/",
     "/__tests__/fixtures\\.ts$",
+    "/__tests__/nightSim\\.ts$",
+    "/__tests__/skySim\\.ts$",
+    "/__tests__/lastSim\\.ts$",
     // CI runs the slow ones in their own job; a CLI --testPathIgnorePatterns
     // would replace this whole list instead of adding to it.
     ...(process.env.JEST_EXTRA_IGNORE ? [process.env.JEST_EXTRA_IGNORE] : []),

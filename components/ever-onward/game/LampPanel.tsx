@@ -7,7 +7,6 @@ import {
   BEAM_STEPS,
   beamActionId,
   beamNumbers,
-  bestBeamStep,
   clock,
 } from "@/lib/ever-onward/universes/light/beam";
 import {
@@ -15,8 +14,15 @@ import {
   beamStep,
   isOilCheap,
   isOilDear,
+  marketOilPrice,
+  rushFactor,
   tankCapacity,
 } from "@/lib/ever-onward/universes/light/tick";
+import {
+  isLampDark,
+  isTankerIn,
+  tankerSecondsLeft,
+} from "@/lib/ever-onward/universes/light/tanker";
 import type { PanelProps } from "../universes/types";
 import { lightGauge } from "@/lib/ever-onward/universes/light/goal";
 import GaugeMeter from "./GaugeMeter";
@@ -38,15 +44,11 @@ const GLOW = [
   "bg-yellow-100 shadow-[0_0_8px_rgba(254,240,138,0.9)]",
 ];
 
-const signed = (n: number): string =>
-  `${n < 0 ? "-" : "+"}${formatNumber(Math.abs(Math.round(n)))}`;
-
 /**
- * The coast's one panel for the lamp: the oil tank, the price, the Buy Oil
+ * The coast's panel for the lamp: the oil tank, the oil market (the price
+ * drifts, and now and then a tanker ties up with cheap oil), the Buy Oil
  * button and the brightness knob, together. Each brightness shows what it
- * would earn after the oil bill and how long the tank would last, right now,
- * so the best one changes as the oil price wobbles: blaze when oil is cheap,
- * dim when it is dear.
+ * gives (ships) and what it costs (oil) and how long the tank would last.
  */
 function LampPanel({ def, run, onAct }: PanelProps) {
   const active = beamStep(run);
@@ -55,7 +57,6 @@ function LampPanel({ def, run, onAct }: PanelProps) {
   if (run.phase !== 0 || !gauge || run.complete) return null;
 
   const rows = BEAM_STEPS.map((_, i) => beamNumbers(run, i));
-  const best = bestBeamStep(run);
   const oil = run.resources.oil;
   const capacity = tankCapacity(run);
   const price = run.resources.oilPrice;
@@ -68,6 +69,8 @@ function LampPanel({ def, run, onAct }: PanelProps) {
       : "fair";
   const trend = run.resources.oilTrend;
   const arrow = trend > 0.015 ? "↑" : trend < -0.015 ? "↓" : "→";
+  const isTanker = isTankerIn(run);
+  const isDark = isLampDark(run);
 
   return (
     <PanelFrame
@@ -81,6 +84,24 @@ function LampPanel({ def, run, onAct }: PanelProps) {
       data={{ "data-step": active }}
     >
       <GaugeMeter gauge={gauge} size="panel" testId="lm-oil-gauge" />
+      {isTanker && (
+        <p
+          data-testid="lm-tanker"
+          className="border-2 border-emerald-300 bg-emerald-950 p-2 font-mono text-xs font-bold text-emerald-100"
+        >
+          A tanker is in! Oil is {price.toFixed(2)} while it stays (market{" "}
+          {marketOilPrice(run).toFixed(2)}). It sails on in{" "}
+          {Math.ceil(tankerSecondsLeft(run))} s.
+        </p>
+      )}
+      {isDark && (
+        <p
+          data-testid="lm-dark"
+          className="border-2 border-red-300 bg-red-950 p-2 font-mono text-xs font-bold text-red-100"
+        >
+          The lamp is dark! Ships are keeping away from the coast.
+        </p>
+      )}
       <p className="flex items-baseline justify-between gap-2 font-mono text-sm font-bold tabular-nums">
         <span className="text-slate-300">Oil price</span>
         <span
@@ -93,7 +114,8 @@ function LampPanel({ def, run, onAct }: PanelProps) {
                 : "text-slate-200"
           }
         >
-          {price.toFixed(2)} each {arrow} {priceTag}
+          {price.toFixed(2)} each {isTanker ? "tanker" : `${arrow} ${priceTag}`}
+          {!isTanker && rushFactor(run) > 1 ? " · rush order" : ""}
         </span>
       </p>
       {/* The button has its own full-width row and a fixed height, so it
@@ -130,7 +152,7 @@ function LampPanel({ def, run, onAct }: PanelProps) {
               role="radio"
               aria-checked={checked}
               aria-disabled={!checked && !doable}
-              aria-label={`${step.label}: ${signed(at.net)} coins a second after oil, tank lasts ${clock(at.tankSeconds)}`}
+              aria-label={`${step.label}: ships x${step.pay}, oil x${step.burn}, tank lasts ${clock(at.tankSeconds)}`}
               data-testid={`lm-lamp-${i}`}
               onClick={() => {
                 if (!checked && doable) onAct(beamActionId(i));
@@ -148,18 +170,13 @@ function LampPanel({ def, run, onAct }: PanelProps) {
                     className={`h-2 w-2 ${pip <= i ? GLOW[i] : "bg-slate-600"}`}
                   />
                 ))}
-                {i === best && (
-                  <span
-                    data-testid="lm-lamp-best"
-                    className="ml-auto text-[10px] text-emerald-500"
-                  >
-                    best
-                  </span>
-                )}
               </span>
               <span className="block">{step.label}</span>
               <span className="block font-mono text-sm leading-tight font-bold normal-case tabular-nums">
-                {signed(at.net)}/s net
+                ships x{step.pay}
+              </span>
+              <span className="block font-mono text-xs leading-tight normal-case tabular-nums">
+                oil x{step.burn}
               </span>
               <span className="block font-mono text-xs leading-tight normal-case tabular-nums">
                 tank lasts {clock(at.tankSeconds)}
@@ -168,13 +185,6 @@ function LampPanel({ def, run, onAct }: PanelProps) {
           );
         })}
       </div>
-      {/* The how-to line goes away once the player has used the knob. */}
-      {(run.resources.lampBeamChanges ?? 0) === 0 && (
-        <p className="font-mono text-xs text-slate-300">
-          Brighter guides more ships but burns far more oil. Burn bright when
-          oil is cheap, dim when it is dear.
-        </p>
-      )}
     </PanelFrame>
   );
 }

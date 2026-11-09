@@ -37,24 +37,47 @@ jest.setTimeout(180_000);
  */
 const GATE_CAP = 59;
 /**
- * The Coast rework (goal on the HUD, keepers with milestones, lighthouses that
- * compound, the lamp knob; tuned by playing it in a browser, not to this card)
- * scored 73.3 uncapped, down from 78.9 on the same card. The Coast now takes a player who only taps and buys about 20
- * minutes, and the scorecard's bots (which use the lamp and the fork well) 11, so M14 (total length) fell and
- * the Coast's M1, M4, M5 and M15 gates trip: more, smaller, faster purchases and
- * the lamp knob mean more clicks a minute and later buys that are a smaller
- * share of a much bigger income. That is the point of the rework, so the floor
- * is that score minus 1; it is not tuned back toward the old, slow Coast.
+ * The Coast's dials (the harbor toll and the oil market beside the lamp, with
+ * fewer, bigger keeper steps and the tide clock gone) scored 76.6 uncapped,
+ * up from 73.6, and the Coast now passes every gate it used to trip (M1, M4,
+ * M5, M15): 14 keepers instead of 40 cut its buys from 63 to 40, and the
+ * dials' clicks a minute stay under 3.3.
+ *
+ * No More Night's grid and crews (batteries and the evening rush, the crews'
+ * posts, the streetlights as a dial) scored 76.7 uncapped: the same total,
+ * with the night's chores, tension and decisions all in their bands (the
+ * night is 21 minutes, up from 19). The floor is that score minus 1.
+ *
+ * Fixing that night's review (the bank always on offer, a grid you read
+ * rather than sum, crews that commit, a lit night worth 200 seconds, the
+ * night's prices 135 instead of 28) scored 76.5 uncapped with the night
+ * back at 20 minutes. The floor stays where it was.
+ *
+ * The Sky's dials (the probe design, the sun's edge with its flares, and
+ * wild probes; the probe races, course drift, the claimable flare and the
+ * sky's overdrive are gone) scored 76.8 uncapped, up from 76.5, with the sky
+ * about 17 minutes for a reading player and every sky gate in its band bar
+ * the known decision gaps. The floor stays where it was.
+ *
+ * The Last Light's warmth (the remembered lights, each costing warmth and
+ * keeping you company; sails, a hearth, warm company and a crossing song to
+ * buy with resolve; the memory garden gone) scored 78.3 uncapped, up from
+ * 76.8, with the last part about 20 minutes and its decision gaps now in
+ * band (longest 112 s, 16% of the time in gaps over a minute, where it was
+ * 159 s and 76%). The floor is that score minus 1.3.
+ *
+ * Fixing that review (a kind crossing a player who never buys still finishes
+ * in about twice the reader's time, lumps and winds that make reading beat
+ * every fixed habit, a price ladder and three more song verses that keep a
+ * decision coming) scored 77.4 uncapped with the last part about 21 minutes
+ * and every gate in its band but the known total length. The floor stays at
+ * 77.
  */
-const UNCAPPED_FLOOR = 72;
-/** Gates the Coast rework knowingly trips (see above); no other gate may fail. */
+const UNCAPPED_FLOOR = 77;
+/** Gates knowingly failing; no other gate may fail. */
 const KNOWN_REWORK_GATES: readonly string[] = [
-  // The last cards of the Coast reveal minutes apart (a gap of ~226 s).
-  "M1 Reveal cadence (coast)",
-  "M4 Felt effect (coast)",
-  "M5 Purchase rate (coast)",
+  // The whole run is about 1.3 h; later parts add the length (the band is 2-3 h).
   "M14 Total length (run)",
-  "M15 Chore rate (coast)",
 ];
 /** An M16 phase allowed to fail its gate, but not to get any worse. */
 interface DeadPhaseCeiling {
@@ -70,7 +93,6 @@ interface DeadPhaseCeiling {
  */
 const KNOWN_DEAD_PHASES: Readonly<Record<string, DeadPhaseCeiling>> = {
   sky: { deadShare: 0.89, longest: 150 },
-  last: { deadShare: 0.8, longest: 179 },
 };
 
 const BOON_CURRENCY = ["coins", "power", "energy", "energy"];
@@ -156,6 +178,15 @@ describe("Keep the Light On engagement scorecard", () => {
       expect(row.stats.deadShare).toBeLessThanOrEqual(ceiling.deadShare);
       expect(row.stats.longest).toBeLessThanOrEqual(ceiling.longest);
     }
+  });
+
+  it("keeps the last light's decisions at a steady pace, with no gate failing in the last part", () => {
+    const m16 = good.metrics.find((m) => m.id === "M16")!;
+    const last = m16.perPhase.find((r) => r.phase === "last")!;
+    expect(last.gate).toBe(true);
+    expect(last.stats.longest).toBeLessThanOrEqual(150);
+    expect(last.stats.deadShare).toBeLessThanOrEqual(0.4);
+    expect(good.failingGates.filter((g) => g.includes("(last)"))).toEqual([]);
   });
 
   it("reports all 16 metrics with weights summing to 100", () => {

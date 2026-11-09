@@ -25,8 +25,7 @@ describe("sceneInfo", () => {
           "starsFraction",
           "lightsFraction",
           "oilFraction",
-          "gridSteadiness",
-          "fleetHeading",
+          "charge",
         ] as const) {
           expect(info[key]).toBeGreaterThanOrEqual(0);
           expect(info[key]).toBeLessThanOrEqual(1);
@@ -63,10 +62,13 @@ describe("sceneInfo", () => {
     expect(info.letGoMask).toBe((1 << 1) | (1 << 10));
   });
 
-  it("steps the steadiness and oil so the picture is not redrawn every tick", () => {
+  it("steps the day, the battery charge and the oil so the picture is not redrawn every tick", () => {
     const run = runAtPhaseStart(1);
-    run.resources.grid = 63;
-    expect(sceneInfo(run).gridSteadiness).toBeCloseTo(0.6);
+    run.owned = { ...run.owned, gen1: 3, "batt-1": 1 };
+    run.resources.pgCharge = 63;
+    expect(sceneInfo(run).charge).toBeCloseTo(0.6);
+    run.resources.pgClock = 47;
+    expect(sceneInfo(run).dayStep).toBe(7);
     const coast = runAtPhaseStart(0);
     coast.resources.oil = 12.3;
     expect(sceneInfo(coast).oilFraction * 10).toBeCloseTo(

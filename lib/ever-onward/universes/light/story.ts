@@ -1,6 +1,5 @@
 import type { RunState, StoryMessage } from "../../engine/types";
-import { hasSprouted, picksSoFar } from "./garden";
-import { TIDE_MILL_ID } from "./tide";
+import { boatProgressOf, isReadyToFlash, letGoCount } from "./warmth";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 
 const res = (run: RunState, id: string): number => run.resources[id] ?? 0;
@@ -79,10 +78,10 @@ const coast: StoryMessage[] = [
     text: "Only two dark stretches of coast left. You find that you cannot look at a dark stretch of coast without wanting to put a light on it.",
   },
   {
-    id: "coast-tide",
+    id: "coast-toll",
     phase: PHASE_COAST,
-    when: (run) => run.flags["tide-open"] === true,
-    text: "The fish market has hung a tide clock by the quay. The sea breathes in, and the sea breathes out. A fisherman lends you a net and says: put it out while the water is coming in, and the sea will fill it by itself.",
+    when: (run) => owned(run, "keeper") >= 3,
+    text: "A harbor master's desk by the quay, and a painted sign: what ships pay to come in. Another harbor down the coast has a sign too. The captains read both, and they are not shy about choosing.",
   },
   {
     id: "coast-trio",
@@ -109,12 +108,10 @@ const coast: StoryMessage[] = [
     text: "The ferry never stops now. It carries bicycles, baskets of bread, and one very serious goat.",
   },
   {
-    id: "coast-mill",
+    id: "coast-tanker",
     phase: PHASE_COAST,
-    // Dormant: the Coast no longer has a tide clock (its mill was cut with it).
-    // The line stays so its recorded voice clip stays valid.
-    when: (run) => owned(run, TIDE_MILL_ID) >= 1,
-    text: "A little mill turns with the tide, tending a net of its own. It hums while it works. Your own nets are still yours, and the sea has plenty of fish for both of you.",
+    when: (run) => (run.resources.tkVisits ?? 0) >= 1,
+    text: "A tanker has tied up at the quay, low in the water, full of lamp oil. The captain does not stay long. She says the sea keeps its own timetable, and so does the oil.",
   },
   {
     id: "coast-almost",
@@ -146,7 +143,7 @@ const nightStory: StoryMessage[] = [
     id: "night-lamps",
     phase: PHASE_NIGHT,
     when: (run) => res(run, "supply") >= 16,
-    text: "The mayor asks how bright the streetlights should be. Bright streets pay well. Soft ones light more towns with the same power, and your crews get a quiet hour to learn. You can change your mind any time.",
+    text: "The mayor asks how bright the streetlights should be. Bright streets pay well, but at dusk everybody switches on at once, and bright streets make that rush harder. Soft ones light more towns and give your crews a quiet hour to learn. Changing takes a few seconds to settle.",
   },
   {
     id: "night-ideas",
@@ -197,10 +194,22 @@ const nightStory: StoryMessage[] = [
     text: "Five steam plants in a row, all puffing at once. From far away it looks like a very polite thundercloud.",
   },
   {
-    id: "night-smart",
+    id: "night-battery",
     phase: PHASE_NIGHT,
-    when: (run) => owned(run, "grid-2") >= 1,
-    text: "The grid learns to balance itself. It does a small, happy wobble anyway, just to let you know it is trying.",
+    when: (run) => owned(run, "batt-1") >= 1,
+    text: "The first battery hums. It saves a little of the afternoon for later, which is more than most people manage.",
+  },
+  {
+    id: "night-lit-first",
+    phase: PHASE_NIGHT,
+    when: (run) => (run.resources.pgLits ?? 0) >= 1,
+    text: "The evening rush comes, every kettle in town goes on at once, and not one light so much as blinks. Somewhere a kettle takes the credit.",
+  },
+  {
+    id: "night-dark-first",
+    phase: PHASE_NIGHT,
+    when: (run) => (run.resources.pgBlackouts ?? 0) >= 1,
+    text: "The lights go out, a district at a time, and then come back, a district at a time. Everyone agrees it was very dramatic. Nobody is hurt, and the batteries make a note.",
   },
   {
     id: "night-news-3",
@@ -224,7 +233,7 @@ const nightStory: StoryMessage[] = [
     id: "night-weather",
     phase: PHASE_NIGHT,
     when: (run) => run.flags["weather-open"] === true,
-    text: "A weather balloon bumps your window with a note: storms roll in from the sea, and three towns would love some sandbags. You pin a map to the wall. The rain does not read maps, but it does seem to be reading you.",
+    text: "A weather balloon bumps your window with a note: storms roll in from the sea, and three towns would love some sandbags. Your crews cannot be everywhere: a crew on watch is not building. You pin a map to the wall. The rain does not read maps, but it does seem to be reading you.",
   },
   {
     id: "night-vane",
@@ -271,18 +280,24 @@ const sky: StoryMessage[] = [
     text: "Space is wide and probes are patient. The first copies arrive years later, but your clock has never minded waiting.",
   },
   {
-    id: "sky-races",
+    id: "sky-edge",
     phase: PHASE_SKY,
-    // Some time after the charts arrive, so the map and its story do not land together.
-    when: (run) =>
-      run.flags["probes-open"] === true && (run.resources.prTime ?? 0) >= 30,
-    text: "The star charts show three routes, and a little racing probe waits at the dock with its engine humming. It is no use to the fleet, really. It just wants to go fast, and come home, and tell you all about it.",
+    // Fires with the first flare; its card waits (the scene is held busy) until
+    // the FLARE! banner and a moment after are gone, and its clock starts then.
+    when: (run) => (run.resources.skFlares ?? 0) >= 1,
+    text: "The sun does not mind visitors. It just throws a flare now and then, the way anyone clears their throat. Closer is brighter, and farther is calmer, and a few shields never hurt.",
   },
   {
-    id: "sky-scout",
+    id: "sky-wild",
     phase: PHASE_SKY,
-    when: (run) => owned(run, "mission-control") >= 1,
-    text: "Mission control is a small room with a very big window. A scout probe slips out and flies your last route, so the dock is never quiet. Your racing probe is still yours, and the stars have plenty of room for both.",
+    when: (run) => (run.resources.skWilds ?? 0) >= 1,
+    text: "Some of the copies came out different. They turned red, kept their light for themselves, and wandered off to be wild. They are not bad probes. They are just very sure of themselves.",
+  },
+  {
+    id: "sky-home",
+    phase: PHASE_SKY,
+    when: (run) => (run.resources.skRecalls ?? 0) >= 1,
+    text: "The wild ones came home on a green thread, a little embarrassed. Nobody mentions it. The fleet makes room, and the copies go on copying.",
   },
   {
     id: "sky-sail",
@@ -338,55 +353,43 @@ const last: StoryMessage[] = [
   {
     id: "last-hello",
     phase: PHASE_LAST,
-    text: "The sky is empty. All that light is in your hands, and light does not keep. It leaks, a little every second, from every lamp you ever lit.",
+    text: "The sky is empty. Every light you ever lit is still burning, and every one of them costs a little warmth to keep. Warmth is how a lost boat finds its way.",
   },
   {
     id: "last-choice",
     phase: PHASE_LAST,
     when: (run) => run.time > 6,
-    text: "You cannot keep every light. You can only keep one, and each light you let go leaves the others a little warmer. Take your time. Any order is a good order.",
+    text: "You do not have to keep them all. Each light you let go gives back some warmth, a flower and a little resolve. Take your time. Any order is a good order.",
   },
   {
     id: "last-first-go",
     phase: PHASE_LAST,
-    when: (run) => res(run, "lights") <= 10,
-    text: "One light goes out. It does not hurt. It sighs, like someone settling into a chair at the end of a long day.",
+    when: (run) => letGoCount(run) >= 1,
+    text: "One light lifts off like a lantern at a festival. It does not hurt. It sighs, like someone settling into a chair at the end of a long day.",
   },
   {
-    id: "last-garden",
+    id: "last-flower",
     phase: PHASE_LAST,
-    when: hasSprouted,
-    text: "Where the first light went out, a seed is sitting in the dark soil, and it has just sprouted. It is the memory of that light, and it wants a little water and a little time. Every light you let go will leave one.",
-  },
-  {
-    id: "last-bloom",
-    phase: PHASE_LAST,
-    when: (run) => picksSoFar(run) >= 1,
-    text: "You pick the first memory flower. It does not fade in your hand. It glows a little, like the light it came from, and the lantern leans over to look. Some things you let go of turn into something you can keep.",
-  },
-  {
-    id: "last-barrel",
-    phase: PHASE_LAST,
-    when: (run) => owned(run, "rain-barrel") >= 1,
-    text: "A rain barrel stands by the flower beds. When you are busy elsewhere, the barrel remembers. You can still do the watering yourself, if you like. Most gardeners do.",
+    when: (run) => letGoCount(run) >= 2,
+    text: "Where each light stood, a flower has bloomed. Each one is the memory of a light, and it glows a little, like the light it came from. Some things you let go of turn into something you can keep.",
   },
   {
     id: "last-halfway",
     phase: PHASE_LAST,
-    when: (run) => res(run, "lights") <= 6,
+    when: (run) => letGoCount(run) >= 5,
     text: "Half the lights are gone. Strangely, the ones still lit seem brighter. Maybe they were always that bright, and there was too much around them.",
   },
   {
     id: "last-quiet",
     phase: PHASE_LAST,
-    when: (run) => res(run, "lights") <= 3,
-    text: "It is quiet now. Far out on the dark water there is a small boat carrying a lantern, the colour you chose, looking for the shore. Tap the old beam to keep it true, and every goodbye comes a little easier.",
+    when: (run) => boatProgressOf(run) >= 50,
+    text: "The little boat is halfway to the shore. It carries a lantern, the colour you chose. It does not know your name. It only knows the warmth, and which way it comes from.",
   },
   {
     id: "last-one",
     phase: PHASE_LAST,
-    when: (run) => res(run, "lights") <= 1,
-    text: "One light left. The old lantern in the old lighthouse. You realize you know exactly why you picked this one.",
+    when: (run) => isReadyToFlash(run),
+    text: "The boat has reached the edge of the dark. Whatever you kept, you kept for this. One flash is all it needs.",
   },
   {
     id: "last-remember",

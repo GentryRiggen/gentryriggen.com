@@ -26,7 +26,7 @@ interface UseNarrationOptions {
   run: RunState;
   /** True while a full-screen moment is up; messages then stay silent. */
   isSuppressed?: boolean;
-  /** True while the scene is busy: a toast stays out of the way until clear (and lapses as usual). */
+  /** True while the scene is busy: a toast stays out of the way until clear (its timer starts only once it is visible). */
   isHeld?: boolean;
 }
 
@@ -85,11 +85,13 @@ export function useNarration({
     });
   }, [story, def, isEnabled, isAutoPlay, isSuppressed]);
 
+  // The clock starts when the toast can be seen: one held back for a big
+  // moment in the scene has all of its time once the moment is over.
   useEffect(() => {
-    if (!toast) return;
+    if (!toast || isHeld) return;
     const timer = window.setTimeout(() => setToast(null), TOAST_MS);
     return () => window.clearTimeout(timer);
-  }, [toast]);
+  }, [toast, isHeld]);
 
   // Turning narration off silences it at once.
   useEffect(() => {

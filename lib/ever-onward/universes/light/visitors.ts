@@ -5,6 +5,7 @@ import type {
   TeaserDef,
   VisitorDef,
 } from "../../engine/types";
+import { batteryCapacity } from "./grid";
 import { PHASE_COAST, PHASE_NIGHT, PHASE_SKY, TOTAL_STARS } from "./resources";
 import { tankCapacity, visitorGift } from "./tick";
 
@@ -41,7 +42,7 @@ export const VISITORS: readonly VisitorDef[] = [
     id: "visitor-mail",
     phase: PHASE_COAST,
     name: "A mail boat",
-    arrivesWhen: (run) => owned(run, "keeper") >= 6,
+    arrivesWhen: (run) => owned(run, "keeper") >= 4,
     giftText: incomeText,
     give: giveIncome,
   },
@@ -49,7 +50,7 @@ export const VISITORS: readonly VisitorDef[] = [
     id: "visitor-whales",
     phase: PHASE_COAST,
     name: "Whale-watchers",
-    arrivesWhen: (run) => owned(run, "keeper") >= 8,
+    arrivesWhen: (run) => owned(run, "keeper") >= 6,
     giftText: (run) =>
       run.phase === 0 ? "a full tank of lamp oil" : incomeText(run),
     give: (run) => {
@@ -65,11 +66,11 @@ export const VISITORS: readonly VisitorDef[] = [
     arrivesWhen: (run) => owned(run, "gen3") >= 4,
     giftText: (run) =>
       run.phase === 1
-        ? `${incomeText(run)} and a steady grid`
+        ? `${incomeText(run)} and every battery topped up`
         : incomeText(run),
     give: (run) => {
       giveIncome(run);
-      if (run.phase === 1) run.resources.grid = 100;
+      if (run.phase === 1) run.resources.pgCharge = batteryCapacity(run);
     },
   },
   {
@@ -85,14 +86,8 @@ export const VISITORS: readonly VisitorDef[] = [
     phase: PHASE_SKY,
     name: "A strange signal",
     arrivesWhen: (run) => res(run, "stars") <= 970 && owned(run, "probe") >= 1,
-    giftText: (run) =>
-      run.phase === 2
-        ? `${incomeText(run)} and a true course for the fleet`
-        : incomeText(run),
-    give: (run) => {
-      giveIncome(run);
-      if (run.phase === 2) run.resources.heading = 100;
-    },
+    giftText: incomeText,
+    give: giveIncome,
   },
 ];
 
@@ -140,7 +135,7 @@ export const TEASERS: readonly TeaserDef[] = [
   },
   {
     // A look at the next part, so the end of the sky is not an empty shop.
-    upgradeId: "letgo-porch",
+    upgradeId: "hearth-1",
     phase: PHASE_SKY,
     name: "Something quiet",
     showWhen: (run) => res(run, "stars") <= 300,

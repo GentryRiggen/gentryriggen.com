@@ -1,10 +1,13 @@
 import { PLAYABLE_UNIVERSES } from "@/lib/ever-onward/universes";
 import LampPanel from "../../game/LampPanel";
 import FundPanel from "../../game/FundPanel";
-import MemoryGarden from "../../game/MemoryGarden";
-import ProbeRaces from "../../game/ProbeRaces";
-import TideClock from "../../game/TideClock";
+import LightsPanel from "../../game/LightsPanel";
+import ProbeDesignPanel from "../../game/ProbeDesignPanel";
+import SunEdgePanel from "../../game/SunEdgePanel";
+import HarborPanel from "../../game/HarborPanel";
 import ProjectsPanel from "../../game/ProjectsPanel";
+import CrewsPanel from "../../game/CrewsPanel";
+import GridPanel from "../../game/GridPanel";
 import StreetlightsPanel from "../../game/StreetlightsPanel";
 import WeatherDesk from "../../game/WeatherDesk";
 import { uiFor } from "..";
@@ -22,18 +25,16 @@ describe("the universe UI registry", () => {
     // The coast fork sits under the shop so the upgrades stay on screen.
     expect(panels[0].name).toBe("CoastForkPanel");
     expect(panels[1].name).toBe("LaterForkPanel");
-    expect(topPanels).toEqual([LampPanel]);
+    expect(topPanels).toEqual([LampPanel, HarborPanel]);
     expect(primaryPanels).toEqual([
+      GridPanel,
       StreetlightsPanel,
-      ProbeRaces,
-      MemoryGarden,
+      CrewsPanel,
+      SunEdgePanel,
+      ProbeDesignPanel,
+      LightsPanel,
     ]);
-    expect(panels.slice(2)).toEqual([
-      FundPanel,
-      TideClock,
-      WeatherDesk,
-      ProjectsPanel,
-    ]);
+    expect(panels.slice(2)).toEqual([FundPanel, WeatherDesk, ProjectsPanel]);
   });
 
   it("keeps Light's ending lines", () => {

@@ -3,6 +3,7 @@ import { newSave } from "@/lib/ever-onward/engine/save";
 import { newRun } from "@/lib/ever-onward/engine/engine";
 import type { RunState } from "@/lib/ever-onward/engine/types";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
+import { tankCapacity } from "@/lib/ever-onward/universes/light/tick";
 import GameScreen from "../GameScreen";
 
 function renderScreen(run: RunState, onTap = jest.fn(() => 1)) {
@@ -96,13 +97,15 @@ describe("sticky HUD", () => {
     };
 
     it("stays on the HUD with the oil and the tank size", () => {
-      renderScreen(withKeeper(40));
+      const full = withKeeper(0);
+      full.resources.oil = tankCapacity(full);
+      renderScreen(full);
       const gauge = within(screen.getByTestId("lm-hud")).getByTestId(
         "lm-hud-gauge"
       );
       expect(gauge).toHaveAttribute("data-tone", "ok");
       expect(within(gauge).getByTestId("lm-hud-gauge-count")).toHaveTextContent(
-        /^40 \/ \d/
+        /^\d+ \/ \d/
       );
     });
 

@@ -8,6 +8,7 @@ import {
   autoFlashRate,
   calmIncomePerSecond,
   isBeamOpen,
+  habitOilCost,
   setBeam,
   shipsPerFlash,
 } from "./tick";
@@ -15,9 +16,9 @@ import { TUNING } from "./tuning";
 
 /**
  * The coast's one knob: how bright the lamp burns. Brighter guides more
- * ships but burns even more oil, so the best step moves with the oil price:
- * blaze when oil is cheap, dim when it is dear. Nothing is ever lost; every
- * step is a fair choice, and the panel shows what each would do right now.
+ * ships but burns even more oil, so the right step moves with what oil
+ * costs you: the market price, as you tend to pay it
+ * (a tanker-filler pays well under it). Nothing is ever lost; every step is a fair choice.
  */
 
 export const BEAM_STEPS = TUNING.coast.beam.steps;
@@ -45,7 +46,7 @@ export function beamNumbers(run: RunState, step: number): BeamNumbers {
   );
   const oil = run.resources.oil ?? 0;
   return {
-    net: gross - burn * (run.resources.oilPrice ?? 0),
+    net: gross - burn * habitOilCost(run),
     tankSeconds: burn > 0 ? oil / burn : Infinity,
   };
 }

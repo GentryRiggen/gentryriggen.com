@@ -82,6 +82,39 @@ describe("maxVisible gating", () => {
   });
 });
 
+describe("an upgrade with a place of its own", () => {
+  const crowded: UniverseDef = {
+    ...fixture,
+    maxVisible: 2,
+    upgrades: [
+      shopItem("a"),
+      shopItem("b"),
+      shopItem("c"),
+      shopItem("chain-1", { hasOwnSlot: true }),
+      shopItem("chain-2", {
+        hasOwnSlot: true,
+        visibleWhen: (run) => (run.owned["chain-1"] ?? 0) > 0,
+      }),
+    ],
+  };
+  const ids = (run: RunState) => visibleUpgrades(crowded, run).map((u) => u.id);
+
+  it("is on offer when it is ready, even with every slot taken, and takes none", () => {
+    // the two slots hold a and b; the chain's first step still shows
+    expect(ids(newRun(crowded))).toEqual(["a", "b", "chain-1"]);
+  });
+
+  it("does not stop the shop's cards from revealing when one is bought", () => {
+    const run = buy(crowded, withCoins(newRun(crowded), 10), "a");
+    expect(ids(run)).toEqual(["a", "b", "c", "chain-1"]);
+  });
+
+  it("brings the next step in as soon as the one before is bought", () => {
+    const run = buy(crowded, withCoins(newRun(crowded), 10), "chain-1");
+    expect(ids(run)).toEqual(["a", "b", "chain-1", "chain-2"]);
+  });
+});
+
 describe("effect previews", () => {
   const def: UniverseDef = {
     ...fixture,

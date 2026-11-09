@@ -18,21 +18,19 @@ import {
   type ForkDef,
 } from "../forks";
 import { hasFork, windRamp } from "../forkState";
+import { rushExcessAt } from "../grid";
 import { sceneInfo } from "..";
 import {
   autoFlashRate,
   calmSkyIncomePerSecond,
-  driftPerSecond,
-  fadeRate,
-  lastTapResolve,
   powerPerSecond,
-  resolvePerSecond,
   shipsPerFlash,
-  strainPerSecond,
   supplyMW,
   tankCapacity,
 } from "../tick";
+import { burnMult, resolvePerSecond, tapResolve } from "../warmth";
 import { lightSceneDiff } from "../hooks";
+import { burnShare } from "../sunEdge";
 import { TUNING } from "../tuning";
 
 jest.setTimeout(120_000);
@@ -58,6 +56,8 @@ function runAt(fork: ForkDef): RunState {
     ...base,
     phase: fork.phase,
     owned,
+    // In the sky the dials are open and the fleet flies near the sun.
+    flags: fork.id === "sky" ? { "sky-dials": true } : base.flags,
     resources: {
       ...base.resources,
       [fork.currency]: 1e8,
@@ -65,6 +65,8 @@ function runAt(fork: ForkDef): RunState {
       night: 80,
       probes: 20,
       collectors: 6,
+      skDist: 3,
+      skDistNow: 3,
     },
   });
 }
@@ -156,14 +158,14 @@ describe("the forks in the road", () => {
     expect(tankCapacity(crews)).toBeGreaterThan(0);
   });
 
-  it("night: coal pays at once and strains the grid; wind grows in and eases it", () => {
+  it("night: coal pays at once and makes the evening rush bigger; wind grows in and eases it", () => {
     const fork = forkNamed("night");
     const run = runAt(fork);
     const coal = performAction(def, run, forkActionId("coal"));
     expect(powerPerSecond(coal)).toBeGreaterThan(powerPerSecond(run) * 1.4);
-    // More supply also works the grid harder, so at least this much more.
-    expect(strainPerSecond(coal)).toBeGreaterThanOrEqual(
-      strainPerSecond(run) * K.night.coalStrain - 1e-9
+    expect(rushExcessAt(coal, 1, 1)).toBeCloseTo(
+      rushExcessAt(run, 1, 1) * K.night.coalPeak,
+      9
     );
     let wind = performAction(def, run, forkActionId("wind"));
     // Nothing at first: it takes a while to build.
@@ -178,21 +180,21 @@ describe("the forks in the road", () => {
     expect(windRamp(wind)).toBe(1);
     expect(powerPerSecond(wind)).toBeGreaterThan(half);
     expect(supplyMW(wind)).toBeGreaterThan(supplyMW(coal));
-    expect(strainPerSecond(wind)).toBeLessThan(strainPerSecond(run));
+    expect(rushExcessAt(wind, 1, 1)).toBeLessThan(rushExcessAt(run, 1, 1));
     expect(sceneInfo(wind).windBuilt).toBe(1);
     expect(K.costs.wind).toBeGreaterThan(K.costs.coal * 2);
   });
 
-  it("sky: a swarm triples the fleet and drifts; mirrors pay more and steady it", () => {
+  it("sky: a swarm triples the fleet and flares burn more of it; mirrors pay more and flares burn less", () => {
     const fork = forkNamed("sky");
     const run = runAt(fork);
     const swarm = performAction(def, run, forkActionId("swarm"));
     expect(swarm.resources.probes).toBeCloseTo(
       run.resources.probes * K.sky.swarmProbes
     );
-    expect(driftPerSecond(swarm)).toBeGreaterThan(driftPerSecond(run));
+    expect(burnShare(swarm, 1)).toBeGreaterThan(burnShare(run, 1));
     const mirrors = performAction(def, run, forkActionId("mirrors"));
-    expect(driftPerSecond(mirrors)).toBeLessThan(driftPerSecond(run));
+    expect(burnShare(mirrors, 1)).toBeLessThan(burnShare(run, 1));
     expect(calmSkyIncomePerSecond(mirrors)).toBeGreaterThan(
       calmSkyIncomePerSecond(run) * 1.5
     );
@@ -201,7 +203,7 @@ describe("the forks in the road", () => {
     );
   });
 
-  it("last: letting go is faster but colder; keeping holds the flame and rewards taps", () => {
+  it("last: letting go earns resolve faster but every light burns more; keeping burns less and rewards taps", () => {
     const fork = forkNamed("last");
     const run = runAt(fork);
     const letGo = performAction(def, run, forkActionId("release"));
@@ -209,11 +211,9 @@ describe("the forks in the road", () => {
     expect(resolvePerSecond(letGo)).toBeCloseTo(
       resolvePerSecond(run) * K.last.releaseResolve
     );
-    expect(fadeRate(letGo)).toBeGreaterThan(fadeRate(run));
-    expect(fadeRate(keep)).toBeLessThan(fadeRate(run) * 0.5);
-    expect(lastTapResolve(keep)).toBeCloseTo(
-      lastTapResolve(run) * K.last.keepTaps
-    );
+    expect(burnMult(letGo)).toBeGreaterThan(burnMult(run));
+    expect(burnMult(keep)).toBeLessThan(burnMult(run) * 0.8);
+    expect(tapResolve(keep)).toBeCloseTo(tapResolve(run) * K.last.keepTaps);
     expect(resolvePerSecond(keep)).toBeCloseTo(resolvePerSecond(run), 5);
   });
 

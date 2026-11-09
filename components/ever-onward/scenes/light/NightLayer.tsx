@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 import ForkArt from "./ForkArt";
+import NightGridEffects, { NightSky, isDistrictDark } from "./NightGridLayer";
 import { TOWN_COUNT } from "@/lib/ever-onward/universes/light/scene";
 import { PLANET, planetPoint, slotAngle, type NightSlot } from "./anchors";
 import { makeStars, seeded } from "./random";
@@ -34,6 +35,19 @@ const CITIES = (() => {
     };
   });
 })();
+
+/**
+ * The towns sit in ten districts, left to right. When the rush is more than
+ * the grid can carry, they snap dark in `DARK_ORDER` (see NightGridLayer).
+ */
+const DISTRICTS = 10;
+/** Town i's district: the tenth of the picture's width it stands in. */
+const DISTRICT_OF = CITIES.map((c) =>
+  Math.min(DISTRICTS - 1, Math.max(0, Math.floor(c.x / (400 / DISTRICTS))))
+);
+/** True when a town's district is one of the first `dark` to go out. */
+const isTownDark = (town: number, dark: number): boolean =>
+  isDistrictDark(DISTRICT_OF[town], dark);
 
 /** The animation class shared by every town in a group ("" is still). */
 const TOWN_GROUPS = [
@@ -267,14 +281,10 @@ function WindFarm() {
   );
 }
 
-/** The grid's control post: its light shows how steady the grid is. */
+/** The grid's control post: its light is green, amber at the rush, red when it goes dark. */
 function ControlPost({ info }: { info: LightSceneInfo }) {
   const colour =
-    info.gridSteadiness >= 0.7
-      ? "#6ef0a0"
-      : info.gridSteadiness >= 0.4
-        ? "#ffc24a"
-        : "#ff5a4a";
+    info.dark > 0 ? "#ff5a4a" : info.rushOn > 0 ? "#ffc24a" : "#6ef0a0";
   return (
     <g>
       <rect x="-1.5" y="-18" width="3" height="18" fill="#7a89ad" />
@@ -282,39 +292,13 @@ function ControlPost({ info }: { info: LightSceneInfo }) {
         cy="-21"
         r="3.4"
         fill={colour}
-        className={info.gridSteadiness < 0.7 ? "lm-flicker" : ""}
+        className={info.dark > 0 ? "lm-flicker" : ""}
       />
       <circle cy="-21" r="8" fill={colour} fillOpacity="0.25" />
-      {info.gridTier >= 1 && (
-        <g className="lm-pop-svg">
-          <line
-            x1="-10"
-            y1="-14"
-            x2="10"
-            y2="-14"
-            stroke="#dfe8ff"
-            strokeWidth="1.5"
-          />
-          <rect x="-12" y="-13" width="5" height="4" fill="#ffd98a" />
-          <rect x="7" y="-13" width="5" height="4" fill="#ffd98a" />
-        </g>
-      )}
       {info.weatherVane > 0 && (
         <g className="lm-pop-svg">
           <line x1="0" y1="-30" x2="0" y2="-24" stroke="#dfe8ff" />
           <polygon points="-5,-29 5,-31 5,-27" fill="#ffd98a" />
-        </g>
-      )}
-      {info.gridTier >= 2 && (
-        <g className="lm-pop-svg">
-          <circle
-            cy="-21"
-            r="11"
-            fill="none"
-            stroke="#8cf0ff"
-            strokeDasharray="3 3"
-            className="lm-glow"
-          />
         </g>
       )}
     </g>
@@ -363,13 +347,21 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
   const dawn = 1 - info.night;
   const cityCount = info.townsLit;
   const brightness = 0.7 + 0.3 * info.powered;
-  // A weak grid makes the towns stutter: every third, then every other one.
-  const strain =
-    info.powered < 0.6 || info.gridSteadiness < 0.4
-      ? 2
-      : info.powered < 0.85 || info.gridSteadiness < 0.7
-        ? 1
-        : 0;
+  // Towns that are only half powered stutter: every third, then every other one.
+  const strain = info.powered < 0.6 ? 2 : info.powered < 0.85 ? 1 : 0;
+  const isEvening = info.gridOpen > 0;
+  // The wires hum all day, run lime into the batteries while they charge, and
+  // race orange at the rush.
+  const sparkClass =
+    info.rushOn > 0
+      ? "ln-spark ln-spark-fast"
+      : info.flow === 1
+        ? "ln-spark ln-spark-in"
+        : "ln-spark";
+  const sparkColour =
+    info.rushOn > 0 ? "#ffb347" : info.flow === 1 ? "#b6ff5a" : "#fff3b0";
+  const starsOpacity =
+    (1 - dawn * 0.85) * (isEvening && info.dayStep < 10 ? 0.15 : 1);
   const generators = info.gen1 + info.gen2 + info.gen3 + info.gen4;
   const hasWires = generators > 0 || info.crankLevel > 0;
   const trunks = hasWires ? 1 + Math.min(2, info.linesTier) : 0;
@@ -400,7 +392,11 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
         fill="url(#lm-dawn)"
         opacity={dawn * 0.9}
       />
-      <g opacity={1 - dawn * 0.85}>
+      <NightSky info={info} />
+      <g
+        opacity={starsOpacity}
+        className="transition-opacity duration-[6000ms] ease-linear"
+      >
         {STARS.map((s, i) => (
           <circle
             key={i}
@@ -473,7 +469,7 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
         />
       )}
       {/* evening rush: everybody switches on at once */}
-      {info.rush > 0 && (
+      {info.rushOn > 0 && (
         <circle
           cx={PLANET.cx}
           cy={PLANET.cy}
@@ -506,6 +502,20 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
               maxAnimated={i === 0 ? 3 : 2}
             />
           ))}
+          {info.gridOpen > 0 &&
+            TRUNKS.slice(0, trunks).map((d, i) => (
+              <path
+                key={`hum-${i}`}
+                d={d}
+                pathLength="100"
+                fill="none"
+                stroke={sparkColour}
+                strokeWidth={info.rushOn > 0 ? 4 : 3}
+                strokeLinecap="round"
+                strokeDasharray="2.2 12.3"
+                className={sparkClass}
+              />
+            ))}
           {info.linesTier >= 3 && (
             <Wire d={RING} generators={generators} maxAnimated={1} />
           )}
@@ -569,8 +579,14 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
           <g key={group} className={group || undefined}>
             {CITIES.slice(0, cityCount).map((c, i) => {
               if (townGroup(i, strain, info.glow > 0) !== group) return null;
+              const isDark = isTownDark(i, info.dark);
               return (
-                <g key={i} transform={`translate(${fmt(c.x)} ${fmt(c.y)})`}>
+                <g
+                  key={i}
+                  transform={`translate(${fmt(c.x)} ${fmt(c.y)})`}
+                  data-dark={isDark || undefined}
+                  className={isDark ? "ln-snap opacity-10" : undefined}
+                >
                   <use
                     href="#lm-town"
                     transform={info.glow > 0 ? "scale(1.25)" : undefined}
@@ -658,6 +674,7 @@ export default function NightLayer({ info }: { info: LightSceneInfo }) {
           <ControlPost info={info} />
         </Machine>
       )}
+      <NightGridEffects info={info} />
       <ForkArt info={info} />
     </g>
   );

@@ -16,6 +16,11 @@ import { PRESTIGE } from "./prestige";
 import { ALL_PROJECTS } from "./projects";
 import { RESOURCES } from "./resources";
 import { STORY } from "./story";
+import { isCoastMomentBusy } from "./tanker";
+import { isGridMomentBusy } from "./grid";
+import { isSkyMomentBusy } from "./sunEdge";
+import { isGoodbyeBusy } from "./warmth";
+import { isStormHit } from "./weather";
 import { LIGHT_EVENTS } from "./events";
 import { coastUpkeep, isLightComplete, manualLight, tickLight } from "./tick";
 import { UPGRADES } from "./upgrades";
@@ -40,6 +45,15 @@ export const lightUniverse: UniverseDef = {
   visitors: VISITORS,
   countdown: lightCountdown,
   alert: lightAlert,
+  // A big moment on in the picture holds pop-ups back: the coast's tanker and
+  // dark lamp, the night's blackout and lit night, a storm just landed, a flare or stray
+  // probes in the sky, a light lifting off in the last part (their first seconds only).
+  isSceneBusy: (run) =>
+    isCoastMomentBusy(run) ||
+    isGridMomentBusy(run) ||
+    isStormHit(run) ||
+    isSkyMomentBusy(run) ||
+    isGoodbyeBusy(run),
   goalMeter: lightGoal,
   gauge: lightGauge,
   prestige: PRESTIGE,

@@ -3,44 +3,32 @@ import { sceneInfo } from "./scene";
 import { LAMP_ACTION_IDS } from "./lamps";
 import { BEAM_ACTION_IDS } from "./beam";
 import {
-  gridSteadiness,
-  headingOf,
-  isCourseAuto,
-  isCourseInPlay,
-  isFlareOn,
-  isGridAuto,
-  isBoatOut,
   isGridInPlay,
   flameFraction,
   isOilCheap,
   isBeamOpen,
-  isRushOn,
   isLampsOpen,
   isStorming,
-  level,
   tankCapacity,
 } from "./tick";
+import { trafficShare } from "./toll";
 import { cloneRun } from "../../engine/engine";
 import {
-  LAUNCH_ACTION_IDS,
-  isProbesOpen,
-  runsHome,
-  withoutProbeRaces,
-} from "./probes";
+  DESIGN_ACTION_IDS,
+  RECALL_ACTION,
+  isDialsOpen,
+  wildCount,
+} from "./design";
 import {
-  SET_NETS_ACTION,
-  TIDE_ACTION_IDS,
-  haulsSoFar,
-  isTideOpen,
-  withoutTide,
-} from "./tide";
-import {
-  GARDEN_ACTION_IDS,
-  WATER_ACTION,
-  isGardenOpen,
-  picksSoFar,
-  withoutGarden,
-} from "./garden";
+  DISTANCE_ACTION_IDS,
+  flaresSoFar,
+  flareSafety,
+  forecastSize,
+  withoutFlares,
+} from "./sunEdge";
+import { TOLL_ACTION_IDS, isTollOpen, tollLockLeft } from "./toll";
+import { isTankerIn } from "./tanker";
+import { LET_GO_ACTION_IDS, litCount } from "./warmth";
 import {
   FUND_ACTION_IDS,
   FUND_CHOICE_IDS,
@@ -49,7 +37,19 @@ import {
 } from "./fund";
 import { FORK_ACTION_IDS, chosenSide, forkOf } from "./forks";
 import { OVERDRIVE_ACTION, isOverdriveOn, isOverdriveOpen } from "./overdrive";
-import { SHIELD_ACTION_IDS, isWeatherOpen, withoutStorms } from "./weather";
+import {
+  CREW_POST_ACTION_IDS,
+  isCrewsOpen,
+  isWeatherOpen,
+  withoutStorms,
+} from "./weather";
+import {
+  batteryCapacity,
+  chargeShare01,
+  isDusk,
+  isRushNow,
+  withoutEvenings,
+} from "./grid";
 
 /**
  * Scorecard hooks: what the simulator reads to count plates, watch the oil
@@ -68,41 +68,37 @@ export function lightPlates(run: RunState): string[] {
     const isTankLow =
       run.resources.oil < tankCapacity(run) * OIL_LOW_SHARE ||
       run.resources.oil <= 0;
-    if (hasOilButton && (isOilCheap(run) || isTankLow))
+    if (hasOilButton && (isTankerIn(run) || isOilCheap(run) || isTankLow))
       plates.push("oilMarket");
     if (hasOilButton) plates.push("lamp");
     if (isStorming(run)) plates.push("storm");
-    // Offered once the second catch is in (so it is not a crowd of beats at
-    // the moment the clock opens).
-    if (isTideOpen(run) && haulsSoFar(run) >= 2) plates.push("tide");
+    // The harbor desk wants a look while the sign is fresh or the ships are
+    // off (a rival's change moves the traffic, so it is a plate then).
+    if (isTollOpen(run) && (tollLockLeft(run) > 0 || trafficShare(run) < 0.7))
+      plates.push("toll");
   } else if (run.phase === 1) {
     plates.push("crank");
-    if (isGridInPlay(run) && !isGridAuto(run) && gridSteadiness(run) < 85)
-      plates.push("grid");
-    if (isRushOn(run)) plates.push("rush");
     if (isLampsOpen(run)) plates.push("lamps");
+    // Dusk and the rush: the streetlights are worth a look before it hits.
+    if (isDusk(run) || isRushNow(run)) plates.push("evening");
+    if (isCrewsOpen(run)) plates.push("crews");
     // Offered once the first front has come and gone (so it is not a crowd of
     // beats at the moment the desk opens).
     if (isWeatherOpen(run) && (run.resources.wxFronts ?? 0) >= 1)
       plates.push("weather");
   } else if (run.phase === 2) {
     plates.push("aim");
-    if (isCourseInPlay(run) && !isCourseAuto(run) && headingOf(run) < 85)
-      plates.push("course");
-    if (isFlareOn(run)) plates.push("flare");
-    // Offered once the first probe is home (so it is not a crowd of beats at
-    // the moment the map opens; a trip is over a minute long).
-    if (isProbesOpen(run) && runsHome(run) >= 1) plates.push("race");
+    // The design bench and the sun's edge want a look when a flare is
+    // forecast or the fleet has strays (not at the moment they open).
+    if (isDialsOpen(run) && flaresSoFar(run) >= 1) {
+      plates.push("design");
+      if (forecastSize(run) !== null) plates.push("flare");
+      if (wildCount(run) >= 1) plates.push("wild");
+    }
   } else {
     plates.push("tend");
-    const hasLetGoOnOffer = run.revealed.some(
-      (id) => id.startsWith("letgo-") && level(run, id) === 0
-    );
-    if (hasLetGoOnOffer) plates.push("letGo");
-    if (isBoatOut(run)) plates.push("boat");
-    // Offered once the second bloom is picked (so it is not a crowd of beats
-    // at the moment the first seed is planted).
-    if (isGardenOpen(run) && picksSoFar(run) >= 2) plates.push("garden");
+    if (litCount(run) > 0) plates.push("lights");
+    plates.push("boat");
   }
   if (isFundOpen(run) && fundBalance(run) > 0) plates.push("fund");
   const fork = forkOf(run);
@@ -115,34 +111,36 @@ export function lightPlates(run: RunState): string[] {
 /** Plates that need the player's hands count only while they are tended. */
 export const PLATE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
   oilMarket: ["buy-oil"],
-  grid: ["balance-grid"],
-  rush: ["ride-rush"],
   lamps: LAMP_ACTION_IDS,
+  evening: LAMP_ACTION_IDS,
+  weather: CREW_POST_ACTION_IDS,
+  crews: CREW_POST_ACTION_IDS,
   lamp: BEAM_ACTION_IDS,
-  tide: TIDE_ACTION_IDS,
-  race: LAUNCH_ACTION_IDS,
-  weather: SHIELD_ACTION_IDS,
-  course: ["correct-course"],
-  flare: ["catch-flare"],
-  boat: ["steer-boat", "flash-lamp"],
-  garden: GARDEN_ACTION_IDS,
+  toll: TOLL_ACTION_IDS,
+  design: DESIGN_ACTION_IDS,
+  flare: DISTANCE_ACTION_IDS,
+  wild: [RECALL_ACTION],
+  boat: ["flash-lamp"],
+  lights: LET_GO_ACTION_IDS,
   fund: FUND_ACTION_IDS,
   overdrive: [OVERDRIVE_ACTION],
   fork: FORK_ACTION_IDS,
 };
 
 /**
- * Real choices, for the decision-gap metric: buying oil at a price, when to
- * set the nets, which route to fly, where the storm crews go, when to water.
+ * Real choices, for the decision-gap metric: buying oil at a price, the
+ * harbor toll, the probe design and the sun's edge, where the storm crews go, when to water.
  * Claims (the rush, a flare), fixes (balance, correct, steer) and collects
- * (haul in, pick) are not choices.
+ * (pick) are not choices.
  */
 export const LIGHT_DECISION_ACTIONS: readonly string[] = [
   "buy-oil",
-  SET_NETS_ACTION,
-  ...LAUNCH_ACTION_IDS,
-  ...SHIELD_ACTION_IDS,
-  WATER_ACTION,
+  ...TOLL_ACTION_IDS,
+  ...DESIGN_ACTION_IDS,
+  ...DISTANCE_ACTION_IDS,
+  RECALL_ACTION,
+  ...CREW_POST_ACTION_IDS,
+  ...LET_GO_ACTION_IDS,
   ...LAMP_ACTION_IDS,
   ...BEAM_ACTION_IDS,
   ...FUND_CHOICE_IDS,
@@ -153,9 +151,9 @@ export const LIGHT_DECISION_ACTIONS: readonly string[] = [
 export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
   {
     id: "flame",
-    label: "The flame",
+    label: "The warmth",
     level: (run) => (run.phase === 3 ? flameFraction(run) : null),
-    // Low is when the lantern is dim and the light lets go slowly.
+    // Low is when too many lights burn and the boat is slow in the fog.
     lowZone: { lo: 0.02, hi: 0.3 },
   },
   {
@@ -168,22 +166,21 @@ export const LIGHT_CONSUMABLES: readonly ConsumableDef[] = [
   },
   {
     id: "grid",
-    label: "Grid steadiness",
+    label: "Battery charge",
     level: (run) =>
-      isGridInPlay(run) && !isGridAuto(run)
-        ? Math.min(1, Math.max(0, gridSteadiness(run) / 100))
-        : null,
-    // Cities visibly pay less under 50%: that is where a player acts.
+      isGridInPlay(run) && batteryCapacity(run) > 0 ? chargeShare01(run) : null,
+    // Half full or less: the rush may find them short.
     lowZone: { lo: 0.05, hi: 0.5 },
   },
   {
-    id: "heading",
-    label: "Probe heading",
+    id: "fleet",
+    label: "Flare safety",
     level: (run) =>
-      isCourseInPlay(run) && !isCourseAuto(run)
-        ? Math.min(1, Math.max(0, headingOf(run) / 100))
+      isDialsOpen(run) && (run.resources.probes ?? 0) >= 4
+        ? flareSafety(run)
         : null,
-    lowZone: { lo: 0.05, hi: 0.5 },
+    // Flying close with thin shields: a flare would burn a lot of the fleet.
+    lowZone: { lo: 0.05, hi: 0.6 },
   },
 ];
 
@@ -199,6 +196,11 @@ function sceneKey(run: RunState): string {
     s.probes,
     s.lightsRemaining,
     s.letGoMask,
+    s.hearthTier,
+    s.sailTier,
+    s.slowburnTier,
+    s.companyTier,
+    s.songTier,
     // every chain step and generator now draws something
     s.wickTier,
     s.feesTier,
@@ -215,14 +217,23 @@ function sceneKey(run: RunState): string {
     s.linesTier,
     s.subsTier,
     s.bulbsTier,
-    s.gridTier,
+    s.batteries,
+    s.gridOpen,
+    s.crewBuild,
+    s.crewSchool,
+    s.weatherOpen,
+    s.watch0,
+    s.watch1,
+    s.watch2,
     s.stormCrews,
-    s.tideOpen,
-    s.biggerNets,
-    s.tideMill,
-    s.raceOpen,
-    s.raceFins,
-    s.raceControl,
+    s.tollOpen,
+    s.tollStep,
+    s.dialsOpen,
+    s.dsSpeed,
+    s.dsMirrors,
+    s.dsCopying,
+    s.dsShields,
+    s.wild,
     s.weatherVane,
     s.aimLevel,
     s.mirrorTier,
@@ -232,8 +243,6 @@ function sceneKey(run: RunState): string {
     s.enginesTier,
     s.appetiteTier,
     s.boatVisible,
-    s.gardenCode,
-    s.rainBarrel,
     s.finished,
     s.forkCoast,
     s.forkNight,
@@ -253,16 +262,14 @@ export const lightIncomeView = (run: RunState): RunState => {
   const draft =
     isOverdriveOn(run) ||
     isWeatherOpen(run) ||
-    isTideOpen(run) ||
-    isProbesOpen(run) ||
-    isGardenOpen(run)
+    isGridInPlay(run) ||
+    isDialsOpen(run)
       ? cloneRun(run)
       : run;
   // A minute of overdrive is a burst, not the income the scorecard measures.
   if (isOverdriveOn(draft)) draft.resources.odLeft = 0;
   if (isWeatherOpen(draft)) withoutStorms(draft);
-  if (isTideOpen(draft)) withoutTide(draft);
-  if (isProbesOpen(draft)) withoutProbeRaces(draft);
-  if (isGardenOpen(draft)) withoutGarden(draft);
+  if (isGridInPlay(draft)) withoutEvenings(draft);
+  if (isDialsOpen(draft)) withoutFlares(draft);
   return draft;
 };

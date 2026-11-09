@@ -32,7 +32,7 @@ describe("upgrades are few and gated", () => {
     expect(def.maxVisible).toBe(3);
   });
 
-  it("never offers more than 3 unbought upgrades in a real run", () => {
+  it("never offers more than 3 unbought upgrades in a real run (the batteries have a place of their own)", () => {
     let worst = 0;
     simulate(def, {
       maxSeconds: 6 * 3600,
@@ -40,13 +40,70 @@ describe("upgrades are few and gated", () => {
       strategy: REALISTIC,
       stopWhen: (run) => {
         const offered = visibleUpgrades(def, run).filter(
-          (u) => upgradeLevel(run, u.id) === 0 && (u.maxLevel ?? 1) >= 1
+          (u) =>
+            !u.hasOwnSlot &&
+            upgradeLevel(run, u.id) === 0 &&
+            (u.maxLevel ?? 1) >= 1
         );
         worst = Math.max(worst, offered.length);
         return false;
       },
     });
     expect(worst).toBeLessThanOrEqual(3);
+  });
+
+  it("gives a place of its own only to the battery chain and the last part's chains, one step of each on offer at a time", () => {
+    const own = def.upgrades.filter((u) => u.hasOwnSlot);
+    const bases = new Set(own.map((u) => u.id.replace(/-\d+$/, "")));
+    expect([...bases].sort()).toEqual(
+      ["batt", "company", "hearth", "sail", "slowburn", "song"].sort()
+    );
+    const worst: Record<string, number> = {};
+    simulate(def, {
+      maxSeconds: 6 * 3600,
+      step: 1,
+      strategy: REALISTIC,
+      stopWhen: (run) => {
+        const offered: Record<string, number> = {};
+        for (const u of visibleUpgrades(def, run)) {
+          if (!u.hasOwnSlot || upgradeLevel(run, u.id) > 0) continue;
+          const base = u.id.replace(/-\d+$/, "");
+          offered[base] = (offered[base] ?? 0) + 1;
+        }
+        for (const [base, n] of Object.entries(offered))
+          worst[base] = Math.max(worst[base] ?? 0, n);
+        return false;
+      },
+    });
+    for (const n of Object.values(worst)) expect(n).toBeLessThanOrEqual(1);
+  });
+
+  /**
+   * The cap on chains with a slot of their own (a card the shop never
+   * hides) was one when each part had a single chain. The last part's shop is
+   * five short chains (hearth, sails, glass, company, song), each with its
+   * own place and its own picture, so four are allowed on offer at once; the
+   * songs begin only when company's chain is done, so five never are. That
+   * loosening is deliberate, and four is still a short, readable shop.
+   */
+  it("never has more than four of the last part's chains on offer together", () => {
+    let worst = 0;
+    simulate(def, {
+      maxSeconds: 6 * 3600,
+      step: 1,
+      strategy: REALISTIC,
+      stopWhen: (run) => {
+        if (run.phase === 3)
+          worst = Math.max(
+            worst,
+            visibleUpgrades(def, run).filter(
+              (u) => u.hasOwnSlot && upgradeLevel(run, u.id) === 0
+            ).length
+          );
+        return false;
+      },
+    });
+    expect(worst).toBeLessThanOrEqual(4);
   });
 
   it("keeps repeatables to a handful per phase", () => {
@@ -80,7 +137,7 @@ describe("effect previews", () => {
     // with keepers, it shows that their flashes guide more ships too
     const keepers = { ...run, owned: { ...run.owned, keeper: 2 } };
     expect(previewUpgrade(def, keepers, "lens")).toBe(
-      "×2 ships per flash\nKeepers too: +0.6/s"
+      "×2 ships per flash\nKeepers too: +0.7/s"
     );
   });
 
@@ -88,7 +145,7 @@ describe("effect previews", () => {
     const run = withResources(newRun(def), { coins: 1000, ships: 30 });
     const bought = buy(def, { ...run, revealed: ["keeper"] }, "keeper");
     expect(previewUpgrade(def, run, "keeper")).toBe(
-      "+1 keeper (+0.3/s)\n5 keepers: ×2!"
+      "+1 keeper (+0.35/s)\n3 keepers: ×2!"
     );
     expect(upgradeLevel(bought, "keeper")).toBe(1);
   });
@@ -169,21 +226,25 @@ describe("oil is a decision", () => {
     expect(upkeepRate(def, coastRun({ oil: 0 }), "coins")).toBe(0);
   });
 
-  it("is bought for you after the merchant contract, when it is cheap", () => {
-    const withContract = (price: number): RunState => ({
-      ...coastRun({ oil: 5, oilPrice: price, coins: 500 }),
+  it("is ordered for you after the merchant contract, whenever the tank falls under a quarter", () => {
+    const withContract = (oil: number, price: number): RunState => ({
+      ...coastRun({ oil, oilPrice: price, oilBase: price, coins: 500 }),
       owned: { keeper: 3, contract: 1 },
+      mods: { calm: 0.9 },
     });
-    // keep the price put for this one step
-    const cheap = tick(def, { ...withContract(1.2), mods: { calm: 0.9 } }, 0.1);
-    const dear = tick(def, { ...withContract(4), mods: { calm: 0.9 } }, 0.1);
-    expect(cheap.resources.oil).toBeGreaterThan(20);
-    expect(dear.resources.oil).toBeLessThan(5);
+    const low = tick(def, withContract(5, 1.2), 0.1);
+    const dearLow = tick(def, withContract(5, 4), 0.1);
+    // whatever the price: the order does not read the market
+    expect(low.resources.oil).toBeGreaterThan(20);
+    expect(dearLow.resources.oil).toBeGreaterThan(20);
+    // a tank that is not low is left alone, however cheap oil is
+    const half = tick(def, withContract(100, 0.5), 0.1);
+    expect(half.resources.oil).toBeLessThan(100);
   });
 
   it("even the contract tops up a nearly dry tank at a high price", () => {
     const run: RunState = {
-      ...coastRun({ oil: 0.5, oilPrice: 4, coins: 500 }),
+      ...coastRun({ oil: 0.5, oilPrice: 4, oilBase: 4, coins: 500 }),
       owned: { contract: 1 },
       mods: { calm: 0.9 },
     };

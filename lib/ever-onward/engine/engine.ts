@@ -89,6 +89,7 @@ function settle(def: UniverseDef, run: RunState): void {
 function pendingCount(def: UniverseDef, run: RunState): number {
   return def.upgrades.filter(
     (u) =>
+      !u.hasOwnSlot &&
       isVisible(def, run, u) &&
       !isMaxed(run, u) &&
       upgradeLevel(run, u.id) === 0
@@ -103,12 +104,12 @@ function revealUpgrades(def: UniverseDef, run: RunState): void {
   const limit = def.maxVisible ?? Infinity;
   let pending = limit === Infinity ? 0 : pendingCount(def, run);
   for (const upgrade of def.upgrades) {
-    if (pending >= limit) return;
+    if (pending >= limit && !upgrade.hasOwnSlot) continue;
     if (!isInPhase(def, run, upgrade) || run.revealed.includes(upgrade.id))
       continue;
     if (upgrade.visibleWhen && !upgrade.visibleWhen(run)) continue;
     run.revealed.push(upgrade.id);
-    pending += 1;
+    if (!upgrade.hasOwnSlot) pending += 1;
   }
 }
 
@@ -691,7 +692,7 @@ function validLog(log: unknown): LogEntry[] {
 /**
  * A save from before an upgrade's cap was lowered may own more levels than
  * now exist. Clamp them, and when the run is still in that upgrade's phase
- * give back what the extra levels cost (at today's prices, in its currency),
+ * give back what the extra levels cost (at the prices they were bought at, in its currency),
  * so nobody loses what they paid for. Out of its phase the currency no
  * longer matters, so the levels are only clamped.
  */
@@ -705,7 +706,7 @@ function clampToMaxLevels(def: UniverseDef, run: RunState): void {
       for (let level = max; level < Math.floor(owned); level += 1)
         refund += upgradeCost(
           { ...run, owned: { [upgrade.id]: level } },
-          upgrade
+          { ...upgrade, costGrowth: upgrade.refundGrowth ?? upgrade.costGrowth }
         );
       const before = run.resources[upgrade.currency] ?? 0;
       if (Number.isFinite(refund) && refund > 0)

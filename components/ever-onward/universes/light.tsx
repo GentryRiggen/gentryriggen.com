@@ -7,9 +7,9 @@ import {
   LIGHTHOUSE_ROWS,
 } from "@/lib/ever-onward/start/sprites";
 import {
-  keepsakeNames,
-  picksSoFar,
-} from "@/lib/ever-onward/universes/light/garden";
+  flowerNames,
+  letsSoFar,
+} from "@/lib/ever-onward/universes/light/warmth";
 import { lanternOf } from "@/lib/ever-onward/universes/light";
 import { chosenSide, forkOf } from "@/lib/ever-onward/universes/light/forks";
 import type { CueName } from "../audio/everOnwardSynth";
@@ -17,13 +17,16 @@ import { SCORES, TITLE_SCORE, UNEASE } from "../audio/scores";
 import EmberIcon from "../game/EmberIcon";
 import LampPanel from "../game/LampPanel";
 import LanternPicker from "../game/LanternPicker";
-import MemoryGarden from "../game/MemoryGarden";
-import ProbeRaces from "../game/ProbeRaces";
+import LightsPanel from "../game/LightsPanel";
+import ProbeDesignPanel from "../game/ProbeDesignPanel";
+import SunEdgePanel from "../game/SunEdgePanel";
 import ForkPanel from "../game/ForkPanel";
+import HarborPanel from "../game/HarborPanel";
 import FundPanel from "../game/FundPanel";
 import ProjectsPanel from "../game/ProjectsPanel";
+import CrewsPanel from "../game/CrewsPanel";
+import GridPanel from "../game/GridPanel";
 import StreetlightsPanel from "../game/StreetlightsPanel";
-import TideClock from "../game/TideClock";
 import WeatherDesk from "../game/WeatherDesk";
 import LightScene from "../scenes/light/LightScene";
 import type { PanelProps, TapLook, UniverseUi } from "./types";
@@ -83,25 +86,36 @@ function cuesBetween(before: RunState, now: RunState): CueName[] {
     (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
   // A storm front landing on the weather desk.
   if (rose("wxFronts")) cues.push("thunder");
-  // Nets hauled in on the tide clock.
-  if (rose("tdHauls")) cues.push("splash");
-  // The racing probe leaving the dock, and coming home.
-  if (rose("prLaunches")) cues.push("launch");
-  if (rose("prRuns")) cues.push("arrive");
-  // A memory flower picked in the garden.
-  if (rose("gdPicks")) cues.push("chime");
+  // An evening rush kept lit, and one that put districts out.
+  if (rose("pgLits")) cues.push("chime");
+  if (rose("pgBlackouts")) cues.push("thunder");
+  // A tanker tying up at the quay, and barrels rolling into the tanks.
+  if (rose("tkVisits")) cues.push("arrive");
+  if (rose("tkBuys")) cues.push("splash");
+  // A flare sweeping the fleet, probes going wild, and the wild ones coming home.
+  if (rose("skFlares")) cues.push("thunder");
+  if (rose("skWilds")) cues.push("splash");
+  if (rose("skRecalls")) cues.push("arrive");
+  // A light let go: a lantern rises and a flower blooms.
+  if (rose("wmLets")) cues.push("chime");
   return cues;
 }
 
 export const LIGHT_UI: UniverseUi = {
   Scene: LightScene,
-  topPanels: [LampPanel],
-  primaryPanels: [StreetlightsPanel, ProbeRaces, MemoryGarden],
+  topPanels: [LampPanel, HarborPanel],
+  primaryPanels: [
+    GridPanel,
+    StreetlightsPanel,
+    CrewsPanel,
+    SunEdgePanel,
+    ProbeDesignPanel,
+    LightsPanel,
+  ],
   panels: [
     CoastForkPanel,
     LaterForkPanel,
     FundPanel,
-    TideClock,
     WeatherDesk,
     ProjectsPanel,
   ],
@@ -127,13 +141,13 @@ export const LIGHT_UI: UniverseUi = {
   PrestigeIcon: EmberIcon,
   logbook: {
     afterTide: function LightKeepsakes({ run }) {
-      if (picksSoFar(run) <= 0) return null;
+      if (letsSoFar(run) <= 0) return null;
       return (
         <p
           data-testid="lm-keepsakes"
           className="font-mono text-xs text-emerald-200"
         >
-          Keepsakes: {keepsakeNames(run).join(", ")}.
+          Flowers: {flowerNames(run).join(", ")}.
         </p>
       );
     },

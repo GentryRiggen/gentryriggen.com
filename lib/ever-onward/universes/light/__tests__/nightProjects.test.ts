@@ -1,3 +1,4 @@
+import { rushCarry } from "../grid";
 import {
   newRun,
   reconcileRun,
@@ -13,7 +14,6 @@ import {
   demandMW,
   knowhowPerSecond,
   powerPerSecond,
-  strainPerSecond,
 } from "../tick";
 
 const nightRun = (
@@ -78,8 +78,10 @@ describe("No More Night projects", () => {
     );
     expect(demandMW(done("smart-meters"))).toBeGreaterThan(demandMW(base));
     expect(demandMW(done("lamplighters"))).toBeLessThan(demandMW(base));
-    expect(strainPerSecond(done("line-patrols"))).toBeLessThan(
-      strainPerSecond(base)
+    expect(rushCarry(done("line-patrols"))).toBeGreaterThan(rushCarry(base));
+    expect(knowhowPerSecond(done("line-patrols"))).toBeCloseTo(
+      knowhowPerSecond(base),
+      9
     );
     expect(knowhowPerSecond(done("night-school"))).toBeGreaterThan(
       knowhowPerSecond(base)

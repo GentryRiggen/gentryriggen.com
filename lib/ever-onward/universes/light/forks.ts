@@ -1,5 +1,6 @@
 import { cloneRun } from "../../engine/engine";
 import type { ActionDef, RunState } from "../../engine/types";
+import { rushExcessAt } from "./grid";
 import { PHASE_COAST, PHASE_LAST, PHASE_NIGHT, PHASE_SKY } from "./resources";
 import { hasFork, markFork, type ForkId, type ForkSideId } from "./forkState";
 import { previewLines, type Stat } from "./preview";
@@ -7,16 +8,12 @@ import {
   autoCoinsPerSecond,
   calmSkyIncomePerSecond,
   calmTapCoins,
-  driftPerSecond,
-  lastTapResolve,
   lighthouseCount,
-  lightsLetGo,
   powerPerSecond,
-  resolvePerSecond,
-  steadyFlame,
-  strainPerSecond,
   syncDisplay,
 } from "./tick";
+import { burnMult, letGoCount, resolvePerSecond, tapResolve } from "./warmth";
+import { burnShare } from "./sunEdge";
 import { TUNING } from "./tuning";
 
 /**
@@ -106,9 +103,9 @@ export const FORKS: readonly ForkDef[] = [
     stats: [
       { label: "Power/sec", read: powerPerSecond },
       {
-        label: "Grid strain",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "A usual evening rush",
+        read: (run) => rushExcessAt(run, 1, 1) * 100,
+        suffix: "% extra",
       },
     ],
     sides: [
@@ -118,7 +115,7 @@ export const FORKS: readonly ForkDef[] = [
         tagline: "Cheap now, smoky later",
         wry: "Quick, cheap, and the sky will remember this.",
         gives: `Every plant makes ${times(K.night.coalSupply)} at once.`,
-        catches: `Smog over the cities, and the grid strains ${more(K.night.coalStrain)} faster.`,
+        catches: `Smog over the cities, and the evening rush asks ${more(K.night.coalPeak)} more of the batteries.`,
         price: K.costs.coal,
       },
       {
@@ -126,7 +123,7 @@ export const FORKS: readonly ForkDef[] = [
         name: "Wind",
         tagline: "Slow to build, clean",
         wry: "Takes a season to raise. The sky doesn't mind waiting.",
-        gives: `Over ${Math.round((K.night.windRampSeconds / 60) * 10) / 10} minutes the farms grow in, and every plant makes ${times(K.night.windSupply)}. The grid strains ${less(K.night.windStrain)} less.`,
+        gives: `Over ${Math.round((K.night.windRampSeconds / 60) * 10) / 10} minutes the farms grow in, and every plant makes ${times(K.night.windSupply)}. The evening rush asks ${less(K.night.windPeak)} less of the batteries.`,
         catches: `Costs ${times(K.costs.wind / K.costs.coal)} what coal does, and nothing happens at first.`,
         price: K.costs.wind,
       },
@@ -142,9 +139,9 @@ export const FORKS: readonly ForkDef[] = [
     stats: [
       { label: "Energy/sec", read: calmSkyIncomePerSecond },
       {
-        label: "Fleet drift",
-        read: (run) => driftPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "A usual flare burns",
+        read: (run) => burnShare(run, 1) * 100,
+        suffix: "% of the fleet",
       },
     ],
     sides: [
@@ -154,7 +151,7 @@ export const FORKS: readonly ForkDef[] = [
         tagline: "A swarm",
         wry: "Fine. Now there are more of them to lose.",
         gives: `The fleet grows ${times(K.sky.swarmProbes)} at once.`,
-        catches: `The fleet drifts off course ${more(K.sky.swarmDrift)} faster.`,
+        catches: `Flares burn ${more(K.sky.swarmFlare)} more of the fleet.`,
         price: K.costs.swarm,
       },
       {
@@ -162,7 +159,7 @@ export const FORKS: readonly ForkDef[] = [
         name: "Bigger mirrors",
         tagline: "One very large idea",
         wry: "Very large, very patient, and not going anywhere.",
-        gives: `Every collector catches ${times(K.sky.mirrorsEnergy)}, and the fleet drifts ${less(K.sky.mirrorsDrift)} less.`,
+        gives: `Every collector catches ${times(K.sky.mirrorsEnergy)}, and flares burn ${less(K.sky.mirrorsFlare)} less of the fleet.`,
         catches: "No new probes come of it.",
         price: K.costs.mirrors,
       },
@@ -174,13 +171,13 @@ export const FORKS: readonly ForkDef[] = [
     title: "Hold on, or let go?",
     question: "What do you do with the one light that is left to choose?",
     currency: "resolve",
-    isOpen: (run) => lightsLetGo(run) >= 4,
+    isOpen: (run) => letGoCount(run) >= 4,
     stats: [
       { label: "Resolve/sec", read: resolvePerSecond },
-      { label: "Resolve per tap", read: lastTapResolve },
+      { label: "Resolve per tap", read: tapResolve },
       {
-        label: "Flame holds at",
-        read: (run) => (steadyFlame(run) / TUNING.last.flameFull) * 100,
+        label: "Warmth each light burns",
+        read: (run) => burnMult(run) * 100,
         suffix: "%",
       },
     ],
@@ -191,7 +188,7 @@ export const FORKS: readonly ForkDef[] = [
         tagline: "Open your hands",
         wry: "Holding on was the heavy part.",
         gives: `Resolve comes ${times(K.last.releaseResolve)} as fast.`,
-        catches: `The flame fades ${more(K.last.releaseFade)} faster. It gets cold.`,
+        catches: `Every light burns ${more(K.last.releaseBurn)} more warmth. It gets cold.`,
         price: K.costs.release,
       },
       {
@@ -199,8 +196,8 @@ export const FORKS: readonly ForkDef[] = [
         name: "Keep it",
         tagline: "Hold the flame",
         wry: "Somebody might still be out there.",
-        gives: `The flame fades ${less(K.last.keepFade)} slower, and every tap is worth ${times(K.last.keepTaps)} resolve.`,
-        catches: "Letting go is no faster than before.",
+        gives: `Every light burns ${less(K.last.keepBurn)} less warmth, and every tap is worth ${times(K.last.keepTaps)} resolve.`,
+        catches: "Resolve comes no faster than before.",
         price: K.costs.keep,
       },
     ],

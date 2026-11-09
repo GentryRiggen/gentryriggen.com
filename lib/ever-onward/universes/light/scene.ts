@@ -1,21 +1,70 @@
 import type { RunState } from "../../engine/types";
+import { isTollOpen, tollStep, trafficShare } from "./toll";
 import {
-  hasBiggerNets,
-  hasTideMill,
-  isTideOpen,
-  netStateIndex,
-  tideLevel,
-} from "./tide";
+  isDarkBanner,
+  isRelit,
+  isTankerIn,
+  barrelsRolling,
+  isTankerArriving,
+  tankerDeal,
+} from "./tanker";
 import {
-  hasMissionControl,
-  hasRacingFins,
-  isProbeOut,
-  isScoutOut,
-  isProbesOpen,
-} from "./probes";
-import { gardenCode, hasRainBarrel } from "./garden";
-import { LET_GO } from "./upgrades";
+  COPYING,
+  MIRRORS,
+  SHIELDS,
+  SPEED,
+  isDialsOpen,
+  isGoneWild,
+  isHome,
+  isRecalling,
+  isSettling,
+  pointsAt,
+  wildLevel,
+} from "./design";
+import {
+  distanceNow,
+  forecastSize,
+  hitSize,
+  lastBurn,
+  lastSaved,
+  sunMood,
+} from "./sunEdge";
+import {
+  LIGHT_COUNT,
+  chillForecast,
+  chillKind,
+  chillSize,
+  fogLevel,
+  goodbyeIndex,
+  hearthTier,
+  isChillBlowing,
+  isSurging,
+  letGoMask,
+  companyPips,
+  isLit,
+} from "./warmth";
 import { hasFork, windRamp } from "./forkState";
+import {
+  batteryCount,
+  batteryFlow,
+  chargeShare01,
+  dayShare,
+  districtsDark,
+  eveningLevel,
+  gridBanner,
+  isGridGlowing,
+  isRushNow,
+} from "./grid";
+import {
+  buildingCrews,
+  crewsAt,
+  crewsOnTheRoad,
+  hasCrew,
+  isOut,
+  isStormHit,
+  isWeatherOpen,
+  schoolCrews,
+} from "./weather";
 import {
   COAST_LIGHTHOUSES,
   PHASE_COAST,
@@ -27,20 +76,15 @@ import {
   TOTAL_STARS,
 } from "./resources";
 import {
-  boatHeadingOf,
   flameFraction,
-  gridSteadiness,
-  headingOf,
   isBoatOut,
-  isFleetGlowing,
-  isFlareOn,
-  isGridGlowing,
-  isRushOn,
+  isGridInPlay,
   isStorming,
+  lampStep,
   keeperCount,
   level,
   lighthouseCount,
-  shipsPerFlash,
+  flashShipsAtFullTraffic,
   tankCapacity,
   tier,
 } from "./tick";
@@ -98,15 +142,29 @@ export interface LightSceneInfo {
   windBuilt: number;
   /** 1 once the first ship's boat is out in the dark. */
   boatVisible: number;
-  /** The memory garden: one base-4 digit a plot (see `gardenCode`). */
-  gardenCode: number;
-  /** 1 once the rain barrel stands by the flowers. */
-  rainBarrel: number;
   /** How far across the dark the boat is, 0..1 (steps of 1%). */
   boatProgress: number;
-  /** How true its heading is, 0..1 (steps of 5%): 1 is straight at the beam. */
-  boatHeading: number;
-  /** 1 while the steady glow is on: sparkling cities, a fleet in formation. */
+  /** 1 while the flame is warm enough for the boat to surge. */
+  surge: number;
+  /** The fog on the water, 0..4 (0 none, 4 thick): it creeps in as the flame cools. */
+  fog: number;
+  /** How much company each lit light keeps: one base-4 digit a light (see `brightCode`). */
+  brightCode: number;
+  /** The light whose goodbye is showing (1 up), or 0. */
+  goodbye: number;
+  /** The cold wind: 0 none, 1-3 forecast (mild to bitter), 4-6 blowing. */
+  chill: number;
+  /** The kind of that wind (1 sea, 2 town, 3 hills; 0 while none is forecast or blowing). */
+  windKind: number;
+  /** Hearth steps bought, 0 to 6. */
+  hearthTier: number;
+  /** Steps of the boat's sails, the lamp glass and warm company, so each shows in the picture. */
+  sailTier: number;
+  slowburnTier: number;
+  companyTier: number;
+  /** Steps of the crossing song, 0 to 4: notes drift over the boat. */
+  songTier: number;
+  /** 1 while the steady glow is on: sparkling cities. */
   glow: number;
   /** 1 once the last flash is made and the boat has turned for home. */
   finished: number;
@@ -131,39 +189,90 @@ export interface LightSceneInfo {
   linesTier: number;
   subsTier: number;
   bulbsTier: number;
-  gridTier: number;
+  /** Batteries built (all sizes) and how full they are, 0..1 in tenths. */
+  batteries: number;
+  charge: number;
+  /** 1 once the grid's day begins (the planet has a sun and a dusk). */
+  gridOpen: number;
+  /** Where the day is, in twentieths (0..19), and 1 during the evening rush. */
+  dayStep: number;
+  rushOn: number;
+  /** Tonight's rush: 0 mild to 3 scorching. */
+  eveningLevel: number;
+  /** The batteries: 0 resting, 1 charging, 2 giving power to the rush. */
+  flow: number;
+  /** Districts dark right now, 0..10. */
+  dark: number;
+  /** The moment on show: 0 none, 1 LIT ALL NIGHT, 2 BLACKOUT. */
+  gridBanner: number;
+  /** Crews on each post (there, not on the road) and any on the road. */
+  crewBuild: number;
+  crewSchool: number;
+  /** 1 once the weather desk is open (the three towns have watch towers). */
+  weatherOpen: number;
+  /** Crews on watch at each of the three towns (there, not on the road). */
+  watch0: number;
+  watch1: number;
+  watch2: number;
+  crewRoad: number;
+  /** Bit i is set while town i has no lights (a storm hit it). */
+  townsOut: number;
+  /** 1 for a few seconds after a storm hit, and the town it hit. */
+  stormHit: number;
+  stormTown: number;
+  /** 1 while a crew is watching the town the storm hit. */
+  stormHeld: number;
+  /** The streetlights, 0 (soft) to 3 (dazzling). */
+  lampStep: number;
   /** 1 once storm crews are hired (sandbag line by the towns). */
   stormCrews: number;
   /** 1 once the weather vane stands on the control post. */
   weatherVane: number;
-  /** 1 once the tide clock is open: the sea breathes beside the lighthouse. */
-  tideOpen: number;
-  /** The water, 0..1 (12 steps, so the picture is not redrawn every tick). */
-  tideLevel: number;
-  /** The nets: 0 none out, 1 set and waiting for high tide, 2 full. */
-  nets: number;
-  /** 1 once the bigger nets are bought (a second, wider net). */
-  biggerNets: number;
-  /** 1 once the tide mill turns by the water. */
-  tideMill: number;
-  /** 1 once the probe races are open: a dock stands beside the mirror field. */
-  raceOpen: number;
-  /** 1 while the racing probe is away from the dock. */
-  raceOut: number;
-  /** 1 once the racing fins are bought. */
-  raceFins: number;
-  /** 1 once mission control stands by the dock (its scout flies on its own). */
-  raceControl: number;
-  /** 1 while the scout probe is away from the dock. */
-  raceScout: number;
-  /** Grid steadiness, 0..1 (steps of 10%): low means the lights flicker. */
-  gridSteadiness: number;
-  /** 1 while the evening rush is on. */
-  rush: number;
-  /** 1 while a solar flare can be caught. */
-  flare: number;
-  /** How true the probe fleet flies, 0..1 (steps of 10%). */
-  fleetHeading: number;
+  /** 1 once the harbor desk is open (the toll sign stands on the quay). */
+  tollOpen: number;
+  /** The toll step, 0 (low) to 4. */
+  tollStep: number;
+  /** Ships choosing the harbor, in tenths (0..10): the rest sail on to the rival. */
+  traffic: number;
+  /** 1 while a tanker is tied up with cheap oil. */
+  tanker: number;
+  /** The tanker's deal as tens of percent off the market (0 none, 3 = about 30% off). */
+  tankerDeal: number;
+  /** 1 for the first seconds a tanker is in: the "cheap oil" shout. */
+  tankerNew: number;
+  /** 1 for a few seconds after oil is bought: barrels roll into the tanks. */
+  barrels: number;
+  /** 1 for the first seconds of a dry spell: the lamp has gone dark. */
+  darkBanner: number;
+  /** 1 for a few seconds after the lamp is lit again: the beam bursts. */
+  relit: number;
+  /** 1 once the sky's dials are open: the design bench and the sun's edge. */
+  dialsOpen: number;
+  /** The sun's mood: 0 quiet, 1 usual, 2 restless. */
+  sunMood: number;
+  /** Where the fleet flies, in halves of a step (0 far .. 8 brushing the sun). */
+  sunDist: number;
+  /** Design points at work in speed, mirrors, copying and shields (0..8). */
+  dsSpeed: number;
+  dsMirrors: number;
+  dsCopying: number;
+  dsShields: number;
+  /** 1 while design points are on their way to a new place. */
+  dsMoving: number;
+  /** Wild probes: 0 none .. 4 most of the fleet. */
+  wild: number;
+  /** 1 while a green tether pulls the wild ones home. */
+  tether: number;
+  /** The forecast: 0 none, then 1 small, 2 medium, 3 big flare coming. */
+  flareFore: number;
+  /** A flare's moment: 0 none, then 1 small, 2 medium, 3 big. */
+  flareHit: number;
+  /** What it burned, in twentieths of the fleet (0..20, so 5% steps), and what shields saved. */
+  flareLost: number;
+  flareSaved: number;
+  /** 1 for a few seconds when probes go wild, and when they come home. */
+  goneWild: number;
+  homeAgain: number;
   aimLevel: number;
   mirrorTier: number;
   copyTier: number;
@@ -171,10 +280,30 @@ export interface LightSceneInfo {
   navTier: number;
   enginesTier: number;
   appetiteTier: number;
-  /** Bit i is set once the i-th light of LET_GO has been let go. */
+  /** Bit i is set once the i-th remembered light has been let go. */
   letGoMask: number;
   /** The lantern colour picked at the start, 1 to 3 (the first if none). */
   lantern: number;
+}
+
+/**
+ * One base-4 digit a lit light: how much company it keeps this run (0 a
+ * little .. 3 a lot), so the picture can draw the big ones big. It changes
+ * only when a light goes, never every tick.
+ */
+function brightCode(run: RunState): number {
+  if (run.phase !== 3) return 0;
+  let code = 0;
+  for (let i = 0; i < LIGHT_COUNT; i += 1)
+    if (isLit(run, i)) code += Math.min(3, companyPips(run, i) - 1) * 4 ** i;
+  return code;
+}
+
+/** 0 none, 1-3 a forecast wind (mild to bitter), 4-6 a wind blowing. */
+function chillCode(run: RunState): number {
+  if (isChillBlowing(run)) return 4 + chillSize(run);
+  const coming = chillForecast(run);
+  return coming === null ? 0 : 1 + coming;
 }
 
 /** Lantern colours to pick from, in the order they are offered. */
@@ -211,7 +340,8 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     lighthouses,
     coastProgress: clamp01(lighthouses / COAST_LIGHTHOUSES),
     ships: Math.floor(finite(r.ships ?? 0)),
-    shipsPerFlash: finite(shipsPerFlash(run)),
+    // Whatever the traffic is doing, so it sliding up or down never redraws the picture.
+    shipsPerFlash: finite(flashShipsAtFullTraffic(run)),
     lensLevel: lens,
     beam: clamp01(lens / (lens + 12)),
     keepers: finite(keeperCount(run)),
@@ -252,11 +382,19 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     forkLast: hasFork(run, "release") ? 1 : hasFork(run, "keep") ? 2 : 0,
     windBuilt: step(windRamp(run), 4),
     boatVisible: isBoatOut(run) ? 1 : 0,
-    gardenCode: gardenCode(run),
-    rainBarrel: hasRainBarrel(run) ? 1 : 0,
     boatProgress: step(clamp01(finite(r.boatProgress ?? 0) / 100), 100),
-    boatHeading: step(boatHeadingOf(run) / 100, 20),
-    glow: isGridGlowing(run) || isFleetGlowing(run) ? 1 : 0,
+    surge: isSurging(run) ? 1 : 0,
+    fog: run.phase === 3 ? fogLevel(run) : 0,
+    brightCode: brightCode(run),
+    goodbye: (goodbyeIndex(run) ?? -1) + 1,
+    chill: chillCode(run),
+    windKind: chillCode(run) === 0 ? 0 : chillKind(run) + 1,
+    hearthTier: hearthTier(run),
+    sailTier: tier(run, "sail"),
+    slowburnTier: tier(run, "slowburn"),
+    companyTier: tier(run, "company"),
+    songTier: tier(run, "song"),
+    glow: isGridGlowing(run) ? 1 : 0,
     finished: run.flags.finished ? 1 : 0,
     lantern: lanternOf(run),
     oilFraction: step(finite(r.oil ?? 0) / Math.max(1, tankCapacity(run)), 10),
@@ -275,23 +413,73 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     linesTier: tier(run, "lines"),
     subsTier: tier(run, "subs"),
     bulbsTier: tier(run, "bulbs"),
-    gridTier: tier(run, "grid"),
+    batteries: Math.min(14, batteryCount(run)),
+    charge: step(chargeShare01(run), 10),
+    gridOpen: isGridInPlay(run) ? 1 : 0,
+    dayStep: isGridInPlay(run)
+      ? Math.min(19, Math.floor(dayShare(run) * 20))
+      : 0,
+    rushOn: isRushNow(run) ? 1 : 0,
+    eveningLevel: isGridInPlay(run) ? eveningLevel(run) : 0,
+    flow: batteryFlow(run),
+    dark: districtsDark(run),
+    gridBanner: gridBanner(run),
+    crewBuild: run.phase === 1 ? buildingCrews(run) : 0,
+    crewSchool: run.phase === 1 ? schoolCrews(run) : 0,
+    weatherOpen: isWeatherOpen(run) ? 1 : 0,
+    watch0: run.phase === 1 ? crewsAt(run, 0) : 0,
+    watch1: run.phase === 1 ? crewsAt(run, 1) : 0,
+    watch2: run.phase === 1 ? crewsAt(run, 2) : 0,
+    crewRoad: run.phase === 1 ? crewsOnTheRoad(run) : 0,
+    townsOut:
+      run.phase === 1
+        ? [0, 1, 2].reduce(
+            (mask, t) => (isOut(run, t) ? mask | (1 << t) : mask),
+            0
+          )
+        : 0,
+    stormHit: isStormHit(run) ? 1 : 0,
+    stormTown: Math.round(run.resources.wxLastTown ?? 0),
+    stormHeld:
+      isStormHit(run) && hasCrew(run, Math.round(run.resources.wxLastTown ?? 0))
+        ? 1
+        : 0,
+    lampStep: run.phase === 1 ? lampStep(run) : 0,
     stormCrews: level(run, "storm-crews") > 0 ? 1 : 0,
     weatherVane: level(run, "weather-vane") > 0 ? 1 : 0,
-    tideOpen: isTideOpen(run) ? 1 : 0,
-    tideLevel: isTideOpen(run) ? step(tideLevel(run), 12) : 0,
-    nets: isTideOpen(run) ? netStateIndex(run) : 0,
-    biggerNets: hasBiggerNets(run) ? 1 : 0,
-    tideMill: hasTideMill(run) ? 1 : 0,
-    raceOpen: isProbesOpen(run) ? 1 : 0,
-    raceOut: isProbeOut(run) ? 1 : 0,
-    raceFins: hasRacingFins(run) ? 1 : 0,
-    raceControl: hasMissionControl(run) ? 1 : 0,
-    raceScout: isScoutOut(run) ? 1 : 0,
-    gridSteadiness: step(finite(gridSteadiness(run)) / 100, 10),
-    rush: isRushOn(run) ? 1 : 0,
-    flare: isFlareOn(run) ? 1 : 0,
-    fleetHeading: step(finite(headingOf(run)) / 100, 10),
+    tollOpen: isTollOpen(run) ? 1 : 0,
+    tollStep: tollStep(run),
+    traffic: Math.round(clamp01(trafficShare(run)) * 10),
+    tanker: isTankerIn(run) ? 1 : 0,
+    tankerDeal: isTankerIn(run)
+      ? Math.max(0, Math.round((1 - tankerDeal(run)) * 10))
+      : 0,
+    tankerNew: isTankerArriving(run) ? 1 : 0,
+    barrels: run.phase === 0 && barrelsRolling(run) ? 1 : 0,
+    darkBanner: run.phase === 0 && isDarkBanner(run) ? 1 : 0,
+    relit: run.phase === 0 && isRelit(run) ? 1 : 0,
+    dialsOpen: isDialsOpen(run) ? 1 : 0,
+    sunMood: isDialsOpen(run) ? sunMood(run) : 1,
+    sunDist: isDialsOpen(run) ? Math.round(distanceNow(run) * 2) : 0,
+    dsSpeed: isDialsOpen(run) ? Math.round(pointsAt(run, SPEED)) : 0,
+    dsMirrors: isDialsOpen(run) ? Math.round(pointsAt(run, MIRRORS)) : 0,
+    dsCopying: isDialsOpen(run) ? Math.round(pointsAt(run, COPYING)) : 0,
+    dsShields: isDialsOpen(run) ? Math.round(pointsAt(run, SHIELDS)) : 0,
+    dsMoving: isDialsOpen(run) && isSettling(run) ? 1 : 0,
+    wild: isDialsOpen(run) ? wildLevel(run) : 0,
+    tether: isDialsOpen(run) && isRecalling(run) ? 1 : 0,
+    flareFore: isDialsOpen(run) ? (forecastSize(run) ?? -1) + 1 : 0,
+    flareHit: isDialsOpen(run) ? (hitSize(run) ?? -1) + 1 : 0,
+    flareLost:
+      isDialsOpen(run) && hitSize(run) !== null
+        ? Math.min(20, Math.round(lastBurn(run) * 20))
+        : 0,
+    flareSaved:
+      isDialsOpen(run) && hitSize(run) !== null
+        ? Math.min(20, Math.round(lastSaved(run) * 20))
+        : 0,
+    goneWild: isDialsOpen(run) && isGoneWild(run) ? 1 : 0,
+    homeAgain: isDialsOpen(run) && isHome(run) ? 1 : 0,
     aimLevel: level(run, "aim"),
     mirrorTier: tier(run, "mirror"),
     copyTier: tier(run, "copy"),
@@ -299,9 +487,6 @@ export function sceneInfo(run: RunState): LightSceneInfo {
     navTier: tier(run, "nav"),
     enginesTier: tier(run, "engines"),
     appetiteTier: tier(run, "appetite"),
-    letGoMask: LET_GO.reduce(
-      (mask, light, i) => (level(run, light.id) > 0 ? mask | (1 << i) : mask),
-      0
-    ),
+    letGoMask: letGoMask(run),
   };
 }

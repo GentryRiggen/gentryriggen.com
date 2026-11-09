@@ -1,6 +1,9 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 import { TOWN_COUNT } from "@/lib/ever-onward/universes/light/scene";
-import { COAST_LIGHTHOUSES } from "@/lib/ever-onward/universes/light/resources";
+import {
+  COAST_LIGHTHOUSES,
+  TOTAL_LIGHTS,
+} from "@/lib/ever-onward/universes/light/resources";
 import CaptionLine from "../CaptionLine";
 import { pixelClass } from "../../game/retro/retroStyles";
 
@@ -15,16 +18,18 @@ export function captionFor(info: LightSceneInfo): string {
       return `Towns lit: ${info.townsLit}/${TOWN_COUNT} · Power ${Math.round(
         info.powered * 100
       )}%${
-        info.gridSteadiness < 0.7
-          ? ` · Grid ${Math.round(info.gridSteadiness * 100)}%`
-          : ""
+        info.dark > 0
+          ? ` · ${info.dark} dark`
+          : info.batteries > 0
+            ? ` · Batteries ${Math.round(info.charge * 100)}%`
+            : ""
       }`;
     case "sky":
       return `Collectors ${info.collectors}/6 · Stars left ${num(
         info.starsRemaining
       )}`;
     default:
-      return `Lights still burning: ${num(info.lightsRemaining)}`;
+      return `Lights burning: ${num(info.lightsRemaining)} of ${TOTAL_LIGHTS}`;
   }
 }
 
@@ -34,7 +39,11 @@ export default function SceneCaption({ info }: { info: LightSceneInfo }) {
     <p
       aria-hidden="true"
       data-testid="lm-scene-caption"
-      className={`${pixelClass} pointer-events-none absolute bottom-0 left-0 max-w-full truncate bg-black/65 px-2 py-1.5 text-[10px] leading-none text-amber-100 lg:text-xs`}
+      data-phase={info.phase}
+      className={`${pixelClass} pointer-events-none absolute left-0 max-w-full truncate bg-black/65 px-2 py-1.5 text-[10px] leading-none text-amber-100 lg:text-xs ${
+        // The night's stations fill the picture's bottom edge: the caption sits on top.
+        info.phase === "night" ? "top-0" : "bottom-0"
+      }`}
     >
       <CaptionLine text={captionFor(info)} />
     </p>

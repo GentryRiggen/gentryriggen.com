@@ -884,6 +884,393 @@ html:has(.jim-app) body {
   animation: lmSpin 3s linear infinite;
 }
 
+/* No More Night's grid: sparks on the wires, batteries, crews, blackouts. */
+@keyframes ln-spark {
+  to {
+    stroke-dashoffset: -14.5;
+  }
+}
+.ln-spark {
+  filter: drop-shadow(0 0 2px currentColor);
+  animation: ln-spark 2.2s linear infinite;
+}
+.ln-spark-fast {
+  animation-duration: 0.45s;
+}
+.ln-spark-in {
+  animation-direction: reverse;
+  animation-duration: 1.3s;
+}
+
+@keyframes ln-charge {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ln-charge {
+  animation: ln-charge 1s ease-in-out infinite;
+}
+
+@keyframes ln-drain {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 0.35;
+  }
+  60% {
+    opacity: 0.9;
+  }
+}
+.ln-drain {
+  animation: ln-drain 0.55s steps(3) infinite;
+}
+
+/* A district goes dark: a stutter, then out (the dark itself is a class). */
+@keyframes ln-snap {
+  0% {
+    opacity: 1;
+  }
+  15% {
+    opacity: 0.12;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.1;
+  }
+  65% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.1;
+  }
+}
+.ln-snap {
+  animation: ln-snap 0.9s linear both;
+}
+
+/* The dark that falls on a district flickers on, then stays. */
+@keyframes ln-band {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.ln-band {
+  animation: ln-band 0.9s linear both;
+}
+
+/* A district's lights snap off: a white flash, then black. */
+@keyframes ln-cut {
+  0% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-cut {
+  opacity: 0;
+  animation: ln-cut 0.45s ease-out 1 both;
+}
+
+/* The sky flashes red once when the lights go out. */
+@keyframes ln-flash {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-flash {
+  opacity: 0;
+  animation: ln-flash 1.3s ease-out 1 both;
+}
+
+@keyframes ln-alarm {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.ln-alarm {
+  opacity: 0;
+  animation: ln-alarm 0.7s ease-in-out 5;
+}
+
+/* A lit night: warm rings roll out, and the sky glows once. */
+@keyframes ln-wave {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(7);
+  }
+}
+.ln-wave {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ln-wave 2.6s ease-out 1 both;
+}
+@keyframes ln-warm {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.18;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-warm {
+  opacity: 0;
+  animation: ln-warm 3s ease-out 1 both;
+}
+
+/* Crews at their posts. */
+@keyframes ln-hammer {
+  0%,
+  100% {
+    transform: rotate(-35deg);
+  }
+  50% {
+    transform: rotate(40deg);
+  }
+}
+.ln-hammer {
+  transform-box: fill-box;
+  transform-origin: 20% 100%;
+  animation: ln-hammer 0.5s ease-in-out infinite;
+}
+@keyframes ln-weld {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.1;
+  }
+}
+.ln-weld {
+  animation: ln-weld 0.4s steps(2) infinite;
+}
+@keyframes ln-look {
+  0%,
+  100% {
+    transform: translateX(-0.9px);
+  }
+  50% {
+    transform: translateX(0.9px);
+  }
+}
+.ln-look {
+  animation: ln-look 1.6s ease-in-out infinite;
+}
+@keyframes ln-page {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.7px);
+  }
+}
+.ln-page {
+  animation: ln-page 1.2s ease-in-out infinite;
+}
+@keyframes ln-bulb {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ln-bulb {
+  animation: ln-bulb 1.4s ease-in-out infinite;
+}
+@keyframes ln-walk {
+  0%,
+  100% {
+    transform: translateX(-9px);
+  }
+  50% {
+    transform: translateX(9px);
+  }
+}
+.ln-walk {
+  animation: ln-walk 2.2s ease-in-out infinite;
+}
+
+/* A storm on a town: the bolt, the leaning pole, the wire and its sparks. */
+@keyframes ln-bolt {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  8%,
+  30% {
+    opacity: 1;
+  }
+  18% {
+    opacity: 0.2;
+  }
+}
+.ln-bolt {
+  opacity: 0;
+  animation: ln-bolt 1.4s linear 3 both;
+}
+@keyframes ln-pole {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(32deg);
+  }
+}
+.ln-pole {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ln-pole 0.8s ease-in 1 both;
+}
+@keyframes ln-wire {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.ln-wire {
+  animation: ln-wire 0.3s steps(2) infinite;
+}
+@keyframes ln-spark-fly-a {
+  to {
+    transform: translate(-13px, -14px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-b {
+  to {
+    transform: translate(14px, -11px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-c {
+  to {
+    transform: translate(-6px, -20px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-d {
+  to {
+    transform: translate(9px, -18px);
+    opacity: 0;
+  }
+}
+.ln-spark-a {
+  animation: ln-spark-fly-a 0.7s ease-out infinite;
+}
+.ln-spark-b {
+  animation: ln-spark-fly-b 0.7s ease-out 0.15s infinite;
+}
+.ln-spark-c {
+  animation: ln-spark-fly-c 0.7s ease-out 0.3s infinite;
+}
+.ln-spark-d {
+  animation: ln-spark-fly-d 0.7s ease-out 0.45s infinite;
+}
+@keyframes ln-dome {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+}
+.ln-dome {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ln-dome 1.2s ease-out 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ln-spark,
+  .ln-charge,
+  .ln-drain,
+  .ln-snap,
+  .ln-band,
+  .ln-cut,
+  .ln-flash,
+  .ln-alarm,
+  .ln-wave,
+  .ln-warm,
+  .ln-hammer,
+  .ln-weld,
+  .ln-look,
+  .ln-page,
+  .ln-bulb,
+  .ln-walk,
+  .ln-bolt,
+  .ln-pole,
+  .ln-wire,
+  .ln-spark-a,
+  .ln-spark-b,
+  .ln-spark-c,
+  .ln-spark-d,
+  .ln-dome {
+    animation: none;
+  }
+  /* The flashes and rings are drawn hidden, so nothing is left covering the scene. */
+  .ln-cut,
+  .ln-flash,
+  .ln-alarm,
+  .ln-wave,
+  .ln-warm {
+    opacity: 0;
+  }
+  .ln-bolt {
+    opacity: 1;
+  }
+}
+
 /* A layer fading out stops animating: nobody is looking at it. */
 .lm-paused,
 .lm-paused * {
@@ -1920,8 +2307,195 @@ html:has(.jim-app) body {
   }
 }
 
-/* Ever Onward: the Memory Garden (swaying flowers, a soft glow, drops). */
-@keyframes gd-sway {
+/* Ever Onward: the sky's dials (the probe stream, flares, wild probes). */
+@keyframes sk-fly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--sk-dx), var(--sk-dy)) scale(1.1);
+  }
+}
+.sk-fly {
+  animation: sk-fly var(--sk-len, 3.2s) ease-in var(--sk-late, 0s) infinite;
+}
+
+@keyframes sk-split {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(var(--sk-side));
+    opacity: 1;
+  }
+}
+.sk-split {
+  animation: sk-split 0.9s ease-in-out infinite;
+}
+
+@keyframes sk-glint {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sk-glint {
+  animation: sk-glint 0.7s ease-in-out infinite;
+}
+
+@keyframes sk-wave {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(9);
+  }
+}
+.sk-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sk-wave 1.5s ease-out 3 both;
+}
+
+@keyframes sk-flash {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.sk-flash {
+  opacity: 0;
+  animation: sk-flash 1.6s ease-out both;
+}
+
+@keyframes sk-pop {
+  0% {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+.sk-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sk-pop 1.6s ease-out 2 both;
+}
+
+@keyframes sk-shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sk-shimmer {
+  animation: sk-shimmer 0.5s ease-in-out infinite;
+}
+
+@keyframes sk-warn {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sk-warn {
+  animation: sk-warn 0.9s ease-in-out infinite;
+}
+
+@keyframes sk-wild {
+  0% {
+    transform: rotate(0deg) translateX(2px);
+  }
+  50% {
+    transform: rotate(180deg) translateX(-2px);
+  }
+  100% {
+    transform: rotate(360deg) translateX(2px);
+  }
+}
+.sk-wild {
+  animation: sk-wild 7s linear infinite;
+}
+
+@keyframes sk-wild-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sk-wild-glow {
+  animation: sk-wild-glow 1.1s ease-in-out infinite;
+}
+
+@keyframes sk-tether {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+.sk-tether {
+  animation: sk-tether 0.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-fly,
+  .sk-split,
+  .sk-glint,
+  .sk-wave,
+  .sk-flash,
+  .sk-pop,
+  .sk-shimmer,
+  .sk-warn,
+  .sk-wild,
+  .sk-wild-glow,
+  .sk-tether {
+    animation: none;
+  }
+  /* Nothing is left covering the picture, and nothing hangs in mid-air. */
+  .sk-flash,
+  .sk-wave,
+  .sk-pop {
+    opacity: 0;
+  }
+  .sk-fly {
+    opacity: 0.8;
+    transform: translate(calc(var(--sk-dx) * 0.5), calc(var(--sk-dy) * 0.5));
+  }
+}
+
+/* Ever Onward: the flowers of The Last Light (swaying, a soft glow). */
+@keyframes ll-sway {
   0%,
   100% {
     transform: rotate(-2deg);
@@ -1931,7 +2505,7 @@ html:has(.jim-app) body {
   }
 }
 
-@keyframes gd-glow {
+@keyframes ll-glow {
   0%,
   100% {
     opacity: 0.18;
@@ -1941,39 +2515,337 @@ html:has(.jim-app) body {
   }
 }
 
-@keyframes gd-drip {
-  0% {
-    transform: translateY(-6px);
-    opacity: 0;
-  }
-  30% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(18px);
-    opacity: 0;
-  }
-}
-
-.gd-sway {
+.ll-sway {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-  animation: gd-sway 4.2s ease-in-out infinite;
+  animation: ll-sway 4.2s ease-in-out infinite;
 }
 
-.gd-glow {
-  animation: gd-glow 3.4s ease-in-out infinite;
-}
-
-.gd-drip {
-  animation: gd-drip 1.8s ease-in infinite;
+.ll-glow {
+  animation: ll-glow 3.4s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .gd-sway,
-  .gd-glow,
-  .gd-drip {
+  .ll-sway,
+  .ll-glow {
     animation: none;
+  }
+}
+
+/*
+ * Ever Onward: The Last Light's warmth. A lantern rising from the lamp that
+ * was let go, the flower blooming where it stood (ring and sparks), the small
+ * banner at the top edge, fog on the water, cold wind streaks, and the boat
+ * surging when the flame is warm.
+ */
+@keyframes ll-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-170px) scale(0.55);
+  }
+}
+.ll-rise {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation: ll-rise 6.5s ease-out both;
+}
+
+@keyframes ll-bloom {
+  0% {
+    transform: scale(0);
+  }
+  55% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.ll-bloom {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-bloom 1.6s ease-out both;
+}
+
+@keyframes ll-ring {
+  0% {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+.ll-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ll-ring 1.6s ease-out 2 both;
+}
+
+@keyframes ll-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--ll-dx), var(--ll-dy));
+  }
+}
+.ll-spark {
+  animation: ll-spark 1.8s ease-out 2 both;
+}
+
+@keyframes ll-banner {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ll-banner {
+  animation: ll-banner 7s ease-in-out both;
+}
+/* The goodbye's banner waits a moment, so the lantern lifts off clear of it. */
+.ll-banner-late {
+  opacity: 0;
+  animation: ll-banner 6s ease-in-out 0.8s both;
+}
+
+@keyframes ll-fog {
+  0%,
+  100% {
+    transform: translateX(-26px);
+  }
+  50% {
+    transform: translateX(26px);
+  }
+}
+.ll-fog {
+  animation: ll-fog 13s ease-in-out infinite;
+}
+.ll-fog-b {
+  animation: ll-fog 17s ease-in-out infinite reverse;
+}
+
+@keyframes ll-gust {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  20% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-190px);
+  }
+}
+.ll-gust {
+  opacity: 0.5;
+  animation: ll-gust 2s linear infinite;
+}
+
+@keyframes ll-lean {
+  0%,
+  100% {
+    transform: skewX(-14deg);
+  }
+  50% {
+    transform: skewX(-6deg);
+  }
+}
+.ll-lean {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-lean 0.5s ease-in-out infinite;
+}
+
+@keyframes ll-wake {
+  0% {
+    opacity: 0.85;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+.ll-wake {
+  animation: ll-wake 0.7s ease-out infinite;
+}
+
+@keyframes ll-surge {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-1.5px) rotate(-6deg);
+  }
+}
+.ll-surge {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-surge 0.55s ease-in-out infinite;
+}
+
+/* The goodbye's big lantern: lifts off and hangs near the banner. */
+@keyframes ll-lift {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.7);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-44px) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(-48px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-52px) scale(0.9);
+  }
+}
+.ll-lift {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation: ll-lift 7s ease-out both;
+}
+
+/* A wind biting a lamp: the whole lamp leans hard and its light gutters. */
+@keyframes ll-gale {
+  0%,
+  100% {
+    transform: rotate(-19deg);
+  }
+  50% {
+    transform: rotate(-3deg);
+  }
+}
+.ll-gale {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-gale 0.45s ease-in-out infinite;
+}
+
+@keyframes ll-gutter {
+  0%,
+  100% {
+    opacity: 0.95;
+  }
+  35% {
+    opacity: 0.3;
+  }
+  60% {
+    opacity: 0.75;
+  }
+}
+.ll-gutter {
+  animation: ll-gutter 0.6s ease-in-out infinite;
+}
+
+/* A ring that pulses round a lamp the coming wind will bite. */
+@keyframes ll-warn {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.12);
+  }
+}
+.ll-warn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ll-warn 1s ease-in-out infinite;
+}
+
+@keyframes ll-surge-word {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ll-surge-word {
+  animation: ll-surge-word 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-rise,
+  .ll-ring,
+  .ll-spark,
+  .ll-fog,
+  .ll-fog-b,
+  .ll-gust,
+  .ll-lean,
+  .ll-wake,
+  .ll-surge,
+  .ll-bloom,
+  .ll-banner,
+  .ll-banner-late,
+  .ll-lift,
+  .ll-gale,
+  .ll-gutter,
+  .ll-warn,
+  .ll-surge-word {
+    animation: none;
+  }
+  /* The goodbye's lantern hangs still, lifted, above its banner. */
+  .ll-banner-late {
+    opacity: 1;
+  }
+  .ll-lift {
+    opacity: 1;
+    transform: translateY(-48px);
+  }
+  .ll-gale {
+    transform: rotate(-8deg);
+  }
+  .ll-warn {
+    opacity: 0.8;
+  }
+  /* Nothing hangs in mid-air or covers the picture: the lantern and the sparks are gone. */
+  .ll-rise,
+  .ll-ring,
+  .ll-spark {
+    opacity: 0;
+  }
+  .ll-gust {
+    opacity: 0.45;
+  }
+  .ll-lean {
+    transform: skewX(-10deg);
   }
 }
 
@@ -6361,6 +7233,424 @@ html:has(.jim-app) body {
   .gb-glint,
   .gb-rainbow {
     animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Keep the Light On, The Coast: the harbor toll, the oil tanker, the dark.
+   Ships choosing the harbor (or sailing on to the rival), coins at the toll,
+   barrels into the tanks, the lamp sputtering out and bursting back.
+   --------------------------------------------------------------------------- */
+
+/* A ship that chose the harbor: in, tied up (the coin pops), then off. */
+@keyframes lc-dock {
+  0% {
+    opacity: 0;
+    transform: translateX(190px);
+  }
+  8% {
+    opacity: 1;
+  }
+  44% {
+    transform: translateX(0);
+  }
+  84% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+.lc-dock {
+  animation: lc-dock 14s ease-in-out infinite;
+}
+
+@keyframes lc-coin {
+  0%,
+  45% {
+    opacity: 0;
+    transform: translateY(0) scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.5);
+  }
+  66% {
+    opacity: 1;
+    transform: translateY(-22px) scale(1);
+  }
+  76%,
+  100% {
+    opacity: 0;
+    transform: translateY(-32px) scale(0.8);
+  }
+}
+.lc-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-coin 14s ease-out infinite;
+}
+
+/* A ship that did not: up to the quay, a huff at the sign, then on to the rival. */
+@keyframes lc-pass {
+  0% {
+    opacity: 0;
+    transform: translateX(150px);
+  }
+  10% {
+    opacity: 1;
+  }
+  38%,
+  62% {
+    transform: translateX(74px);
+  }
+  90% {
+    opacity: 1;
+    transform: translateX(170px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(180px);
+  }
+}
+.lc-pass {
+  animation: lc-pass 14s ease-in-out infinite;
+}
+
+@keyframes lc-turn {
+  0%,
+  40% {
+    transform: scaleX(1);
+  }
+  46%,
+  100% {
+    transform: scaleX(-1);
+  }
+}
+.lc-turn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-turn 14s steps(1, end) infinite;
+}
+
+@keyframes lc-huff {
+  0%,
+  35% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.5);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(0) scale(1.25);
+  }
+  45%,
+  84% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(1);
+  }
+}
+.lc-huff {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: lc-huff 14s ease-out infinite;
+}
+
+/* A full quay: a golden glow, coins raining down and a shout. */
+@keyframes lc-full-glow {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+.lc-full-glow {
+  animation: lc-full-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes lc-rain-coin {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(58px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(66px) scale(0.8);
+  }
+}
+.lc-rain-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-rain-coin 2.7s ease-in infinite;
+}
+
+@keyframes lc-full-shout {
+  0%,
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.lc-full-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-full-shout 1.6s ease-in-out infinite;
+}
+
+/* The tanker sails in, glowing. */
+@keyframes lc-tanker-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-110px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.lc-tanker-in {
+  animation: lc-tanker-in 2.4s ease-out both;
+}
+
+@keyframes lc-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.lc-glow {
+  animation: lc-glow 1.4s ease-in-out infinite;
+}
+
+/* Barrels hop from the tanker to the depot's tanks. */
+@keyframes lc-barrel {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-20px, -24px) rotate(-200deg);
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-38px, 14px) rotate(-420deg);
+  }
+}
+.lc-barrel {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-barrel 1.7s ease-in-out both;
+}
+
+@keyframes lc-tank-glow {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.lc-tank-glow {
+  opacity: 0;
+  animation: lc-tank-glow 0.7s ease-in-out infinite;
+}
+
+/* In the dark: a ship drifts at the rocks, shudders, and veers off. */
+@keyframes lc-wreck {
+  0% {
+    opacity: 0;
+    transform: translate(70px, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  48% {
+    transform: translate(-30px, 0) rotate(0deg);
+  }
+  54% {
+    transform: translate(-36px, 2px) rotate(-9deg);
+  }
+  60% {
+    transform: translate(-31px, 0) rotate(7deg);
+  }
+  66% {
+    transform: translate(-35px, 1px) rotate(-6deg);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(60px, -2px) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(80px, 0) rotate(0deg);
+  }
+}
+.lc-wreck {
+  animation: lc-wreck 6s ease-in-out infinite;
+}
+
+@keyframes lc-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.4;
+  }
+}
+.lc-blink {
+  animation: lc-blink 0.7s steps(1, end) infinite;
+}
+
+/* The lamp coughing: a few weak flickers, then nearly out. */
+@keyframes lc-sputter {
+  0% {
+    opacity: 0.9;
+  }
+  4% {
+    opacity: 0.1;
+  }
+  8% {
+    opacity: 0.7;
+  }
+  12% {
+    opacity: 0;
+  }
+  16% {
+    opacity: 0.45;
+  }
+  22%,
+  100% {
+    opacity: 0.04;
+  }
+}
+.lc-sputter {
+  animation: lc-sputter 3.4s linear infinite;
+}
+
+/* A banner pops in, holds, and leaves (the one moment on show at a time). */
+@keyframes lc-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  10% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  18% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.lc-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-shout 0.9s ease-out both;
+}
+
+/* The beam coming back: rings out from the lamp and a soft flash. */
+@keyframes lc-ring {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(4.2);
+  }
+}
+.lc-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-ring 1.5s ease-out 3 both;
+}
+
+@keyframes lc-relit-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.lc-relit-flash {
+  animation: lc-relit-flash 1.6s ease-out both;
+}
+
+/* Reduced motion: ships and signs hold still, and nothing flashes or rolls. */
+@media (prefers-reduced-motion: reduce) {
+  .lc-dock,
+  .lc-coin,
+  .lc-pass,
+  .lc-turn,
+  .lc-huff,
+  .lc-tanker-in,
+  .lc-glow,
+  .lc-barrel,
+  .lc-tank-glow,
+  .lc-wreck,
+  .lc-blink,
+  .lc-sputter,
+  .lc-shout,
+  .lc-ring,
+  .lc-relit-flash,
+  .lc-full-glow,
+  .lc-rain-coin,
+  .lc-full-shout {
+    animation: none;
+  }
+  /* What would flash or fly stays out of the picture (huffs and falling coins too). */
+  .lc-huff,
+  .lc-rain-coin,
+  .lc-barrel,
+  .lc-ring,
+  .lc-relit-flash,
+  .lc-tank-glow,
+  .lm-lightning {
+    opacity: 0;
+  }
+  .lc-glow {
+    opacity: 0.7;
   }
 }
 

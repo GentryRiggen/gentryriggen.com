@@ -187,7 +187,7 @@ export const CUTSCENES: Readonly<Record<string, readonly CutsceneFrame[]>> = {
       robot: { move: "sit", x: 50 },
     },
     {
-      text: "Light does not keep. It leaks away, a little every second. The robot cannot hold on to all of it. Nobody could.",
+      text: "Light does not keep. Every lamp costs a little warmth, every second, to keep burning. The robot cannot hold on to all of it. Nobody could.",
       camera: "drift",
       robot: { move: "idle", x: 30 },
     },
@@ -218,17 +218,17 @@ export const TIPS: Readonly<Record<string, readonly string[]>> = {
   ],
   [PHASE_NIGHT]: [
     "Build generators early: they make power while you rest.",
-    "Balance the grid when it gets uneasy: a steady glow pays more.",
-    "Ride the evening rush when it arrives. It waits for you.",
+    "At dusk everybody switches on. Batteries carry that rush, so keep them in step with your plants.",
+    "Each crew builds, learns or watches for storms. A crew on watch is not building.",
   ],
   [PHASE_SKY]: [
     "Add sun collectors: they gather light for you.",
-    "Send a course correction when the fleet drifts. A steady fleet works faster.",
-    "Catch the solar flare when it shines. It waits for you.",
+    "Split your probe design, and fly closer to the sun for more light. Flares burn what flies close.",
+    "Copy too hard and some probes go wild. Bring them home before they take over.",
   ],
   [PHASE_LAST]: [
-    "Spend resolve in the shop to let lights go dark. Each one you let go moves the goal.",
-    "Watch the FLAME meter up top. A few taps warm it, and a warm flame earns resolve faster.",
-    "When the little boat sails, tap the beam to keep it true. Garden blooms give resolve too.",
+    "Every light that burns costs warmth. A warm flame guides the boat faster, and a light let go pays resolve.",
+    "Watch the WARMTH meter up top. A cold flame means a slow boat in the fog.",
+    "Spend resolve on sails and the hearth. A bigger hearth lets more lights burn.",
   ],
 };

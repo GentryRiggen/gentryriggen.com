@@ -122,21 +122,21 @@ describe("the lamp panel (oil and brightness together)", () => {
     expect(onAction).not.toHaveBeenCalled();
   });
 
-  it("lets you pick a brightness, and shows what each would earn", async () => {
+  it("lets you pick a brightness, and shows what each gives and costs", async () => {
     const onAction = renderScreen(
       coastRun({ ships: 30, coins: 500, oil: 20, oilPrice: 1 }, { keeper: 5 })
     );
     const lamp = screen.getByTestId("lm-lamp");
     const radios = within(lamp).getAllByRole("radio");
     expect(radios.map((r) => r.textContent)).toEqual([
-      expect.stringMatching(/Dim.*net.*tank lasts/),
-      expect.stringMatching(/Normal.*net.*tank lasts/),
-      expect.stringMatching(/Bright.*net.*tank lasts/),
-      expect.stringMatching(/Blazing.*net.*tank lasts/),
+      expect.stringMatching(/Dim.*ships x0.5.*oil x0.3.*tank lasts/),
+      expect.stringMatching(/Normal.*ships x1.*oil x1.*tank lasts/),
+      expect.stringMatching(/Bright.*ships x1.7.*oil x3.5.*tank lasts/),
+      expect.stringMatching(/Blazing.*ships x2.5.*oil x10.*tank lasts/),
     ]);
     expect(radios[1]).toHaveAttribute("aria-checked", "true");
-    // oil at 1 is cheap: a brighter lamp is the better pick, and is marked
-    expect(within(lamp).getByTestId("lm-lamp-best")).toBeInTheDocument();
+    // no step is ever marked as the best one
+    expect(within(lamp).queryByText(/best/i)).toBeNull();
     await userEvent.click(radios[3]);
     expect(onAction).toHaveBeenCalledWith("lamp-3");
   });

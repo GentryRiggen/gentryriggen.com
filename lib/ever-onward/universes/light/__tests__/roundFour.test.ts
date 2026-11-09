@@ -13,29 +13,26 @@ import { newSave, parseSave } from "../../../engine/save";
 import type { RunState, UpgradeDef } from "../../../engine/types";
 import { def } from "./fixtures";
 import { TUNING } from "../tuning";
-import { flameOf } from "../tick";
+import { litCount, warmthOf } from "../warmth";
 import {
   WEATHER_OPEN_FLAG,
   WEATHER_VANE_ID,
   chanceOf,
   lastStorm,
-  shieldActionId,
+  POST_WATCH,
+  crewPostActionId,
   weatherStage,
 } from "../weather";
 import {
-  MISSION_CONTROL_ID,
-  PROBES_OPEN_FLAG,
-  RACING_FINS_ID,
-  isProbeOut,
-  launchActionId,
-} from "../probes";
-import {
-  PICK_ACTION,
-  RAIN_BARREL_ID,
-  WATER_ACTION,
-  picksSoFar,
-  progressOf,
-} from "../garden";
+  REMOVED_LAST_COSTS,
+  REMOVED_LAST_SCALE,
+  REMOVED_SKY_COSTS,
+  REMOVED_SKY_SCALE,
+} from "../costs";
+
+const RACING_FINS_ID = "fins-1";
+const MISSION_CONTROL_ID = "mission-control";
+const RAIN_BARREL_ID = "rain-barrel";
 
 const upgrade = (id: string): UpgradeDef =>
   def.upgrades.find((u) => u.id === id)!;
@@ -201,7 +198,11 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
       return next;
     };
     const byVane = land(sure);
-    const sent = performAction(def, sure, shieldActionId(likeliest));
+    const sent = performAction(
+      def,
+      sure,
+      crewPostActionId(0, POST_WATCH + likeliest)
+    );
     const byHand = land({
       ...sent,
       resources: { ...sent.resources, [`wxReady${likeliest}`]: 1 },
@@ -209,66 +210,63 @@ describe("side-machine helpers arrive mid-life, and hands still pay more", () =>
     expect(lastStorm(byHand).payout).toBeGreaterThan(lastStorm(byVane).payout);
   });
 
-  it("racing fins show after one run home, then mission control; hand plus scout beats the scout", () => {
-    const flags = { [PROBES_OPEN_FLAG]: true };
-    expect(shown(RACING_FINS_ID, at(2, {}, { prRuns: 0 }, flags))).toBe(false);
-    expect(shown(RACING_FINS_ID, at(2, {}, { prRuns: 1 }, flags))).toBe(true);
-    expect(shown(MISSION_CONTROL_ID, at(2, {}, {}, flags))).toBe(false);
-    expect(
-      shown(MISSION_CONTROL_ID, at(2, { [RACING_FINS_ID]: 1 }, {}, flags))
-    ).toBe(true);
-
-    const open = tick(
+  it("an old save's racing fins and mission control are paid back in the sky, once", () => {
+    const run = tick(
       def,
-      at(2, { collector: 5, probe: 1, "nav-1": 1, [MISSION_CONTROL_ID]: 1 }),
-      0.1
+      at(
+        2,
+        {
+          collector: 5,
+          probe: 1,
+          [RACING_FINS_ID]: 1,
+          [MISSION_CONTROL_ID]: 1,
+        },
+        { energy: 0 }
+      ),
+      1
     );
-    const short = launchActionId(0);
-    let both = performAction(def, open, short);
-    let scoutOnly = performAction(def, open, short);
-    for (let t = 0; t < 600; t += 1) {
-      both = tick(def, both, 1);
-      scoutOnly = tick(def, scoutOnly, 1);
-      if (!isProbeOut(both)) both = performAction(def, both, short);
-    }
-    expect(both.resources.energy).toBeGreaterThan(scoutOnly.resources.energy);
+    const paid =
+      (REMOVED_SKY_COSTS[RACING_FINS_ID] +
+        REMOVED_SKY_COSTS[MISSION_CONTROL_ID]) *
+      REMOVED_SKY_SCALE;
+    expect(run.owned[RACING_FINS_ID]).toBeUndefined();
+    expect(run.owned[MISSION_CONTROL_ID]).toBeUndefined();
+    expect(run.resources.energy).toBeGreaterThanOrEqual(paid);
+    expect(tick(def, run, 1).resources.energy).toBeLessThan(paid * 1.5);
   });
 
-  it("the rain barrel shows after three real picks, and watering by hand still helps", () => {
-    let run = at(3, {}, { resolve: 5000, lights: 12, flame: 600 });
-    for (const id of ["letgo-porch", "letgo-signs", "letgo-stadium"])
-      run = {
-        ...run,
-        owned: { ...run.owned, [id]: 1 },
-        resources: { ...run.resources, lights: run.resources.lights - 1 },
-      };
-    run = wait(run, TUNING.garden.growSeconds + 5);
-    expect(shown(RAIN_BARREL_ID, run)).toBe(false);
-    run = performAction(def, run, PICK_ACTION);
-    expect(picksSoFar(run)).toBe(3);
-    expect(shown(RAIN_BARREL_ID, run)).toBe(true);
+  it("pays back the cut rain barrel at what it cost, once, in the last part", () => {
+    const run = tick(
+      def,
+      at(3, { [RAIN_BARREL_ID]: 1 }, { resolve: 0, lights: 11 }),
+      1
+    );
+    expect(run.owned[RAIN_BARREL_ID]).toBeUndefined();
+    expect(run.resources.resolve).toBeGreaterThanOrEqual(
+      REMOVED_LAST_COSTS[RAIN_BARREL_ID] * REMOVED_LAST_SCALE
+    );
+    const again = tick(def, run, 1);
+    expect(again.resources.resolve).toBeLessThan(
+      run.resources.resolve + REMOVED_LAST_COSTS[RAIN_BARREL_ID]
+    );
+  });
 
-    const barrel: RunState = {
-      ...run,
-      owned: { ...run.owned, [RAIN_BARREL_ID]: 1 },
-    };
-    let watered = barrel;
-    // a stretch short enough that nothing is back in bloom yet
-    for (let t = 0; t < 80; t += 1) {
-      watered = tick(def, watered, 1);
-      watered = performAction(def, watered, WATER_ACTION);
-    }
-    const alone = wait(barrel, 80);
-    const growth = (r: RunState) =>
-      [0, 1, 2].reduce((sum, plot) => sum + progressOf(r, plot), 0);
-    expect(growth(watered)).toBeGreaterThan(growth(alone));
+  it("keeps the lights an old save already let go gone, and starts a save with no warmth numbers cold-free", () => {
+    const old = tick(
+      def,
+      at(3, { "letgo-porch": 1, "letgo-signs": 1 }, { lights: 9, flame: 500 }),
+      1
+    );
+    expect(litCount(old)).toBe(9);
+    expect(old.resources.lights).toBe(9);
+    expect(warmthOf(old)).toBeGreaterThan(0);
   });
 });
 
 describe("the flame", () => {
-  it("still answers a tap when it is full: the tap lets go a little", () => {
-    const full = at(3, {}, { flame: TUNING.last.flameFull, lights: 12 });
-    expect(flameOf(full)).toBe(TUNING.last.flameFull);
+  it("still answers a tap when it is full: the tap earns a little resolve", () => {
+    const full = at(3, {}, { flame: TUNING.last.flameFull, lights: 11 });
+    expect(warmthOf(full)).toBe(1);
     // TapButton shows a "+gain" floater whenever this is above 0
     expect(manualGain(def, full)).toBeGreaterThan(0);
   });

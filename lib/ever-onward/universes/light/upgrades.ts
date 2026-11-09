@@ -15,18 +15,8 @@ import {
   collectorEnergyPerSecond,
   copySpeed,
   crankPower,
-  flameFraction,
-  flameOf,
-  lastTapResolve,
-  steadyFlame,
-  LET_GO_GIFTS,
-  type LetGoGift,
   demandMW,
-  driftPerSecond,
-  isCourseAuto,
   starBounty,
-  isGridAuto,
-  strainPerSecond,
   fare,
   idleBurn,
   lensShips,
@@ -41,15 +31,15 @@ import {
   powerPerSecond,
   aimEnergy,
 } from "./tick";
-import { RAIN_BARREL_ID, picksSoFar, restingPace, startRain } from "./garden";
 import {
-  MISSION_CONTROL_ID,
-  PROBES_OPEN_FLAG,
-  RACING_FINS_ID,
-  openProbes,
-  routeSeconds,
-  runsHome,
-} from "./probes";
+  boatGear,
+  burnMult,
+  hearthWarmth,
+  companyMult,
+  songMult,
+} from "./warmth";
+import { openSkyDials } from "./sunEdge";
+import { burnShare, forecastSure } from "./sunEdge";
 import {
   STORM_CREWS_ID,
   WEATHER_OPEN_FLAG,
@@ -57,8 +47,9 @@ import {
   frontsSoFar,
   hasWeatherVane,
   openWeather,
-  shieldSlots,
+  crewCount,
 } from "./weather";
+import { batterySecondsOfGrid, isGridOpen, rushCarry, rushCover } from "./grid";
 
 const coast = [PHASE_COAST] as const;
 const night = [PHASE_NIGHT] as const;
@@ -67,64 +58,16 @@ const last = [PHASE_LAST] as const;
 
 const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
-/** The lights you can let go in The Last Light, nearest to farthest. */
-export const LET_GO: readonly { id: string; name: string; text: string }[] = [
-  {
-    id: "letgo-porch",
-    name: "Let the porch lights go dark",
-    text: "Every porch light that ever waited for someone to come home.",
-  },
-  {
-    id: "letgo-signs",
-    name: "Let the shop signs go dark",
-    text: "OPEN, OPEN, OPEN. You can rest now.",
-  },
-  {
-    id: "letgo-stadium",
-    name: "Let the stadium lights go dark",
-    text: "They were loud and bright. They were good at it.",
-  },
-  {
-    id: "letgo-bridges",
-    name: "Let the bridge lights go dark",
-    text: "The bridges hold on without them.",
-  },
-  {
-    id: "letgo-harbor",
-    name: "Let the harbor lamps go dark",
-    text: "A row of small lamps, each one a ship's welcome.",
-  },
-  {
-    id: "letgo-towers",
-    name: "Let the tower windows go dark",
-    text: "Ten thousand windows, one after another.",
-  },
-  {
-    id: "letgo-festival",
-    name: "Let the festival lanterns go dark",
-    text: "They floated up once a year. That was enough.",
-  },
-  {
-    id: "letgo-fire",
-    name: "Let the campfires go dark",
-    text: "Warm, crackly, and good for stories.",
-  },
-  {
-    id: "letgo-moon",
-    name: "Let the moon's mirror go dark",
-    text: "It only ever borrowed the light anyway.",
-  },
-  {
-    id: "letgo-sun",
-    name: "Let the sun collectors go dark",
-    text: "You built them. You can thank them.",
-  },
-  {
-    id: "letgo-night",
-    name: "Let the last few stars go dark",
-    text: "They were never yours. Let them be dim.",
-  },
-];
+/**
+ * The coast's later buys appear while you are saving for them (a quarter of
+ * the price in the purse), so something new turns up all through the part
+ * instead of every step at once when a lighthouse goes up.
+ */
+const SAVING_SHARE = 0.25;
+const savingFor =
+  (id: string) =>
+  (run: RunState): boolean =>
+    (run.resources.coins ?? 0) >= COSTS[id] * SAVING_SHARE;
 
 const sync = (run: RunState): void => syncDisplay(run);
 
@@ -246,7 +189,9 @@ const coastUpgrades: UpgradeDef[] = [
     phases: coast,
     currency: "coins",
     baseCost: COSTS.keeper,
-    costGrowth: 1.18,
+    costGrowth: 1.36,
+    // Saves from before the cap (40 keepers at 1.18) are refunded at what they paid.
+    refundGrowth: 1.18,
     maxLevel: TUNING.coast.keeperMax,
     visibleWhen: (run) => run.resources.ships >= 4,
     priority: 1,
@@ -294,12 +239,12 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Trimmed wick",
         description: "The lamp burns 40% less oil.",
-        showWhen: (run) => owned(run, "keeper") >= 4,
+        showWhen: (run) => owned(run, "keeper") >= 2,
       },
       {
         name: "Brass burner",
         description: "Another 40% less oil, for good.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        showWhen: savingFor("wick-2"),
       },
     ],
   }),
@@ -314,17 +259,17 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Harbor fees",
         description: "Every ship pays 50% more.",
-        showWhen: (run) => owned(run, "keeper") >= 6,
+        showWhen: (run) => owned(run, "keeper") >= 4,
       },
       {
         name: "Pilot's tax",
         description: "Ships that want a pilot pay 50% more again.",
-        showWhen: (run) => owned(run, "keeper") >= 14,
+        showWhen: savingFor("fees-2"),
       },
       {
         name: "Toll booth",
         description: "A booth at the harbor mouth, and a bell. 50% more.",
-        showWhen: (run) => lighthouseCount(run) >= 4,
+        showWhen: savingFor("fees-3"),
       },
     ],
   }),
@@ -339,17 +284,17 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Fish market on the quay",
         description: "Ships stay for the market, and pay 50% more.",
-        showWhen: (run) => owned(run, "keeper") >= 8,
+        showWhen: (run) => owned(run, "keeper") >= 5,
       },
       {
         name: "Ferry landing",
         description: "A ferry that never stops. Ships pay 50% more again.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        showWhen: savingFor("dock-2"),
       },
       {
         name: "Cruise terminal",
         description: "Big white ships, big white fares. 50% more.",
-        showWhen: (run) => lighthouseCount(run) >= 5,
+        showWhen: savingFor("dock-3"),
       },
     ],
   }),
@@ -363,13 +308,14 @@ const coastUpgrades: UpgradeDef[] = [
     steps: [
       {
         name: "Bigger oil tank",
-        description: "Hold three times the oil, so a cheap day goes further.",
-        showWhen: (run) => owned(run, "keeper") >= 10,
+        description:
+          "Hold three times the oil, so a tanker's cheap oil goes further.",
+        showWhen: (run) => owned(run, "keeper") >= 6,
       },
       {
         name: "Oil cistern",
         description: "A whole cellar of oil: two thirds more again.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        showWhen: savingFor("tank-2"),
       },
     ],
   }),
@@ -384,19 +330,19 @@ const coastUpgrades: UpgradeDef[] = [
       {
         name: "Lamp crew drills",
         description: "Keepers practise in pairs, and flash twice as much.",
-        showWhen: (run) => owned(run, "keeper") >= 4,
+        showWhen: (run) => owned(run, "keeper") >= 3,
       },
       {
         name: "Coast guard station",
         description:
           "A station with a roster. Keepers flash twice as much again.",
-        showWhen: (run) => lighthouseCount(run) >= 3,
+        showWhen: savingFor("train-2"),
       },
       {
         name: "Rescue fleet",
         description:
           "Rescue boats help guide the ships in. Keepers do twice as much again.",
-        showWhen: (run) => lighthouseCount(run) >= 5,
+        showWhen: savingFor("train-3"),
       },
     ],
   }),
@@ -421,30 +367,30 @@ const coastUpgrades: UpgradeDef[] = [
         description:
           "Shutters on every window: in a storm the keepers carry on at full speed instead of hiding indoors.",
         badge: "NEW ABILITY",
-        showWhen: (run) => owned(run, "keeper") >= 12,
+        showWhen: savingFor("shutters-1"),
       },
       {
         name: "Storm-proof glass",
         description:
           "Ships run for your harbor in a storm, and more of them come.",
-        showWhen: (run) => lighthouseCount(run) >= 4,
+        showWhen: savingFor("shutters-2"),
       },
     ],
   }),
   {
     id: "contract",
-    name: "Keepers buy oil when it's cheap",
+    name: "A standing oil order",
     description:
-      "A merchant contract: whenever oil is cheap your keepers top up the tank for you, and they send for a little at any price when it runs nearly dry.",
+      "A merchant contract: whenever the tank falls under a quarter, a full tank is sent for, at whatever the price is. The lamp stays lit, and the market is not your problem.",
     phases: coast,
     currency: "coins",
     baseCost: COSTS.contract,
     costGrowth: 1,
     badge: "NEW ABILITY",
-    visibleWhen: (run) => owned(run, "keeper") >= 15,
+    visibleWhen: savingFor("contract"),
     priority: 2,
     onBuy: sync,
-    effectPreview: () => "Buys oil for you at 1.60 or less",
+    effectPreview: () => "Orders a full tank when it falls under a quarter",
   },
 ];
 
@@ -465,6 +411,67 @@ function collectorPreview(stats: readonly Stat[]): (run: RunState) => string {
       : `${preview(run)}\nAt ${next}: all collectors produce ${Math.round((collectorMilestoneMult - 1) * 100)}% more`;
   };
 }
+
+const BATTERY_STATS = [
+  {
+    label: "Batteries hold",
+    read: batterySecondsOfGrid,
+    suffix: " s of the grid",
+  },
+  {
+    label: "A hot rush met",
+    read: (run: RunState) => rushCover(run, 2, 1) * 100,
+    suffix: "%",
+  },
+];
+
+/**
+ * The batteries are a chain: each step holds about 2.7 times the one before
+ * (see `TUNING.grid.batteryHolds`), and shows once the plants are big enough
+ * to want it. They soak up the day's spare power and carry the evening rush,
+ * so a bigger bank keeps pace with bigger plants, and costs about half what
+ * those plants did.
+ */
+const BATTERY_NAMES: readonly [string, string][] = [
+  [
+    "A battery cabinet",
+    "Soaks up spare power by day and gives it back at the evening rush.",
+  ],
+  ["A rack of batteries", "Almost three times what the cabinet holds."],
+  ["A battery shed", "Almost three times as much again."],
+  ["A battery barn", "Room for the steam plants' whole evening."],
+  ["A battery hall", "Cells from wall to wall, humming quietly to themselves."],
+  ["A battery yard", "Rows and rows of cells, all charging in the sun."],
+  ["A battery farm", "It takes a whole field to hold this much."],
+  [
+    "A mountain of batteries",
+    "The biggest bank there is. It keeps a whole country lit.",
+  ],
+];
+
+const BATTERY_STEPS = chain({
+  base: "batt",
+  phases: night,
+  currency: "power",
+  stats: BATTERY_STATS,
+  steps: BATTERY_NAMES.map(([name, description], i) => ({
+    name,
+    description,
+    // Shows once the plants are within reach of it (a bank far too big for
+    // the plants never fills, and leaves them charging all day).
+    showWhen: (run: RunState) =>
+      i === 0
+        ? isGridOpen(run)
+        : supplyMW(run) * TUNING.grid.showBankSeconds >=
+          TUNING.grid.batteryHolds[i],
+    badge: i === 0 ? "NEW ABILITY" : undefined,
+  })),
+}).map((battery) => ({
+  ...battery,
+  // The bank has to keep up with the plants all night, so the shop never
+  // crowds its next step out behind other cards.
+  hasOwnSlot: true,
+}));
 
 const nightUpgrades: UpgradeDef[] = [
   {
@@ -499,11 +506,15 @@ const nightUpgrades: UpgradeDef[] = [
     base: "lines",
     phases: night,
     currency: "power",
-    stats: [{ label: "Power supply", read: supplyMW, suffix: " MW" }],
+    stats: [
+      { label: "Power supply", read: supplyMW, suffix: " MW" },
+      { label: "Batteries can give at once", read: rushCarry, suffix: " MW" },
+    ],
     steps: [
       {
         name: "Run a power line",
-        description: "Every line carries 50% more power to the cities.",
+        description:
+          "Every line carries 50% more power to the cities, and lets the batteries give more at once.",
         showWhen: (run) => owned(run, "gen1") >= 3,
       },
       {
@@ -581,36 +592,7 @@ const nightUpgrades: UpgradeDef[] = [
       },
     ],
   }),
-  ...chain({
-    base: "grid",
-    phases: night,
-    currency: "power",
-    stats: [
-      {
-        label: "Grid strain",
-        why: "A steady grid pays more",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
-      },
-      {
-        label: "Grid balancing",
-        read: (run) => (isGridAuto(run) ? 1 : 0),
-        format: (v) => (v > 0 ? "automatic" : "by hand"),
-      },
-    ],
-    steps: [
-      {
-        name: "Load balancer",
-        description: "The grid strains half as fast.",
-        showWhen: (run) => owned(run, "gen2") >= 2,
-      },
-      {
-        name: "Smart grid",
-        description: "The grid balances itself. No more hand-fixing.",
-        showWhen: (run) => owned(run, "gen2") >= 4,
-      },
-    ],
-  }),
+  ...BATTERY_STEPS,
   {
     id: "gen3",
     name: "River dam",
@@ -639,8 +621,9 @@ const nightUpgrades: UpgradeDef[] = [
   },
   {
     id: STORM_CREWS_ID,
-    name: "Storm crews",
-    description: "More hands for the sandbags: shield two towns at once.",
+    name: "A third crew",
+    description:
+      "One more crew to put to work: building, learning at the school, or watching for the storm.",
     phases: night,
     currency: "power",
     baseCost: COSTS[STORM_CREWS_ID],
@@ -651,7 +634,7 @@ const nightUpgrades: UpgradeDef[] = [
       run.flags[WEATHER_OPEN_FLAG] === true && owned(run, "gen3") >= 3,
     onBuy: sync,
     effectPreview: previewOf(STORM_CREWS_ID, [
-      { label: "Towns to shield", read: shieldSlots },
+      { label: "Crews to post", read: crewCount, isPlain: true },
     ]),
   },
   {
@@ -757,6 +740,7 @@ const skyUpgrades: UpgradeDef[] = [
         TUNING.sky.firstProbes,
         run.resources.probes
       );
+      openSkyDials(run);
       sync(run);
     },
     effectPreview: () =>
@@ -816,79 +800,33 @@ const skyUpgrades: UpgradeDef[] = [
     currency: "energy",
     stats: [
       {
-        label: "Fleet drift",
-        why: "On course, the fleet keeps full pace",
-        read: (run) => driftPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "Forecast is right",
+        why: "The sun's edge asks you to read it",
+        read: (run) => forecastSure(run) * 100,
+        suffix: "%",
       },
       {
-        label: "Fleet course",
-        read: (run) => (isCourseAuto(run) ? 1 : 0),
-        format: (v) => (v > 0 ? "automatic" : "by hand"),
+        label: "A usual flare burns",
+        read: (run) => burnShare(run, 1) * 100,
+        suffix: "% of the fleet",
       },
     ],
     steps: [
       {
-        name: "Star charts",
+        name: "Sun charts",
         description:
-          "The fleet drifts off course half as fast. The charts show a map: send a racing probe on a route and it brings back energy.",
+          "Charts of every flare the sun has thrown. The forecast gets a flare's size right nine times in ten, not six.",
         // After the second mirror, so the cards do not all arrive at once.
         showWhen: (run) => owned(run, "mirror-2") >= 1,
-        onBuy: openProbes,
       },
       {
-        name: "A navigator mind",
+        name: "Shield foundry",
         description:
-          "The fleet corrects its own course. No more hand-steering.",
+          "A forge that makes better shields. Every shield point is 50% stronger.",
         showWhen: (run) => owned(run, "engines-1") >= 1,
       },
     ],
   }),
-  {
-    id: RACING_FINS_ID,
-    name: "Racing fins",
-    description:
-      "Fins on the racing probe. Every route takes half the time, and the haul stays the same.",
-    phases: sky,
-    currency: "energy",
-    baseCost: COSTS[RACING_FINS_ID],
-    costGrowth: 1,
-    // A bonus helper, not income: bots buy collectors and mirrors first.
-    priority: -1,
-    visibleWhen: (run) =>
-      run.flags[PROBES_OPEN_FLAG] === true && runsHome(run) >= 1,
-    onBuy: sync,
-    effectPreview: previewOf(RACING_FINS_ID, [
-      {
-        label: "Short hop",
-        read: (run) => routeSeconds(run, 0),
-        suffix: " s",
-        isPlain: true,
-      },
-      {
-        label: "Long loop",
-        read: (run) => routeSeconds(run, 1),
-        suffix: " s",
-        isPlain: true,
-      },
-    ]),
-  },
-  {
-    id: MISSION_CONTROL_ID,
-    name: "Mission control",
-    description:
-      "A second, scout probe flies your last route again and again by itself, for a smaller haul. Yours still pay in full on top.",
-    phases: sky,
-    currency: "energy",
-    baseCost: COSTS[MISSION_CONTROL_ID],
-    costGrowth: 1,
-    priority: -1,
-    // Later, once the racing probe has its fins.
-    visibleWhen: (run) =>
-      run.flags[PROBES_OPEN_FLAG] === true && owned(run, RACING_FINS_ID) > 0,
-    onBuy: sync,
-    effectPreview: () => "Scout probe: none → flies your last route",
-  },
   ...chain({
     base: "engines",
     phases: sky,
@@ -940,105 +878,136 @@ const skyUpgrades: UpgradeDef[] = [
   }),
 ];
 
-/** What each gift reads like on its card. */
-const GIFT_TEXT = {
-  fade: "The flame holds on much longer.",
-  burst: "The flame leaps up, bright for a good while.",
-  taps: "Every tap of the flame is worth a lot more.",
-} as const;
-
-const GIFT_STATS: Record<LetGoGift, readonly Stat[]> = {
-  fade: [
-    {
-      label: "Flame holds at",
-      read: (run) => (steadyFlame(run) / TUNING.last.flameFull) * 100,
-      suffix: "%",
-    },
-  ],
-  // The leap happens in `onBuy`, which a preview does not run: see
-  // `burstLine` below.
-  burst: [],
-  taps: [
-    {
-      label: "Resolve per tap",
-      read: lastTapResolve,
-    },
-  ],
-};
-
-const letGoUpgrades: UpgradeDef[] = LET_GO.map((light) => {
-  const gift = LET_GO_GIFTS[light.id];
-  return {
-    id: light.id,
-    name: light.name,
-    description: `${light.text} ${GIFT_TEXT[gift]} Every light let go makes the next easier.`,
-    phases: last,
-    currency: "resolve",
-    baseCost: COSTS[light.id],
-    costGrowth: 1,
-    priority: 0,
-    onBuy: (run: RunState) => {
-      if (gift === "burst")
-        run.resources.flame = Math.min(
-          TUNING.last.flameFull,
-          flameOf(run) + TUNING.last.burstFlame
-        );
-      sync(run);
-    },
-    effectPreview: (run: RunState) =>
-      [
-        previewOf(light.id, [
-          {
-            label: "Lights lit",
-            read: (r) => r.resources.lights,
-            format: short,
-            isPlain: true,
-          },
-          ...GIFT_STATS[gift],
-        ])(run),
-        gift === "burst" ? burstLine(run) : "",
-      ]
-        .filter(Boolean)
-        .join("\n"),
-  };
-});
-
-/** "Flame now 60% → 85%": the leap a burst gift gives the moment it is bought. */
-function burstLine(run: RunState): string {
-  const now = flameFraction(run) * 100;
-  const leapt =
-    (Math.min(TUNING.last.flameFull, flameOf(run) + TUNING.last.burstFlame) /
-      TUNING.last.flameFull) *
-    100;
-  return `Flame now ${short(now)}% → ${short(leapt)}%`;
-}
-
-/** The garden's helper: it opens once the first flower has been picked. */
-const rainBarrel: UpgradeDef = {
-  id: RAIN_BARREL_ID,
-  name: "Rain barrel",
-  description:
-    "A barrel by the flower beds that waters the thirsty ones now and then. Watering by hand still helps, on top.",
+/** The hearth and its helpers: what resolve buys in The Last Light. */
+const HEARTH_STEPS = chain({
+  base: "hearth",
   phases: last,
   currency: "resolve",
-  baseCost: COSTS[RAIN_BARREL_ID],
-  costGrowth: 1,
-  // Halfway through the garden's life (after a few picks), and ranked with
-  // the lights, so a player who wants it can have it while it still helps.
-  priority: 0,
-  visibleWhen: (run) => picksSoFar(run) >= 3,
-  onBuy: (run: RunState) => {
-    startRain(run);
-    sync(run);
-  },
-  effectPreview: previewOf(RAIN_BARREL_ID, [
+  stats: [
     {
-      label: "Unwatered flowers grow",
-      read: (run) => restingPace(run) * 100,
+      label: "Warmth with no lights",
+      read: (run) => hearthWarmth(run) * 100,
       suffix: "%",
     },
-  ]),
-};
+  ],
+  steps: [
+    ["A bigger log", "A thicker log on the fire. The hearth stays warmer."],
+    ["Dry kindling", "A stack of dry sticks, ready for the cold nights."],
+    ["A stone hearth", "Stones hold the heat long after the fire is low."],
+    ["A chimney that draws", "The fire breathes better, and so does the room."],
+    ["A banked fire", "Ash over the embers, glowing all night."],
+    [
+      "An old iron stove",
+      "It has kept a hundred winters out. It can keep one more.",
+    ],
+  ].map(([name, description], i) => ({
+    name,
+    description,
+    badge: i === 0 ? "NEW ABILITY" : undefined,
+  })),
+});
+
+const SAIL_STEPS = chain({
+  base: "sail",
+  phases: last,
+  currency: "resolve",
+  stats: [
+    {
+      label: "Boat speed",
+      read: (run) => boatGear(run) * 100,
+      suffix: "%",
+    },
+  ],
+  steps: [
+    [
+      "A patched sail",
+      "Old cloth, mended with care. It catches a little wind.",
+    ],
+    ["A taller mast", "More sail, more reach. The boat leans into the dark."],
+    ["Oars for calm water", "Two strong arms, rowing when the wind falls."],
+    [
+      "A lookout at the bow",
+      "A sharp pair of eyes who can see the lantern light.",
+    ],
+    ["A good crew", "They have crossed worse. They know the way by heart."],
+  ].map(([name, description]) => ({ name, description })),
+});
+
+const SONG_STEPS = chain({
+  base: "song",
+  phases: last,
+  currency: "resolve",
+  stats: [
+    {
+      label: "Hope of the crossing",
+      read: (run) => songMult(run) * 100,
+      suffix: "%",
+    },
+  ],
+  steps: [
+    ["A hummed tune", "Out on the water, someone hums. The boat hums back."],
+    ["A sea shanty", "Everyone knows the chorus. It carries over the waves."],
+    ["A lullaby for the water", "The sea goes still to listen."],
+    ["The old lighthouse song", "Keepers have sung it for a hundred years."],
+    ["A round for the whole crew", "Everyone joins in, a beat behind."],
+    ["A verse for the far shore", "Somebody on the shore hums it back."],
+    ["The last verse", "It is a short one. It says: nearly home."],
+  ].map(([name, description], i) => ({
+    name,
+    description,
+    // The songs begin when the company's chain is done, so no more than four chains are ever on offer.
+    showWhen: (run: RunState) => i > 0 || owned(run, "company-3") > 0,
+  })),
+});
+
+const SLOWBURN_STEPS = chain({
+  base: "slowburn",
+  phases: last,
+  currency: "resolve",
+  stats: [
+    {
+      label: "Warmth each light burns",
+      read: (run) => burnMult(run) * 100,
+      suffix: "%",
+    },
+  ],
+  steps: [
+    ["Heavier glass", "Thick glass round every lamp. Less warmth leaks out."],
+    ["Shuttered windows", "Shutters close against the draught."],
+    ["Wool wraps", "Every lamp gets a little woollen coat."],
+  ].map(([name, description]) => ({ name, description })),
+});
+
+const COMPANY_STEPS = chain({
+  base: "company",
+  phases: last,
+  currency: "resolve",
+  stats: [
+    {
+      label: "Company each light keeps",
+      read: (run) => companyMult(run) * 100,
+      suffix: "%",
+    },
+  ],
+  steps: [
+    ["Warm gold", "A kinder glow. Every light that burns is better company."],
+    ["Old stories", "Each lamp has a story. You have time to hear them now."],
+    ["Patient hands", "You have learned how to sit with a light and keep it."],
+  ].map(([name, description]) => ({ name, description })),
+});
+
+/** Every chain of the last part has a place of its own: the shop shows the next step of each. */
+const lastUpgrades: UpgradeDef[] = [
+  ...HEARTH_STEPS,
+  ...SAIL_STEPS,
+  ...SLOWBURN_STEPS,
+  ...COMPANY_STEPS,
+  ...SONG_STEPS,
+].map((step) => ({
+  ...step,
+  hasOwnSlot: true,
+  priority: step.id.startsWith("sail-") ? 2 : 1,
+}));
 
 /** Scorecard tags: the upgrades that bring a new system or action. */
 const MECHANICS: ReadonlySet<string> = new Set([
@@ -1048,12 +1017,9 @@ const MECHANICS: ReadonlySet<string> = new Set([
   "gen1",
   "collector",
   "probe",
-  "letgo-porch",
-  "grid-1",
-  "grid-2",
+  "hearth-1",
+  "batt-1",
   WEATHER_VANE_ID,
-  MISSION_CONTROL_ID,
-  RAIN_BARREL_ID,
   "nav-1",
   "nav-2",
 ]);
@@ -1078,10 +1044,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
   ...coastUpgrades,
   ...nightUpgrades,
   ...skyUpgrades,
-  // Before the lights: the shop always has three on offer, so the barrel
-  // takes the next free slot once it has been earned, not the last one.
-  rainBarrel,
-  ...letGoUpgrades,
+  ...lastUpgrades,
 ].map((upgrade) => ({
   ...upgrade,
   baseCost: upgrade.baseCost * costScaleOf(upgrade),
@@ -1089,13 +1052,7 @@ export const UPGRADES: readonly UpgradeDef[] = [
   priority: upgrade.id.startsWith("mirror-") ? 2 : upgrade.priority,
   badge:
     upgrade.badge ??
-    ([
-      "grid-2",
-      "nav-2",
-      WEATHER_VANE_ID,
-      MISSION_CONTROL_ID,
-      RAIN_BARREL_ID,
-    ].includes(upgrade.id)
+    (["nav-2", WEATHER_VANE_ID].includes(upgrade.id)
       ? "NEW ABILITY"
       : undefined),
   kind: MECHANICS.has(upgrade.id) ? "mechanic" : "scale",

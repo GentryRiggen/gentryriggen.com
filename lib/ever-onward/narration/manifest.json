@@ -16,8 +16,8 @@
   },
   "light/intro-last": {
     "file": "/ever-onward/voice/light/intro-last.mp3",
-    "hash": "d18faf0e5241",
-    "durationGuess": 24
+    "hash": "55f65f5dacb1",
+    "durationGuess": 30
   },
   "light/cut-coast-1": {
     "file": "/ever-onward/voice/light/cut-coast-1.mp3",
@@ -111,8 +111,8 @@
   },
   "light/cut-night-end": {
     "file": "/ever-onward/voice/light/cut-night-end.mp3",
-    "hash": "4064f5acc50d",
-    "durationGuess": 19
+    "hash": "ed614749c6b9",
+    "durationGuess": 23
   },
   "light/cut-sky-1": {
     "file": "/ever-onward/voice/light/cut-sky-1.mp3",
@@ -156,8 +156,8 @@
   },
   "light/cut-sky-end": {
     "file": "/ever-onward/voice/light/cut-sky-end.mp3",
-    "hash": "71ac7d062538",
-    "durationGuess": 19
+    "hash": "284649b4b366",
+    "durationGuess": 23
   },
   "light/cut-last-1": {
     "file": "/ever-onward/voice/light/cut-last-1.mp3",
@@ -171,8 +171,8 @@
   },
   "light/cut-last-3": {
     "file": "/ever-onward/voice/light/cut-last-3.mp3",
-    "hash": "5a973c3b1850",
-    "durationGuess": 10
+    "hash": "b7f3912d1926",
+    "durationGuess": 11
   },
   "light/cut-last-4": {
     "file": "/ever-onward/voice/light/cut-last-4.mp3",
@@ -191,8 +191,8 @@
   },
   "light/cut-last-end": {
     "file": "/ever-onward/voice/light/cut-last-end.mp3",
-    "hash": "bfcf2e974727",
-    "durationGuess": 28
+    "hash": "a9df57113452",
+    "durationGuess": 27
   },
   "light/coast-hello": {
     "file": "/ever-onward/voice/light/coast-hello.mp3",
@@ -254,10 +254,10 @@
     "hash": "2f5c9660e6fe",
     "durationGuess": 12
   },
-  "light/coast-tide": {
-    "file": "/ever-onward/voice/light/coast-tide.mp3",
-    "hash": "e1513977f6f3",
-    "durationGuess": 20
+  "light/coast-toll": {
+    "file": "/ever-onward/voice/light/coast-toll.mp3",
+    "hash": "8d8ceb2cc5bc",
+    "durationGuess": 16
   },
   "light/coast-trio": {
     "file": "/ever-onward/voice/light/coast-trio.mp3",
@@ -279,9 +279,9 @@
     "hash": "58fbf63493fc",
     "durationGuess": 7
   },
-  "light/coast-mill": {
-    "file": "/ever-onward/voice/light/coast-mill.mp3",
-    "hash": "b68a299f5118",
+  "light/coast-tanker": {
+    "file": "/ever-onward/voice/light/coast-tanker.mp3",
+    "hash": "8a4d7d7095e7",
     "durationGuess": 15
   },
   "light/coast-almost": {
@@ -306,8 +306,8 @@
   },
   "light/night-lamps": {
     "file": "/ever-onward/voice/light/night-lamps.mp3",
-    "hash": "090f3f50fe36",
-    "durationGuess": 17
+    "hash": "10f2f0e980c4",
+    "durationGuess": 21
   },
   "light/night-ideas": {
     "file": "/ever-onward/voice/light/night-ideas.mp3",
@@ -349,10 +349,20 @@
     "hash": "3ce02b01fbed",
     "durationGuess": 9
   },
-  "light/night-smart": {
-    "file": "/ever-onward/voice/light/night-smart.mp3",
-    "hash": "fdbd91e0e532",
+  "light/night-battery": {
+    "file": "/ever-onward/voice/light/night-battery.mp3",
+    "hash": "99c5c91e269b",
     "durationGuess": 9
+  },
+  "light/night-lit-first": {
+    "file": "/ever-onward/voice/light/night-lit-first.mp3",
+    "hash": "276b350af65b",
+    "durationGuess": 11
+  },
+  "light/night-dark-first": {
+    "file": "/ever-onward/voice/light/night-dark-first.mp3",
+    "hash": "0fdea5824b04",
+    "durationGuess": 14
   },
   "light/night-news-3": {
     "file": "/ever-onward/voice/light/night-news-3.mp3",
@@ -366,8 +376,8 @@
   },
   "light/night-weather": {
     "file": "/ever-onward/voice/light/night-weather.mp3",
-    "hash": "f458b1b24c2e",
-    "durationGuess": 19
+    "hash": "1cc75150f23e",
+    "durationGuess": 24
   },
   "light/night-vane": {
     "file": "/ever-onward/voice/light/night-vane.mp3",
@@ -404,15 +414,20 @@
     "hash": "9bdc93dd9813",
     "durationGuess": 9
   },
-  "light/sky-races": {
-    "file": "/ever-onward/voice/light/sky-races.mp3",
-    "hash": "f513be6dee6f",
-    "durationGuess": 18
+  "light/sky-edge": {
+    "file": "/ever-onward/voice/light/sky-edge.mp3",
+    "hash": "091881093d4d",
+    "durationGuess": 14
   },
-  "light/sky-scout": {
-    "file": "/ever-onward/voice/light/sky-scout.mp3",
-    "hash": "466c9ebca3d2",
-    "durationGuess": 18
+  "light/sky-wild": {
+    "file": "/ever-onward/voice/light/sky-wild.mp3",
+    "hash": "1dde100e6944",
+    "durationGuess": 14
+  },
+  "light/sky-home": {
+    "file": "/ever-onward/voice/light/sky-home.mp3",
+    "hash": "c3c2874da518",
+    "durationGuess": 11
   },
   "light/sky-sail": {
     "file": "/ever-onward/voice/light/sky-sail.mp3",
@@ -481,33 +496,23 @@
   },
   "light/last-hello": {
     "file": "/ever-onward/voice/light/last-hello.mp3",
-    "hash": "ebbfac295e60",
-    "durationGuess": 12
+    "hash": "8c7ded118a38",
+    "durationGuess": 14
   },
   "light/last-choice": {
     "file": "/ever-onward/voice/light/last-choice.mp3",
-    "hash": "efb8bd392a41",
-    "durationGuess": 13
+    "hash": "b808a2f3e03c",
+    "durationGuess": 14
   },
   "light/last-first-go": {
     "file": "/ever-onward/voice/light/last-first-go.mp3",
-    "hash": "0b4250c0222a",
-    "durationGuess": 10
-  },
-  "light/last-garden": {
-    "file": "/ever-onward/voice/light/last-garden.mp3",
-    "hash": "015d13651e62",
-    "durationGuess": 19
-  },
-  "light/last-bloom": {
-    "file": "/ever-onward/voice/light/last-bloom.mp3",
-    "hash": "3eb532d90e01",
-    "durationGuess": 18
-  },
-  "light/last-barrel": {
-    "file": "/ever-onward/voice/light/last-barrel.mp3",
-    "hash": "0f0572fbcb77",
+    "hash": "e3291f338555",
     "durationGuess": 13
+  },
+  "light/last-flower": {
+    "file": "/ever-onward/voice/light/last-flower.mp3",
+    "hash": "9f646477afdb",
+    "durationGuess": 17
   },
   "light/last-halfway": {
     "file": "/ever-onward/voice/light/last-halfway.mp3",
@@ -516,13 +521,13 @@
   },
   "light/last-quiet": {
     "file": "/ever-onward/voice/light/last-quiet.mp3",
-    "hash": "4d0dd0859c36",
-    "durationGuess": 18
+    "hash": "92cfaa5bc6e1",
+    "durationGuess": 14
   },
   "light/last-one": {
     "file": "/ever-onward/voice/light/last-one.mp3",
-    "hash": "ff967af97efd",
-    "durationGuess": 9
+    "hash": "0496b477456b",
+    "durationGuess": 10
   },
   "light/last-remember": {
     "file": "/ever-onward/voice/light/last-remember.mp3",

@@ -5,16 +5,14 @@ import {
   appetite,
   collectorEnergyPerSecond,
   demandMW,
-  driftPerSecond,
-  flareBonus,
-  glowBonus,
   knowhowPerSecond,
+  incomePerSecond,
   powerPerSecond,
   probeEnergyPerSecond,
-  rushBonus,
-  strainPerSecond,
 } from "./tick";
 import { TUNING } from "./tuning";
+import { burnShare, forecastLead } from "./sunEdge";
+import { litBonus, litNights, rushCarry, rushExcessAt } from "./grid";
 import {
   BAROMETERS_ID,
   SPARE_PARTS_ID,
@@ -74,15 +72,16 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     id: "line-patrols",
     phase: PHASE_NIGHT,
     name: "Line patrols",
-    description: "Crews walk the lines at dusk. The grid strains 30% slower.",
-    tradeOff: `Balancing by hand teaches less: +${P.patrolBalance} know-how, not +${P.perBalance}.`,
+    description:
+      "Crews walk the lines at dusk. The lines carry the batteries' power 35% faster.",
+    tradeOff: `Patrols keep the crews busy: the school teaches ${pct(1 - P.patrolSchool)} less.`,
     costs: cost(70, 1500),
     revealWhen: (run) => owned(run, "gen2") >= 2,
     effectPreview: projectPreviewOf("line-patrols", [
       {
-        label: "Grid strain",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "Batteries can give at once",
+        read: rushCarry,
+        suffix: " MW",
       },
     ]),
     botValue: 0.15,
@@ -109,12 +108,15 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_NIGHT,
     name: "Rush-hour pricing",
     description:
-      "Power costs a bit more at rush hour. Every rush pays 50% more.",
-    tradeOff: "The rush comes a quarter less often.",
+      "Power costs a bit more at rush hour. Every night you keep lit pays 50% more.",
+    tradeOff: "The evening rush asks 10% more of the batteries.",
     costs: cost(90),
-    revealWhen: (run) => (run.resources.rushRides ?? 0) >= 3,
+    revealWhen: (run) => litNights(run) >= 3,
     effectPreview: projectPreviewOf("rush-pricing", [
-      { label: "A rush pays", read: rushBonus },
+      {
+        label: "A lit night pays",
+        read: (run) => litBonus(run, incomePerSecond(run)),
+      },
     ]),
     botValue: 0.1,
   },
@@ -124,15 +126,14 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     name: "Town lamplighters",
     description:
       "Neighbours switch off what nobody needs. Towns want 6% less power, so more of them light up.",
-    tradeOff: `The steady glow pays +${pct(P.lampGlowBonus)}, not +${pct(TUNING.night.glowBonus)}.`,
+    tradeOff: `Less to switch on at night: a lit night pays ${pct(1 - P.lampLitPay)} less.`,
     costs: cost(120),
     revealWhen: (run) => owned(run, "gen2") >= 5,
     effectPreview: projectPreviewOf("lamplighters", [
       { label: "Power demand", read: demandMW, suffix: " MW" },
       {
-        label: "Steady-grid bonus",
-        read: glowBonus,
-        format: (v) => `+${pct(v)}`,
+        label: "A lit night pays",
+        read: (run) => litBonus(run, incomePerSecond(run)),
       },
     ]),
     botValue: 0.15,
@@ -142,16 +143,16 @@ export const NIGHT_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_NIGHT,
     name: "Power co-op",
     description: "The steam plants share their coal. Each one makes 25% more.",
-    tradeOff: "The grid strains 15% faster.",
+    tradeOff: "The evening rush asks 12% more of the batteries.",
     costs: cost(190),
     // Every steam plant built, the dam still a way off: something to do.
     revealWhen: (run) => owned(run, "gen2") >= 7,
     effectPreview: projectPreviewOf("co-op", [
       POWER_PER_SECOND,
       {
-        label: "Grid strain",
-        read: (run) => strainPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "A usual evening rush",
+        read: (run) => rushExcessAt(run, 1, 1) * 100,
+        suffix: "% extra",
       },
     ]),
   },
@@ -224,15 +225,16 @@ export const SKY_PROJECTS: readonly ProjectDef[] = [
     name: "Mirror polish",
     description:
       "A rag, a ladder and a very long Saturday. Every collector catches 60% more.",
-    tradeOff: "The glare confuses the fleet: its heading drifts 25% faster.",
+    tradeOff:
+      "The glare gets into the shields: flares burn 25% more of the fleet.",
     costs: cost(70),
     revealWhen: (run) => owned(run, "collector") >= 5,
     effectPreview: projectPreviewOf("mirror-polish", [
       { label: "Energy/sec", read: collectorEnergyPerSecond },
       {
-        label: "Fleet drift",
-        read: (run) => driftPerSecond(run) * 60,
-        suffix: "% a minute",
+        label: "A usual flare burns",
+        read: (run) => burnShare(run, 1) * 100,
+        suffix: "% of the fleet",
       },
     ]),
   },
@@ -256,10 +258,11 @@ export const SKY_PROJECTS: readonly ProjectDef[] = [
     name: "Probe school",
     description:
       "Young probes learn to copy themselves from older ones. Copying is 50% faster.",
-    tradeOff: "The older ones hog the dish: flares come 30% less often.",
+    tradeOff: "Copies made in a hurry wander: 40% more of them go wild.",
     costs: cost(140),
     revealWhen: (run) => owned(run, "copy-1") >= 1,
-    effectPreview: () => "Probes copy 1.5× as fast · flares 1.3× as far apart",
+    effectPreview: () =>
+      `Probes copy ${TUNING.projects.sky.schoolBoost}× as fast · wild ones ${TUNING.projects.sky.schoolWild}× as many`,
     botValue: 0.3,
   },
   {
@@ -267,12 +270,12 @@ export const SKY_PROJECTS: readonly ProjectDef[] = [
     phase: PHASE_SKY,
     name: "Flare watchers",
     description:
-      "A night shift that does nothing but watch the sun. Flares come 20% sooner and pay 60% more.",
+      "A night shift that does nothing but watch the sun. The flare forecast shows 15 s sooner.",
     tradeOff: "Costs energy you could put into a collector.",
     costs: cost(90, 2500, "energy"),
-    revealWhen: (run) => (run.resources.flaresCaught ?? 0) >= 1,
+    revealWhen: (run) => (run.resources.skFlares ?? 0) >= 2,
     effectPreview: projectPreviewOf("flare-watch", [
-      { label: "A flare pays", read: flareBonus },
+      { label: "Forecast shows", read: forecastLead, suffix: " s ahead" },
     ]),
     botValue: 0.1,
   },

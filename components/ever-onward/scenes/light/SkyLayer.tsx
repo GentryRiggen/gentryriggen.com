@@ -1,7 +1,7 @@
 import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
 import ForkArt from "./ForkArt";
-import { MAX_DRAWN_PROBES } from "@/lib/ever-onward/universes/light/scene";
-import { AIM_DISH, LAKE, RACE, RELAY_RADIUS, SUN } from "./anchors";
+import { AIM_DISH, LAKE, RELAY_RADIUS, SUN } from "./anchors";
+import SkyDials from "./SkyDials";
 import { makeStars } from "./random";
 
 const STAR_COUNT = 70;
@@ -11,9 +11,6 @@ const RINGS = [
   { radius: 68, cls: "lm-orbit-b" },
   { radius: 90, cls: "lm-orbit-c" },
 ] as const;
-const PROBE_CLASSES = ["lm-probe-a", "lm-probe-b", "lm-probe-c"] as const;
-/** Probe speed by engine tier (a multiplier on how long a trip takes). */
-const PROBE_SPEED = ["", "[--lm-speed:0.65]", "[--lm-speed:0.4]"] as const;
 const MAX_COLLECTORS = 6;
 /** The mirror field on the ground: a few mirrors at 3 collectors, a field at 6. */
 const SMALL_FIELD = 6;
@@ -31,7 +28,6 @@ const FIELD_MIRRORS = [
   { x: 338, y: 270 },
   { x: 360, y: 276 },
 ] as const;
-const MAX_PROBES = MAX_DRAWN_PROBES;
 /** Stars the star charts mark out for the fleet. */
 const CHART_TARGETS = [
   { x: 60, y: 62 },
@@ -39,7 +35,6 @@ const CHART_TARGETS = [
   { x: 352, y: 196 },
 ] as const;
 const RELAY_COUNTS = [0, 4, 8, 12] as const;
-const FLARE_RAYS = [0, 45, 90, 135, 180, 225, 270, 315] as const;
 
 const rad = (deg: number): number => (deg * Math.PI) / 180;
 
@@ -66,165 +61,8 @@ function Collector({ tier }: { tier: number }) {
   );
 }
 
-interface ProbeProps {
-  info: LightSceneInfo;
-  index: number;
-}
-
-function Probe({ info, index }: ProbeProps) {
-  const isGlowing = info.glow > 0;
-  const trail = 14 + 8 * info.enginesTier;
-  // A fleet that has lost its course fans out; a true one flies straight.
-  const spread = (index % 2 ? 1 : -1) * (1 - info.fleetHeading) * 40;
-  const arm = 3 + 2.5 * info.appetiteTier;
-  return (
-    <g
-      transform={`translate(${SUN.x} ${SUN.y}) rotate(${(index * 360) / MAX_PROBES + 13 + spread})`}
-    >
-      <g
-        className={`${PROBE_CLASSES[index % PROBE_CLASSES.length]} ${PROBE_SPEED[Math.min(2, info.enginesTier)]}`}
-      >
-        <line
-          x1={-trail}
-          x2="0"
-          stroke="#aee0ff"
-          strokeOpacity={isGlowing ? 1 : 0.7}
-          strokeWidth={isGlowing ? 1.6 : 1}
-        />
-        {/* copies the probe has made of itself, flying close behind */}
-        {Array.from({ length: info.copyTier }, (_, k) => (
-          <circle
-            key={k}
-            cx={-7 - 6 * k}
-            cy={k % 2 ? 2.5 : -2.5}
-            r="1.7"
-            fill="#aee0ff"
-          />
-        ))}
-        <circle r={isGlowing ? 3 : 2.4} fill="#ffffff" />
-        {info.enginesTier >= 2 && (
-          <polygon points="3,0 -2,-6 -2,6" fill="#ffe9a0" fillOpacity="0.8" />
-        )}
-        {info.appetiteTier >= 1 &&
-          [-1, 1].map((side) => (
-            <line
-              key={side}
-              x1="1"
-              y1="0"
-              x2={1 + arm}
-              y2={side * arm}
-              stroke="#ff9f6a"
-              strokeWidth="1.4"
-              strokeLinecap="round"
-            />
-          ))}
-      </g>
-    </g>
-  );
-}
-
-/** The racing probe's dock, its loop of three waypoint stars, and mission control. */
-function RaceDock({ info }: { info: LightSceneInfo }) {
-  const r = RACE.loopRadius;
-  return (
-    <g className="lm-pop-svg">
-      <circle
-        cx={RACE.x}
-        cy={RACE.loopY}
-        r={r}
-        fill="none"
-        stroke="#fcd34d"
-        strokeOpacity="0.35"
-        strokeDasharray="3 4"
-      />
-      {[-90, 30, 150].map((deg) => (
-        <polygon
-          key={deg}
-          points="0,-3.5 1.2,-1.2 3.5,0 1.2,1.2 0,3.5 -1.2,1.2 -3.5,0 -1.2,-1.2"
-          fill="#fde68a"
-          transform={`translate(${RACE.x + r * Math.cos(rad(deg))} ${RACE.loopY + r * Math.sin(rad(deg))})`}
-        />
-      ))}
-      {/* the dock: a platform, a mast and a flag */}
-      <g transform={`translate(${RACE.x} ${RACE.y})`}>
-        <rect x="-14" y="2" width="28" height="5" fill="#475569" />
-        <rect x="-14" y="2" width="28" height="2" fill="#94a3b8" />
-        <rect x="9" y="-12" width="2" height="14" fill="#94a3b8" />
-        <rect x="11" y="-12" width="7" height="4" fill="#f87171" />
-        {info.raceOut === 0 && <RaceProbe info={info} dockAngle />}
-      </g>
-      {info.raceOut === 1 && (
-        <g transform={`translate(${RACE.x} ${RACE.loopY})`}>
-          <g className="pr-loop">
-            <g transform={`translate(${r} 0) rotate(90)`}>
-              <RaceProbe info={info} showsExhaust />
-            </g>
-          </g>
-        </g>
-      )}
-      {/* mission control: a little dish, and its scout flying the loop wider and slower */}
-      {info.raceControl === 1 && (
-        <>
-          <g transform={`translate(${RACE.x - 28} ${RACE.y})`}>
-            <rect x="-6" y="-2" width="12" height="9" fill="#475569" />
-            <path d="M-7 -2 Q0 -14 7 -2 Z" fill="#7dd3fc" stroke="#e0f2fe" />
-          </g>
-          {info.raceScout === 1 && (
-            <g transform={`translate(${RACE.x} ${RACE.loopY})`}>
-              <g className="pr-loop-slow">
-                <circle
-                  cx={r + 9}
-                  r="2.4"
-                  fill="#7dd3fc"
-                  stroke="#e0f2fe"
-                  strokeWidth="0.8"
-                />
-              </g>
-            </g>
-          )}
-        </>
-      )}
-    </g>
-  );
-}
-
-interface RaceProbeProps {
-  info: LightSceneInfo;
-  dockAngle?: boolean;
-  showsExhaust?: boolean;
-}
-
-/** The racing probe: a white arrow (with red fins once bought). */
-function RaceProbe({ info, dockAngle, showsExhaust }: RaceProbeProps) {
-  return (
-    <g transform={dockAngle ? "translate(0 -5) rotate(-90)" : undefined}>
-      {showsExhaust && (
-        <polygon
-          points="-4,0 -15,-2.6 -15,2.6"
-          fill="#fb923c"
-          fillOpacity="0.85"
-          className="pr-exhaust"
-        />
-      )}
-      {info.raceFins === 1 && (
-        <>
-          <polygon points="-4,0 -8,-5 -1,-2" fill="#f87171" />
-          <polygon points="-4,0 -8,5 -1,2" fill="#f87171" />
-        </>
-      )}
-      <polygon
-        points="6,0 -3,-3.6 -1.5,0 -3,3.6"
-        fill="#ffffff"
-        stroke="#facc15"
-        strokeWidth="1"
-      />
-    </g>
-  );
-}
-
 export default function SkyLayer({ info }: { info: LightSceneInfo }) {
   const collectors = Math.min(MAX_COLLECTORS, Math.max(0, info.collectors));
-  const probes = info.probes;
   const stars = Math.ceil(info.starsFraction * STAR_COUNT);
   const glow = 0.35 + Math.min(0.5, collectors * 0.05);
   // The mirror field grows in two steps: a few mirrors, then a great field.
@@ -235,6 +73,8 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
         ? SMALL_FIELD
         : 0;
   const relays = RELAY_COUNTS[Math.min(3, info.relayTier)];
+  // The sun grows as the fleet flies closer: 0.7x far out to 3.1x at the edge.
+  const sunScale = 0.7 + 0.3 * info.sunDist;
   const aimWidth = Math.max(2, 16 - 2.6 * info.aimLevel);
 
   return (
@@ -306,27 +146,10 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
       <circle
         cx={SUN.x}
         cy={SUN.y}
-        r={150}
+        r={150 * sunScale}
         fill="url(#lm-sun)"
         opacity={glow}
       />
-      {info.flare > 0 && (
-        <g transform={`translate(${SUN.x} ${SUN.y})`} className="lm-glow">
-          <circle r="40" fill="url(#lm-sun)" />
-          {FLARE_RAYS.map((a) => (
-            <line
-              key={a}
-              x1={30 * Math.cos(rad(a))}
-              y1={30 * Math.sin(rad(a))}
-              x2={52 * Math.cos(rad(a))}
-              y2={52 * Math.sin(rad(a))}
-              stroke="#fff3b0"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-          ))}
-        </g>
-      )}
       {RINGS.map((ring) => (
         <circle
           key={ring.radius}
@@ -346,8 +169,8 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
         strokeWidth="3"
         className="gg-prominence"
       />
-      <circle cx={SUN.x} cy={SUN.y} r="26" fill="#ffd35a" />
-      <circle cx={SUN.x} cy={SUN.y} r="20" fill="#fff0a8" />
+      <circle cx={SUN.x} cy={SUN.y} r={26 * sunScale} fill="#ffd35a" />
+      <circle cx={SUN.x} cy={SUN.y} r={20 * sunScale} fill="#fff0a8" />
       {/* a ring of small mirrors around the sun */}
       {info.mirrorTier >= 2 && (
         <g transform={`translate(${SUN.x} ${SUN.y})`}>
@@ -500,36 +323,7 @@ export default function SkyLayer({ info }: { info: LightSceneInfo }) {
           />
         ))}
       </g>
-      {/* steady glow: the fleet flies in formation, on one bright ring */}
-      {info.glow > 0 && probes > 1 && (
-        <circle
-          cx={SUN.x}
-          cy={SUN.y}
-          r="14"
-          fill="none"
-          stroke="#aee0ff"
-          strokeOpacity="0.5"
-          strokeDasharray="2 3"
-          className="lm-pop-svg"
-        />
-      )}
-      {/* a navigator mind keeps the fleet on course */}
-      {info.navTier >= 2 && probes > 0 && (
-        <g transform={`translate(${SUN.x} ${SUN.y})`}>
-          <circle
-            r="32"
-            fill="none"
-            stroke="#8cf0ff"
-            strokeOpacity="0.55"
-            strokeDasharray="4 4"
-            className="lm-orbit-c"
-          />
-        </g>
-      )}
-      {Array.from({ length: probes }, (_, i) => (
-        <Probe key={i} info={info} index={i} />
-      ))}
-      {info.raceOpen === 1 && <RaceDock info={info} />}
+      <SkyDials info={info} />
       <ForkArt info={info} />
     </g>
   );

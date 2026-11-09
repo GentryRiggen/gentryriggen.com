@@ -4,15 +4,15 @@ import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import Logbook from "../Logbook";
 
 describe("the logbook", () => {
-  it("keeps Light's lines in order: probes, tide, keepsakes, weather", () => {
+  it("keeps Light's lines in order: probes, tankers, flowers, weather", () => {
     const base = newRun(lightUniverse);
     const run = {
       ...base,
       resources: {
         ...base.resources,
         prRuns: 1,
-        tdHauls: 1,
-        gdPicks: 1,
+        tkVisits: 1,
+        wmLets: 1,
         wxFronts: 1,
       },
     };
@@ -20,8 +20,8 @@ describe("the logbook", () => {
     const text = container.textContent ?? "";
     const at = (s: string) => text.indexOf(s);
     expect(at("Probe races")).toBeGreaterThan(-1);
-    expect(at("Probe races")).toBeLessThan(at("Tide clock"));
-    expect(at("Tide clock")).toBeLessThan(at("Keepsakes"));
-    expect(at("Keepsakes")).toBeLessThan(at("Weather desk"));
+    expect(at("Probe races")).toBeLessThan(at("Oil tankers"));
+    expect(at("Oil tankers")).toBeLessThan(at("Flowers"));
+    expect(at("Flowers")).toBeLessThan(at("Weather desk"));
   });
 });

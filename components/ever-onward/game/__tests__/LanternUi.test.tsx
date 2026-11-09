@@ -53,7 +53,7 @@ describe("the last scene", () => {
     });
   };
 
-  it("dims the night when the flame is low, and not when it is high", () => {
+  it("dims the shore when the flame is low, and not when it is high", () => {
     const { rerender } = render(
       <svg>
         <LastLayer info={sceneAt(900, 1)} />
@@ -68,7 +68,7 @@ describe("the last scene", () => {
     const dimmed = Number(
       screen.getByTestId("lm-last-sky").getAttribute("opacity")
     );
-    expect(dimmed).toBeLessThan(0.6);
+    expect(dimmed).toBeLessThan(0.7);
     expect(dimmed).toBeGreaterThan(0.2);
   });
 

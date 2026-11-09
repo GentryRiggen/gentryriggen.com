@@ -225,10 +225,22 @@ export interface UpgradeDef {
   costGrowth: number;
   /** Omitted means one level (a one-off); use Infinity for no cap. */
   maxLevel?: number;
+  /**
+   * Only for a save from before the cap was lowered: the cost growth the
+   * levels above the cap were really bought at, so they are refunded at what
+   * was paid (omitted: today's growth).
+   */
+  refundGrowth?: number;
   /** Pops in the first time this is true (omitted: visible at once). */
   visibleWhen?(run: RunState): boolean;
   /** Sim hint: higher is bought first among the affordable. */
   priority?: number;
+  /**
+   * Has a place of its own: it pops in as soon as it is visible and never
+   * takes one of the `maxVisible` slots (a chain that must not be crowded
+   * out by whatever else is on offer).
+   */
+  hasOwnSlot?: boolean;
   /**
    * Scorecard tag: "mechanic" is a new system or action, "scale" a bigger
    * step on something that exists, "filler" a small repeatable. Omitted is

@@ -52,14 +52,13 @@ export default function Logbook({ def, run }: LogbookProps) {
           ).
         </p>
       )}
-      {(run.resources.tdHauls ?? 0) > 0 && (
+      {(run.resources.tkVisits ?? 0) > 0 && (
         <p className="font-mono text-xs text-sky-200">
-          Tide clock: {run.resources.tdHauls} hauls so far (+
-          {formatNumber(Math.floor(run.resources.tdEarned ?? 0))} coins from the
-          nets
-          {(run.resources.tdMilled ?? 0) > 0 &&
-            `, +${formatNumber(Math.floor(run.resources.tdMilled ?? 0))} from the tide mill`}
-          ).
+          Oil tankers: {run.resources.tkVisits} so far, you filled up{" "}
+          {run.resources.tkBuys ?? 0} times while one was in
+          {(run.resources.lampDarks ?? 0) > 0 &&
+            `, and the lamp went dark ${run.resources.lampDarks} times`}
+          .
         </p>
       )}
       {AfterTide && <AfterTide run={run} />}
