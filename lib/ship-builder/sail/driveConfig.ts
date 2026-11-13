@@ -23,6 +23,8 @@ export const OBSTACLE_KINDS: readonly ObstacleKind[] = [
   "rock",
   "buoy",
   "ship",
+  "mine",
+  "island",
 ];
 export const DENSITIES: readonly Density[] = ["few", "some", "many"];
 

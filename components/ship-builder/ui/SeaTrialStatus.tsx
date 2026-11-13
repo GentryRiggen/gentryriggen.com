@@ -12,7 +12,8 @@ import type { TrialInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { useLiveTrialState } from "../scene/liveTrial";
 import { focusSeaTrialButton } from "./SeaTrialButton";
-import { SEA_LABELS } from "./seaTrialText";
+import { SEA_LABELS, STRIKE_TRIAL_NAME } from "./seaTrialText";
+import { strikeOf } from "@/lib/ship-builder/sim/strike";
 import SoundToggle from "./SoundToggle";
 import TrialSpeedSwitch from "./TrialSpeedSwitch";
 import { panelClass } from "./styles";
@@ -23,7 +24,7 @@ function trialName(input: TrialInput): string {
     case "storm":
       return "Shipwreck storm";
     case "iceberg":
-      return `Iceberg trial · ${SEA_LABELS[input.sea]}`;
+      return `${STRIKE_TRIAL_NAME[strikeOf(input.iceberg)]} · ${SEA_LABELS[input.sea]}`;
     case "waves":
       return `Sea trial · ${SEA_LABELS[input.sea]}`;
   }

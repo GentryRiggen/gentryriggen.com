@@ -1,5 +1,6 @@
 import {
   DENSITY_COUNT,
+  EDGE_CLEAR_RADIUS,
   FIELD_KEEP,
   FIELD_RING,
   SECTOR_SIZE,
@@ -10,7 +11,7 @@ import {
   type FieldConfig,
 } from "../field";
 import { createSail } from "../step";
-import type { Obstacle } from "../types";
+import type { Obstacle, ObstacleKind } from "../types";
 
 const ALL: FieldConfig = {
   seed: 7,
@@ -209,5 +210,43 @@ describe("syncField", () => {
     expect(west.sectors).toContain(sectorKey(-12, 0));
     expect(west.sectors).not.toContain(sectorKey(0, 0));
     expect(west.sectors).toHaveLength(ringSize);
+  });
+});
+
+describe("mines and islands", () => {
+  const config = {
+    seed: 99,
+    kinds: ["mine", "island"] as ObstacleKind[],
+    density: "many" as const,
+  };
+  const all = () => {
+    const found = [];
+    for (let sx = -4; sx <= 4; sx++) {
+      for (let sz = -4; sz <= 4; sz++) {
+        found.push(...obstaclesForSector(config, sx, sz));
+      }
+    }
+    return found;
+  };
+
+  it("seeds both, at their own sizes", () => {
+    const found = all();
+    const mines = found.filter((o) => o.kind === "mine");
+    const islands = found.filter((o) => o.kind === "island");
+    expect(mines.length).toBeGreaterThan(0);
+    expect(islands.length).toBeGreaterThan(0);
+    for (const mine of mines) expect(mine.radius).toBeLessThanOrEqual(1.1);
+    for (const island of islands) {
+      expect(island.radius).toBeGreaterThanOrEqual(7);
+      expect(island.radius).toBeLessThanOrEqual(11);
+    }
+  });
+
+  it("keeps their edges clear of even the longest ship at the start", () => {
+    for (const o of all()) {
+      expect(Math.hypot(o.x, o.z) - o.radius).toBeGreaterThanOrEqual(
+        EDGE_CLEAR_RADIUS
+      );
+    }
   });
 });

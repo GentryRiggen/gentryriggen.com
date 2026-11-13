@@ -34,8 +34,12 @@ import type {
   LifeboatMode,
   SimSea,
   SimState,
+  StrikeKind,
+  TrialFunnel,
   TrialInput,
 } from "../sim/types";
+import { blastPiecesOf } from "../sim/blast";
+import { STRIKES } from "../sim/strike";
 import { trackGame } from "@/lib/analytics/trackGame";
 import {
   trackPartPlaced,
@@ -63,7 +67,7 @@ import { trialSpeedSetting } from "../../../components/ship-builder/hooks/useTri
 import type { TimeOfDay } from "../../../components/ship-builder/scene/timeOfDay";
 import { isSeaState } from "../../../components/ship-builder/scene/seaState";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
-import type { SailImpact } from "../sail/types";
+import type { ObstacleKind, SailImpact } from "../sail/types";
 import { publishSail } from "./sailLive";
 import { publishSmooth } from "./smoothLive";
 import { resetSailInput } from "./sailInput";
@@ -155,6 +159,26 @@ export interface SailResult {
 export interface TrialLook {
   sea: SimSea;
   time: TimeOfDay;
+}
+
+/** What a hard hit while driving does to her: a mine, an island or a gash. */
+function strikeOfObstacle(kind: ObstacleKind): StrikeKind {
+  return kind === "mine" || kind === "island" ? kind : "iceberg";
+}
+
+/**
+ * Her funnels as the sim sees them, less any a sea mine throws off (those
+ * fly with the blast, so they cannot also snap off later in the sinking).
+ */
+function funnelsLeftAfter(
+  ship: Ship,
+  strike: StrikeKind | undefined,
+  impactX: number | undefined
+): TrialFunnel[] {
+  const funnels = trialFunnelsOf(ship);
+  if (strike !== "mine" || impactX === undefined) return funnels;
+  const thrown = new Set(blastPiecesOf(ship, impactX).map((p) => p.partId));
+  return funnels.filter((funnel) => !thrown.has(funnel.id));
 }
 
 /** The main-screen sea and time, the look a trial gets by default. */
@@ -462,6 +486,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       storm?: boolean;
       /** How the crowd boards the boats; absent leaves the input without it. */
       lifeboats?: LifeboatMode;
+      /** What struck her (a drive hit); absent is a plain iceberg. */
+      strike?: StrikeKind;
     } = {}
   ) {
     const { ship } = get();
@@ -481,7 +507,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       ship: simShipFromStats(stats, ship.hull.beam),
       sea,
       length: gridLength(ship),
-      funnels: trialFunnelsOf(ship),
+      funnels: funnelsLeftAfter(ship, options.strike, impactX),
       ...(impactX === undefined
         ? {}
         : {
@@ -493,6 +519,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
               ...(options.gashLength === undefined
                 ? {}
                 : { gashLength: options.gashLength }),
+              ...(options.strike && options.strike !== "iceberg"
+                ? { strike: options.strike }
+                : {}),
             },
           }),
       ...storm,
@@ -1108,8 +1137,13 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       get().endDrive();
       if (get().walk.status !== "idle") return;
       // No card: the main-screen look and the remembered lifeboats.
+      const strike = strikeOfObstacle(impact.kind);
       beginTrial(getSeaState(), impact.impactX, {
         lifeboats: getTrialChoices().lifeboats,
+        strike,
+        ...(strike === "iceberg"
+          ? {}
+          : { gashLength: STRIKES[strike].gashLength }),
       });
     },
 

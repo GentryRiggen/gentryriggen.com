@@ -15,6 +15,7 @@ import {
 import { lifeboatCount } from "@/lib/ship-builder/crowd/lifeboatCount";
 import { ESCAPE_RESULT_LINES } from "@/lib/ship-builder/escapeCopy";
 import { analyzeShip } from "@/lib/ship-builder/model/analysis";
+import { strikeOf } from "@/lib/ship-builder/sim/strike";
 import { isTimelineTrial, trialKindOf } from "@/lib/ship-builder/sim/trialKind";
 import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import {
@@ -204,6 +205,7 @@ function ResultCard({ trial }: ResultCardProps) {
             <TrialScrubber
               timeline={timeline}
               isStorm={trialKindOf(input) === "storm"}
+              strike={strikeOf(input.iceberg)}
               compact
             />
             <button

@@ -6,6 +6,7 @@ import {
   strengthFor,
 } from "./breakup";
 import { gashOf } from "./compartments";
+import { inflowScaleOf } from "./strike";
 import { POWER_OUT_STRAIN, shouldFlicker, withPower } from "./power";
 import { floodOf, trialKindOf, type FloodSpec } from "./trialKind";
 import {
@@ -147,6 +148,7 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   const gash = iceberg
     ? gashOf(iceberg.impactX, length, iceberg.gashLength)
     : null;
+  const inflowScale = inflowScaleOf(iceberg);
   const middle = length / 2;
   const seaDepth = state.pose.sink * SINK_TO_DEPTH;
   const seaLevel = SEA_LEVEL + seaDepth;
@@ -159,7 +161,10 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   for (let i = 0; i < specs.length; i++) {
     const inflow = gash
       ? state.compartments[i].opened
-        ? INFLOW * overlapOf(specs[i], gash) * Math.max(0, seaLevel - water[i])
+        ? INFLOW *
+          inflowScale *
+          overlapOf(specs[i], gash) *
+          Math.max(0, seaLevel - water[i])
         : 0
       : stormInflowOf(specs[i], water[i], length);
     if (inflow <= 0) continue;
