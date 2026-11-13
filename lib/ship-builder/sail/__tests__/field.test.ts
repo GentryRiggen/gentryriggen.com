@@ -242,6 +242,45 @@ describe("mines and islands", () => {
     }
   });
 
+  it("keeps every kind's edge clear at the start of a free drive", () => {
+    const free = {
+      seed: 5,
+      kinds: ["iceberg", "rock", "ship"] as ObstacleKind[],
+      density: "many" as const,
+    };
+    for (let sx = -3; sx <= 3; sx++) {
+      for (let sz = -3; sz <= 3; sz++) {
+        for (const o of obstaclesForSector(free, sx, sz)) {
+          expect(Math.hypot(o.x, o.z) - o.radius).toBeGreaterThanOrEqual(
+            EDGE_CLEAR_RADIUS
+          );
+        }
+      }
+    }
+  });
+
+  it("keeps a fixed course's older kinds where they always were", () => {
+    const course = {
+      seed: 20241,
+      kinds: ["iceberg", "rock", "ship"] as ObstacleKind[],
+      density: "some" as const,
+    };
+    let fixed = 0;
+    let free = 0;
+    for (let sx = -2; sx <= 2; sx++) {
+      for (let sz = -2; sz <= 2; sz++) {
+        fixed += obstaclesForSector(
+          { ...course, fixedCourse: true },
+          sx,
+          sz
+        ).length;
+        free += obstaclesForSector(course, sx, sz).length;
+      }
+    }
+    // The fixed course keeps obstacles a free drive clears from the start.
+    expect(fixed).toBeGreaterThan(free);
+  });
+
   it("keeps their edges clear of even the longest ship at the start", () => {
     for (const o of all()) {
       expect(Math.hypot(o.x, o.z) - o.radius).toBeGreaterThanOrEqual(

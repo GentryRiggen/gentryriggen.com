@@ -58,7 +58,13 @@ export const SMOOTH_FIELD: {
   seed: number;
   kinds: ObstacleKind[];
   density: Density;
-} = { seed: 20241, kinds: ["iceberg", "rock", "ship"], density: "some" };
+  fixedCourse: true;
+} = {
+  seed: 20241,
+  kinds: ["iceberg", "rock", "ship"],
+  density: "some",
+  fixedCourse: true,
+};
 
 export type ChallengeTrial =
   | {

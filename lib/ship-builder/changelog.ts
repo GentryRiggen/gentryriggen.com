@@ -26,6 +26,7 @@ export const CHANGELOG: readonly Release[] = [
       "Run onto an island and she crunches to a stop on the rocks, tipped up, and fills with water slowly. Strong walls might keep her there instead of sinking",
       "Where you hit matters: a mine at the bow blows off the front of your ship, a mine at the stern blows off the back, and an island lifts whichever end ran onto it",
       "Every choice in the Set sail picker now has a picture, so you can pick without reading",
+      "Nothing waits right at your bow when you set sail any more, even on the longest ships",
     ],
   },
   {

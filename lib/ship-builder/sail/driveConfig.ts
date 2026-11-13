@@ -8,6 +8,8 @@ export interface DriveConfig {
   seed: number;
   kinds: ObstacleKind[];
   density: Density;
+  /** A challenge's fixed course: see `FieldConfig.fixedCourse`. */
+  fixedCourse?: boolean;
   /** Set when the Challenges panel started this sail (see Smooth sailing). */
   challenge?: ChallengeId;
 }
