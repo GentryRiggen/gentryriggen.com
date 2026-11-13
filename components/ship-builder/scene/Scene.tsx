@@ -21,6 +21,7 @@ import { toRuntimeEnvironment } from "./environmentRuntime";
 import Hull from "./Hull";
 import HullGash from "./HullGash";
 import Iceberg from "./Iceberg";
+import StrikeScenery from "./StrikeScenery";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import PhotoCapture from "./PhotoCapture";
@@ -158,6 +159,7 @@ export default function Scene() {
           </ShipAnimation>
         </SailBank>
         <Iceberg />
+        <StrikeScenery />
         <SeaTrialRunner />
         <SailRunner />
         <WalkRunner />

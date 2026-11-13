@@ -15,6 +15,8 @@ const MARKER_COLORS: Record<ObstacleKind, string> = {
   iceberg: "#ff4d4d",
   rock: "#ff4d4d",
   ship: "#ffb020",
+  mine: "#ff4d4d",
+  island: "#ff4d4d",
 };
 
 export function markerColor(kind: ObstacleKind): string {

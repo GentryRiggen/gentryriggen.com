@@ -8,6 +8,8 @@ export interface DriveConfig {
   seed: number;
   kinds: ObstacleKind[];
   density: Density;
+  /** A challenge's fixed course: see `FieldConfig.fixedCourse`. */
+  fixedCourse?: boolean;
   /** Set when the Challenges panel started this sail (see Smooth sailing). */
   challenge?: ChallengeId;
 }
@@ -23,6 +25,8 @@ export const OBSTACLE_KINDS: readonly ObstacleKind[] = [
   "rock",
   "buoy",
   "ship",
+  "mine",
+  "island",
 ];
 export const DENSITIES: readonly Density[] = ["few", "some", "many"];
 

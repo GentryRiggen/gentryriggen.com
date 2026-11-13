@@ -8,6 +8,14 @@ export const FIELD_RING = 3;
 export const FIELD_KEEP = 5;
 /** Nothing is seeded this close to the start, so a new sail begins in open water. */
 export const START_CLEAR_RADIUS = 30;
+/**
+ * Every obstacle keeps its whole edge this far from the start: past the bow
+ * of the longest ship (60 cells, so 30 from the middle) with room to steer.
+ * On a fixed course only mines and islands do (the older kinds keep the
+ * centre rule above), so Smooth sailing's field stays the same.
+ */
+export const EDGE_CLEAR_RADIUS = 38;
+const FIXED_COURSE_EDGE_KINDS: readonly ObstacleKind[] = ["mine", "island"];
 
 export type Density = "few" | "some" | "many";
 
@@ -15,6 +23,11 @@ export interface FieldConfig {
   seed: number;
   kinds: ObstacleKind[];
   density: Density;
+  /**
+   * A challenge's fixed course (Smooth sailing): keep the original start
+   * rule for the older kinds, so the course and its scores never change.
+   */
+  fixedCourse?: boolean;
 }
 
 /** Expected obstacles per sector. */
@@ -29,6 +42,8 @@ const RADIUS_RANGE: Record<ObstacleKind, readonly [number, number]> = {
   rock: [1.5, 3],
   buoy: [0.8, 0.8],
   ship: [4, 4],
+  mine: [0.9, 1.1],
+  island: [7, 11],
 };
 
 const OTHER_SHIP_SPEED: readonly [number, number] = [1, 3];
@@ -89,6 +104,12 @@ export function obstaclesForSector(
     const speed = between(rand, OTHER_SHIP_SPEED);
 
     if (Math.hypot(x, z) < START_CLEAR_RADIUS) continue;
+    if (
+      (!config.fixedCourse || FIXED_COURSE_EDGE_KINDS.includes(kind)) &&
+      Math.hypot(x, z) - radius < EDGE_CLEAR_RADIUS
+    ) {
+      continue;
+    }
 
     obstacles.push({
       id: `${key}:${i}`,

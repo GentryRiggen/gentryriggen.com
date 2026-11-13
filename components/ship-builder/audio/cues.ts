@@ -2,6 +2,7 @@ import type {
   PowerState,
   SimEvent,
   SimPhase,
+  StrikeKind,
   TrialOutcome,
 } from "@/lib/ship-builder/sim/types";
 
@@ -21,10 +22,16 @@ export interface PlaybackSnapshot {
   scrubbing: boolean;
   /** Sim time she began to sink; null (or absent) until then. */
   sinkingAt?: number | null;
+  /** What struck her; absent is an iceberg. */
+  strike?: StrikeKind;
 }
 
 export type Cue =
   | { kind: "impact" }
+  /** A sea mine goes off under her. */
+  | { kind: "explosion" }
+  /** She runs aground: rock grinding on steel. */
+  | { kind: "crunch" }
   | { kind: "creak"; intensity: number }
   | { kind: "flicker" }
   | { kind: "power-out" }
@@ -51,6 +58,13 @@ export interface AmbientParams {
   sea: boolean;
   hum: boolean;
 }
+
+/** The sound of the moment she is struck, by what struck her. */
+const IMPACT_CUE = {
+  iceberg: "impact",
+  mine: "explosion",
+  island: "crunch",
+} as const;
 
 /** Strain at which the hull groans as loudly as it can. */
 export const STRAIN_FULL = 0.3;
@@ -99,7 +113,7 @@ export function cuesFor(prev: PlaybackSnapshot, next: PlaybackSnapshot): Cue[] {
     countOf(prev.events, "flooding") === 0 &&
     countOf(next.events, "flooding") > 0
   ) {
-    cues.push({ kind: "impact" });
+    cues.push({ kind: IMPACT_CUE[next.strike ?? "iceberg"] });
   }
   const hasBroken = countOf(next.events, "broke") > 0;
   if (hasBroken && countOf(prev.events, "broke") === 0) {

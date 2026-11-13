@@ -27,6 +27,21 @@ describe("cuesFor", () => {
     expect(cuesFor(snap({ time: 1 }), snap({ time: 1.01 }))).toEqual([]);
   });
 
+  it("a mine booms and an island crunches instead of the iceberg's scrape", () => {
+    const flooding = [{ kind: "flooding" as const }];
+    const hit = (strike: "mine" | "island") =>
+      kinds(
+        cuesFor(
+          snap({ time: 1, strike }),
+          snap({ time: 1.02, events: flooding, strike })
+        )
+      );
+    expect(hit("mine")).toContain("explosion");
+    expect(hit("mine")).not.toContain("impact");
+    expect(hit("island")).toContain("crunch");
+    expect(hit("island")).not.toContain("impact");
+  });
+
   it("cues the impact once, on the first flooding event", () => {
     const flooding = [{ kind: "flooding" as const }];
     expect(

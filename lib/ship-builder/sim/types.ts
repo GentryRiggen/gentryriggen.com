@@ -111,6 +111,13 @@ export interface CompartmentSpec {
  */
 export type BreakMode = "real" | "always" | "never";
 
+/**
+ * What struck her in a flooding trial started by a hit: an iceberg (also
+ * rocks and other ships), a sea mine going off under her, or an island she
+ * ran aground on. Each opens the hull differently (see `strike.ts`).
+ */
+export type StrikeKind = "iceberg" | "mine" | "island";
+
 /** An iceberg trial: the hull's compartments and where she was struck. */
 export interface IcebergInput {
   compartments: CompartmentSpec[];
@@ -122,6 +129,8 @@ export interface IcebergInput {
   gashLength?: number;
   /** Absent means `real`. */
   breakMode?: BreakMode;
+  /** What struck her; absent means an iceberg. */
+  strike?: StrikeKind;
 }
 
 /**

@@ -11,12 +11,37 @@ import { useShipAnimation } from "./ShipAnimationContext";
 import { frozenTime, FROZEN_STEP, sceneTime } from "./testClock";
 import { trialPlayback } from "./trialPlayback";
 import { isHeavyTrialPose } from "./trialPose";
+import { strikePose, type StrikePose } from "./strikeMotion";
 
 interface BobGroupProps {
   children: ReactNode;
 }
 
 const LEVEL_POSE = createShipPose();
+const strike: StrikePose = { y: 0, roll: 0, pitch: 0 };
+
+/** A mine's jolt or an island's grounding, added to the sim's pose. */
+function strikePoseNow(
+  trial: ReturnType<typeof useShipBuilderStore.getState>["trial"],
+  reducedMotion: boolean
+): StrikePose {
+  strike.y = 0;
+  strike.roll = 0;
+  strike.pitch = 0;
+  if (trial.status !== "running" && trial.status !== "result") return strike;
+  const iceberg = trial.input.iceberg;
+  if (!iceberg?.strike || iceberg.strike === "iceberg") return strike;
+  // Reduced motion: no shaking, but she still sits up on the rocks.
+  if (reducedMotion && iceberg.strike === "mine") return strike;
+  return strikePose(
+    iceberg.strike,
+    iceberg.impactX,
+    iceberg.length,
+    trialPlayback.time,
+    trialPlayback.sinkingAt,
+    strike
+  );
+}
 
 /** Seconds the sea trial's pose takes to fade in or out. */
 const TRIAL_BLEND_SECONDS = 0.5;
@@ -89,16 +114,17 @@ export default function BobGroup({ children }: BobGroupProps) {
         );
     const weight = blend.current;
     trialPlayback.blend = weight;
-    target.position.y = bob.y - trialPlayback.sink * weight;
+    const extra = strikePoseNow(trial, reducedMotion);
+    target.position.y = bob.y + (extra.y - trialPlayback.sink) * weight;
     target.rotation.set(
       // The sim's roll starts at the ship's list, so it replaces the idle list.
       // The idle roll fades out too: the sim's waves already roll her, and
       // adding the idle roll on top would double the motion in a storm.
       bob.roll * (1 - weight) +
         listAngle * (1 - weight) +
-        trialPlayback.roll * weight,
+        (trialPlayback.roll + extra.roll) * weight,
       0,
-      bob.pitch + trialPlayback.pitch * weight
+      bob.pitch + (trialPlayback.pitch + extra.pitch) * weight
     );
 
     if (popElapsed.current < POP_DURATION) {

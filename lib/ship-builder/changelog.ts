@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.40.0",
+    date: "2026-11-12",
+    title: "Sea mines and islands",
+    highlights: [
+      "Two new things to dodge when you set sail: sea mines and islands",
+      "Hit a mine and it goes off with a big bang: fire, smoke, a tower of water, and parts of your ship blown into the sea",
+      "Run onto an island and she crunches to a stop on the rocks, tipped up, and fills with water slowly. Strong walls might keep her there instead of sinking",
+      "Where you hit matters: a mine at the bow blows off the front of your ship, a mine at the stern blows off the back, and an island lifts whichever end ran onto it",
+      "Every choice in the Set sail picker now has a picture, so you can pick without reading",
+      "Nothing waits right at your bow when you set sail any more, even on the longest ships",
+    ],
+  },
+  {
     version: "2.39.2",
     date: "2026-11-07",
     title: "Keep building after a delete",

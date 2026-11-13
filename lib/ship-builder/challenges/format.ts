@@ -88,6 +88,13 @@ export function describeShipshapeRun(
     : `In the ${sea} sea she rolled ${Math.round(peakRollDeg)} degrees at most.`;
 }
 
+const HIT_WORDS: Record<string, string> = {
+  ship: "another ship",
+  rock: "a rock",
+  mine: "a sea mine",
+  island: "an island",
+};
+
 /** Smooth sailing: how the sail ended, in a sentence. */
 export function describeSailEnd(
   end: "sailing" | "finished" | "hit" | "gave-up" | "cannot-sail",
@@ -97,7 +104,7 @@ export function describeSailEnd(
     case "finished":
       return "You crossed the finish line without touching a thing.";
     case "hit":
-      return `She ran into ${hitKind === "ship" ? "another ship" : hitKind === "rock" ? "a rock" : "an iceberg"}.`;
+      return `She ran into ${HIT_WORDS[hitKind ?? ""] ?? "an iceberg"}.`;
     case "gave-up":
       return "You stopped the sail early.";
     case "sailing":
