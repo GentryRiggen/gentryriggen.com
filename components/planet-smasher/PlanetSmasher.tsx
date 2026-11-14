@@ -16,6 +16,7 @@ import { isUnlocked } from "@/lib/planet-smasher/unlocks";
 import { uvToDir, type Vec3 } from "@/lib/planet-smasher/sphere";
 import Arsenal from "./ui/Arsenal";
 import Hud from "./ui/Hud";
+import VersionLink from "./ui/VersionLink";
 import PlanetPicker from "./ui/PlanetPicker";
 import EndingOverlay from "./ui/EndingOverlay";
 import SoundToggle from "./ui/SoundToggle";
@@ -285,7 +286,15 @@ export default function PlanetSmasher() {
             onImpact={handleImpact}
             onEffectDone={handleEffectDone}
           />
-          <Hud left={<PlanetPicker />} right={<SoundToggle />} />
+          <Hud
+            left={
+              <div className="flex flex-col items-start">
+                <PlanetPicker />
+                <VersionLink />
+              </div>
+            }
+            right={<SoundToggle />}
+          />
           <Arsenal />
           <UnlockToast />
           <EndingOverlay />
