@@ -69,6 +69,12 @@ function Scene({
   const planet = useRef<Mesh>(null);
   const down = useRef<Down | null>(null);
   const holding = useRef(false);
+  // Mirrors `holding`: the globe only listens for moves during a hold, so R3F
+  // does not raycast its 37k triangles on every drag or hover.
+  const [holdingNow, setHoldingNow] = useState(false);
+  const pendingMove = useRef<{ u: number; v: number; point: Vec3 } | null>(
+    null
+  );
   const sun = useRef<DirectionalLight>(null);
   const [sunDir] = useState(() => new Vector3(...SUN_VIEW_DIR).normalize());
   const resume = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,6 +89,12 @@ function Scene({
   // The sun stays upper left of the viewer as the camera orbits, so the
   // face in view is mostly lit with a night crescent on the right.
   useFrame(({ camera }) => {
+    // At most one hold move per frame, the latest.
+    const move = pendingMove.current;
+    if (move) {
+      pendingMove.current = null;
+      if (holding.current) onHoldMove?.(move.u, move.v, move.point);
+    }
     sunDir
       .set(...SUN_VIEW_DIR)
       .normalize()
@@ -114,6 +126,8 @@ function Scene({
     const end = () => {
       if (!holding.current) return;
       holding.current = false;
+      pendingMove.current = null;
+      setHoldingNow(false);
       if (controls.current) controls.current.enabled = true;
       onHoldEnd?.();
     };
@@ -153,14 +167,14 @@ function Scene({
     if (!hit) return;
     e.stopPropagation();
     holding.current = true;
+    setHoldingNow(true);
     if (controls.current) controls.current.enabled = false;
     onHoldStart?.(hit.u, hit.v, hit.point);
   };
 
   const handleMove = (e: ThreeEvent<PointerEvent>) => {
     if (!holding.current) return;
-    const hit = hitOf(e);
-    if (hit) onHoldMove?.(hit.u, hit.v, hit.point);
+    pendingMove.current = hitOf(e);
   };
 
   const handleUp = (e: ThreeEvent<PointerEvent>) => {
@@ -186,7 +200,7 @@ function Scene({
         sunDir={sunDir}
         onPointerDown={handleDown}
         onPointerUp={handleUp}
-        onPointerMove={handleMove}
+        onPointerMove={holdingNow ? handleMove : undefined}
         renderEnding={(m) => <EndingStage material={m} />}
       />
       {hasMoon && <Moon />}

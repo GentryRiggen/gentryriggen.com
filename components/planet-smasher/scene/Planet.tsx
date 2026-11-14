@@ -29,7 +29,7 @@ interface PlanetProps {
   sunDir: Vector3;
   onPointerDown(e: ThreeEvent<PointerEvent>): void;
   onPointerUp(e: ThreeEvent<PointerEvent>): void;
-  onPointerMove(e: ThreeEvent<PointerEvent>): void;
+  onPointerMove?(e: ThreeEvent<PointerEvent>): void;
   /** Renders the endings; gets the planet's material (chunks share it). */
   renderEnding?(material: MeshStandardMaterial): ReactNode;
 }
