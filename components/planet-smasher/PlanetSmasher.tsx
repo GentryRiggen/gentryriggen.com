@@ -11,7 +11,11 @@ import {
   TEST_HOOKS_ENABLED,
   installTestHooks,
 } from "@/lib/planet-smasher/testHooks";
+import { tryFire } from "@/lib/planet-smasher/cooldown";
+import Arsenal from "./ui/Arsenal";
 import Hud from "./ui/Hud";
+import PlanetPicker from "./ui/PlanetPicker";
+import UnlockToast from "./ui/UnlockToast";
 import { DamagePainter } from "./scene/DamagePainter";
 import type { PlanetTextures } from "./scene/planetTextures";
 import { loadPlanetTextures } from "./scene/planetTextures";
@@ -58,6 +62,16 @@ export default function PlanetSmasher() {
     [painter]
   );
 
+  // A tap or a held-down tick: respects the tool's cooldown.
+  const playerFire = useCallback(
+    (u: number, v: number) => {
+      const toolId = useGameStore.getState().progress.toolId;
+      if (!tryFire(toolId)) return;
+      fireAt(toolId, u, v);
+    },
+    [fireAt]
+  );
+
   useEffect(() => {
     if (!TEST_HOOKS_ENABLED) return;
     return installTestHooks(fireAt);
@@ -84,6 +98,9 @@ export default function PlanetSmasher() {
   }, [webgl, ready, planetId]);
 
   const hasMoon = PLANETS[planetId].hasMoon;
+  const holdMode = useGameStore(
+    (s) => TOOLS[s.progress.toolId].mode === "hold"
+  );
 
   return (
     <div className="fixed inset-0 select-none overflow-hidden bg-black text-white touch-none">
@@ -102,12 +119,14 @@ export default function PlanetSmasher() {
             textures={textures}
             painter={painter!}
             hasMoon={hasMoon}
-            holdMode={false}
-            onFire={(u, v) =>
-              fireAt(useGameStore.getState().progress.toolId, u, v)
-            }
+            holdMode={holdMode}
+            onFire={playerFire}
+            onHoldStart={playerFire}
+            onHoldMove={playerFire}
           />
-          <Hud />
+          <Hud left={<PlanetPicker />} />
+          <Arsenal />
+          <UnlockToast />
         </>
       )}
     </div>

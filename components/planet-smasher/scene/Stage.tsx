@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
+import {
+  Canvas,
+  useFrame,
+  useThree,
+  type ThreeEvent,
+} from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Vector3, type DirectionalLight, type Mesh } from "three";
@@ -48,6 +53,13 @@ function Scene({
   const sun = useRef<DirectionalLight>(null);
   const [sunDir] = useState(() => new Vector3(...SUN_VIEW_DIR).normalize());
   const resume = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Keep the whole planet in view on tall screens: back the camera off.
+  const aspect = useThree((s) => s.size.width / s.size.height);
+  const cam = useThree((s) => s.camera);
+  useEffect(() => {
+    cam.position.setLength(Math.max(3.7, 3.1 / aspect));
+  }, [aspect, cam]);
 
   // The sun stays upper left of the viewer as the camera orbits, so the
   // face in view is mostly lit with a night crescent on the right.

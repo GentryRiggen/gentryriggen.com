@@ -15,7 +15,7 @@ function PopOff() {
     <span
       key={hit.seq}
       data-testid="popoff"
-      className="pointer-events-none absolute left-1/2 top-full mt-1 -translate-x-1/2 animate-[ps-popoff_1s_ease-out_forwards] whitespace-nowrap font-mono text-xl font-black text-red-500 drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)] sm:text-3xl"
+      className="pointer-events-none absolute left-1/2 top-full mt-1 animate-[ps-popoff_1s_ease-out_forwards] whitespace-nowrap font-mono text-xl font-black text-red-500 drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)] sm:text-3xl"
     >
       −{formatInt(hit.peopleLost)}
     </span>
