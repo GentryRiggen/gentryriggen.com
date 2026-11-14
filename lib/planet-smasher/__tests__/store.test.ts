@@ -37,6 +37,7 @@ describe("game store", () => {
       peopleLost: 0,
       healthLost: 0,
       points: 0,
+      rawPoints: 0,
       ending: null,
     });
     expect(useGameStore.getState().progress.points).toBe(points);

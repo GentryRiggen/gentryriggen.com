@@ -26,7 +26,10 @@ export interface PlanetState {
 export interface HitResult {
   peopleLost: number;
   healthLost: number;
+  /** Rounded points (ending bonus included). */
   points: number;
+  /** Unrounded points, so the store can carry the fractions. */
+  rawPoints: number;
   ending: EndingKind | null;
 }
 
@@ -57,8 +60,16 @@ export function createPlanetState(
 
 /** 1% of the start population is 5 points. */
 export function pointsFor(peopleLost: number, startPopulation: number): number {
+  return Math.round(rawPointsFor(peopleLost, startPopulation));
+}
+
+/** The same without rounding. */
+export function rawPointsFor(
+  peopleLost: number,
+  startPopulation: number
+): number {
   if (startPopulation <= 0) return 0;
-  return Math.round((peopleLost / startPopulation) * 500);
+  return (peopleLost / startPopulation) * 500;
 }
 
 /** The finisher wins; otherwise the most damaged family (ties: shatter, molten, frozen). */
@@ -89,7 +100,13 @@ export function applyHit(
   v: number
 ): HitResult {
   if (state.ended) {
-    return { peopleLost: 0, healthLost: 0, points: 0, ending: null };
+    return {
+      peopleLost: 0,
+      healthLost: 0,
+      points: 0,
+      rawPoints: 0,
+      ending: null,
+    };
   }
   const tool = TOOLS[toolId];
   const cells = cellsWithin(state, uvToDir(u, v), tool.radius);
@@ -123,6 +140,9 @@ export function applyHit(
     healthLost,
     points:
       pointsFor(peopleLost, state.startPopulation) +
+      (ending ? ENDING_BONUS : 0),
+    rawPoints:
+      rawPointsFor(peopleLost, state.startPopulation) +
       (ending ? ENDING_BONUS : 0),
     ending,
   };

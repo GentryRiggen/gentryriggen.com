@@ -20,6 +20,8 @@ export interface GameStore {
   phase: Phase;
   ending: EndingKind | null;
   lastUnlocks: Unlockable[];
+  /** Sub-point remainder of earlier hits (not saved). */
+  pointsCarry: number;
   lastHit: { peopleLost: number; u: number; v: number; seq: number } | null;
   /** Loads progress and creates the planet. */
   init(grid: PopulationGrid): void;
@@ -40,6 +42,7 @@ const ZERO: HitResult = {
   peopleLost: 0,
   healthLost: 0,
   points: 0,
+  rawPoints: 0,
   ending: null,
 };
 
@@ -49,6 +52,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   phase: "playing",
   ending: null,
   lastUnlocks: [],
+  pointsCarry: 0,
   lastHit: null,
 
   init(grid) {
@@ -72,6 +76,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: "playing",
       ending: null,
       lastUnlocks: [],
+      pointsCarry: 0,
       lastHit: null,
     });
   },
@@ -99,10 +104,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   hit(toolId, u, v) {
-    const { planet, phase, progress, lastHit } = get();
+    const { planet, phase, progress, lastHit, pointsCarry } = get();
     if (!planet || phase !== "playing") return { ...ZERO };
     const result = applyHit(planet, toolId, u, v);
-    let gained = result.points;
+    // Whole points go to the score; the fraction waits for the next hit.
+    const total = pointsCarry + result.rawPoints;
+    let gained = Math.floor(total + 1e-9);
+    const carry = Math.max(0, total - gained);
     const endingsSeen = [...progress.endingsSeen];
     if (result.ending && !endingsSeen.includes(result.ending)) {
       endingsSeen.push(result.ending);
@@ -118,6 +126,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       progress: nextProgress,
       // The state is mutated in place; a new reference wakes subscribers.
       planet: { ...planet },
+      pointsCarry: carry,
       phase: result.ending ? "ending" : s.phase,
       ending: result.ending ?? s.ending,
       lastUnlocks: unlocked.length
