@@ -156,6 +156,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   newPlanet(grid) {
+    // Only after an ending: a stray or double call mid-game changes nothing.
+    if (get().phase !== "ended") return;
     const { progress } = get();
     set({
       planet: createPlanetState(progress.planetId, grid),

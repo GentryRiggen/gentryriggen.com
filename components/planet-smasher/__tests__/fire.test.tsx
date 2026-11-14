@@ -7,6 +7,7 @@ import { resetCooldowns } from "@/lib/planet-smasher/cooldown";
 interface StageLike {
   effects: unknown[];
   onFire(u: number, v: number): void;
+  onHoldStart(u: number, v: number, point: [number, number, number]): void;
 }
 let stage: StageLike | null = null;
 
@@ -54,6 +55,27 @@ describe("PlanetSmasher fire path", () => {
       });
     });
     act(() => stage!.onFire(0.5, 0.5));
+    expect(stage!.effects).toHaveLength(1);
+  });
+
+  it("does not start the laser once the planet has ended", async () => {
+    render(<PlanetSmasher />);
+    await screen.findByTestId("planet-stage");
+    act(() => {
+      useGameStore.setState({
+        progress: {
+          ...useGameStore.getState().progress,
+          points: 5200,
+          toolId: "alienLaser",
+        },
+      });
+    });
+    act(() => useGameStore.setState({ phase: "ended" }));
+    act(() => stage!.onHoldStart(0.5, 0.5, [0, 0, 1]));
+    expect(stage!.effects).toHaveLength(0);
+
+    act(() => useGameStore.setState({ phase: "playing" }));
+    act(() => stage!.onHoldStart(0.5, 0.5, [0, 0, 1]));
     expect(stage!.effects).toHaveLength(1);
   });
 });

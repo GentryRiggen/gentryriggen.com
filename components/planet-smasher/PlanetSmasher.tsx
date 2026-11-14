@@ -56,6 +56,10 @@ function tryFire(toolId: ToolId): boolean {
   return tryCooldown(toolId);
 }
 
+function points(): number {
+  return useGameStore.getState().progress.points;
+}
+
 export default function PlanetSmasher() {
   const webgl = useWebGLSupport();
   const planetId = useGameStore((s) => s.progress.planetId);
@@ -166,6 +170,9 @@ export default function PlanetSmasher() {
     (u: number, v: number, point: Vec3) => {
       const toolId = useGameStore.getState().progress.toolId;
       if (TOOLS[toolId].mode !== "hold") return;
+      // Like a tap: nothing starts after an ending or for a locked tool.
+      if (useGameStore.getState().phase !== "playing") return;
+      if (!isUnlocked({ kind: "tool", id: toolId }, points())) return;
       laserAim.owner = spawn(toolId, u, v);
       laserAim.held = true;
       laserAim.ticks = 0;

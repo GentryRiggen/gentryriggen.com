@@ -5,6 +5,7 @@ import { useGameStore } from "@/lib/planet-smasher/store";
 import type { EndingKind } from "@/lib/planet-smasher/tools";
 import { prefersReducedMotion } from "@/components/game-audio/channels";
 import { playCue } from "../audio/sfx";
+import type { PopulationGrid } from "@/lib/planet-smasher/population";
 import { loadPlanetTextures } from "../scene/planetTextures";
 import { formatInt } from "./format";
 
@@ -48,10 +49,20 @@ export default function EndingOverlay() {
 
   const newPlanet = () => {
     playCue("newPlanet");
+    const start = (grid: PopulationGrid) =>
+      useGameStore.getState().newPlanet(grid);
     // The textures are cached, so this resolves at once after the first load.
+    // A failed load retries once, then falls back to an even spread over the
+    // current grid, so New planet always works.
     loadPlanetTextures(planetId)
-      .then((t) => useGameStore.getState().newPlanet(t.population))
-      .catch(() => {});
+      .catch(() => loadPlanetTextures(planetId))
+      .then((t) => start(t.population))
+      .catch(() => {
+        const planet = useGameStore.getState().planet;
+        const w = planet?.w ?? 1;
+        const h = planet?.h ?? 1;
+        start({ w, h, weights: new Float32Array(w * h).fill(1 / (w * h)) });
+      });
   };
 
   return (

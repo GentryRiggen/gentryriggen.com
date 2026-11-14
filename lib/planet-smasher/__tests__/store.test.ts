@@ -29,6 +29,26 @@ describe("game store", () => {
     expect(useGameStore.getState().progress.points).toBe(before + r2.points);
   });
 
+  it("ignores New planet unless the planet has ended", () => {
+    useGameStore.getState().hit("asteroid", 0.5, 0.5);
+    const planet = useGameStore.getState().planet;
+    const points = useGameStore.getState().planetPoints;
+    expect(useGameStore.getState().phase).toBe("playing");
+    useGameStore.getState().newPlanet(grid);
+    expect(useGameStore.getState().planet).toBe(planet);
+    expect(useGameStore.getState().planetPoints).toBe(points);
+
+    useGameStore.getState().hit("moonRam", 0.5, 0.5);
+    useGameStore.getState().endingShown();
+    useGameStore.getState().newPlanet(grid);
+    const fresh = useGameStore.getState().planet;
+    expect(fresh).not.toBe(planet);
+    useGameStore.getState().hit("asteroid", 0.5, 0.5);
+    const mid = useGameStore.getState().planet;
+    useGameStore.getState().newPlanet(grid);
+    expect(useGameStore.getState().planet).toBe(mid);
+  });
+
   it("counts the points earned on this planet and resets them", () => {
     const r = useGameStore.getState().hit("moonRam", 0.5, 0.5);
     expect(useGameStore.getState().planetPoints).toBe(
