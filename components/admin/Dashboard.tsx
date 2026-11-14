@@ -16,6 +16,8 @@ const SITE_LABELS: Record<Site, string> = {
   home: "Home (/)",
   "ship-builder": "Ship Builder",
   "plane-builder": "Plane Builder",
+  "planet-smasher": "Planet Smasher",
+  "ever-onward": "Ever Onward",
 };
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },

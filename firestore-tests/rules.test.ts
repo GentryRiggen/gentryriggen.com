@@ -199,6 +199,19 @@ describe("create", () => {
       "a plane-builder subpath",
       { site: "plane-builder", path: "/plane-builder/versions" },
     ],
+    [
+      "a planet-smasher event",
+      { site: "planet-smasher", path: "/planet-smasher" },
+    ],
+    [
+      "a planet-smasher subpath",
+      { site: "planet-smasher", path: "/planet-smasher/versions" },
+    ],
+    ["an ever-onward event", { site: "ever-onward", path: "/ever-onward" }],
+    [
+      "an ever-onward subpath",
+      { site: "ever-onward", path: "/ever-onward/versions" },
+    ],
   ])("allows %s", async (_label, patch) => {
     await assertSucceeds(
       addDoc(collection(anon(), "pageviews"), stamped(patch))
@@ -272,6 +285,15 @@ describe("create", () => {
       "a plane-builder lookalike path",
       { site: "plane-builder", path: "/plane-builderx" },
     ],
+    [
+      "planet-smasher with a ship-builder path",
+      { site: "planet-smasher", path: "/ship-builder" },
+    ],
+    [
+      "ever-onward with a lookalike path",
+      { site: "ever-onward", path: "/ever-onwardx" },
+    ],
+    ["an unknown site jim", { site: "jim", path: "/jim" }],
     ["an oversized path", { path: "/ship-builder/" + "a".repeat(250) }],
     ["a short visitor id", { vid: "short" }],
     ["an empty browser", { browser: "" }],
