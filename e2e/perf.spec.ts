@@ -64,12 +64,16 @@ function readBudget(): Budget {
 type RenderInfoWindow = {
   __shipBuilderRenderInfo?: () => Counts;
   __planeBuilderRenderInfo?: () => Counts;
+  __planetSmasherRenderInfo?: () => Counts;
 };
 
 /** Waits for the probe to report a drawn frame, then samples frame times. */
 async function measure(
   page: Page,
-  probe: "__shipBuilderRenderInfo" | "__planeBuilderRenderInfo"
+  probe:
+    | "__shipBuilderRenderInfo"
+    | "__planeBuilderRenderInfo"
+    | "__planetSmasherRenderInfo"
 ): Promise<Measurement> {
   await page.waitForFunction(
     (name) => {
@@ -135,6 +139,8 @@ const SCENES = [
   "plane-meadow-flight",
   "plane-jungle-flight",
   "plane-city-flight",
+  "planet-earth-idle",
+  "planet-earth-shatter",
 ] as const;
 
 test.afterAll(() => {
@@ -416,4 +422,40 @@ test.describe("Plane Builder budget", () => {
       record(scene, await measure(page, "__planeBuilderRenderInfo"));
     });
   }
+});
+
+// ── Planet Smasher ──
+
+async function openPlanet(page: Page) {
+  await page.goto("/planet-smasher");
+  await expect(page.getByTestId("planet-canvas")).toBeVisible({
+    timeout: 60_000,
+  });
+  await page.waitForFunction(() => Boolean(window.__planetSmasher), null, {
+    timeout: 60_000,
+  });
+}
+
+test.describe("Planet Smasher budget", () => {
+  // Stops the auto-rotate and the fades, so the frame is the same every run.
+  test.use({ reducedMotion: "reduce" });
+
+  test("earth at rest", async ({ page }) => {
+    await openPlanet(page);
+    await page.waitForTimeout(3000);
+    record(
+      "planet-earth-idle",
+      await measure(page, "__planetSmasherRenderInfo")
+    );
+  });
+
+  test("earth shattering", async ({ page }) => {
+    await openPlanet(page);
+    await page.evaluate(() => window.__planetSmasher!.forceEnding("shatter"));
+    await page.waitForTimeout(1200);
+    record(
+      "planet-earth-shatter",
+      await measure(page, "__planetSmasherRenderInfo")
+    );
+  });
 });

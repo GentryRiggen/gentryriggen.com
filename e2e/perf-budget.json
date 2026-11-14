@@ -30,5 +30,13 @@
   "ship-titanic-iceberg-sinking": {
     "calls": 181,
     "triangles": 318443
+  },
+  "planet-earth-idle": {
+    "calls": 6,
+    "triangles": 43968
+  },
+  "planet-earth-shatter": {
+    "calls": 11,
+    "triangles": 44226
   }
 }

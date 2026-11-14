@@ -329,6 +329,13 @@ jobs:
             args: --project=chromium --project=webkit --project=ipad
             workers: 1
             browsers: chromium webkit
+          # Planet Smasher is WebGL too (the specs launch software-rendering
+          # Chromium themselves). WebKit and the iPad run its @smoke tests.
+          - name: WebGL planet smasher
+            files: e2e/planet-smasher.spec.ts
+            args: --project=chromium --project=webkit --project=ipad
+            workers: 1
+            browsers: chromium webkit
           # Draw calls and triangles per fixed scene against e2e/perf-budget.json
           # (frame times are only reported). PERF_UPDATE=1 rewrites the budget.
           - name: WebGL perf budget (1/2)

@@ -188,3 +188,27 @@ it("keeps /jim out of the sitemap and the pageview analytics", () => {
   expect(siteForPath("/jim")).toBeNull();
   expect(siteForPath("/jim/notes/people/sam-okafor")).toBeNull();
 });
+
+describe("Planet Smasher caching", () => {
+  it.each([
+    "/planet-smasher",
+    "/planet-smasher.html",
+    "/planet-smasher/versions",
+    "/planet-smasher/versions.html",
+    "/planet-smasher-sw.js",
+    "/planet-smasher.webmanifest",
+    "/planet-smasher/textures/**",
+  ])("%s is revalidated, so deploys land", (source) => {
+    expect(headersFor(target("main"), source)).toContainEqual({
+      key: "Cache-Control",
+      value: "no-cache",
+    });
+  });
+
+  it("lists the textures rule after the year-long image rule so it wins", () => {
+    const sources = target("main").headers.map((h) => h.source);
+    expect(sources.indexOf("/planet-smasher/textures/**")).toBeGreaterThan(
+      sources.findIndex((s) => s.startsWith("**/*.@("))
+    );
+  });
+});

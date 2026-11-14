@@ -90,6 +90,15 @@ Every Plane Builder change that ships to users (anything in `components/plane-bu
 
 The Versions page (`/plane-builder/versions`) renders the changelog. `lib/plane-builder/__tests__/changelog.test.ts` fails if the version and the top entry disagree. 1.0.0 is the first release: until it ships, keep editing the 1.0.0 entry instead of bumping.
 
+### Planet Smasher releases
+
+Every Planet Smasher change that ships to users (anything in `components/planet-smasher`, `lib/planet-smasher`, `app/planet-smasher`, `public/planet-smasher`, `public/planet-smasher-icons` or `public/planet-smasher-sw.js`) is a release:
+
+1. Bump `PLANET_SMASHER_VERSION` in `lib/planet-smasher/version.ts` (semver: patch for fixes, minor for features, major for big new modes).
+2. Add a matching entry at the top of `CHANGELOG` in `lib/planet-smasher/changelog.ts`, written from the commits since the last release (`git log <last version commit>..HEAD -- lib/planet-smasher components/planet-smasher app/planet-smasher public/planet-smasher public/planet-smasher-sw.js`), in plain words a young player or their parent would follow.
+
+The Versions page (`/planet-smasher/versions`, linked from the "What's new" label in the game) renders the changelog. `lib/planet-smasher/__tests__/changelog.test.ts` fails if the version and the top entry disagree. 1.0.0 is the first release: until it ships, keep editing the 1.0.0 entry instead of bumping.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
