@@ -105,8 +105,11 @@ useShipBuilderStore.subscribe((state, previous) => {
   const { trial } = state;
   const before = previous.trial;
   if (trial === before) return;
+  // A Boom! bomb dropped mid-run (or on a finished one) plays the same run on
+  // from where it was: no reset, or the ship would flash back to the start.
   const isNewRun =
     trial.status === "running" &&
+    trial.resumeAt === undefined &&
     (before.status !== "running" || before.runId !== trial.runId);
   const isPlaying = (status: string) =>
     status !== "idle" && status !== "setup" && status !== "aiming";

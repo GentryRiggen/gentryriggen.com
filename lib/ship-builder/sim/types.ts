@@ -50,7 +50,9 @@ export type TrialReason =
   /** Iceberg: the gash opened too many compartments to float. */
   | "too-many-opened"
   /** Storm: the waves filled her (or rolled her over) until she sank. */
-  | "storm";
+  | "storm"
+  /** Boom!: the bombs blew her open until she sank. */
+  | "bombed";
 
 /**
  * `descending` follows every sinking (a `sank` iceberg trial or a capsized
@@ -86,7 +88,7 @@ export interface Compartment {
   id: string;
   /** 0 (dry) to 1 (full to the main deck). */
   water: number;
-  /** The iceberg opened it to the sea (never set in a storm). */
+  /** The iceberg (or a bomb) opened it to the sea (never set in a storm). */
   opened: boolean;
 }
 
@@ -143,6 +145,37 @@ export interface StormInput {
   length: number;
   /** Absent means `real`. */
   breakMode?: BreakMode;
+}
+
+/** One bomb in a Boom! trial: when it goes off and where along the hull. */
+export interface BombHit {
+  /** Sim seconds it goes off. */
+  at: number;
+  /** Cells from the bow. */
+  impactX: number;
+  /**
+   * Scene only (the sim never reads it): where it goes off, in world units,
+   * as the ship lay when it was dropped.
+   */
+  point?: { x: number; y: number; z: number };
+  /** Scene only: the parts it blows off the ship (part ids). */
+  thrown?: readonly string[];
+}
+
+/**
+ * A Boom! trial: the player drops bombs on her one after another. Each bomb
+ * blows its own hole from the moment it goes off, so she floods faster and
+ * faster the more she is hit (see `stepFlooding`). The sim clock runs in real
+ * seconds, like the storm.
+ */
+export interface BoomInput {
+  compartments: CompartmentSpec[];
+  /** Hull length in cells. */
+  length: number;
+  /** Absent means `real`. */
+  breakMode?: BreakMode;
+  /** In the order they go off. */
+  bombs: readonly BombHit[];
 }
 
 /**
@@ -281,6 +314,8 @@ export interface TrialInput {
   iceberg?: IcebergInput;
   /** Present for a storm trial (never together with `iceberg`). */
   storm?: StormInput;
+  /** Present for a Boom! trial (never with `iceberg` or `storm`). */
+  boom?: BoomInput;
   /** How the crowd boards the boats; absent means `titanic`. Not read by the sim. */
   lifeboats?: LifeboatMode;
   /** Her funnels, for deciding which break off in a sinking. */

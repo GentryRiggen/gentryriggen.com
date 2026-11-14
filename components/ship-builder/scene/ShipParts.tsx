@@ -7,6 +7,7 @@ import { useCursor } from "@react-three/drei";
 import { analyzeShip } from "@/lib/ship-builder/model/analysis";
 import type { Ship } from "@/lib/ship-builder/model/types";
 import { blastPiecesOf } from "@/lib/ship-builder/sim/blast";
+import type { BombHit } from "@/lib/ship-builder/sim/types";
 import { ICEBERG_IMPACT_S } from "@/lib/ship-builder/sim/flooding";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import { isTap } from "./anchors";
@@ -61,6 +62,9 @@ function usePoppingPartId(parts: Ship["parts"]): string | null {
 /** No mine: nothing blown off. */
 const NO_BLAST: ReadonlySet<string> = new Set();
 
+/** No Boom! trial on. */
+const NO_BOMBS: readonly BombHit[] = [];
+
 /** No launches: a trial she survives, or none on. */
 const NO_LAUNCHES: readonly { boatId: string; at: number }[] = [];
 
@@ -86,6 +90,13 @@ function useHideGoneParts(
     const iceberg = trial.input.iceberg;
     return iceberg?.strike === "mine" ? iceberg.impactX : null;
   });
+  // Boom!'s bombs throw their own parts, each from the moment it goes off.
+  const bombs = useShipBuilderStore((s) => {
+    const { trial } = s;
+    if (trial.status !== "running" && trial.status !== "result")
+      return NO_BOMBS;
+    return trial.input.boom?.bombs ?? NO_BOMBS;
+  });
   const blasted = useMemo(
     () =>
       mineX === null
@@ -100,6 +111,7 @@ function useHideGoneParts(
   const lastDependents = useRef(dependents);
   const lastLaunches = useRef(NO_LAUNCHES);
   const lastBlasted = useRef(blasted);
+  const lastBombs = useRef(bombs);
   useFrame(() => {
     const { funnelFalls, time } = trialPlayback;
     const launches = activeEvacuation()?.launches ?? NO_LAUNCHES;
@@ -110,20 +122,29 @@ function useHideGoneParts(
     if (
       lastDependents.current !== dependents ||
       lastLaunches.current !== launches ||
-      lastBlasted.current !== blasted
+      lastBlasted.current !== blasted ||
+      lastBombs.current !== bombs
     ) {
+      lastBombs.current = bombs;
       lastDependents.current = dependents;
       lastLaunches.current = launches;
       lastBlasted.current = blasted;
       applied.current = -1;
     }
     const isBlasted = blasted.size > 0 && time >= ICEBERG_IMPACT_S;
-    const key = (gone * 4096 + launched) * 2 + (isBlasted ? 1 : 0);
+    let bombed = 0;
+    for (const bomb of bombs) if (bomb.at <= time) bombed++;
+    const key =
+      ((gone * 4096 + launched) * 2 + (isBlasted ? 1 : 0)) * 64 + bombed;
     if (key === applied.current) return;
     applied.current = key;
     const hidden = hiddenByFalls(dependents, fallenIdsAt(funnelFalls, time));
     for (const id of launchedIdsAt(launches, time)) hidden.add(id);
     if (isBlasted) for (const id of blasted) hidden.add(id);
+    for (const bomb of bombs) {
+      if (bomb.at > time) continue;
+      for (const id of bomb.thrown ?? []) hidden.add(id);
+    }
     for (const [id, group] of groups.current) group.visible = !hidden.has(id);
   });
   return useCallback((partId: string, group: Group | null) => {

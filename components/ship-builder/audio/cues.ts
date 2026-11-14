@@ -24,6 +24,8 @@ export interface PlaybackSnapshot {
   sinkingAt?: number | null;
   /** What struck her; absent is an iceberg. */
   strike?: StrikeKind;
+  /** Boom!: when each bomb goes off (sim seconds); absent in other trials. */
+  bombs?: readonly { at: number }[];
 }
 
 export type Cue =
@@ -109,7 +111,14 @@ export function cuesFor(prev: PlaybackSnapshot, next: PlaybackSnapshot): Cue[] {
   if (next.scrubbing || prev.scrubbing || next.time < prev.time) return [];
   const cues: Cue[] = [];
 
-  if (
+  if (next.bombs) {
+    // Boom!: a bang for every bomb, not one for the first water in.
+    for (const bomb of next.bombs) {
+      if (bomb.at > prev.time && bomb.at <= next.time) {
+        cues.push({ kind: "explosion" });
+      }
+    }
+  } else if (
     countOf(prev.events, "flooding") === 0 &&
     countOf(next.events, "flooding") > 0
   ) {

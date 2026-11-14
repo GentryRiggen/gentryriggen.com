@@ -22,6 +22,8 @@ import Hull from "./Hull";
 import HullGash from "./HullGash";
 import Iceberg from "./Iceberg";
 import StrikeScenery from "./StrikeScenery";
+import BombTapLayer from "./BombTapLayer";
+import BoomScenery from "./BoomScenery";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import PhotoCapture from "./PhotoCapture";
@@ -152,6 +154,7 @@ export default function Scene() {
               )}
             </PoweredGlow>
             <HullGash />
+            {!isPhoto && <BombTapLayer />}
             <Railings />
             {!isPhoto && <GridTargets />}
             {!isPhoto && <AttachMarkers />}
@@ -160,6 +163,7 @@ export default function Scene() {
         </SailBank>
         <Iceberg />
         <StrikeScenery />
+        <BoomScenery />
         <SeaTrialRunner />
         <SailRunner />
         <WalkRunner />

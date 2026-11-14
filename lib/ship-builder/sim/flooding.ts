@@ -86,6 +86,44 @@ export const STORM_BOW_POWER = 4;
 /** The storm trial's window: every build has sunk by this (sim seconds). */
 export const STORM_SUNK_BY_S = 120;
 
+/** Cells of hull one Boom! bomb blows open. */
+export const BOMB_GASH_LENGTH = 4;
+/**
+ * How fast the sea pours through a bomb's hole, as a share of `INFLOW`. The
+ * Boom! clock runs in real seconds (the iceberg's runs at double speed), so
+ * one bomb gives a long, slow sinking to watch and every extra bomb hurries
+ * her along.
+ */
+export const BOMB_INFLOW_SCALE = 0.03;
+/**
+ * A Boom! ship that has stopped taking water stays out this long after the
+ * last bomb (sim seconds) before the trial ends afloat, so there is time to
+ * drop another.
+ */
+export const BOOM_QUIET_S = 40;
+
+/** When the first bomb goes off, or never. */
+export function firstBombAt(input: TrialInput): number {
+  return input.boom?.bombs[0]?.at ?? Infinity;
+}
+
+/** When the last bomb goes off, or 0 with none. */
+export function lastBombAt(input: TrialInput): number {
+  const bombs = input.boom?.bombs ?? [];
+  return bombs.length > 0 ? bombs[bombs.length - 1].at : 0;
+}
+
+/**
+ * Longest a Boom! trial runs after its last bomb (sim seconds) before the
+ * recording stops: room for the slowest sinking and the quiet wait.
+ */
+export const BOOM_MAX_AFTER_S = 240;
+
+/** Long enough for a Boom! trial to settle or sink after its last bomb. */
+export function boomRunLimitOf(input: TrialInput): number {
+  return lastBombAt(input) + BOOM_MAX_AFTER_S;
+}
+
 /** Bow-first plunge once she is past saving. */
 export const PLUNGE_PITCH = -0.35;
 const PLUNGE_PITCH_RATE = 0.1;
@@ -123,7 +161,9 @@ function sankReason(
   specs: readonly CompartmentSpec[],
   events: readonly SimEvent[]
 ): TrialReason {
-  if (trialKindOf(input) === "storm") return "storm";
+  const kind = trialKindOf(input);
+  if (kind === "storm") return "storm";
+  if (kind === "boom") return "bombed";
   if (specs.length === 1) return "no-bulkheads";
   return hasEvent(events, "spilled") ? "spilled" : "too-many-opened";
 }
@@ -137,14 +177,24 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   const flood = floodOf(input);
   if (!flood || state.phase !== "sailing") return state;
   const { compartments: specs, length } = flood;
-  const { iceberg } = input;
+  const { iceberg, boom } = input;
   const dt = SIM_STEP_S;
   const time = state.time + dt;
-  // The berg is still on its way in, or the storm has not yet built: nothing
-  // has come aboard.
-  if (time < (iceberg ? ICEBERG_IMPACT_S : STORM_START_S)) {
+  // The berg is still on its way in, the storm has not yet built or no bomb
+  // has gone off: nothing has come aboard.
+  const startsAt = iceberg
+    ? ICEBERG_IMPACT_S
+    : boom
+      ? firstBombAt(input)
+      : STORM_START_S;
+  if (time < startsAt) {
     return { ...state, time };
   }
+  const holes = boom
+    ? boom.bombs
+        .filter((bomb) => bomb.at <= time)
+        .map((bomb) => gashOf(bomb.impactX, length, BOMB_GASH_LENGTH))
+    : [];
   const gash = iceberg
     ? gashOf(iceberg.impactX, length, iceberg.gashLength)
     : null;
@@ -158,16 +208,20 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
   let events = state.events;
   let movement = 0;
 
+  const opened = state.compartments.map((c) => c.opened);
   for (let i = 0; i < specs.length; i++) {
-    const inflow = gash
-      ? state.compartments[i].opened
-        ? INFLOW *
-          inflowScale *
-          overlapOf(specs[i], gash) *
-          Math.max(0, seaLevel - water[i])
-        : 0
-      : stormInflowOf(specs[i], water[i], length);
+    const inflow = boom
+      ? bombInflowOf(specs[i], holes, Math.max(0, seaLevel - water[i]))
+      : gash
+        ? state.compartments[i].opened
+          ? INFLOW *
+            inflowScale *
+            overlapOf(specs[i], gash) *
+            Math.max(0, seaLevel - water[i])
+          : 0
+        : stormInflowOf(specs[i], water[i], length);
     if (inflow <= 0) continue;
+    opened[i] ||= !!boom;
     water[i] = Math.min(1, water[i] + (inflow * dt) / lengthOf(specs[i]));
     movement += inflow;
     if (!hasEvent(events, "flooding")) {
@@ -205,7 +259,11 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
     const volume = water[i] * lengthOf(specs[i]);
     flooded += volume;
     moment += volume * (middle - (specs[i].fromX + specs[i].toX) / 2);
-    compartments[i] = { ...state.compartments[i], water: water[i] };
+    compartments[i] = {
+      ...state.compartments[i],
+      water: water[i],
+      opened: opened[i],
+    };
   }
   const floodedFraction = flooded / length;
   const pose = {
@@ -234,9 +292,13 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
     };
   }
 
-  // A storm never lets up: only an iceberg trial can end afloat.
+  // A storm never lets up: only an iceberg or Boom! trial can end afloat. A
+  // Boom! ship waits a while after the last bomb, for the next one.
   const hasSettled = movement < SETTLED_EPS && hasEvent(events, "flooding");
-  if (iceberg && (hasSettled || time >= ICEBERG_IMPACT_S + ICEBERG_MAX_S)) {
+  const isOver = iceberg
+    ? hasSettled || time >= ICEBERG_IMPACT_S + ICEBERG_MAX_S
+    : !!boom && hasSettled && time >= lastBombAt(input) + BOOM_QUIET_S;
+  if (isOver) {
     return {
       ...state,
       time,
@@ -258,6 +320,18 @@ export function stepFlooding(input: TrialInput, state: SimState): SimState {
     compartments,
     events,
   };
+}
+
+/** Sea pouring in through every bomb hole in one compartment. */
+function bombInflowOf(
+  spec: CompartmentSpec,
+  holes: readonly { fromX: number; toX: number }[],
+  head: number
+): number {
+  if (head <= 0) return 0;
+  let cells = 0;
+  for (const hole of holes) cells += overlapOf(spec, hole);
+  return INFLOW * BOMB_INFLOW_SCALE * cells * head;
 }
 
 /** Average bow-heavy storm weight over a compartment (1 over the whole hull). */

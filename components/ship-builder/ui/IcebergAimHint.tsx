@@ -21,7 +21,9 @@ import TrialTimeRow from "./TrialTimeRow";
  * leaves free while aiming.
  */
 export default function IcebergAimHint() {
-  const isAiming = useShipBuilderStore((s) => s.trial.status === "aiming");
+  const isAiming = useShipBuilderStore(
+    (s) => s.trial.status === "aiming" && s.trial.kind !== "boom"
+  );
   const cancelAim = useShipBuilderStore((s) => s.cancelAim);
   const cancelButton = useRef<HTMLButtonElement>(null);
 

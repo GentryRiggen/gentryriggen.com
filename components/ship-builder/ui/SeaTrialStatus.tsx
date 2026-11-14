@@ -27,7 +27,25 @@ function trialName(input: TrialInput): string {
       return `${STRIKE_TRIAL_NAME[strikeOf(input.iceberg)]} · ${SEA_LABELS[input.sea]}`;
     case "waves":
       return `Sea trial · ${SEA_LABELS[input.sea]}`;
+    case "boom":
+      return "Boom!";
   }
+}
+
+/** "1:05": minutes and seconds, for the Boom! clock. */
+export function formatClock(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(whole / 60);
+  const rest = whole % 60;
+  return `${minutes}:${rest.toString().padStart(2, "0")}`;
+}
+
+/** Boom!'s clock: real time since the first bomb, and how many have gone off. */
+function boomClock(input: TrialInput, time: number): string {
+  const bombs = input.boom?.bombs ?? [];
+  const first = bombs[0]?.at ?? 0;
+  const gone = bombs.filter((bomb) => bomb.at <= time).length;
+  return `${formatClock(time - first)} · ${gone} ${gone === 1 ? "bomb" : "bombs"}`;
 }
 
 /**
@@ -76,11 +94,13 @@ export default function SeaTrialStatus() {
           className="inline-block min-w-[20ch] whitespace-nowrap tabular-nums text-slate-500 dark:text-slate-400"
         >
           ·{" "}
-          {formatStoryTime(
-            storyMinutesSinceImpact(
-              storyClockSeconds(live?.time ?? 0, live?.events ?? [])
-            )
-          )}
+          {trial.input.boom
+            ? boomClock(trial.input, live?.time ?? 0)
+            : formatStoryTime(
+                storyMinutesSinceImpact(
+                  storyClockSeconds(live?.time ?? 0, live?.events ?? [])
+                )
+              )}
         </span>
       )}
       {isTimeline && <SoundToggle />}

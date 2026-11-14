@@ -11,7 +11,7 @@ import { useShipAnimation } from "./ShipAnimationContext";
 import { frozenTime, FROZEN_STEP, sceneTime } from "./testClock";
 import { trialPlayback } from "./trialPlayback";
 import { isHeavyTrialPose } from "./trialPose";
-import { strikePose, type StrikePose } from "./strikeMotion";
+import { addBombJolts, strikePose, type StrikePose } from "./strikeMotion";
 
 interface BobGroupProps {
   children: ReactNode;
@@ -29,6 +29,11 @@ function strikePoseNow(
   strike.roll = 0;
   strike.pitch = 0;
   if (trial.status !== "running" && trial.status !== "result") return strike;
+  const { boom } = trial.input;
+  if (boom) {
+    if (reducedMotion) return strike;
+    return addBombJolts(boom.bombs, boom.length, trialPlayback.time, strike);
+  }
   const iceberg = trial.input.iceberg;
   if (!iceberg?.strike || iceberg.strike === "iceberg") return strike;
   // Reduced motion: no shaking, but she still sits up on the rocks.

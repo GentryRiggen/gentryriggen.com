@@ -40,10 +40,9 @@ function copyPlayback(target: PlaybackSnapshot) {
   target.scrubbing = scrubbing;
   target.sinkingAt = sinkingAt;
   const { trial } = useShipBuilderStore.getState();
-  target.strike =
-    trial.status === "running" || trial.status === "result"
-      ? trial.input.iceberg?.strike
-      : undefined;
+  const isOn = trial.status === "running" || trial.status === "result";
+  target.strike = isOn ? trial.input.iceberg?.strike : undefined;
+  target.bombs = isOn ? trial.input.boom?.bombs : undefined;
 }
 
 /**

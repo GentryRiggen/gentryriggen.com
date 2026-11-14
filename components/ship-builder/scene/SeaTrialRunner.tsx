@@ -95,6 +95,8 @@ function InstantTrial({ input }: TrialDriverProps) {
 interface TimelineDriverProps {
   input: TrialInput;
   descending: boolean;
+  /** Sim seconds to carry on from (a Boom! bomb dropped mid-run). */
+  resumeAt?: number;
 }
 
 /**
@@ -102,7 +104,7 @@ interface TimelineDriverProps {
  * timeline: slow-mo at the break, and, when she sinks, on down to the sea
  * floor (`descending` is always set for these trials).
  */
-function TimelineDriver({ input, descending }: TimelineDriverProps) {
+function TimelineDriver({ input, descending, resumeAt }: TimelineDriverProps) {
   const finishTrial = useShipBuilderStore((s) => s.finishTrial);
   const clock = useRef<TimelineClock | null>(null);
   const finished = useRef(false);
@@ -111,15 +113,16 @@ function TimelineDriver({ input, descending }: TimelineDriverProps) {
     const timeline = trialTimelineFor(input, descending);
     const started = startTimelineClock(
       timeline,
-      timelineStart(timeline),
+      resumeAt ?? timelineStart(timeline),
       testTrialSeconds()
     );
     clock.current = started;
     finished.current = false;
     trialPlayback.speed = started.speed;
+    trialPlayback.scrubbed = false;
     writeTimelinePlayback(timeline, started.time);
     publishLiveTrial(stateAt(timeline, started.time), 0, true);
-  }, [input, descending]);
+  }, [input, descending, resumeAt]);
 
   useFrame((_, delta) => {
     const current = clock.current;
@@ -178,6 +181,7 @@ export default function SeaTrialRunner() {
         key={trial.runId}
         input={trial.input}
         descending={trial.descending}
+        resumeAt={trial.resumeAt}
       />
     );
   }
