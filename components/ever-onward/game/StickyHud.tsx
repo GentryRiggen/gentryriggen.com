@@ -48,9 +48,16 @@ const GOAL_ICONS: Record<string, string> = {
   "% of the way": "⛵",
 };
 
-/** Icons for the watched gauge, by its label; anything else gets a dial. */
+/**
+ * Icons for the watched gauge, by its label. The label is printed beside the
+ * icon too, so a gauge with no icon here still says what it is.
+ */
 const GAUGE_ICONS: Record<string, string> = {
   OIL: "\u{1F6E2}\u{FE0F}",
+  BATTERY: "\u{1F50B}",
+  SAFETY: "\u{1F6E1}\u{FE0F}",
+  WARMTH: "\u{1F525}",
+  SAVED: "\u{1FAD9}",
   WATER: "\u{1F4A7}",
   LEAN: "⚖\u{FE0F}",
   WIND: "\u{1F4A8}",
@@ -61,7 +68,7 @@ const GAUGE_ICONS: Record<string, string> = {
 export const goalIcon = (goal: GoalView): string =>
   GOAL_ICONS[goal.unit ?? ""] ?? "\u{1F3C1}";
 export const gaugeIcon = (gauge: GaugeView): string =>
-  GAUGE_ICONS[gauge.label] ?? "\u{1F39A}\u{FE0F}";
+  GAUGE_ICONS[gauge.label] ?? "";
 
 type Tone = "ok" | "low" | "critical";
 
@@ -117,7 +124,7 @@ export function explain(
       : gauge.isLow
         ? " Getting low."
         : "";
-    return `${titleCase(gauge.label)}: ${amount}.${state}`;
+    return `${titleCase(gauge.label)}: ${amount}.${state}${gauge.why ? ` ${gauge.why}` : ""}`;
   }
   return resourcePurpose
     ? `${resourceLabel}: ${lower(resourcePurpose)}`
@@ -230,21 +237,34 @@ export default function StickyHud({
                 onClick={() => toggle("gauge")}
                 className={chip}
               >
-                <span aria-hidden="true" className="text-base">
-                  {gaugeIcon(gauge)}
-                </span>
-                {gauge.hasBar === false ? (
-                  <span
-                    className={`${pixelClass} text-[10px] leading-none text-cyan-200`}
-                  >
-                    {formatNumber(Math.floor(gauge.current))}
+                {gaugeIcon(gauge) && (
+                  <span aria-hidden="true" className="text-base">
+                    {gaugeIcon(gauge)}
                   </span>
-                ) : (
-                  <MiniBar
-                    share={gauge.current / (gauge.max || 1)}
-                    tone={gaugeTone}
-                  />
                 )}
+                <span
+                  aria-hidden="true"
+                  className="flex flex-col items-start gap-0.5"
+                >
+                  <span
+                    data-testid="lm-hud-gauge-label"
+                    className={`${pixelClass} text-[8px] leading-none text-slate-300`}
+                  >
+                    {gauge.label}
+                  </span>
+                  {gauge.hasBar === false ? (
+                    <span
+                      className={`${pixelClass} text-[10px] leading-none text-cyan-200`}
+                    >
+                      {formatNumber(Math.floor(gauge.current))}
+                    </span>
+                  ) : (
+                    <MiniBar
+                      share={gauge.current / (gauge.max || 1)}
+                      tone={gaugeTone}
+                    />
+                  )}
+                </span>
               </button>
             )}
             {goal && (

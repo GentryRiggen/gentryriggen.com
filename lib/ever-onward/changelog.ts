@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.39.1",
+    date: "2026-11-14",
+    title: "A clearer top bar",
+    highlights: [
+      "Every gauge in the top bar now says what it is (OIL, BATTERY, SAFETY, WARMTH), so there are no mystery icons. Tap it to hear what it means and how to fill it",
+      "In the Sky, the flare gauge has a shield icon and tells you to fly farther from the sun or build shields",
+      "On a phone with the game on the home screen, the top of the screen is the same dark as the game, with no light haze",
+    ],
+  },
+  {
     version: "1.39.0",
     date: "2026-11-08",
     title: "A calmer start and a tidier top bar",

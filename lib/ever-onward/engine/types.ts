@@ -534,6 +534,11 @@ export interface GaugeView {
   status?: string;
   /** False for a plain amount with nothing to fill (a savings balance). */
   hasBar?: boolean;
+  /**
+   * What it means and how to raise it, said when the gauge is tapped
+   * ("How safe the fleet is… Fly farther out or build shields.").
+   */
+  why?: string;
 }
 
 export interface UniverseDef {

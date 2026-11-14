@@ -146,7 +146,7 @@ describe("HUD gauges", () => {
     run.resources.skT3 = 1;
     run.resources.skE3 = 1;
     expect(lightUniverse.gauge?.(run)).toMatchObject({
-      label: "FLARE SAFE",
+      label: "SAFETY",
       status: "DANGER",
     });
   });

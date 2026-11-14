@@ -96,7 +96,7 @@ export function lightGauge(run: RunState): GaugeView | null {
     if (saved <= 0) return null;
     const kind = fundKind(run);
     return {
-      label: kind.name.toUpperCase(),
+      label: "SAVED",
       current: saved,
       max: saved,
       isLow: false,
@@ -104,6 +104,7 @@ export function lightGauge(run: RunState): GaugeView | null {
       display: `${formatNumber(Math.floor(saved))} saved`,
       status: "",
       hasBar: false,
+      why: `Kept safe in the ${kind.name} for later.`,
     };
   }
   if (!isBeamOpen(run)) return null;
@@ -161,8 +162,12 @@ function watchedMeter(run: RunState): GaugeView | null {
     return { ...view, status: view.isCritical ? "EMPTY" : view.status };
   }
   if (run.phase === 2 && isDialsOpen(run) && (run.resources.probes ?? 0) >= 4) {
-    const view = percentMeter("FLARE SAFE", flareSafety(run), 0.6, 0.2);
-    return { ...view, status: view.isCritical ? "DANGER" : view.status };
+    const view = percentMeter("SAFETY", flareSafety(run), 0.6, 0.2);
+    return {
+      ...view,
+      status: view.isCritical ? "DANGER" : view.status,
+      why: "How safe the fleet is from the next big flare. Fly farther from the sun or build shields to fill it.",
+    };
   }
   if (run.phase === 3)
     return percentMeter("WARMTH", warmthOf(run), FLAME_LOW, FLAME_COLD);
