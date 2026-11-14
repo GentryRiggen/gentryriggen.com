@@ -41,7 +41,8 @@ npm run dev     # http://localhost:3000
 | `npm run build`                 | Production build (static export to `out/`)     |
 | `npm run lint` / `format:check` | ESLint / Prettier check                        |
 | `npm run type-check`            | `tsc --noEmit`                                 |
-| `npm test`                      | Jest unit tests                                |
+| `npm test`                      | Jest unit tests (fast lane, no balance sims)   |
+| `npm run test:sims`             | Game-balance simulations (`jest.sims.js`)      |
 | `npm run test:e2e`              | Playwright (starts the dev server itself)      |
 | `npm run validate`              | Lint, format, types, tests and build, as in CI |
 

@@ -11,8 +11,10 @@ npm run lint             # ESLint
 npm run format           # Prettier (write)
 npm run format:check     # Prettier (check)
 npm run type-check       # TypeScript --noEmit
-npm test                 # Jest unit tests
-npm test -- --testPathPatterns=ComponentName  # Run single test file
+npm test                 # Jest unit tests, fast lane (skips the game-balance sims)
+npm run test:sims        # Only the game-balance simulations (jest.sims.js), minutes
+npm run test:everything  # Both
+npx jest path/to/file    # One file, whichever lane it is in
 npm run test:watch       # Jest watch mode
 npm run test:e2e         # Playwright E2E tests (auto-starts dev server)
 npm run test:e2e:ui      # Playwright UI mode
@@ -58,6 +60,8 @@ npm run validate         # Full CI check (lint + format + types + tests + build)
 
 ### Testing
 
+- **Two Jest lanes.** Tests that play whole runs with bots (Ever Onward scorecards, dials, maps, the plane balance sweep) are listed in `jest.sims.js`; they are about 97% of unit-test time. `npm test` and CI's blocking unit job skip them; CI fails any other test file over 45 s (`scripts/check-test-times.mjs`), so a new simulation test goes in `jest.sims.js`. `.github/workflows/sims.yml` runs the sims when game code changes and reports on the PR and main, but never holds up a deploy. Run `npm run test:sims` (or the files themselves) whenever you change Ever Onward's engine, universes or balance, or Plane Builder balance.
+- **Fast deploys.** A squash merge of an up-to-date branch whose PR run passed only builds and deploys (about 2 minutes), so let the PR's CI/CD run finish before merging. Merging early reruns everything on `main`.
 - **Unit tests:** Jest + React Testing Library. Tests live alongside code in `__tests__/` directories. Components needing ThemeProvider use a `renderWithTheme()` helper. Next Image is mocked in tests.
 - **E2E tests:** Playwright in `e2e/`. Keep the suite to key flows: each app's core loop, saves surviving a reload, and anything guarding security or private data. Cover narrower behaviour with unit tests instead. Chromium runs every test; WebKit, the iPad and the iPhone projects run only tests tagged `{ tag: "@smoke" }` (touch, pointer and layout checks), and CI skips Firefox. `E2E_FULL=1` runs everything on every project. CI skips e2e when a change touches nothing the browser tests cover (see the `changes` job in `.github/workflows/ci.yml`). To skip them on purpose, put `[skip e2e]` in a commit message or the PR title (a squash merge carries the title to `main`, so the deploy skips them too). Unit tests, rules tests and the build still run. A push to `main` whose git tree already passed a pull request run (a squash merge of an up-to-date branch) skips the checks and e2e too, and only builds and deploys.
 - **Skip e2e when it isn't needed (default when pushing).** CI is slow, so before opening a PR or pushing, decide whether the change needs the browser tests. Put `[skip e2e]` in the PR title (and the commit message) when it doesn't: logic covered by unit tests (store actions, rules, sims, helpers), copy, changelogs and version bumps, docs, styling tweaks with no layout or pointer change, and config outside the build. Let e2e run when the change touches what only a browser proves: a key flow an e2e spec covers end to end, touch/pointer/keyboard wiring beyond a one-line call change, layout at a breakpoint, saves and reloads, routing, the service worker, the Three.js scenes the perf budget measures, or the e2e specs and Playwright config themselves. When unsure, run them. Say in the PR body which way you went and why.

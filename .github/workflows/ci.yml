@@ -137,28 +137,18 @@ jobs:
       - name: 🔷 Type check
         run: npm run type-check
 
-  # One file (the plane balance sweep, about 130 s) outweighs whole shards,
-  # and Jest can't split a file, so it gets its own job and the shards skip it.
+  # The fast lane: everything but the game-balance simulations (jest.sims.js),
+  # which run in sims.yml and never hold up a deploy. A fast-lane file over
+  # 45 s fails the job, so simulations can't creep back in.
   unit:
-    name: 🧪 Unit tests ${{ matrix.name }}
+    name: 🧪 Unit tests ${{ matrix.shard }}
     needs: changes
     if: needs.changes.outputs.verified != 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: 1/3
-            args: --shard=1/3
-            ignore: /plane-builder/balance/__tests__/balance.test.ts$
-          - name: 2/3
-            args: --shard=2/3
-            ignore: /plane-builder/balance/__tests__/balance.test.ts$
-          - name: 3/3
-            args: --shard=3/3
-            ignore: /plane-builder/balance/__tests__/balance.test.ts$
-          - name: plane balance
-            args: lib/plane-builder/balance/__tests__/balance.test.ts
+        shard: [1/2, 2/2]
     steps:
       - name: 📥 Checkout
         uses: actions/checkout@v6
@@ -167,8 +157,11 @@ jobs:
 
       - name: 🧪 Unit tests
         env:
-          JEST_EXTRA_IGNORE: ${{ matrix.ignore }}
-        run: npx jest ${{ matrix.args }}
+          JEST_LANE: fast
+        run: npx jest --shard=${{ matrix.shard }} --json --outputFile=jest-results.json
+
+      - name: ⏱️ No slow test files
+        run: node scripts/check-test-times.mjs jest-results.json 45
 
   rules:
     name: 🔐 Firestore rules tests
