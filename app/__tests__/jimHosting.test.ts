@@ -72,3 +72,27 @@ it("serves the /jim service worker fresh, so updates land", () => {
     value: "no-cache",
   });
 });
+
+describe("Planet Smasher caching", () => {
+  it.each([
+    "/planet-smasher",
+    "/planet-smasher.html",
+    "/planet-smasher/versions",
+    "/planet-smasher/versions.html",
+    "/planet-smasher-sw.js",
+    "/planet-smasher.webmanifest",
+    "/planet-smasher/textures/**",
+  ])("%s is revalidated, so deploys land", (source) => {
+    expect(headersFor(source)).toContainEqual({
+      key: "Cache-Control",
+      value: "no-cache",
+    });
+  });
+
+  it("lists the textures rule after the year-long image rule so it wins", () => {
+    const sources = hosting.headers.map((h) => h.source);
+    expect(sources.indexOf("/planet-smasher/textures/**")).toBeGreaterThan(
+      sources.findIndex((s) => s.startsWith("**/*.@("))
+    );
+  });
+});
