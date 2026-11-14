@@ -8,6 +8,7 @@ import {
   LinearSRGBColorSpace,
   MeshStandardMaterial,
   SRGBColorSpace,
+  RepeatWrapping,
   Texture,
   Vector3,
   type Mesh,
@@ -62,6 +63,7 @@ void main() {
 function toTexture(source: HTMLImageElement | HTMLCanvasElement): Texture {
   const t = new Texture(source);
   t.colorSpace = SRGBColorSpace;
+  t.wrapS = RepeatWrapping; // no seam line at u = 0/1
   t.anisotropy = 4;
   t.needsUpdate = true;
   return t;
@@ -70,6 +72,7 @@ function toTexture(source: HTMLImageElement | HTMLCanvasElement): Texture {
 function canvasTexture(c: HTMLCanvasElement, srgb: boolean): CanvasTexture {
   const t = new CanvasTexture(c);
   t.colorSpace = srgb ? SRGBColorSpace : LinearSRGBColorSpace;
+  t.wrapS = RepeatWrapping;
   t.anisotropy = 4;
   return t;
 }

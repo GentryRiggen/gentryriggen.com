@@ -31,6 +31,7 @@ interface StageProps {
 const AUTO_ROTATE_PAUSE_MS = 4000;
 
 interface Down {
+  id: number;
   x: number;
   y: number;
   t: number;
@@ -117,7 +118,18 @@ function Scene({
 
   const handleDown = (e: ThreeEvent<PointerEvent>) => {
     pauseRotate();
-    down.current = { x: e.clientX, y: e.clientY, t: performance.now() };
+    // A second finger (pinch) cancels the tap and never fires a shot.
+    if (!e.isPrimary) {
+      down.current = null;
+      return;
+    }
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    down.current = {
+      id: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      t: performance.now(),
+    };
     if (!holdMode) return;
     const hit = hitOf(e);
     if (!hit) return;
@@ -135,8 +147,9 @@ function Scene({
 
   const handleUp = (e: ThreeEvent<PointerEvent>) => {
     const d = down.current;
+    if (!d || e.pointerId !== d.id) return;
     down.current = null;
-    if (holdMode || !d) return;
+    if (holdMode) return;
     if (!isTap(d, { x: e.clientX, y: e.clientY, t: performance.now() })) return;
     const hit = hitOf(e);
     if (hit) onFire(hit.u, hit.v, hit.point);
