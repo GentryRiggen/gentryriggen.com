@@ -5,6 +5,7 @@ import { PLANETS } from "@/lib/planet-smasher/planets";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import { TOOLS } from "@/lib/planet-smasher/tools";
 import type { Unlockable } from "@/lib/planet-smasher/unlocks";
+import { playCue } from "../audio/sfx";
 import { markFresh } from "./freshItems";
 
 const SHOW_MS = 2500;
@@ -52,6 +53,10 @@ export default function UnlockToast() {
   }, [index, count]);
 
   const item = unlocks[Math.min(index, count - 1)];
+  const itemKey = item ? `${item.kind}:${item.id}` : "";
+  useEffect(() => {
+    if (itemKey) playCue("unlock");
+  }, [itemKey]);
   if (!item) return null;
   const { icon, name } = describe(item);
   return (

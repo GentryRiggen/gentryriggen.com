@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import type { EndingKind } from "@/lib/planet-smasher/tools";
 import { prefersReducedMotion } from "@/components/game-audio/channels";
+import { playCue } from "../audio/sfx";
 import { loadPlanetTextures } from "../scene/planetTextures";
 import { formatInt } from "./format";
 
@@ -46,6 +47,7 @@ export default function EndingOverlay() {
   if (phase !== "ended" || !ending) return null;
 
   const newPlanet = () => {
+    playCue("newPlanet");
     // The textures are cached, so this resolves at once after the first load.
     loadPlanetTextures(planetId)
       .then((t) => useGameStore.getState().newPlanet(t.population))

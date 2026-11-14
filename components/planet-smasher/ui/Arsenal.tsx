@@ -9,6 +9,7 @@ import {
   isUnlocked,
   type Unlockable,
 } from "@/lib/planet-smasher/unlocks";
+import { playCue } from "../audio/sfx";
 import { clearFresh, freshKey, useFreshItems } from "./freshItems";
 import { formatInt } from "./format";
 
@@ -61,6 +62,7 @@ export default function Arsenal() {
     const item: Unlockable = { kind: "tool", id };
     clearFresh(item);
     useGameStore.getState().selectTool(id);
+    playCue("uiTap");
   };
 
   return (

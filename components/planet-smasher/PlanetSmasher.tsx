@@ -18,7 +18,11 @@ import Arsenal from "./ui/Arsenal";
 import Hud from "./ui/Hud";
 import PlanetPicker from "./ui/PlanetPicker";
 import EndingOverlay from "./ui/EndingOverlay";
+import SoundToggle from "./ui/SoundToggle";
 import UnlockToast from "./ui/UnlockToast";
+import { useSoundEnabled } from "./audio/soundSetting";
+import useSoundUnlock from "./audio/useSoundUnlock";
+import { TOOL_CUES, playCue } from "./audio/sfx";
 import { DamagePainter } from "./scene/DamagePainter";
 import { laserAim } from "./scene/effects/laserAim";
 import {
@@ -64,6 +68,8 @@ export default function PlanetSmasher() {
   );
   const populationRef = useGameStore((s) => s.planet?.remaining);
 
+  useSoundUnlock(useSoundEnabled());
+
   const [effects, setEffects] = useState<ActiveEffect[]>([]);
 
   // A fresh planet (new population array: New planet or a planet switch)
@@ -72,6 +78,7 @@ export default function PlanetSmasher() {
     painter?.reset(textures?.night ?? null);
     setEffects([]);
     laserAim.held = false;
+    playCue("zapStop");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [populationRef]);
   const nextId = useRef(1);
@@ -84,6 +91,10 @@ export default function PlanetSmasher() {
       if (useGameStore.getState().phase !== "playing") return;
       useGameStore.getState().hit(toolId, u, v);
       const tool = TOOLS[toolId];
+      // The laser hums for as long as it is held, not once per tick.
+      if (tool.mode !== "hold") {
+        playCue(TOOL_CUES[toolId].impact, 0.5 + tool.power / 16);
+      }
       if (tool.stamp !== "none") {
         painter?.stamp(tool.stamp, u, v, tool.radius, opts);
       }
@@ -111,6 +122,8 @@ export default function PlanetSmasher() {
         id
       )
     );
+    const launch = TOOL_CUES[toolId].launch;
+    if (launch) playCue(launch);
     shots.current++;
     if (typeof window !== "undefined" && window.__planetSmasher) {
       window.__planetSmasher.shots = shots.current;
@@ -158,6 +171,7 @@ export default function PlanetSmasher() {
   );
   const holdEnd = useCallback(() => {
     laserAim.held = false;
+    playCue("zapStop");
   }, []);
 
   // The test hook shoots without a cooldown. A hold tool fires a one-second
@@ -180,6 +194,7 @@ export default function PlanetSmasher() {
         if (++n >= 8) {
           clearInterval(timer);
           laserAim.held = false;
+          playCue("zapStop");
         }
       }, 125);
     },
@@ -242,7 +257,7 @@ export default function PlanetSmasher() {
             onImpact={handleImpact}
             onEffectDone={handleEffectDone}
           />
-          <Hud left={<PlanetPicker />} />
+          <Hud left={<PlanetPicker />} right={<SoundToggle />} />
           <Arsenal />
           <UnlockToast />
           <EndingOverlay />

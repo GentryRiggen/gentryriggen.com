@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Vector3, type Material } from "three";
 import { useGameStore } from "@/lib/planet-smasher/store";
@@ -13,12 +13,20 @@ import {
   useLatest,
   useParticles,
 } from "../effects/particles";
+import { playCue, type Cue } from "../../audio/sfx";
 import Molten from "./Molten";
 import Shatter from "./Shatter";
 import Swallowed from "./Swallowed";
 import { planetFx, resetPlanetFx } from "./planetFx";
 
 const GROW_SECONDS = 0.8;
+
+const ENDING_CUES: Record<string, Cue> = {
+  shatter: "endShatter",
+  molten: "endMolten",
+  frozen: "endFrozen",
+  swallowed: "endSwallowed",
+};
 
 /** A new planet pops in from nothing with a puff of sparkles. */
 function GrowIn({ onDone }: { onDone(): void }) {
@@ -100,6 +108,13 @@ export default function EndingStage({ material }: EndingStageProps) {
     resetPlanetFx();
     if (grow) planetFx.scale = 0;
   }, [phase, grow]);
+
+  // The ending's sound starts with the ending (and cuts the laser hum).
+  useEffect(() => {
+    if (phase !== "ending" || !ending) return;
+    playCue("zapStop");
+    playCue(ENDING_CUES[ending]);
+  }, [phase, ending]);
 
   const shown = () => useGameStore.getState().endingShown();
   const active = phase !== "playing" && ending;

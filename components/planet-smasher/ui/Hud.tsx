@@ -25,10 +25,12 @@ function PopOff() {
 interface HudProps {
   /** The top-left slot (the planet picker). */
   left?: ReactNode;
+  /** Under the points, top-right (the sound button). */
+  right?: ReactNode;
 }
 
 /** Population, health and points along the top edge. */
-export default function Hud({ left }: HudProps) {
+export default function Hud({ left, right }: HudProps) {
   const planetId = useGameStore((s) => s.progress.planetId);
   const points = useGameStore((s) => s.progress.points);
   const start = PLANETS[planetId].population;
@@ -45,11 +47,14 @@ export default function Hud({ left }: HudProps) {
         <HealthBar />
         <PopOff />
       </div>
-      <div className="justify-self-end rounded-full bg-black/55 px-3 py-1 font-mono text-xl font-black tabular-nums text-yellow-300 sm:text-3xl">
-        <span aria-hidden="true">⭐ </span>
-        <span aria-label={`${formatInt(points)} points`}>
-          {formatInt(points)}
-        </span>
+      <div className="flex flex-col items-end gap-2 justify-self-end">
+        <div className="rounded-full bg-black/55 px-3 py-1 font-mono text-xl font-black tabular-nums text-yellow-300 sm:text-3xl">
+          <span aria-hidden="true">⭐ </span>
+          <span aria-label={`${formatInt(points)} points`}>
+            {formatInt(points)}
+          </span>
+        </div>
+        {right && <div className="pointer-events-auto">{right}</div>}
       </div>
     </div>
   );
