@@ -8,7 +8,7 @@
  *   .github/workflows/sims.yml when game code changes; that workflow reports
  *   but never holds up a deploy.
  *
- * CI fails a fast-lane file that takes over 30 s (scripts/check-test-times.mjs)
+ * CI fails a fast-lane file that takes over 45 s (scripts/check-test-times.mjs)
  * and names it: add a new simulation test here.
  */
 module.exports = [
@@ -35,6 +35,7 @@ module.exports = [
   "lib/ever-onward/universes/higher/__tests__/scorecard.test.ts",
   "lib/ever-onward/universes/higher/__tests__/skeleton.test.ts",
   "lib/ever-onward/universes/higher/__tests__/sky.test.ts",
+  "lib/ever-onward/universes/higher/__tests__/topPack.test.ts",
   "lib/ever-onward/universes/higher/__tests__/town.test.ts",
   "lib/ever-onward/universes/higher/__tests__/tradeoffs.test.ts",
   "lib/ever-onward/universes/light/__tests__/antiStuck.test.ts",

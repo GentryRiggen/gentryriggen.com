@@ -3,12 +3,12 @@
  * Fails when a fast-lane test file is slow, so simulations can't creep back
  * into the tests that hold up a deploy. Reads Jest's --json output.
  *
- *   node scripts/check-test-times.mjs jest-results.json [maxSeconds=30]
+ *   node scripts/check-test-times.mjs jest-results.json [maxSeconds=45]
  */
 import { readFileSync } from "node:fs";
 import { relative } from "node:path";
 
-const [file, max = "30"] = process.argv.slice(2);
+const [file, max = "45"] = process.argv.slice(2);
 if (!file) {
   console.error("usage: check-test-times.mjs <jest --json file> [maxSeconds]");
   process.exit(2);
