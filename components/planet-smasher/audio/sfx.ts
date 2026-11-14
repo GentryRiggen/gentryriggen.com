@@ -10,6 +10,8 @@ import { soundSetting } from "./soundSetting";
 
 export type Cue =
   | "launch"
+  | "whistle"
+  | "combo"
   | "impactSmall"
   | "impactBig"
   | "nuke"
@@ -43,9 +45,9 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   freezeRay: { launch: null, impact: "freeze" },
   moonRam: { launch: "moonWhoosh", impact: "impactBig" },
   blackHole: { launch: "blackHoleHum", impact: "impactSmall" },
-  // Placeholders until the real cues land.
   nukeTwin: { launch: "launch", impact: "nuke" },
-  nukeRain: { launch: "launch", impact: "nuke" },
+  nukeRain: { launch: "whistle", impact: "nuke" },
+  // Placeholders until the real cues land.
   ufoSwarm: { launch: "zapStart", impact: "impactSmall" },
   gravityBeam: { launch: "zapStart", impact: "impactBig" },
   nanobots: { launch: null, impact: "freeze" },
@@ -64,9 +66,11 @@ const SPEC: Record<
   { seconds: number; gap: number; play: Voice; priority?: boolean }
 > = {
   launch: { seconds: 0.4, gap: 0.08, play: playLaunch },
+  whistle: { seconds: 1.1, gap: 0.3, play: playWhistle },
+  combo: { seconds: 0.5, gap: 0.05, play: playCombo },
   impactSmall: { seconds: 0.4, gap: 0.05, play: playImpactSmall },
   impactBig: { seconds: 1, gap: 0.1, play: playImpactBig },
-  nuke: { seconds: 2, gap: 0.2, play: playNuke },
+  nuke: { seconds: 2, gap: 0.15, play: playNuke },
   rumble: { seconds: 1.5, gap: 0.2, play: playRumble },
   freeze: { seconds: 1, gap: 0.2, play: playFreeze },
   moonWhoosh: { seconds: 1, gap: 0.2, play: playMoonWhoosh },
@@ -213,6 +217,59 @@ function playLaunch(e: VoiceEngine, t: number, k: number) {
     q: 1.2,
     gain: 0.16 * k,
     attack: 0.08,
+  });
+}
+
+/** A falling whistle: the nuke rain coming in. */
+function playWhistle(e: VoiceEngine, t: number, k: number) {
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 1,
+    freq: 2400,
+    freqEnd: 500,
+    gain: 0.1 * k,
+    attack: 0.05,
+  });
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 1,
+    filter: "bandpass",
+    freq: 3000,
+    freqEnd: 700,
+    q: 3,
+    gain: 0.08 * k,
+    attack: 0.1,
+  });
+}
+
+/** The combo count the next `combo` cue plays (it cannot take a count). */
+let comboCount = 3;
+
+/** A short bright ding, a semitone higher for each count from 3 (to x10). */
+export function playComboCue(count: number): void {
+  comboCount = Math.min(10, Math.max(3, Math.round(count)));
+  playCue("combo");
+}
+
+function playCombo(e: VoiceEngine, t: number, k: number) {
+  const f = 880 * 2 ** ((comboCount - 3) / 12);
+  tone(e, {
+    type: "triangle",
+    start: t,
+    duration: 0.3,
+    freq: f,
+    gain: 0.2 * k,
+    attack: 0.003,
+  });
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 0.22,
+    freq: f * 2,
+    gain: 0.1 * k,
+    attack: 0.003,
   });
 }
 

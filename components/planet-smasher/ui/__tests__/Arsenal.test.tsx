@@ -42,4 +42,29 @@ describe("Arsenal", () => {
     fireEvent.click(tile);
     expect(useGameStore.getState().progress.toolId).toBe("supervolcano");
   });
+
+  it("shows the Twin nuke's radiation sign twice", () => {
+    setPoints(0);
+    render(<Arsenal />);
+    const tile = screen.getByRole("button", { name: "Twin nuke" });
+    expect(tile.textContent?.match(/☢️/g)).toHaveLength(2);
+  });
+
+  it("scrolls a tapped tile into view", () => {
+    const scroll = jest.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    try {
+      setPoints(700);
+      render(<Arsenal />);
+      fireEvent.click(screen.getByRole("button", { name: "Supervolcano" }));
+      expect(scroll).toHaveBeenCalledWith({
+        inline: "nearest",
+        block: "nearest",
+        behavior: "smooth",
+      });
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
 });

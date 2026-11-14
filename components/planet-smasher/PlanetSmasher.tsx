@@ -15,6 +15,7 @@ import { tryFire as tryCooldown } from "@/lib/planet-smasher/cooldown";
 import { isUnlocked } from "@/lib/planet-smasher/unlocks";
 import { uvToDir, type Vec3 } from "@/lib/planet-smasher/sphere";
 import Arsenal from "./ui/Arsenal";
+import ComboBadge from "./ui/ComboBadge";
 import Hud from "./ui/Hud";
 import VersionLink from "./ui/VersionLink";
 import PlanetPicker from "./ui/PlanetPicker";
@@ -295,6 +296,7 @@ export default function PlanetSmasher() {
             }
             right={<SoundToggle />}
           />
+          <ComboBadge />
           <Arsenal />
           <UnlockToast />
           <EndingOverlay />

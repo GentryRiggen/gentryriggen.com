@@ -73,32 +73,58 @@ const GREY = new Color("#34343a");
 const Y = new Vector3(0, 1, 0);
 const tmpV = new Vector3();
 
-/** The mega bomb and the nuke: a falling dot, a big flash, a fireball. */
-export default function Blast({
-  effect,
+export interface WarheadProps {
+  /** The unit direction it lands on. Keep it stable between renders. */
+  n: Vector3;
+  planetRadius: number;
+  kind: "megaBomb" | "nuke";
+  /** Seconds to wait before it starts falling. */
+  delay?: number;
+  /** Sizes the flash, fireball, ring and mushroom (1 = a full nuke). */
+  scale?: number;
+  /** How far it starts to the right of straight above, in world units. */
+  side?: number;
+  /** Replaces the spec's camera shake at impact. */
+  shakeAmount?: number;
+  onImpact(): void;
+  onDone(): void;
+}
+
+/** One falling warhead: the flash, fireball, ring and (nuke) mushroom. */
+export function Warhead({
+  n,
   planetRadius,
+  kind,
+  delay = 0,
+  scale = 1,
+  side = 0,
+  shakeAmount,
   onImpact,
   onDone,
-}: EffectProps) {
-  const spec = SPECS[effect.toolId === "nuke" ? "nuke" : "megaBomb"];
-  const nuke = effect.toolId === "nuke";
+}: WarheadProps) {
+  const spec = SPECS[kind];
+  const nuke = kind === "nuke";
   const cb = useLatest({ onImpact, onDone });
   const camera = useThree((s) => s.camera);
-  const run = useRef({ age: 0, hit: false, done: false });
+  const run = useRef({ age: -delay, hit: false, done: false });
   const mush = useRef<Group>(null);
   const stem = useRef<Mesh>(null);
   const cap = useRef<Mesh>(null);
   const mats = useRef<(MeshStandardMaterial | null)[]>([]);
 
-  const n = useMemo(() => toVec(effect.point), [effect.point]);
   const target = useMemo(
     () => n.clone().multiplyScalar(planetRadius),
     [n, planetRadius]
   );
   const start = useMemo(() => {
     const up = new Vector3().setFromMatrixColumn(camera.matrixWorld, 1);
-    return target.clone().addScaledVector(up, 3).addScaledVector(n, 1.2);
-  }, [camera, n, target]);
+    const right = new Vector3().setFromMatrixColumn(camera.matrixWorld, 0);
+    return target
+      .clone()
+      .addScaledVector(up, 3)
+      .addScaledVector(right, side)
+      .addScaledVector(n, 1.2);
+  }, [camera, n, target, side]);
   const quat = useMemo(() => new Quaternion().setFromUnitVectors(Y, n), [n]);
   const ring = useMemo(
     () => new SurfaceRing(nuke ? 0xffe0a0 : 0xffc890),
@@ -114,6 +140,7 @@ export default function Blast({
     const dt = stepDt(rawDt);
     const r = run.current;
     r.age += dt;
+    if (r.age < 0) return;
     if (!r.hit) {
       const t = clamp01(r.age / spec.fall);
       pos.copy(start).lerp(target, t * t);
@@ -149,27 +176,31 @@ export default function Blast({
             vy: n.y * rand(0.1, 0.6) + rand(-0.25, 0.25),
             vz: n.z * rand(0.1, 0.6) + rand(-0.25, 0.25),
             life: rand(0.7, 1.5),
-            size: rand(0.12, 0.25) * (nuke ? 1.4 : 1),
-            endSize: 0.45 * (nuke ? 1.4 : 1),
+            size: rand(0.12, 0.25) * (nuke ? 1.4 : 1) * scale,
+            endSize: 0.45 * (nuke ? 1.4 : 1) * scale,
             color: C4,
             endColor: C5,
             alpha: 0.7,
             drag: 0.8,
           });
         }
-        shake(spec.shake, 0.5);
-        cb.current.onImpact(effect.u, effect.v, effect.point);
+        shake(shakeAmount ?? spec.shake, 0.5);
+        cb.current.onImpact();
       }
     }
     if (r.hit) {
       const since = r.age - spec.fall;
       const f = clamp01(since / 0.45);
-      flash.set(lifted, spec.flash * (0.5 + 0.7 * easeOut(f)), 1 - f * f);
+      flash.set(
+        lifted,
+        spec.flash * scale * (0.5 + 0.7 * easeOut(f)),
+        1 - f * f
+      );
       const k = clamp01(since / 0.9);
       ring.set(
         n,
-        Math.max(0, easeOut(k) * spec.ring - 0.04),
-        easeOut(k) * spec.ring,
+        Math.max(0, easeOut(k) * spec.ring * scale - 0.04),
+        easeOut(k) * spec.ring * scale,
         0.9 * (1 - k)
       );
       if (nuke && mush.current && stem.current && cap.current) {
@@ -181,7 +212,11 @@ export default function Blast({
             const rr = (0.06 + 0.15 * easeOut(m)) * 0.9;
             const a = rand(0, Math.PI * 2);
             tmpV
-              .set(Math.cos(a) * rr, h, Math.sin(a) * rr)
+              .set(
+                Math.cos(a) * rr * scale,
+                h * scale,
+                Math.sin(a) * rr * scale
+              )
               .applyQuaternion(quat);
             sys.emit({
               x: target.x + tmpV.x,
@@ -231,7 +266,13 @@ export default function Blast({
       <primitive object={ring.mesh} />
       <primitive object={flash.sprite} />
       {nuke && (
-        <group ref={mush} position={target} quaternion={quat} visible={false}>
+        <group
+          ref={mush}
+          position={target}
+          quaternion={quat}
+          scale={scale}
+          visible={false}
+        >
           <mesh ref={stem}>
             <sphereGeometry args={[1, 20, 14]} />
             <meshStandardMaterial
@@ -261,5 +302,24 @@ export default function Blast({
         </group>
       )}
     </>
+  );
+}
+
+/** The mega bomb and the nuke: a falling dot, a big flash, a fireball. */
+export default function Blast({
+  effect,
+  planetRadius,
+  onImpact,
+  onDone,
+}: EffectProps) {
+  const n = useMemo(() => toVec(effect.point), [effect.point]);
+  return (
+    <Warhead
+      n={n}
+      planetRadius={planetRadius}
+      kind={effect.toolId === "nuke" ? "nuke" : "megaBomb"}
+      onImpact={() => onImpact(effect.u, effect.v, effect.point)}
+      onDone={onDone}
+    />
   );
 }

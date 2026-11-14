@@ -10,6 +10,7 @@ import FreezeWave from "./FreezeWave";
 import LaserBeam from "./LaserBeam";
 import MeteorShower from "./MeteorShower";
 import MoonRam from "./MoonRam";
+import NukeVolley from "./NukeVolley";
 import Projectile from "./Projectile";
 import Quake from "./Quake";
 import ParticleLayer from "./ParticleLayer";
@@ -27,9 +28,9 @@ const COMPONENTS: Record<ToolId, ComponentType<EffectProps>> = {
   freezeRay: FreezeWave,
   moonRam: MoonRam as ComponentType<EffectProps>,
   blackHole: BlackHoleDrop,
+  nukeTwin: NukeVolley,
+  nukeRain: NukeVolley,
   // Placeholders until the real effects land.
-  nukeTwin: Blast,
-  nukeRain: Blast,
   ufoSwarm: Blast,
   gravityBeam: Blast,
   nanobots: FreezeWave,
