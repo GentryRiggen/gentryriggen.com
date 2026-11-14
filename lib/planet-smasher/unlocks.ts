@@ -17,6 +17,12 @@ export const UNLOCK_PATH: readonly { at: number; item: Unlockable }[] = [
   { at: 3400, item: { kind: "tool", id: "moonRam" } },
   { at: 4200, item: { kind: "planet", id: "ice" } },
   { at: 5200, item: { kind: "tool", id: "blackHole" } },
+  { at: 6000, item: { kind: "tool", id: "nukeTwin" } },
+  { at: 7000, item: { kind: "tool", id: "ufoSwarm" } },
+  { at: 8200, item: { kind: "tool", id: "gravityBeam" } },
+  { at: 9500, item: { kind: "tool", id: "nukeRain" } },
+  { at: 11000, item: { kind: "tool", id: "nanobots" } },
+  { at: 13000, item: { kind: "tool", id: "mothership" } },
 ];
 
 const same = (a: Unlockable, b: Unlockable) =>

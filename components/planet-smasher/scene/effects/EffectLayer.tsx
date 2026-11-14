@@ -27,6 +27,13 @@ const COMPONENTS: Record<ToolId, ComponentType<EffectProps>> = {
   freezeRay: FreezeWave,
   moonRam: MoonRam as ComponentType<EffectProps>,
   blackHole: BlackHoleDrop,
+  // Placeholders until the real effects land.
+  nukeTwin: Blast,
+  nukeRain: Blast,
+  ufoSwarm: Blast,
+  gravityBeam: Blast,
+  nanobots: FreezeWave,
+  mothership: Blast,
 };
 
 interface EffectLayerProps {

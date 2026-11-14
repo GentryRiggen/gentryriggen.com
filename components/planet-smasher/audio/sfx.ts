@@ -43,6 +43,13 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   freezeRay: { launch: null, impact: "freeze" },
   moonRam: { launch: "moonWhoosh", impact: "impactBig" },
   blackHole: { launch: "blackHoleHum", impact: "impactSmall" },
+  // Placeholders until the real cues land.
+  nukeTwin: { launch: "launch", impact: "nuke" },
+  nukeRain: { launch: "launch", impact: "nuke" },
+  ufoSwarm: { launch: "zapStart", impact: "impactSmall" },
+  gravityBeam: { launch: "zapStart", impact: "impactBig" },
+  nanobots: { launch: null, impact: "freeze" },
+  mothership: { launch: "moonWhoosh", impact: "impactBig" },
 };
 
 /** The most voices sounding at once; cues past it are dropped. */

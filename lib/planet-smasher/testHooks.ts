@@ -2,6 +2,7 @@ import type { GameStore } from "./store";
 import { useGameStore } from "./store";
 import { fxClock } from "./fxClock";
 import { saveProgress } from "./progress";
+import { UNLOCK_PATH } from "./unlocks";
 import type { EndingKind, ToolId } from "./tools";
 
 /**
@@ -20,7 +21,7 @@ declare global {
       /** Like forceEnding, but the ending starts at once (no flight delay). */
       forceEndingNow(kind: EndingKind): void;
       state(): GameStore;
-      /** Sets points to 5200 so every tool and planet is open. */
+      /** Sets points to the last unlock so every tool and planet is open. */
       unlockAll(): void;
       /** Effects started so far (taps the cooldown let through, and hook fires). */
       shots?: number;
@@ -53,7 +54,10 @@ export function installTestHooks(
     state: () => useGameStore.getState(),
     unlockAll() {
       const { progress } = useGameStore.getState();
-      const next = { ...progress, points: Math.max(progress.points, 5200) };
+      const next = {
+        ...progress,
+        points: Math.max(progress.points, UNLOCK_PATH.at(-1)?.at ?? 0),
+      };
       saveProgress(next);
       useGameStore.setState({ progress: next });
     },

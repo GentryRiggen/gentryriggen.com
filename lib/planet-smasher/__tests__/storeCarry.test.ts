@@ -22,7 +22,8 @@ describe("fractional points", () => {
     window.localStorage.clear();
     useGameStore.getState().init(grid);
     for (let i = 0; i < 20; i++)
-      useGameStore.getState().hit("asteroid", 0.5, 0.5);
+      // Spaced past the combo window, so no combo bonus muddies the carry.
+      useGameStore.getState().hit("asteroid", 0.5, 0.5, i * 5000);
     expect(useGameStore.getState().progress.points).toBe(8);
   });
 });

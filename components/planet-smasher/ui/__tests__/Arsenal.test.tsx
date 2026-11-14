@@ -16,11 +16,11 @@ describe("Arsenal", () => {
     setPoints(0);
     render(<Arsenal />);
     const tiles = screen.getAllByRole("button");
-    expect(tiles).toHaveLength(10);
+    expect(tiles).toHaveLength(16);
     const locked = tiles.filter(
       (t) => t.getAttribute("aria-disabled") === "true"
     );
-    expect(locked).toHaveLength(9);
+    expect(locked).toHaveLength(15);
     expect(
       screen.getByRole("button", { name: "Asteroid" })
     ).not.toHaveAttribute("aria-disabled", "true");

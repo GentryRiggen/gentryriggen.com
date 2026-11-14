@@ -16,6 +16,24 @@ function fakeStorage(init: Record<string, string> = {}): Storage {
 }
 
 describe("progress", () => {
+  it("loads a 1.0 save unchanged", () => {
+    const p = {
+      points: 4000,
+      endingsSeen: ["shatter", "molten", "swallowed"],
+      planetId: "mars",
+      toolId: "megaBomb",
+    };
+    const s = fakeStorage({ [PROGRESS_KEY]: JSON.stringify(p) });
+    expect(loadProgress(s)).toEqual(p);
+  });
+
+  it("keeps the consumed ending", () => {
+    const s = fakeStorage();
+    const p = { ...freshProgress(), endingsSeen: ["consumed" as const] };
+    saveProgress(p, s);
+    expect(loadProgress(s).endingsSeen).toEqual(["consumed"]);
+  });
+
   it("round-trips", () => {
     const s = fakeStorage();
     const p = {
