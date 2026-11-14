@@ -17,15 +17,20 @@ import {
   rand,
   useDispose,
   useLatest,
-  useParticles,
+  useSharedParticles,
 } from "./particles";
 import { laserAim } from "./laserAim";
 import type { EffectProps } from "./effectQueue";
+
+const C0: readonly [number, number, number] = [1, 0.85, 0.4];
+const C1: readonly [number, number, number] = [1, 0.25, 0.05];
 
 const HOVER = 1.8;
 const FADE_IN = 0.2;
 const FADE_OUT = 0.35;
 const Y = new Vector3(0, 1, 0);
+const hot = new Vector3();
+const hot2 = new Vector3();
 
 /**
  * The alien saucer and its beam. Mounted while the button is held; follows the
@@ -56,7 +61,7 @@ export default function LaserBeam({
   const tilt = useMemo(() => new Vector3(), []);
   const q = useMemo(() => new Quaternion(), []);
   const flash = useMemo(() => new FlashSprite(0xffe9a8), []);
-  const sys = useParticles(160, true, 0.3);
+  const sys = useSharedParticles(true, 0.3);
   useDispose(flash);
 
   useFrame((state, rawDt) => {
@@ -73,10 +78,9 @@ export default function LaserBeam({
       surf.copy(tmp).multiplyScalar(planetRadius * 1.005);
       const ticks = laserAim.ticks - r.seen;
       r.seen = laserAim.ticks;
-      if (r.released < 0) {
-        for (let i = 0; i < Math.min(ticks, 3); i++) {
-          cb.current.onImpact(laserAim.u, laserAim.v, laserAim.point);
-        }
+      // Ticks counted just before the release still land.
+      for (let i = 0; i < Math.min(ticks, 3); i++) {
+        cb.current.onImpact(laserAim.u, laserAim.v, laserAim.point);
       }
     }
     const appear = clamp01(r.age / FADE_IN);
@@ -115,12 +119,12 @@ export default function LaserBeam({
     // A hot spot and sparks where the beam bites.
     if (driving && vis > 0.3) {
       flash.set(
-        surf.clone().multiplyScalar(1.02),
+        hot.copy(surf).multiplyScalar(1.02),
         0.17 * (0.8 + 0.4 * pulse),
         vis
       );
       r.spark += dt * 70;
-      const n = surf.clone().normalize();
+      const n = hot2.copy(surf).normalize();
       while (r.spark >= 1) {
         r.spark -= 1;
         sys.emit({
@@ -133,8 +137,8 @@ export default function LaserBeam({
           life: rand(0.2, 0.5),
           size: 0.03,
           endSize: 0.005,
-          color: [1, 0.85, 0.4],
-          endColor: [1, 0.25, 0.05],
+          color: C0,
+          endColor: C1,
           drag: 0.5,
         });
       }
@@ -200,7 +204,6 @@ export default function LaserBeam({
         />
       </mesh>
       <primitive object={flash.sprite} />
-      <primitive object={sys.points} />
     </>
   );
 }

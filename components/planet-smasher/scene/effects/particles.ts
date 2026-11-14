@@ -93,10 +93,17 @@ export function toVec(p: { x: number; y: number; z: number }): Vector3 {
 
 /** Two unit vectors that span the tangent plane at `n`. */
 export function tangentBasis(n: Vector3): { t1: Vector3; t2: Vector3 } {
-  const ref = Math.abs(n.y) < 0.9 ? new Vector3(0, 1, 0) : new Vector3(1, 0, 0);
-  const t1 = new Vector3().crossVectors(n, ref).normalize();
-  const t2 = new Vector3().crossVectors(n, t1).normalize();
-  return { t1, t2 };
+  const out = { t1: new Vector3(), t2: new Vector3() };
+  tangentBasisInto(n, out.t1, out.t2);
+  return out;
+}
+
+/** Same as `tangentBasis`, into vectors you own (no allocation). */
+export function tangentBasisInto(n: Vector3, t1: Vector3, t2: Vector3): void {
+  if (Math.abs(n.y) < 0.9) t1.set(-n.z, 0, n.x);
+  else t1.set(0, n.z, -n.y);
+  t1.normalize();
+  t2.crossVectors(n, t1).normalize();
 }
 
 /**
@@ -183,7 +190,12 @@ export interface EmitSpec {
   alpha?: number;
   /** Fraction of speed lost per second. */
   drag?: number;
+  /** Acceleration toward the planet's centre. */
+  pull?: number;
 }
+
+/** Most particles alive at once across every weapon effect. */
+export const MAX_LIVE_PARTICLES = 600;
 
 export class ParticleSystem {
   readonly points: Points;
@@ -202,14 +214,18 @@ export class ParticleSystem {
   private c1: Float32Array;
   private peak: Float32Array;
   private drag: Float32Array;
+  private pull: Float32Array;
   private next = 0;
+  /** One past the highest slot ever used; the loop and upload stop here. */
+  private high = 0;
+  private live = 0;
+  private dirty = false;
   private attrs: BufferAttribute[];
 
   constructor(
     readonly capacity: number,
     additive = true,
-    /** Acceleration toward the planet's centre. */
-    private centerPull = 0
+    private defaultPull = 0
   ) {
     const n = capacity;
     this.pos = new Float32Array(n * 3);
@@ -225,6 +241,7 @@ export class ParticleSystem {
     this.c1 = new Float32Array(n * 3);
     this.peak = new Float32Array(n);
     this.drag = new Float32Array(n);
+    this.pull = new Float32Array(n);
     const mk = (a: Float32Array, size: number) => {
       const attr = new BufferAttribute(a, size);
       attr.setUsage(DynamicDrawUsage);
@@ -240,6 +257,7 @@ export class ParticleSystem {
     this.geo.setAttribute("aSize", this.attrs[1]);
     this.geo.setAttribute("aAlpha", this.attrs[2]);
     this.geo.setAttribute("aColor", this.attrs[3]);
+    this.geo.setDrawRange(0, 0);
     this.mat = new ShaderMaterial({
       uniforms: { uScale: { value: 800 } },
       vertexShader: PARTICLE_VERTEX,
@@ -253,9 +271,17 @@ export class ParticleSystem {
     this.points.renderOrder = 3;
   }
 
+  /** Particles alive right now (never more than `capacity`). */
+  get liveCount(): number {
+    return this.live;
+  }
+
+  /** Adds a particle; when the pool is full the oldest slot is reused. */
   emit(s: EmitSpec): void {
     const i = this.next;
     this.next = (this.next + 1) % this.capacity;
+    if (this.life[i] <= 0) this.live++;
+    if (i >= this.high) this.high = i + 1;
     const v = i * 3;
     this.pos[v] = s.x;
     this.pos[v + 1] = s.y;
@@ -275,28 +301,32 @@ export class ParticleSystem {
     this.s1[i] = s.endSize ?? s.size;
     this.peak[i] = s.alpha ?? 1;
     this.drag[i] = s.drag ?? 0;
+    this.pull[i] = s.pull ?? this.defaultPull;
     this.sizeAttr[i] = s.size;
     this.alphaAttr[i] = 0;
+    this.dirty = true;
   }
 
   /** `scale` converts world size to pixels at 1 unit of distance. */
   update(dt: number, scale: number): void {
     this.mat.uniforms.uScale.value = scale;
+    if (this.live === 0 && !this.dirty) return;
     const { pos, vel, age, life } = this;
-    for (let i = 0; i < this.capacity; i++) {
+    for (let i = 0; i < this.high; i++) {
       if (life[i] <= 0) continue;
       age[i] += dt;
       const t = age[i] / life[i];
       if (t >= 1) {
         life[i] = 0;
+        this.live--;
         this.sizeAttr[i] = 0;
         this.alphaAttr[i] = 0;
         continue;
       }
       const v = i * 3;
-      if (this.centerPull > 0) {
+      if (this.pull[i] > 0) {
         const len = Math.hypot(pos[v], pos[v + 1], pos[v + 2]) || 1;
-        const a = (this.centerPull * dt) / len;
+        const a = (this.pull[i] * dt) / len;
         vel[v] -= pos[v] * a;
         vel[v + 1] -= pos[v + 1] * a;
         vel[v + 2] -= pos[v + 2] * a;
@@ -314,7 +344,23 @@ export class ParticleSystem {
       this.sizeAttr[i] = lerp(this.s0[i], this.s1[i], t);
       this.alphaAttr[i] = Math.min(1, t * 10) * (1 - t) * this.peak[i];
     }
-    for (const a of this.attrs) a.needsUpdate = true;
+    // Upload only the used range, and once more after the last one dies.
+    this.geo.setDrawRange(0, this.high);
+    for (const a of this.attrs) {
+      a.clearUpdateRanges();
+      a.addUpdateRange(0, this.high * a.itemSize);
+      a.needsUpdate = true;
+    }
+    this.dirty = this.live > 0;
+  }
+
+  /** Kills every particle. */
+  clear(): void {
+    this.life.fill(0);
+    this.sizeAttr.fill(0);
+    this.alphaAttr.fill(0);
+    this.live = 0;
+    this.dirty = true;
   }
 
   dispose(): void {
@@ -323,7 +369,29 @@ export class ParticleSystem {
   }
 }
 
-/** One pooled particle system per effect, updated every frame. */
+/**
+ * Every effect shares two pools (additive glow, normal-blend smoke): at most
+ * MAX_LIVE_PARTICLES alive in the whole scene, two draw calls.
+ */
+const SMOKE_CAPACITY = 40;
+let pools: { glow: ParticleSystem; smoke: ParticleSystem } | null = null;
+
+export function getPools() {
+  pools ??= {
+    glow: new ParticleSystem(MAX_LIVE_PARTICLES - SMOKE_CAPACITY, true),
+    smoke: new ParticleSystem(SMOKE_CAPACITY, false),
+  };
+  return pools;
+}
+
+export interface Emitter {
+  emit(spec: EmitSpec): void;
+}
+
+/**
+ * One private pool per component (used by the endings): render
+ * `<primitive object={sys.points} />` yourself.
+ */
 export function useParticles(
   capacity: number,
   additive = true,
@@ -344,11 +412,28 @@ export function useParticles(
   return sys;
 }
 
+/**
+ * An emitter into the shared weapon pool (at most MAX_LIVE_PARTICLES alive in
+ * the scene); `pull` is gravity toward the planet.
+ */
+export function useSharedParticles(additive = true, pull = 0): Emitter {
+  return useMemo<Emitter>(
+    () => ({
+      emit(spec) {
+        const pool = additive ? getPools().glow : getPools().smoke;
+        spec.pull ??= pull;
+        pool.emit(spec);
+      },
+    }),
+    [additive, pull]
+  );
+}
+
 const tmp = new Vector3();
 
 /** An outward burst of sparks and chunks from a surface point. */
 export function debris(
-  sys: ParticleSystem,
+  sys: Emitter,
   p: Vector3,
   n: Vector3,
   count: number,
@@ -394,6 +479,9 @@ export class SurfaceRing {
   private mat: MeshBasicMaterial;
   private pos: Float32Array;
   private attr: BufferAttribute;
+  private basisDir = new Vector3(NaN, 0, 0);
+  private t1 = new Vector3();
+  private t2 = new Vector3();
 
   constructor(
     color: number,
@@ -430,7 +518,11 @@ export class SurfaceRing {
     this.mesh.visible = opacity > 0.002 && outer > 0;
     this.mat.opacity = opacity;
     if (!this.mesh.visible) return;
-    const { t1, t2 } = tangentBasis(dir);
+    if (!this.basisDir.equals(dir)) {
+      this.basisDir.copy(dir);
+      tangentBasisInto(dir, this.t1, this.t2);
+    }
+    const { t1, t2 } = this;
     const pos = this.pos;
     for (let i = 0; i <= this.segs; i++) {
       const th = (i / this.segs) * Math.PI * 2;

@@ -16,9 +16,12 @@ import {
   rand,
   toVec,
   useLatest,
-  useParticles,
+  useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
+
+const C0: readonly [number, number, number] = [0.8, 0.6, 1];
+const C1: readonly [number, number, number] = [1, 0.5, 0.2];
 
 const DROP = 1.0;
 const END = 2.1;
@@ -73,7 +76,7 @@ export default function BlackHoleDrop({
     () => ({ uTime: { value: 0 }, uOpacity: { value: 1 } }),
     []
   );
-  const sys = useParticles(300);
+  const sys = useSharedParticles();
   const pos = useMemo(() => new Vector3(), []);
   const ax = useMemo(() => new Vector3(), []);
   const ay = useMemo(() => new Vector3(), []);
@@ -127,8 +130,8 @@ export default function BlackHoleDrop({
         life: 0.45,
         size: 0.03 * scale,
         endSize: 0.008,
-        color: [0.8, 0.6, 1],
-        endColor: [1, 0.5, 0.2],
+        color: C0,
+        endColor: C1,
         alpha: opacity,
       });
     }
@@ -161,7 +164,6 @@ export default function BlackHoleDrop({
           </mesh>
         </group>
       </group>
-      <primitive object={sys.points} />
     </>
   );
 }

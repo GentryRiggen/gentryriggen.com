@@ -13,9 +13,12 @@ import {
   toVec,
   useDispose,
   useLatest,
-  useParticles,
+  useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
+
+const C0: readonly [number, number, number] = [0.85, 0.97, 1];
+const C1: readonly [number, number, number] = [0.3, 0.7, 1];
 
 const WAVE = 1.2;
 const RADIUS = 0.35;
@@ -36,7 +39,7 @@ export default function FreezeWave({
   const cap = useMemo(() => new SurfaceRing(0x2f9dff), []);
   const rim = useMemo(() => new SurfaceRing(0x9fe6ff), []);
   const flash = useMemo(() => new FlashSprite(0xbfeaff), []);
-  const sys = useParticles(160);
+  const sys = useSharedParticles();
   useDispose(cap, rim, flash);
   const lifted = useMemo(
     () => n.clone().multiplyScalar(planetRadius * 1.03),
@@ -82,8 +85,8 @@ export default function FreezeWave({
         life: rand(0.5, 0.9),
         size: rand(0.025, 0.05),
         endSize: 0.01,
-        color: [0.85, 0.97, 1],
-        endColor: [0.3, 0.7, 1],
+        color: C0,
+        endColor: C1,
       });
     }
     if (!r.hit && r.age >= IMPACT_AT) {
@@ -101,7 +104,6 @@ export default function FreezeWave({
       <primitive object={cap.mesh} />
       <primitive object={rim.mesh} />
       <primitive object={flash.sprite} />
-      <primitive object={sys.points} />
     </>
   );
 }

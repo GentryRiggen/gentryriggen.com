@@ -12,6 +12,7 @@ import MeteorShower from "./MeteorShower";
 import MoonRam from "./MoonRam";
 import Projectile from "./Projectile";
 import Quake from "./Quake";
+import ParticleLayer from "./ParticleLayer";
 import { ShakeDriver } from "./particles";
 import type { ActiveEffect, EffectProps, ImpactOpts } from "./effectQueue";
 
@@ -53,6 +54,7 @@ export default function EffectLayer({
   return (
     <>
       <ShakeDriver />
+      <ParticleLayer />
       {effects.map((e) => {
         const Comp = COMPONENTS[e.toolId];
         return (

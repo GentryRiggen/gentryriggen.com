@@ -17,9 +17,14 @@ import {
   toVec,
   useDispose,
   useLatest,
-  useParticles,
+  useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
+
+const C0: readonly [number, number, number] = [1, 0.85, 0.5];
+const C1: readonly [number, number, number] = [1, 0.4, 0.1];
+const C2: readonly [number, number, number] = [1, 0.7, 0.25];
+const C3: readonly [number, number, number] = [0.9, 0.15, 0.03];
 
 const FLIGHT = 0.6;
 const AFTER = 1.4;
@@ -46,10 +51,11 @@ export default function Projectile({
     () => target.clone().addScaledVector(approachDir(camera, n), 4.5),
     [camera, n, target]
   );
+  const lifted = useMemo(() => target.clone().multiplyScalar(1.03), [target]);
   const geo = useMemo(() => lumpyRock(0.06, effect.id), [effect.id]);
   const ring = useMemo(() => new SurfaceRing(0xffd9a0), []);
   const flash = useMemo(() => new FlashSprite(0xfff1d0), []);
-  const sys = useParticles(260, true, 0.8);
+  const sys = useSharedParticles(true, 0.8);
   useDispose(geo, ring, flash);
   const pos = useMemo(() => new Vector3(), []);
 
@@ -72,8 +78,8 @@ export default function Projectile({
         z: pos.z,
         life: 0.07,
         size: 0.16,
-        color: [1, 0.85, 0.5],
-        endColor: [1, 0.4, 0.1],
+        color: C0,
+        endColor: C1,
       });
       r.tail += dt * 150;
       while (r.tail >= 1) {
@@ -88,8 +94,8 @@ export default function Projectile({
           life: rand(0.3, 0.5),
           size: 0.09,
           endSize: 0.015,
-          color: [1, 0.7, 0.25],
-          endColor: [0.9, 0.15, 0.03],
+          color: C2,
+          endColor: C3,
         });
       }
       if (r.age >= FLIGHT) {
@@ -104,11 +110,7 @@ export default function Projectile({
     if (r.hit) {
       const since = r.age - FLIGHT;
       const f = clamp01(since / 0.25);
-      flash.set(
-        target.clone().multiplyScalar(1.03),
-        0.35 + 0.6 * easeOut(f),
-        1 - f
-      );
+      flash.set(lifted, 0.35 + 0.6 * easeOut(f), 1 - f);
       const k = clamp01(since / 0.8);
       ring.set(
         n,
@@ -136,7 +138,6 @@ export default function Projectile({
       </mesh>
       <primitive object={ring.mesh} />
       <primitive object={flash.sprite} />
-      <primitive object={sys.points} />
     </>
   );
 }

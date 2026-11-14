@@ -25,6 +25,7 @@ import useSoundUnlock from "./audio/useSoundUnlock";
 import { TOOL_CUES, playCue } from "./audio/sfx";
 import { DamagePainter } from "./scene/DamagePainter";
 import { laserAim } from "./scene/effects/laserAim";
+import { startLaserTicker } from "./scene/effects/laserTicker";
 import {
   pushEffect,
   type ActiveEffect,
@@ -71,6 +72,16 @@ export default function PlanetSmasher() {
   useSoundUnlock(useSoundEnabled());
 
   const [effects, setEffects] = useState<ActiveEffect[]>([]);
+  // Keeps a held laser firing while the pointer is still.
+  const stopTicker = useRef<(() => void) | null>(null);
+  const hookTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(
+    () => () => {
+      stopTicker.current?.();
+      if (hookTimer.current) clearInterval(hookTimer.current);
+    },
+    []
+  );
 
   // A fresh planet (new population array: New planet or a planet switch)
   // wipes the painted wreck and any effects still in flight.
@@ -78,6 +89,8 @@ export default function PlanetSmasher() {
     painter?.reset(textures?.night ?? null);
     setEffects([]);
     laserAim.held = false;
+    stopTicker.current?.();
+    stopTicker.current = null;
     playCue("zapStop");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [populationRef]);
@@ -158,6 +171,10 @@ export default function PlanetSmasher() {
       laserAim.ticks = 0;
       aim(u, v, point);
       if (tryFire(toolId)) laserAim.ticks++;
+      stopTicker.current?.();
+      stopTicker.current = startLaserTicker(laserAim, () =>
+        tryFire(useGameStore.getState().progress.toolId)
+      );
     },
     [spawn, aim]
   );
@@ -165,12 +182,13 @@ export default function PlanetSmasher() {
     (u: number, v: number, point: Vec3) => {
       if (!laserAim.held) return;
       aim(u, v, point);
-      if (tryFire(useGameStore.getState().progress.toolId)) laserAim.ticks++;
     },
     [aim]
   );
   const holdEnd = useCallback(() => {
     laserAim.held = false;
+    stopTicker.current?.();
+    stopTicker.current = null;
     playCue("zapStop");
   }, []);
 
@@ -189,14 +207,15 @@ export default function PlanetSmasher() {
       laserAim.ticks = 0;
       aim(u, v, point);
       let n = 0;
-      const timer = setInterval(() => {
+      if (hookTimer.current) clearInterval(hookTimer.current);
+      const timer = (hookTimer.current = setInterval(() => {
         laserAim.ticks++;
         if (++n >= 8) {
           clearInterval(timer);
           laserAim.held = false;
           playCue("zapStop");
         }
-      }, 125);
+      }, 125));
     },
     [spawn, aim]
   );

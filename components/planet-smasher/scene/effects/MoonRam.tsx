@@ -18,9 +18,12 @@ import {
   toVec,
   useDispose,
   useLatest,
-  useParticles,
+  useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
+
+const C0: readonly [number, number, number] = [0.55, 0.65, 0.95];
+const C1: readonly [number, number, number] = [0.2, 0.15, 0.5];
 
 const FLIGHT = 2.5;
 const START_R = 0.27;
@@ -57,7 +60,7 @@ export default function MoonRam({
   );
   const flash = useMemo(() => new FlashSprite(0xfff6e0), []);
   const ring = useMemo(() => new SurfaceRing(0xfff0d0), []);
-  const sys = useParticles(520, true, 0.7);
+  const sys = useSharedParticles(true, 0.7);
   useDispose(flash, ring);
   const startDir = useMemo(() => new Vector3(), []);
   const pos = useMemo(() => new Vector3(), []);
@@ -118,8 +121,8 @@ export default function MoonRam({
           life: 0.7,
           size: rad * 0.7,
           endSize: rad * 0.2,
-          color: [0.55, 0.65, 0.95],
-          endColor: [0.2, 0.15, 0.5],
+          color: C0,
+          endColor: C1,
           alpha: 0.5,
         });
       }
@@ -163,7 +166,6 @@ export default function MoonRam({
       </mesh>
       <primitive object={ring.mesh} />
       <primitive object={flash.sprite} />
-      <primitive object={sys.points} />
     </>
   );
 }

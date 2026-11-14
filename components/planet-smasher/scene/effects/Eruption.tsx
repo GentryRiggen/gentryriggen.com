@@ -13,9 +13,13 @@ import {
   toVec,
   useDispose,
   useLatest,
-  useParticles,
+  useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
+
+const C0: readonly [number, number, number] = [1, 0.7, 0.2];
+const C1: readonly [number, number, number] = [0.8, 0.1, 0.02];
+const C2: readonly [number, number, number] = [0.85, 0.12, 0.02];
 
 const BULGE = 0.8;
 const END = 3.6;
@@ -39,8 +43,8 @@ export default function Eruption({
   const glow = useMemo(() => new SurfaceRing(0xff4a08), []);
   const rim = useMemo(() => new SurfaceRing(0xff9a20), []);
   const flash = useMemo(() => new FlashSprite(0xffb050), []);
-  const lava = useParticles(220, true, 1.7);
-  const ash = useParticles(60, false, -0.0);
+  const lava = useSharedParticles(true, 1.7);
+  const ash = useSharedParticles(false);
   useDispose(glow, rim, flash);
   const lifted = useMemo(() => base.clone().multiplyScalar(1.03), [base]);
 
@@ -82,8 +86,8 @@ export default function Eruption({
           vz: n.z * 0.25,
           life: 0.5,
           size: 0.03,
-          color: [1, 0.7, 0.2],
-          endColor: [0.8, 0.1, 0.02],
+          color: C0,
+          endColor: C1,
         });
       }
       if (r.age >= BULGE) {
@@ -113,7 +117,7 @@ export default function Eruption({
             size: rand(0.04, 0.085),
             endSize: 0.02,
             color: [1, rand(0.7, 0.9), 0.3],
-            endColor: [0.85, 0.12, 0.02],
+            endColor: C2,
             drag: 0.15,
           });
         }
@@ -157,8 +161,6 @@ export default function Eruption({
       <primitive object={glow.mesh} />
       <primitive object={rim.mesh} />
       <primitive object={flash.sprite} />
-      <primitive object={ash.points} />
-      <primitive object={lava.points} />
     </>
   );
 }

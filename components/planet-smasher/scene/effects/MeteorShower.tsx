@@ -12,10 +12,20 @@ import {
   tangentBasis,
   toVec,
   useLatest,
-  useParticles,
+  useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
 
+const C0: readonly [number, number, number] = [1, 0.95, 0.8];
+const C1: readonly [number, number, number] = [1, 0.6, 0.2];
+const C2: readonly [number, number, number] = [1, 0.7, 0.3];
+const C3: readonly [number, number, number] = [0.8, 0.15, 0.05];
+const C4: readonly [number, number, number] = [1, 1, 0.9];
+const C5: readonly [number, number, number] = [1, 0.8, 0.4];
+const C6: readonly [number, number, number] = [0.9, 0.2, 0.05];
+
+const scratch = new Vector3();
+const scratch2 = new Vector3();
 const COUNT = 10;
 const FLIGHT = 0.45;
 const SPREAD = 0.25;
@@ -69,7 +79,7 @@ export default function MeteorShower({
     });
   }, [effect.point, planetRadius, camera]);
 
-  const sys = useParticles(700, true, 0.6);
+  const sys = useSharedParticles(true, 0.6);
   const pos = useMemo(() => new Vector3(), []);
 
   useFrame((_, rawDt) => {
@@ -86,11 +96,11 @@ export default function MeteorShower({
         z: pos.z,
         life: 0.08,
         size: 0.09,
-        color: [1, 0.95, 0.8],
-        endColor: [1, 0.6, 0.2],
+        color: C0,
+        endColor: C1,
       });
       for (let k = 1; k <= 3; k++) {
-        const back = pos.clone().lerp(m.from, k * 0.02);
+        const back = scratch.copy(pos).lerp(m.from, k * 0.02);
         sys.emit({
           x: back.x,
           y: back.y,
@@ -98,8 +108,8 @@ export default function MeteorShower({
           life: 0.3,
           size: 0.05,
           endSize: 0.01,
-          color: [1, 0.7, 0.3],
-          endColor: [0.8, 0.15, 0.05],
+          color: C2,
+          endColor: C3,
         });
       }
       if (t >= 1) {
@@ -112,10 +122,10 @@ export default function MeteorShower({
           life: 0.25,
           size: 0.2,
           endSize: 0.1,
-          color: [1, 1, 0.9],
-          endColor: [1, 0.6, 0.2],
+          color: C4,
+          endColor: C1,
         });
-        const n = m.target.clone().normalize();
+        const n = scratch2.copy(m.target).normalize();
         for (let k = 0; k < 6; k++) {
           sys.emit({
             x: m.target.x,
@@ -127,8 +137,8 @@ export default function MeteorShower({
             life: rand(0.3, 0.7),
             size: 0.03,
             endSize: 0.005,
-            color: [1, 0.8, 0.4],
-            endColor: [0.9, 0.2, 0.05],
+            color: C5,
+            endColor: C6,
             drag: 0.5,
           });
         }
@@ -145,5 +155,5 @@ export default function MeteorShower({
     }
   });
 
-  return <primitive object={sys.points} />;
+  return null;
 }

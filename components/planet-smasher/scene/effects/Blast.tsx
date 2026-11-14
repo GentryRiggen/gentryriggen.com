@@ -23,9 +23,18 @@ import {
   toVec,
   useDispose,
   useLatest,
-  useParticles,
+  useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
+
+const C0: readonly [number, number, number] = [1, 0.95, 0.85];
+const C1: readonly [number, number, number] = [1, 0.4, 0.1];
+const C2: readonly [number, number, number] = [1, 0.5, 0.2];
+const C3: readonly [number, number, number] = [0.6, 0.1, 0.05];
+const C4: readonly [number, number, number] = [1, 0.85, 0.4];
+const C5: readonly [number, number, number] = [0.6, 0.1, 0.02];
+const C6: readonly [number, number, number] = [1, 0.55, 0.15];
+const C7: readonly [number, number, number] = [0.5, 0.1, 0.02];
 
 interface Spec {
   fall: number;
@@ -96,7 +105,7 @@ export default function Blast({
     [nuke]
   );
   const flash = useMemo(() => new FlashSprite(0xfff4dc), []);
-  const sys = useParticles(420, true, 0.5);
+  const sys = useSharedParticles(true, 0.5);
   useDispose(ring, flash);
   const pos = useMemo(() => new Vector3(), []);
   const lifted = useMemo(() => target.clone().multiplyScalar(1.03), [target]);
@@ -114,8 +123,8 @@ export default function Blast({
         z: pos.z,
         life: 0.07,
         size: nuke ? 0.2 : 0.14,
-        color: [1, 0.95, 0.85],
-        endColor: [1, 0.4, 0.1],
+        color: C0,
+        endColor: C1,
       });
       sys.emit({
         x: pos.x,
@@ -124,8 +133,8 @@ export default function Blast({
         life: 0.35,
         size: 0.06,
         endSize: 0.01,
-        color: [1, 0.5, 0.2],
-        endColor: [0.6, 0.1, 0.05],
+        color: C2,
+        endColor: C3,
       });
       if (r.age >= spec.fall) {
         r.hit = true;
@@ -142,8 +151,8 @@ export default function Blast({
             life: rand(0.7, 1.5),
             size: rand(0.12, 0.25) * (nuke ? 1.4 : 1),
             endSize: 0.45 * (nuke ? 1.4 : 1),
-            color: [1, 0.85, 0.4],
-            endColor: [0.6, 0.1, 0.02],
+            color: C4,
+            endColor: C5,
             alpha: 0.7,
             drag: 0.8,
           });
@@ -184,8 +193,8 @@ export default function Blast({
               life: 0.6,
               size: 0.14,
               endSize: 0.25,
-              color: [1, 0.55, 0.15],
-              endColor: [0.5, 0.1, 0.02],
+              color: C6,
+              endColor: C7,
               alpha: 0.55,
             });
           }
@@ -221,7 +230,6 @@ export default function Blast({
     <>
       <primitive object={ring.mesh} />
       <primitive object={flash.sprite} />
-      <primitive object={sys.points} />
       {nuke && (
         <group ref={mush} position={target} quaternion={quat} visible={false}>
           <mesh ref={stem}>

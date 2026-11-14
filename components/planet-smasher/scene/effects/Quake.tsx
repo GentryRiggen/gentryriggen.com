@@ -4,9 +4,23 @@ import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Vector3 } from "three";
 import { uvToDir } from "@/lib/planet-smasher/sphere";
-import { stepDt, rand, shake, useLatest, useParticles } from "./particles";
+import {
+  stepDt,
+  rand,
+  shake,
+  useLatest,
+  useSharedParticles,
+} from "./particles";
 import type { EffectProps } from "./effectQueue";
 
+const C0: readonly [number, number, number] = [1, 0.5, 0.12];
+const C1: readonly [number, number, number] = [0.8, 0.1, 0.02];
+const C2: readonly [number, number, number] = [1, 0.95, 0.7];
+const C3: readonly [number, number, number] = [1, 0.5, 0.1];
+const C4: readonly [number, number, number] = [1, 0.8, 0.4];
+const C5: readonly [number, number, number] = [0.9, 0.2, 0.05];
+
+const scratch = new Vector3();
 const LENGTH = 0.6;
 const SAMPLES = 36;
 const GLOW_IN = 1.0;
@@ -57,7 +71,7 @@ export default function Quake({
     return pts;
   }, [effect.u, effect.v, angle, planetRadius]);
 
-  const sys = useParticles(SAMPLES * 5 + 80);
+  const sys = useSharedParticles();
 
   useFrame((_, rawDt) => {
     const dt = stepDt(rawDt);
@@ -85,8 +99,8 @@ export default function Quake({
         life: 1.1,
         size: 0.07,
         endSize: 0.03,
-        color: [1, 0.5, 0.12],
-        endColor: [0.8, 0.1, 0.02],
+        color: C0,
+        endColor: C1,
         alpha: 0.85,
       });
       sys.emit({
@@ -96,11 +110,11 @@ export default function Quake({
         life: 0.35,
         size: 0.1,
         endSize: 0.02,
-        color: [1, 0.95, 0.7],
-        endColor: [1, 0.5, 0.1],
+        color: C2,
+        endColor: C3,
       });
       if (r.emitted % 2 === 0) {
-        const n = p.clone().normalize();
+        const n = scratch.copy(p).normalize();
         sys.emit({
           x: p.x,
           y: p.y,
@@ -110,8 +124,8 @@ export default function Quake({
           vz: n.z * 0.5 + rand(-0.3, 0.3),
           life: rand(0.3, 0.7),
           size: 0.025,
-          color: [1, 0.8, 0.4],
-          endColor: [0.9, 0.2, 0.05],
+          color: C4,
+          endColor: C5,
           drag: 0.6,
         });
       }
@@ -123,5 +137,5 @@ export default function Quake({
     }
   });
 
-  return <primitive object={sys.points} />;
+  return null;
 }
