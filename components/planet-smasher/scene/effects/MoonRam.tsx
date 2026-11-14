@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Quaternion, Vector3, type Mesh } from "three";
-import { moonPosition } from "../Moon";
+import { moonNearCamera, moonPosition } from "../Moon";
 import { moonRam } from "./moonState";
 import {
   FlashSprite,
@@ -81,9 +81,10 @@ export default function MoonRam({
     const r = run.current;
     if (!r.ready) {
       r.ready = true;
-      if (hasMoon) {
-        moonPosition(state.clock.elapsedTime, startDir);
-      } else {
+      if (hasMoon) moonPosition(state.clock.elapsedTime, startDir);
+      // A Moon hidden near the lens is no place to start from: use the
+      // off-screen corner instead.
+      if (!hasMoon || moonNearCamera(startDir, state.camera.position)) {
         const cam = state.camera;
         const up = new Vector3().setFromMatrixColumn(cam.matrixWorld, 1);
         const right = new Vector3().setFromMatrixColumn(cam.matrixWorld, 0);
