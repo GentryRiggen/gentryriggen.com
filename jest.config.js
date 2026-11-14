@@ -1,6 +1,16 @@
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const nextJest = require("next/jest");
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const SIMS = require("./jest.sims.js");
+
+/**
+ * Which tests run: "fast" skips the game-balance simulations (jest.sims.js),
+ * "sims" runs only them, unset runs everything.
+ */
+const LANE = process.env.JEST_LANE;
+const escapeRegex = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const createJestConfig = nextJest({
   // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
   dir: "./",
@@ -15,7 +25,10 @@ const customJestConfig = {
     "^three$": "<rootDir>/node_modules/three/build/three.module.js",
     "^@/(.*)$": "<rootDir>/$1",
   },
-  testMatch: ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],
+  testMatch:
+    LANE === "sims"
+      ? SIMS.map((path) => `<rootDir>/${path}`)
+      : ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],
   testPathIgnorePatterns: [
     "/node_modules/",
     "/e2e/",
@@ -28,9 +41,11 @@ const customJestConfig = {
     "/__tests__/nightSim\\.ts$",
     "/__tests__/skySim\\.ts$",
     "/__tests__/lastSim\\.ts$",
-    // CI runs the slow ones in their own job; a CLI --testPathIgnorePatterns
-    // would replace this whole list instead of adding to it.
-    ...(process.env.JEST_EXTRA_IGNORE ? [process.env.JEST_EXTRA_IGNORE] : []),
+    // A CLI --testPathIgnorePatterns would replace this whole list, so the
+    // lane is chosen by environment instead.
+    ...(LANE === "fast"
+      ? SIMS.map((path) => `<rootDir>/${escapeRegex(path)}$`)
+      : []),
   ],
   modulePathIgnorePatterns: ["<rootDir>/.claude/"],
   collectCoverageFrom: [

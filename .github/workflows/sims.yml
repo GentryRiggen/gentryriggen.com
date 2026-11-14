@@ -1,0 +1,54 @@
+name: Sims
+
+# The game-balance simulations (jest.sims.js): bots play whole runs to check
+# pacing and scorecards. They take minutes, so they live outside CI/CD: they
+# report on the pull request and on main, but never hold up a deploy. A red
+# run here means a balance regression to fix forward.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "lib/ever-onward/**"
+      - "components/ever-onward/**"
+      - "lib/plane-builder/**"
+      - "jest.sims.js"
+      - "jest.config.js"
+      - "package-lock.json"
+      - ".github/workflows/sims.yml"
+  pull_request:
+    paths:
+      - "lib/ever-onward/**"
+      - "components/ever-onward/**"
+      - "lib/plane-builder/**"
+      - "jest.sims.js"
+      - "jest.config.js"
+      - "package-lock.json"
+      - ".github/workflows/sims.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sims:
+    name: 🎲 Sims ${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1/6, 2/6, 3/6, 4/6, 5/6, 6/6]
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup
+
+      - name: 🎲 Simulations
+        env:
+          JEST_LANE: sims
+        run: npx jest --shard=${{ matrix.shard }}
