@@ -52,11 +52,12 @@ export function loadProgress(storage?: Storage | null): Progress {
         : [],
       planetId:
         typeof data.planetId === "string" &&
-        Object.hasOwn(PLANETS, data.planetId)
+        Object.prototype.hasOwnProperty.call(PLANETS, data.planetId)
           ? (data.planetId as PlanetId)
           : fresh.planetId,
       toolId:
-        typeof data.toolId === "string" && Object.hasOwn(TOOLS, data.toolId)
+        typeof data.toolId === "string" &&
+        Object.prototype.hasOwnProperty.call(TOOLS, data.toolId)
           ? (data.toolId as ToolId)
           : fresh.toolId,
     };
