@@ -1,5 +1,6 @@
 import type { GameStore } from "./store";
 import { useGameStore } from "./store";
+import { saveProgress } from "./progress";
 import type { EndingKind, ToolId } from "./tools";
 
 /**
@@ -16,19 +17,27 @@ declare global {
       fire(toolId: ToolId, u: number, v: number): void;
       forceEnding(kind: EndingKind): void;
       state(): GameStore;
+      /** Sets points to 5200 so every tool and planet is open. */
+      unlockAll(): void;
     };
   }
 }
 
 /** Puts the hooks on `window` when enabled. Returns a cleanup function. */
-export function installTestHooks(): () => void {
+export function installTestHooks(
+  /** What a tap does (hit plus painted scar); defaults to the bare store hit. */
+  onFire?: (toolId: ToolId, u: number, v: number) => void
+): () => void {
   if (!TEST_HOOKS_ENABLED || typeof window === "undefined") return () => {};
   window.__planetSmasher = {
     fire(toolId, u, v) {
-      useGameStore.getState().hit(toolId, u, v);
+      if (onFire) onFire(toolId, u, v);
+      else useGameStore.getState().hit(toolId, u, v);
     },
     forceEnding(kind) {
-      const { planet, hit } = useGameStore.getState();
+      const { planet } = useGameStore.getState();
+      const hit = (id: ToolId, u: number, v: number) =>
+        onFire ? onFire(id, u, v) : useGameStore.getState().hit(id, u, v);
       if (!planet) return;
       if (kind === "swallowed") {
         hit("blackHole", 0.5, 0.5);
@@ -40,6 +49,12 @@ export function installTestHooks(): () => void {
       hit("asteroid", 0.5, 0.5);
     },
     state: () => useGameStore.getState(),
+    unlockAll() {
+      const { progress } = useGameStore.getState();
+      const next = { ...progress, points: Math.max(progress.points, 5200) };
+      saveProgress(next);
+      useGameStore.setState({ progress: next });
+    },
   };
   return () => {
     delete window.__planetSmasher;

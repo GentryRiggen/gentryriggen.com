@@ -7,6 +7,7 @@ import {
 } from "@/lib/planet-smasher/population";
 
 export interface PlanetTextures {
+  id: PlanetId;
   day: HTMLImageElement | HTMLCanvasElement;
   night: HTMLImageElement | HTMLCanvasElement | null;
   population: PopulationGrid;
@@ -184,7 +185,7 @@ function iceWorld(): Proc {
   );
 }
 
-async function load(id: PlanetId): Promise<PlanetTextures> {
+async function load(id: PlanetId): Promise<Omit<PlanetTextures, "id">> {
   if (id === "earth") {
     const [day, night] = await Promise.all([
       loadImage("/planet-smasher/textures/earth-day.jpg"),
@@ -203,7 +204,7 @@ async function load(id: PlanetId): Promise<PlanetTextures> {
 export function loadPlanetTextures(id: PlanetId): Promise<PlanetTextures> {
   let p = cache.get(id);
   if (!p) {
-    p = load(id);
+    p = load(id).then((t) => ({ ...t, id }));
     // A failed load must not stick.
     p.catch(() => cache.delete(id));
     cache.set(id, p);

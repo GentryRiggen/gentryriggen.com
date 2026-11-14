@@ -7,7 +7,8 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Vector3, type DirectionalLight, type Mesh } from "three";
 import type { Vec3 } from "@/lib/planet-smasher/sphere";
 import Moon from "./Moon";
-import Planet, { SUN_POSITION } from "./Planet";
+import type { DamagePainter } from "./DamagePainter";
+import Planet, { SUN_VIEW_DIR } from "./Planet";
 import type { PlanetTextures } from "./planetTextures";
 import { isTap } from "./tapGesture";
 
@@ -18,6 +19,7 @@ interface StageProps {
   onHoldEnd?(): void;
   holdMode: boolean;
   textures: PlanetTextures;
+  painter: DamagePainter;
   hasMoon: boolean;
 }
 
@@ -36,6 +38,7 @@ function Scene({
   onHoldEnd,
   holdMode,
   textures,
+  painter,
   hasMoon,
 }: StageProps) {
   const controls = useRef<OrbitControlsImpl>(null);
@@ -43,17 +46,16 @@ function Scene({
   const down = useRef<Down | null>(null);
   const holding = useRef(false);
   const sun = useRef<DirectionalLight>(null);
-  const [sunDir] = useState(() => new Vector3(...SUN_POSITION).normalize());
+  const [sunDir] = useState(() => new Vector3(...SUN_VIEW_DIR).normalize());
   const resume = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // The sun stays to the viewer's left as the camera orbits, so the night
-  // side is always in view.
+  // The sun stays upper left of the viewer as the camera orbits, so the
+  // face in view is mostly lit with a night crescent on the right.
   useFrame(({ camera }) => {
-    const a = Math.atan2(camera.position.x, camera.position.z);
-    const [x, y, z] = SUN_POSITION;
-    const c = Math.cos(a);
-    const s = Math.sin(a);
-    sunDir.set(x * c + z * s, y, -x * s + z * c).normalize();
+    sunDir
+      .set(...SUN_VIEW_DIR)
+      .normalize()
+      .transformDirection(camera.matrixWorld);
     sun.current?.position.copy(sunDir).multiplyScalar(6);
   });
 
@@ -132,11 +134,12 @@ function Scene({
     <>
       <color attach="background" args={["#05060f"]} />
       <Stars count={3000} radius={60} depth={40} factor={3} fade />
-      <ambientLight intensity={0.15} />
-      <directionalLight ref={sun} position={SUN_POSITION} intensity={2.2} />
+      <ambientLight intensity={0.35} />
+      <directionalLight ref={sun} intensity={2.2} />
       <Planet
         ref={planet}
         textures={textures}
+        painter={painter}
         sunDir={sunDir}
         onPointerDown={handleDown}
         onPointerUp={handleUp}
@@ -164,7 +167,7 @@ export default function Stage(props: StageProps) {
       data-testid="planet-canvas"
       className="h-full w-full touch-none select-none"
     >
-      <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 3.2], fov: 45 }}>
+      <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 3.7], fov: 45 }}>
         <Scene {...props} />
       </Canvas>
     </div>

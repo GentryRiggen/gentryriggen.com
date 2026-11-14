@@ -13,6 +13,7 @@ jest.mock("@/components/ship-builder/hooks/useWebGLSupport", () => jest.fn());
 jest.mock("../scene/planetTextures", () => ({
   loadPlanetTextures: () =>
     Promise.resolve({
+      id: "earth",
       day: document.createElement("canvas"),
       night: null,
       population: {

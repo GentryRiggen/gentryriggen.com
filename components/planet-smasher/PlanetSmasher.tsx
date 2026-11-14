@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import useWebGLSupport from "@/components/ship-builder/hooks/useWebGLSupport";
 import { PLANETS } from "@/lib/planet-smasher/planets";
 import { loadProgress } from "@/lib/planet-smasher/progress";
+import { TOOLS, type ToolId } from "@/lib/planet-smasher/tools";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import {
   TEST_HOOKS_ENABLED,
   installTestHooks,
 } from "@/lib/planet-smasher/testHooks";
+import Hud from "./ui/Hud";
+import { DamagePainter } from "./scene/DamagePainter";
 import type { PlanetTextures } from "./scene/planetTextures";
 import { loadPlanetTextures } from "./scene/planetTextures";
 
@@ -33,10 +36,32 @@ export default function PlanetSmasher() {
   const [textures, setTextures] = useState<PlanetTextures | null>(null);
   const [failed, setFailed] = useState(false);
 
+  const painter = useMemo(
+    () => (textures ? new DamagePainter(textures.night) : null),
+    [textures]
+  );
+  const populationRef = useGameStore((s) => s.planet?.remaining);
+
+  // A fresh planet (new population array) wipes the painted wreck.
+  useEffect(() => {
+    painter?.reset(textures?.night ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [populationRef]);
+
+  // Hit the planet and paint the scar. (Task 6 moves both to impact time.)
+  const fireAt = useCallback(
+    (toolId: ToolId, u: number, v: number) => {
+      useGameStore.getState().hit(toolId, u, v);
+      const tool = TOOLS[toolId];
+      if (tool.stamp !== "none") painter?.stamp(tool.stamp, u, v, tool.radius);
+    },
+    [painter]
+  );
+
   useEffect(() => {
     if (!TEST_HOOKS_ENABLED) return;
-    return installTestHooks();
-  }, []);
+    return installTestHooks(fireAt);
+  }, [fireAt]);
 
   // The first load reads the saved planet; later planet changes (store
   // selectPlanet) reload textures for the new one.
@@ -72,12 +97,18 @@ export default function PlanetSmasher() {
       ) : webgl === null || !textures ? (
         <Message>Warming up the planet…</Message>
       ) : (
-        <Stage
-          textures={textures}
-          hasMoon={hasMoon}
-          holdMode={false}
-          onFire={(u, v) => useGameStore.getState().hit("asteroid", u, v)}
-        />
+        <>
+          <Stage
+            textures={textures}
+            painter={painter!}
+            hasMoon={hasMoon}
+            holdMode={false}
+            onFire={(u, v) =>
+              fireAt(useGameStore.getState().progress.toolId, u, v)
+            }
+          />
+          <Hud />
+        </>
       )}
     </div>
   );
