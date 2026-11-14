@@ -54,6 +54,16 @@ export default function Arsenal() {
     return () => clearTimeout(t);
   }, [shaking]);
 
+  // Keep the chosen tile on screen when the tray is wider than the iPad: on
+  // a tap, and when a saved tool is restored.
+  useEffect(() => {
+    tiles.current[selected]?.scrollIntoView?.({
+      inline: "nearest",
+      block: "nearest",
+      behavior: "smooth",
+    });
+  }, [selected]);
+
   const tap = (id: ToolId, locked: boolean) => {
     if (locked) {
       setShaking(id);
@@ -63,12 +73,6 @@ export default function Arsenal() {
     clearFresh(item);
     useGameStore.getState().selectTool(id);
     playCue("uiTap");
-    // Keep the chosen tile on screen when the tray is wider than the iPad.
-    tiles.current[id]?.scrollIntoView?.({
-      inline: "nearest",
-      block: "nearest",
-      behavior: "smooth",
-    });
   };
 
   return (

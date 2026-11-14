@@ -67,4 +67,29 @@ describe("Arsenal", () => {
       HTMLElement.prototype.scrollIntoView = original;
     }
   });
+
+  it("scrolls a tool restored from a save into view on load", () => {
+    const scroll = jest.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    try {
+      act(() => {
+        useGameStore.setState({
+          progress: {
+            ...freshProgress(),
+            points: 9000,
+            toolId: "mothership",
+          },
+        });
+        resetFresh();
+      });
+      render(<Arsenal />);
+      expect(scroll).toHaveBeenCalledTimes(1);
+      expect(scroll.mock.contexts[0]).toBe(
+        screen.getByRole("button", { name: "Mothership" })
+      );
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
 });
