@@ -15,5 +15,11 @@ export function siteForPath(pathname: string): Site | null {
   if (path === "/plane-builder" || path.startsWith("/plane-builder/")) {
     return "plane-builder";
   }
+  if (path === "/planet-smasher" || path.startsWith("/planet-smasher/")) {
+    return "planet-smasher";
+  }
+  if (path === "/ever-onward" || path.startsWith("/ever-onward/")) {
+    return "ever-onward";
+  }
   return null;
 }

@@ -62,6 +62,31 @@ it("shows a Plane Builder tab scoped to its views", async () => {
   ).toBeInTheDocument();
 });
 
+it("shows Planet Smasher and Ever Onward tabs scoped to their views", async () => {
+  mockClient.fetchPageviews.mockResolvedValue({
+    docs: [
+      view({ vid: "a", path: "/planet-smasher", site: "planet-smasher" }),
+      view({
+        vid: "b",
+        path: "/planet-smasher/versions",
+        site: "planet-smasher",
+      }),
+      view({ vid: "c", path: "/ever-onward", site: "ever-onward" }),
+    ],
+    truncated: false,
+  });
+  render(<Dashboard />);
+  await screen.findByTestId("stat-views");
+  await userEvent.click(screen.getByRole("tab", { name: "Planet Smasher" }));
+  expect(
+    within(screen.getByTestId("stat-views")).getByText("2")
+  ).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("tab", { name: "Ever Onward" }));
+  expect(
+    within(screen.getByTestId("stat-views")).getByText("1")
+  ).toBeInTheDocument();
+});
+
 it("switches scope with the tabs", async () => {
   render(<Dashboard />);
   await screen.findByTestId("stat-views");

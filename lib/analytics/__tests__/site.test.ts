@@ -9,10 +9,20 @@ describe("siteForPath", () => {
     ["/plane-builder", "plane-builder"],
     ["/plane-builder/", "plane-builder"],
     ["/plane-builder/versions", "plane-builder"],
+    ["/planet-smasher", "planet-smasher"],
+    ["/planet-smasher/", "planet-smasher"],
+    ["/planet-smasher/versions", "planet-smasher"],
+    ["/ever-onward", "ever-onward"],
+    ["/ever-onward/", "ever-onward"],
+    ["/ever-onward/versions", "ever-onward"],
     ["/admin", null],
     ["/nope", null],
     ["/ship-builders", null],
     ["/plane-builderx", null],
+    ["/planet-smasherx", null],
+    ["/planet-smashers", null],
+    ["/ever-onwards", null],
+    ["/ever-onward.html", null],
   ])("%s -> %s", (path, site) => {
     expect(siteForPath(path)).toBe(site);
   });

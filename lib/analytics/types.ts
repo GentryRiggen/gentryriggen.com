@@ -1,5 +1,12 @@
-export type Site = "home" | "ship-builder" | "plane-builder";
-export const SITES: readonly Site[] = ["home", "ship-builder", "plane-builder"];
+export type Site =
+  "home" | "ship-builder" | "plane-builder" | "planet-smasher" | "ever-onward";
+export const SITES: readonly Site[] = [
+  "home",
+  "ship-builder",
+  "plane-builder",
+  "planet-smasher",
+  "ever-onward",
+];
 
 export type Device = "mobile" | "tablet" | "desktop";
 export type ScreenBucket = "<640" | "640-1023" | "1024-1439" | "1440+";
