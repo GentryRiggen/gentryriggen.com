@@ -2,20 +2,28 @@
 
 import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
-import type { Group } from "three";
+import type { Group, Vector3 } from "three";
+import { moonRam } from "./effects/moonState";
 
 const ORBIT_RADIUS = 4;
 const LAP_SECONDS = 60;
 // Starts behind and left of the planet, in view from the first frame.
 const START_ANGLE = (5 * Math.PI) / 4;
 
+/** Where the Moon is `t` seconds into the page's clock. */
+export function moonPosition(t: number, out: Vector3): Vector3 {
+  const a = START_ANGLE + (t / LAP_SECONDS) * Math.PI * 2;
+  return out.set(Math.cos(a) * ORBIT_RADIUS, 0.3, Math.sin(a) * ORBIT_RADIUS);
+}
+
 export default function Moon() {
   const ref = useRef<Group>(null);
   useFrame(({ clock }) => {
     const g = ref.current;
     if (!g) return;
-    const a = START_ANGLE + (clock.elapsedTime / LAP_SECONDS) * Math.PI * 2;
-    g.position.set(Math.cos(a) * ORBIT_RADIUS, 0.3, Math.sin(a) * ORBIT_RADIUS);
+    moonPosition(clock.elapsedTime, g.position);
+    // A ramming moon takes its place while it flies.
+    g.visible = moonRam.active === 0;
   });
   return (
     <group ref={ref}>

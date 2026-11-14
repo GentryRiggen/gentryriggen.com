@@ -23,3 +23,11 @@ export function angularDistance(a: Vec3, b: Vec3): number {
   const dot = a.x * b.x + a.y * b.y + a.z * b.z;
   return Math.acos(Math.min(1, Math.max(-1, dot)));
 }
+
+/** Inverse of `uvToDir` for a unit direction. */
+export function dirToUv(d: Vec3): { u: number; v: number } {
+  const phi = Math.atan2(d.z, -d.x);
+  const u = (((phi / (2 * Math.PI)) % 1) + 1) % 1;
+  const theta = Math.acos(Math.min(1, Math.max(-1, d.y)));
+  return { u, v: 1 - theta / Math.PI };
+}

@@ -11,11 +11,14 @@ import { OrbitControls, Stars } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Vector3, type DirectionalLight, type Mesh } from "three";
 import type { Vec3 } from "@/lib/planet-smasher/sphere";
+import type { ToolId } from "@/lib/planet-smasher/tools";
 import Moon from "./Moon";
 import type { DamagePainter } from "./DamagePainter";
 import Planet, { SUN_VIEW_DIR } from "./Planet";
 import type { PlanetTextures } from "./planetTextures";
 import { isTap } from "./tapGesture";
+import EffectLayer from "./effects/EffectLayer";
+import type { ActiveEffect, ImpactOpts } from "./effects/effectQueue";
 
 interface StageProps {
   onFire(u: number, v: number, point: Vec3): void;
@@ -26,6 +29,15 @@ interface StageProps {
   textures: PlanetTextures;
   painter: DamagePainter;
   hasMoon: boolean;
+  effects: ActiveEffect[];
+  onImpact(
+    toolId: ToolId,
+    u: number,
+    v: number,
+    point: Vec3,
+    opts?: ImpactOpts
+  ): void;
+  onEffectDone(id: number): void;
 }
 
 const AUTO_ROTATE_PAUSE_MS = 4000;
@@ -46,6 +58,9 @@ function Scene({
   textures,
   painter,
   hasMoon,
+  effects,
+  onImpact,
+  onEffectDone,
 }: StageProps) {
   const controls = useRef<OrbitControlsImpl>(null);
   const planet = useRef<Mesh>(null);
@@ -171,6 +186,12 @@ function Scene({
         onPointerMove={handleMove}
       />
       {hasMoon && <Moon />}
+      <EffectLayer
+        effects={effects}
+        hasMoon={hasMoon}
+        onImpact={onImpact}
+        onEffectDone={onEffectDone}
+      />
       <OrbitControls
         ref={controls}
         enablePan={false}

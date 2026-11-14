@@ -1,5 +1,6 @@
 import type { GameStore } from "./store";
 import { useGameStore } from "./store";
+import { fxClock } from "./fxClock";
 import { saveProgress } from "./progress";
 import type { EndingKind, ToolId } from "./tools";
 
@@ -19,6 +20,10 @@ declare global {
       state(): GameStore;
       /** Sets points to 5200 so every tool and planet is open. */
       unlockAll(): void;
+      /** Effects started so far (taps the cooldown let through, and hook fires). */
+      shots?: number;
+      /** Lets effects take bigger frame steps (real-time pace in slow renderers). */
+      setMaxFrameStep(seconds: number): void;
     };
   }
 }
@@ -47,6 +52,9 @@ export function installTestHooks(
       planet.familyDamage[kind] += 1e6;
       planet.health = 0.001;
       hit("asteroid", 0.5, 0.5);
+    },
+    setMaxFrameStep(seconds) {
+      fxClock.maxDt = seconds;
     },
     state: () => useGameStore.getState(),
     unlockAll() {

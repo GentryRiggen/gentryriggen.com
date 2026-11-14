@@ -1,4 +1,4 @@
-import { angularDistance, uvToDir } from "../sphere";
+import { angularDistance, dirToUv, uvToDir } from "../sphere";
 
 describe("sphere", () => {
   it("maps uv to the three.js SphereGeometry direction", () => {
@@ -21,5 +21,22 @@ describe("sphere", () => {
     expect(
       angularDistance(uvToDir(0.999, 0.5), uvToDir(0.001, 0.5))
     ).toBeLessThan(0.02);
+  });
+});
+
+describe("dirToUv", () => {
+  it("round-trips with uvToDir", () => {
+    for (const [u, v] of [
+      [0.5, 0.5],
+      [0.1, 0.8],
+      [0.93, 0.2],
+      [0.0, 0.5],
+    ]) {
+      const back = dirToUv(uvToDir(u, v));
+      expect(back.v).toBeCloseTo(v, 6);
+      expect(
+        Math.min(Math.abs(back.u - u), 1 - Math.abs(back.u - u))
+      ).toBeCloseTo(0, 6);
+    }
   });
 });
