@@ -25,6 +25,13 @@ describe("stampEllipses", () => {
     expect(e.some((x) => x.cx > 2000)).toBe(true);
     expect(e.some((x) => x.cx < 50)).toBe(true);
   });
+  it("copies early enough for a crater's wide blob", () => {
+    // rx is ~25 px here; 1.7 * rx reaches past the left edge from cx = 40.
+    const near = stampEllipses(40 / 2048, 0.5, 0.1, 2048, 1024);
+    expect(near).toHaveLength(2);
+    const far = stampEllipses(0.5, 0.5, 0.1, 2048, 1024);
+    expect(far).toHaveLength(1);
+  });
   it("does not copy a stamp in the middle", () => {
     expect(stampEllipses(0.5, 0.5, 0.1, 2048, 1024)).toHaveLength(1);
   });
@@ -68,6 +75,18 @@ describe("DamagePainter", () => {
       p.stamp(k, 0.3, 0.6, 0.1);
       expect(p.version).toBe(i + 1);
     });
+  });
+
+  it("only flags the layers a stamp touched", () => {
+    const p = new DamagePainter(null);
+    p.takeDirty();
+    p.stamp("ice", 0.3, 0.6, 0.1);
+    expect([...p.takeDirty()].sort()).toEqual(["damage", "lights"]);
+    expect(p.takeDirty().size).toBe(0);
+    p.stamp("crater", 0.3, 0.6, 0.1);
+    expect([...p.takeDirty()].sort()).toEqual(["damage", "height", "lights"]);
+    p.reset(null);
+    expect(p.takeDirty().size).toBe(4);
   });
 
   it("bumps the version on reset", () => {

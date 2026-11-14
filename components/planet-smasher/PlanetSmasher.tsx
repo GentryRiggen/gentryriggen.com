@@ -11,7 +11,8 @@ import {
   TEST_HOOKS_ENABLED,
   installTestHooks,
 } from "@/lib/planet-smasher/testHooks";
-import { tryFire } from "@/lib/planet-smasher/cooldown";
+import { tryFire as tryCooldown } from "@/lib/planet-smasher/cooldown";
+import { isUnlocked } from "@/lib/planet-smasher/unlocks";
 import { uvToDir, type Vec3 } from "@/lib/planet-smasher/sphere";
 import Arsenal from "./ui/Arsenal";
 import Hud from "./ui/Hud";
@@ -38,6 +39,13 @@ function Message({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
+}
+
+/** A tap or hold fires only an unlocked tool that is off cooldown. */
+function tryFire(toolId: ToolId): boolean {
+  const { points } = useGameStore.getState().progress;
+  if (!isUnlocked({ kind: "tool", id: toolId }, points)) return false;
+  return tryCooldown(toolId);
 }
 
 export default function PlanetSmasher() {

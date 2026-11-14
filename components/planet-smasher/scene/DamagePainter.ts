@@ -25,8 +25,9 @@ export function stampEllipses(
   const cx = u * width;
   const cy = (1 - v) * height;
   const out: StampEllipse[] = [{ cx, cy, rx, ry }];
-  if (cx - rx < 0) out.push({ cx: cx + width, cy, rx, ry });
-  if (cx + rx > width) out.push({ cx: cx - width, cy, rx, ry });
+  // Crater blobs reach about 1.65 radii, so copy across the seam early.
+  if (cx - 1.7 * rx < 0) out.push({ cx: cx + width, cy, rx, ry });
+  if (cx + 1.7 * rx > width) out.push({ cx: cx - width, cy, rx, ry });
   return out;
 }
 
@@ -81,7 +82,7 @@ interface Layers {
   height: Ctx;
 }
 
-type LayerKey = keyof Layers;
+export type LayerKey = keyof Layers;
 const SCALE: Record<LayerKey, number> = {
   damage: 1,
   lights: 1,
@@ -95,6 +96,8 @@ export class DamagePainter {
   readonly lights = makeCanvas(DAMAGE_W, DAMAGE_H);
   readonly height = makeCanvas(HEIGHT_W, HEIGHT_H);
   version = 0;
+  /** Layers stamped since the last takeDirty (so only those re-upload). */
+  private dirty = new Set<LayerKey>();
 
   private ctx: Layers | null;
   private count = 0;
@@ -126,7 +129,21 @@ export class DamagePainter {
       if (lights) c.lights.drawImage(lights, 0, 0, DAMAGE_W, DAMAGE_H);
     }
     this.count = 0;
+    this.markAll();
     this.version++;
+  }
+
+  private markAll() {
+    for (const k of ["damage", "glow", "lights", "height"] as const) {
+      this.dirty.add(k);
+    }
+  }
+
+  /** The layers changed since the last call; clears the list. */
+  takeDirty(): Set<LayerKey> {
+    const out = this.dirty;
+    this.dirty = new Set();
+    return out;
   }
 
   /** Runs `draw` once per ellipse copy, in that ellipse's unit space. */
@@ -137,6 +154,7 @@ export class DamagePainter {
   ) {
     const ctx = this.ctx?.[layer];
     if (!ctx) return;
+    this.dirty.add(layer);
     const k = SCALE[layer];
     for (const e of ellipses) {
       ctx.save();
@@ -168,6 +186,7 @@ export class DamagePainter {
   ) {
     const ctx = this.ctx?.[layer];
     if (!ctx) return;
+    this.dirty.add(layer);
     const k = SCALE[layer];
     ctx.save();
     ctx.globalCompositeOperation = composite;

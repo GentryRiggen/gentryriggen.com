@@ -5,6 +5,7 @@ import {
   AdditiveBlending,
   BackSide,
   CanvasTexture,
+  LinearFilter,
   LinearSRGBColorSpace,
   MeshStandardMaterial,
   SRGBColorSpace,
@@ -69,16 +70,30 @@ function toTexture(source: HTMLImageElement | HTMLCanvasElement): Texture {
   return t;
 }
 
-function canvasTexture(c: HTMLCanvasElement, srgb: boolean): CanvasTexture {
+/**
+ * Mipmaps only where the shimmer matters (the big damage and lights maps);
+ * the height and glow maps are smooth blobs, so they skip the mip rebuild.
+ */
+function canvasTexture(
+  c: HTMLCanvasElement,
+  srgb: boolean,
+  mipmaps = true
+): CanvasTexture {
   const t = new CanvasTexture(c);
+  if (!mipmaps) {
+    t.generateMipmaps = false;
+    t.minFilter = LinearFilter;
+  }
   t.colorSpace = srgb ? SRGBColorSpace : LinearSRGBColorSpace;
   t.wrapS = RepeatWrapping;
   t.anisotropy = 4;
   return t;
 }
 
-function markDirty(maps: Record<string, Texture>) {
-  for (const t of Object.values(maps)) t.needsUpdate = true;
+function markDirty(maps: Record<string, Texture>, layers: Set<string>) {
+  for (const k of layers) {
+    if (maps[k]) maps[k].needsUpdate = true;
+  }
 }
 
 /** The globe: the day map, painted damage, glow and city lights. */
@@ -90,9 +105,9 @@ const Planet = forwardRef<Mesh, PlanetProps>(function Planet(
   const maps = useMemo(
     () => ({
       damage: canvasTexture(painter.damage, true),
-      glow: canvasTexture(painter.glow, true),
+      glow: canvasTexture(painter.glow, true, false),
       lights: canvasTexture(painter.lights, true),
-      height: canvasTexture(painter.height, false),
+      height: canvasTexture(painter.height, false, false),
     }),
     [painter]
   );
@@ -176,7 +191,7 @@ totalEmissiveRadiance += texture2D(lightsMap, vMapUv).rgb * nightK
     const last = seen.current;
     if (last.painter !== painter || last.version !== painter.version) {
       seen.current = { painter, version: painter.version };
-      markDirty(maps);
+      markDirty(maps, painter.takeDirty());
     }
   });
 
