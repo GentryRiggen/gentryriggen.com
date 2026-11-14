@@ -1,0 +1,32 @@
+{
+  "name": "Planet Smasher",
+  "short_name": "Planet Smasher",
+  "description": "Smash planets with asteroids and more.",
+  "id": "/planet-smasher",
+  "start_url": "/planet-smasher",
+  "scope": "/planet-smasher",
+  "display": "standalone",
+  "orientation": "landscape",
+  "theme_color": "#05060f",
+  "background_color": "#05060f",
+  "icons": [
+    {
+      "src": "/planet-smasher-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/planet-smasher-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/planet-smasher-icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
