@@ -52,6 +52,21 @@ export default function Hobbies() {
         </span>
         ).
       </p>
+      <p className="leading-relaxed">
+        🌍 And a planet-smashing game where you wreck whole worlds with
+        asteroids, nukes and black holes:{" "}
+        <a
+          href="/planet-smasher"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /planet-smasher
+        </a>{" "}
+        (or type{" "}
+        <span className="text-green-600 dark:text-green-300">
+          &apos;planets&apos;
+        </span>
+        ).
+      </p>
     </div>
   );
 }

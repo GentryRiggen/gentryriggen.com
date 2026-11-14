@@ -174,6 +174,7 @@ const HELP_TEXT = `Available commands:
   ships            Play my ship-building game
   planes           Play my plane-flying game
   onward           Play Ever Onward, my incremental game
+  planets          Play my planet-smashing game
   hire me          Get in touch
   git status       Check repository status
   git blame        Find out who did it
@@ -354,6 +355,23 @@ function planesOutput(): ReactNode {
   );
 }
 
+function planetsOutput(): ReactNode {
+  return (
+    <div className="space-y-1">
+      <p>A planet-smashing game I made for my boys 🌍☄️</p>
+      <p>
+        Launching the asteroids...{" "}
+        <a
+          href="/planet-smasher"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /planet-smasher
+        </a>
+      </p>
+    </div>
+  );
+}
+
 function everOnwardOutput(): ReactNode {
   return (
     <div className="space-y-1">
@@ -421,6 +439,15 @@ export function getCommandResponse(
       output: planesOutput(),
       shouldClear: false,
       navigateTo: "/plane-builder",
+    };
+  }
+
+  // --- planets ---
+  if (lower === "planets" || lower === "planet-smasher" || lower === "smash") {
+    return {
+      output: planetsOutput(),
+      shouldClear: false,
+      navigateTo: "/planet-smasher",
     };
   }
 

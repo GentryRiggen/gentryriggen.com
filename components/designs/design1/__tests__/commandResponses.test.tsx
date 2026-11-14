@@ -31,6 +31,30 @@ describe("planes command", () => {
   });
 });
 
+describe("planets command", () => {
+  it.each(["planets", "planet-smasher", "smash", "PLANETS"])(
+    "responds to %s with a blurb, a link, and a navigation target",
+    (input) => {
+      const result = getCommandResponse(input, []);
+      render(<>{result.output}</>);
+
+      expect(
+        screen.getByText(/A planet-smashing game I made for my boys/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /\/planet-smasher/ })
+      ).toHaveAttribute("href", "/planet-smasher");
+      expect(result.navigateTo).toBe("/planet-smasher");
+      expect(result.shouldClear).toBe(false);
+    }
+  );
+
+  it("is listed in help", () => {
+    const result = getCommandResponse("help", []);
+    expect(result.output).toEqual(expect.stringMatching(/^\s+planets\s/m));
+  });
+});
+
 describe("ever onward command", () => {
   it.each([
     "onward",

@@ -29,6 +29,11 @@ const MACHINES_LINE = (_: string, el: Element | null) =>
   el.textContent ===
     "💡 And a little series of incremental games about robots who take one job too far: /ever-onward (or type 'onward').";
 
+const PLANETS_LINE = (_: string, el: Element | null) =>
+  el?.tagName === "P" &&
+  el.textContent ===
+    "🌍 And a planet-smashing game where you wreck whole worlds with asteroids, nukes and black holes: /planet-smasher (or type 'planets').";
+
 const queryPrompt = () => screen.queryByLabelText("Terminal command input");
 
 function advance(ms: number) {
@@ -83,6 +88,10 @@ describe("Terminal boot sequence", () => {
       screen.getByRole("link", { name: "/plane-builder" })
     ).toHaveAttribute("href", "/plane-builder");
     expect(screen.getByText(MACHINES_LINE)).toBeInTheDocument();
+    expect(screen.getByText(PLANETS_LINE)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "/planet-smasher" })
+    ).toHaveAttribute("href", "/planet-smasher");
     expect(screen.getByRole("link", { name: "/ever-onward" })).toHaveAttribute(
       "href",
       "/ever-onward"
