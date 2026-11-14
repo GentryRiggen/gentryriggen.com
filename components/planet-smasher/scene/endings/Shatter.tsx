@@ -4,11 +4,9 @@ import { useMemo, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
   BufferGeometry,
-  DoubleSide,
   Float32BufferAttribute,
   LineBasicMaterial,
   LineSegments,
-  MeshStandardMaterial,
   Quaternion,
   Vector3,
   type Material,
@@ -26,6 +24,7 @@ import {
   useParticles,
 } from "../effects/particles";
 import { chunkPivot, getChunkSet } from "./chunks";
+import { innerMaterial } from "./chunkWarmup";
 import { planetFx } from "./planetFx";
 
 interface ShatterProps {
@@ -75,19 +74,7 @@ export default function Shatter({
   const run = useRef({ age: 0, burst: false, done: false });
   const meshes = useRef<(Mesh | null)[]>([]);
 
-  const inner = useMemo(
-    () =>
-      new MeshStandardMaterial({
-        // Vertex colours: dark rim to a hot (or icy) core.
-        vertexColors: !frozen,
-        color: frozen ? "#8fc8ee" : "#ffffff",
-        emissive: frozen ? "#4a96c0" : "#ff6a18",
-        emissiveIntensity: frozen ? 0.12 : 0.14,
-        roughness: 0.8,
-        side: DoubleSide,
-      }),
-    [frozen]
-  );
+  const inner = useMemo(() => innerMaterial(frozen), [frozen]);
   const motion = useMemo(
     () =>
       seeds.map((s) => ({

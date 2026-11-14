@@ -9,6 +9,7 @@ import {
 } from "@react-three/fiber";
 import { OrbitControls, Stars } from "@react-three/drei";
 import RenderInfoProbe from "./RenderInfoProbe";
+import ChunkWarmup from "./ChunkWarmup";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Vector3, type DirectionalLight, type Mesh } from "three";
 import type { Vec3 } from "@/lib/planet-smasher/sphere";
@@ -219,6 +220,7 @@ export default function Stage(props: StageProps) {
       <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 3.7], fov: 45 }}>
         <Scene {...props} />
         <RenderInfoProbe />
+        <ChunkWarmup />
       </Canvas>
     </div>
   );
