@@ -46,7 +46,8 @@ interface EffectLayerProps {
     u: number,
     v: number,
     point: Vec3,
-    opts?: ImpactOpts
+    opts?: ImpactOpts,
+    fireId?: number
   ): void;
   onEffectDone(id: number): void;
 }
@@ -72,7 +73,7 @@ export default function EffectLayer({
             planetRadius={planetRadius}
             {...(e.toolId === "moonRam" ? { hasMoon } : {})}
             onImpact={(u, v, point, opts) =>
-              onImpact(e.toolId, u, v, point, opts)
+              onImpact(e.toolId, u, v, point, opts, e.id)
             }
             onDone={() => onEffectDone(e.id)}
           />

@@ -25,9 +25,24 @@ export default function ComboBadge() {
   useEffect(() => {
     let fade: ReturnType<typeof setTimeout> | undefined;
     let hide: ReturnType<typeof setTimeout> | undefined;
+    let lastCount = 0;
     const off = useGameStore.subscribe((s, prev) => {
       const hit = s.lastHit;
       if (!hit || hit === prev.lastHit) return;
+      // Later ticks of the same shot keep the badge up without a new ding.
+      const repeat = hit.combo === lastCount && hit.combo >= COMBO_MIN;
+      lastCount = hit.combo;
+      if (repeat) {
+        clearTimeout(fade);
+        clearTimeout(hide);
+        setShown((c) => (c ? { ...c, fading: false } : c));
+        fade = setTimeout(
+          () => setShown((c) => (c ? { ...c, fading: true } : c)),
+          SHOW_MS - FADE_MS
+        );
+        hide = setTimeout(() => setShown(null), SHOW_MS);
+        return;
+      }
       clearTimeout(fade);
       clearTimeout(hide);
       if (hit.combo < COMBO_MIN) {
@@ -52,7 +67,7 @@ export default function ComboBadge() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none absolute inset-x-0 top-[calc(max(0.75rem,env(safe-area-inset-top))+6.5rem)] flex justify-center sm:top-[calc(max(0.75rem,env(safe-area-inset-top))+8.5rem)]"
+      className="pointer-events-none absolute inset-x-0 top-[calc(max(0.75rem,env(safe-area-inset-top))+9rem)] flex justify-center sm:top-[calc(max(0.75rem,env(safe-area-inset-top))+12rem)]"
     >
       {shown && (
         <div

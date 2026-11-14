@@ -107,10 +107,17 @@ export default function PlanetSmasher() {
 
   // Damage lands when an effect hits: hit the planet and paint the scar.
   const handleImpact = useCallback(
-    (toolId: ToolId, u: number, v: number, _point: Vec3, opts?: ImpactOpts) => {
+    (
+      toolId: ToolId,
+      u: number,
+      v: number,
+      _point: Vec3,
+      opts?: ImpactOpts,
+      fireId?: number
+    ) => {
       // Effects still in flight once the planet is ending hit nothing.
       if (useGameStore.getState().phase !== "playing") return;
-      useGameStore.getState().hit(toolId, u, v);
+      useGameStore.getState().hit(toolId, u, v, undefined, fireId);
       const tool = TOOLS[toolId];
       // The laser hums for as long as it is held, not once per tick.
       if (tool.mode !== "hold") {

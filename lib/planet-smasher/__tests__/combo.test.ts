@@ -57,3 +57,41 @@ describe("combo", () => {
     expect(s().combo).toEqual(combo);
   });
 });
+
+describe("combo counts once per shot", () => {
+  it("six impacts of one fire move nothing past 1", () => {
+    const before = s().progress.points;
+    let gained = 0;
+    for (let i = 0; i < 6; i++) {
+      const p = s().progress.points;
+      const r = s().hit("asteroid", 0.1 + i * 0.1, 0.5, i * 100, 7);
+      gained += s().progress.points - p - r.points;
+    }
+    expect(s().combo.count).toBe(1);
+    expect(gained).toBeLessThanOrEqual(1); // only carried fractions
+    expect(s().progress.points).toBeGreaterThan(before);
+  });
+
+  it("separate fires 1, 2, 3 reach 3 and pay 3", () => {
+    s().hit("asteroid", 0.1, 0.5, 0, 1);
+    s().hit("asteroid", 0.2, 0.5, 400, 2);
+    const p = s().progress.points;
+    const r = s().hit("asteroid", 0.3, 0.5, 800, 3);
+    expect(s().combo.count).toBe(3);
+    expect(s().lastHit?.combo).toBe(3);
+    expect(s().progress.points - p).toBeGreaterThanOrEqual(r.points + 3);
+  });
+
+  it("a laser-style run of 20 hits with one fire pays no bonus", () => {
+    for (let i = 0; i < 20; i++) {
+      s().hit("alienLaser", 0.5, 0.5, i * 125, 9);
+    }
+    expect(s().combo.count).toBe(1);
+  });
+
+  it("a later fire after a long hold starts a fresh combo", () => {
+    for (let i = 0; i < 20; i++) s().hit("alienLaser", 0.5, 0.5, i * 125, 9);
+    s().hit("asteroid", 0.2, 0.5, 2600, 10);
+    expect(s().combo.count).toBe(1);
+  });
+});
