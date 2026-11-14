@@ -89,6 +89,17 @@ describe("DamagePainter", () => {
     expect(p.takeDirty().size).toBe(4);
   });
 
+  it("abduct erases the lights and rings the ground without touching height", () => {
+    const p = new DamagePainter(null);
+    p.takeDirty();
+    const before = p.version;
+    p.stamp("abduct", 0.3, 0.6, 0.05);
+    expect(p.version).toBe(before + 1);
+    const dirty = p.takeDirty();
+    expect(dirty.has("lights")).toBe(true);
+    expect(dirty.has("height")).toBe(false);
+  });
+
   it("bumps the version on reset", () => {
     const p = new DamagePainter(null);
     const before = p.version;

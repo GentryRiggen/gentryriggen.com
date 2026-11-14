@@ -6,6 +6,7 @@ import type { ToolId } from "@/lib/planet-smasher/tools";
 import BlackHoleDrop from "./BlackHoleDrop";
 import Blast from "./Blast";
 import Eruption from "./Eruption";
+import GravityBeam from "./GravityBeam";
 import FreezeWave from "./FreezeWave";
 import LaserBeam from "./LaserBeam";
 import MeteorShower from "./MeteorShower";
@@ -13,6 +14,7 @@ import MoonRam from "./MoonRam";
 import NukeVolley from "./NukeVolley";
 import Projectile from "./Projectile";
 import Quake from "./Quake";
+import UfoSwarm from "./UfoSwarm";
 import ParticleLayer from "./ParticleLayer";
 import { ShakeDriver } from "./particles";
 import type { ActiveEffect, EffectProps, ImpactOpts } from "./effectQueue";
@@ -30,9 +32,9 @@ const COMPONENTS: Record<ToolId, ComponentType<EffectProps>> = {
   blackHole: BlackHoleDrop,
   nukeTwin: NukeVolley,
   nukeRain: NukeVolley,
+  ufoSwarm: UfoSwarm,
+  gravityBeam: GravityBeam,
   // Placeholders until the real effects land.
-  ufoSwarm: Blast,
-  gravityBeam: Blast,
   nanobots: FreezeWave,
   mothership: Blast,
 };

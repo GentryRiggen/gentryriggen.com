@@ -21,6 +21,9 @@ export type Cue =
   | "freeze"
   | "moonWhoosh"
   | "blackHoleHum"
+  | "ufoWarble"
+  | "tractorBeam"
+  | "gravityHum"
   | "endShatter"
   | "endMolten"
   | "endFrozen"
@@ -47,9 +50,10 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   blackHole: { launch: "blackHoleHum", impact: "impactSmall" },
   nukeTwin: { launch: "launch", impact: "nuke" },
   nukeRain: { launch: "whistle", impact: "nuke" },
+  // The UFO swarm plays its own warble and tractor beam per saucer.
+  ufoSwarm: { launch: null, impact: "impactSmall" },
+  gravityBeam: { launch: "gravityHum", impact: "impactBig" },
   // Placeholders until the real cues land.
-  ufoSwarm: { launch: "zapStart", impact: "impactSmall" },
-  gravityBeam: { launch: "zapStart", impact: "impactBig" },
   nanobots: { launch: null, impact: "freeze" },
   mothership: { launch: "moonWhoosh", impact: "impactBig" },
 };
@@ -75,6 +79,9 @@ const SPEC: Record<
   freeze: { seconds: 1, gap: 0.2, play: playFreeze },
   moonWhoosh: { seconds: 1, gap: 0.2, play: playMoonWhoosh },
   blackHoleHum: { seconds: 1.7, gap: 0.2, play: playBlackHoleHum },
+  ufoWarble: { seconds: 0.4, gap: 0.1, play: playUfoWarble },
+  tractorBeam: { seconds: 0.95, gap: 0.1, play: playTractorBeam },
+  gravityHum: { seconds: 2, gap: 0.3, play: playGravityHum },
   endShatter: { seconds: 2.6, gap: 0.5, play: playEndShatter, priority: true },
   endMolten: { seconds: 2.8, gap: 0.5, play: playEndMolten, priority: true },
   endFrozen: { seconds: 2.4, gap: 0.5, play: playEndFrozen, priority: true },
@@ -437,6 +444,69 @@ function playBlackHoleHum(e: VoiceEngine, t: number, k: number) {
     filter: "lowpass",
     freq: 160,
     gain: 0.35 * k,
+    attack: 0.8,
+  });
+}
+
+/** A wobbly sine with a fast LFO: one saucer arriving. */
+function playUfoWarble(e: VoiceEngine, t: number, k: number) {
+  const { ctx, bus } = e;
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.value = rand(520, 760);
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = rand(13, 18);
+  const depth = ctx.createGain();
+  depth.gain.value = 110;
+  lfo.connect(depth).connect(osc.frequency);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.linearRampToValueAtTime(0.07 * k, t + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.36);
+  osc.connect(gain).connect(bus);
+  osc.start(t);
+  lfo.start(t);
+  osc.stop(t + 0.4);
+  lfo.stop(t + 0.4);
+  osc.onended = () => {
+    for (const n of [osc, lfo, depth, gain]) n.disconnect();
+  };
+}
+
+/** A filtered noise swell: one beam switching on. */
+function playTractorBeam(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 0.9,
+    filter: "bandpass",
+    freq: 350,
+    freqEnd: 1500,
+    q: 2.5,
+    gain: 0.16 * k,
+    attack: 0.6,
+  });
+}
+
+/** A low rising saw with a lowpass sweep: the gravity beam charging. */
+function playGravityHum(e: VoiceEngine, t: number, k: number) {
+  tone(e, {
+    type: "sawtooth",
+    start: t,
+    duration: 1.9,
+    freq: 48,
+    freqEnd: 150,
+    gain: 0.22 * k,
+    attack: 0.9,
+    filter: { type: "lowpass", freq: 180, freqEnd: 1500, q: 3 },
+  });
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 1.8,
+    freq: 70,
+    freqEnd: 200,
+    gain: 0.25 * k,
     attack: 0.8,
   });
 }

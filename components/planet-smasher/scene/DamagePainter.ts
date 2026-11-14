@@ -225,8 +225,10 @@ export class DamagePainter {
       case "crater":
         this.crater(ellipses, rand);
         break;
-      case "scorch":
       case "abduct":
+        this.abduct(ellipses);
+        break;
+      case "scorch":
         this.scorch(ellipses, rand);
         break;
       case "lava":
@@ -308,6 +310,20 @@ export class DamagePainter {
       blob(ctx, 0, 0, 1, [
         [0, "rgba(100,100,100,0.7)"],
         [1, "rgba(128,128,128,0)"],
+      ]);
+    });
+  }
+
+  /** The lights go out in a soft circle; a faint green ring marks the spot. */
+  private abduct(ellipses: StampEllipse[]) {
+    this.erase(ellipses, 1);
+    this.each("damage", ellipses, (ctx) => {
+      blob(ctx, 0, 0, 1.1, [
+        [0, "rgba(120,255,160,0)"],
+        [0.62, "rgba(120,255,160,0)"],
+        [0.8, "rgba(120,255,160,0.25)"],
+        [0.95, "rgba(120,255,160,0.1)"],
+        [1, "rgba(120,255,160,0)"],
       ]);
     });
   }
