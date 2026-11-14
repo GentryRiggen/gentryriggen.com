@@ -22,6 +22,7 @@ import SoundToggle from "./ui/SoundToggle";
 import UnlockToast from "./ui/UnlockToast";
 import { useSoundEnabled } from "./audio/soundSetting";
 import useSoundUnlock from "./audio/useSoundUnlock";
+import useServiceWorker from "./hooks/useServiceWorker";
 import { TOOL_CUES, playCue } from "./audio/sfx";
 import { DamagePainter } from "./scene/DamagePainter";
 import { laserAim } from "./scene/effects/laserAim";
@@ -74,6 +75,7 @@ export default function PlanetSmasher() {
   const populationRef = useGameStore((s) => s.planet?.remaining);
 
   useSoundUnlock(useSoundEnabled());
+  useServiceWorker();
 
   const [effects, setEffects] = useState<ActiveEffect[]>([]);
   // Keeps a held laser firing while the pointer is still.

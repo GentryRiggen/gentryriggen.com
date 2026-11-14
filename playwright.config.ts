@@ -71,7 +71,7 @@ export default defineConfig({
     {
       name: "ipad",
       use: { ...devices["iPad Pro 11 landscape"] },
-      testMatch: /(ship|plane)-builder/,
+      testMatch: /(ship-builder|plane-builder|planet-smasher)/,
       grep: smokeOnly,
     },
 
