@@ -6,6 +6,7 @@ import type { RunState } from "@/lib/ever-onward/engine/types";
 import { lightUniverse } from "@/lib/ever-onward/universes/light";
 import { tankCapacity } from "@/lib/ever-onward/universes/light/tick";
 import GameScreen from "../GameScreen";
+import { explain, gaugeIcon } from "../StickyHud";
 
 function renderScreen(run: RunState, onTap = jest.fn(() => 1)) {
   render(
@@ -121,6 +122,11 @@ describe("sticky HUD", () => {
       expect(gauge).toHaveAccessibleName(/Nearly empty!/);
     });
 
+    it("prints its name beside the bar", () => {
+      renderScreen(withKeeper(0));
+      expect(screen.getByTestId("lm-hud-gauge-label")).toHaveTextContent("OIL");
+    });
+
     it("is not there before the first keeper", () => {
       renderScreen({ ...newRun(lightUniverse), taps: 1, time: 5 });
       expect(screen.queryByTestId("lm-hud-gauge")).toBeNull();
@@ -135,6 +141,28 @@ describe("sticky HUD", () => {
       expect(
         lamp.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy();
+    });
+  });
+
+  describe("the sky's flare gauge", () => {
+    const safety = {
+      label: "SAFETY",
+      current: 20,
+      max: 100,
+      isLow: true,
+      isCritical: false,
+      display: "20%",
+      why: "How safe the fleet is from the next big flare.",
+    };
+
+    it("has a shield, not a mystery icon", () => {
+      expect(gaugeIcon(safety)).toBe("\u{1F6E1}\u{FE0F}");
+    });
+
+    it("says what it means and how to fill it when tapped", () => {
+      expect(explain("gauge", { resourceLabel: "Energy", gauge: safety })).toBe(
+        "Safety: 20%. Getting low. How safe the fleet is from the next big flare."
+      );
     });
   });
 });
