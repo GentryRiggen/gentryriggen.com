@@ -22,6 +22,8 @@ export interface GameStore {
   lastUnlocks: Unlockable[];
   /** Sub-point remainder of earlier hits (not saved). */
   pointsCarry: number;
+  /** Points earned on the current planet (shown when it ends). */
+  planetPoints: number;
   lastHit: { peopleLost: number; u: number; v: number; seq: number } | null;
   /** Loads progress and creates the planet. */
   init(grid: PopulationGrid): void;
@@ -53,6 +55,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   ending: null,
   lastUnlocks: [],
   pointsCarry: 0,
+  planetPoints: 0,
   lastHit: null,
 
   init(grid) {
@@ -77,6 +80,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ending: null,
       lastUnlocks: [],
       pointsCarry: 0,
+      planetPoints: 0,
       lastHit: null,
     });
   },
@@ -99,6 +103,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       planet: createPlanetState(id, grid),
       phase: "playing",
       ending: null,
+      planetPoints: 0,
       lastHit: null,
     });
   },
@@ -127,6 +132,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // The state is mutated in place; a new reference wakes subscribers.
       planet: { ...planet },
       pointsCarry: carry,
+      planetPoints: s.planetPoints + gained,
       phase: result.ending ? "ending" : s.phase,
       ending: result.ending ?? s.ending,
       lastUnlocks: unlocked.length
@@ -155,6 +161,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       planet: createPlanetState(progress.planetId, grid),
       phase: "playing",
       ending: null,
+      planetPoints: 0,
       lastHit: null,
     });
   },

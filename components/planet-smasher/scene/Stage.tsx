@@ -17,6 +17,7 @@ import type { DamagePainter } from "./DamagePainter";
 import Planet, { SUN_VIEW_DIR } from "./Planet";
 import type { PlanetTextures } from "./planetTextures";
 import { isTap } from "./tapGesture";
+import EndingStage from "./endings/EndingStage";
 import EffectLayer from "./effects/EffectLayer";
 import type { ActiveEffect, ImpactOpts } from "./effects/effectQueue";
 
@@ -184,6 +185,7 @@ function Scene({
         onPointerDown={handleDown}
         onPointerUp={handleUp}
         onPointerMove={handleMove}
+        renderEnding={(m) => <EndingStage material={m} />}
       />
       {hasMoon && <Moon />}
       <EffectLayer

@@ -28,6 +28,8 @@ function describe(u: Unlockable): { icon: string; name: string } {
 /** A big "NEW!" card for each unlock, one after another. */
 export default function UnlockToast() {
   const unlocks = useGameStore((s) => s.lastUnlocks);
+  // After an ending the centre belongs to the New planet button.
+  const ended = useGameStore((s) => s.phase !== "playing");
   const [index, setIndex] = useState(0);
   const count = unlocks.length;
 
@@ -56,7 +58,9 @@ export default function UnlockToast() {
     <div
       role="status"
       key={`${item.kind}:${item.id}`}
-      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+      className={`pointer-events-none absolute inset-0 flex justify-center ${
+        ended ? "items-start pt-28" : "items-center"
+      }`}
     >
       <div className="relative flex flex-col items-center rounded-3xl border-4 border-yellow-300 bg-black/75 px-10 py-6 text-center shadow-2xl">
         {SPARKLES.map((a) => (

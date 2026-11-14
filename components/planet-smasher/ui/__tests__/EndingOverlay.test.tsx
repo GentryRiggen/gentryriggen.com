@@ -1,0 +1,36 @@
+import { act, render, screen, fireEvent } from "@testing-library/react";
+import EndingOverlay from "../EndingOverlay";
+import { useGameStore } from "@/lib/planet-smasher/store";
+
+jest.mock("../../scene/planetTextures", () => ({
+  loadPlanetTextures: () =>
+    Promise.resolve({
+      population: { w: 1, h: 1, weights: new Float32Array([1]) },
+    }),
+}));
+
+describe("EndingOverlay", () => {
+  it("shows nothing while playing", () => {
+    act(() => useGameStore.setState({ phase: "playing", ending: null }));
+    render(<EndingOverlay />);
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("shows the emoji, the points and a New planet button once ended", async () => {
+    const newPlanet = jest.fn();
+    act(() =>
+      useGameStore.setState({
+        phase: "ended",
+        ending: "frozen",
+        planetPoints: 1234,
+        newPlanet,
+      })
+    );
+    render(<EndingOverlay />);
+    expect(screen.getByTestId("ending-emoji")).toHaveTextContent("🧊");
+    expect(screen.getByLabelText("1,234 points earned")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /new planet/i }));
+    await act(async () => {});
+    expect(newPlanet).toHaveBeenCalledTimes(1);
+  });
+});

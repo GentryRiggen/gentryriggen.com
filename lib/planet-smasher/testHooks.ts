@@ -17,6 +17,8 @@ declare global {
     __planetSmasher?: {
       fire(toolId: ToolId, u: number, v: number): void;
       forceEnding(kind: EndingKind): void;
+      /** Like forceEnding, but the ending starts at once (no flight delay). */
+      forceEndingNow(kind: EndingKind): void;
       state(): GameStore;
       /** Sets points to 5200 so every tool and planet is open. */
       unlockAll(): void;
@@ -40,18 +42,10 @@ export function installTestHooks(
       else useGameStore.getState().hit(toolId, u, v);
     },
     forceEnding(kind) {
-      const { planet } = useGameStore.getState();
-      const hit = (id: ToolId, u: number, v: number) =>
-        onFire ? onFire(id, u, v) : useGameStore.getState().hit(id, u, v);
-      if (!planet) return;
-      if (kind === "swallowed") {
-        hit("blackHole", 0.5, 0.5);
-        return;
-      }
-      // Make this family the clear leader with one point of health left.
-      planet.familyDamage[kind] += 1e6;
-      planet.health = 0.001;
-      hit("asteroid", 0.5, 0.5);
+      force(kind, true);
+    },
+    forceEndingNow(kind) {
+      force(kind, false);
     },
     setMaxFrameStep(seconds) {
       fxClock.maxDt = seconds;
@@ -67,4 +61,21 @@ export function installTestHooks(
   return () => {
     delete window.__planetSmasher;
   };
+
+  function force(kind: EndingKind, viaEffects: boolean) {
+    const { planet } = useGameStore.getState();
+    const hit = (id: ToolId, u: number, v: number) =>
+      viaEffects && onFire
+        ? onFire(id, u, v)
+        : useGameStore.getState().hit(id, u, v);
+    if (!planet) return;
+    if (kind === "swallowed") {
+      hit("blackHole", 0.5, 0.5);
+      return;
+    }
+    // Make this family the clear leader with one point of health left.
+    planet.familyDamage[kind] += 1e6;
+    planet.health = 0.001;
+    hit("asteroid", 0.5, 0.5);
+  }
 }

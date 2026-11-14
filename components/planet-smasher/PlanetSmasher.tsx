@@ -17,6 +17,7 @@ import { uvToDir, type Vec3 } from "@/lib/planet-smasher/sphere";
 import Arsenal from "./ui/Arsenal";
 import Hud from "./ui/Hud";
 import PlanetPicker from "./ui/PlanetPicker";
+import EndingOverlay from "./ui/EndingOverlay";
 import UnlockToast from "./ui/UnlockToast";
 import { DamagePainter } from "./scene/DamagePainter";
 import { laserAim } from "./scene/effects/laserAim";
@@ -43,7 +44,9 @@ function Message({ children }: { children: React.ReactNode }) {
 
 /** A tap or hold fires only an unlocked tool that is off cooldown. */
 function tryFire(toolId: ToolId): boolean {
-  const { points } = useGameStore.getState().progress;
+  const { progress, phase } = useGameStore.getState();
+  if (phase !== "playing") return false;
+  const { points } = progress;
   if (!isUnlocked({ kind: "tool", id: toolId }, points)) return false;
   return tryCooldown(toolId);
 }
@@ -61,19 +64,24 @@ export default function PlanetSmasher() {
   );
   const populationRef = useGameStore((s) => s.planet?.remaining);
 
-  // A fresh planet (new population array) wipes the painted wreck.
+  const [effects, setEffects] = useState<ActiveEffect[]>([]);
+
+  // A fresh planet (new population array: New planet or a planet switch)
+  // wipes the painted wreck and any effects still in flight.
   useEffect(() => {
     painter?.reset(textures?.night ?? null);
+    setEffects([]);
+    laserAim.held = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [populationRef]);
-
-  const [effects, setEffects] = useState<ActiveEffect[]>([]);
   const nextId = useRef(1);
   const shots = useRef(0);
 
   // Damage lands when an effect hits: hit the planet and paint the scar.
   const handleImpact = useCallback(
     (toolId: ToolId, u: number, v: number, _point: Vec3, opts?: ImpactOpts) => {
+      // Effects still in flight once the planet is ending hit nothing.
+      if (useGameStore.getState().phase !== "playing") return;
       useGameStore.getState().hit(toolId, u, v);
       const tool = TOOLS[toolId];
       if (tool.stamp !== "none") {
@@ -156,6 +164,7 @@ export default function PlanetSmasher() {
   // burst (eight ticks).
   const hookFire = useCallback(
     (toolId: ToolId, u: number, v: number) => {
+      if (useGameStore.getState().phase !== "playing") return;
       if (TOOLS[toolId].mode !== "hold") {
         spawn(toolId, u, v);
         return;
@@ -236,6 +245,7 @@ export default function PlanetSmasher() {
           <Hud left={<PlanetPicker />} />
           <Arsenal />
           <UnlockToast />
+          <EndingOverlay />
         </>
       )}
     </div>
