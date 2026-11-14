@@ -2,6 +2,10 @@ import { act } from "react";
 import { getSeaState } from "@/components/ship-builder/hooks/useSeaState";
 import type { DriveConfig } from "../../sail/driveConfig";
 import type { SailImpact } from "../../sail/types";
+import { findTemplate } from "../../templates";
+import { blastPiecesOf } from "../../sim/blast";
+import { STRIKES } from "../../sim/strike";
+import { trialFunnelsOf } from "../../sim/trialFunnels";
 import { sailInput } from "../sailInput";
 import { getSailState, publishSail, subscribeSail } from "../sailLive";
 import { createInitialState, useShipBuilderStore } from "../store";
@@ -113,6 +117,49 @@ describe("drive slice", () => {
     if (trial.status !== "running") throw new Error("no trial running");
     expect(trial.input.sea).toBe(getSeaState());
     expect(trial.input.iceberg?.impactX).toBe(3.5);
+  });
+
+  it("a sea mine starts a mine trial with a bigger hole", () => {
+    sail();
+    act(() => store().driveHit({ ...IMPACT, kind: "mine" }));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("no trial running");
+    expect(trial.input.iceberg?.strike).toBe("mine");
+    expect(trial.input.iceberg?.gashLength).toBe(STRIKES.mine.gashLength);
+  });
+
+  it("leaves funnels the mine throws off out of the sinking", () => {
+    const titanic = findTemplate("titanic")!.build();
+    act(() => store().loadShip(titanic, null));
+    const funnelId = trialFunnelsOf(titanic)[0].id;
+    const funnelX = trialFunnelsOf(titanic)[0].cellX;
+    const thrown = blastPiecesOf(titanic, funnelX).map((p) => p.partId);
+    expect(thrown).toContain(funnelId);
+    sail();
+    act(() => store().driveHit({ ...IMPACT, kind: "mine", impactX: funnelX }));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("no trial running");
+    const ids = trial.input.funnels.map((f) => f.id);
+    expect(ids).not.toContain(funnelId);
+    expect(ids.length).toBeLessThan(trialFunnelsOf(titanic).length);
+  });
+
+  it("an island starts a grounding trial", () => {
+    sail();
+    act(() => store().driveHit({ ...IMPACT, kind: "island", impactX: 0 }));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("no trial running");
+    expect(trial.input.iceberg?.strike).toBe("island");
+    expect(trial.input.iceberg?.impactX).toBe(0);
+  });
+
+  it("rocks and ships still gash her like an iceberg", () => {
+    sail();
+    act(() => store().driveHit({ ...IMPACT, kind: "rock" }));
+    const { trial } = store();
+    if (trial.status !== "running") throw new Error("no trial running");
+    expect(trial.input.iceberg?.strike).toBeUndefined();
+    expect(trial.input.iceberg?.gashLength).toBeUndefined();
   });
 
   it("ignores a hit when not sailing", () => {

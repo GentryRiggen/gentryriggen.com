@@ -1,14 +1,25 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { Check, LoaderCircle } from "lucide-react";
-import { Chip, Empty, Rows, Section } from "@/components/jim/notes/NotesUi";
+import { LoaderCircle, Sunrise } from "lucide-react";
+import {
+  Chip,
+  Empty,
+  onPlainClick,
+  Rows,
+  Section,
+} from "@/components/jim/notes/NotesUi";
+import DailyWord from "@/components/jim/notes/DailyWord";
+import ShortLabel from "@/components/jim/notes/ShortLabel";
+import JimNoticed from "@/components/jim/notes/JimNoticed";
+import NeedsYou from "@/components/jim/notes/NeedsYou";
+import RemindersCard from "@/components/jim/notes/RemindersCard";
+import RetroCard from "@/components/jim/notes/RetroCard";
 import QuickLog from "@/components/jim/notes/QuickLog";
+import { TodoCheckbox, ToastBar } from "@/components/jim/notes/TodoBits";
 import {
   todoKey,
-  type DoneToast,
   type Mark,
-  type Toast,
   type TodoSaves,
 } from "@/components/jim/notes/useTodoSaves";
 import {
@@ -27,6 +38,7 @@ import {
   isRecurring,
   todoTitle,
 } from "@/lib/jim/todos";
+import type { RetroKind } from "@/lib/jim/routes";
 import type { CalendarEvent, ViewData, ViewTodo } from "@/lib/jim/view";
 
 interface NotesHomeProps {
@@ -35,6 +47,29 @@ interface NotesHomeProps {
   saves: TodoSaves;
   /** Sends a quick-log sentence as a chat message and switches to Chat. */
   onLog: (text: string) => void;
+  /** Puts outside-sourced text in the chat box, unsent, and switches to Chat. */
+  onDraft: (text: string) => void;
+  /** Opens the Todos page ("All todos →"). Without it the link is hidden. */
+  onOpenTodos?: () => void;
+  todosHref?: string;
+  /** Plays the morning brief (a tap). Without it the button is hidden. */
+  onHearBrief?: () => void;
+  /** What the brief is waiting on: the button spins and says it. */
+  briefStage?: string | null;
+  /** Why the brief didn't play, shown under the button. */
+  briefError?: string | null;
+  /** Reminders card: its server, and where a tap goes. Without them it is hidden. */
+  reminders?: {
+    api: string;
+    getToken: (force?: boolean) => Promise<string | null>;
+    onOpen: (id: string | null) => void;
+    hrefFor?: (id: string | null) => string;
+  };
+  /** Retro card: where a tap goes. Without it (or retro data) it is hidden. */
+  retro?: {
+    onOpen: (kind: RetroKind) => void;
+    hrefFor?: (kind: RetroKind) => string;
+  };
 }
 
 const AREA_LABEL: Record<string, string> = {
@@ -64,7 +99,7 @@ function EventRow({ event }: { event: CalendarEvent }) {
     .join(" · ");
   return (
     <li className="flex gap-3 px-4 py-2.5">
-      <span className="w-16 shrink-0 pt-0.5 text-sm text-ayu-blue tabular-nums">
+      <span className="w-16 shrink-0 pt-0.5 text-sm font-medium text-ayu-blue tabular-nums">
         {time}
       </span>
       <span className="min-w-0 flex-1">
@@ -161,7 +196,7 @@ function TodayCard({ data }: { data: ViewData }) {
   if (!rows.length) return null;
   return (
     <Section title="Today">
-      <ul className="divide-y divide-ayu-line overflow-hidden rounded-xl bg-ayu-panel">
+      <ul className="jim-card divide-y divide-white/[0.05] overflow-hidden">
         {rows.map((r) => (
           <li
             key={r.label}
@@ -200,45 +235,19 @@ function TodoRow({ todo, today, mark, onToggle }: TodoRowProps) {
           : "text-ayu-subtle";
   return (
     <li className="flex items-center gap-1 py-1.5 pr-4 pl-1">
-      {/* 44px to tap, a 22px box to see. A tap while it saves does nothing. */}
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={checked}
-        aria-busy={pending || undefined}
-        aria-label={title}
-        onClick={() => {
-          if (!pending) onToggle(todo, !checked);
-        }}
-        className="group flex size-11 shrink-0 items-center justify-center rounded-full transition-colors! duration-150!"
-      >
-        <span
-          aria-hidden="true"
-          className={`flex size-[22px] items-center justify-center rounded-md border-2 ${
-            checked
-              ? "border-ayu-accent bg-ayu-accent text-ayu-bg"
-              : "border-ayu-muted group-hover:border-ayu-accent"
-          }`}
-        >
-          {pending ? (
-            <LoaderCircle
-              className={`size-3.5 animate-spin motion-reduce:animate-none ${checked ? "" : "text-ayu-accent"}`}
-              strokeWidth={3}
-            />
-          ) : (
-            checked && <Check className="size-4" strokeWidth={3} />
-          )}
-        </span>
-      </button>
+      <TodoCheckbox
+        label={title}
+        checked={checked}
+        pending={pending}
+        onToggle={(done) => onToggle(todo, done)}
+      />
       <div className="min-w-0 flex-1 py-1">
-        <span
-          data-title
-          className={`block [overflow-wrap:anywhere] ${
-            checked ? "text-ayu-subtle line-through" : "text-ayu-text"
-          }`}
-        >
-          {title}
-        </span>
+        <ShortLabel
+          dataTitle
+          short={todo.short}
+          full={title}
+          className={checked ? "text-ayu-subtle line-through" : "text-ayu-text"}
+        />
         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
           <span className={`font-medium ${tone}`}>
             {dueLabel(todo.due, today)}
@@ -248,7 +257,11 @@ function TodoRow({ todo, today, mark, onToggle }: TodoRowProps) {
               {AREA_LABEL[todo.area]}
             </Chip>
           )}
-          {isRecurring(todo.text) && <Chip>repeats</Chip>}
+          {isRecurring(todo.text) && (
+            // Ticked and saving: the server adds the next one, so say so
+            // before its reply (which then names the date).
+            <Chip>{checked && pending ? "next one coming" : "repeats"}</Chip>
+          )}
         </span>
       </div>
     </li>
@@ -299,10 +312,15 @@ interface TodosProps {
   data: ViewData;
   marks: Record<string, Mark>;
   onToggle: (todo: ViewTodo, done: boolean) => void;
+  onOpenTodos?: () => void;
+  todosHref?: string;
 }
 
-function Todos({ data, marks, onToggle }: TodosProps) {
-  const g = groupTodos(data.todos, data.today);
+function Todos({ data, marks, onToggle, onOpenTodos, todosHref }: TodosProps) {
+  const [area, setArea] = useState<"all" | "work" | "personal">("all");
+  const todos =
+    area === "all" ? data.todos : data.todos.filter((t) => t.area === area);
+  const g = groupTodos(todos, data.today);
   const open = g.overdue.length + g.today.length + g.week.length;
   const list = { today: data.today, marks, onToggle };
   return (
@@ -310,6 +328,23 @@ function Todos({ data, marks, onToggle }: TodosProps) {
       title="Todos"
       aside={g.overdue.length ? `${g.overdue.length} overdue` : undefined}
     >
+      <div role="group" aria-label="Filter todos" className="flex gap-2">
+        {(["all", "work", "personal"] as const).map((a) => (
+          <button
+            key={a}
+            type="button"
+            aria-pressed={area === a}
+            onClick={() => setArea(a)}
+            className={`min-h-11 rounded-full px-4 text-sm font-medium ring-1 ring-inset ${
+              area === a
+                ? "bg-ayu-accent/15 text-ayu-accent ring-ayu-accent/30"
+                : "text-ayu-subtle ring-white/10 hover:bg-white/[0.06]"
+            }`}
+          >
+            {a === "all" ? "All" : AREA_LABEL[a]}
+          </button>
+        ))}
+      </div>
       {open + g.later.length === 0 && <Empty>No open todos.</Empty>}
       {open === 0 && g.later.length > 0 && (
         <Empty>Nothing due this week.</Empty>
@@ -336,72 +371,119 @@ function Todos({ data, marks, onToggle }: TodosProps) {
           <TodoList todos={g.later} {...list} />
         </details>
       )}
+      {onOpenTodos && (
+        <a
+          href={todosHref}
+          onClick={onPlainClick(onOpenTodos)}
+          className="-ml-3 inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-medium text-ayu-accent hover:bg-white/[0.06]"
+        >
+          All todos
+          <span aria-hidden="true">→</span>
+        </a>
+      )}
     </Section>
   );
 }
 
-interface ToastBarProps {
-  toast: Toast | null;
-  onUndo: (toast: DoneToast) => void;
-}
-
-/** Floats above the home bar; always in the page, so it is announced. */
-function ToastBar({ toast, onUndo }: ToastBarProps) {
-  return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center pr-[max(1rem,env(safe-area-inset-right))] pb-[max(1rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))]">
-      <div role="status" aria-live="polite" className="contents">
-        {toast && (
-          <div
-            key={toast.id}
-            className={`pointer-events-auto flex max-w-full items-center gap-2 rounded-full py-1 pr-1 pl-5 shadow-lg ${
-              toast.kind === "error"
-                ? "bg-ayu-raised text-ayu-red"
-                : "bg-ayu-raised text-ayu-text"
-            } ${toast.kind === "error" ? "pr-5" : ""}`}
-          >
-            {toast.kind === "done" ? (
-              <>
-                <span className="min-h-11 content-center">Done</span>
-                <span aria-hidden="true" className="text-ayu-subtle">
-                  ·
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onUndo(toast)}
-                  className="min-h-11 rounded-full px-3 font-medium text-ayu-accent hover:bg-ayu-panel"
-                >
-                  Undo
-                </button>
-              </>
-            ) : (
-              <span className="min-h-11 content-center [overflow-wrap:anywhere]">
-                {toast.message}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+/** "Good morning" and friends, by the device's clock. */
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 5) return "Late night";
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
 }
 
 /** Home: the calendar this week, then what's due, with boxes to tick. */
-export default function NotesHome({ data, saves, onLog }: NotesHomeProps) {
+export default function NotesHome({
+  data,
+  saves,
+  onLog,
+  onDraft,
+  onOpenTodos,
+  todosHref,
+  onHearBrief,
+  briefStage = null,
+  briefError = null,
+  reminders,
+  retro,
+}: NotesHomeProps) {
   const date = new Date(`${data.today}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
     timeZone: "UTC",
   });
+  // One column on a phone; where the page is wide (a desktop), the day on
+  // the left and the calendar and todos beside it.
   return (
-    <div className="space-y-8">
-      <p className="text-lg font-semibold text-ayu-text">{date}</p>
-      <div className="space-y-3">
-        <TodayCard data={data} />
-        <QuickLog today={data.today} onLog={onLog} />
+    <div className="space-y-8 @2xl:grid @2xl:grid-cols-2 @2xl:items-start @2xl:gap-8 @2xl:space-y-0">
+      <div className="space-y-8">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.14em] text-ayu-accent uppercase">
+            {greeting()}
+          </p>
+          <p className="mt-1 text-[1.75rem] leading-tight font-semibold tracking-tight text-ayu-text">
+            {date}
+          </p>
+        </div>
+        {onHearBrief && (
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={onHearBrief}
+              disabled={briefStage !== null}
+              aria-busy={briefStage !== null ? true : undefined}
+              className="jim-card flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 text-ayu-text hover:border-ayu-accent/40 hover:text-ayu-accent disabled:border-ayu-accent/30 disabled:text-ayu-accent disabled:hover:border-ayu-accent/30"
+            >
+              {briefStage !== null ? (
+                <LoaderCircle
+                  aria-hidden="true"
+                  className="size-4 animate-spin motion-reduce:animate-none"
+                />
+              ) : (
+                <Sunrise aria-hidden="true" className="size-4" />
+              )}
+              {briefStage ?? "Hear your morning"}
+            </button>
+            {briefError && (
+              <p
+                role="alert"
+                className="jim-rise rounded-xl border border-ayu-red/25 bg-ayu-red/10 px-3 py-2 text-sm text-ayu-red"
+              >
+                {briefError}
+              </p>
+            )}
+          </div>
+        )}
+        {retro && <RetroCard retro={data.retro} {...retro} />}
+        {data.daily && <DailyWord word={data.daily} />}
+        {data.noticed && <JimNoticed items={data.noticed} onAsk={onLog} />}
+        <div className="space-y-3">
+          <TodayCard data={data} />
+          <QuickLog today={data.today} onLog={onLog} />
+        </div>
+        {reminders && <RemindersCard {...reminders} />}
+        {data.actions && (
+          <NeedsYou
+            actions={data.actions}
+            actionsAsOf={data.actionsAsOf}
+            today={data.today}
+            onAsk={onLog}
+            onDraft={onDraft}
+          />
+        )}
       </div>
-      <Calendar data={data} />
-      <Todos data={data} marks={saves.marks} onToggle={saves.toggle} />
+      <div className="space-y-8">
+        <Calendar data={data} />
+        <Todos
+          data={data}
+          marks={saves.marks}
+          onToggle={saves.toggle}
+          onOpenTodos={onOpenTodos}
+          todosHref={todosHref}
+        />
+      </div>
       <ToastBar toast={saves.toast} onUndo={saves.undo} />
     </div>
   );

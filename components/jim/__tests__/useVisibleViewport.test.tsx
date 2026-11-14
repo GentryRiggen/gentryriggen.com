@@ -99,3 +99,63 @@ it("ignores a pinch-zoom", () => {
     ""
   );
 });
+
+function top() {
+  return screen.getByTestId("root").style.getPropertyValue("--jim-vt");
+}
+
+it("follows the pan while the keyboard is up", () => {
+  render(<Probe />);
+  act(() => {
+    vv.height = 460;
+    vv.offsetTop = 70;
+    vv.dispatchEvent(new Event("resize"));
+  });
+  expect(top()).toBe("70px");
+});
+
+it("pins the page to the top of the screen once the keyboard is down", () => {
+  // iOS can leave offsetTop behind after the keyboard closes, which slid the
+  // whole app down: an empty band up top and the box off the bottom.
+  render(<Probe />);
+  act(() => {
+    vv.height = 800;
+    vv.offsetTop = 70;
+    vv.dispatchEvent(new Event("scroll"));
+  });
+  expect(keyboard()).toBe("closed");
+  expect(top()).toBe("0px");
+});
+
+it("looks again after the keyboard finishes closing", () => {
+  jest.useFakeTimers();
+  try {
+    render(<Probe />);
+    const box = screen.getByLabelText("Box");
+    act(() => box.focus());
+    resize(460);
+    expect(keyboard()).toBe("open");
+    // The keyboard goes down without a final resize event.
+    act(() => box.blur());
+    vv.height = 800;
+    act(() => jest.advanceTimersByTime(1000));
+    expect(keyboard()).toBe("closed");
+    expect(screen.getByTestId("root").style.getPropertyValue("--jim-vh")).toBe(
+      "800px"
+    );
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+it("looks again when the app comes back to the screen", () => {
+  render(<Probe />);
+  resize(460);
+  vv.height = 800;
+  vv.offsetTop = 70;
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(keyboard()).toBe("closed");
+  expect(top()).toBe("0px");
+});

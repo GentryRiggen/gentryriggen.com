@@ -42,8 +42,29 @@ export class FakeContext {
   currentTime = 0;
   sampleRate = 100;
   destination = {};
-  suspend = jest.fn(() => Promise.resolve());
-  resume = jest.fn(() => Promise.resolve());
+  /** Tests set "interrupted" or "suspended" to mimic iOS. */
+  state: string = "running";
+  suspend = jest.fn(() => {
+    this.state = "suspended";
+    return Promise.resolve();
+  });
+  resume = jest.fn(() => {
+    this.state = "running";
+    return Promise.resolve();
+  });
+  close = jest.fn(() => {
+    this.state = "closed";
+    return Promise.resolve();
+  });
+  private stateListeners: (() => void)[] = [];
+  addEventListener = jest.fn((type: string, listener: () => void) => {
+    if (type === "statechange") this.stateListeners.push(listener);
+  });
+  /** Tests call this to mimic the browser changing the state on its own. */
+  setState(state: string) {
+    this.state = state;
+    for (const listener of this.stateListeners) listener();
+  }
   createGain: () => FakeNode;
   createBiquadFilter: () => FakeNode;
   createOscillator: () => FakeNode;

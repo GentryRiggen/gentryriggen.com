@@ -17,6 +17,7 @@ import type {
   LifeboatMode,
   SimEvent,
   SimSea,
+  StrikeKind,
 } from "@/lib/ship-builder/sim/types";
 import type { SeaState } from "../scene/seaState";
 import type { TimeOfDay } from "../scene/timeOfDay";
@@ -88,6 +89,27 @@ export const BREAK_MODE_OPTIONS: readonly {
     help: "If she sinks, she goes down in one piece.",
   },
 ];
+
+/** The first mark's name by what struck her (the storm has its own). */
+export const STRIKE_MARK_LABEL: Record<StrikeKind, string> = {
+  iceberg: "Iceberg",
+  mine: "Mine",
+  island: "Aground",
+};
+
+/** The scrubber's story clock: "12 minutes after the iceberg". */
+export const STRIKE_AFTER: Record<StrikeKind, string> = {
+  iceberg: "after the iceberg",
+  mine: "after the mine",
+  island: "after running aground",
+};
+
+/** The pill's name for a trial started by a hit, by what struck her. */
+export const STRIKE_TRIAL_NAME: Record<StrikeKind, string> = {
+  iceberg: "Iceberg trial",
+  mine: "Sea mine",
+  island: "Ran aground",
+};
 
 /** The storm's name for its first mark (the iceberg trial's "Iceberg"). */
 export const STORM_FLOODING_LABEL = "Water in";

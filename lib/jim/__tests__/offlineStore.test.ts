@@ -1,5 +1,6 @@
 import {
   clearAll,
+  IDB_TIMEOUT_MS,
   loadView,
   saveView,
   setOfflineBackend,
@@ -81,4 +82,28 @@ it("does nothing without IndexedDB (jsdom)", async () => {
   expect(typeof indexedDB).toBe("undefined");
   await saveView("uid-a", VIEW_FIXTURE);
   await expect(loadView("uid-a")).resolves.toBeNull();
+});
+
+describe("a stuck IndexedDB (iOS WebKit)", () => {
+  const original = (globalThis as { indexedDB?: unknown }).indexedDB;
+  afterEach(() => {
+    jest.useRealTimers();
+    (globalThis as { indexedDB?: unknown }).indexedDB = original;
+    setOfflineBackend(null);
+  });
+
+  it("gives up after IDB_TIMEOUT_MS instead of waiting forever", async () => {
+    jest.useFakeTimers();
+    setOfflineBackend(null);
+    const open = jest.fn(() => ({}) as IDBOpenDBRequest); // never fires
+    (globalThis as { indexedDB?: unknown }).indexedDB = { open };
+    const result = loadView("u1");
+    await jest.advanceTimersByTimeAsync(IDB_TIMEOUT_MS);
+    await expect(result).resolves.toBeNull();
+    // The stuck open is dropped: the next call opens afresh.
+    const again = loadView("u1");
+    await jest.advanceTimersByTimeAsync(IDB_TIMEOUT_MS);
+    await expect(again).resolves.toBeNull();
+    expect(open).toHaveBeenCalledTimes(2);
+  });
 });

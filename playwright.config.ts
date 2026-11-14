@@ -75,11 +75,12 @@ export default defineConfig({
       grep: smokeOnly,
     },
 
-    /* /jim is a phone-first chat: run it on an iPhone (WebKit, touch). */
+    /* /jim is a phone-first chat: its @smoke tests also run on an iPhone. */
     {
       name: "iphone",
       use: { ...devices["iPhone 15"] },
       testMatch: /jim\.spec/,
+      grep: smokeOnly,
     },
 
     /* Test against mobile viewports. */
@@ -96,8 +97,10 @@ export default defineConfig({
   /* Test the static export (what ships), not the dev server: no on-demand
      compiling, so the 3D page is ready as soon as it is requested. CI builds
      the e2e export once and sets E2E_PREBUILT so each shard only serves it. */
+  /* e2e/serve.json mirrors firebase.json's rewrite: every /jim/… address
+     serves the one Jim page (its --config path is relative to out/). */
   webServer: {
-    command: `${process.env.E2E_PREBUILT ? "" : "NEXT_PUBLIC_E2E=1 npm run build && "}npx serve out --listen ${port} --no-clipboard`,
+    command: `${process.env.E2E_PREBUILT ? "" : "NEXT_PUBLIC_E2E=1 npm run build && "}npx serve out --listen ${port} --no-clipboard --config ../e2e/serve.json`,
     timeout: 180_000,
     url: `http://localhost:${port}`,
     reuseExistingServer: !process.env.CI,

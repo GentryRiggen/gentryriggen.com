@@ -66,6 +66,16 @@ describe("isRecurring", () => {
     expect(isRecurring("x (due 2026-10-31; every 3 days)")).toBe(true);
     expect(isRecurring("Read every book on the shelf")).toBe(false);
   });
+
+  it("spots 'every month' with no number, as the server does", () => {
+    expect(
+      isRecurring(
+        "Send the report (due 2026-11-30; every month, on the last day of the month)"
+      )
+    ).toBe(true);
+    expect(isRecurring("Feed the fish (every day)")).toBe(true);
+    expect(isRecurring("Sweep the porch every week")).toBe(false);
+  });
 });
 
 describe("groupTodos", () => {

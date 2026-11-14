@@ -8,7 +8,7 @@ runs:
     # (any lockfile change), so a miss is no slower than before.
     - name: ⚙️ Setup Node
       id: node
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
       with:
         node-version: "24"
         cache: "npm"
@@ -18,7 +18,7 @@ runs:
     # architecture so modules built for another Node are never restored.
     - name: 💾 Cache node_modules
       id: modules
-      uses: actions/cache@v5
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
       with:
         path: node_modules
         key: ${{ runner.os }}-${{ runner.arch }}-node${{ steps.node.outputs.node-version }}-modules-${{ hashFiles('package-lock.json') }}

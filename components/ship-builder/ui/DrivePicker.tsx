@@ -2,6 +2,15 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import {
+  Bomb,
+  LifeBuoy,
+  Mountain,
+  Ship,
+  Snowflake,
+  TreePalm,
+  type LucideIcon,
+} from "lucide-react";
+import {
   DENSITIES,
   OBSTACLE_KINDS,
   loadDrivePrefs,
@@ -19,7 +28,23 @@ const KIND_LABEL: Record<ObstacleKind, string> = {
   rock: "Rocks",
   buoy: "Buoys",
   ship: "Other ships",
+  mine: "Sea mines",
+  island: "Islands",
 };
+
+/** A picture for every choice, so young sailors can pick without reading. */
+const KIND_ICON: Record<ObstacleKind, LucideIcon> = {
+  iceberg: Snowflake,
+  rock: Mountain,
+  buoy: LifeBuoy,
+  ship: Ship,
+  mine: Bomb,
+  island: TreePalm,
+};
+
+/** Obstacle buttons: a big picture above its word, in a tidy grid. */
+const KIND_OPTION_CLASS =
+  "flex min-h-20 touch-manipulation flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:focus-visible:outline-sky-400";
 
 const DENSITY_LABEL: Record<Density, string> = {
   few: "Few",
@@ -105,9 +130,10 @@ function DrivePickerDialog() {
           <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
             What is out there?
           </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {OBSTACLE_KINDS.map((kind, index) => {
               const isPressed = prefs.kinds.includes(kind);
+              const Icon = KIND_ICON[kind];
               return (
                 <button
                   key={kind}
@@ -115,9 +141,14 @@ function DrivePickerDialog() {
                   type="button"
                   aria-pressed={isPressed}
                   onClick={() => toggleKind(kind)}
-                  className={`${OPTION_CLASS} ${isPressed ? PRESSED_CLASS : UNPRESSED_CLASS}`}
+                  className={`${KIND_OPTION_CLASS} ${isPressed ? PRESSED_CLASS : UNPRESSED_CLASS}`}
                 >
-                  {KIND_LABEL[kind]}
+                  <Icon
+                    aria-hidden="true"
+                    className="size-8"
+                    strokeWidth={1.75}
+                  />
+                  <span>{KIND_LABEL[kind]}</span>
                 </button>
               );
             })}

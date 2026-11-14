@@ -3,3 +3,4 @@ export * from "./walkGrid";
 export * from "./step";
 export * from "./spawn";
 export * from "./halfGrid";
+export * from "./escape";

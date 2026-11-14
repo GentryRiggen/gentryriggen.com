@@ -1,3 +1,4 @@
+import type { MoneySummary } from "@/lib/jim/money";
 import type { ViewData } from "@/lib/jim/view";
 
 /**
@@ -9,6 +10,176 @@ import type { ViewData } from "@/lib/jim/view";
 export const VIEW_FIXTURE: ViewData = {
   today: "2026-10-31",
   sha: "abc1234",
+  actionsAsOf: "2026-10-31T13:40:00Z",
+  actions: [
+    {
+      kind: "Todo",
+      title: "Return the library books",
+      when: "1d late",
+      tone: "over",
+      area: "personal",
+      ask: "Help me with: Return the library books",
+      link: "",
+    },
+    {
+      kind: "Email",
+      title: "Confirm the carpool schedule",
+      when: "From the school office · tomorrow",
+      tone: "soon",
+      area: "personal",
+      ask: "About this email: Confirm the carpool schedule",
+      link: "https://mail.example.test/thread/1",
+    },
+    {
+      kind: "1:1",
+      title: "1:1 with Ava Torres",
+      when: "Tue, Nov 3 · in 3d",
+      tone: "",
+      area: "work",
+      ask: "prep me for Ava",
+      link: "",
+    },
+  ],
+  daily: {
+    kind: "Quote",
+    title: "On patience",
+    text: "Water the roots and the fruit takes care of itself.",
+    source: "An invented proverb",
+    apply: "Pick one slow task today and give it ten calm minutes.",
+  },
+  dates: [
+    {
+      kind: "birthday",
+      name: "Jordan Lee",
+      on: "2026-11-03",
+      days: 3,
+      path: "people/jordan-lee.md",
+      turns: null,
+    },
+    {
+      kind: "anniversary",
+      name: "Wedding anniversary",
+      on: "2026-11-20",
+      days: 20,
+      path: "people/wren-rivera.md",
+      turns: null,
+    },
+    {
+      kind: "renewal",
+      name: "Library card",
+      on: "2026-12-01",
+      days: 31,
+      path: "home/library.md",
+      turns: null,
+    },
+  ],
+  work: {
+    team: [
+      {
+        name: "Ava Torres",
+        path: "people/ava-torres.md",
+        about: "Leads the garden map project",
+        nextOneOnOne: "2026-11-03",
+        wins: 2,
+        recentWins: [
+          { date: "2026-10-29", text: "Ava: shipped the seed catalog" },
+          { date: "2026-10-15", text: "Ava: fixed the watering timer" },
+        ],
+      },
+      {
+        name: "Ben Ruiz",
+        path: "people/ben-ruiz.md",
+        about: "Runs the weekly harvest report",
+        nextOneOnOne: "",
+        wins: 0,
+        recentWins: [],
+      },
+    ],
+    winsKeys: ["You", "Ava", "Ben"],
+    winsByWeek: [
+      { week: "2026-08-10", counts: { You: 1, Ava: 0, Ben: 0 } },
+      { week: "2026-08-17", counts: { You: 0, Ava: 1, Ben: 0 } },
+      { week: "2026-08-24", counts: { You: 2, Ava: 0, Ben: 1 } },
+      { week: "2026-08-31", counts: { You: 0, Ava: 0, Ben: 0 } },
+      { week: "2026-09-07", counts: { You: 1, Ava: 1, Ben: 0 } },
+      { week: "2026-09-14", counts: { You: 3, Ava: 0, Ben: 0 } },
+      { week: "2026-09-21", counts: { You: 0, Ava: 0, Ben: 1 } },
+      { week: "2026-09-28", counts: { You: 1, Ava: 2, Ben: 0 } },
+      { week: "2026-10-05", counts: { You: 0, Ava: 1, Ben: 0 } },
+      { week: "2026-10-12", counts: { You: 2, Ava: 1, Ben: 1 } },
+      { week: "2026-10-19", counts: { You: 1, Ava: 0, Ben: 0 } },
+      { week: "2026-10-26", counts: { You: 2, Ava: 1, Ben: 0 } },
+    ],
+    meetings: [
+      {
+        path: "meetings/2026-10-30-garden-planning.md",
+        title: "Garden planning",
+        date: "2026-10-30",
+        people: ["Ava Torres", "Ben Ruiz"],
+        projects: ["garden-map"],
+        summary: ["Picked the spring beds", "Ordered more mulch"],
+        series: "Garden sync",
+        decisions: ["Spring beds go along the south fence"],
+        steps: [
+          { who: "You", text: "Order the cedar boards", mine: true },
+          { who: "Ava Torres", text: "Sketch the bed layout", mine: false },
+          { who: "", text: "Check the soil test results", mine: false },
+        ],
+        transcript: "https://notes.example.test/t/1",
+      },
+      {
+        path: "meetings/2026-10-22-harvest-review.md",
+        title: "Harvest review",
+        date: "2026-10-22",
+        people: ["Ben Ruiz"],
+        projects: [],
+        summary: [],
+      },
+    ],
+    directory: {
+      updated: "2026-10-28",
+      people: [
+        {
+          id: 0,
+          name: "Quinn Hale",
+          title: "Head Gardener",
+          team: "Grounds",
+          location: "North Field",
+          email: "quinn@example.test",
+          cell: "555-0100",
+          birthday: "April 2",
+          anniversary: "2019-06-01",
+          disc: "D/C",
+          discGloss: "Direct and careful: wants results done right.",
+          strengths: [
+            { name: "Achiever", gloss: "Finishes things, every day." },
+          ],
+          managerId: null,
+          managerName: "",
+          reportIds: [1],
+          path: "",
+        },
+        {
+          id: 1,
+          name: "Ava Torres",
+          title: "Garden Planner",
+          team: "Grounds",
+          location: "Greenhouse",
+          email: "ava@example.test",
+          cell: "",
+          birthday: "",
+          anniversary: "2023-03-15",
+          disc: "",
+          discGloss: "",
+          strengths: [],
+          managerId: 0,
+          managerName: "Quinn Hale",
+          reportIds: [],
+          path: "people/ava-torres.md",
+        },
+      ],
+    },
+  },
   calendar: {
     fetchedAt: "2026-10-31T14:05:00Z",
     events: [
@@ -127,9 +298,41 @@ export const VIEW_FIXTURE: ViewData = {
   doneTodos: [],
   health: {
     injections: [
-      { date: "2026-10-21", time: "8:00", mg: 50, ml: "0.25", note: "" },
-      { date: "2026-10-28", time: "8:10", mg: 50, ml: "0.25", note: "left" },
+      {
+        date: "2026-10-21",
+        time: "8:00",
+        mg: 50,
+        ml: "0.25",
+        site: "Left glute",
+        note: "",
+      },
+      {
+        date: "2026-10-28",
+        time: "~8:10 AM",
+        mg: 50,
+        ml: "0.25",
+        site: "Right glute",
+        note: "",
+      },
       { date: "2026-10-24", time: "8:05", mg: 50, ml: "0.25", note: "" },
+    ],
+    schedule: [
+      {
+        from: "2026-10-01",
+        days: [2, 5],
+        label: "Wed, Sat",
+        ml: 0.25,
+        mg: 50,
+        note: "",
+      },
+      {
+        from: "2026-11-10",
+        days: [],
+        label: "Twice a week",
+        ml: 0.3,
+        mg: 60,
+        note: "after the draw",
+      },
     ],
     labs: [
       {
@@ -235,6 +438,66 @@ export const VIEW_FIXTURE: ViewData = {
       },
     ],
   },
+  mindset: {
+    sessions: 12,
+    streak: 4,
+    reflections: 3,
+    intention: "Listen before answering",
+    threads: [
+      { name: "Patience", count: 5 },
+      { name: "Beginner's mind", count: 2 },
+    ],
+    recent: [
+      { date: "2026-10-31", text: "Sat for ten minutes with the rain" },
+      { date: "2026-10-30", text: "Noticed the urge to rush the planting" },
+    ],
+  },
+  yearDates: [
+    {
+      kind: "birthday",
+      name: "Jordan Lee",
+      on: "2026-11-03",
+      days: 3,
+      path: "people/jordan-lee.md",
+      turns: null,
+      gift: "2 gift ideas, none chosen.",
+      approx: false,
+      unsure: true,
+    },
+    {
+      kind: "renewal",
+      name: "Library card",
+      on: "2026-12-01",
+      days: 31,
+      path: "home/library.md",
+      turns: null,
+      gift: "",
+      approx: false,
+      unsure: false,
+    },
+    {
+      kind: "birthday",
+      name: "Sam Okafor",
+      on: "2027-03-14",
+      days: 134,
+      path: "people/sam-okafor.md",
+      turns: 41,
+      gift: "Gift chosen.",
+      approx: true,
+      unsure: false,
+    },
+    {
+      kind: "anniversary",
+      name: "Priya Lane",
+      on: "2027-06-15",
+      days: 227,
+      path: "people/priya-lane.md",
+      turns: null,
+      gift: "",
+      approx: true,
+      unsure: false,
+    },
+  ],
   golf: [
     {
       date: "2026-10-12",
@@ -371,4 +634,268 @@ export const VIEW_FIXTURE: ViewData = {
       body: "",
     },
   ],
+};
+
+/**
+ * An invented POST /api/money summary. The server words every label; these
+ * groups, categories and payees are made up.
+ */
+export const MONEY_FIXTURE: MoneySummary = {
+  rule: "Invented rule for tests.",
+  range: "Invented range Aug to Sep",
+  tiles: [
+    { label: "Good months", value: "1 of 2", tone: "" },
+    { label: "Typical net", value: "+$120", tone: "good" },
+    { label: "Spare jar used", value: "$0.4k", tone: "bad" },
+  ],
+  groups: ["Garden", "Books", "Other"],
+  months: [
+    {
+      m: "2026-08",
+      label: "Aug",
+      partial: false,
+      net: 340,
+      cameIn: 2400,
+      spent: 2060,
+      byGroup: { Garden: 900, Books: 160, Other: 1000 },
+      over: [],
+      under: [{ cat: "Seeds", amount: 40, typical: 120, diff: -80 }],
+      top: [
+        {
+          date: "2026-08-12",
+          payee: "Green Acres",
+          category: "Seeds",
+          amount: 40,
+        },
+      ],
+      note: "A quiet month.",
+      flag: "",
+    },
+    {
+      m: "2026-09",
+      label: "Sep",
+      partial: false,
+      net: -100,
+      cameIn: 2400,
+      spent: 2500,
+      byGroup: { Garden: 1200, Books: 300, Other: 1000 },
+      over: [{ cat: "Tools", amount: 320, typical: 100, diff: 220 }],
+      under: [],
+      top: [
+        {
+          date: "2026-09-03",
+          payee: "Hill Hardware",
+          category: "Tools",
+          amount: 320,
+        },
+        {
+          date: "2026-09-20",
+          payee: "Page Turners",
+          category: "Books",
+          amount: 85.5,
+        },
+      ],
+      note: "",
+      flag: "used $0.4k",
+    },
+    {
+      m: "2026-10",
+      label: "Oct",
+      partial: true,
+      net: 60,
+      cameIn: 1200,
+      spent: 1140,
+      byGroup: { Garden: 500, Books: 40, Other: 600 },
+      over: [],
+      under: [],
+      top: [],
+      note: "",
+      flag: "",
+    },
+  ],
+  typicalSpend: 2200,
+  typicalIn: 2400,
+  cash: [
+    { date: "2026-08-31", amount: 5200 },
+    { date: "2026-09-30", amount: 4700 },
+  ],
+  watch: "- Keep an eye on tool spending",
+  checkin: {
+    month: "2026-10",
+    plan: [
+      { cat: "Tools", target: 100, actual: 0, why: "Bought enough in Sep" },
+    ],
+    coming: [
+      { when: "2026-11-15", label: "Nov 15", what: "Seed order", amount: 90 },
+      {
+        when: "2026-12",
+        label: "Dec 2026",
+        what: "Greenhouse repair",
+        amount: null,
+      },
+    ],
+    log: [
+      {
+        date: "2026-10-05",
+        kind: "note",
+        text: "Pause new tools until Nov",
+      },
+    ],
+    next: "2026-11-05",
+  },
+  grid: {
+    months: ["2026-08", "2026-09", "2026-10"],
+    rows: [
+      {
+        cat: "Seeds",
+        group: "Garden",
+        fixed: false,
+        note: "Seed packets and bulbs",
+        values: [40, 130, null],
+        typical: 120,
+        flags: ["lo", "", ""],
+      },
+      {
+        cat: "Tools",
+        group: "Garden",
+        fixed: false,
+        note: "",
+        values: [90, 320, 20],
+        typical: 100,
+        flags: ["", "hi", ""],
+      },
+      {
+        cat: "Library fees",
+        group: "Books",
+        fixed: true,
+        note: "",
+        values: [12, 12, 12],
+        typical: 12,
+        flags: ["", "", ""],
+      },
+    ],
+  },
+  share: {
+    perMonth: 150,
+    afterAvg: 450,
+    line: "About $150/mo of shared income is owed to others, an estimate.",
+  },
+  amazon: {
+    months: [
+      {
+        m: "2026-09",
+        label: "Sep",
+        partial: false,
+        total: 96,
+        byCat: { Garden: 60, Kitchen: 36 },
+      },
+      {
+        m: "2026-10",
+        label: "Oct",
+        partial: true,
+        total: 25,
+        byCat: { Garden: 40, Kitchen: -15 },
+      },
+    ],
+    cats: ["Garden", "Kitchen"],
+    repeats: [{ n: 3, item: "Twine roll", category: "Garden", total: 27 }],
+    items: [
+      {
+        date: "2026-10-12",
+        item: "Pruning shears",
+        amount: -40,
+        category: "Garden",
+      },
+      {
+        date: "2026-10-05",
+        item: "Mixing bowl refund",
+        amount: 15,
+        category: "Kitchen",
+      },
+      {
+        date: "2026-09-20",
+        item: "Twine roll",
+        amount: -9,
+        category: "Garden",
+      },
+      {
+        date: "2026-09-08",
+        item: "Spice rack",
+        amount: -36,
+        category: "Kitchen",
+      },
+    ],
+  },
+};
+
+/** Explore's reads, as the server sends them (invented). */
+export const GRAPH_FIXTURE = {
+  nodes: [
+    { id: "people/sam-okafor.md", title: "Sam Okafor", folder: "people" },
+    { id: "home/garden.md", title: "Garden", folder: "home" },
+    { id: "home/shed.md", title: "Potting shed", folder: "home" },
+    { id: "work/garden-map.md", title: "Garden map", folder: "work" },
+  ],
+  links: [
+    { source: "home/garden.md", target: "people/sam-okafor.md" },
+    { source: "home/garden.md", target: "home/shed.md" },
+    { source: "work/garden-map.md", target: "home/garden.md" },
+  ],
+};
+
+export const TIMELINE_FIXTURE = {
+  events: [
+    {
+      date: "2026-11-05",
+      kind: "due",
+      text: "Return the library books",
+      path: "lists/todos.md",
+      src: "todos",
+    },
+    {
+      date: "2026-10-30",
+      time: "9:30",
+      kind: "log",
+      title: "Planning",
+      text: "Sketched the spring beds with the compost bins",
+      path: "log/2026-10/2026-10-30.md",
+      src: "session log",
+    },
+    {
+      date: "2026-10-12",
+      kind: "done",
+      text: "Fixed the gate latch",
+      path: "lists/todos.md",
+      src: "todos",
+    },
+  ],
+};
+
+export const BALLOT_FIXTURE = {
+  voted: {
+    path: "notes/town-ballot.md",
+    title: "Town ballot",
+    facts: { Precinct: "12", Marked: "Oct 20" },
+    sections: [
+      {
+        heading: "Offices",
+        before: "",
+        after: "",
+        tables: [
+          {
+            heading: "",
+            header: ["Contest", "Vote", "Also on the ballot"],
+            rows: [["Library board", "Priya Lane", "Jordan Lee"]],
+          },
+        ],
+      },
+    ],
+  },
+  guide: {
+    path: "notes/town-guide.md",
+    title: "Town voting guide",
+    intro: "A short guide to the town ballot.",
+    date: "2026-11-03",
+    sections: [],
+  },
 };

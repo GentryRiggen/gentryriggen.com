@@ -1,0 +1,56 @@
+import { PLAYABLE_UNIVERSES } from "@/lib/ever-onward/universes";
+import LampPanel from "../../game/LampPanel";
+import FundPanel from "../../game/FundPanel";
+import LightsPanel from "../../game/LightsPanel";
+import ProbeDesignPanel from "../../game/ProbeDesignPanel";
+import SunEdgePanel from "../../game/SunEdgePanel";
+import HarborPanel from "../../game/HarborPanel";
+import ProjectsPanel from "../../game/ProjectsPanel";
+import CrewsPanel from "../../game/CrewsPanel";
+import GridPanel from "../../game/GridPanel";
+import StreetlightsPanel from "../../game/StreetlightsPanel";
+import WeatherDesk from "../../game/WeatherDesk";
+import { uiFor } from "..";
+
+describe("the universe UI registry", () => {
+  it("has a UI for every playable universe", () => {
+    for (const def of PLAYABLE_UNIVERSES)
+      expect(() => uiFor(def.id)).not.toThrow();
+  });
+
+  it("keeps Light's side panels in today's order", () => {
+    // The fork is the same panel in every part, split by phase; both sit
+    // under the shop. Only the lamp is above it.
+    const { panels, topPanels, primaryPanels } = uiFor("light");
+    // The coast fork sits under the shop so the upgrades stay on screen.
+    expect(panels[0].name).toBe("CoastForkPanel");
+    expect(panels[1].name).toBe("LaterForkPanel");
+    expect(topPanels).toEqual([LampPanel, HarborPanel]);
+    expect(primaryPanels).toEqual([
+      GridPanel,
+      StreetlightsPanel,
+      CrewsPanel,
+      SunEdgePanel,
+      ProbeDesignPanel,
+      LightsPanel,
+    ]);
+    expect(panels.slice(2)).toEqual([FundPanel, WeatherDesk, ProjectsPanel]);
+  });
+
+  it("keeps Light's ending lines", () => {
+    expect(uiFor("light").ending.storyIds).toEqual([
+      "last-remember",
+      "last-end-1",
+      "last-end-2",
+    ]);
+  });
+
+  it("gives Light a lantern opening and four tap looks", () => {
+    expect(uiFor("light").Opening).toBeDefined();
+    expect(uiFor("light").tapLooks).toHaveLength(4);
+  });
+
+  it("throws for an unknown universe", () => {
+    expect(() => uiFor("nope")).toThrow("No UI for universe nope");
+  });
+});

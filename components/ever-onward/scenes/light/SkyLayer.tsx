@@ -1,0 +1,330 @@
+import type { LightSceneInfo } from "@/lib/ever-onward/universes/light";
+import ForkArt from "./ForkArt";
+import { AIM_DISH, LAKE, RELAY_RADIUS, SUN } from "./anchors";
+import SkyDials from "./SkyDials";
+import { makeStars } from "./random";
+
+const STAR_COUNT = 70;
+const STARS = makeStars(41, STAR_COUNT, { ...SUN, radius: 44 });
+const RINGS = [
+  { radius: 48, cls: "lm-orbit-a" },
+  { radius: 68, cls: "lm-orbit-b" },
+  { radius: 90, cls: "lm-orbit-c" },
+] as const;
+const MAX_COLLECTORS = 6;
+/** The mirror field on the ground: a few mirrors at 3 collectors, a field at 6. */
+const SMALL_FIELD = 6;
+const FIELD_MIRRORS = [
+  { x: 40, y: 270 },
+  { x: 62, y: 276 },
+  { x: 84, y: 270 },
+  { x: 106, y: 276 },
+  { x: 128, y: 270 },
+  { x: 150, y: 276 },
+  { x: 250, y: 270 },
+  { x: 272, y: 276 },
+  { x: 294, y: 270 },
+  { x: 316, y: 276 },
+  { x: 338, y: 270 },
+  { x: 360, y: 276 },
+] as const;
+/** Stars the star charts mark out for the fleet. */
+const CHART_TARGETS = [
+  { x: 60, y: 62 },
+  { x: 338, y: 46 },
+  { x: 352, y: 196 },
+] as const;
+const RELAY_COUNTS = [0, 4, 8, 12] as const;
+
+const rad = (deg: number): number => (deg * Math.PI) / 180;
+
+/** One sun collector: a mirror with a gold frame, bigger as the mirrors grow. */
+function Collector({ tier }: { tier: number }) {
+  const scale = 1.35 + 0.3 * tier;
+  return (
+    <g className="lm-pop-svg">
+      <g transform={`scale(${scale})`}>
+        <rect
+          x="-6"
+          y="-3.5"
+          width="12"
+          height="7"
+          rx="1"
+          fill="#7fb7ff"
+          stroke="#ffe08a"
+          strokeWidth="1.2"
+        />
+        <line x1="-6" x2="6" stroke="#ffffff" strokeOpacity="0.6" />
+        <line y1="-3.5" y2="3.5" stroke="#ffffff" strokeOpacity="0.6" />
+      </g>
+    </g>
+  );
+}
+
+export default function SkyLayer({ info }: { info: LightSceneInfo }) {
+  const collectors = Math.min(MAX_COLLECTORS, Math.max(0, info.collectors));
+  const stars = Math.ceil(info.starsFraction * STAR_COUNT);
+  const glow = 0.35 + Math.min(0.5, collectors * 0.05);
+  // The mirror field grows in two steps: a few mirrors, then a great field.
+  const fieldMirrors =
+    info.collectors >= 6
+      ? FIELD_MIRRORS.length
+      : info.collectors >= 3
+        ? SMALL_FIELD
+        : 0;
+  const relays = RELAY_COUNTS[Math.min(3, info.relayTier)];
+  // The sun grows as the fleet flies closer: 0.7x far out to 3.1x at the edge.
+  const sunScale = 0.7 + 0.3 * info.sunDist;
+  const aimWidth = Math.max(2, 16 - 2.6 * info.aimLevel);
+
+  return (
+    <g>
+      <rect x="-1200" y="-1200" width="2800" height="2800" fill="#02030a" />
+      {STARS.slice(0, stars).map((s, i) => (
+        <circle
+          key={i}
+          cx={s.x}
+          cy={s.y}
+          r={s.r}
+          fill="#dfe8ff"
+          className={s.twinkle}
+        />
+      ))}
+      {/* something vast drifts between the far stars; you only see what it hides */}
+      <g
+        className="gg-leviathan"
+        aria-hidden="true"
+        fill="#0a0d1c"
+        fillOpacity="0.9"
+      >
+        <ellipse cx="0" cy="62" rx="70" ry="14" />
+        <polygon points="-70,62 -100,46 -96,78" />
+        <rect
+          x="52"
+          y="58"
+          width="3"
+          height="2"
+          fill="#ff4d4d"
+          fillOpacity="0.5"
+        />
+      </g>
+      <g aria-hidden="true">
+        <g className="gg-sat">
+          <rect x="0" y="250" width="7" height="6" fill="#6b5a4a" />
+          <rect x="2" y="248" width="4" height="3" fill="#8a7a66" />
+        </g>
+        <g className="gg-shoot" fill="#bff1ff">
+          <rect x="380" y="40" width="3" height="2" />
+          <rect x="383" y="38" width="5" height="1" fillOpacity="0.6" />
+          <rect x="388" y="36" width="7" height="1" fillOpacity="0.3" />
+        </g>
+      </g>
+      {/* star charts: the stars the fleet is heading for */}
+      {info.navTier >= 1 &&
+        CHART_TARGETS.map((t) => (
+          <g key={`${t.x}-${t.y}`} className="lm-pop-svg">
+            <line
+              x1={SUN.x}
+              y1={SUN.y}
+              x2={t.x}
+              y2={t.y}
+              stroke="#8cf0ff"
+              strokeOpacity="0.35"
+              strokeDasharray="3 4"
+            />
+            <circle
+              cx={t.x}
+              cy={t.y}
+              r="6"
+              fill="none"
+              stroke="#8cf0ff"
+              strokeWidth="1.2"
+            />
+            <circle cx={t.x} cy={t.y} r="2" fill="#ffffff" />
+          </g>
+        ))}
+      <circle
+        cx={SUN.x}
+        cy={SUN.y}
+        r={150 * sunScale}
+        fill="url(#lm-sun)"
+        opacity={glow}
+      />
+      {RINGS.map((ring) => (
+        <circle
+          key={ring.radius}
+          cx={SUN.x}
+          cy={SUN.y}
+          r={ring.radius}
+          fill="none"
+          stroke="#ffffff"
+          strokeOpacity="0.07"
+        />
+      ))}
+      {/* a solar prominence looping off the sun's edge */}
+      <path
+        d={`M${SUN.x + 14} ${SUN.y - 21} q10 -22 22 -6`}
+        fill="none"
+        stroke="#ff9f3a"
+        strokeWidth="3"
+        className="gg-prominence"
+      />
+      <circle cx={SUN.x} cy={SUN.y} r={26 * sunScale} fill="#ffd35a" />
+      <circle cx={SUN.x} cy={SUN.y} r={20 * sunScale} fill="#fff0a8" />
+      {/* a ring of small mirrors around the sun */}
+      {info.mirrorTier >= 2 && (
+        <g transform={`translate(${SUN.x} ${SUN.y})`}>
+          <g className="lm-orbit-b">
+            {Array.from({ length: 8 }, (_, i) => (
+              <rect
+                key={i}
+                x="-3"
+                y="-1.5"
+                width="6"
+                height="3"
+                fill="#7fb7ff"
+                stroke="#ffe08a"
+                strokeWidth="0.8"
+                transform={`rotate(${i * 45}) translate(34 0)`}
+              />
+            ))}
+          </g>
+        </g>
+      )}
+      {RINGS.map((ring, ringIndex) => {
+        const items = Array.from({ length: collectors }, (_, i) => i).filter(
+          (i) => i % RINGS.length === ringIndex
+        );
+        return (
+          <g key={ring.radius} transform={`translate(${SUN.x} ${SUN.y})`}>
+            <g className={ring.cls}>
+              {items.map((item, k) => (
+                <g
+                  key={item}
+                  transform={`rotate(${(k / items.length) * 360 + ringIndex * 40}) translate(${ring.radius} 0)`}
+                >
+                  <Collector tier={info.mirrorTier} />
+                </g>
+              ))}
+            </g>
+          </g>
+        );
+      })}
+      {/* relay stations ring the whole sky and listen */}
+      {relays > 0 && (
+        <g transform={`translate(${SUN.x} ${SUN.y})`}>
+          {info.relayTier >= 2 && (
+            <circle
+              r={RELAY_RADIUS}
+              fill="none"
+              stroke="#8cf0ff"
+              strokeOpacity="0.3"
+              strokeDasharray="2 4"
+            />
+          )}
+          {Array.from({ length: relays }, (_, i) => {
+            const a = rad((i * 360) / relays - 90);
+            const x = RELAY_RADIUS * Math.cos(a);
+            const y = RELAY_RADIUS * Math.sin(a);
+            return (
+              <g key={`${relays}-${i}`} transform={`translate(${x} ${y})`}>
+                {info.relayTier >= 3 && (
+                  <line
+                    x2={-x * 0.8}
+                    y2={-y * 0.8}
+                    stroke="#8cf0ff"
+                    strokeOpacity="0.2"
+                  />
+                )}
+                <g className="lm-pop-svg">
+                  <polygon
+                    points="0,-5 5,0 0,5 -5,0"
+                    fill="#8cf0ff"
+                    stroke="#ffffff"
+                    strokeWidth="0.8"
+                  />
+                </g>
+              </g>
+            );
+          })}
+        </g>
+      )}
+      {fieldMirrors > 0 && (
+        <g className="lm-pop-svg">
+          <path
+            d="M-1200 300 L-1200 282 Q60 262 200 276 Q340 262 1600 282 L1600 300 Z"
+            fill="#0b1124"
+          />
+          {FIELD_MIRRORS.slice(0, fieldMirrors).map((m) => (
+            <g key={`${m.x}-${m.y}`}>
+              <line
+                x1={m.x}
+                y1={m.y}
+                x2={SUN.x}
+                y2={SUN.y + 30}
+                stroke="#ffe08a"
+                strokeOpacity="0.1"
+              />
+              <rect
+                x={m.x - 7}
+                y={m.y - 3}
+                width="14"
+                height="5"
+                rx="1"
+                fill="#7fb7ff"
+                stroke="#ffe08a"
+                strokeWidth="0.8"
+                transform={`rotate(${(SUN.x - m.x) / 14} ${m.x} ${m.y})`}
+              />
+            </g>
+          ))}
+        </g>
+      )}
+      {/* the lake mirror throws the sun's reflection back */}
+      {info.mirrorTier >= 3 && (
+        <g className="lm-pop-svg">
+          <ellipse
+            cx={LAKE.x}
+            cy={LAKE.y}
+            rx="62"
+            ry="8"
+            fill="#4f8fe0"
+            fillOpacity="0.65"
+            stroke="#bfe0ff"
+            strokeWidth="1"
+          />
+          <ellipse
+            cx={LAKE.x}
+            cy={LAKE.y}
+            rx="22"
+            ry="3"
+            fill="#fff0a8"
+            className="lm-twinkle"
+          />
+        </g>
+      )}
+      {/* the aiming dish: its beam gets thinner and brighter as the aim steadies */}
+      <g transform={`translate(${AIM_DISH.x} ${AIM_DISH.y})`}>
+        <polygon
+          points={`${-aimWidth},-8 ${aimWidth},-8 3,${SUN.y + 30 - AIM_DISH.y} -3,${SUN.y + 30 - AIM_DISH.y}`}
+          fill="#ffe08a"
+          fillOpacity={0.05 + 0.03 * info.aimLevel}
+        />
+        <rect x="-5" y="-3" width="10" height="5" fill="#2a3350" />
+        <path d="M-9 -4 Q0 -14 9 -4 Z" fill="#7fb7ff" stroke="#ffe08a" />
+        {Array.from({ length: info.aimLevel }, (_, i) => (
+          <rect
+            key={i}
+            x={-11 + i * 4.5}
+            y="5"
+            width="3"
+            height="3"
+            fill="#ffd35a"
+          />
+        ))}
+      </g>
+      <SkyDials info={info} />
+      <ForkArt info={info} />
+    </g>
+  );
+}

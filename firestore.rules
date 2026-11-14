@@ -505,7 +505,7 @@ service cloud.firestore {
     function validShipEvent(name, p) {
       return (name == 'trial_run'
           && p.keys().hasOnly(['kind', 'outcome', 'sea']) && p.keys().hasAll(['kind', 'outcome', 'sea'])
-          && p.kind in ['weather', 'storm', 'iceberg']
+          && p.kind in ['weather', 'storm', 'iceberg', 'boom']
           && p.outcome in ['steady', 'recovered', 'capsized', 'afloat', 'sank']
           && p.sea in ['calm', 'choppy', 'stormy', 'wild'])
         || (name == 'challenge_result'
@@ -521,6 +521,10 @@ service cloud.firestore {
         || (name == 'walk_started'
           && p.keys().hasOnly(['start']) && p.keys().hasAll(['start'])
           && p.start in ['bow', 'middle', 'stern'])
+        || (name == 'escape_ending'
+          && p.keys().hasOnly(['ending', 'boat']) && p.keys().hasAll(['ending', 'boat'])
+          && p.ending in ['deck', 'swim', 'frozen']
+          && p.boat in ['davit', 'raft', 'none'])
         || (name == 'drive_started'
           && p.keys().hasOnly(['density']) && p.keys().hasAll(['density'])
           && p.density in ['few', 'some', 'many'])

@@ -1,4 +1,6 @@
-import { useId, type ReactNode } from "react";
+import { useId, type MouseEvent, type ReactNode } from "react";
+import { ChevronLeft } from "lucide-react";
+import { isPlainClick } from "@/components/jim/useJimRouter";
 
 /**
  * Small shared pieces for the Notes pages (Ayu Mirage tokens throughout).
@@ -19,8 +21,12 @@ export function Section({ title, aside, children }: SectionProps) {
       <div className="flex items-baseline justify-between gap-3">
         <h2
           id={id}
-          className="text-sm font-semibold tracking-wide text-ayu-accent uppercase"
+          className="flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-ayu-subtle uppercase"
         >
+          <span
+            aria-hidden="true"
+            className="h-3 w-1 rounded-full bg-gradient-to-b from-ayu-accent to-ayu-orange"
+          />
           {title}
         </h2>
         {aside && (
@@ -38,14 +44,30 @@ interface StatProps {
   label: string;
   value: ReactNode;
   detail?: ReactNode;
+  /** Colors the number: green for good, red for bad. */
+  tone?: "good" | "bad" | "";
 }
 
+const STAT_TONES = {
+  good: "text-ayu-green",
+  bad: "text-ayu-red",
+  "": "jim-figure",
+};
+
 /** A tile with one big number. */
-export function Stat({ label, value, detail }: StatProps) {
+export function Stat({ label, value, detail, tone = "" }: StatProps) {
   return (
-    <div className="min-w-0 rounded-xl bg-ayu-panel px-4 py-3">
+    <div className="jim-card relative min-w-0 overflow-hidden px-4 py-3.5">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-10 -right-10 size-24 rounded-full bg-ayu-accent/10 blur-2xl"
+      />
       <p className="text-sm text-ayu-subtle">{label}</p>
-      <p className="mt-0.5 text-2xl font-semibold text-ayu-text">{value}</p>
+      <p
+        className={`${STAT_TONES[tone]} mt-1 text-3xl font-semibold tracking-tight tabular-nums`}
+      >
+        {value}
+      </p>
       {detail && (
         <p className="mt-0.5 text-sm text-ayu-subtle [overflow-wrap:anywhere]">
           {detail}
@@ -57,13 +79,17 @@ export function Stat({ label, value, detail }: StatProps) {
 
 /** A calm line where a list would be. */
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="text-ayu-subtle">{children}</p>;
+  return (
+    <p className="jim-card border-dashed! px-4 py-3.5 text-ayu-subtle shadow-none!">
+      {children}
+    </p>
+  );
 }
 
 /** The list every page uses: rows on a panel, split by hairlines. */
 export function Rows({ children }: { children: ReactNode }) {
   return (
-    <ul className="divide-y divide-ayu-line overflow-hidden rounded-xl bg-ayu-panel">
+    <ul className="jim-card divide-y divide-white/[0.05] overflow-hidden">
       {children}
     </ul>
   );
@@ -75,20 +101,204 @@ interface ChipProps {
 }
 
 const CHIP_TONES: Record<NonNullable<ChipProps["tone"]>, string> = {
-  plain: "bg-ayu-line text-ayu-text",
-  red: "bg-ayu-red/15 text-ayu-red",
-  green: "bg-ayu-green/10 text-ayu-green",
-  blue: "bg-ayu-blue/10 text-ayu-blue",
-  purple: "bg-ayu-purple/10 text-ayu-purple",
-  cyan: "bg-ayu-cyan/10 text-ayu-cyan",
+  plain: "bg-white/[0.06] text-ayu-text ring-white/10",
+  red: "bg-ayu-red/12 text-ayu-red ring-ayu-red/25",
+  green: "bg-ayu-green/10 text-ayu-green ring-ayu-green/20",
+  blue: "bg-ayu-blue/10 text-ayu-blue ring-ayu-blue/20",
+  purple: "bg-ayu-purple/10 text-ayu-purple ring-ayu-purple/20",
+  cyan: "bg-ayu-cyan/10 text-ayu-cyan ring-ayu-cyan/20",
 };
 
 export function Chip({ children, tone = "plain" }: ChipProps) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${CHIP_TONES[tone]}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${CHIP_TONES[tone]}`}
     >
       {children}
     </span>
+  );
+}
+
+interface BackLinkProps {
+  /** Where it goes, in words ("People", "Results"). */
+  label: string;
+  onBack: () => void;
+  /** Its address: a real link, so ⌘-click opens it in a new tab. */
+  href?: string;
+  /** Shown to its right on the same row (the desktop's Updated · Refresh). */
+  aside?: ReactNode;
+}
+
+const BACK_CLASS =
+  "-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-white/[0.06]";
+
+/** "‹ People" above a profile, a note or a card. */
+export function BackLink({ label, onBack, href, aside }: BackLinkProps) {
+  const link = <BackLinkOnly label={label} onBack={onBack} href={href} />;
+  if (!aside) return link;
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      {link}
+      {aside}
+    </div>
+  );
+}
+
+function BackLinkOnly({ label, onBack, href }: BackLinkProps) {
+  const content = (
+    <>
+      <ChevronLeft aria-hidden="true" className="size-5" />
+      {label}
+    </>
+  );
+  if (href === undefined) {
+    return (
+      <button type="button" onClick={onBack} className={BACK_CLASS}>
+        {content}
+      </button>
+    );
+  }
+  return (
+    <a
+      href={href}
+      onClick={(event) => {
+        if (!isPlainClick(event)) return;
+        event.preventDefault();
+        onBack();
+      }}
+      className={`${BACK_CLASS} w-fit`}
+    >
+      {content}
+    </a>
+  );
+}
+
+/**
+ * Opens `href` in the app on a plain click; anything else (⌘-click, a
+ * middle click) is left to the browser.
+ */
+export function onPlainClick(open: () => void) {
+  return (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!isPlainClick(event)) return;
+    event.preventDefault();
+    open();
+  };
+}
+
+interface OpenLinkProps {
+  /** Its address; without one (or null) it is a plain button. */
+  href?: string | null;
+  onOpen: () => void;
+  className: string;
+  /** Extra classes for the link form (an `<a>` is inline, a button isn't). */
+  linkClassName?: string;
+  children: ReactNode;
+}
+
+/** A row or name that opens a page: a real link when it has an address. */
+export function OpenLink({
+  href,
+  onOpen,
+  className,
+  linkClassName = "",
+  children,
+}: OpenLinkProps) {
+  if (!href) {
+    return (
+      <button type="button" onClick={onOpen} className={className}>
+        {children}
+      </button>
+    );
+  }
+  return (
+    <a
+      href={href}
+      onClick={onPlainClick(onOpen)}
+      className={`${className} ${linkClassName}`}
+    >
+      {children}
+    </a>
+  );
+}
+
+interface SegmentedProps<T extends string> {
+  /** What the switch picks, spoken ("Meeting views"). */
+  label: string;
+  options: readonly { id: T; label: string }[];
+  value: T;
+  onChange: (next: T) => void;
+}
+
+const SEGMENT_COLS = [
+  "grid-cols-1",
+  "grid-cols-2",
+  "grid-cols-3",
+  "grid-cols-4",
+];
+
+/** A segmented switch (two to four choices) above a list or chart. */
+export function Segmented<T extends string>({
+  label,
+  options,
+  value,
+  onChange,
+}: SegmentedProps<T>) {
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className={`jim-card grid gap-1 p-1 ${
+        SEGMENT_COLS[Math.min(options.length, 4) - 1] ?? "grid-cols-4"
+      }`}
+    >
+      {options.map((o) => {
+        const selected = o.id === value;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(o.id)}
+            className={`min-h-11 min-w-0 truncate rounded-xl px-1.5 text-sm font-medium transition-colors duration-200 ${
+              selected
+                ? "bg-ayu-accent/12 text-ayu-accent ring-1 ring-ayu-accent/30 ring-inset"
+                : "text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
+            }`}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface FilterChipProps {
+  label: string;
+  /** How many it matches, shown small. */
+  count?: number;
+  on: boolean;
+  onToggle: () => void;
+}
+
+/** A chip that filters a list; tap again to clear it. */
+export function FilterChip({ label, count, on, onToggle }: FilterChipProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onToggle}
+      className={`inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full px-3 text-sm ring-1 ring-inset transition-colors ${
+        on
+          ? "bg-ayu-accent/12 text-ayu-accent ring-ayu-accent/30"
+          : "bg-white/[0.04] text-ayu-text ring-white/10 hover:bg-white/[0.08]"
+      }`}
+    >
+      <span className="min-w-0 truncate">{label}</span>
+      {count !== undefined && (
+        <span className="text-xs text-ayu-subtle tabular-nums">{count}</span>
+      )}
+    </button>
   );
 }

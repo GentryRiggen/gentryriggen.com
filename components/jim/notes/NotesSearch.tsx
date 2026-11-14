@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Ref } from "react";
 import { Search, X } from "lucide-react";
-import { Empty, Rows } from "@/components/jim/notes/NotesUi";
+import { Empty, onPlainClick, Rows } from "@/components/jim/notes/NotesUi";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
+import { NOTES_PAGES, PAGE_LABELS, type NotesPage } from "@/lib/jim/routes";
 import { stripMd } from "@/lib/jim/todos";
 import { searchNotes, type SearchResult } from "@/lib/jim/view";
 
@@ -23,10 +24,18 @@ const ERRORS: Record<JimErrorKind, string> = {
 interface SearchFieldProps {
   value: string;
   onChange: (value: string) => void;
+  inputRef?: Ref<HTMLInputElement>;
+  /** A shortcut shown in the empty box ("⌘K"). */
+  shortcut?: string;
 }
 
 /** The search box at the top of Notes, with a clear button. */
-export function SearchField({ value, onChange }: SearchFieldProps) {
+export function SearchField({
+  value,
+  onChange,
+  inputRef,
+  shortcut,
+}: SearchFieldProps) {
   return (
     <div role="search" className="relative">
       <label htmlFor="jim-notes-search" className="sr-only">
@@ -37,6 +46,7 @@ export function SearchField({ value, onChange }: SearchFieldProps) {
         className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-ayu-subtle"
       />
       <input
+        ref={inputRef}
         id="jim-notes-search"
         type="search"
         value={value}
@@ -47,8 +57,16 @@ export function SearchField({ value, onChange }: SearchFieldProps) {
         autoCorrect="off"
         spellCheck={false}
         enterKeyHint="search"
-        className="min-h-11 w-full rounded-full border border-ayu-muted bg-ayu-panel py-2 pr-11 pl-10 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent focus:outline-none [&::-webkit-search-cancel-button]:hidden"
+        className="min-h-11 w-full rounded-2xl border border-white/[0.08] bg-ayu-panel/70 py-2 shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] backdrop-blur pr-11 pl-10 text-base text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none [&::-webkit-search-cancel-button]:hidden"
       />
+      {!value && shortcut && (
+        <kbd
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 rounded-md border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 font-sans text-xs text-ayu-subtle"
+        >
+          {shortcut}
+        </kbd>
+      )}
       {value && (
         <button
           type="button"
@@ -75,6 +93,21 @@ interface NotesSearchProps {
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
   onOpen: (path: string) => void;
+  /**
+   * A result's address, so it is a real link (⌘-click opens a tab); null
+   * for one without an address of its own.
+   */
+  hrefFor?: (path: string) => string | null;
+  /** Opens a page whose name matches ("todo" → Todos). Without it, none show. */
+  onOpenPage?: (page: NotesPage) => void;
+  pageHref?: (page: NotesPage) => string;
+}
+
+/** Pages whose name starts with the query (any case). */
+export function matchingPages(query: string): NotesPage[] {
+  const q = query.trim().toLowerCase();
+  if (q.length < SEARCH_MIN) return [];
+  return NOTES_PAGES.filter((p) => PAGE_LABELS[p].toLowerCase().startsWith(q));
 }
 
 /** Results for the search field: title, path and a snippet per note. */
@@ -83,6 +116,9 @@ export default function NotesSearch({
   api,
   getToken,
   onOpen,
+  hrefFor,
+  onOpenPage,
+  pageHref,
 }: NotesSearchProps) {
   const q = query.trim();
   const [outcome, setOutcome] = useState<Outcome | null>(null);
@@ -125,8 +161,28 @@ export default function NotesSearch({
       ? null
       : `${settled.results?.length ?? 0} note${settled.results?.length === 1 ? "" : "s"}`;
 
+  const pages = onOpenPage ? matchingPages(q) : [];
+
   return (
     <div className="space-y-3">
+      {pages.length > 0 && (
+        <Rows>
+          {pages.map((p) => (
+            <li key={p}>
+              <a
+                href={pageHref?.(p) ?? "#"}
+                onClick={onPlainClick(() => onOpenPage?.(p))}
+                className="flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-ayu-raised"
+              >
+                <span className="font-medium text-ayu-text">
+                  {PAGE_LABELS[p]}
+                </span>
+                <span className="text-sm text-ayu-subtle">Go to page →</span>
+              </a>
+            </li>
+          ))}
+        </Rows>
+      )}
       <p role="status" className="text-sm text-ayu-subtle">
         {status}
       </p>
@@ -142,7 +198,7 @@ export default function NotesSearch({
                 setOutcome(null);
                 setAttempt((n) => n + 1);
               }}
-              className="min-h-11 rounded-full bg-ayu-accent px-5 font-medium text-ayu-bg hover:bg-ayu-orange"
+              className="min-h-11 rounded-full jim-glow px-5 font-medium text-ayu-bg hover:brightness-110"
             >
               Try again
             </button>
@@ -153,13 +209,10 @@ export default function NotesSearch({
       ) : results && results.length > 0 ? (
         <div className={settled ? "" : "opacity-60"} aria-busy={!settled}>
           <Rows>
-            {results.map((r) => (
-              <li key={r.path}>
-                <button
-                  type="button"
-                  onClick={() => onOpen(r.path)}
-                  className="block min-h-11 w-full px-4 py-2.5 text-left hover:bg-ayu-raised"
-                >
+            {results.map((r) => {
+              const href = hrefFor?.(r.path) ?? null;
+              const body = (
+                <>
                   <span className="block font-medium text-ayu-text [overflow-wrap:anywhere]">
                     {r.title || r.path}
                   </span>
@@ -171,9 +224,32 @@ export default function NotesSearch({
                       {stripMd(r.snippet)}
                     </span>
                   )}
-                </button>
-              </li>
-            ))}
+                </>
+              );
+              const className =
+                "block min-h-11 w-full px-4 py-2.5 text-left hover:bg-ayu-raised";
+              return (
+                <li key={r.path}>
+                  {href === null ? (
+                    <button
+                      type="button"
+                      onClick={() => onOpen(r.path)}
+                      className={className}
+                    >
+                      {body}
+                    </button>
+                  ) : (
+                    <a
+                      href={href}
+                      onClick={onPlainClick(() => onOpen(r.path))}
+                      className={className}
+                    >
+                      {body}
+                    </a>
+                  )}
+                </li>
+              );
+            })}
           </Rows>
         </div>
       ) : null}

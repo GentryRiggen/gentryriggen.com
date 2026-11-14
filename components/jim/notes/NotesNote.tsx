@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronLeft } from "lucide-react";
-import { Empty } from "@/components/jim/notes/NotesUi";
+import { useEffect, useState, type ReactNode } from "react";
+import { BackLink, Empty } from "@/components/jim/notes/NotesUi";
 import { JimError, type JimErrorKind } from "@/lib/jim/api";
 import JimMarkdown from "@/lib/jim/markdown";
 import { fmtShort } from "@/lib/jim/todos";
@@ -14,6 +13,14 @@ interface NotesNoteProps {
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
   onBack: () => void;
+  /** Where the back button goes ("Results", or "Work" from a meeting). */
+  backLabel?: string;
+  /** The back link's address; without one it is a plain button. */
+  backHref?: string;
+  /** Beside the back link (the desktop's Updated · Refresh). */
+  backAside?: ReactNode;
+  /** The note's title, once it has loaded (for the browser tab). */
+  onTitle?: (title: string) => void;
 }
 
 type State =
@@ -42,6 +49,10 @@ export default function NotesNote({
   api,
   getToken,
   onBack,
+  backLabel = "Results",
+  backHref,
+  backAside,
+  onTitle,
 }: NotesNoteProps) {
   const [state, setState] = useState<State>({ kind: "loading" });
   const [attempt, setAttempt] = useState(0);
@@ -69,24 +80,27 @@ export default function NotesNote({
 
   const note = state.kind === "note" ? state.note : null;
   const updated = note ? updatedLabel(note.updated) : null;
+  const title = note ? note.title || note.path : null;
+
+  useEffect(() => {
+    if (title) onTitle?.(title);
+  }, [title, onTitle]);
 
   return (
     <article className="space-y-5">
-      <button
-        type="button"
-        onClick={onBack}
-        className="-ml-2 flex min-h-11 items-center gap-1 rounded-md pr-3 pl-1 text-ayu-accent hover:bg-ayu-panel"
-      >
-        <ChevronLeft aria-hidden="true" className="size-5" />
-        Results
-      </button>
+      <BackLink
+        label={backLabel}
+        onBack={onBack}
+        href={backHref}
+        aside={backAside}
+      />
       {state.kind === "loading" && (
         <div aria-busy="true" className="space-y-3">
           <p className="sr-only" role="status">
             Loading note…
           </p>
-          <div className="h-7 w-48 animate-pulse rounded bg-ayu-panel" />
-          <div className="h-32 animate-pulse rounded-xl bg-ayu-panel" />
+          <div className="h-7 w-48 animate-pulse rounded-lg bg-white/[0.05]" />
+          <div className="h-32 animate-pulse rounded-2xl bg-white/[0.04] ring-1 ring-white/[0.04]" />
         </div>
       )}
       {state.kind === "missing" && (
@@ -104,7 +118,7 @@ export default function NotesNote({
                 setState({ kind: "loading" });
                 setAttempt((n) => n + 1);
               }}
-              className="min-h-11 rounded-full bg-ayu-accent px-5 font-medium text-ayu-bg hover:bg-ayu-orange"
+              className="min-h-11 rounded-full jim-glow px-5 font-medium text-ayu-bg hover:brightness-110"
             >
               Try again
             </button>

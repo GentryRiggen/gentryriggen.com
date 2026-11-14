@@ -35,16 +35,16 @@ npm run dev     # http://localhost:3000
 
 ## Scripts
 
-| Command                         | What it does                                      |
-| ------------------------------- | ------------------------------------------------- |
-| `npm run dev`                   | Dev server                                        |
-| `npm run build`                 | Production build (static export to `out/`)        |
-| `npm run lint` / `format:check` | ESLint / Prettier check                           |
-| `npm run type-check`            | `tsc --noEmit`                                    |
-| `npm test`                      | Jest unit tests                                   |
-| `npm run test:e2e`              | Playwright (starts the dev server itself)         |
-| `npm run test:visual`           | Visual snapshots, run in Docker for stable pixels |
-| `npm run validate`              | Lint, format, types, tests and build, as in CI    |
+| Command                         | What it does                                   |
+| ------------------------------- | ---------------------------------------------- |
+| `npm run dev`                   | Dev server                                     |
+| `npm run build`                 | Production build (static export to `out/`)     |
+| `npm run lint` / `format:check` | ESLint / Prettier check                        |
+| `npm run type-check`            | `tsc --noEmit`                                 |
+| `npm test`                      | Jest unit tests (fast lane, no balance sims)   |
+| `npm run test:sims`             | Game-balance simulations (`jest.sims.js`)      |
+| `npm run test:e2e`              | Playwright (starts the dev server itself)      |
+| `npm run validate`              | Lint, format, types, tests and build, as in CI |
 
 ## Project structure
 
@@ -54,7 +54,7 @@ components/
   designs/design1/    Terminal UI
   ship-builder/       3D scene, UI, audio, hooks
 lib/ship-builder/     Model, simulation, persistence, templates, changelog
-e2e/                  Playwright tests and visual snapshots
+e2e/                  Playwright tests
 scripts/              Screenshot, icon and offline-check tooling
 docs/superpowers/     Design specs and implementation plans
 ```
@@ -68,8 +68,16 @@ Chromium for everything; WebKit and an iPad profile run only the tests tagged
 ## Deployment
 
 Pushes to `main` run CI (lint, format, types, unit and e2e tests, build) and
-deploy `out/` to Firebase Hosting through GitHub Actions. The workflow needs
-two repository secrets: `FIREBASE_SERVICE_ACCOUNT` and `FIREBASE_PROJECT_ID`.
+deploy both Firebase Hosting sites (the main site from `out/`, Jim's from
+`out-jim/`) plus the Firestore rules and indexes through GitHub Actions.
+
+The deploy is keyless: the job trades GitHub's OIDC token for a short-lived
+token of a deployer service account through Workload Identity Federation, and
+the pool trusts only this repository's `main` branch. No service account key
+or `FIREBASE_SERVICE_ACCOUNT` secret is used. The workflow needs three
+repository variables (not secrets): `GCP_WIF_PROVIDER` (the full provider
+name), `GCP_DEPLOYER_SA` (the deployer's email) and `JIM_TENANT` (Jim's
+sign-in tenant id). CI on `main` fails with a clear error if one is missing.
 Renovate keeps dependencies current.
 
 ## Contributing

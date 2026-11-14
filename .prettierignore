@@ -1,6 +1,7 @@
 node_modules
 .next
 out
+out-jim
 dist
 build
 coverage

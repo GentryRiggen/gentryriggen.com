@@ -3,20 +3,43 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import JimChat from "@/components/jim/JimChat";
 import JimHeader from "@/components/jim/JimHeader";
+import JimMark from "@/components/jim/JimMark";
+import LockScreen from "@/components/jim/LockScreen";
+import useAppLock from "@/components/jim/useAppLock";
+import useJimStaleChunkRecovery from "@/components/jim/useJimStaleChunkRecovery";
 import { ADMIN_UID, isAdminUser } from "@/lib/analytics/admin";
 import { setExcluded } from "@/lib/analytics/exclude";
 import { safeLocalStorage } from "@/lib/analytics/storage";
+import { isFirebaseConfigured } from "@/lib/firebase/config";
+import { CODE_RESTART, isWrongCode, WRONG_CODE } from "@/lib/firebase/mfa";
+import {
+  isJimConnected,
+  JIM_API,
+  JimError,
+  onSignInRefused,
+  wakeJim,
+} from "@/lib/jim/api";
+import {
+  clearLock,
+  clearWipePending,
+  isWipePending,
+  loadLock,
+  markLockOffIfAbsent,
+  markWipePending,
+  saveLockState,
+} from "@/lib/jim/appLock";
 import {
   getIdToken,
   type AuthUser,
   signInWithEmail,
   signOutUser,
+  TENANT_MISSING,
   watchAuth,
-} from "@/lib/firebase/client";
-import { isFirebaseConfigured } from "@/lib/firebase/config";
-import { isJimConnected, JIM_API, wakeJim } from "@/lib/jim/api";
+} from "@/lib/jim/auth";
 import { clearHistory } from "@/lib/jim/history";
 import { goTo, jimRedirectTarget } from "@/lib/jim/host";
+import { clearExplore } from "@/lib/jim/explore";
+import { clearMoney } from "@/lib/jim/money";
 import { clearAll, saveView } from "@/lib/jim/offlineStore";
 import { disablePush } from "@/lib/jim/push";
 import { registerJimServiceWorker } from "@/lib/jim/serviceWorker";
@@ -30,12 +53,65 @@ type State =
   | { kind: "unconfigured" }
   | { kind: "signedOut" }
   | { kind: "denied"; email: string }
+  /** A sign-out not yet finished: never the app until it is. */
+  | { kind: "wiping"; failed: boolean }
   | { kind: "owner"; uid: string; api: string; getToken: GetToken };
+
+/** The sign-in this page runs on: real Firebase, or the e2e stand-in. */
+interface Session {
+  getToken: GetToken;
+  api: string;
+  endSession: () => Promise<void>;
+}
 
 const e2eToken: GetToken = async () => "e2e-token";
 
 /** How long sign-out waits for a token to tell the server, at most. */
 const SIGN_OUT_TOKEN_MS = 2_000;
+
+/**
+ * The device's Jim data, except the lock and the wipe marker. The Notes
+ * saver goes first, so a view still on its way can't refill the store.
+ */
+function clearDeviceData(): void {
+  setViewSaver(null);
+  clearViewCache();
+  // The money summary is only ever in memory: drop it now.
+  clearMoney();
+  // So are the graph, timeline and ballot.
+  clearExplore();
+  clearHistory();
+  void clearAll();
+}
+
+/** Signed out for sure: the data goes, then the lock and the marker. */
+function finishWipe(): void {
+  clearDeviceData();
+  clearLock();
+  clearWipePending();
+}
+
+const SIGN_OUT_FAILED =
+  "Couldn't finish signing out. Jim stays locked on this device until it does.";
+
+/** Said on the sign-in screen after Jim's server refused the sign-in. */
+const SIGN_IN_ENDED = "Your sign-in ended. Sign in again.";
+
+/** Said when this build doesn't know Jim's sign-in tenant. */
+const NO_TENANT = "Sign-in isn't set up for Jim in this build.";
+
+function errorCode(err: unknown): unknown {
+  return typeof err === "object" && err !== null && "code" in err
+    ? (err as { code: unknown }).code
+    : undefined;
+}
+
+/** Ends an open session once, however many refusals arrive. */
+function endOnce(refusal: { owner: boolean; end: () => void }): void {
+  if (!refusal.owner) return;
+  refusal.owner = false;
+  refusal.end();
+}
 
 /** watchAuth for the e2e hook: the owner is already signed in. */
 async function watchAsOwner(
@@ -54,11 +130,30 @@ export default function JimGate() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  /** Said on the sign-in screen after a wipe (too many wrong PINs). */
+  const [notice, setNotice] = useState<string | null>(null);
+  useJimStaleChunkRecovery();
+  const lock = useAppLock(state.kind === "owner" ? state.uid : null);
+  const { lockNow } = lock;
   /** The sign-in the server was last woken for. */
   const wokeFor = useRef<string | null>(null);
+  const session = useRef<Session | null>(null);
+  /** A password sign-in is under way: its user is fresh, not a leftover. */
+  const signingIn = useRef(false);
+  /** Set while the authenticator code is asked for. */
+  const [finishCode, setFinishCode] = useState<
+    ((code: string) => Promise<void>) | null
+  >(null);
+  const [code, setCode] = useState("");
+  /** Whether the app is open, and how to end it when the server refuses. */
+  const refusal = useRef({ owner: false, end: () => {} });
+
+  // Any Jim request the server refuses (a revoked or ended sign-in) ends the
+  // session here: the device is wiped and the sign-in form shows.
+  useEffect(() => onSignInRefused(() => endOnce(refusal.current)), []);
 
   useEffect(() => {
-    // Off gentryriggen.com the server would refuse every request: go there
+    // Off Jim's own host the server would refuse every request: go there
     // first, before Firebase loads or the form shows.
     const target = jimRedirectTarget(window.location.hostname);
     if (target) {
@@ -67,39 +162,84 @@ export default function JimGate() {
     }
     void registerJimServiceWorker();
     const hook = jimTestHook();
-    // The e2e hook (compiled out of the shipped build) stands in for Firebase.
-    const fake = hook?.signedIn === true;
+    // The e2e hook stands in for Firebase. The build flags are written out in
+    // full (not via a helper) so the shipped build folds them to false and
+    // drops the stand-in entirely.
+    const fake =
+      (process.env.NODE_ENV !== "production" ||
+        process.env.NEXT_PUBLIC_E2E === "1") &&
+      hook?.signedIn === true;
     if (!fake && !isFirebaseConfigured()) return;
     const api = hook?.api ?? JIM_API;
     const watch = fake ? watchAsOwner : watchAuth;
     const getToken = fake ? e2eToken : getIdToken;
+    // The e2e stand-in has no Firebase session to end.
+    const endSession = fake ? async () => {} : signOutUser;
+    session.current = { getToken, api, endSession };
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
 
+    /** Bumped on each sign-in change, so a slow one can't open late. */
+    let authSeq = 0;
     void watch((user) => {
       if (cancelled) return;
+      const seq = ++authSeq;
       if (!user) {
         // Notes data (health, people) and the kept chat must not outlive the
         // sign-in, even one that expired while the page was closed.
         wokeFor.current = null;
-        clearViewCache();
-        clearHistory();
-        void clearAll();
+        finishWipe();
+        lockNow();
         // Keep the "Not authorized" message when our own sign-out echoes back.
         setState((prev) =>
           prev.kind === "denied" ? prev : { kind: "signedOut" }
         );
+      } else if (isWipePending() && !signingIn.current) {
+        // A sign-out that never finished (the app was killed, no network):
+        // finish it before anything of the app shows.
+        wokeFor.current = null;
+        setState({ kind: "wiping", failed: false });
+        endSession().then(
+          () => {
+            finishWipe();
+            lockNow();
+            setState({ kind: "signedOut" });
+          },
+          () => setState({ kind: "wiping", failed: true })
+        );
       } else if (isAdminUser(user)) {
-        setExcluded(safeLocalStorage());
-        // Each good Notes payload is kept on the device for offline opens.
+        // A password just typed ends any wipe left over: that lock is gone.
+        if (isWipePending()) finishWipe();
         const uid = user.uid;
-        setViewSaver((data) => void saveView(uid, data));
-        setState({ kind: "owner", uid, api, getToken });
-        if (wokeFor.current !== user.uid && isJimConnected(api)) {
-          wokeFor.current = user.uid;
-          // Start the server (and the Notes data) while Gentry types.
-          wakeJim(api);
-          fetchView(getToken, undefined, api).catch(() => {});
+        const open = () => {
+          // A later sign-in change (or unmount) wins.
+          if (cancelled || seq !== authSeq) return;
+          setExcluded(safeLocalStorage());
+          // Each good Notes payload is kept on the device for offline opens.
+          setViewSaver((data) => void saveView(uid, data));
+          setState({ kind: "owner", uid, api, getToken });
+          if (wokeFor.current !== uid && isJimConnected(api)) {
+            wokeFor.current = uid;
+            // Start the server (and the Notes data) while Gentry types.
+            wakeJim(api);
+            fetchView(getToken, undefined, api).catch((err: unknown) => {
+              if (err instanceof JimError && err.kind === "denied") {
+                endOnce(refusal.current);
+              }
+            });
+          }
+        };
+        // A fresh sign-in says "no lock" before anything is kept, so a lock
+        // record that later goes missing can be told from one never set.
+        // The password just typed proves the owner: with no lock record, a
+        // marker left "on" by a wipe that didn't finish is overwritten. (The
+        // e2e stand-in counts as fresh on every load, but only fills a gap.)
+        if (signingIn.current && loadLock(uid) === null) {
+          void saveLockState(uid, false).then(open);
+        } else if (signingIn.current || fake) {
+          void markLockOffIfAbsent(uid).then(open);
+        } else {
+          open();
         }
       } else {
         setState({ kind: "denied", email: user.email ?? "unknown account" });
@@ -115,39 +255,88 @@ export default function JimGate() {
       cancelled = true;
       unsubscribe?.();
     };
-  }, []);
+  }, [lockNow]);
 
   function signIn(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
     setError(null);
+    setNotice(null);
     setSubmitting(true);
     setState((prev) => (prev.kind === "denied" ? { kind: "signedOut" } : prev));
     // One generic message for every failure: never say which part was wrong
     // and never surface the raw Firebase error.
+    signingIn.current = true;
     signInWithEmail(email, password)
-      .then(() => setPassword(""))
-      .catch(() => {
+      .then((result) => {
         setPassword("");
-        setError("Incorrect email or password.");
+        if (result.kind === "code") {
+          setFinishCode(() => result.finish);
+          return;
+        }
+        if (isWipePending()) finishWipe();
       })
-      .finally(() => setSubmitting(false));
+      .catch((err: unknown) => {
+        setPassword("");
+        setError(
+          errorCode(err) === TENANT_MISSING
+            ? NO_TENANT
+            : "Incorrect email or password."
+        );
+      })
+      .finally(() => {
+        signingIn.current = false;
+        setSubmitting(false);
+      });
   }
 
+  /** The second step: the code from the authenticator app. */
+  function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting || !finishCode) return;
+    setError(null);
+    setSubmitting(true);
+    signingIn.current = true;
+    finishCode(code)
+      .then(() => {
+        setFinishCode(null);
+        if (isWipePending()) finishWipe();
+      })
+      .catch((err: unknown) => {
+        if (isWrongCode(err)) {
+          setError(WRONG_CODE);
+        } else {
+          setFinishCode(null);
+          setError(CODE_RESTART);
+        }
+      })
+      .finally(() => {
+        setCode("");
+        signingIn.current = false;
+        setSubmitting(false);
+      });
+  }
+
+  /**
+   * Signs out and wipes this device's Jim data, in an order that survives
+   * being cut short: the wipe marker first, then the data, then Firebase's
+   * sign-out, and only once that is done the lock and the marker. Killed or
+   * offline midway, the next load finishes it and stays locked meanwhile.
+   */
   function signOut() {
-    clearViewCache();
-    // Every chat and Notes payload kept on this device, in case the phone
-    // was lent.
-    clearHistory();
-    void clearAll();
-    if (state.kind !== "owner") {
-      signOutUser().catch(() => {});
+    markWipePending();
+    clearDeviceData();
+    lockNow();
+    wokeFor.current = null;
+    const current = session.current;
+    if (!current) {
+      setState({ kind: "signedOut" });
       return;
     }
     // This device's morning briefing goes too. The token is taken before
     // signing out (after, there is none); the wait is capped, so a dead
     // network never holds sign-out up for long.
-    const { getToken, api } = state;
+    const { getToken, api, endSession } = current;
     const token = Promise.race([
       Promise.resolve()
         .then(() => getToken())
@@ -156,37 +345,117 @@ export default function JimGate() {
         setTimeout(() => resolve(null), SIGN_OUT_TOKEN_MS)
       ),
     ]);
-    void disablePush(() => token, undefined, api);
-    void token.then(() => signOutUser().catch(() => {}));
+    if (state.kind === "owner") void disablePush(() => token, undefined, api);
+    void token
+      .then(() => endSession())
+      .then(
+        () => {
+          finishWipe();
+          lockNow();
+        },
+        () => setState({ kind: "wiping", failed: true })
+      );
     // Out now on this screen; Firebase catches up once the token is in.
-    wokeFor.current = null;
     setState({ kind: "signedOut" });
   }
 
+  /** Tries the unfinished sign-out again. */
+  function retrySignOut() {
+    const current = session.current;
+    if (!current) return;
+    setState({ kind: "wiping", failed: false });
+    current.endSession().then(
+      () => {
+        finishWipe();
+        lockNow();
+        setState({ kind: "signedOut" });
+      },
+      () => setState({ kind: "wiping", failed: true })
+    );
+  }
+
+  /** Signs out and wipes the device, saying why on the sign-in screen. */
+  function wipe(reason: string) {
+    signOut();
+    setNotice(reason);
+  }
+
+  useEffect(() => {
+    refusal.current = {
+      owner: state.kind === "owner",
+      end: () => wipe(SIGN_IN_ENDED),
+    };
+  });
+
   if (state.kind === "owner") {
+    // Whether a lock should be here is still being read (a few ms): the
+    // chat isn't even started, so it opens once, as locked or not.
+    if (lock.checking) return <LockScreen lock={lock} onWipe={wipe} />;
+    // Nothing of the app is drawn while it is locked: JimChat keeps its
+    // state but renders nothing, and the lock screen stands alone.
+    const lockScreen = lock.locked ? (
+      <LockScreen lock={lock} onWipe={wipe} />
+    ) : null;
     if (isJimConnected(state.api)) {
       return (
-        <JimChat
-          key={state.uid}
-          uid={state.uid}
-          api={state.api}
-          getToken={state.getToken}
-          onSignOut={signOut}
-        />
+        <>
+          <JimChat
+            key={state.uid}
+            uid={state.uid}
+            api={state.api}
+            getToken={state.getToken}
+            onSignOut={signOut}
+            lock={lock}
+            onWipe={wipe}
+          />
+          {lockScreen}
+        </>
       );
     }
+    if (lockScreen) return lockScreen;
     return (
       <div className="jim-app flex min-h-dvh flex-col bg-ayu-bg text-ayu-text">
         <JimHeader onSignOut={signOut} />
         <main className="flex flex-1 items-center justify-center px-6 pb-[env(safe-area-inset-bottom)] text-center">
-          <div className="max-w-sm space-y-2">
-            <p className="text-lg font-medium">Jim isn&apos;t connected yet</p>
+          <div className="jim-rise flex max-w-sm flex-col items-center space-y-2">
+            <JimMark size="lg" />
+            <p className="pt-3 text-lg font-medium">
+              Jim isn&apos;t connected yet
+            </p>
             <p className="text-ayu-subtle">
               The chat opens here once his server is live.
             </p>
           </div>
         </main>
       </div>
+    );
+  }
+
+  if (state.kind === "wiping") {
+    return (
+      <main className="jim-app flex min-h-dvh items-center justify-center bg-ayu-bg px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-center text-ayu-text">
+        <div className="jim-rise flex w-full max-w-sm flex-col items-center gap-4 py-8">
+          <JimMark size="lg" />
+          {state.failed ? (
+            <>
+              <p role="alert" className="text-ayu-red">
+                {SIGN_OUT_FAILED}
+              </p>
+              <button
+                type="button"
+                onClick={retrySignOut}
+                className="min-h-12 w-full rounded-xl jim-glow px-4 font-semibold text-ayu-bg hover:brightness-110"
+              >
+                Try again
+              </button>
+            </>
+          ) : (
+            <p role="status" className="text-ayu-subtle">
+              Signing out…
+            </p>
+          )}
+        </div>
+      </main>
     );
   }
 
@@ -198,8 +467,18 @@ export default function JimGate() {
 
   return (
     <main className="jim-app flex min-h-dvh items-center justify-center bg-ayu-bg px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] text-ayu-text">
-      <div className="w-full max-w-sm space-y-5 py-8 text-center">
-        <h1 className="text-3xl font-semibold text-ayu-accent">Jim</h1>
+      <div className="jim-rise w-full max-w-sm space-y-6 py-8 text-center">
+        <div className="flex flex-col items-center gap-4">
+          <JimMark size="lg" />
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-ayu-text">
+              Jim
+            </h1>
+            <p className="mt-1 text-sm text-ayu-subtle">
+              Your memory, on call.
+            </p>
+          </div>
+        </div>
         {state.kind === "unconfigured" && (
           <p className="text-ayu-subtle">
             Firebase is not configured for this build.
@@ -210,8 +489,43 @@ export default function JimGate() {
             Not authorized: {state.email} can&apos;t use Jim.
           </p>
         )}
-        {(state.kind === "signedOut" || state.kind === "denied") && (
-          <form onSubmit={signIn} className="space-y-4 text-left">
+        {state.kind === "signedOut" && finishCode && (
+          <form
+            onSubmit={verifyCode}
+            className="jim-card space-y-4 rounded-3xl! p-5 text-left"
+          >
+            <div className="space-y-1.5">
+              <label htmlFor="jim-code" className="block text-sm font-medium">
+                Code from your authenticator
+              </label>
+              <input
+                id="jim-code"
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="[0-9]*"
+                maxLength={6}
+                required
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                className="min-h-11 w-full rounded-xl border border-white/[0.08] bg-ayu-line/60 px-3.5 py-2 text-center font-mono text-lg tracking-[0.3em] shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] text-ayu-text focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="min-h-12 w-full rounded-xl jim-glow px-4 py-2 text-base font-semibold text-ayu-bg hover:brightness-110 disabled:opacity-50"
+            >
+              Verify
+            </button>
+          </form>
+        )}
+        {((state.kind === "signedOut" && !finishCode) ||
+          state.kind === "denied") && (
+          <form
+            onSubmit={signIn}
+            className="jim-card space-y-4 rounded-3xl! p-5 text-left"
+          >
             <div className="space-y-1.5">
               <label htmlFor="jim-email" className="block text-sm font-medium">
                 Email
@@ -227,7 +541,7 @@ export default function JimGate() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="min-h-11 w-full rounded-lg border border-ayu-muted bg-ayu-panel px-3 py-2 text-base text-ayu-text focus:border-ayu-accent focus:outline-none"
+                className="min-h-11 w-full rounded-xl border border-white/[0.08] bg-ayu-line/60 px-3.5 py-2 shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] text-base text-ayu-text focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
               />
             </div>
             <div className="space-y-1.5">
@@ -244,13 +558,13 @@ export default function JimGate() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="min-h-11 w-full rounded-lg border border-ayu-muted bg-ayu-panel px-3 py-2 text-base text-ayu-text focus:border-ayu-accent focus:outline-none"
+                className="min-h-11 w-full rounded-xl border border-white/[0.08] bg-ayu-line/60 px-3.5 py-2 shadow-[inset_0_1px_2px_rgb(0_0_0/0.25)] text-base text-ayu-text focus:border-ayu-accent/60 focus:ring-4 focus:ring-ayu-accent/10 focus:outline-none"
               />
             </div>
             <button
               type="submit"
               disabled={submitting}
-              className="min-h-11 w-full rounded-lg bg-ayu-accent px-4 py-2 text-base font-medium text-ayu-bg hover:bg-ayu-orange disabled:opacity-50"
+              className="min-h-12 w-full rounded-xl jim-glow px-4 py-2 text-base font-semibold text-ayu-bg hover:brightness-110 disabled:opacity-50"
             >
               Sign in
             </button>
@@ -259,6 +573,11 @@ export default function JimGate() {
         {error && (
           <p role="alert" className="text-sm text-ayu-red">
             {error}
+          </p>
+        )}
+        {notice && state.kind === "signedOut" && (
+          <p role="status" className="text-sm text-ayu-subtle">
+            {notice}
           </p>
         )}
       </div>

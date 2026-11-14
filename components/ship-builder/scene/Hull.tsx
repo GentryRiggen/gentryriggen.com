@@ -369,7 +369,10 @@ export default function Hull({
 }: HullProps) {
   const isPainting = useShipBuilderStore((s) => s.tool.kind === "paint");
   const paintHull = useShipBuilderStore((s) => s.paintHull);
-  const isAiming = useShipBuilderStore((s) => s.trial.status === "aiming");
+  // Aiming an iceberg only: Boom! takes its taps in `BombTapLayer`.
+  const isAiming = useShipBuilderStore(
+    (s) => s.trial.status === "aiming" && s.trial.kind !== "boom"
+  );
   // Bands only take taps in paint mode, so they never block the grid targets
   // sitting on the deck.
   const tapFor = (area: HullArea) =>

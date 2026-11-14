@@ -149,9 +149,19 @@ function safeHttps(raw: string): URL | null {
   }
 }
 
-/** `code`, **bold**, *italic* / _italic_, [label](url) → React nodes. */
+/**
+ * `code`, **bold**, *italic* / _italic_, [label](url) → React nodes.
+ *
+ * Kept linear on any text (a reply can quote a stranger's page). The link's
+ * label and URL are bounded (200 and 1000 characters), so each of thousands
+ * of failing starts ("[a](" or "[" over and over) gives up after a fixed
+ * number of steps instead of rescanning the rest of the line. The code,
+ * bold and italic parts stop at their first closer, so only a start with no
+ * closer anywhere after it scans to the end, and there are at most a couple
+ * of those per line.
+ */
 const INLINE =
-  /`([^`]+)`|\*\*(.+?)\*\*|__(.+?)__|\*([^*\s][^*]*?)\*|\[([^\]]+)\]\(([^)\s]*(?:\([^)\s]*\)[^)\s]*)*)\)/g;
+  /`([^`]+)`|\*\*(.+?)\*\*|__(.+?)__|\*([^*\s][^*]*?)\*|\[([^\]]{1,200})\]\(([^)\s]{0,1000})\)/g;
 
 function renderInline(
   text: string,
@@ -329,4 +339,7 @@ function JimMarkdown({ text, links = "label-url" }: JimMarkdownProps) {
 }
 
 /** Memoized: the same text never parses twice in a row. */
+/** The same, called as a plain function (no hooks): for timing tests. */
+export { JimMarkdown as markdownNodes };
+
 export default memo(JimMarkdown);

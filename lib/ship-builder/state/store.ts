@@ -34,8 +34,13 @@ import type {
   LifeboatMode,
   SimSea,
   SimState,
+  StrikeKind,
+  TrialFunnel,
   TrialInput,
 } from "../sim/types";
+import { blastPiecesOf } from "../sim/blast";
+import { BOMB_FALL_S, withBomb, type BombDrop } from "../sim/bombs";
+import { STRIKES } from "../sim/strike";
 import { trackGame } from "@/lib/analytics/trackGame";
 import {
   trackPartPlaced,
@@ -63,12 +68,14 @@ import { trialSpeedSetting } from "../../../components/ship-builder/hooks/useTri
 import type { TimeOfDay } from "../../../components/ship-builder/scene/timeOfDay";
 import { isSeaState } from "../../../components/ship-builder/scene/seaState";
 import type { DriveConfig, DriveView } from "../sail/driveConfig";
-import type { SailImpact } from "../sail/types";
+import type { ObstacleKind, SailImpact } from "../sail/types";
 import { publishSail } from "./sailLive";
 import { publishSmooth } from "./smoothLive";
 import { resetSailInput } from "./sailInput";
 import { spawnOf, type WalkStart } from "../walk";
 import { publishWalk } from "./walkLive";
+import { resetEscape } from "./escapeLive";
+import type { EscapeBoatKind, EscapeEnding } from "../walk/escape";
 import { resetWalkInput } from "./walkInput";
 import type { HullArea, PaintColor } from "../model/paint";
 import {
@@ -155,6 +162,26 @@ export interface TrialLook {
   time: TimeOfDay;
 }
 
+/** What a hard hit while driving does to her: a mine, an island or a gash. */
+function strikeOfObstacle(kind: ObstacleKind): StrikeKind {
+  return kind === "mine" || kind === "island" ? kind : "iceberg";
+}
+
+/**
+ * Her funnels as the sim sees them, less any a sea mine throws off (those
+ * fly with the blast, so they cannot also snap off later in the sinking).
+ */
+function funnelsLeftAfter(
+  ship: Ship,
+  strike: StrikeKind | undefined,
+  impactX: number | undefined
+): TrialFunnel[] {
+  const funnels = trialFunnelsOf(ship);
+  if (strike !== "mine" || impactX === undefined) return funnels;
+  const thrown = new Set(blastPiecesOf(ship, impactX).map((p) => p.partId));
+  return funnels.filter((funnel) => !thrown.has(funnel.id));
+}
+
 /** The main-screen sea and time, the look a trial gets by default. */
 function mainLook(): TrialLook {
   return { sea: getSeaState(), time: getTimeOfDay() };
@@ -178,7 +205,12 @@ export type SetupKind = "waves" | "storm";
 export type TrialSlice =
   | { status: "idle" }
   | { status: "setup"; kind: SetupKind; look: TrialLook }
-  | { status: "aiming"; look: TrialLook }
+  | {
+      status: "aiming";
+      look: TrialLook;
+      /** `boom` while the player picks where the first bomb lands. */
+      kind?: "boom";
+    }
   | {
       status: "running";
       input: TrialInput;
@@ -189,6 +221,11 @@ export type TrialSlice =
       descending: boolean;
       /** Set when the trial was started from the Challenges panel. */
       challenge?: ChallengeId;
+      /**
+       * Sim seconds to carry on from instead of the start: a Boom! bomb was
+       * dropped mid-run, so the same run plays on from where it was.
+       */
+      resumeAt?: number;
     }
   | {
       status: "result";
@@ -223,6 +260,12 @@ interface ShipBuilderData {
   sailResult: SailResult | null;
   walk: WalkSlice;
   /**
+   * How the player last got off a sinking ship on a walk (a boat from the
+   * deck, picked up swimming, or frozen), or null. Set once per walk and
+   * cleared when a walk or a trial starts.
+   */
+  lastEscape: { ending: EscapeEnding; boat: EscapeBoatKind } | null;
+  /**
    * How iceberg trials may break the ship. Kept apart from `trial` so it
    * survives leaving a trial; remembered for the session only.
    */
@@ -247,6 +290,12 @@ export interface ShipBuilderState extends ShipBuilderData {
   placeAt: (anchor: Anchor) => RuleResult;
   select: (id: string | null) => void;
   requestDelete: () => void;
+  /**
+   * Deletes one part from a press-and-hold. With a tool active the tool stays,
+   * so a builder can clear a mistake and keep placing; with none it acts like
+   * selecting the part and pressing Delete.
+   */
+  deletePart: (id: string) => void;
   confirmRemoval: () => void;
   cancelRemoval: () => void;
   changeHullLength: (delta: number) => void;
@@ -319,6 +368,17 @@ export interface ShipBuilderState extends ShipBuilderData {
   aimIceberg: () => void;
   /** Backs out of aiming and returns to building. */
   cancelAim: () => void;
+  /**
+   * Boom!: starts aiming bombs (side view, ship frozen) from building or a
+   * finished trial. The first bomb dropped starts the trial.
+   */
+  armBombs: () => void;
+  /**
+   * Drops a bomb (Boom!): the first one starts the trial, each later one
+   * joins the running (or finished) Boom! trial at `drop.at` and it plays on
+   * from the tap. `fallen` lists funnels that have already snapped off.
+   */
+  dropBomb: (drop: BombDrop, fallen?: readonly string[]) => void;
   /** Opens the obstacle picker; only from building (no trial, no drive). */
   openDrive: () => void;
   /** Starts sailing with this obstacle field; only from the picker. */
@@ -338,6 +398,10 @@ export interface ShipBuilderState extends ShipBuilderData {
    * and keeps walking; the walk ends when the trial's result arrives.
    */
   sinkWhileWalking: () => void;
+  /** Records how the walker escaped; only the first call in a walk counts. */
+  recordEscape: (ending: EscapeEnding, boat: EscapeBoatKind) => void;
+  /** Forgets the recorded ending (the clock was scrubbed back past it). */
+  clearEscape: () => void;
   setDriveView: (view: DriveView) => void;
   /** A hard hit: ends the drive and plays the sea trial struck where she hit. */
   driveHit: (impact: SailImpact) => void;
@@ -370,6 +434,7 @@ export function createInitialState(): ShipBuilderData {
     drive: { status: "idle" },
     sailResult: null,
     walk: { status: "idle" },
+    lastEscape: null,
     breakMode: "real",
   };
 }
@@ -414,6 +479,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
   // Lives outside the state so createInitialState() resets can't reuse ids.
   let noticeId = 0;
   let runId = 0;
+  /** The walk (its runId) whose escape_ending was already sent. */
+  let escapeSentForWalk: number | null = null;
 
   /** True while a trial or a drive is on: the ship must not change. */
   function isTrialActive(): boolean {
@@ -441,6 +508,8 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       storm?: boolean;
       /** How the crowd boards the boats; absent leaves the input without it. */
       lifeboats?: LifeboatMode;
+      /** What struck her (a drive hit); absent is a plain iceberg. */
+      strike?: StrikeKind;
     } = {}
   ) {
     const { ship } = get();
@@ -460,7 +529,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       ship: simShipFromStats(stats, ship.hull.beam),
       sea,
       length: gridLength(ship),
-      funnels: trialFunnelsOf(ship),
+      funnels: funnelsLeftAfter(ship, options.strike, impactX),
       ...(impactX === undefined
         ? {}
         : {
@@ -472,6 +541,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
               ...(options.gashLength === undefined
                 ? {}
                 : { gashLength: options.gashLength }),
+              ...(options.strike && options.strike !== "iceberg"
+                ? { strike: options.strike }
+                : {}),
             },
           }),
       ...storm,
@@ -483,7 +555,10 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     runId += 1;
     // Fast-forward is for the run it was picked in; every new run starts at 1x.
     trialSpeedSetting.set(1);
+    // A new sinking: any walker starts it aboard.
+    resetEscape();
     set({
+      lastEscape: null,
       trial: {
         status: "running",
         input,
@@ -686,6 +761,23 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
         return;
       }
       set({ pendingRemoval: { kind: "part", ids } });
+    },
+
+    deletePart(id) {
+      if (isTrialActive()) return;
+      const { ship, tool } = get();
+      if (tool.kind === "none") {
+        get().select(id);
+        get().requestDelete();
+        return;
+      }
+      const ids = cascadeIds(ship, [id]);
+      if (ids.length === 0) return;
+      if (ids.length === 1) {
+        commit(removeParts(ship, ids), CLEARED);
+        return;
+      }
+      set({ pendingRemoval: { kind: "part", ids }, hover: null });
     },
 
     confirmRemoval() {
@@ -909,6 +1001,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       // same ship: run it again with the same look.
       runId += 1;
       set({
+        lastEscape: null,
         trial: {
           status: "running",
           input: trial.input,
@@ -1024,7 +1117,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       runId += 1;
       resetWalkInput();
       publishWalk(spawn);
+      resetEscape();
       set({
+        lastEscape: null,
         walk: { status: "walking", runId },
         tool: { kind: "none" },
         ...CLEARED,
@@ -1035,7 +1130,22 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       if (get().walk.status === "idle") return;
       resetWalkInput();
       publishWalk(null);
+      resetEscape();
       set({ walk: { status: "idle" } });
+    },
+
+    recordEscape(ending, boat) {
+      const { walk, lastEscape } = get();
+      if (walk.status !== "walking" || lastEscape) return;
+      set({ lastEscape: { ending, boat } });
+      // The card re-records after a rewind, but a walk counts once.
+      if (escapeSentForWalk === walk.runId) return;
+      escapeSentForWalk = walk.runId;
+      trackGame("escape_ending", { ending, boat });
+    },
+
+    clearEscape() {
+      if (get().lastEscape) set({ lastEscape: null });
     },
 
     setDriveView(view) {
@@ -1049,8 +1159,13 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       get().endDrive();
       if (get().walk.status !== "idle") return;
       // No card: the main-screen look and the remembered lifeboats.
+      const strike = strikeOfObstacle(impact.kind);
       beginTrial(getSeaState(), impact.impactX, {
         lifeboats: getTrialChoices().lifeboats,
+        strike,
+        ...(strike === "iceberg"
+          ? {}
+          : { gashLength: STRIKES[strike].gashLength }),
       });
     },
 
@@ -1077,6 +1192,74 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       set({ trial: { status: "idle" } });
     },
 
+    armBombs() {
+      const { trial, walk, drive } = get();
+      if (walk.status !== "idle" || drive.status !== "idle") return;
+      if (trial.status !== "idle" && trial.status !== "result") return;
+      // "Bomb again" keeps the last Boom!'s look; a fresh one starts from the
+      // main screen.
+      const look =
+        trial.status === "result" && trial.input.boom ? trial.look : mainLook();
+      set({
+        trial: { status: "aiming", look, kind: "boom" },
+        tool: { kind: "none" },
+        camera: { view: "side", nonce: get().camera.nonce + 1 },
+        ...CLEARED,
+      });
+    },
+
+    dropBomb(drop, fallen = []) {
+      const { trial, ship, walk } = get();
+      if (trial.status === "aiming" && trial.kind === "boom") {
+        if (walk.status !== "idle") return;
+        const length = gridLength(ship);
+        const { stats } = analyzeShip(ship);
+        const base: TrialInput = {
+          ship: simShipFromStats(stats, ship.hull.beam),
+          sea: trial.look.sea,
+          length,
+          funnels: trialFunnelsOf(ship),
+          boom: {
+            compartments: compartmentSpecsOf(ship.hull),
+            length,
+            breakMode: get().breakMode,
+            bombs: [],
+          },
+          lifeboats: getTrialChoices().lifeboats,
+        };
+        runId += 1;
+        trialSpeedSetting.set(1);
+        resetEscape();
+        set({
+          lastEscape: null,
+          trial: {
+            status: "running",
+            input: withBomb(base, ship, drop),
+            look: trial.look,
+            runId,
+            descending: true,
+          },
+          tool: { kind: "none" },
+          ...CLEARED,
+        });
+        return;
+      }
+      if (trial.status !== "running" && trial.status !== "result") return;
+      if (!trial.input.boom) return;
+      const input = withBomb(trial.input, ship, drop, new Set(fallen));
+      if (input === trial.input) return;
+      set({
+        trial: {
+          status: "running",
+          input,
+          look: trial.look,
+          runId: trial.runId,
+          descending: trial.descending,
+          resumeAt: Math.max(0, drop.at - BOMB_FALL_S),
+        },
+      });
+    },
+
     finishTrial(state) {
       const { trial } = get();
       if (trial.status !== "running") return;
@@ -1100,6 +1283,9 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     },
 
     endTrial() {
+      // With no trial there is no sinking: a walker in the water or a boat
+      // is back on deck.
+      resetEscape();
       set({ trial: { status: "idle" } });
     },
 
@@ -1113,6 +1299,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
       runId += 1;
       trialSpeedSetting.set(1);
       set({
+        lastEscape: null,
         trial: {
           status: "running",
           input: trial.input,

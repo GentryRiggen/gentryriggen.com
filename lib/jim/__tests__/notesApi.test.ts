@@ -30,6 +30,28 @@ async function kindOf(promise: Promise<unknown>): Promise<string> {
 afterEach(() => jest.useRealTimers());
 
 describe("toggleTodo", () => {
+  it("reads when a repeating todo's next one is due", async () => {
+    const fetchFn = jest
+      .fn()
+      .mockResolvedValue(
+        json(200, { ok: true, sha: "abc", next: { due: "2026-11-30" } })
+      );
+    await expect(
+      toggleTodo(TODO, true, async () => "t", fetchFn, API)
+    ).resolves.toEqual({ ok: true, sha: "abc", nextDue: "2026-11-30" });
+  });
+
+  it("ignores a missing or malformed next", async () => {
+    for (const next of [undefined, null, "2026-11-30", { due: "soon" }, {}]) {
+      const fetchFn = jest
+        .fn()
+        .mockResolvedValue(json(200, { ok: true, sha: "abc", next }));
+      await expect(
+        toggleTodo(TODO, true, async () => "t", fetchFn, API)
+      ).resolves.toEqual({ ok: true, sha: "abc" });
+    }
+  });
+
   it("posts the todo's order, text and done with the bearer token", async () => {
     const getToken = jest.fn().mockResolvedValue("t1");
     const fetchFn = jest

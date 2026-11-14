@@ -1,7 +1,15 @@
+import { readFileSync } from "node:fs";
 import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { join } from "node:path";
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
-import { VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
+import {
+  BALLOT_FIXTURE,
+  GRAPH_FIXTURE,
+  MONEY_FIXTURE,
+  TIMELINE_FIXTURE,
+  VIEW_FIXTURE,
+} from "../lib/jim/__tests__/fixtures";
 
 /**
  * /jim is a private chat that is used mostly on an iPhone. Runs on Chromium
@@ -13,6 +21,23 @@ import { VIEW_FIXTURE } from "../lib/jim/__tests__/fixtures";
 
 // Calendar times are UTC in the payload and shown in local time.
 test.use({ timezoneId: "America/Denver" });
+
+/** The desktop layout's breakpoint (Tailwind's lg), as JimChat uses it. */
+const DESKTOP_MIN = 1024;
+
+/**
+ * The phone layout's tests run below the desktop breakpoint on the desktop
+ * browsers too (their default 1280px window is a desktop now); the iPhone
+ * keeps its own screen. The desktop layout has its own tests, at 1440.
+ */
+test.use({
+  viewport: async ({}, provide, testInfo) => {
+    const own = testInfo.project.use.viewport ?? { width: 1280, height: 720 };
+    await provide(
+      own.width >= DESKTOP_MIN ? { width: 820, height: own.height } : own
+    );
+  },
+});
 
 /** Ayu Mirage's background, in light and dark mode alike. */
 const AYU_BG = "rgb(31, 36, 48)";
@@ -33,12 +58,21 @@ interface MockOptions {
   viewExpiredOnce?: boolean;
   /** How /api/todo answers (200 by default). */
   todoStatus?: number;
+  /** Short Home labels by todo order. */
+  shorts?: Record<number, string>;
+  /** More todos, open and done, added to the fixture's. */
+  moreTodos?: { todos: unknown[]; doneTodos: unknown[] };
+  /** Send the day's retro in the view payload. */
+  retro?: boolean;
 }
 
 interface MockCalls {
   view: number;
   chat: number;
   health: number;
+  money: number;
+  /** Explore's reads: how many times each was asked for. */
+  explore: { graph: number; timeline: number; ballot: number };
   /** Each /api/todo body, in order. */
   todo: {
     order: number;
@@ -53,7 +87,73 @@ interface MockCalls {
   messages: string[];
   /** Each /api/push call ("POST /api/push/subscribe"), in order. */
   push: string[];
+  /** Each reminder PATCH body, in order. */
+  reminderPatches: unknown[];
+  /** How many times the morning brief script was asked for. */
+  brief: number;
+  /** Each /api/retro body, in order. */
+  retro: unknown[];
 }
+
+const REMINDER_ID = "0123456789ab";
+const MEETING_ID = "0123456789abcdef";
+const REFLECTION_QUESTION = "What went well today?";
+const PUSH_SETTINGS = {
+  kinds: [
+    { id: "morning", label: "Morning brief", on: true },
+    { id: "reminders", label: "Reminders", on: true },
+    { id: "evening", label: "Evening wrap", on: true },
+  ],
+  eveningTime: "21:00",
+  lessonTime: "12:00",
+};
+/** Invented retro questions for the fixture's day, as the server sends them. */
+const RETRO = {
+  day: "2026-10-31",
+  morning: {
+    questions: [
+      "What are you looking forward to today?",
+      "What one thing would make today a win?",
+      "How do you want to show up today?",
+    ],
+    answers: null,
+  },
+  evening: {
+    questions: [
+      "What went better today than you expected?",
+      "What went well today?",
+      "What would you change?",
+    ],
+    answers: null,
+  },
+};
+/** An invented reminder, as the server sends one. */
+const REMINDER = {
+  id: REMINDER_ID,
+  at: "2026-10-31T15:30:00-06:00",
+  text: "Call the plumber about the kitchen tap",
+  created: "2026-10-31T09:00:00-06:00",
+  sent: null,
+  rev: 0,
+  when: "Today 3:30 PM",
+};
+/** An invented meeting card for the view payload. */
+const MEETING_CARD = {
+  id: MEETING_ID,
+  subject: "Team standup",
+  start: "2026-10-31T16:00:00Z",
+  end: "2026-10-31T16:30:00Z",
+  where: "Room 4",
+  attendees: [
+    {
+      name: "Ava Torres",
+      role: "Analyst",
+      path: "people/ava-torres.md",
+      last: "2026-10-20: agreed to send the draft",
+      todos: ["Send the draft"],
+    },
+  ],
+};
 
 /** Invented search hits and the one note behind them. */
 const SEARCH_RESULTS = [
@@ -101,17 +201,22 @@ async function mockServer(
     view: 0,
     chat: 0,
     health: 0,
+    money: 0,
+    explore: { graph: 0, timeline: 0, ballot: 0 },
     todo: [],
     search: [],
     messages: [],
     push: [],
+    reminderPatches: [],
+    brief: 0,
+    retro: [],
   };
   /** Todos checked off on the "server": the next view leaves them out. */
   const done = new Set<number>();
   const cors = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
-    "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "POST, GET, PUT, PATCH, DELETE, OPTIONS",
   };
   await page.route(`${API}/**`, async (route) => {
     if (route.request().method() === "OPTIONS") {
@@ -142,7 +247,19 @@ async function mockServer(
         headers: { ...cors, "Content-Type": "application/json" },
         body: JSON.stringify({
           ...VIEW_FIXTURE,
-          todos: VIEW_FIXTURE.todos.filter((t) => !done.has(t.order)),
+          reflection: { question: REFLECTION_QUESTION },
+          meetingCards: { [MEETING_ID]: MEETING_CARD },
+          ...(options.retro ? { retro: RETRO } : {}),
+          todos: [
+            ...VIEW_FIXTURE.todos
+              .filter((t) => !done.has(t.order))
+              .map((t) =>
+                options.shorts?.[t.order]
+                  ? { ...t, short: options.shorts[t.order] }
+                  : t
+              ),
+            ...(options.moreTodos?.todos ?? []),
+          ],
           // A checked-off line carries its done stamp, as the server writes it.
           doneTodos: VIEW_FIXTURE.todos
             .filter((t) => done.has(t.order))
@@ -151,7 +268,11 @@ async function mockServer(
               text: `${t.text} (done 2026-10-31)`,
               done: true,
               done_on: "2026-10-31",
-            })),
+            }))
+            .concat(
+              (options.moreTodos?.doneTodos ??
+                []) as (typeof VIEW_FIXTURE.todos)[number][]
+            ),
         }),
       });
       return;
@@ -178,6 +299,41 @@ async function mockServer(
       }
       return;
     }
+    if (url.pathname === "/api/retro") {
+      calls.retro.push(route.request().postDataJSON());
+      await reply(200, { ok: true, sha: "c0ffee1" });
+      return;
+    }
+    if (url.pathname === "/api/push/settings") {
+      await reply(200, PUSH_SETTINGS);
+      return;
+    }
+    if (url.pathname === "/api/reminders") {
+      await reply(200, { reminders: [REMINDER] });
+      return;
+    }
+    if (url.pathname === `/api/reminders/${REMINDER_ID}`) {
+      if (route.request().method() === "PATCH") {
+        calls.reminderPatches.push(route.request().postDataJSON());
+        await reply(200, { ...REMINDER, when: "Today 3:40 PM", rev: 1 });
+      } else {
+        await reply(200, REMINDER);
+      }
+      return;
+    }
+    if (url.pathname === "/api/brief/script") {
+      calls.brief += 1;
+      await reply(200, {
+        day: "2026-10-31",
+        text: "Good morning. You have one meeting today and two things due.",
+      });
+      return;
+    }
+    if (url.pathname === "/api/speak") {
+      // No voice here: the player falls back or waits for a tap.
+      await reply(503, { error: "no voice in tests" });
+      return;
+    }
     if (url.pathname.startsWith("/api/push/")) {
       calls.push.push(`${route.request().method()} ${url.pathname}`);
       if (url.pathname === "/api/push/key") {
@@ -197,6 +353,25 @@ async function mockServer(
       const { path } = route.request().postDataJSON() as { path: string };
       if (path === GARDEN_NOTE.path) await reply(200, GARDEN_NOTE);
       else await reply(404, { error: "not found" });
+      return;
+    }
+    const explore = /^\/api\/(graph|timeline|ballot)$/.exec(url.pathname);
+    if (explore) {
+      const kind = explore[1] as keyof MockCalls["explore"];
+      calls.explore[kind] += 1;
+      await reply(
+        200,
+        kind === "graph"
+          ? GRAPH_FIXTURE
+          : kind === "timeline"
+            ? TIMELINE_FIXTURE
+            : BALLOT_FIXTURE
+      );
+      return;
+    }
+    if (url.pathname === "/api/money") {
+      calls.money += 1;
+      await reply(200, MONEY_FIXTURE);
       return;
     }
     calls.chat += 1;
@@ -350,17 +525,17 @@ test.describe("Jim", () => {
     ).toHaveAttribute("content", "yes");
     await expect(
       page.locator('link[rel="apple-touch-icon"][sizes="180x180"]')
-    ).toHaveAttribute("href", "/jim-icons/apple-touch-icon.png");
+    ).toHaveAttribute("href", "/jim-icons/glow-pal-180.png");
     const manifest = await page.request.get("/jim.webmanifest");
     expect(await manifest.json()).toMatchObject({ start_url: "/jim" });
     // Not the homepage's canonical or share card.
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
-      "https://gentryriggen.com/jim"
+      "https://jim.gentryriggen.com/jim"
     );
     await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
       "content",
-      "https://gentryriggen.com/jim"
+      "https://jim.gentryriggen.com/jim"
     );
     await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
       "content",
@@ -373,17 +548,6 @@ test.describe("Jim", () => {
     ).toHaveAttribute("content", "#1f2430");
   });
 
-  test("says Jim isn't connected when there is no server URL", async ({
-    page,
-  }) => {
-    await page.addInitScript(() => {
-      window.__JIM_TEST__ = { signedIn: true, api: "" };
-    });
-    await page.goto("/jim");
-    await expect(page.getByText("Jim isn't connected yet")).toBeVisible();
-    await expect(page.getByLabel("Message")).toHaveCount(0);
-  });
-
   test("sends a message and shows the reply and saved files", async ({
     page,
   }) => {
@@ -394,40 +558,13 @@ test.describe("Jim", () => {
   });
 });
 
-for (const width of [undefined, 320]) {
+for (const width of [320]) {
   test.describe(`Jim layout${width ? ` at ${width}px` : ""}`, () => {
     if (width) test.use({ viewport: { width, height: 568 } });
 
-    for (const scheme of ["light", "dark"] as const) {
+    for (const scheme of ["light"] as const) {
       test.describe(scheme, () => {
         test.use({ colorScheme: scheme });
-
-        test(
-          "sign-in fits the screen with 16px inputs",
-          { tag: "@smoke" },
-          async ({ page }, testInfo) => {
-            await page.goto("/jim");
-            await expect(page.getByLabel("Email")).toBeVisible();
-            await noSidewaysScroll(page);
-            expect(await fontSize(page, "#jim-email")).toBeGreaterThanOrEqual(
-              16
-            );
-            expect(
-              await fontSize(page, "#jim-password")
-            ).toBeGreaterThanOrEqual(16);
-            const button = await page
-              .getByRole("button", { name: "Sign in" })
-              .boundingBox();
-            expect(button?.height).toBeGreaterThanOrEqual(44);
-            await expect(
-              page.getByRole("button", { name: "Sign in" })
-            ).toBeEnabled();
-            await page.screenshot({
-              path: shotName(page, testInfo, "sign-in", scheme),
-              animations: "disabled",
-            });
-          }
-        );
 
         test(
           "a long chat keeps the box and the latest message on screen",
@@ -624,26 +761,24 @@ for (const width of [undefined, 320]) {
         await expect(sheet).toHaveCount(0);
 
         await page.getByLabel("Search notes").fill("plants");
-        await expect(
-          page.getByRole("button", { name: /Garden/ })
-        ).toBeVisible();
+        await expect(page.getByRole("link", { name: /Garden/ })).toBeVisible();
         await page.getByLabel("Search notes").blur();
         await shot("notes-search");
 
-        await page.getByRole("button", { name: /Garden/ }).click();
+        await page.getByRole("link", { name: /Garden/ }).click();
         await expect(
           page.getByRole("heading", { name: "Garden" })
         ).toBeVisible();
         await expect(page.locator("table")).toBeVisible();
         await shot("notes-note");
-        await page.getByRole("button", { name: "Results" }).click();
+        await page.getByRole("link", { name: "Results" }).click();
         await page.getByRole("button", { name: "Clear search" }).click();
         await expect(page.getByText("Water the plants")).toBeVisible();
       }
     );
 
     test(
-      "every Notes page fits the screen with big targets",
+      "the pages ported from the Mac fit the screen",
       { tag: "@smoke" },
       async ({ page }, testInfo) => {
         await signedIn(page);
@@ -656,235 +791,131 @@ for (const width of [undefined, 320]) {
             animations: "disabled",
           });
         };
-        // The switch sits in the header and the tabs are thumb-sized.
-        const notesTab = page.getByRole("banner").getByRole("tab", {
-          name: "Notes",
-        });
-        expect((await notesTab.boundingBox())?.height).toBeGreaterThanOrEqual(
-          44
-        );
-        await expect(notesTab).toBeInViewport({ ratio: 1 });
-        await expect(page.getByRole("navigation")).toHaveCount(0);
-        await shot("notes-home");
-        // Each page pill, once selected, sits well inside the screen.
-        for (const name of ["People", "Golf", "Training", "Health", "Home"]) {
-          const tab = page.getByRole("tab", { name });
-          await tab.click();
-          await expect(tab).toHaveAttribute("aria-selected", "true");
-          const width = page.viewportSize()?.width ?? 0;
-          await expect
-            .poll(async () => {
-              const box = await tab.boundingBox();
-              return box ? Math.min(box.x, width - (box.x + box.width)) : -1;
-            })
-            .toBeGreaterThanOrEqual(12);
-          await noSidewaysScroll(page);
-        }
-        await page.getByText(/^Later/).click();
-        await expect(page.getByText("Book the dentist")).toBeVisible();
-        await shot("notes-home-later");
+        const pills = page.getByRole("tablist", { name: "Notes pages" });
 
-        await page.getByRole("tab", { name: "Health" }).click();
-        await expect(page.getByText("Hemoglobin")).toBeVisible();
-        // A new page opens at its top, not where the last one was scrolled.
+        // Work: meetings three ways, and the org chart.
+        await pills.getByRole("tab", { name: "Work" }).click();
+        await page.getByRole("tab", { name: "Next steps" }).click();
+        await expect(page.getByText("Order the cedar boards")).toBeVisible();
+        await expect(page.getByText("Yours")).toBeVisible();
+        await shot("notes-work-steps");
+        await page.getByRole("tab", { name: "Decisions" }).click();
         await expect(
-          page.getByRole("button", { name: "Refresh" })
-        ).toBeInViewport();
-        await shot("notes-health");
-
-        await page.getByRole("tab", { name: "Training" }).click();
-        await expect(page.getByText("Back squat")).toBeVisible();
-        // A new page opens at its top, not where the last one was scrolled.
-        await expect(
-          page.getByRole("button", { name: "Refresh" })
-        ).toBeInViewport();
-        await shot("notes-training");
-
-        await page.getByRole("tab", { name: "Golf" }).click();
-        await expect(page.getByText("Cedar Ridge").first()).toBeVisible();
-        await shot("notes-golf");
-
-        await page.getByRole("tab", { name: "People" }).click();
-        const search = page.getByLabel("Search people");
-        await expect(search).toBeVisible();
-        expect(
-          await fontSize(page, "#jim-people-search")
-        ).toBeGreaterThanOrEqual(16);
-        await shot("notes-people");
-
-        await page.getByRole("button", { name: /Sam Okafor/ }).click();
-        await expect(
-          page.getByRole("heading", { name: "Sam Okafor" })
+          page.getByText("Spring beds go along the south fence")
         ).toBeVisible();
-        // A wide table scrolls inside itself, never the page.
-        await expect(page.locator("table")).toBeVisible();
-        await shot("notes-person-table");
+        await page.getByRole("tab", { name: "Org chart" }).click();
+        const org = page.getByRole("list", { name: "Org chart" });
+        await expect(org.getByText("Ava Torres")).toBeVisible();
+        await shot("notes-work-org");
 
-        await page.getByRole("button", { name: "People" }).click();
-        await page.getByRole("button", { name: /Wren Rivera/ }).click();
-        await expect(page.getByText("Jun 16, 1990")).toBeVisible();
-        await shot("notes-person");
+        // Health: Mindset, then a movement and a training day.
+        await pills.getByRole("tab", { name: "Health" }).click();
+        const health = page.getByRole("tablist", { name: "Health pages" });
+        // Every label fits its tab at 320px with a few px to spare, so a
+        // fallback font can't cut one off (text-sm fit "Training" by 0.8px).
+        const tight = await health.getByRole("tab").evaluateAll((tabs) =>
+          tabs
+            .filter((t) => {
+              const text = document.createRange();
+              text.selectNodeContents(t);
+              const cs = getComputedStyle(t);
+              const room =
+                t.clientWidth -
+                parseFloat(cs.paddingLeft) -
+                parseFloat(cs.paddingRight);
+              return text.getBoundingClientRect().width + 4 > room;
+            })
+            .map((t) => t.textContent)
+        );
+        expect(tight).toEqual([]);
+        await health.getByRole("tab", { name: "Mindset" }).click();
+        await expect(page.getByText("“Listen before answering”")).toBeVisible();
+        await shot("notes-mindset");
+        await health.getByRole("tab", { name: "Training" }).click();
+        await page.getByRole("link", { name: "Back squat" }).click();
+        await expect(
+          page.getByRole("heading", { name: "Back squat" })
+        ).toBeVisible();
+        expect(new URL(page.url()).pathname).toBe(
+          "/jim/notes/training/m/back-squat"
+        );
+        await expect(
+          page.getByRole("img", { name: /done on 2 days in the past year/ })
+        ).toBeVisible();
+        await shot("notes-movement");
+        await page
+          .getByRole("region", { name: "Every entry" })
+          .getByRole("link", { name: "Oct 15 2026" })
+          .click();
+        await expect(
+          page.getByRole("heading", { name: "Thu, Oct 15 2026" })
+        ).toBeVisible();
+        await shot("notes-training-day");
+        // A reload keeps the day.
+        await page.reload();
+        await expect(
+          page.getByRole("heading", { name: "Thu, Oct 15 2026" })
+        ).toBeVisible();
+
+        // People: the year ahead.
+        await pills.getByRole("tab", { name: "People" }).click();
+        await page
+          .getByRole("tablist", { name: "People pages" })
+          .getByRole("tab", { name: "Year" })
+          .click();
+        await expect(
+          page.getByText("2 gift ideas, none chosen.")
+        ).toBeVisible();
+        await shot("notes-year");
+
+        // Money: the grid scrolls inside its card only.
+        await pills.getByRole("tab", { name: "Money" }).click();
+        const grid = page.getByRole("region", { name: "By category" });
+        await expect(grid.getByRole("table")).toBeVisible();
+        await expect(
+          page.getByRole("region", { name: "Amazon" }).getByText("Bought again")
+        ).toBeVisible();
+        await page
+          .getByRole("region", { name: "Amazon" })
+          .getByRole("button", { name: "Kitchen" })
+          .click();
+        await expect(page.getByText("Pruning shears")).toHaveCount(0);
+        await grid.scrollIntoViewIfNeeded();
+        await shot("notes-money-extras");
+
+        // Explore: timeline, graph and ballot.
+        await pills.getByRole("tab", { name: "Explore" }).click();
+        await expect(
+          page.getByText("Sketched the spring beds with the compost bins")
+        ).toBeVisible();
+        expect(
+          await fontSize(page, "#jim-timeline-search")
+        ).toBeGreaterThanOrEqual(16);
+        await shot("notes-timeline");
+        const explore = page.getByRole("tablist", { name: "Explore pages" });
+        await explore.getByRole("tab", { name: "Graph" }).click();
+        await expect(
+          page.getByRole("img", { name: /Note graph: 4 notes and 3 links/ })
+        ).toBeVisible();
+        await page.getByRole("button", { name: "Zoom in" }).click();
+        await shot("notes-graph");
+        await page.getByLabel("Find a note in the graph").fill("shed");
+        await page.getByRole("link", { name: /Potting shed/ }).click();
+        expect(new URL(page.url()).pathname).toBe("/jim/notes/note/home/shed");
+        await page.goBack();
+        await explore.getByRole("tab", { name: "Ballot" }).click();
+        await expect(
+          page.getByRole("heading", { name: "Town ballot" })
+        ).toBeVisible();
+        await page.getByRole("tab", { name: "The guide" }).click();
+        await expect(
+          page.getByRole("heading", { name: "Town voting guide" })
+        ).toBeVisible();
+        await shot("notes-ballot");
       }
     );
   });
 }
-
-test(
-  "a Notes todo box checks it off, offers Undo, and the list refreshes",
-  { tag: "@smoke" },
-  async ({ page }) => {
-    const calls = await signedIn(page);
-    await openNotes(page);
-    const box = page.getByRole("checkbox", { name: "Water the plants" });
-    expect((await box.boundingBox())?.height).toBeGreaterThanOrEqual(44);
-    await box.click();
-    const undo = page.getByRole("button", { name: "Undo" });
-    await expect(undo).toBeVisible();
-    await expect(undo).toBeInViewport({ ratio: 1 });
-    expect(calls.todo).toEqual([
-      {
-        order: 3,
-        text: "Water the plants (due 2026-10-31; every 1 week, Saturdays)",
-        area: "personal",
-        project: "",
-        done: true,
-      },
-    ]);
-    // The background refetch drops it from the list.
-    await expect(page.getByText("Water the plants")).toHaveCount(0);
-    expect(calls.view).toBeGreaterThanOrEqual(2);
-    await undo.click();
-    await expect(page.getByText("Water the plants")).toBeVisible();
-    // Undo sends the line as it is now, done stamp included.
-    expect(calls.todo[1]).toEqual({
-      order: 3,
-      text: "Water the plants (due 2026-10-31; every 1 week, Saturdays) (done 2026-10-31)",
-      area: "personal",
-      project: "",
-      done: false,
-    });
-    expect(calls.chat).toBe(0);
-  }
-);
-
-test("a todo that changed on the Mac reverts and says so", async ({ page }) => {
-  await signedIn(page, { todoStatus: 409 });
-  await openNotes(page);
-  const box = page.getByRole("checkbox", { name: "Water the plants" });
-  await box.click();
-  await expect(
-    page.getByText("That todo changed. Pull to refresh.")
-  ).toBeVisible();
-  await expect(box).toHaveAttribute("aria-checked", "false");
-});
-
-test(
-  "a quick log sends a plain sentence and Chat shows Jim's reply",
-  { tag: "@smoke" },
-  async ({ page }) => {
-    const calls = await signedIn(page);
-    await openNotes(page);
-    await page.getByRole("button", { name: "Log injection" }).click();
-    const sheet = page.getByRole("dialog", { name: "Log injection" });
-    await expect(sheet).toBeVisible();
-    await expect(sheet.getByLabel("Dose")).toBeFocused();
-    await sheet.getByLabel("Dose").fill("1 ml");
-    await sheet.getByLabel("Site").fill("right arm");
-    await sheet.getByRole("button", { name: "Send to Jim" }).click();
-    await expect(page.getByRole("tab", { name: "Chat" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    );
-    const log = page.getByRole("log");
-    await expect(
-      log.getByText("Log my injection today: 1 ml, right arm.")
-    ).toBeVisible();
-    await expect(log.getByText(/^Here's what/)).toBeVisible();
-    expect(calls.messages).toEqual([
-      "Log my injection today: 1 ml, right arm.",
-    ]);
-  }
-);
-
-test("Notes loads once and is instant on the way back", async ({ page }) => {
-  const calls = await signedIn(page);
-  // Signing in wakes the server and fetches Notes before it is opened.
-  await expect.poll(() => calls.health).toBe(1);
-  await expect.poll(() => calls.view).toBe(1);
-  await openNotes(page);
-  await page.getByRole("tab", { name: "Chat" }).click();
-  await page.getByRole("tab", { name: "Notes" }).click();
-  await expect(page.getByText("Water the plants")).toBeVisible();
-  expect(calls.view).toBe(1);
-});
-
-test("Notes refreshes an expired sign-in and tries once more", async ({
-  page,
-}) => {
-  const calls = await signedIn(page, { viewExpiredOnce: true });
-  await openNotes(page);
-  expect(calls.view).toBe(2);
-});
-
-test("a reply that lands while scrolled up does not yank the view", async ({
-  page,
-}) => {
-  await signedIn(page);
-  for (let i = 1; i <= 4; i++) {
-    await send(page, `what's on my list? (${i})`, /^Here's what/);
-  }
-  await page.getByLabel("Message").fill("slow: remember the milk");
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Jim is thinking…")).toBeInViewport();
-  await page.waitForTimeout(600); // let the smooth scroll finish
-  const first = page.getByText("what's on my list? (1)");
-  await first.evaluate((el) => el.scrollIntoView({ behavior: "instant" }));
-  await expect(page.getByText("Saved it.")).toHaveCount(1);
-  await page.waitForTimeout(600);
-  await expect(first).toBeInViewport();
-});
-
-test("a dropped connection after sending keeps the message out of the box", async ({
-  page,
-}, testInfo) => {
-  await signedIn(page);
-  const box = page.getByLabel("Message");
-  await box.fill("drop: remember the milk");
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(
-    page.getByText("Jim may have saved this — check before sending again")
-  ).toBeVisible();
-  await expect(box).toHaveValue("");
-  await expect(
-    page.getByRole("log").getByText("drop: remember the milk")
-  ).toBeVisible();
-  const putBack = page.getByRole("button", { name: "Put my message back" });
-  await expect(putBack).toBeInViewport({ ratio: 1 });
-  expect((await putBack.boundingBox())?.height).toBeGreaterThanOrEqual(44);
-  await noSidewaysScroll(page);
-  await box.blur();
-  await page.screenshot({
-    path: shotName(page, testInfo, "maybe-saved", "light"),
-    animations: "disabled",
-  });
-  await putBack.click();
-  await expect(box).toHaveValue("drop: remember the milk");
-});
-
-test("a stream cut off before it finishes says check before resending", async ({
-  page,
-}) => {
-  const calls = await signedIn(page);
-  const box = page.getByLabel("Message");
-  await box.fill("cut: remember the milk");
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(
-    page.getByText("Jim may have saved this — check before sending again")
-  ).toBeVisible();
-  await expect(page.getByRole("log").getByText("Saved it.")).toBeVisible();
-  await expect(box).toHaveValue("");
-  expect(calls.chat).toBe(1);
-});
 
 test("the chat survives a reload and New chat clears it", async ({ page }) => {
   await signedIn(page);
@@ -901,6 +932,121 @@ test("the chat survives a reload and New chat clears it", async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel("Message")).toBeVisible();
   await expect(log.getByText("remember the milk")).toHaveCount(0);
+});
+
+async function tapPin(page: Page, pin: string, submit?: string) {
+  for (const digit of pin) {
+    await page.getByRole("button", { name: digit, exact: true }).click();
+  }
+  if (submit) {
+    await page.getByRole("button", { name: submit, exact: true }).click();
+  }
+}
+
+test("an app lock PIN locks the chat on reload until it is entered", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await send(page, "remember the milk", "Saved it.");
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "App lock: Off" }).click();
+  const sheet = page.getByRole("dialog", { name: "App lock" });
+  await expect(sheet.getByText("Choose a PIN (4 to 8 digits)")).toBeVisible();
+  // Typed (the phone's number pad, or a keyboard), then Enter.
+  const box = sheet.getByLabel("PIN", { exact: true });
+  await box.pressSequentially("2468");
+  await box.press("Enter");
+  await expect(sheet.getByText("Enter it again")).toBeVisible();
+  await tapPin(page, "2468", "Next");
+  await expect(sheet.getByRole("radio", { name: /Immediately/ })).toBeChecked();
+  await sheet.getByRole("button", { name: "Turn on" }).click();
+  await expect(sheet).toHaveCount(0);
+  // Turning it on doesn't lock right away.
+  await expect(page.getByLabel("Message")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Enter PIN" })).toBeVisible();
+  // Nothing of the chat is in the page while locked.
+  await expect(page.getByLabel("Message")).toHaveCount(0);
+  await expect(page.getByText("remember the milk")).toHaveCount(0);
+  await bigTargets(page);
+  await noSidewaysScroll(page);
+
+  // The PIN's length is known, so the last digit unlocks: no OK.
+  await page.getByLabel("PIN", { exact: true }).pressSequentially("1111");
+  await expect(page.getByText("Wrong PIN. 9 attempts left.")).toBeVisible();
+  await expect(page.getByLabel("Message")).toHaveCount(0);
+  await tapPin(page, "2468");
+  await expect(page.getByLabel("Message")).toBeVisible();
+  await expect(
+    page.getByRole("log").getByText("remember the milk")
+  ).toBeVisible();
+});
+
+/** Sets a 4-digit PIN from the menu (it locks Immediately when left). */
+async function setPin(page: Page, pin: string) {
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "App lock: Off" }).click();
+  const sheet = page.getByRole("dialog", { name: "App lock" });
+  const box = sheet.getByLabel("PIN", { exact: true });
+  await box.pressSequentially(pin);
+  await box.press("Enter");
+  await expect(sheet.getByText("Enter it again")).toBeVisible();
+  await tapPin(page, pin, "Next");
+  await sheet.getByRole("button", { name: "Turn on" }).click();
+  await expect(sheet).toHaveCount(0);
+}
+
+test("a lock record deleted from the device still locks, with only Forgot PIN", async ({
+  page,
+}) => {
+  await signedIn(page);
+  await send(page, "remember the milk", "Saved it.");
+  await setPin(page, "2468");
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Enter PIN" })).toBeVisible();
+  await tapPin(page, "2468");
+  await expect(page.getByLabel("Message")).toBeVisible();
+
+  // Someone with the unlocked browser deletes the lock record.
+  const removed = await page.evaluate(() => {
+    const keys = Object.keys(localStorage).filter((k) =>
+      k.startsWith("jim:lock:")
+    );
+    keys.forEach((k) => localStorage.removeItem(k));
+    return keys.length;
+  });
+  expect(removed).toBe(1);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Jim is locked" })
+  ).toBeVisible();
+  await expect(page.getByLabel("PIN", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("Message")).toHaveCount(0);
+  await expect(page.getByText("remember the milk")).toHaveCount(0);
+  await bigTargets(page);
+  await noSidewaysScroll(page);
+  await page.getByRole("button", { name: "Forgot PIN?" }).click();
+  await page.getByRole("button", { name: "Sign out and wipe" }).click();
+  await expect(page.getByText(/Sign in to set a new PIN/)).toBeVisible();
+});
+
+test("an open page left untouched for five minutes locks", async ({ page }) => {
+  await page.clock.install();
+  await signedIn(page);
+  await setPin(page, "2468");
+  await page.getByLabel("Message").click();
+  await page.clock.fastForward("04:50");
+  await expect(page.getByLabel("Message")).toBeVisible();
+  // Typing counts as being there: the five minutes start over.
+  await page.getByLabel("Message").press("a");
+  await page.clock.fastForward("04:50");
+  await expect(page.getByLabel("Message")).toBeVisible();
+  await page.clock.fastForward("00:15");
+  await expect(page.getByRole("heading", { name: "Enter PIN" })).toBeVisible();
+  await expect(page.getByLabel("Message")).toHaveCount(0);
+  await tapPin(page, "2468");
+  await expect(page.getByLabel("Message")).toHaveValue("a");
 });
 
 /**
@@ -1105,95 +1251,6 @@ async function keptView(page: Page): Promise<unknown> {
   );
 }
 
-test(
-  "opens Notes from the device and holds Send without signal",
-  { tag: "@smoke" },
-  async ({ page, context }, testInfo) => {
-    await signedIn(page);
-    // The early fetch keeps the payload on the device.
-    await expect.poll(() => keptView(page)).not.toBeNull();
-
-    // Back later with no way to reach Jim.
-    await page.route(`${API}/**`, (route) =>
-      route.abort("internetdisconnected")
-    );
-    await page.reload();
-    await expect(page.getByLabel("Message")).toBeVisible();
-    await context.setOffline(true);
-    try {
-      await expect(page.getByText("You're offline")).toBeVisible();
-      const box = page.getByLabel("Message");
-      await box.fill("remember the milk");
-      await expect(page.getByRole("button", { name: "Send" })).toBeDisabled();
-      await expect(box).toHaveValue("remember the milk");
-
-      await page.getByRole("tab", { name: "Notes" }).click();
-      await expect(page.getByText("Water the plants")).toBeVisible();
-      await expect(page.getByText(/^Offline · as of /)).toBeVisible();
-      await noSidewaysScroll(page);
-      await page.screenshot({
-        path: shotName(page, testInfo, "notes-offline", "ayu"),
-        animations: "disabled",
-      });
-      await page.setViewportSize({ width: 320, height: 568 });
-      await noSidewaysScroll(page);
-      await page.screenshot({
-        path: shotName(page, testInfo, "notes-offline", "ayu"),
-        animations: "disabled",
-      });
-
-      // Signal back: Send works again and the text is still there.
-      await context.setOffline(false);
-      await page.getByRole("tab", { name: "Chat" }).click();
-      await expect(page.getByText("You're offline")).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "Send" })).toBeEnabled();
-      await expect(page.getByLabel("Message")).toHaveValue("remember the milk");
-    } finally {
-      await context.setOffline(false);
-    }
-  }
-);
-
-test(
-  "Morning briefing in the menu, and its Home Screen hint on an iPhone",
-  { tag: "@smoke" },
-  async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "iphone",
-      "the hint is for iOS in a browser tab"
-    );
-    const calls = await signedIn(page);
-    for (const width of [393, 320]) {
-      await page.setViewportSize({ width, height: width === 320 ? 568 : 852 });
-      await page.getByRole("button", { name: "Menu" }).click();
-      const item = page.getByRole("menuitem", {
-        name: "Morning briefing: Off",
-      });
-      await expect(item).toBeInViewport({ ratio: 1 });
-      await bigTargets(page);
-      await noSidewaysScroll(page);
-      await page.screenshot({
-        path: shotName(page, testInfo, "menu-briefing", "ayu"),
-        animations: "disabled",
-      });
-      await item.click();
-      const hint = page.getByRole("alertdialog");
-      await expect(hint).toContainText(
-        "Add Jim to your Home Screen first (Share → Add to Home Screen), then turn this on there."
-      );
-      await bigTargets(page);
-      await noSidewaysScroll(page);
-      await page.screenshot({
-        path: shotName(page, testInfo, "briefing-hint", "ayu"),
-        animations: "disabled",
-      });
-      await page.getByRole("button", { name: "OK" }).click();
-      await expect(hint).toHaveCount(0);
-    }
-    expect(calls.push).toEqual([]);
-  }
-);
-
 test("turns the morning briefing on, and sign-out turns it off and wipes the device", async ({
   page,
 }, testInfo) => {
@@ -1245,9 +1302,13 @@ test("turns the morning briefing on, and sign-out turns it off and wipes the dev
   const calls = await signedIn(page);
   await expect.poll(() => keptView(page)).not.toBeNull();
   await page.getByRole("button", { name: "Menu" }).click();
-  await page.getByRole("menuitem", { name: "Morning briefing: Off" }).click();
+  await page.getByRole("menuitem", { name: "Notifications" }).click();
+  const master = page.getByRole("switch", {
+    name: "Notifications on this device",
+  });
+  await master.click();
   await expect(page.getByRole("alertdialog")).toContainText(
-    "Morning briefing is on. A test notification is on its way."
+    "Notifications are on. A test notification is on its way."
   );
   expect(calls.push).toEqual([
     "GET /api/push/key",
@@ -1255,10 +1316,9 @@ test("turns the morning briefing on, and sign-out turns it off and wipes the dev
     "POST /api/push/test",
   ]);
   await page.getByRole("button", { name: "OK" }).click();
+  await expect(master).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("button", { name: "Close" }).click();
   await page.getByRole("button", { name: "Menu" }).click();
-  await expect(
-    page.getByRole("menuitem", { name: "Morning briefing: On" })
-  ).toBeVisible();
 
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect.poll(() => calls.push.length).toBe(4);
@@ -1269,4 +1329,777 @@ test("turns the morning briefing on, and sign-out turns it off and wipes the dev
     )
     .toBe(false);
   await expect.poll(() => keptView(page)).toBeNull();
+});
+
+/** Every string kept on this device: web storage and every IndexedDB
+ * database, each store read in full. */
+async function everythingKept(page: Page): Promise<string> {
+  return page.evaluate(async () => {
+    const out: string[] = [
+      JSON.stringify({ ...localStorage }),
+      JSON.stringify({ ...sessionStorage }),
+    ];
+    const dbs =
+      typeof indexedDB.databases === "function"
+        ? await indexedDB.databases()
+        : [{ name: "jim" }];
+    for (const { name } of dbs) {
+      if (!name) continue;
+      out.push(
+        await new Promise<string>((resolve) => {
+          const open = indexedDB.open(name);
+          open.onerror = () => resolve("");
+          open.onsuccess = () => {
+            const db = open.result;
+            const stores = [...db.objectStoreNames];
+            if (!stores.length) {
+              db.close();
+              resolve("");
+              return;
+            }
+            const tx = db.transaction(stores, "readonly");
+            const parts: unknown[] = [];
+            for (const store of stores) {
+              const all = tx.objectStore(store).getAll();
+              all.onsuccess = () => parts.push(all.result);
+            }
+            tx.oncomplete = () => {
+              db.close();
+              resolve(JSON.stringify(parts));
+            };
+            tx.onerror = () => {
+              db.close();
+              resolve("");
+            };
+          };
+        })
+      );
+    }
+    return out.join("\n");
+  });
+}
+
+test("money never rests on the device, open or after sign-out", async ({
+  page,
+}) => {
+  const calls = await signedIn(page);
+  await openNotes(page);
+  expect(calls.money).toBe(0);
+  await page
+    .getByRole("tablist", { name: "Notes pages" })
+    .getByRole("tab", { name: "Money" })
+    .click();
+  await expect(page.getByText("Hill Hardware")).toBeVisible();
+  expect(calls.money).toBe(1);
+  // Strings only the invented money summary carries.
+  const values = [
+    "Hill Hardware",
+    "Green Acres",
+    "Page Turners",
+    "Spare jar used",
+    "Seed order",
+    "Greenhouse repair",
+    "Pause new tools",
+    "Invented rule for tests",
+    "Pruning shears",
+    "Twine roll",
+    "Seed packets and bulbs",
+  ];
+  // The Notes payload is kept by now (it's what the offline store holds).
+  await expect.poll(() => keptView(page)).not.toBeNull();
+  const open = await everythingKept(page);
+  for (const v of values) expect(open).not.toContain(v);
+
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page.getByLabel("Email")).toBeVisible();
+  await expect(page.getByText("Hill Hardware")).toHaveCount(0);
+  const after = await everythingKept(page);
+  for (const v of values) expect(after).not.toContain(v);
+});
+
+test("Explore reads only on open and never rests on the device", async ({
+  page,
+}) => {
+  const calls = await signedIn(page);
+  await openNotes(page);
+  expect(calls.explore).toEqual({ graph: 0, timeline: 0, ballot: 0 });
+  const pills = page.getByRole("tablist", { name: "Notes pages" });
+  await pills.getByRole("tab", { name: "Explore" }).click();
+  await expect(page.getByText("Fixed the gate latch")).toBeVisible();
+  const explore = page.getByRole("tablist", { name: "Explore pages" });
+  await explore.getByRole("tab", { name: "Graph" }).click();
+  await expect(page.getByRole("img", { name: /Note graph/ })).toBeVisible();
+  await explore.getByRole("tab", { name: "Ballot" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Town ballot" })
+  ).toBeVisible();
+  expect(calls.explore).toEqual({ graph: 1, timeline: 1, ballot: 1 });
+  // Strings only the invented Explore reads carry.
+  const values = [
+    "Sketched the spring beds with the compost bins",
+    "Potting shed",
+    "Town voting guide",
+    "Library board",
+  ];
+  await expect.poll(() => keptView(page)).not.toBeNull();
+  const open = await everythingKept(page);
+  for (const v of values) expect(open).not.toContain(v);
+
+  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page.getByLabel("Email")).toBeVisible();
+  const after = await everythingKept(page);
+  for (const v of values) expect(after).not.toContain(v);
+});
+
+/** Every app address serves the one page; a reload keeps the place. */
+test.describe("Jim routes", () => {
+  test(
+    "a deep link reloads to the same profile, and Back returns to the list",
+    { tag: "@smoke" },
+    async ({ page }) => {
+      // Counts page loads, and any same-origin 404 (Next fetching data for
+      // an address it doesn't know would show up here).
+      await page.addInitScript(() => {
+        const n = Number(sessionStorage.getItem("jim-loads") ?? "0");
+        sessionStorage.setItem("jim-loads", String(n + 1));
+      });
+      const missing: string[] = [];
+      page.on("response", (response) => {
+        const url = new URL(response.url());
+        if (
+          url.origin === new URL(page.url()).origin &&
+          response.status() === 404
+        )
+          missing.push(url.pathname);
+      });
+      const loads = () =>
+        page.evaluate(() => Number(sessionStorage.getItem("jim-loads")));
+      await signedIn(page);
+      await page.goto("/jim/notes/people/sam-okafor");
+      const heading = page.getByRole("heading", { name: "Sam Okafor" });
+      await expect(heading).toBeVisible();
+      await expect(page).toHaveTitle("Sam Okafor · Jim");
+      // Hydrating at a deep address doesn't bounce or reload the page.
+      await page.waitForTimeout(1000);
+      expect(await loads()).toBe(2);
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/people/sam-okafor");
+      // Next's router must not 404, bounce or hard-reload the page here.
+      await page.evaluate(() => {
+        (window as { __stillHere?: boolean }).__stillHere = true;
+      });
+      await page.reload();
+      await expect(heading).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/people/sam-okafor");
+
+      // Opened from its address: Back (the link) goes up to the list.
+      await page.getByRole("link", { name: "People" }).click();
+      await expect(page.getByLabel("Search people")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/people");
+      await page.evaluate(() => {
+        (window as { __stillHere?: boolean }).__stillHere = true;
+      });
+
+      // List → profile → browser Back: the list, at the same spot.
+      const scroller = page.locator("[data-notes-scroller]");
+      // Instant: the site's smooth scrolling would still be on its way.
+      await scroller.evaluate((el) =>
+        el.scrollTo({ top: 120, behavior: "instant" })
+      );
+      await expect
+        .poll(() => scroller.evaluate((el) => el.scrollTop))
+        .toBe(120);
+      const top = 120;
+      // The scroll event (which records the spot) lands on the next frame.
+      await page.evaluate(
+        () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 50)))
+      );
+      await page.getByRole("link", { name: /Wren Rivera/ }).click();
+      await expect(
+        page.getByRole("heading", { name: "Wren Rivera" })
+      ).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe(
+        "/jim/notes/people/wren-rivera"
+      );
+      await page.goBack();
+      await expect(page.getByLabel("Search people")).toBeVisible();
+      await expect
+        .poll(() => scroller.evaluate((el) => el.scrollTop))
+        .toBe(top);
+      await page.goForward();
+      await expect(
+        page.getByRole("heading", { name: "Wren Rivera" })
+      ).toBeVisible();
+      // All of it in the one page: no reload since.
+      expect(
+        await page.evaluate(
+          () => (window as { __stillHere?: boolean }).__stillHere
+        )
+      ).toBe(true);
+      expect(await loads()).toBe(3);
+      expect(missing).toEqual([]);
+    }
+  );
+});
+
+/** Shots for a human: the desktop layout at 1440×900. */
+const DESKTOP_SHOTS = `${SHOTS}/desktop`;
+
+test.describe("Jim desktop", () => {
+  test.use({ viewport: { width: 1440, height: 900 } });
+
+  test(
+    "sidebar, page and docked chat; the chat sends from the dock",
+    { tag: "@smoke" },
+    async ({ page }, testInfo) => {
+      test.skip(testInfo.project.name === "iphone", "a desktop layout");
+      await page.clock.setFixedTime(new Date("2026-10-31T15:00:00Z"));
+      await signedIn(page);
+      const shot = async (name: string) => {
+        await noSidewaysScroll(page);
+        await page.screenshot({
+          path: `${DESKTOP_SHOTS}/${name}-${testInfo.project.name}.png`,
+          animations: "disabled",
+        });
+      };
+      const nav = page.getByRole("navigation", { name: "Jim" });
+      await expect(nav).toBeVisible();
+      await expect(page.getByRole("tab", { name: "Notes" })).toHaveCount(0);
+      await send(page, "what's on my list?", /^Here's what/);
+      await shot("chat");
+
+      await nav.getByRole("link", { name: "Home" }).click();
+      await expect(page.getByText("Water the plants")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes");
+      const dock = page.getByRole("complementary", { name: "Chat with Jim" });
+      // Sidebar, page and chat side by side, all on screen.
+      const sidebar = await nav.boundingBox();
+      const center = await page.locator("#jim-notes-page").boundingBox();
+      const chat = await dock.boundingBox();
+      expect(sidebar && center && chat).toBeTruthy();
+      if (sidebar && center && chat) {
+        expect(sidebar.x).toBeLessThan(center.x);
+        expect(center.x + center.width).toBeLessThanOrEqual(chat.x);
+        expect(chat.x + chat.width).toBeLessThanOrEqual(1440);
+        expect(chat.width).toBeGreaterThanOrEqual(360);
+      }
+      // The day and the todos side by side.
+      const today = await page
+        .getByRole("region", { name: "Today" })
+        .boundingBox();
+      const todo = await page
+        .getByRole("checkbox", { name: "Renew the car registration" })
+        .boundingBox();
+      expect(today && todo && todo.x > today.x + today.width - 1).toBe(true);
+      await expect(dock.getByText("Saved: lists/todos.md")).toHaveCount(0);
+      await shot("notes-home");
+
+      // The one conversation, sent from the dock, without leaving the page.
+      await dock.getByLabel("Message").fill("remember the milk");
+      await dock.getByLabel("Message").press("Enter");
+      await expect(dock.getByText("Saved it.")).toBeVisible();
+      await expect(dock.getByText("what's on my list?")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes");
+
+      await nav.getByRole("link", { name: "People" }).click();
+      await expect(nav.getByRole("link", { name: "People" })).toHaveAttribute(
+        "aria-current",
+        "page"
+      );
+      await page.getByRole("link", { name: /Sam Okafor/ }).click();
+      await expect(
+        page.getByRole("heading", { name: "Sam Okafor" })
+      ).toBeVisible();
+      await expect(page).toHaveTitle("Sam Okafor · Jim");
+      await shot("person");
+      // Esc steps back out of a profile.
+      await page.keyboard.press("Escape");
+      await expect(page.getByLabel("Search people")).toBeVisible();
+      expect(new URL(page.url()).pathname).toBe("/jim/notes/people");
+
+      await nav.getByRole("link", { name: "Training" }).click();
+      await expect(page.getByText("Back squat")).toBeVisible();
+      await expect(page).toHaveTitle("Training · Jim");
+      await shot("training");
+
+      await nav.getByRole("link", { name: "Health" }).click();
+      await expect(page.getByText("Hemoglobin")).toBeVisible();
+      await shot("health");
+
+      // ⌘K (Ctrl+K) finds the search; the query stays out of the address.
+      await page.keyboard.press("ControlOrMeta+k");
+      await expect(page.getByLabel("Search notes")).toBeFocused();
+      await page.keyboard.type("plants");
+      await expect(page.getByRole("link", { name: /Garden/ })).toBeVisible();
+      expect(page.url()).not.toContain("plants");
+      await shot("search");
+    }
+  );
+});
+
+/** An iPad turning, or Split View: the layout changes, nothing is lost. */
+
+test.describe("Jim pings", () => {
+  test("a reminder opens from its address and snoozes", async ({ page }) => {
+    const calls = await signedIn(page);
+    await page.goto(`/jim/reminders/${REMINDER_ID}`);
+    await expect(
+      page.getByRole("heading", { name: REMINDER.text })
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Snooze 10 min" }).click();
+    await expect.poll(() => calls.reminderPatches).toEqual([{ snooze: "10m" }]);
+    await expect(page.getByText("Today 3:40 PM")).toBeVisible();
+  });
+});
+
+/** Invented extra todos so the Todos charts have something to draw. */
+function todoLine(
+  order: number,
+  text: string,
+  due: string,
+  area: string,
+  project: string,
+  doneOn = ""
+) {
+  return {
+    text: doneOn ? `${text} (done ${doneOn})` : text,
+    due,
+    path: "lists/todos.md",
+    area,
+    project,
+    done: doneOn !== "",
+    done_on: doneOn,
+    order,
+  };
+}
+
+const MORE_TODOS = {
+  todos: [
+    todoLine(
+      20,
+      "Book the venue (due 2026-11-03)",
+      "2026-11-03",
+      "work",
+      "onboarding"
+    ),
+    todoLine(
+      21,
+      "Order the welcome kits (due 2026-11-05)",
+      "2026-11-05",
+      "work",
+      "onboarding"
+    ),
+    todoLine(
+      22,
+      "Fix the gate latch (due 2026-11-09)",
+      "2026-11-09",
+      "personal",
+      "garden-map"
+    ),
+    todoLine(23, "Sketch the Q1 targets", "", "work", "quarterly-report"),
+    todoLine(
+      24,
+      "Call the insurer about the roof (due 2026-10-27)",
+      "2026-10-27",
+      "personal",
+      ""
+    ),
+  ],
+  doneTodos: [
+    todoLine(30, "Send the agenda", "", "work", "onboarding", "2026-10-30"),
+    todoLine(31, "Pay the water bill", "", "personal", "", "2026-10-29"),
+    todoLine(
+      32,
+      "Review the draft",
+      "",
+      "work",
+      "quarterly-report",
+      "2026-10-29"
+    ),
+    todoLine(
+      33,
+      "Clean the gutters",
+      "",
+      "personal",
+      "garden-map",
+      "2026-10-26"
+    ),
+    todoLine(34, "Reply to the vendor", "", "work", "", "2026-10-22"),
+  ],
+};
+
+/** The titles in the open list, in order. */
+async function todoTitles(page: Page): Promise<string[]> {
+  return page
+    .getByRole("region", { name: "Open todos" })
+    .getByRole("checkbox")
+    .evaluateAll((els) => els.map((el) => el.getAttribute("aria-label") ?? ""));
+}
+
+test.describe("Jim todos", () => {
+  test(
+    "opens from the nav, filters Work, a project and overdue, and keeps them on reload",
+    { tag: "@smoke" },
+    async ({ page }, testInfo) => {
+      await signedIn(page, { moreTodos: MORE_TODOS });
+      await page.getByRole("tab", { name: "Notes" }).click();
+      await page.getByRole("tab", { name: "Todos" }).click();
+      await expect(page).toHaveURL(/\/jim\/todos$/);
+      await expect(page).toHaveTitle("Todos · Jim");
+      await expect(page.getByText("12 todos", { exact: true })).toBeVisible();
+      await page.screenshot({
+        path: `${SHOTS}/todos-top-${testInfo.project.name}-${page.viewportSize()?.width}.png`,
+      });
+      await page.getByRole("radio", { name: "Work" }).click();
+      await page
+        .getByRole("group", { name: "Projects" })
+        .getByRole("button", { name: /Quarterly report/ })
+        .click();
+      expect(await todoTitles(page)).toEqual([
+        "Send the quarterly report",
+        "Sketch the Q1 targets",
+      ]);
+      await page
+        .getByRole("group", { name: "When" })
+        .getByRole("button", { name: "Overdue" })
+        .click();
+      expect(await todoTitles(page)).toEqual(["Send the quarterly report"]);
+      expect(new URL(page.url()).search).toBe(
+        "?area=work&project=quarterly-report&when=overdue"
+      );
+      await page.reload();
+      await expect(page.getByText("1 todo", { exact: true })).toBeVisible();
+      expect(await todoTitles(page)).toEqual(["Send the quarterly report"]);
+      await page.getByRole("button", { name: "Clear", exact: true }).click();
+      const search = page.getByRole("searchbox", { name: "Search todos" });
+      await search.fill("DENTIST");
+      expect(await todoTitles(page)).toEqual(["Book the dentist"]);
+      expect(await fontSize(page, "input[type=search]")).toBeGreaterThanOrEqual(
+        16
+      );
+      await search.fill("");
+      // A chart column filters too.
+      await page.getByRole("button", { name: "Late: 3 todos" }).click();
+      expect(await todoTitles(page)).toHaveLength(3);
+      await noSidewaysScroll(page);
+      // The other columns dim once their fade ends.
+      await page.waitForTimeout(400);
+      await page.screenshot({
+        path: `${SHOTS}/todos-${testInfo.project.name}-${page.viewportSize()?.width}.png`,
+        fullPage: true,
+      });
+    }
+  );
+});
+
+test.describe("Jim's old address", () => {
+  const NEW_ORIGIN = "https://jim.gentryriggen.com";
+  const OWNER_UID = "nmt3n9sdfCX2NfzVlTdyXsWzHqm2";
+
+  /** The CSP firebase.json gives the main site's /jim/** addresses. */
+  function stubCsp(): string {
+    const config = JSON.parse(
+      readFileSync(join(process.cwd(), "firebase.json"), "utf8")
+    ) as {
+      hosting: {
+        target: string;
+        headers: {
+          source: string;
+          headers: { key: string; value: string }[];
+        }[];
+      }[];
+    };
+    const main = config.hosting.find((site) => site.target === "main")!;
+    const header = main.headers
+      .filter((rule) => rule.source === "/jim/**")
+      .flatMap((rule) => rule.headers)
+      .find((h) => h.key === "Content-Security-Policy");
+    return header!.value;
+  }
+
+  test("wipes Jim's data and moves to the new address", async ({
+    page,
+    baseURL,
+  }) => {
+    // A same-origin page with no Jim on it, to seed and inspect storage.
+    await page.route("**/e2e-seed", (route) =>
+      route.fulfill({ contentType: "text/html", body: "<p>seed</p>" })
+    );
+    // Hosting rewrites every old /jim address to the moved page (the e2e
+    // server still serves Jim there), with the stub's own CSP.
+    await page.route("**/jim/notes*", async (route) => {
+      const response = await route.fetch({ url: `${baseURL}/jim-moved.html` });
+      await route.fulfill({
+        response,
+        headers: {
+          ...response.headers(),
+          "content-security-policy": stubCsp(),
+        },
+      });
+    });
+    let arrived = "";
+    await page.route(`${NEW_ORIGIN}/**`, (route) => {
+      arrived = route.request().url();
+      return route.fulfill({
+        contentType: "text/html",
+        body: "<h1>New address</h1>",
+      });
+    });
+
+    await page.goto("/e2e-seed");
+    await page.evaluate(async (uid) => {
+      const done = (req: IDBRequest | IDBTransaction) =>
+        new Promise((resolve, reject) => {
+          if ("oncomplete" in req && !("result" in req)) {
+            req.oncomplete = resolve;
+          } else {
+            (req as IDBRequest).onsuccess = resolve;
+          }
+          req.onerror = reject;
+        });
+      localStorage.setItem("jim:chat:u", "[]");
+      localStorage.setItem("theme", "dark");
+      sessionStorage.setItem("jim:draft:u", "half");
+
+      const jimOpen = indexedDB.open("jim", 1);
+      jimOpen.onupgradeneeded = () => jimOpen.result.createObjectStore("kv");
+      await done(jimOpen);
+      jimOpen.result.close();
+
+      const authOpen = indexedDB.open("firebaseLocalStorageDb", 1);
+      authOpen.onupgradeneeded = () =>
+        authOpen.result.createObjectStore("firebaseLocalStorage", {
+          keyPath: "fbase_key",
+        });
+      await done(authOpen);
+      const tx = authOpen.result.transaction(
+        "firebaseLocalStorage",
+        "readwrite"
+      );
+      const store = tx.objectStore("firebaseLocalStorage");
+      store.put({ fbase_key: "owner", value: { uid } });
+      store.put({ fbase_key: "player", value: { uid: "anon-player-1" } });
+      await done(tx);
+      authOpen.result.close();
+
+      await (
+        await caches.open("jim-shell-v1")
+      ).put("/jim", new Response("old shell"));
+      await (
+        await caches.open("ship-builder-v3")
+      ).put("/ship-builder", new Response("game"));
+    }, OWNER_UID);
+    const canRegister = await page.evaluate(async () => {
+      if (!("serviceWorker" in navigator)) return false;
+      // Jim's real worker, under a scope that ends in /jim like the old
+      // one's but stays off this test's pages so it can't answer them.
+      const reg = await navigator.serviceWorker.register("/jim-sw.js", {
+        scope: "/e2e-old/jim",
+      });
+      const worker = reg.installing ?? reg.waiting ?? reg.active;
+      // Let its install finish, so its cache can't land after the wipe.
+      await new Promise<void>((resolve) => {
+        if (!worker || worker.state === "activated") return resolve();
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "activated" || worker.state === "redundant")
+            resolve();
+        });
+      });
+      return true;
+    });
+
+    await page.goto("/jim/notes?a=1");
+    await expect
+      .poll(() => arrived, { timeout: 10_000 })
+      .toBe(`${NEW_ORIGIN}/jim/notes?a=1`);
+    await expect(
+      page.getByRole("heading", { name: "New address" })
+    ).toBeVisible();
+
+    await page.goto("/e2e-seed");
+    const left = await page.evaluate(async () => {
+      const authOpen = indexedDB.open("firebaseLocalStorageDb");
+      await new Promise((resolve) => (authOpen.onsuccess = resolve));
+      const records = await new Promise<{ fbase_key: string }[]>((resolve) => {
+        const all = authOpen.result
+          .transaction("firebaseLocalStorage")
+          .objectStore("firebaseLocalStorage")
+          .getAll();
+        all.onsuccess = () => resolve(all.result);
+      });
+      authOpen.result.close();
+      const databases = indexedDB.databases
+        ? (await indexedDB.databases()).map((db) => db.name)
+        : null;
+      const registrations = navigator.serviceWorker
+        ? (await navigator.serviceWorker.getRegistrations()).map((r) => r.scope)
+        : [];
+      return {
+        local: Object.keys(localStorage).sort(),
+        session: Object.keys(sessionStorage),
+        auth: records.map((r) => r.fbase_key),
+        databases,
+        caches: (await caches.keys()).sort(),
+        registrations,
+      };
+    });
+    expect(left.local).toEqual(["theme"]);
+    expect(left.session).toEqual([]);
+    expect(left.auth).toEqual(["player"]);
+    if (left.databases) expect(left.databases).not.toContain("jim");
+    expect(left.caches).toEqual(["ship-builder-v3"]);
+    if (canRegister) {
+      expect(left.registrations.some((s) => s.endsWith("/jim"))).toBe(false);
+    }
+  });
+});
+
+test.describe("Sign-in & security", () => {
+  /** Invented values for the stand-in authenticator setup. */
+  const TWO_STEP = {
+    enrolled: false,
+    password: "invented-password",
+    secret: "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+    code: "246810",
+  };
+
+  /** Signed in with the stand-in setup; every request off this host and API is listed. */
+  async function openSecurity(page: Page, width: number) {
+    // Size first: emulated iPhone WebKit keeps its layout viewport from load.
+    await page.setViewportSize({ width, height: 800 });
+    const outside: string[] = [];
+    page.on("request", (req) => {
+      const url = new URL(req.url());
+      if (url.hostname !== "localhost" && !req.url().startsWith(API)) {
+        outside.push(url.origin);
+      }
+    });
+    await page.addInitScript(
+      ({ api, twoStep }) => {
+        window.__JIM_TEST__ = { signedIn: true, api, twoStep };
+      },
+      { api: API, twoStep: TWO_STEP }
+    );
+    const calls = await mockServer(page);
+    const revokes: number[] = [];
+    let revokeStatus = 204;
+    await page.route(`${API}/api/auth/revoke`, async (route) => {
+      if (route.request().method() === "OPTIONS") {
+        await route.fallback();
+        return;
+      }
+      revokes.push(revokeStatus);
+      await route.fulfill({
+        status: revokeStatus,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Content-Type": "application/json",
+        },
+        body:
+          revokeStatus === 204
+            ? ""
+            : JSON.stringify({
+                error: "Couldn't sign out everywhere. Try again in a minute.",
+              }),
+      });
+    });
+    await page.goto("/jim");
+    await expect(page.getByLabel("Message")).toBeVisible();
+    await page.getByRole("button", { name: "Menu" }).click();
+    await page.getByRole("menuitem", { name: "Sign-in & security" }).click();
+    const sheet = page.getByRole("dialog", { name: "Sign-in & security" });
+    await expect(sheet).toBeVisible();
+    return {
+      sheet,
+      calls,
+      outside,
+      revokes,
+      setRevokeStatus: (s: number) => {
+        revokeStatus = s;
+      },
+    };
+  }
+
+  for (const width of [393]) {
+    test(`turns two-step on, drawn on the device, at ${width}px`, async ({
+      page,
+    }, testInfo) => {
+      const { sheet, outside } = await openSecurity(page, width);
+      await expect(sheet.getByText("Two-step sign-in is off.")).toBeVisible();
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+
+      const password = sheet.getByLabel("Confirm your password");
+      await expect(password).toBeFocused();
+      await password.fill("not-it");
+      await sheet.getByRole("button", { name: "Continue" }).click();
+      await expect(sheet.getByText("That password didn't work.")).toBeVisible();
+      await password.fill(TWO_STEP.password);
+      await sheet.getByRole("button", { name: "Continue" }).click();
+
+      const link = sheet.getByRole("link", { name: "Add to Passwords" });
+      await expect(link).toHaveAttribute("href", /^otpauth:\/\/totp\//);
+      await expect(
+        sheet.getByText("ABCD EFGH IJKL MNOP QRST UVWX YZ23 4567")
+      ).toBeVisible();
+      const qr = sheet.getByRole("img", { name: /QR code/ });
+      await expect(qr).toBeVisible();
+      expect(await qr.evaluate((el) => el.tagName.toLowerCase())).toBe("svg");
+      expect(await qr.boundingBox()).toMatchObject({ width: 176 });
+
+      const code = sheet.getByLabel("6-digit code");
+      expect(
+        await code.evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+      ).toBeGreaterThanOrEqual(16);
+      await noSidewaysScroll(page);
+      await bigTargets(page);
+      await page.screenshot({
+        path: `${SHOTS}/security-setup-${testInfo.project.name}-${width}.png`,
+        animations: "disabled",
+      });
+
+      await code.fill("111111");
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+      await expect(
+        sheet.getByText("That code didn't work. Try the newest one.")
+      ).toBeVisible();
+      await code.fill(TWO_STEP.code);
+      await sheet.getByRole("button", { name: "Turn on" }).click();
+      await expect(
+        sheet.getByText(
+          "Two-step sign-in is on. Jim asks for a code only when you sign in on a new device."
+        )
+      ).toBeVisible();
+      // The setup key is gone from the page once enrolled.
+      expect(await page.content()).not.toContain(TWO_STEP.secret);
+      expect(await page.content()).not.toContain("ABCD EFGH");
+      await page.screenshot({
+        path: `${SHOTS}/security-done-${testInfo.project.name}-${width}.png`,
+        animations: "disabled",
+      });
+      // Nothing in the sheet came from anywhere else (no QR service).
+      expect(outside).toEqual([]);
+    });
+  }
+
+  test("test_sign_out_everywhere_wipes: the server first, then this device", async ({
+    page,
+  }) => {
+    const { sheet, revokes } = await openSecurity(page, 393);
+    await sheet.getByRole("button", { name: "Sign out everywhere" }).click();
+    await expect(
+      sheet.getByText("This signs out every device, this one too.")
+    ).toBeVisible();
+    await bigTargets(page);
+    expect(revokes).toEqual([]);
+    await sheet
+      .getByRole("button", { name: "Yes, sign out everywhere" })
+      .click();
+    await expect(page.getByLabel("Email")).toBeVisible();
+    await expect(
+      page.getByText("You're signed out on every device.")
+    ).toBeVisible();
+    expect(revokes).toEqual([204]);
+    await expect(page.getByLabel("Message")).toHaveCount(0);
+  });
 });

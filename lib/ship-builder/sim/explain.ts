@@ -2,6 +2,7 @@ import { STABILITY_THRESHOLDS } from "../model/stats";
 import { HULL_STRENGTH, strainOf } from "./breakup";
 import { PLUNGE_PITCH } from "./flooding";
 import { floodOf } from "./trialKind";
+import { STRIKE_NOUN, strikeOf } from "./strike";
 import { LOPSIDED_LIST } from "./seaTrial";
 import { formatStoryTime, storyMinutesSinceImpact } from "./story";
 import type {
@@ -120,6 +121,13 @@ const TIP_TALLER_WALLS = "Make the walls near the bow taller.";
 const TIP_MORE_WALLS = "Add more walls so each compartment is smaller.";
 const TIP_ADD_WALLS = "Add walls in Below deck, in the Hull panel.";
 
+/** How an afloat result starts, by what struck her. */
+const AFLOAT_LEAD = {
+  iceberg: "",
+  mine: "The mine blew a hole in her, but she held on. ",
+  island: "She ran aground and stuck fast on the rocks. ",
+} as const;
+
 function compartmentsWord(count: number): string {
   return `${count} ${count === 1 ? "compartment" : "compartments"}`;
 }
@@ -128,7 +136,10 @@ function openedCount(state: SimState): number {
   return state.compartments.filter((c) => c.opened).length;
 }
 
-function sankSummary(state: SimState): { message: string; tips: string[] } {
+function sankSummary(
+  state: SimState,
+  input: TrialInput
+): { message: string; tips: string[] } {
   const sunk = state.events.find((event) => event.kind === "sunk");
   const afloatFor = formatStoryTime(
     storyMinutesSinceImpact(sunk?.at ?? state.time)
@@ -151,7 +162,7 @@ function sankSummary(state: SimState): { message: string; tips: string[] } {
       };
     case "too-many-opened":
       return {
-        message: `${lead} The iceberg opened ${compartmentsWord(openedCount(state))} at once.`,
+        message: `${lead} ${STRIKE_NOUN[strikeOf(input.iceberg)]} opened ${compartmentsWord(openedCount(state))} at once.`,
         tips: [TIP_MORE_WALLS],
       };
     default:
@@ -248,6 +259,7 @@ function icebergLines(
  * it talks about the ship, never about anyone aboard.
  */
 export function explainTrial(state: SimState, input: TrialInput): TrialSummary {
+  if (input.boom) return explainBoom(state, input);
   const { ship, sea } = input;
   switch (state.outcome) {
     case "capsized":
@@ -268,14 +280,14 @@ export function explainTrial(state: SimState, input: TrialInput): TrialSummary {
     case "afloat":
       return {
         title: "She stayed afloat!",
-        message: `The walls kept the water in ${compartmentsWord(openedCount(state))}.`,
+        message: `${AFLOAT_LEAD[strikeOf(input.iceberg)]}The walls kept the water in ${compartmentsWord(openedCount(state))}.`,
         tips: [],
         ...icebergLines(state, input),
       };
     case "sank":
       return {
         title: "She sank",
-        ...sankSummary(state),
+        ...sankSummary(state, input),
         ...icebergLines(state, input),
       };
     case null:
@@ -285,4 +297,45 @@ export function explainTrial(state: SimState, input: TrialInput): TrialSummary {
         tips: [],
       };
   }
+}
+
+/** "1 minute 5 seconds": a real stretch of time in plain words. */
+export function formatSeconds(seconds: number): string {
+  const whole = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(whole / 60);
+  const rest = whole % 60;
+  const minuteWords =
+    minutes === 0 ? "" : `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  const secondWords =
+    rest === 0 && minutes > 0
+      ? ""
+      : `${rest} ${rest === 1 ? "second" : "seconds"}`;
+  return [minuteWords, secondWords].filter(Boolean).join(" ");
+}
+
+function bombsWord(count: number): string {
+  return `${count} ${count === 1 ? "bomb" : "bombs"}`;
+}
+
+/** Boom!: how long she lasted after the first bomb, and how many it took. */
+function explainBoom(state: SimState, input: TrialInput): TrialSummary {
+  const bombs = input.boom?.bombs ?? [];
+  const first = bombs[0]?.at ?? 0;
+  const dropped = bombs.filter((bomb) => bomb.at <= state.time).length;
+  if (state.outcome === "afloat") {
+    return {
+      title: "She's still afloat!",
+      message: `${bombsWord(dropped)} and she's still floating. The walls kept the water in ${compartmentsWord(openedCount(state))}. Tap her to drop more!`,
+      tips: [],
+      ...icebergLines(state, input),
+    };
+  }
+  const sunk = state.events.find((event) => event.kind === "sunk");
+  const sunkBy = bombs.filter((bomb) => bomb.at <= (sunk?.at ?? state.time));
+  return {
+    title: "Boom! She sank",
+    message: `She lasted ${formatSeconds((sunk?.at ?? state.time) - first)} after the first bomb. It took ${bombsWord(sunkBy.length)}.`,
+    tips: [],
+    ...icebergLines(state, input),
+  };
 }

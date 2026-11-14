@@ -1,0 +1,199 @@
+import {
+  greetVisitor,
+  metVisitors,
+  newRun,
+  TEASER_READY_HINT,
+  teaserHint,
+  tick,
+  visibleTeasers,
+  waitingVisitors,
+} from "../../../engine/engine";
+import type { RunState } from "../../../engine/types";
+import { def } from "./fixtures";
+import { lanternOf, sceneInfo } from "../scene";
+import { isGridGlowing } from "../grid";
+import { collectorEnergyPerSecond, resolvePerSecond } from "../tick";
+import { lightCountdown } from "../visitors";
+
+const idle = (run: RunState, seconds: number): RunState => {
+  let next = run;
+  for (let t = 0; t < seconds; t += 1) next = tick(def, next, 1);
+  return next;
+};
+
+const withOwned = (run: RunState, owned: Record<string, number>): RunState => ({
+  ...run,
+  owned: { ...run.owned, ...owned },
+});
+
+describe("visitors", () => {
+  it("arrive on a milestone, never on a timer", () => {
+    const quiet = idle(newRun(def), 3 * 3600);
+    expect(waitingVisitors(def, quiet)).toHaveLength(0);
+    const grown = tick(def, withOwned(quiet, { keeper: 4 }), 1);
+    expect(waitingVisitors(def, grown).map((v) => v.id)).toEqual([
+      "visitor-mail",
+    ]);
+    // the line it arrives with is in the story
+    expect(grown.story).toContain("visitor-mail");
+  });
+
+  it("wait as long as it takes, and give their gift once", () => {
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
+    const waited = idle(here, 2 * 3600);
+    expect(waitingVisitors(def, waited)).toHaveLength(1);
+    const greeted = greetVisitor(def, waited, "visitor-mail");
+    expect(greeted.resources.coins).toBeGreaterThan(waited.resources.coins);
+    expect(waitingVisitors(def, greeted)).toHaveLength(0);
+    expect(metVisitors(def, greeted).map((v) => v.id)).toEqual([
+      "visitor-mail",
+    ]);
+    // a second hello is a no-op, so the gift can't be farmed
+    expect(greetVisitor(def, greeted, "visitor-mail")).toBe(greeted);
+  });
+
+  it("pay a late hello in the currency of the part they are greeted in", () => {
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
+    const later: RunState = {
+      ...here,
+      phase: 2,
+      resources: { ...here.resources, energy: 0, coins: 5 },
+      owned: { ...here.owned, aim: 2, collector: 3 },
+    };
+    const greeted = greetVisitor(def, later, "visitor-mail");
+    expect(greeted.resources.coins).toBe(5);
+    expect(greeted.resources.energy).toBeGreaterThan(0);
+  });
+
+  it("only come in their own phase", () => {
+    const run = tick(def, withOwned(newRun(def), { collector: 6 }), 1);
+    expect(waitingVisitors(def, run)).toHaveLength(0);
+  });
+
+  it("bring a small gift: at most about 15 seconds of income", () => {
+    const here = tick(def, withOwned(newRun(def), { keeper: 4 }), 1);
+    const gift =
+      greetVisitor(def, here, "visitor-mail").resources.coins -
+      here.resources.coins;
+    expect(gift).toBeGreaterThan(0);
+    const perSecond = gift / 15;
+    // a minute of the same play earns far more than the gift
+    expect(perSecond * 60).toBeGreaterThan(gift * 2);
+  });
+});
+
+describe("someday cards", () => {
+  it("show a hint, and go away when the upgrade pops in", () => {
+    const early = withOwned(newRun(def), { lens: 2 });
+    expect(visibleTeasers(def, early).map((t) => t.upgradeId)).toContain(
+      "lighthouse"
+    );
+    const popped = { ...early, revealed: [...early.revealed, "lighthouse"] };
+    expect(visibleTeasers(def, popped).map((t) => t.upgradeId)).not.toContain(
+      "lighthouse"
+    );
+  });
+
+  it("say the goal is met when only a full shop holds the upgrade back", () => {
+    const teaser = (def.teasers ?? []).find(
+      (t) => t.upgradeId === "lighthouse"
+    )!;
+    const early = withOwned(newRun(def), { lens: 2 });
+    expect(teaserHint(def, early, teaser)).toBe(teaser.hint(early));
+    const ready = withOwned(newRun(def), { lens: 2, keeper: 3 });
+    expect(teaserHint(def, ready, teaser)).toBe(TEASER_READY_HINT);
+  });
+
+  it("only hint at upgrades that exist", () => {
+    const ids = new Set(def.upgrades.map((u) => u.id));
+    for (const teaser of def.teasers ?? [])
+      expect(ids.has(teaser.upgradeId)).toBe(true);
+  });
+});
+
+describe("the sky's star countdown", () => {
+  it("is only in the sky, and ticks mark where the relays wake", () => {
+    expect(lightCountdown(newRun(def))).toBeNull();
+    const sky = { ...newRun(def), phase: 2 };
+    const view = lightCountdown({
+      ...sky,
+      resources: { ...sky.resources, stars: 800 },
+    });
+    expect(view?.value).toBe(800);
+    expect(view?.marks).toEqual([700, 350]);
+    expect(view?.detail).toMatch(/700/);
+  });
+});
+
+const night = (resources: Record<string, number>): RunState => {
+  const run = { ...newRun(def), phase: 1 };
+  return {
+    ...run,
+    owned: { gen1: 5, gen2: 3 },
+    resources: { ...run.resources, ...resources },
+  };
+};
+
+describe("the steady glow", () => {
+  it("sparkles the cities after a night kept lit, until a blackout puts it out", () => {
+    const lit = night({ pgLast: 1 });
+    lit.owned = { gen1: 3 };
+    const dark = night({ pgLast: 2 });
+    dark.owned = { gen1: 3 };
+    expect(isGridGlowing(lit)).toBe(true);
+    expect(isGridGlowing(dark)).toBe(false);
+    expect(sceneInfo(lit).glow).toBe(1);
+    expect(sceneInfo(dark).glow).toBe(0);
+  });
+});
+
+describe("collectors come in bigger steps", () => {
+  it("go up to the six the picture draws, with two array milestones on top of ten small collectors", () => {
+    // Round 4: ten steps (not six), so the sky's helpers keep growing while
+    // the aim stays small.
+    const collector = def.upgrades.find((u) => u.id === "collector")!;
+    expect(collector.maxLevel).toBe(6);
+    const run = { ...newRun(def), phase: 2, owned: { collector: 6 } };
+    expect(collectorEnergyPerSecond(run)).toBeCloseTo(10 * 1.1 ** 2, 5);
+  });
+});
+
+describe("the crossing earns hope", () => {
+  const sailing = (warm: number, sails = 0): RunState => {
+    const run = { ...newRun(def), phase: 3 };
+    return {
+      ...run,
+      owned: Object.fromEntries(
+        Array.from({ length: sails }, (_, i) => [`sail-${i + 1}`, 1])
+      ),
+      resources: { ...run.resources, flame: warm * 1000, boatProgress: 10 },
+    };
+  };
+
+  it("pays more resolve to a warm flame than a cold one", () => {
+    expect(resolvePerSecond(sailing(0.9))).toBeGreaterThan(
+      resolvePerSecond(sailing(0.1)) * 1.2
+    );
+  });
+
+  it("pays more resolve for every sail, because the boat goes faster", () => {
+    expect(resolvePerSecond(sailing(0.8, 3))).toBeGreaterThan(
+      resolvePerSecond(sailing(0.8, 0)) * 1.1
+    );
+  });
+});
+
+describe("the lantern", () => {
+  it("is the first colour until one is picked, and ignores odd values", () => {
+    const run = newRun(def);
+    expect(lanternOf(run)).toBe(1);
+    const pick = (lantern: number): RunState => ({
+      ...run,
+      resources: { ...run.resources, lantern },
+    });
+    expect(lanternOf(pick(3))).toBe(3);
+    expect(lanternOf(pick(9))).toBe(1);
+    expect(lanternOf(pick(-2))).toBe(1);
+    expect(sceneInfo(pick(2)).lantern).toBe(2);
+  });
+});

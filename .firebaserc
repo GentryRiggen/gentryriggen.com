@@ -1,6 +1,17 @@
 {
   "projects": {
     "default": "gentryriggen"
+  },
+  "targets": {
+    "gentryriggen": {
+      "hosting": {
+        "main": [
+          "gentryriggen"
+        ],
+        "jim": [
+          "jim-gentryriggen"
+        ]
+      }
+    }
   }
 }
-

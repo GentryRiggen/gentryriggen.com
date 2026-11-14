@@ -19,9 +19,45 @@ describe("planes command", () => {
     }
   );
 
+  it("describes the series, not only the lighthouse", () => {
+    const result = getCommandResponse("onward", []);
+    render(<>{result.output}</>);
+    expect(screen.getByText(/series of incremental games/)).toBeInTheDocument();
+  });
+
   it("is listed in help", () => {
     const result = getCommandResponse("help", []);
     expect(result.output).toEqual(expect.stringMatching(/^\s+planes\s/m));
+  });
+});
+
+describe("ever onward command", () => {
+  it.each([
+    "onward",
+    "ever-onward",
+    "ever onward",
+    "ONWARD",
+    "machines",
+    "little-machines",
+    "little machines",
+  ])(
+    "responds to %s with a blurb, a link, and a navigation target",
+    (input) => {
+      const result = getCommandResponse(input, []);
+      render(<>{result.output}</>);
+
+      expect(screen.getByText(/Ever Onward/)).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /\/ever-onward/ })
+      ).toHaveAttribute("href", "/ever-onward");
+      expect(result.navigateTo).toBe("/ever-onward");
+      expect(result.shouldClear).toBe(false);
+    }
+  );
+
+  it("is listed in help", () => {
+    const result = getCommandResponse("help", []);
+    expect(result.output).toEqual(expect.stringMatching(/^\s+onward\s/m));
   });
 });
 

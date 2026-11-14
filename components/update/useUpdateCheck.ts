@@ -1,0 +1,96 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+/** The version file is fetched at most this often. */
+export const UPDATE_CHECK_INTERVAL_MS = 60_000;
+
+/** This build's id (see next.config.ts); undefined when it is not known. */
+const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID;
+
+/** Only real builds check: dev servers and e2e runs never see an update. */
+const IS_ENABLED_BY_DEFAULT =
+  process.env.NODE_ENV === "production" &&
+  process.env.NEXT_PUBLIC_E2E !== "1" &&
+  !!BUILD_ID &&
+  BUILD_ID !== "dev";
+
+interface UpdateCheckOptions {
+  /** The deployed `{ version, build }` file, e.g. "/ever-onward/version.json". */
+  versionUrl: string;
+  /** The build id this page is running. */
+  current?: string;
+  enabled?: boolean;
+  intervalMs?: number;
+}
+
+async function fetchBuildId(versionUrl: string): Promise<string | null> {
+  try {
+    const response = await fetch(versionUrl, { cache: "no-store" });
+    if (!response.ok) return null;
+    const data: unknown = await response.json();
+    if (typeof data !== "object" || data === null || !("build" in data))
+      return null;
+    return typeof data.build === "string" ? data.build : null;
+  } catch {
+    // Offline or a bad response: stay quiet and check again later.
+    return null;
+  }
+}
+
+/**
+ * Tells the page when a newer build has been deployed. It checks on load,
+ * whenever the tab comes back into view, and every `intervalMs` while the
+ * page stays open and visible (a game left running on an iPad through a
+ * deploy must still see it). At most once per `intervalMs`; never reloads
+ * anything itself.
+ */
+export function useUpdateCheck({
+  versionUrl,
+  current = BUILD_ID,
+  enabled = IS_ENABLED_BY_DEFAULT,
+  intervalMs = UPDATE_CHECK_INTERVAL_MS,
+}: UpdateCheckOptions): { isUpdateReady: boolean } {
+  const [isUpdateReady, setIsUpdateReady] = useState(false);
+
+  useEffect(() => {
+    if (!enabled || !current) return;
+    let lastCheck = 0;
+    let isCancelled = false;
+
+    const check = async () => {
+      const now = Date.now();
+      if (lastCheck && now - lastCheck < intervalMs) return;
+      lastCheck = now;
+      const latest = await fetchBuildId(versionUrl);
+      if (!isCancelled && latest !== null && latest !== current)
+        setIsUpdateReady(true);
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+
+    // iOS home-screen apps resume from the back-forward cache with a
+    // `pageshow` and may skip `visibilitychange`.
+    const handlePageShow = () => void check();
+
+    // A page left open never fires visibility or pageshow events, so poll
+    // too, but only while it is on screen.
+    const poll = window.setInterval(() => {
+      if (document.visibilityState !== "hidden") void check();
+    }, intervalMs);
+
+    void check();
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      isCancelled = true;
+      window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, [versionUrl, current, enabled, intervalMs]);
+
+  return { isUpdateReady };
+}

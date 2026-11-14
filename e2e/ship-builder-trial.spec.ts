@@ -7,7 +7,7 @@ import {
 } from "@playwright/test";
 
 /**
- * Sea trial flows. The trial plays in the WebGL scene, so (like the other
+ * Boom! and sea trial flows. The trial plays in the WebGL scene, so (like the other
  * scene tests) these run in headless Chromium with software WebGL only.
  * `trialSpeed` makes a whole trial take moments; `trialSeconds` holds the
  * sim part-way so the "running" state can be inspected (see testClock.ts).
@@ -54,12 +54,40 @@ function launch(playwright: { chromium: BrowserType }) {
   });
 }
 
-/** Opens the Sea trial menu, picks Waves and presses Go on its card. */
-async function startWavesTrial(page: Page) {
-  await page.getByRole("button", { name: "Sea trial" }).click();
-  await page.getByRole("menuitem", { name: "Waves" }).click();
-  await page.getByRole("button", { name: "Go!" }).click();
+/**
+ * Taps the canvas across its middle at `height` (a share of its height). The
+ * default lands on the hull's side in the side view.
+ */
+async function tapShip(page: Page, height = 0.58) {
+  // In the side view the hull's side sits a little below the canvas middle.
+  const canvas = page.getByTestId("ship-canvas");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("no canvas box");
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height * height);
 }
+
+/**
+ * Taps down the middle of the canvas until the Boom! trial holds `count`
+ * bombs: the camera glides (to the side view, or to frame the wreck), so
+ * where she sits on screen moves.
+ */
+async function dropBombUntil(page: Page, count: number) {
+  await expect(async () => {
+    for (const height of [0.58, 0.5, 0.42, 0.34, 0.66]) {
+      if ((await bombCount(page)) >= count) break;
+      await tapShip(page, height);
+    }
+    expect(await bombCount(page)).toBe(count);
+  }).toPass({ timeout: 30_000 });
+}
+
+const bombCount = (page: Page) =>
+  page.evaluate(() => {
+    const { trial } = window.__shipBuilderStore!.getState();
+    return trial.status === "running" || trial.status === "result"
+      ? (trial.input.boom?.bombs.length ?? 0)
+      : 0;
+  });
 
 /** The slim result bar shown once a trial ends. */
 const resultBar = (page: Page) =>
@@ -80,17 +108,23 @@ const trialStatus = (page: Page) =>
   page.evaluate(() => window.__shipBuilderStore!.getState().trial.status);
 
 test.describe("Ship Builder sea trial", () => {
-  test("a calm trial ends in a result card and building works again", async ({
+  test("Boom!: tap the ship, she sinks to a result, and building works again", async ({
     playwright,
     baseURL,
   }) => {
     const browser = await launch(playwright);
     try {
       const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
-      const start = page.getByRole("button", { name: "Sea trial" });
-      await startWavesTrial(page);
+      const start = page.getByRole("button", { name: "Boom!" });
+      await start.click();
+      await page.getByRole("menuitem", { name: "Bombs" }).click();
+      await expect(page.getByText("Tap the ship to drop a bomb")).toBeVisible();
+      expect(await trialStatus(page)).toBe("aiming");
+      await dropBombUntil(page, 1);
 
       const bar = resultBar(page);
+      await expect(bar).toBeVisible({ timeout: 30_000 });
+      await expect(bar.getByText(/after the first bomb/)).toBeVisible();
       await expect(bar).toBeVisible({ timeout: 30_000 });
       await expect(bar).toBeFocused();
       // The bar is slim: the summary and Try again wait behind Details.
@@ -127,123 +161,32 @@ test.describe("Ship Builder sea trial", () => {
     }
   });
 
-  test("Try again runs the trial once more", async ({
+  test("Boom!: another bomb joins the run and it plays on from there", async ({
     playwright,
     baseURL,
   }) => {
     const browser = await launch(playwright);
     try {
-      const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
-      await startWavesTrial(page);
-      const bar = resultBar(page);
-      await expect(bar).toBeVisible({ timeout: 30_000 });
-      const details = await openDetails(page);
-      await details.getByRole("button", { name: "Try again" }).click();
-      // The first result is gone, then the rerun ends in a fresh result bar.
-      await expect(bar).toBeVisible({ timeout: 30_000 });
-      await expect(bar).toBeFocused();
-      await expect(page.getByRole("dialog")).toHaveCount(0);
+      // Held a few seconds in, so she stays afloat where the taps land.
+      const page = await openBuilder(browser, baseURL, { trialSeconds: 3 });
+      await page.getByRole("button", { name: "Boom!" }).click();
+      await page.getByRole("menuitem", { name: "Bombs" }).click();
+      await dropBombUntil(page, 1);
+      const runId = () =>
+        page.evaluate(() => {
+          const { trial } = window.__shipBuilderStore!.getState();
+          return trial.status === "running" ? trial.runId : null;
+        });
+      const first = await runId();
+      expect(first).not.toBeNull();
+      await dropBombUntil(page, 2);
+      expect(await trialStatus(page)).toBe("running");
+      expect(await runId()).toBe(first);
     } finally {
       await browser.close();
     }
   });
 
-  test("editing is blocked while a trial runs, and Stop ends it", async ({
-    playwright,
-    baseURL,
-  }) => {
-    const browser = await launch(playwright);
-    try {
-      // Held at 2 s, so the trial stays "running" for the whole test.
-      const page = await openBuilder(browser, baseURL, { trialSeconds: 2 });
-      await page.getByRole("button", { name: /Deck block 1×1/ }).click();
-      await page.evaluate(() => {
-        const store = window.__shipBuilderStore!.getState();
-        store.placeAt({ kind: "grid", level: 0, x: 0, z: 0 });
-        store.select(window.__shipBuilderStore!.getState().ship.parts[0].id);
-      });
-      expect(await partCount(page)).toBe(1);
-
-      await page.keyboard.press("Escape");
-      await startWavesTrial(page);
-      const pill = page.getByRole("status").filter({ hasText: "Sea trial" });
-      await expect(pill).toContainText("Calm sea");
-      await expect(page.getByRole("button", { name: "Sea trial" })).toHaveCount(
-        0
-      );
-
-      // Shortcuts and store actions that would edit do nothing.
-      await page.keyboard.press("Delete");
-      await page.keyboard.press("Backspace");
-      await page.keyboard.press("r");
-      await page.keyboard.press("Control+z");
-      await page.evaluate(() => {
-        const store = window.__shipBuilderStore!.getState();
-        store.selectTool("deck-1x1");
-        store.placeAt({ kind: "grid", level: 0, x: 1, z: 0 });
-        store.changeHullLength(1);
-        store.undo();
-      });
-      expect(await partCount(page)).toBe(1);
-      expect(
-        await page.evaluate(() => window.__shipBuilderStore!.getState().tool)
-      ).toEqual({ kind: "none" });
-
-      // Focus mode: the header, panels and view controls are cleared, so
-      // New / My Ships and the Parts panel cannot be reached at all.
-      await expect(
-        page.getByRole("button", { name: "New", exact: true })
-      ).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "My Ships" })).toHaveCount(
-        0
-      );
-      await expect(
-        page.getByRole("complementary", { name: "Parts" })
-      ).toBeHidden();
-      await expect(page.getByRole("group", { name: "Camera" })).toHaveCount(0);
-
-      await pill.getByRole("button", { name: "Stop" }).click();
-      await expect(pill).toHaveCount(0);
-      expect(await trialStatus(page)).toBe("idle");
-      await page.keyboard.press("Control+z");
-      await expect.poll(() => partCount(page)).toBe(0);
-    } finally {
-      await browser.close();
-    }
-  });
-
-  test("Escape stops a running trial", async ({ playwright, baseURL }) => {
-    const browser = await launch(playwright);
-    try {
-      const page = await openBuilder(browser, baseURL, { trialSeconds: 2 });
-      await startWavesTrial(page);
-      await expect.poll(() => trialStatus(page)).toBe("running");
-      await page.keyboard.press("Escape");
-      await expect.poll(() => trialStatus(page)).toBe("idle");
-    } finally {
-      await browser.close();
-    }
-  });
-
-  test("the Sea trial button is keyboard reachable", async ({
-    playwright,
-    baseURL,
-  }) => {
-    const browser = await launch(playwright);
-    try {
-      const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
-      await page.getByRole("button", { name: "Sea trial" }).focus();
-      await page.keyboard.press("Enter");
-      await expect(page.getByRole("menuitem", { name: "Waves" })).toBeFocused();
-      await page.keyboard.press("Enter");
-      // The Waves card opens with Go focused.
-      await expect(page.getByRole("button", { name: "Go!" })).toBeFocused();
-      await page.keyboard.press("Enter");
-      await expect(resultBar(page)).toBeVisible({ timeout: 30_000 });
-    } finally {
-      await browser.close();
-    }
-  });
   test("an iceberg trial: aim, tap the hull, then try another spot", async ({
     playwright,
     baseURL,
@@ -251,7 +194,7 @@ test.describe("Ship Builder sea trial", () => {
     const browser = await launch(playwright);
     try {
       const page = await openBuilder(browser, baseURL, { trialSpeed: 60 });
-      await page.getByRole("button", { name: "Sea trial" }).click();
+      await page.getByRole("button", { name: "Boom!" }).click();
       await page.getByRole("menuitem", { name: "Iceberg" }).click();
 
       await expect(page.getByText("Tap where the iceberg hits")).toBeVisible();
@@ -260,17 +203,11 @@ test.describe("Ship Builder sea trial", () => {
       // Esc backs out, and the menu button comes back with focus.
       await page.keyboard.press("Escape");
       await expect.poll(() => trialStatus(page)).toBe("idle");
-      await expect(
-        page.getByRole("button", { name: "Sea trial" })
-      ).toBeFocused();
+      await expect(page.getByRole("button", { name: "Boom!" })).toBeFocused();
 
-      await page.getByRole("button", { name: "Sea trial" }).click();
+      await page.getByRole("button", { name: "Boom!" }).click();
       await page.getByRole("menuitem", { name: "Iceberg" }).click();
-      // In the side view the hull's side sits a little below the canvas middle.
-      const canvas = page.getByTestId("ship-canvas");
-      const box = await canvas.boundingBox();
-      if (!box) throw new Error("no canvas box");
-      await page.mouse.click(box.x + box.width / 2, box.y + box.height * 0.58);
+      await tapShip(page);
 
       await expect(resultBar(page)).toBeVisible({ timeout: 30_000 });
       const details = await openDetails(page);

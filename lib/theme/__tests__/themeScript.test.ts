@@ -1,4 +1,11 @@
-import { THEME_SCRIPT, isJimPath } from "../themeScript";
+import {
+  EVER_ONWARD_THEME_COLOR,
+  JIM_THEME_COLOR,
+  THEME_SCRIPT,
+  fixedThemeColor,
+  isEverOnwardPath,
+  isJimPath,
+} from "../themeScript";
 
 interface Run {
   themeColor: string | null;
@@ -48,9 +55,10 @@ it("sets the theme color on site pages", () => {
   expect(run("/", "light")).toEqual({ themeColor: "#ffffff", dark: false });
 });
 
-it("leaves /jim's theme color alone", () => {
+it("gives /jim its Ayu Mirage theme color in light and dark", () => {
   for (const path of ["/jim", "/jim/", "/jim.html", "/jim/x"]) {
-    expect(run(path).themeColor).toBe("#ffffff");
+    expect(run(path).themeColor).toBe(JIM_THEME_COLOR);
+    expect(run(path, "light").themeColor).toBe(JIM_THEME_COLOR);
   }
 });
 
@@ -60,4 +68,27 @@ it("knows /jim paths", () => {
   expect(isJimPath("/jim.html")).toBe(true);
   expect(isJimPath("/jimmy")).toBe(false);
   expect(isJimPath("/")).toBe(false);
+});
+
+it("gives Ever Onward its dark theme color in light and dark", () => {
+  for (const path of [
+    "/ever-onward",
+    "/ever-onward/",
+    "/ever-onward.html",
+    "/ever-onward/versions",
+  ]) {
+    expect(run(path).themeColor).toBe(EVER_ONWARD_THEME_COLOR);
+    expect(run(path, "light").themeColor).toBe(EVER_ONWARD_THEME_COLOR);
+  }
+  expect(run("/ever-onwardx", "light").themeColor).toBe("#ffffff");
+});
+
+it("knows the pages with a fixed theme color", () => {
+  expect(isEverOnwardPath("/ever-onward")).toBe(true);
+  expect(isEverOnwardPath("/ever-onwardx")).toBe(false);
+  expect(fixedThemeColor("/jim")).toBe(JIM_THEME_COLOR);
+  expect(fixedThemeColor("/ever-onward/versions")).toBe(
+    EVER_ONWARD_THEME_COLOR
+  );
+  expect(fixedThemeColor("/")).toBeNull();
 });

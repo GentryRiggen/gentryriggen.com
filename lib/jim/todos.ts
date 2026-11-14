@@ -70,9 +70,12 @@ export function todoTitle(text: string): string {
     .trim();
 }
 
-/** A recurring todo carries "every N days/weeks/…" in its due group. */
+/**
+ * A recurring todo carries "every [N] day/week/month" inside a parenthesis,
+ * as Jim's fixer reads it (jimlib/recurrence.py): "every month" counts too.
+ */
 export function isRecurring(text: string): boolean {
-  return /\(due [^)]*\bevery \d+ (day|week|month|year)s?\b/i.test(text);
+  return /\([^)]*\bevery (?:\d+ )?(?:day|week|month)s?\b/i.test(text);
 }
 
 /** "2d late", "today", "tomorrow", "in 5d", then "Nov 15"; "no date". */

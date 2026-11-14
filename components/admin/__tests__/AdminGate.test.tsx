@@ -22,7 +22,7 @@ beforeEach(() => {
   window.localStorage.clear();
   mockConfig.isFirebaseConfigured.mockReturnValue(true);
   mockClient.signOutUser.mockResolvedValue();
-  mockClient.signInWithEmail.mockResolvedValue();
+  mockClient.signInWithEmail.mockResolvedValue({ kind: "done" });
   mockClient.watchAuth.mockImplementation(async (cb) => {
     emit = cb;
     return () => {};
@@ -65,8 +65,8 @@ it("signs in with the typed email and password", async () => {
 it("disables the button while signing in", async () => {
   let finish: () => void = () => {};
   mockClient.signInWithEmail.mockReturnValue(
-    new Promise<void>((resolve) => {
-      finish = resolve;
+    new Promise<client.SignInResult>((resolve) => {
+      finish = () => resolve({ kind: "done" });
     })
   );
   await renderGate();
@@ -140,4 +140,73 @@ it("shows the admin email and a sign out button", async () => {
   ).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
   expect(mockClient.signOutUser).toHaveBeenCalled();
+});
+
+describe("authenticator code", () => {
+  async function passwordStep() {
+    await renderGate();
+    act(() => emit(null));
+    await userEvent.type(await screen.findByLabelText("Email"), "a@b.com");
+    await userEvent.type(screen.getByLabelText("Password"), "pw");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+  }
+
+  it("asks for the code, then shows the dashboard", async () => {
+    const finish = jest.fn(async () => {
+      emit({ uid: ADMIN_UID, email: "owner@example.test" });
+    });
+    mockClient.signInWithEmail.mockResolvedValue({ kind: "code", finish });
+    await passwordStep();
+    const code = await screen.findByLabelText("Code from your authenticator");
+    expect(code).toHaveAttribute("autocomplete", "one-time-code");
+    expect(code).toHaveAttribute("inputmode", "numeric");
+    expect(code).toHaveAttribute("maxlength", "6");
+    expect(screen.queryByLabelText("Password")).not.toBeInTheDocument();
+    await userEvent.type(code, "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(finish).toHaveBeenCalledWith("123456");
+    expect(await screen.findByTestId("dashboard")).toBeInTheDocument();
+  });
+
+  it("says when the code is wrong and lets it be tried again", async () => {
+    const finish = jest
+      .fn()
+      .mockRejectedValueOnce(
+        Object.assign(new Error("bad"), {
+          code: "auth/invalid-verification-code",
+        })
+      )
+      .mockResolvedValueOnce(undefined);
+    mockClient.signInWithEmail.mockResolvedValue({ kind: "code", finish });
+    await passwordStep();
+    const code = await screen.findByLabelText("Code from your authenticator");
+    await userEvent.type(code, "000000");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(
+      await screen.findByText("That code didn't work. Try the newest one.")
+    ).toBeInTheDocument();
+    expect(code).toHaveValue("");
+    await userEvent.type(code, "654321");
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(finish).toHaveBeenLastCalledWith("654321");
+  });
+
+  it("goes back to the password when the code step fails otherwise", async () => {
+    const finish = jest
+      .fn()
+      .mockRejectedValue(
+        Object.assign(new Error("late"), { code: "auth/code-expired" })
+      );
+    mockClient.signInWithEmail.mockResolvedValue({ kind: "code", finish });
+    await passwordStep();
+    await userEvent.type(
+      await screen.findByLabelText("Code from your authenticator"),
+      "123456"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Verify" }));
+    expect(await screen.findByLabelText("Password")).toBeInTheDocument();
+    expect(
+      screen.getByText("That didn't work. Sign in again.")
+    ).toBeInTheDocument();
+  });
 });

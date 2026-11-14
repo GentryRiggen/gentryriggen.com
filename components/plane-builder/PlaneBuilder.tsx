@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import useWebGLSupport from "@/components/ship-builder/hooks/useWebGLSupport";
+import UpdatePill from "@/components/update/UpdatePill";
+import { useAppUpdate } from "@/components/update/useAppUpdate";
 import { LEVELS } from "@/lib/plane-builder/levels";
 import { loadProgress, saveProgress } from "@/lib/plane-builder/persist/local";
 import { useDailySync } from "@/lib/plane-builder/state/dailySync";
@@ -33,6 +35,17 @@ const RESET_NOTICE =
 const BACKGROUND =
   "bg-gradient-to-b from-sky-300 to-sky-100 text-slate-900 dark:from-slate-950 dark:to-sky-950 dark:text-slate-100";
 
+const VERSION_URL = "/plane-builder/version.json";
+const UPDATE_PILL_WRAPPER =
+  "pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-4";
+const UPDATE_PILL_BUTTON =
+  "pointer-events-auto min-h-11 touch-manipulation rounded-full border-2 border-amber-300 bg-amber-400 px-5 py-2 text-sm font-bold text-amber-950 shadow-lg hover:bg-amber-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 focus-visible:ring-offset-2 dark:bg-amber-500 dark:hover:bg-amber-400";
+
+/** Writes the progress now, so a reload never loses the last flight. */
+function saveProgressNow() {
+  saveProgress(usePlaneBuilderStore.getState().progress);
+}
+
 export default function PlaneBuilder() {
   const hasWebGL = useWebGLSupport();
   const screen = usePlaneBuilderStore((s) => s.screen);
@@ -43,6 +56,10 @@ export default function PlaneBuilder() {
   useLeaderboardSync();
   useDailySync();
   useServiceWorker();
+  const { isUpdateReady, update } = useAppUpdate({
+    versionUrl: VERSION_URL,
+    saveNow: saveProgressNow,
+  });
 
   useEffect(() => {
     // Fetch the Blender plane models up front so pieces rarely show stand-ins.
@@ -116,6 +133,16 @@ export default function PlaneBuilder() {
               <Steering />
               <FlightHud />
             </>
+          ) : null}
+          {/* Never over the steering controls. */}
+          {isUpdateReady && screen !== "flight" && screen !== "launch" ? (
+            <UpdatePill
+              onUpdate={update}
+              testId="update-pill"
+              label="New version ready — tap to update"
+              className={UPDATE_PILL_WRAPPER}
+              buttonClassName={UPDATE_PILL_BUTTON}
+            />
           ) : null}
           {notice ? (
             <div

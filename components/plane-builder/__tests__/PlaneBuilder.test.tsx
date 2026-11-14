@@ -15,7 +15,31 @@ jest.mock("../scene/GameStage", () => ({
   default: () => null,
 }));
 
+const mockUpdate = {
+  isUpdateReady: false,
+  update: jest.fn(),
+  versionUrl: "",
+  saveNow: null as null | (() => void),
+};
+jest.mock("@/components/update/useAppUpdate", () => ({
+  useAppUpdate: ({
+    versionUrl,
+    saveNow,
+  }: {
+    versionUrl: string;
+    saveNow: () => void;
+  }) => {
+    mockUpdate.versionUrl = versionUrl;
+    mockUpdate.saveNow = saveNow;
+    return {
+      isUpdateReady: mockUpdate.isUpdateReady,
+      update: mockUpdate.update,
+    };
+  },
+}));
+
 beforeEach(() => {
+  mockUpdate.isUpdateReady = false;
   window.localStorage.clear();
   store.setState(store.getInitialState(), true);
 });
@@ -95,5 +119,38 @@ describe("PlaneBuilder", () => {
     expect(
       screen.getByRole("region", { name: "Flight results" })
     ).toBeVisible();
+  });
+});
+
+describe("PlaneBuilder updates", () => {
+  it("offers the update pill on the level screen when a newer version is ready", async () => {
+    mockUpdate.isUpdateReady = true;
+    render(<PlaneBuilder />);
+    expect(mockUpdate.versionUrl).toBe("/plane-builder/version.json");
+    await userEvent.click(screen.getByTestId("update-pill"));
+    expect(mockUpdate.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows no pill when the game is current", () => {
+    render(<PlaneBuilder />);
+    expect(screen.queryByTestId("update-pill")).toBeNull();
+  });
+
+  it("hides the pill during a flight", () => {
+    mockUpdate.isUpdateReady = true;
+    render(<PlaneBuilder />);
+    act(() => store.setState({ screen: "flight" }));
+    expect(screen.queryByTestId("update-pill")).toBeNull();
+  });
+
+  it("saves the progress before updating", () => {
+    const seeded = newProgress();
+    seeded.levels.meadow.coins = 77;
+    saveProgress(seeded);
+    render(<PlaneBuilder />);
+    window.localStorage.removeItem(SAVE_KEY);
+    mockUpdate.saveNow?.();
+    const saved = JSON.parse(window.localStorage.getItem(SAVE_KEY)!);
+    expect(saved.progress.levels.meadow.coins).toBe(77);
   });
 });

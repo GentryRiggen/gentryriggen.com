@@ -344,6 +344,8 @@ describe("FlightRewardModal", () => {
     seen: false,
   };
 
+  const originalMatchMedia = window.matchMedia;
+
   function mockReducedMotion(matches: boolean) {
     window.matchMedia = jest.fn().mockImplementation((query: string) => ({
       matches,
@@ -373,8 +375,7 @@ describe("FlightRewardModal", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
-    // @ts-expect-error jsdom has no matchMedia unless a test adds it
-    delete window.matchMedia;
+    window.matchMedia = originalMatchMedia;
   });
 
   it("is a labelled modal dialog with the gauge, focused on its heading", () => {

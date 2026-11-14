@@ -1,0 +1,167 @@
+import { hasStartedUniverse } from "@/lib/ever-onward/engine/progress";
+import type { RunState } from "@/lib/ever-onward/engine/types";
+import { getPlayableUniverse } from "@/lib/ever-onward/universes";
+import {
+  LIGHTHOUSE_DIM,
+  LIGHTHOUSE_LIT,
+  LIGHTHOUSE_ROWS,
+} from "@/lib/ever-onward/start/sprites";
+import {
+  flowerNames,
+  letsSoFar,
+} from "@/lib/ever-onward/universes/light/warmth";
+import { lanternOf } from "@/lib/ever-onward/universes/light";
+import { chosenSide, forkOf } from "@/lib/ever-onward/universes/light/forks";
+import type { CueName } from "../audio/everOnwardSynth";
+import { SCORES, TITLE_SCORE, UNEASE } from "../audio/scores";
+import EmberIcon from "../game/EmberIcon";
+import LampPanel from "../game/LampPanel";
+import LanternPicker from "../game/LanternPicker";
+import LightsPanel from "../game/LightsPanel";
+import ProbeDesignPanel from "../game/ProbeDesignPanel";
+import SunEdgePanel from "../game/SunEdgePanel";
+import ForkPanel from "../game/ForkPanel";
+import HarborPanel from "../game/HarborPanel";
+import FundPanel from "../game/FundPanel";
+import ProjectsPanel from "../game/ProjectsPanel";
+import CrewsPanel from "../game/CrewsPanel";
+import GridPanel from "../game/GridPanel";
+import StreetlightsPanel from "../game/StreetlightsPanel";
+import WeatherDesk from "../game/WeatherDesk";
+import LightScene from "../scenes/light/LightScene";
+import type { PanelProps, TapLook, UniverseUi } from "./types";
+
+/** Whether the run is in the storm that blows on the coast. */
+export function isStormy(run: RunState): boolean {
+  return run.phase === 0 && (run.resources.storm ?? 0) > 0;
+}
+
+/**
+ * The Coast's fork is a big, one-time choice, so while it is waiting to be
+ * made it sits at the top with the lamp where it can't be missed; once made
+ * it settles down with the other panels. The other parts' forks stay where
+ * they always were.
+ */
+function isCoastForkPending(run: RunState): boolean {
+  const fork = forkOf(run);
+  return run.phase === 0 && !!fork && chosenSide(run, fork) === null;
+}
+
+function CoastForkPanel(props: PanelProps) {
+  return isCoastForkPending(props.run) ? <ForkPanel {...props} /> : null;
+}
+
+function LaterForkPanel(props: PanelProps) {
+  return isCoastForkPending(props.run) ? null : <ForkPanel {...props} />;
+}
+
+/** Lantern for the coast, then generator, collector and flame. */
+const LOOKS: readonly TapLook[] = [
+  {
+    icon: "lantern",
+    classes:
+      "border-amber-200 bg-amber-950 text-amber-200 shadow-[4px_4px_0_#78350f,0_0_26px_rgba(251,191,36,0.55)] hover:bg-amber-900",
+  },
+  {
+    icon: "bolt",
+    classes:
+      "border-lime-200 bg-lime-950 text-lime-200 shadow-[4px_4px_0_#365314,0_0_26px_rgba(163,230,53,0.5)] hover:bg-lime-900",
+  },
+  {
+    icon: "sun",
+    classes:
+      "border-orange-200 bg-orange-950 text-orange-200 shadow-[4px_4px_0_#9a3412,0_0_26px_rgba(251,146,60,0.55)] hover:bg-orange-900",
+  },
+  {
+    icon: "flame",
+    classes:
+      "border-rose-200 bg-rose-950 text-rose-200 shadow-[4px_4px_0_#9f1239,0_0_26px_rgba(251,113,133,0.55)] hover:bg-rose-900",
+  },
+];
+
+/** Sounds for what changed on the side panels between two renders. */
+function cuesBetween(before: RunState, now: RunState): CueName[] {
+  const cues: CueName[] = [];
+  const rose = (id: string) =>
+    (now.resources[id] ?? 0) > (before.resources[id] ?? 0);
+  // A storm front landing on the weather desk.
+  if (rose("wxFronts")) cues.push("thunder");
+  // An evening rush kept lit, and one that put districts out.
+  if (rose("pgLits")) cues.push("chime");
+  if (rose("pgBlackouts")) cues.push("thunder");
+  // A tanker tying up at the quay, and barrels rolling into the tanks.
+  if (rose("tkVisits")) cues.push("arrive");
+  if (rose("tkBuys")) cues.push("splash");
+  // A flare sweeping the fleet, probes going wild, and the wild ones coming home.
+  if (rose("skFlares")) cues.push("thunder");
+  if (rose("skWilds")) cues.push("splash");
+  if (rose("skRecalls")) cues.push("arrive");
+  // A light let go: a lantern rises and a flower blooms.
+  if (rose("wmLets")) cues.push("chime");
+  return cues;
+}
+
+export const LIGHT_UI: UniverseUi = {
+  Scene: LightScene,
+  topPanels: [LampPanel, HarborPanel],
+  primaryPanels: [
+    GridPanel,
+    StreetlightsPanel,
+    CrewsPanel,
+    SunEdgePanel,
+    ProbeDesignPanel,
+    LightsPanel,
+  ],
+  panels: [
+    CoastForkPanel,
+    LaterForkPanel,
+    FundPanel,
+    WeatherDesk,
+    ProjectsPanel,
+  ],
+  Opening: function LanternOpening({ run, onChoose }) {
+    return <LanternPicker value={lanternOf(run)} onChange={onChoose} />;
+  },
+  ending: {
+    storyIds: ["last-remember", "last-end-1", "last-end-2"],
+    // Not narrated. Only while Make It Grow is out and still unplayed.
+    afterword: (save) => {
+      const grow = getPlayableUniverse("grow");
+      const saved = save.universes.grow;
+      if (!grow || (saved && hasStartedUniverse(saved))) return null;
+      return "A new universe has opened: Make It Grow.";
+    },
+  },
+  tapLooks: LOOKS,
+  hubSprite: {
+    rows: LIGHTHOUSE_ROWS,
+    lit: LIGHTHOUSE_LIT,
+    dim: LIGHTHOUSE_DIM,
+  },
+  PrestigeIcon: EmberIcon,
+  logbook: {
+    afterTide: function LightKeepsakes({ run }) {
+      if (letsSoFar(run) <= 0) return null;
+      return (
+        <p
+          data-testid="lm-keepsakes"
+          className="font-mono text-xs text-emerald-200"
+        >
+          Flowers: {flowerNames(run).join(", ")}.
+        </p>
+      );
+    },
+  },
+  copy: {
+    logbookEmpty:
+      "Visitors stop by as your lights grow. They wait for you, so none can be missed.",
+    stillGoing: "The light is still on.",
+  },
+  audio: {
+    scores: SCORES,
+    unease: UNEASE,
+    titleScore: TITLE_SCORE,
+    isStormy,
+    cuesBetween,
+  },
+};

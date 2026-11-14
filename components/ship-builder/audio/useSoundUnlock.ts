@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { shipChannels } from "./channelSettings";
+import { shipVoicePlayer, unlockShipVoiceOnGesture } from "./shipVoice";
 import { soundSetting } from "./soundSetting";
 import { isAudioSupported, trialSynth } from "./synth";
 
@@ -22,6 +23,7 @@ const UNLOCK_EVENTS = ["pointerdown", "touchend", "click", "keydown"] as const;
 export default function useSoundUnlock(isOn: boolean) {
   const isMusicOn = shipChannels.music.useValue();
   const isEffectsOn = shipChannels.effects.useValue();
+  const isVoiceOn = shipChannels.voice.useValue();
 
   // While mounted this holds the audio graph; the last one to leave frees it.
   useEffect(() => trialSynth.acquire(), []);
@@ -35,6 +37,18 @@ export default function useSoundUnlock(isOn: boolean) {
   useEffect(() => {
     trialSynth.setEffectsEnabled(isEffectsOn);
   }, [isEffectsOn]);
+
+  // The spoken lines have their own audio context; a tap unlocks it too, but
+  // only while the Voice switch is on (turning it on later wires the next
+  // tap, and a line's first play resumes it as well).
+  useEffect(() => {
+    if (isOn && isVoiceOn) unlockShipVoiceOnGesture();
+  }, [isOn, isVoiceOn]);
+
+  // Switching sound or Voice off silences the line now and drops the queue.
+  useEffect(() => {
+    if (!isOn || !isVoiceOn) shipVoicePlayer.stop();
+  }, [isOn, isVoiceOn]);
 
   useEffect(() => {
     if (!isOn || !isAudioSupported() || trialSynth.isEnabled()) return;

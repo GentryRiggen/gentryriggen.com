@@ -1,13 +1,19 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as api from "@/lib/jim/api";
 import * as view from "@/lib/jim/view";
-import { VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
+import { MONEY_FIXTURE, VIEW_FIXTURE } from "@/lib/jim/__tests__/fixtures";
+import { clearMoney } from "@/lib/jim/money";
 import * as offline from "@/lib/jim/offlineStore";
 import NotesShell from "../NotesShell";
 
 jest.mock("@/lib/jim/offlineStore", () => ({
   loadView: jest.fn(async () => null),
+}));
+
+// The Home reminders card has its own tests; here it just has none.
+jest.mock("@/lib/jim/reminders", () => ({
+  listReminders: jest.fn(async () => []),
 }));
 
 jest.mock("@/lib/jim/view", () => {
@@ -63,11 +69,14 @@ function renderShell(active = true) {
       getToken={getToken}
       active={active}
       onLog={jest.fn()}
+      onDraft={jest.fn()}
     />
   );
 }
 
 beforeEach(() => {
+  // Each test starts on Notes home: the shell's address is its page.
+  window.history.replaceState(null, "", "/jim/notes");
   fetchView.mockReset();
   toggleTodo.mockReset();
   searchNotes.mockReset();
@@ -169,27 +178,172 @@ it("says quietly when the notes may be behind", async () => {
   ).toBeInTheDocument();
 });
 
+it("has seven page pills in order", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  const pills = within(
+    screen.getByRole("tablist", { name: "Notes pages" })
+  ).getAllByRole("tab");
+  expect(pills.map((t) => t.textContent)).toEqual([
+    "Home",
+    "Todos",
+    "Work",
+    "Money",
+    "Health",
+    "People",
+    "Explore",
+  ]);
+  expect(screen.queryByRole("tablist", { name: "Health pages" })).toBeNull();
+});
+
+it("switches Health between Health, Training, Golf and Mindset", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  const tabs = within(sub).getAllByRole("tab");
+  expect(tabs.map((t) => t.textContent)).toEqual([
+    "Health",
+    "Training",
+    "Golf",
+    "Mindset",
+  ]);
+  expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByText("Hemoglobin")).toBeInTheDocument();
+  await userEvent.click(within(sub).getByRole("tab", { name: "Training" }));
+  expect(screen.getByText("Back squat")).toBeInTheDocument();
+  expect(screen.queryByText("Hemoglobin")).toBeNull();
+  // The Health pill stays selected, and the choice is kept on return.
+  const pills = screen.getByRole("tablist", { name: "Notes pages" });
+  expect(within(pills).getByRole("tab", { name: "Health" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+  await userEvent.click(within(pills).getByRole("tab", { name: "Home" }));
+  await userEvent.click(within(pills).getByRole("tab", { name: "Health" }));
+  expect(screen.getByText("Back squat")).toBeInTheDocument();
+});
+
+it("fetches Money only once its page opens, with its own Refresh", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  const realFetch = global.fetch;
+  const moneyFetch = jest.fn(async () => ({
+    status: 200,
+    ok: true,
+    json: async () => MONEY_FIXTURE,
+  }));
+  global.fetch = moneyFetch as unknown as typeof fetch;
+  try {
+    renderShell();
+    await screen.findByText("Water the plants");
+    expect(moneyFetch).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("tab", { name: "Money" }));
+    expect(screen.getByRole("tab", { name: "Money" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(screen.queryByText("Water the plants")).toBeNull();
+    expect(await screen.findByText("Good months")).toBeInTheDocument();
+    expect(moneyFetch).toHaveBeenCalledTimes(1);
+    expect(String((moneyFetch.mock.calls[0] as unknown[])[0])).toMatch(
+      /\/api\/money$/
+    );
+    // One Refresh: Money's own, not the notes' too.
+    expect(screen.getAllByRole("button", { name: "Refresh" })).toHaveLength(1);
+  } finally {
+    global.fetch = realFetch;
+    act(() => clearMoney());
+  }
+});
+
+it("opens a meeting and a directory card from Work, and back", async () => {
+  fetchView.mockResolvedValueOnce({
+    ...VIEW_FIXTURE,
+    people: [
+      ...VIEW_FIXTURE.people,
+      {
+        ...VIEW_FIXTURE.people[1],
+        path: "people/ava-torres.md",
+        name: "Ava Torres",
+      },
+    ],
+  });
+  fetchNote.mockResolvedValue({
+    path: "meetings/2026-10-30-garden-planning.md",
+    title: "Garden planning",
+    updated: "2026-10-30",
+    body: "- Picked the spring beds",
+  });
+  renderShell();
+  await screen.findByText("Water the plants");
+  await userEvent.click(screen.getByRole("tab", { name: "Work" }));
+  await userEvent.type(screen.getByLabelText("Search meetings"), "garden");
+  await userEvent.click(screen.getByRole("link", { name: /Garden planning/ }));
+  expect(fetchNote.mock.calls[0][0]).toBe(
+    "meetings/2026-10-30-garden-planning.md"
+  );
+  expect(await screen.findByText("Picked the spring beds")).toBeVisible();
+  // The all-notes search steps aside while something is open.
+  expect(screen.queryByLabelText("Search notes")).toBeNull();
+  // Back is a real link (Back in the browser does the same).
+  await userEvent.click(screen.getByRole("link", { name: "Work" }));
+  // The list kept its search.
+  expect(await screen.findByLabelText("Search meetings")).toHaveValue("garden");
+
+  await userEvent.type(screen.getByLabelText("Search the directory"), "ava");
+  const dir = screen.getByRole("region", { name: "Directory" });
+  await userEvent.click(within(dir).getByRole("link", { name: /Ava Torres/ }));
+  expect(screen.getByRole("heading", { name: "Ava Torres" })).toBeVisible();
+  await userEvent.click(screen.getByRole("link", { name: "Quinn Hale" }));
+  expect(screen.getByRole("heading", { name: "Quinn Hale" })).toBeVisible();
+  const reports = screen.getByRole("region", { name: "Direct reports" });
+  await userEvent.click(
+    within(reports).getByRole("link", { name: /Ava Torres/ })
+  );
+  await userEvent.click(screen.getByRole("link", { name: "Open profile" }));
+  expect(window.location.pathname).toBe("/jim/notes/people/ava-torres");
+  await userEvent.click(screen.getByRole("link", { name: "Directory" }));
+  expect(
+    await screen.findByRole("heading", { name: "Ava Torres" })
+  ).toBeVisible();
+  // Back from a card returns to the list, not the card before it.
+  await userEvent.click(screen.getByRole("link", { name: "Work" }));
+  expect(await screen.findByLabelText("Search the directory")).toHaveValue(
+    "ava"
+  );
+});
+
 it("moves between pages and into a profile and back", async () => {
   fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
   renderShell();
   await screen.findByText("Water the plants");
-  await userEvent.click(screen.getByRole("tab", { name: "Golf" }));
-  expect(screen.getByRole("tab", { name: "Golf" })).toHaveAttribute(
+  await userEvent.click(screen.getByRole("tab", { name: "Health" }));
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  await userEvent.click(within(sub).getByRole("tab", { name: "Golf" }));
+  expect(within(sub).getByRole("tab", { name: "Golf" })).toHaveAttribute(
     "aria-selected",
     "true"
   );
   expect(screen.getByRole("region", { name: "Rounds" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("tab", { name: "People" }));
   await userEvent.type(screen.getByLabelText("Search people"), "sam");
-  await userEvent.click(screen.getByRole("button", { name: /Sam Okafor/ }));
+  // People are real links, to their own address.
+  const sam = screen.getByRole("link", { name: /Sam Okafor/ });
+  expect(sam).toHaveAttribute("href", "/jim/notes/people/sam-okafor");
+  await userEvent.click(sam);
   expect(
     screen.getByRole("heading", { name: "Sam Okafor" })
   ).toBeInTheDocument();
-  await userEvent.click(screen.getByRole("button", { name: "People" }));
+  expect(window.location.pathname).toBe("/jim/notes/people/sam-okafor");
+  expect(document.title).toBe("Sam Okafor · Jim");
+  await userEvent.click(screen.getByRole("link", { name: "People" }));
   // The search is kept.
-  expect(screen.getByLabelText("Search people")).toHaveValue("sam");
+  expect(await screen.findByLabelText("Search people")).toHaveValue("sam");
+  expect(window.location.pathname).toBe("/jim/notes/people");
   // Tapping People again from a profile also returns to the list.
-  await userEvent.click(screen.getByRole("button", { name: /Sam Okafor/ }));
+  await userEvent.click(screen.getByRole("link", { name: /Sam Okafor/ }));
   await userEvent.click(screen.getByRole("tab", { name: "People" }));
   expect(screen.getByLabelText("Search people")).toBeInTheDocument();
 });
@@ -367,22 +521,24 @@ describe("search", () => {
     await userEvent.type(field, "plants");
     expect(screen.queryByText("Water the plants")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Refresh" })).toBeNull();
-    await userEvent.click(
-      await screen.findByRole("button", { name: /Garden/ })
-    );
+    await userEvent.click(await screen.findByRole("link", { name: /Garden/ }));
     expect(await screen.findByText("Tomatoes")).toBeInTheDocument();
+    // The note has an address; the search never does.
+    expect(window.location.pathname).toBe("/jim/notes/note/home/garden");
+    expect(window.location.href).not.toContain("plants");
     expect(screen.queryByLabelText("Search notes")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Results" }));
-    expect(screen.getByLabelText("Search notes")).toHaveValue("plants");
+    await userEvent.click(screen.getByRole("link", { name: "Results" }));
+    expect(await screen.findByLabelText("Search notes")).toHaveValue("plants");
     expect(searchNotes).toHaveBeenCalledTimes(1);
 
     // A person in the payload opens as their profile.
-    await userEvent.click(screen.getByRole("button", { name: /Sam Okafor/ }));
+    await userEvent.click(screen.getByRole("link", { name: /Sam Okafor/ }));
     expect(
       screen.getByRole("heading", { name: "Sam Okafor" })
     ).toBeInTheDocument();
     expect(fetchNote).toHaveBeenCalledTimes(1);
-    await userEvent.click(screen.getByRole("button", { name: "Results" }));
+    await userEvent.click(screen.getByRole("link", { name: "Results" }));
+    await screen.findByLabelText("Search notes");
 
     await userEvent.click(screen.getByRole("button", { name: "Clear search" }));
     expect(screen.getByLabelText("Search notes")).toHaveValue("");
@@ -399,4 +555,78 @@ describe("search", () => {
     expect(screen.getByLabelText("Search notes")).toHaveValue("");
     expect(screen.getByText("Water the plants")).toBeInTheDocument();
   });
+});
+
+it("opens Todos from its pill, at /jim/todos, filters in the address", async () => {
+  const user = userEvent.setup();
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  renderShell();
+  await screen.findByText("Water the plants");
+  await user.click(screen.getByRole("tab", { name: "Todos" }));
+  expect(window.location.pathname).toBe("/jim/todos");
+  expect(
+    screen.getByRole("heading", { level: 1, name: "Todos" })
+  ).toBeInTheDocument();
+  // The page has its own search; the all-notes one steps aside.
+  expect(screen.queryByRole("searchbox", { name: "Search notes" })).toBeNull();
+  await user.click(screen.getByRole("radio", { name: "Work" }));
+  expect(window.location.search).toBe("?area=work");
+  await user.click(screen.getByRole("tab", { name: "Home" }));
+  expect(window.location.pathname).toBe("/jim/notes");
+  await user.click(screen.getByRole("link", { name: /All todos/ }));
+  expect(window.location.pathname).toBe("/jim/todos");
+});
+
+it("tapping the Todos pill on a filtered Todos page clears its filters", async () => {
+  const user = userEvent.setup();
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  window.history.replaceState(null, "", "/jim/todos?area=work");
+  renderShell();
+  await screen.findByRole("heading", { level: 1, name: "Todos" });
+  expect(screen.getByRole("radio", { name: "Work" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await user.click(screen.getByRole("tab", { name: "Todos" }));
+  expect(screen.getByRole("radio", { name: "All" })).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  expect(window.location.search).toBe("");
+});
+
+it("opens a movement from Training, then a day, and Back returns", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  window.history.replaceState(null, "", "/jim/notes/training");
+  renderShell();
+  await userEvent.click(
+    await screen.findByRole("link", { name: "Back squat" })
+  );
+  expect(window.location.pathname).toBe("/jim/notes/training/m/back-squat");
+  expect(
+    await screen.findByRole("heading", { name: "Back squat" })
+  ).toBeInTheDocument();
+  expect(document.title).toMatch(/Back squat/);
+  const entries = screen.getByRole("region", { name: "Every entry" });
+  await userEvent.click(
+    within(entries).getByRole("link", { name: "Oct 15 2026" })
+  );
+  expect(window.location.pathname).toBe("/jim/notes/training/day/2026-10-15");
+  expect(
+    await screen.findByRole("heading", { name: "Thu, Oct 15 2026" })
+  ).toBeInTheDocument();
+});
+
+it("shows Mindset under Health", async () => {
+  fetchView.mockResolvedValueOnce(VIEW_FIXTURE);
+  window.history.replaceState(null, "", "/jim/notes/mindset");
+  renderShell();
+  expect(
+    await screen.findByText("“Listen before answering”")
+  ).toBeInTheDocument();
+  const sub = screen.getByRole("tablist", { name: "Health pages" });
+  expect(within(sub).getByRole("tab", { name: "Mindset" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
 });

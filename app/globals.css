@@ -276,7 +276,8 @@ html:has(.jim-app) body {
 }
 
 .jim-app :is(a, button) {
-  transition-property: color, background-color, border-color, opacity;
+  transition-property:
+    color, background-color, border-color, opacity, transform, box-shadow;
   transition-duration: 150ms;
 }
 
@@ -345,5 +346,8676 @@ html:has(.jim-app) body {
       opacity: 0;
       transform: none;
     }
+  }
+}
+
+/* A page's heading takes focus when a link opens it (for a screen reader
+   and the next Tab); it isn't a control, so no ring. */
+.jim-app :is(h1, h2)[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* Ever Onward (/ever-onward): scene motion and UI pops. Dynamic
+   values come from SVG attributes; these classes only add motion. */
+@keyframes lmPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes lmGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(251 191 36 / 0.55);
+  }
+  50% {
+    box-shadow: 0 0 16px 3px rgb(251 191 36 / 0.55);
+  }
+}
+
+@keyframes lmFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lmHudIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lmFloat {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.8);
+  }
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -14px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -70px) scale(1);
+  }
+}
+
+@keyframes lmPress {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(0.94);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes lmSweep {
+  0% {
+    transform: rotate(-16deg);
+  }
+  100% {
+    transform: rotate(9deg);
+  }
+}
+
+@keyframes lmTwinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes lmDrift {
+  0% {
+    opacity: 0;
+    transform: translateX(150px);
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-210px);
+  }
+}
+
+@keyframes lmBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1.5px);
+  }
+}
+
+@keyframes lmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lmStreak {
+  0% {
+    opacity: 0;
+    transform: translateX(34px);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(260px);
+  }
+}
+
+@keyframes lmRain {
+  0% {
+    transform: translate(0, -30px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-14px, 150px);
+    opacity: 0;
+  }
+}
+
+@keyframes lmLightning {
+  0%,
+  86%,
+  90%,
+  94%,
+  100% {
+    opacity: 0;
+  }
+  87% {
+    opacity: 0.55;
+  }
+  92% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes lmFlicker {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  30% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 0.78;
+  }
+  75% {
+    opacity: 1;
+  }
+}
+
+@keyframes lmFlash {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes lmTurn {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(4px, -2px) rotate(14deg);
+  }
+  100% {
+    opacity: 0.4;
+    transform: translate(64px, -6px) rotate(-4deg) scale(0.6);
+  }
+}
+
+@keyframes lmApproach {
+  0% {
+    opacity: 0;
+    transform: translateX(120px);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Colour only: scaling text that changes ten times a second rasterises it
+   blurry on iOS. */
+@keyframes lmCallout {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.8);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0) scale(1.08);
+  }
+  22% {
+    transform: scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-4px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes lmRing {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7);
+  }
+}
+
+/* Dashes travelling along a wire (pathLength 100, dash 3 gap 22). */
+@keyframes lmPulse {
+  to {
+    stroke-dashoffset: -25;
+  }
+}
+
+/* A town on a weak grid: its lights stutter. */
+@keyframes lmBrown {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  18% {
+    opacity: 0.25;
+  }
+  34% {
+    opacity: 1;
+  }
+  52% {
+    opacity: 0.35;
+  }
+  70% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes lmPuff {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  25% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px) scale(1.5);
+  }
+}
+
+@keyframes lmRise {
+  0%,
+  25% {
+    color: rgb(34 197 94);
+  }
+}
+
+@keyframes lmFall {
+  0%,
+  25% {
+    color: rgb(248 113 113);
+  }
+}
+
+@keyframes lmSpend {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+}
+
+@keyframes lmEffect {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  10%,
+  75% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes lmBuy {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.05);
+  }
+  65% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.lm-pop {
+  animation: lmPop 0.45s ease-out both;
+}
+
+.lm-glow {
+  animation: lmGlow 1.6s ease-in-out infinite;
+}
+
+.lm-fade-up {
+  animation: lmFadeUp 0.9s ease-out both;
+}
+
+@keyframes lmCutPanA {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.18);
+  }
+}
+
+@keyframes lmCutPanB {
+  0% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* The slow pan or zoom behind a cutscene frame. */
+.lm-cut-pan-a {
+  animation: lmCutPanA 14s ease-out both;
+}
+
+.lm-cut-pan-b {
+  animation: lmCutPanB 14s ease-out both;
+}
+
+.lm-float {
+  animation: lmFloat 0.9s ease-out both;
+}
+
+.lm-press {
+  animation: lmPress 0.18s ease-out;
+}
+
+.lm-rise {
+  animation: lmRise 0.6s ease-out;
+}
+
+.lm-fall {
+  animation: lmFall 0.6s ease-out;
+}
+
+.lm-spend {
+  animation: lmSpend 0.9s ease-out both;
+}
+
+.lm-effect {
+  animation: lmEffect 2.6s ease-out both;
+}
+
+.lm-buy {
+  animation: lmBuy 0.4s ease-out;
+}
+
+.lm-pop-svg {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lmPop 0.6s ease-out both;
+}
+
+.lm-sweep {
+  animation: lmSweep 5.5s ease-in-out infinite alternate;
+}
+
+.lm-twinkle {
+  animation: lmTwinkle 3s ease-in-out infinite;
+}
+
+.lm-twinkle-b {
+  animation: lmTwinkle 4.3s ease-in-out -1.2s infinite;
+}
+
+.lm-twinkle-c {
+  animation: lmTwinkle 2.4s ease-in-out -0.7s infinite;
+}
+
+.lm-bob {
+  animation: lmBob 3.2s ease-in-out infinite;
+}
+
+.lm-flicker {
+  animation: lmFlicker 2.6s ease-in-out infinite;
+}
+
+.lm-lightning {
+  animation: lmLightning 6s linear infinite;
+}
+
+.lm-rain {
+  animation: lmRain 0.9s linear infinite;
+}
+
+.lm-rain-b {
+  animation: lmRain 1.15s linear -0.4s infinite;
+}
+
+.lm-rain-c {
+  animation: lmRain 0.75s linear -0.2s infinite;
+}
+
+.lm-ship-a {
+  animation: lmDrift 22s linear -2s infinite;
+}
+
+.lm-ship-b {
+  animation: lmDrift 27s linear -9s infinite;
+}
+
+.lm-ship-c {
+  animation: lmDrift 19s linear -14s infinite;
+}
+
+.lm-ship-d {
+  animation: lmDrift 31s linear -20s infinite;
+}
+
+.lm-ship-e {
+  animation: lmDrift 24s linear -5s infinite;
+}
+
+.lm-ship-f {
+  animation: lmDrift 29s linear -17s infinite;
+}
+
+.lm-ship-g {
+  animation: lmDrift 21s linear -11s infinite;
+}
+
+.lm-ship-h {
+  animation: lmDrift 33s linear -26s infinite;
+}
+
+.lm-orbit-a {
+  animation: lmSpin 16s linear infinite;
+}
+
+.lm-orbit-b {
+  animation: lmSpin 26s linear infinite reverse;
+}
+
+.lm-orbit-c {
+  animation: lmSpin 38s linear infinite;
+}
+
+.lm-probe-a {
+  animation: lmStreak calc(5s * var(--lm-speed, 1)) ease-in -1s infinite;
+}
+
+.lm-probe-b {
+  animation: lmStreak calc(6.5s * var(--lm-speed, 1)) ease-in -3.5s infinite;
+}
+
+.lm-probe-c {
+  animation: lmStreak calc(4.2s * var(--lm-speed, 1)) ease-in -2.2s infinite;
+}
+
+.lm-approach {
+  animation: lmApproach 14s ease-out both;
+}
+
+.lm-flash {
+  animation: lmFlash 2.4s ease-out both;
+}
+
+.lm-turn {
+  animation: lmTurn 4s ease-in-out both;
+}
+
+.lm-callout {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lmCallout 1.7s ease-out both;
+}
+
+.lm-ring {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: lmRing 0.8s ease-out 2 both;
+}
+
+.lm-pulse {
+  animation: lmPulse 1.8s linear infinite;
+}
+
+.lm-pulse-b {
+  animation: lmPulse 1.1s linear infinite;
+}
+
+.lm-pulse-c {
+  animation: lmPulse 0.65s linear infinite;
+}
+
+.lm-brown {
+  animation: lmBrown 1.7s linear infinite;
+}
+
+.lm-brown-b {
+  animation: lmBrown 2.3s linear -0.8s infinite;
+}
+
+.lm-puff {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lmPuff 2.4s ease-out infinite;
+}
+
+.lm-puff-b {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: lmPuff 2.4s ease-out -1.2s infinite;
+}
+
+.lm-spin {
+  animation: lmSpin 3s linear infinite;
+}
+
+/* No More Night's grid: sparks on the wires, batteries, crews, blackouts. */
+@keyframes ln-spark {
+  to {
+    stroke-dashoffset: -14.5;
+  }
+}
+.ln-spark {
+  filter: drop-shadow(0 0 2px currentColor);
+  animation: ln-spark 2.2s linear infinite;
+}
+.ln-spark-fast {
+  animation-duration: 0.45s;
+}
+.ln-spark-in {
+  animation-direction: reverse;
+  animation-duration: 1.3s;
+}
+
+@keyframes ln-charge {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ln-charge {
+  animation: ln-charge 1s ease-in-out infinite;
+}
+
+@keyframes ln-drain {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 0.35;
+  }
+  60% {
+    opacity: 0.9;
+  }
+}
+.ln-drain {
+  animation: ln-drain 0.55s steps(3) infinite;
+}
+
+/* A district goes dark: a stutter, then out (the dark itself is a class). */
+@keyframes ln-snap {
+  0% {
+    opacity: 1;
+  }
+  15% {
+    opacity: 0.12;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.1;
+  }
+  65% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0.1;
+  }
+}
+.ln-snap {
+  animation: ln-snap 0.9s linear both;
+}
+
+/* The dark that falls on a district flickers on, then stays. */
+@keyframes ln-band {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  30% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.ln-band {
+  animation: ln-band 0.9s linear both;
+}
+
+/* A district's lights snap off: a white flash, then black. */
+@keyframes ln-cut {
+  0% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-cut {
+  opacity: 0;
+  animation: ln-cut 0.45s ease-out 1 both;
+}
+
+/* The sky flashes red once when the lights go out. */
+@keyframes ln-flash {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-flash {
+  opacity: 0;
+  animation: ln-flash 1.3s ease-out 1 both;
+}
+
+@keyframes ln-alarm {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.ln-alarm {
+  opacity: 0;
+  animation: ln-alarm 0.7s ease-in-out 5;
+}
+
+/* A lit night: warm rings roll out, and the sky glows once. */
+@keyframes ln-wave {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(7);
+  }
+}
+.ln-wave {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ln-wave 2.6s ease-out 1 both;
+}
+@keyframes ln-warm {
+  0% {
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.18;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ln-warm {
+  opacity: 0;
+  animation: ln-warm 3s ease-out 1 both;
+}
+
+/* Crews at their posts. */
+@keyframes ln-hammer {
+  0%,
+  100% {
+    transform: rotate(-35deg);
+  }
+  50% {
+    transform: rotate(40deg);
+  }
+}
+.ln-hammer {
+  transform-box: fill-box;
+  transform-origin: 20% 100%;
+  animation: ln-hammer 0.5s ease-in-out infinite;
+}
+@keyframes ln-weld {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  45% {
+    opacity: 0.1;
+  }
+}
+.ln-weld {
+  animation: ln-weld 0.4s steps(2) infinite;
+}
+@keyframes ln-look {
+  0%,
+  100% {
+    transform: translateX(-0.9px);
+  }
+  50% {
+    transform: translateX(0.9px);
+  }
+}
+.ln-look {
+  animation: ln-look 1.6s ease-in-out infinite;
+}
+@keyframes ln-page {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.7px);
+  }
+}
+.ln-page {
+  animation: ln-page 1.2s ease-in-out infinite;
+}
+@keyframes ln-bulb {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ln-bulb {
+  animation: ln-bulb 1.4s ease-in-out infinite;
+}
+@keyframes ln-walk {
+  0%,
+  100% {
+    transform: translateX(-9px);
+  }
+  50% {
+    transform: translateX(9px);
+  }
+}
+.ln-walk {
+  animation: ln-walk 2.2s ease-in-out infinite;
+}
+
+/* A storm on a town: the bolt, the leaning pole, the wire and its sparks. */
+@keyframes ln-bolt {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  8%,
+  30% {
+    opacity: 1;
+  }
+  18% {
+    opacity: 0.2;
+  }
+}
+.ln-bolt {
+  opacity: 0;
+  animation: ln-bolt 1.4s linear 3 both;
+}
+@keyframes ln-pole {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(32deg);
+  }
+}
+.ln-pole {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ln-pole 0.8s ease-in 1 both;
+}
+@keyframes ln-wire {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.ln-wire {
+  animation: ln-wire 0.3s steps(2) infinite;
+}
+@keyframes ln-spark-fly-a {
+  to {
+    transform: translate(-13px, -14px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-b {
+  to {
+    transform: translate(14px, -11px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-c {
+  to {
+    transform: translate(-6px, -20px);
+    opacity: 0;
+  }
+}
+@keyframes ln-spark-fly-d {
+  to {
+    transform: translate(9px, -18px);
+    opacity: 0;
+  }
+}
+.ln-spark-a {
+  animation: ln-spark-fly-a 0.7s ease-out infinite;
+}
+.ln-spark-b {
+  animation: ln-spark-fly-b 0.7s ease-out 0.15s infinite;
+}
+.ln-spark-c {
+  animation: ln-spark-fly-c 0.7s ease-out 0.3s infinite;
+}
+.ln-spark-d {
+  animation: ln-spark-fly-d 0.7s ease-out 0.45s infinite;
+}
+@keyframes ln-dome {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+}
+.ln-dome {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ln-dome 1.2s ease-out 1 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ln-spark,
+  .ln-charge,
+  .ln-drain,
+  .ln-snap,
+  .ln-band,
+  .ln-cut,
+  .ln-flash,
+  .ln-alarm,
+  .ln-wave,
+  .ln-warm,
+  .ln-hammer,
+  .ln-weld,
+  .ln-look,
+  .ln-page,
+  .ln-bulb,
+  .ln-walk,
+  .ln-bolt,
+  .ln-pole,
+  .ln-wire,
+  .ln-spark-a,
+  .ln-spark-b,
+  .ln-spark-c,
+  .ln-spark-d,
+  .ln-dome {
+    animation: none;
+  }
+  /* The flashes and rings are drawn hidden, so nothing is left covering the scene. */
+  .ln-cut,
+  .ln-flash,
+  .ln-alarm,
+  .ln-wave,
+  .ln-warm {
+    opacity: 0;
+  }
+  .ln-bolt {
+    opacity: 1;
+  }
+}
+
+/* A layer fading out stops animating: nobody is looking at it. */
+.lm-paused,
+.lm-paused * {
+  animation-play-state: paused !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-callout,
+  .lm-ring,
+  .lm-pulse,
+  .lm-pulse-b,
+  .lm-pulse-c,
+  .lm-brown,
+  .lm-brown-b,
+  .lm-puff,
+  .lm-puff-b,
+  .lm-spin,
+  .lm-pop,
+  .lm-glow,
+  .lm-fade-up,
+  .eo-map-float,
+  .eo-map-here,
+  .eo-map-beacon,
+  .eo-map-choosable,
+  .eo-map-rise,
+  .eo-map-burst,
+  .eo-map-rays,
+  .eo-map-caret,
+  .eo-art-float,
+  .eo-art-ghost,
+  .eo-art-new,
+  .lm-cut-pan-a,
+  .lm-cut-pan-b,
+  .lm-float,
+  .lm-press,
+  .lm-rise,
+  .lm-fall,
+  .lm-spend,
+  .lm-effect,
+  .lm-buy,
+  .lm-pop-svg,
+  .lm-sweep,
+  .lm-twinkle,
+  .lm-twinkle-b,
+  .lm-twinkle-c,
+  .lm-bob,
+  .lm-flicker,
+  .lm-lightning,
+  .lm-rain,
+  .lm-rain-b,
+  .lm-rain-c,
+  .lm-ship-a,
+  .lm-ship-b,
+  .lm-ship-c,
+  .lm-ship-d,
+  .lm-ship-e,
+  .lm-ship-f,
+  .lm-ship-g,
+  .lm-ship-h,
+  .lm-orbit-a,
+  .lm-orbit-b,
+  .lm-orbit-c,
+  .lm-probe-a,
+  .lm-probe-b,
+  .lm-probe-c,
+  .lm-approach,
+  .lm-flash,
+  .lm-turn {
+    animation: none;
+  }
+}
+
+/* A press you can feel. */
+.jim-app button:not(:disabled):active {
+  transform: scale(0.97);
+}
+
+/* The ambient light behind every /jim screen: a warm glow from the top and
+   a cool one from the lower corner, over the Mirage background. Fixed, so
+   it stays put while the lists scroll over it; `isolation` keeps it above
+   the app's own background and below everything in it. */
+.jim-app {
+  isolation: isolate;
+}
+
+.jim-app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      60rem 28rem at 50% -8rem,
+      rgb(255 204 102 / 0.1),
+      transparent 70%
+    ),
+    radial-gradient(
+      36rem 30rem at 110% 105%,
+      rgb(223 191 255 / 0.08),
+      transparent 70%
+    ),
+    radial-gradient(
+      30rem 24rem at -10% 55%,
+      rgb(115 208 255 / 0.05),
+      transparent 70%
+    );
+}
+
+/* A raised surface: a faint top-lit gradient, a hairline edge that catches
+   the light, and a soft drop shadow. Cards, rows and bubbles all use it. */
+@utility jim-card {
+  border-radius: 1rem;
+  background-color: var(--color-ayu-panel);
+  background-image: linear-gradient(
+    180deg,
+    rgb(255 255 255 / 0.04),
+    rgb(255 255 255 / 0) 60%
+  );
+  border: 1px solid rgb(255 255 255 / 0.06);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.04),
+    0 12px 32px -20px rgb(0 0 0 / 0.8);
+}
+
+/* Frosted glass for the bars that float over content. */
+@utility jim-glass {
+  background-color: rgb(31 36 48 / 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+}
+
+/* The accent as a light source: primary buttons, the user's bubbles, the
+   mark. Dark text on it (ayu-bg) stays above 10:1. */
+@utility jim-glow {
+  background-image: linear-gradient(
+    135deg,
+    #ffd88a 0%,
+    #ffcc66 45%,
+    #ffad66 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.4),
+    0 8px 24px -10px rgb(255 173 102 / 0.55);
+}
+
+/* Big numbers: bright at the top, settling into the text color. */
+@utility jim-figure {
+  background-image: linear-gradient(180deg, #ffffff 0%, #cccac2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* New things arrive: a short rise and fade. */
+@keyframes jimRise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@utility jim-rise {
+  animation: jimRise 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Jim's three thinking dots. */
+@keyframes jimDot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@utility jim-dot {
+  animation: jimDot 1.2s ease-in-out infinite;
+}
+
+/* The mark breathes while Jim works. */
+@keyframes jimBreathe {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 0 0 0 rgb(255 204 102 / 0.45);
+  }
+  60% {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.4),
+      0 0 0 8px rgb(255 204 102 / 0);
+  }
+}
+
+@utility jim-breathe {
+  animation: jimBreathe 1.8s ease-out infinite;
+}
+
+/* A wrong PIN: the dots shake no. */
+@keyframes jimShake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20%,
+  60% {
+    transform: translateX(-8px);
+  }
+  40%,
+  80% {
+    transform: translateX(8px);
+  }
+}
+
+@utility jim-shake {
+  animation: jimShake 360ms ease-in-out both;
+}
+
+/* Waiting with no known end: a glow sweeps along a thin track. Reduced
+   motion leaves it still, a soft lit band in the middle. */
+@keyframes jimShimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@utility jim-shimmer {
+  width: 40%;
+  background-image: linear-gradient(
+    90deg,
+    rgb(255 204 102 / 0) 0%,
+    #ffcc66 50%,
+    rgb(255 204 102 / 0) 100%
+  );
+  box-shadow: 0 0 8px rgb(255 204 102 / 0.6);
+  animation: jimShimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jim-rise,
+  .jim-dot,
+  .jim-breathe,
+  .jim-shake,
+  .jim-shimmer {
+    animation: none;
+  }
+
+  .jim-shimmer {
+    transform: translateX(75%);
+  }
+
+  .jim-app button:not(:disabled):active {
+    transform: none;
+  }
+}
+
+/* Ever Onward start screen. Every animation is switched off for
+   prefers-reduced-motion, which leaves the final, fully drawn picture. */
+@keyframes eo-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.2) translateY(-6px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.18) translateY(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes eo-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes eo-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes eo-sweep {
+  0%,
+  100% {
+    transform: rotate(-14deg);
+    opacity: 0.55;
+  }
+  50% {
+    transform: rotate(10deg);
+    opacity: 0.9;
+  }
+}
+
+@keyframes eo-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes eo-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes eo-fall {
+  0% {
+    transform: translate(0, -6vh);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(4px, 55vh);
+  }
+  100% {
+    transform: translate(-3px, 112vh);
+    opacity: 0.9;
+  }
+}
+
+@keyframes eo-drift {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.2;
+  }
+  25% {
+    transform: translate(5px, -4px);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-3px, -8px);
+    opacity: 0.4;
+  }
+  75% {
+    transform: translate(4px, -3px);
+    opacity: 1;
+  }
+}
+
+@keyframes eo-rain {
+  0% {
+    transform: translate(0, -8vh);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-16px, 108vh);
+    opacity: 0.8;
+  }
+}
+
+@keyframes eo-cloud {
+  0% {
+    transform: translateX(-30vw);
+  }
+  100% {
+    transform: translateX(120vw);
+  }
+}
+
+@keyframes eo-fog {
+  0%,
+  100% {
+    transform: translateX(-5%);
+  }
+  50% {
+    transform: translateX(5%);
+  }
+}
+
+@keyframes eo-shimmer {
+  0%,
+  100% {
+    transform: translateX(-3px) skewX(-2deg);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateX(3px) skewX(2deg);
+    opacity: 1;
+  }
+}
+
+/* A soft, rare flash: gentle, never a strobe. */
+@keyframes eo-flash {
+  0%,
+  90%,
+  100% {
+    opacity: 0;
+  }
+  92% {
+    opacity: 0.22;
+  }
+  95% {
+    opacity: 0.05;
+  }
+  97% {
+    opacity: 0.14;
+  }
+}
+
+@keyframes eo-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.eo-rain {
+  animation: eo-rain 0.9s linear infinite;
+}
+
+.eo-cloud-a,
+.eo-cloud-b,
+.eo-cloud-c,
+.eo-cloud-d {
+  animation: eo-cloud 70s linear infinite;
+}
+.eo-cloud-a {
+  animation-delay: -12s;
+}
+.eo-cloud-b {
+  animation-duration: 90s;
+  animation-delay: -55s;
+}
+.eo-cloud-c {
+  animation-duration: 110s;
+  animation-delay: -30s;
+}
+.eo-cloud-d {
+  animation-duration: 80s;
+  animation-delay: -70s;
+}
+
+.eo-fog {
+  animation: eo-fog 16s ease-in-out infinite;
+}
+.eo-fog-b {
+  animation-duration: 22s;
+  animation-direction: reverse;
+}
+
+.eo-shimmer {
+  animation: eo-shimmer 2.2s ease-in-out infinite;
+}
+
+.eo-flash {
+  opacity: 0;
+  animation: eo-flash 11s linear infinite;
+}
+
+.eo-fade-in {
+  animation: eo-fade-in 1800ms ease-out both;
+}
+
+@keyframes eo-flicker {
+  0%,
+  100% {
+    opacity: 0.04;
+  }
+  8% {
+    opacity: 0.09;
+  }
+  9% {
+    opacity: 0.03;
+  }
+  52% {
+    opacity: 0.06;
+  }
+  53% {
+    opacity: 0.11;
+  }
+  54% {
+    opacity: 0.04;
+  }
+}
+
+@keyframes eo-blink-prompt {
+  0%,
+  55% {
+    opacity: 1;
+  }
+  56%,
+  100% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes eo-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.eo-pop,
+.eo-bob,
+.eo-blink,
+.eo-sweep,
+.eo-glow,
+.eo-fall,
+.eo-drift {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.eo-pop {
+  animation: eo-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.eo-bob {
+  animation: eo-bob 2.4s ease-in-out infinite;
+}
+
+.eo-blink {
+  animation: eo-blink 4.5s ease-in-out infinite;
+}
+
+.eo-sweep {
+  animation: eo-sweep 7s ease-in-out infinite;
+}
+
+.eo-glow {
+  animation: eo-glow 2.4s ease-in-out infinite;
+}
+
+.eo-twinkle {
+  animation: eo-twinkle 3s ease-in-out infinite;
+}
+
+.eo-fall {
+  animation: eo-fall 9s linear infinite;
+}
+
+.eo-drift {
+  animation: eo-drift 6s ease-in-out infinite;
+}
+
+.eo-flicker {
+  animation: eo-flicker 5s steps(1, end) infinite;
+}
+
+.eo-prompt {
+  animation: eo-blink-prompt 1.1s steps(1, end) infinite;
+}
+
+.eo-rise {
+  animation: eo-rise 600ms ease-out both;
+}
+
+/* Staggers: a step per letter or star, so no inline styles are needed. */
+.eo-d0 {
+  animation-delay: 0ms;
+}
+.eo-d1 {
+  animation-delay: 90ms;
+}
+.eo-d2 {
+  animation-delay: 180ms;
+}
+.eo-d3 {
+  animation-delay: 270ms;
+}
+.eo-d4 {
+  animation-delay: 360ms;
+}
+.eo-d5 {
+  animation-delay: 450ms;
+}
+.eo-d6 {
+  animation-delay: 540ms;
+}
+.eo-d7 {
+  animation-delay: 630ms;
+}
+.eo-d8 {
+  animation-delay: 720ms;
+}
+.eo-d9 {
+  animation-delay: 810ms;
+}
+.eo-d10 {
+  animation-delay: 900ms;
+}
+.eo-d11 {
+  animation-delay: 990ms;
+}
+.eo-d12 {
+  animation-delay: 1080ms;
+}
+.eo-d13 {
+  animation-delay: 1170ms;
+}
+.eo-d14 {
+  animation-delay: 1260ms;
+}
+.eo-d15 {
+  animation-delay: 1350ms;
+}
+
+/* Falling and floating bits spread their timing the same way, negative so
+   the sky is already busy when it appears. */
+.eo-fall.eo-d0,
+.eo-drift.eo-d0,
+.eo-twinkle.eo-d0 {
+  animation-delay: -0.4s;
+}
+.eo-fall.eo-d1,
+.eo-drift.eo-d1,
+.eo-twinkle.eo-d1 {
+  animation-delay: -1.7s;
+}
+.eo-fall.eo-d2,
+.eo-drift.eo-d2,
+.eo-twinkle.eo-d2 {
+  animation-delay: -3.1s;
+}
+.eo-fall.eo-d3,
+.eo-drift.eo-d3,
+.eo-twinkle.eo-d3 {
+  animation-delay: -4.6s;
+}
+.eo-fall.eo-d4,
+.eo-drift.eo-d4,
+.eo-twinkle.eo-d4 {
+  animation-delay: -5.9s;
+}
+.eo-fall.eo-d5,
+.eo-drift.eo-d5,
+.eo-twinkle.eo-d5 {
+  animation-delay: -7.2s;
+}
+.eo-fall.eo-d6,
+.eo-drift.eo-d6,
+.eo-twinkle.eo-d6 {
+  animation-delay: -8.4s;
+}
+.eo-fall.eo-d7,
+.eo-drift.eo-d7,
+.eo-twinkle.eo-d7 {
+  animation-delay: -2.4s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eo-pop,
+  .eo-bob,
+  .eo-blink,
+  .eo-sweep,
+  .eo-glow,
+  .eo-twinkle,
+  .eo-fall,
+  .eo-drift,
+  .eo-flicker,
+  .eo-prompt,
+  .eo-rise,
+  .eo-rain,
+  .eo-cloud-a,
+  .eo-cloud-b,
+  .eo-cloud-c,
+  .eo-cloud-d,
+  .eo-fog,
+  .eo-shimmer,
+  .eo-flash,
+  .eo-fade-in {
+    animation: none;
+  }
+
+  .eo-rain {
+    opacity: 0;
+  }
+
+  .eo-cloud-a {
+    transform: translateX(10vw);
+  }
+  .eo-cloud-b {
+    transform: translateX(55vw);
+  }
+  .eo-cloud-c {
+    transform: translateX(30vw);
+  }
+  .eo-cloud-d {
+    transform: translateX(78vw);
+  }
+
+  .eo-fall {
+    opacity: 0;
+  }
+
+  .eo-sweep {
+    opacity: 0.7;
+  }
+}
+
+/* Ever Onward: the Weather Desk (rain, a soft flash, drifting clouds). */
+@keyframes wx-rain {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -18px 64px;
+  }
+}
+
+@keyframes wx-flash {
+  0%,
+  84%,
+  100% {
+    opacity: 0;
+  }
+  86% {
+    opacity: 0.26;
+  }
+  89% {
+    opacity: 0.05;
+  }
+  91% {
+    opacity: 0.18;
+  }
+}
+
+@keyframes wx-cloud {
+  from {
+    transform: translateX(-40%);
+  }
+  to {
+    transform: translateX(380%);
+  }
+}
+
+@keyframes wx-flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  10% {
+    opacity: 0.25;
+  }
+  14% {
+    opacity: 1;
+  }
+  42% {
+    opacity: 0.45;
+  }
+  46% {
+    opacity: 1;
+  }
+  74% {
+    opacity: 0.2;
+  }
+  78% {
+    opacity: 1;
+  }
+}
+
+.wx-rain,
+.wx-rain-b {
+  background-image: linear-gradient(
+    105deg,
+    transparent 44%,
+    rgba(186, 230, 253, 0.26) 44% 56%,
+    transparent 56%
+  );
+  background-size: 18px 40px;
+  animation: wx-rain 0.7s linear infinite;
+}
+
+.wx-rain-b {
+  background-size: 28px 56px;
+  opacity: 0.5;
+  animation-duration: 1.1s;
+}
+
+.wx-flash {
+  animation: wx-flash 7s linear infinite;
+}
+
+.wx-cloud {
+  animation: wx-cloud 60s linear infinite;
+}
+
+.wx-flicker {
+  animation: wx-flicker 2.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wx-rain,
+  .wx-rain-b,
+  .wx-cloud,
+  .wx-flicker {
+    animation: none;
+  }
+
+  .wx-flash {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Ever Onward: the Tide Clock (a turning mill wheel, the gauge's waves). */
+@keyframes lm-wheel {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes td-sway {
+  to {
+    transform: translateX(-24px);
+  }
+}
+
+@keyframes td-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes td-glint {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.lm-wheel {
+  animation: lm-wheel 9s linear infinite;
+}
+
+.td-sway {
+  animation: td-sway 2.4s linear infinite;
+}
+
+.td-sway-b {
+  animation-duration: 3.6s;
+  animation-direction: reverse;
+}
+
+.td-bob {
+  animation: td-bob 2.4s ease-in-out infinite;
+}
+
+.td-glint {
+  animation: td-glint 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lm-wheel,
+  .td-sway,
+  .td-sway-b,
+  .td-bob,
+  .td-glint {
+    animation: none;
+  }
+}
+
+/* Ever Onward: Make It Grow bee dances (the waggle and a staggered reveal). */
+@keyframes bee-waggle {
+  0%,
+  100% {
+    transform: translateX(-2.5px);
+  }
+  50% {
+    transform: translateX(2.5px);
+  }
+}
+
+@keyframes bee-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bee-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bee-waggle {
+  animation: bee-waggle 0.18s ease-in-out infinite;
+}
+
+.bee-reveal-1,
+.bee-reveal-2,
+.bee-reveal-3 {
+  animation: bee-reveal 0.5s ease-out backwards;
+}
+
+.bee-reveal-2 {
+  animation-delay: 0.6s;
+}
+
+.bee-reveal-3 {
+  animation-delay: 1.2s;
+}
+
+.bee-orbit {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  animation: bee-orbit 7s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bee-waggle,
+  .bee-reveal-1,
+  .bee-reveal-2,
+  .bee-reveal-3,
+  .bee-orbit {
+    animation: none;
+  }
+}
+
+/* Ever Onward: Probe Races (a twinkling star map, a flickering exhaust). */
+@keyframes pr-twinkle {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes pr-ping {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes pr-exhaust {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes pr-loop {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pr-twinkle {
+  animation: pr-twinkle 2.2s ease-in-out infinite;
+}
+
+.pr-ping {
+  animation: pr-ping 2.8s ease-in-out infinite;
+}
+
+.pr-exhaust {
+  animation: pr-exhaust 0.35s ease-in-out infinite;
+}
+
+.pr-loop {
+  animation: pr-loop 5s linear infinite;
+}
+
+.pr-loop-slow {
+  animation: pr-loop 8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pr-twinkle,
+  .pr-ping,
+  .pr-exhaust,
+  .pr-loop,
+  .pr-loop-slow {
+    animation: none;
+  }
+}
+
+/* Ever Onward: the sky's dials (the probe stream, flares, wild probes). */
+@keyframes sk-fly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--sk-dx), var(--sk-dy)) scale(1.1);
+  }
+}
+.sk-fly {
+  animation: sk-fly var(--sk-len, 3.2s) ease-in var(--sk-late, 0s) infinite;
+}
+
+@keyframes sk-split {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(var(--sk-side));
+    opacity: 1;
+  }
+}
+.sk-split {
+  animation: sk-split 0.9s ease-in-out infinite;
+}
+
+@keyframes sk-glint {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sk-glint {
+  animation: sk-glint 0.7s ease-in-out infinite;
+}
+
+@keyframes sk-wave {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(9);
+  }
+}
+.sk-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sk-wave 1.5s ease-out 3 both;
+}
+
+@keyframes sk-flash {
+  0% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.sk-flash {
+  opacity: 0;
+  animation: sk-flash 1.6s ease-out both;
+}
+
+@keyframes sk-pop {
+  0% {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+.sk-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sk-pop 1.6s ease-out 2 both;
+}
+
+@keyframes sk-shimmer {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sk-shimmer {
+  animation: sk-shimmer 0.5s ease-in-out infinite;
+}
+
+@keyframes sk-warn {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sk-warn {
+  animation: sk-warn 0.9s ease-in-out infinite;
+}
+
+@keyframes sk-wild {
+  0% {
+    transform: rotate(0deg) translateX(2px);
+  }
+  50% {
+    transform: rotate(180deg) translateX(-2px);
+  }
+  100% {
+    transform: rotate(360deg) translateX(2px);
+  }
+}
+.sk-wild {
+  animation: sk-wild 7s linear infinite;
+}
+
+@keyframes sk-wild-glow {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.sk-wild-glow {
+  animation: sk-wild-glow 1.1s ease-in-out infinite;
+}
+
+@keyframes sk-tether {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+.sk-tether {
+  animation: sk-tether 0.6s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-fly,
+  .sk-split,
+  .sk-glint,
+  .sk-wave,
+  .sk-flash,
+  .sk-pop,
+  .sk-shimmer,
+  .sk-warn,
+  .sk-wild,
+  .sk-wild-glow,
+  .sk-tether {
+    animation: none;
+  }
+  /* Nothing is left covering the picture, and nothing hangs in mid-air. */
+  .sk-flash,
+  .sk-wave,
+  .sk-pop {
+    opacity: 0;
+  }
+  .sk-fly {
+    opacity: 0.8;
+    transform: translate(calc(var(--sk-dx) * 0.5), calc(var(--sk-dy) * 0.5));
+  }
+}
+
+/* Ever Onward: the flowers of The Last Light (swaying, a soft glow). */
+@keyframes ll-sway {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes ll-glow {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.36;
+  }
+}
+
+.ll-sway {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-sway 4.2s ease-in-out infinite;
+}
+
+.ll-glow {
+  animation: ll-glow 3.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-sway,
+  .ll-glow {
+    animation: none;
+  }
+}
+
+/*
+ * Ever Onward: The Last Light's warmth. A lantern rising from the lamp that
+ * was let go, the flower blooming where it stood (ring and sparks), the small
+ * banner at the top edge, fog on the water, cold wind streaks, and the boat
+ * surging when the flame is warm.
+ */
+@keyframes ll-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1);
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-170px) scale(0.55);
+  }
+}
+.ll-rise {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation: ll-rise 6.5s ease-out both;
+}
+
+@keyframes ll-bloom {
+  0% {
+    transform: scale(0);
+  }
+  55% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.ll-bloom {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-bloom 1.6s ease-out both;
+}
+
+@keyframes ll-ring {
+  0% {
+    opacity: 1;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+.ll-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ll-ring 1.6s ease-out 2 both;
+}
+
+@keyframes ll-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--ll-dx), var(--ll-dy));
+  }
+}
+.ll-spark {
+  animation: ll-spark 1.8s ease-out 2 both;
+}
+
+@keyframes ll-banner {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ll-banner {
+  animation: ll-banner 7s ease-in-out both;
+}
+/* The goodbye's banner waits a moment, so the lantern lifts off clear of it. */
+.ll-banner-late {
+  opacity: 0;
+  animation: ll-banner 6s ease-in-out 0.8s both;
+}
+
+@keyframes ll-fog {
+  0%,
+  100% {
+    transform: translateX(-26px);
+  }
+  50% {
+    transform: translateX(26px);
+  }
+}
+.ll-fog {
+  animation: ll-fog 13s ease-in-out infinite;
+}
+.ll-fog-b {
+  animation: ll-fog 17s ease-in-out infinite reverse;
+}
+
+@keyframes ll-gust {
+  0% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  20% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-190px);
+  }
+}
+.ll-gust {
+  opacity: 0.5;
+  animation: ll-gust 2s linear infinite;
+}
+
+@keyframes ll-lean {
+  0%,
+  100% {
+    transform: skewX(-14deg);
+  }
+  50% {
+    transform: skewX(-6deg);
+  }
+}
+.ll-lean {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-lean 0.5s ease-in-out infinite;
+}
+
+@keyframes ll-wake {
+  0% {
+    opacity: 0.85;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+.ll-wake {
+  animation: ll-wake 0.7s ease-out infinite;
+}
+
+@keyframes ll-surge {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-1.5px) rotate(-6deg);
+  }
+}
+.ll-surge {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-surge 0.55s ease-in-out infinite;
+}
+
+/* The goodbye's big lantern: lifts off and hangs near the banner. */
+@keyframes ll-lift {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.7);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-44px) scale(1);
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(-48px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-52px) scale(0.9);
+  }
+}
+.ll-lift {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  opacity: 0;
+  animation: ll-lift 7s ease-out both;
+}
+
+/* A wind biting a lamp: the whole lamp leans hard and its light gutters. */
+@keyframes ll-gale {
+  0%,
+  100% {
+    transform: rotate(-19deg);
+  }
+  50% {
+    transform: rotate(-3deg);
+  }
+}
+.ll-gale {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ll-gale 0.45s ease-in-out infinite;
+}
+
+@keyframes ll-gutter {
+  0%,
+  100% {
+    opacity: 0.95;
+  }
+  35% {
+    opacity: 0.3;
+  }
+  60% {
+    opacity: 0.75;
+  }
+}
+.ll-gutter {
+  animation: ll-gutter 0.6s ease-in-out infinite;
+}
+
+/* A ring that pulses round a lamp the coming wind will bite. */
+@keyframes ll-warn {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.12);
+  }
+}
+.ll-warn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ll-warn 1s ease-in-out infinite;
+}
+
+@keyframes ll-surge-word {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ll-surge-word {
+  animation: ll-surge-word 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-rise,
+  .ll-ring,
+  .ll-spark,
+  .ll-fog,
+  .ll-fog-b,
+  .ll-gust,
+  .ll-lean,
+  .ll-wake,
+  .ll-surge,
+  .ll-bloom,
+  .ll-banner,
+  .ll-banner-late,
+  .ll-lift,
+  .ll-gale,
+  .ll-gutter,
+  .ll-warn,
+  .ll-surge-word {
+    animation: none;
+  }
+  /* The goodbye's lantern hangs still, lifted, above its banner. */
+  .ll-banner-late {
+    opacity: 1;
+  }
+  .ll-lift {
+    opacity: 1;
+    transform: translateY(-48px);
+  }
+  .ll-gale {
+    transform: rotate(-8deg);
+  }
+  .ll-warn {
+    opacity: 0.8;
+  }
+  /* Nothing hangs in mid-air or covers the picture: the lantern and the sparks are gone. */
+  .ll-rise,
+  .ll-ring,
+  .ll-spark {
+    opacity: 0;
+  }
+  .ll-gust {
+    opacity: 0.45;
+  }
+  .ll-lean {
+    transform: skewX(-10deg);
+  }
+}
+
+/* Ever Onward: Make It Grow, the green world's pull-back from the farms to the globe. */
+.gw-globe {
+  transform-origin: 200px 150px;
+}
+
+.gw-zoomed {
+  transform: scale(7);
+}
+
+.gw-pullback {
+  animation: gw-pullback 4.2s cubic-bezier(0.25, 0.1, 0.2, 1) both;
+}
+
+.gw-farm {
+  transform-origin: 200px 220px;
+}
+
+.gw-farm-away {
+  animation: gw-farm-away 2.6s ease-in both;
+}
+
+@keyframes gw-pullback {
+  from {
+    transform: scale(7);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes gw-farm-away {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+}
+
+@keyframes gw-drift {
+  0%,
+  100% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+}
+
+.gw-drift {
+  animation: gw-drift 14s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gw-zoomed {
+    transform: none;
+  }
+  .gw-pullback,
+  .gw-farm-away,
+  .gw-drift {
+    animation: none;
+  }
+  .gw-farm {
+    display: none;
+  }
+}
+
+/* Ever Onward: Make It Grow, the last seed's window. */
+@keyframes gs-glow {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gs-glow {
+  animation: gs-glow 6s ease-in-out infinite;
+}
+
+@keyframes gs-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gs-arrive {
+  animation: gs-arrive 2.4s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gs-glow,
+  .gs-arrive {
+    animation: none;
+  }
+}
+
+/* Ever Onward: Make It Grow, the scenes' living loops. Every scene keeps
+   something moving; a few rare beats (a crow, eyes in the hills, a dead
+   satellite) are a little sinister on purpose. */
+.gg-sway,
+.gg-sway-b,
+.gg-swing,
+.gg-flap,
+.gg-blink,
+.gg-drive,
+.gg-drive-b,
+.gg-rays {
+  transform-box: fill-box;
+}
+
+.gg-sway,
+.gg-sway-b {
+  transform-origin: 50% 100%;
+}
+
+@keyframes gg-sway {
+  0%,
+  100% {
+    transform: skewX(-6deg);
+  }
+  50% {
+    transform: skewX(6deg);
+  }
+}
+
+.gg-sway {
+  animation: gg-sway 3.6s ease-in-out infinite;
+}
+
+.gg-sway-b {
+  animation: gg-sway 4.4s ease-in-out -1.7s infinite;
+}
+
+@keyframes gg-swing {
+  0%,
+  100% {
+    transform: rotate(-7deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+
+.gg-swing {
+  transform-origin: 50% 0;
+  animation: gg-swing 3.2s ease-in-out infinite;
+}
+
+@keyframes gg-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gg-rays {
+  transform-origin: 50% 50%;
+  animation: gg-rays 24s linear infinite;
+}
+
+/* A bee leaves the hive, works a flower, and comes home. */
+@keyframes gg-trip-a {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  40%,
+  55% {
+    transform: translate(30px, 44px);
+  }
+  47% {
+    transform: translate(34px, 41px);
+  }
+}
+
+@keyframes gg-trip-b {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  35%,
+  60% {
+    transform: translate(-14px, 40px);
+  }
+  48% {
+    transform: translate(-10px, 43px);
+  }
+}
+
+@keyframes gg-trip-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  45%,
+  58% {
+    transform: translate(58px, 38px);
+  }
+  52% {
+    transform: translate(54px, 42px);
+  }
+}
+
+.gg-trip-a {
+  animation: gg-trip-a 5.2s ease-in-out infinite;
+}
+
+.gg-trip-b {
+  animation: gg-trip-b 6.4s ease-in-out -2s infinite;
+}
+
+.gg-trip-c {
+  animation: gg-trip-c 7.1s ease-in-out -4s infinite;
+}
+
+@keyframes gg-buzz {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(3px, -2px);
+  }
+  50% {
+    transform: translate(-1px, -4px);
+  }
+  75% {
+    transform: translate(-3px, -1px);
+  }
+}
+
+.gg-buzz {
+  animation: gg-buzz 0.9s linear infinite;
+}
+
+@keyframes gg-spray {
+  0% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.gg-spray {
+  animation: gg-spray 0.8s linear infinite;
+}
+
+.gg-spray-b {
+  animation: gg-spray 0.8s linear -0.4s infinite;
+}
+
+@keyframes gg-hop {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+  }
+  70% {
+    transform: translateY(-3px);
+  }
+  80% {
+    transform: translateY(0);
+  }
+  88% {
+    transform: translateY(-2px);
+  }
+}
+
+.gg-hop {
+  animation: gg-hop 2.2s ease-in-out infinite;
+}
+
+.gg-hop-b {
+  animation: gg-hop 2.9s ease-in-out -1.1s infinite;
+}
+
+@keyframes gg-snow {
+  0% {
+    opacity: 0;
+    transform: translate(0, -30px);
+  }
+  10% {
+    opacity: 1;
+  }
+  50% {
+    transform: translate(6px, 50px);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-2px, 130px);
+  }
+}
+
+.gg-snow {
+  animation: gg-snow 7s linear infinite;
+}
+
+.gg-snow-b {
+  animation: gg-snow 9s linear -4s infinite;
+}
+
+@keyframes gg-leaf {
+  0% {
+    opacity: 0;
+    transform: translate(0, -10px) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  35% {
+    transform: translate(14px, 30px) rotate(90deg);
+  }
+  65% {
+    transform: translate(-4px, 70px) rotate(200deg);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, 110px) rotate(320deg);
+  }
+}
+
+.gg-leaf {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-leaf 8s ease-in-out infinite;
+}
+
+.gg-leaf-b {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-leaf 10s ease-in-out -5s infinite;
+}
+
+/* A butterfly wandering over the beds, wings beating. */
+@keyframes gg-flutter {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(40px, -14px);
+  }
+  40% {
+    transform: translate(90px, 6px);
+  }
+  60% {
+    transform: translate(140px, -10px);
+  }
+  80% {
+    transform: translate(70px, 12px);
+  }
+}
+
+.gg-flutter {
+  animation: gg-flutter 16s ease-in-out infinite;
+}
+
+.gg-flutter-b {
+  animation: gg-flutter 19s ease-in-out -8s infinite reverse;
+}
+
+@keyframes gg-flap {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.25);
+  }
+}
+
+.gg-flap {
+  transform-origin: 50% 50%;
+  animation: gg-flap 0.35s steps(2) infinite;
+}
+
+/* The crow: away most of the time, then it drops onto the beds and leaves. */
+@keyframes gg-crow {
+  0%,
+  68% {
+    opacity: 0;
+    transform: translate(-60px, -50px);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  80% {
+    transform: translate(0, 0);
+  }
+  82% {
+    transform: translate(4px, -2px);
+  }
+  84% {
+    transform: translate(8px, 0);
+  }
+  92% {
+    opacity: 1;
+    transform: translate(8px, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(90px, -80px);
+  }
+}
+
+.gg-crow {
+  animation: gg-crow 34s ease-in-out -10s infinite;
+}
+
+@keyframes gg-creep {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-70px);
+  }
+}
+
+.gg-creep {
+  animation: gg-creep 80s linear infinite alternate;
+}
+
+/* A tractor drives its row, turns at the end, and drives back. */
+@keyframes gg-drive {
+  0%,
+  100% {
+    transform: translateX(0) scaleX(1);
+  }
+  45% {
+    transform: translateX(46px) scaleX(1);
+  }
+  50% {
+    transform: translateX(46px) scaleX(-1);
+  }
+  95% {
+    transform: translateX(0) scaleX(-1);
+  }
+}
+
+.gg-drive {
+  transform-origin: 50% 50%;
+  animation: gg-drive 11s linear infinite;
+}
+
+.gg-drive-b {
+  transform-origin: 50% 50%;
+  animation: gg-drive 13s linear -6s infinite;
+}
+
+@keyframes gg-hover {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(4px, -3px);
+  }
+  65% {
+    transform: translate(-3px, -1px);
+  }
+}
+
+.gg-hover {
+  animation: gg-hover 2.8s ease-in-out infinite;
+}
+
+.gg-hover-b {
+  animation: gg-hover 3.4s ease-in-out -1.3s infinite;
+}
+
+@keyframes gg-rotor {
+  50% {
+    opacity: 0.2;
+  }
+}
+
+.gg-rotor {
+  animation: gg-rotor 0.18s steps(1) infinite;
+}
+
+@keyframes gg-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+.gg-flow {
+  animation: gg-flow 1.6s linear infinite;
+}
+
+/* Birds crossing the sky, bobbing as they flap. */
+@keyframes gg-fly {
+  0% {
+    transform: translate(-80px, 0);
+  }
+  25% {
+    transform: translate(60px, -6px);
+  }
+  50% {
+    transform: translate(200px, 2px);
+  }
+  75% {
+    transform: translate(340px, -8px);
+  }
+  100% {
+    transform: translate(500px, 0);
+  }
+}
+
+.gg-fly {
+  animation: gg-fly 26s linear infinite;
+}
+
+.gg-fly-b {
+  animation: gg-fly 34s linear -15s infinite;
+}
+
+/* Crows circling a field nobody is guarding. */
+@keyframes gg-circle {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(18px, -6px);
+  }
+  50% {
+    transform: translate(0, -12px);
+  }
+  75% {
+    transform: translate(-18px, -6px);
+  }
+}
+
+.gg-circle {
+  animation: gg-circle 5s ease-in-out infinite;
+}
+
+.gg-circle-b {
+  animation: gg-circle 6.5s ease-in-out -2.4s infinite reverse;
+}
+
+/* The scarecrow's eyes slide to one side, now and then. */
+@keyframes gg-glance {
+  0%,
+  78%,
+  100% {
+    transform: translateX(0);
+  }
+  80%,
+  92% {
+    transform: translateX(2px);
+  }
+}
+
+.gg-glance {
+  animation: gg-glance 12s steps(1) infinite;
+}
+
+@keyframes gg-devil {
+  0% {
+    opacity: 0;
+    transform: translateX(-40px) skewX(0deg);
+  }
+  15% {
+    opacity: 0.8;
+  }
+  30% {
+    transform: translateX(60px) skewX(8deg);
+  }
+  60% {
+    transform: translateX(170px) skewX(-8deg);
+  }
+  85% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(300px) skewX(4deg);
+  }
+}
+
+.gg-devil {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gg-devil 14s linear infinite;
+}
+
+/* The moon goes round the globe and slips behind it. */
+@keyframes gg-moon {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(136px, 0);
+  }
+  12.5% {
+    transform: translate(96px, 22px);
+  }
+  25% {
+    transform: translate(0, 30px);
+  }
+  37.5% {
+    transform: translate(-96px, 22px);
+  }
+  50% {
+    transform: translate(-136px, 0);
+  }
+  54% {
+    opacity: 1;
+  }
+  57% {
+    opacity: 0;
+  }
+  62.5% {
+    transform: translate(-96px, -22px);
+  }
+  75% {
+    transform: translate(0, -30px);
+  }
+  87.5% {
+    transform: translate(96px, -22px);
+  }
+  93% {
+    opacity: 0;
+  }
+  96% {
+    opacity: 1;
+  }
+}
+
+.gg-moon {
+  animation: gg-moon 40s linear infinite;
+}
+
+@keyframes gg-sat {
+  0%,
+  55% {
+    opacity: 0;
+    transform: translate(-30px, 0) rotate(0deg);
+  }
+  58% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(460px, 40px) rotate(540deg);
+  }
+}
+
+.gg-sat {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-sat 45s linear -20s infinite;
+}
+
+@keyframes gg-shoot {
+  0%,
+  90% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  91% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0;
+    transform: translate(-120px, 50px);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-120px, 50px);
+  }
+}
+
+.gg-shoot {
+  animation: gg-shoot 23s linear -9s infinite;
+}
+
+@keyframes gg-glide {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(10px, -4px);
+  }
+  50% {
+    transform: translate(18px, 1px);
+  }
+  75% {
+    transform: translate(8px, 4px);
+  }
+}
+
+.gg-glide {
+  animation: gg-glide 9s ease-in-out infinite;
+}
+
+/* Eyes in the dark hills: shut almost always. */
+@keyframes gg-peek {
+  0%,
+  80%,
+  100% {
+    opacity: 0;
+  }
+  83%,
+  87%,
+  89%,
+  94% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 0;
+  }
+}
+
+.gg-peek {
+  animation: gg-peek 29s steps(1) -12s infinite;
+}
+
+@keyframes gg-blink {
+  0%,
+  90%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  93% {
+    transform: scaleY(0.1);
+  }
+}
+
+.gg-blink {
+  transform-origin: 50% 50%;
+  animation: gg-blink 4.5s linear infinite;
+}
+
+@keyframes gg-note {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, -34px);
+  }
+}
+
+.gg-note {
+  animation: gg-note 3.2s ease-out infinite;
+}
+
+.gg-note-b {
+  animation: gg-note 3.2s ease-out -1.6s infinite;
+}
+
+@keyframes gg-firefly {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translate(0, 0);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(12px, -8px);
+  }
+  60% {
+    opacity: 0.3;
+    transform: translate(22px, 4px);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(6px, 6px);
+  }
+}
+
+.gg-firefly {
+  animation: gg-firefly 6s ease-in-out infinite;
+}
+
+.gg-firefly-b {
+  animation: gg-firefly 7.5s ease-in-out -3s infinite reverse;
+}
+
+.gg-firefly-c {
+  animation: gg-firefly 5.2s ease-in-out -1.5s infinite;
+}
+
+/* A moth batting at the lantern glass. */
+@keyframes gg-moth {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(6px, -5px);
+  }
+  30% {
+    transform: translate(2px, -1px);
+  }
+  55% {
+    transform: translate(-6px, -7px);
+  }
+  70% {
+    transform: translate(-1px, -2px);
+  }
+  85% {
+    transform: translate(4px, -9px);
+  }
+}
+
+.gg-moth {
+  animation: gg-moth 2.6s ease-in-out infinite;
+}
+
+/* Pollination (Make It Grow's backyard): bees circling their flower bed,
+   a wilt's puff and falling petals, a rare flower's rainbow burst, and
+   hungry bees leaving in winter. */
+@keyframes gp-orbit-a {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(14px, -5px);
+  }
+  50% {
+    transform: translate(4px, -10px);
+  }
+  75% {
+    transform: translate(-10px, -4px);
+  }
+}
+@keyframes gp-orbit-b {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-12px, -7px);
+  }
+  50% {
+    transform: translate(-3px, 3px);
+  }
+  75% {
+    transform: translate(10px, -2px);
+  }
+}
+@keyframes gp-orbit-c {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  33% {
+    transform: translate(9px, 4px);
+  }
+  66% {
+    transform: translate(-9px, -8px);
+  }
+}
+.gp-orbit-a {
+  animation: gp-orbit-a 2.6s ease-in-out infinite;
+}
+.gp-orbit-b {
+  animation: gp-orbit-b 3.1s ease-in-out infinite;
+}
+.gp-orbit-c {
+  animation: gp-orbit-c 2.2s ease-in-out infinite;
+}
+
+@keyframes gp-shiver {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1px);
+  }
+  75% {
+    transform: translateX(1px);
+  }
+}
+.gp-shiver {
+  animation: gp-shiver 0.25s linear infinite;
+}
+
+@keyframes gp-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+.gp-blink {
+  animation: gp-blink 0.8s steps(2, end) infinite;
+}
+
+@keyframes gp-poof {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  60% {
+    transform: scale(1.4);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+.gp-poof {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gp-poof 2.4s ease-out forwards;
+}
+
+@keyframes gp-fall {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(6px, 34px) rotate(160deg);
+    opacity: 0;
+  }
+}
+.gp-fall {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gp-fall 1.8s ease-in infinite;
+}
+
+@keyframes gp-rise {
+  0% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  15% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+}
+.gp-rise {
+  animation: gp-rise 5s ease-out forwards;
+}
+
+@keyframes gp-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  12% {
+    transform: scale(1.3);
+  }
+  20% {
+    transform: scale(1);
+  }
+  85% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(-6px);
+    opacity: 0;
+  }
+}
+.gp-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gp-shout 6s ease-out forwards;
+}
+
+@keyframes gp-flash {
+  0%,
+  40%,
+  80% {
+    opacity: 0.55;
+  }
+  20%,
+  60% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.gp-flash {
+  animation: gp-flash 1.2s steps(1, end) forwards;
+}
+
+@keyframes gp-ring {
+  0% {
+    transform: scale(0.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+.gp-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gp-ring 1.6s ease-out 3 both;
+}
+
+@keyframes gp-spark {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--gp-dx, 0), var(--gp-dy, 0)) scale(0.4);
+    opacity: 0;
+  }
+}
+.gp-spark {
+  animation: gp-spark 1.2s ease-out 4 both;
+}
+.gp-spark-0 {
+  --gp-dx: 60px;
+  --gp-dy: 0px;
+  animation-delay: 0s;
+}
+
+.gp-spark-1 {
+  --gp-dx: 52px;
+  --gp-dy: 20px;
+  animation-delay: 0.15s;
+}
+
+.gp-spark-2 {
+  --gp-dx: 30px;
+  --gp-dy: 34.6px;
+  animation-delay: 0.3s;
+}
+
+.gp-spark-3 {
+  --gp-dx: 0px;
+  --gp-dy: 40px;
+  animation-delay: 0s;
+}
+
+.gp-spark-4 {
+  --gp-dx: -30px;
+  --gp-dy: 34.6px;
+  animation-delay: 0.15s;
+}
+
+.gp-spark-5 {
+  --gp-dx: -52px;
+  --gp-dy: 20px;
+  animation-delay: 0.3s;
+}
+
+.gp-spark-6 {
+  --gp-dx: -60px;
+  --gp-dy: 0px;
+  animation-delay: 0s;
+}
+
+.gp-spark-7 {
+  --gp-dx: -52px;
+  --gp-dy: -20px;
+  animation-delay: 0.15s;
+}
+
+.gp-spark-8 {
+  --gp-dx: -30px;
+  --gp-dy: -34.6px;
+  animation-delay: 0.3s;
+}
+
+.gp-spark-9 {
+  --gp-dx: -0px;
+  --gp-dy: -40px;
+  animation-delay: 0s;
+}
+
+.gp-spark-10 {
+  --gp-dx: 30px;
+  --gp-dy: -34.6px;
+  animation-delay: 0.15s;
+}
+
+.gp-spark-11 {
+  --gp-dx: 52px;
+  --gp-dy: -20px;
+  animation-delay: 0.3s;
+}
+
+@keyframes gp-pop {
+  0% {
+    transform: scale(0) rotate(-90deg);
+  }
+  45% {
+    transform: scale(1.6) rotate(10deg);
+  }
+  60% {
+    transform: scale(1.2) rotate(-4deg);
+  }
+  80% {
+    transform: scale(1.35) rotate(0deg);
+  }
+  100% {
+    transform: scale(1.3) rotate(0deg);
+  }
+}
+.gp-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gp-pop 1.1s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes gp-glow {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.gp-glow {
+  animation: gp-glow 1.8s ease-in-out infinite;
+}
+
+@keyframes gp-leave {
+  0% {
+    transform: translate(0, 0);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(180px, -150px);
+    opacity: 0;
+  }
+}
+.gp-leave {
+  animation: gp-leave 2.6s ease-in infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gp-orbit-a,
+  .gp-orbit-b,
+  .gp-orbit-c,
+  .gp-shiver,
+  .gp-blink,
+  .gp-fall,
+  .gp-glow,
+  .gp-leave,
+  .gg-sway,
+  .gg-sway-b,
+  .gg-swing,
+  .gg-rays,
+  .gg-trip-a,
+  .gg-trip-b,
+  .gg-trip-c,
+  .gg-buzz,
+  .gg-spray,
+  .gg-spray-b,
+  .gg-hop,
+  .gg-hop-b,
+  .gg-snow,
+  .gg-snow-b,
+  .gg-leaf,
+  .gg-leaf-b,
+  .gg-flutter,
+  .gg-flutter-b,
+  .gg-flap,
+  .gg-crow,
+  .gg-creep,
+  .gg-drive,
+  .gg-drive-b,
+  .gg-hover,
+  .gg-hover-b,
+  .gg-rotor,
+  .gg-flow,
+  .gg-fly,
+  .gg-fly-b,
+  .gg-circle,
+  .gg-circle-b,
+  .gg-glance,
+  .gg-moon,
+  .gg-glide,
+  .gg-blink,
+  .gg-note,
+  .gg-note-b,
+  .gg-firefly,
+  .gg-firefly-b,
+  .gg-firefly-c,
+  .gg-moth {
+    animation: none;
+  }
+  .gg-devil,
+  .gg-sat,
+  .gg-shoot,
+  .gg-peek {
+    display: none;
+  }
+}
+
+/* Light's rarer beats: something in the sea, eyes in the dark, a shape between the stars. */
+@keyframes gg-surface {
+  0%,
+  72%,
+  100% {
+    transform: translateY(48px);
+  }
+  78% {
+    transform: translateY(0) rotate(0deg);
+  }
+  84% {
+    transform: translateY(-2px) rotate(-8deg);
+  }
+  90% {
+    transform: translateY(4px) rotate(4deg);
+  }
+  96% {
+    transform: translateY(48px);
+  }
+}
+
+.gg-surface {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gg-surface 37s ease-in-out -14s infinite;
+}
+
+@keyframes gg-jump {
+  0%,
+  80%,
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  82% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(-40deg);
+  }
+  88% {
+    transform: translate(9px, -14px) rotate(0deg);
+  }
+  94% {
+    opacity: 1;
+    transform: translate(18px, 0) rotate(40deg);
+  }
+  95% {
+    opacity: 0;
+  }
+}
+
+.gg-jump {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-jump 9s ease-in-out infinite;
+}
+
+.gg-peek-often {
+  animation: gg-peek 7s steps(1) -2s infinite;
+}
+
+@keyframes gg-ripple {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+.gg-ripple {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-ripple 4s ease-out infinite;
+}
+
+.gg-ripple-b {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: gg-ripple 5.5s ease-out -2.5s infinite;
+}
+
+@keyframes gg-prominence {
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+.gg-prominence {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gg-prominence 6s ease-in-out infinite;
+}
+
+@keyframes gg-leviathan {
+  0% {
+    transform: translateX(-260px);
+  }
+  100% {
+    transform: translateX(560px);
+  }
+}
+
+.gg-leviathan {
+  animation: gg-leviathan 120s linear -40s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-jump,
+  .gg-ripple,
+  .gg-ripple-b,
+  .gg-prominence {
+    animation: none;
+  }
+  .gg-surface,
+  .gg-peek-often,
+  .gg-leviathan {
+    display: none;
+  }
+}
+
+/* Make It Grow: the pictures of each fork. A new `gt-`
+   prefix; every loop stops for reduced motion and leaves the drawn picture. */
+.gt-flutter,
+.gt-flutter-b,
+.gt-mist,
+.gt-mist-b,
+.gt-crew,
+.gt-crew-b,
+.gt-circle,
+.gt-canopy,
+.gt-canopy-b,
+.gt-reed,
+.gt-reed-b,
+.gt-heron,
+.gt-ripple-w,
+.gt-beam,
+.gt-halo,
+.gt-moth,
+.gt-moth-b {
+  transform-box: fill-box;
+}
+
+.gt-canopy,
+.gt-canopy-b,
+.gt-reed,
+.gt-reed-b,
+.gt-crew,
+.gt-crew-b {
+  transform-origin: 50% 100%;
+}
+
+@keyframes gt-flutter {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(18px, -8px);
+  }
+  50% {
+    transform: translate(34px, 4px);
+  }
+  75% {
+    transform: translate(14px, 10px);
+  }
+}
+
+.gt-flutter {
+  animation: gt-flutter 9s ease-in-out infinite;
+}
+
+.gt-flutter-b {
+  animation: gt-flutter 11s ease-in-out -4s infinite reverse;
+}
+
+@keyframes gt-mist {
+  0% {
+    transform: translateX(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateX(34px);
+    opacity: 0;
+  }
+}
+
+.gt-mist {
+  animation: gt-mist 3.2s ease-out infinite;
+}
+
+.gt-mist-b {
+  animation: gt-mist 4.4s ease-out -1.8s infinite;
+}
+
+@keyframes gt-crew {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+.gt-crew {
+  animation: gt-crew 3.4s ease-in-out infinite;
+}
+
+.gt-crew-b {
+  animation: gt-crew 4.2s ease-in-out -1.5s infinite;
+}
+
+@keyframes gt-circle {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(70px, 8px);
+  }
+  50% {
+    transform: translate(140px, 0);
+  }
+  75% {
+    transform: translate(70px, -8px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.gt-circle {
+  animation: gt-circle 14s ease-in-out infinite;
+}
+
+@keyframes gt-canopy {
+  0%,
+  100% {
+    transform: skewX(-3deg);
+  }
+  50% {
+    transform: skewX(3deg);
+  }
+}
+
+.gt-canopy {
+  animation: gt-canopy 5s ease-in-out infinite;
+}
+
+.gt-canopy-b {
+  animation: gt-canopy 6.5s ease-in-out -2.5s infinite;
+}
+
+.gt-reed {
+  animation: gt-canopy 3.6s ease-in-out infinite;
+}
+
+.gt-reed-b {
+  animation: gt-canopy 4.4s ease-in-out -1.7s infinite;
+}
+
+@keyframes gt-heron {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+
+.gt-heron {
+  animation: gt-heron 6s ease-in-out infinite;
+}
+
+@keyframes gt-ripple-w {
+  0% {
+    transform: scaleX(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scaleX(1.5);
+    opacity: 0;
+  }
+}
+
+.gt-ripple-w {
+  animation: gt-ripple-w 4s ease-out infinite;
+}
+
+@keyframes gt-beam {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gt-beam {
+  animation: gt-beam 6s ease-in-out infinite;
+}
+
+@keyframes gt-halo {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.gt-halo {
+  animation: gt-halo 4s ease-in-out infinite;
+}
+
+@keyframes gt-moth {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(18px, 10px);
+  }
+  50% {
+    transform: translate(28px, -2px);
+  }
+  75% {
+    transform: translate(10px, -8px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.gt-moth {
+  animation: gt-moth 5s ease-in-out infinite;
+}
+
+.gt-moth-b {
+  animation: gt-moth 6.4s ease-in-out -2.2s infinite reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-flutter,
+  .gt-flutter-b,
+  .gt-mist,
+  .gt-mist-b,
+  .gt-crew,
+  .gt-crew-b,
+  .gt-circle,
+  .gt-canopy,
+  .gt-canopy-b,
+  .gt-reed,
+  .gt-reed-b,
+  .gt-heron,
+  .gt-ripple-w,
+  .gt-beam,
+  .gt-halo,
+  .gt-moth,
+  .gt-moth-b {
+    animation: none;
+  }
+}
+
+.gt-drip,
+.gt-sparkle,
+.gt-bunting,
+.gt-deer {
+  transform-box: fill-box;
+}
+
+@keyframes gt-drip {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+}
+
+.gt-drip {
+  animation: gt-drip 1.8s ease-in infinite;
+}
+
+@keyframes gt-sparkle {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.gt-sparkle {
+  animation: gt-sparkle 2.4s ease-in-out infinite;
+}
+
+@keyframes gt-bunting {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+.gt-bunting {
+  animation: gt-bunting 1.6s ease-in-out infinite;
+}
+
+@keyframes gt-deer {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(26px);
+  }
+}
+
+.gt-deer {
+  animation: gt-deer 12s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gt-drip,
+  .gt-sparkle,
+  .gt-bunting,
+  .gt-deer {
+    animation: none;
+  }
+}
+
+/* Ever Onward: the forks in Keep the Light On (Fresnel or keepers, coal or
+   wind, swarm or mirrors, let go or keep). Decorative loops; all of them
+   stand still under reduced motion. */
+@keyframes ltGlint {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes ltFarBeam {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: rotate(-6deg);
+  }
+  50% {
+    opacity: 0.7;
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes ltWalk {
+  0%,
+  100% {
+    transform: translateX(-9px);
+  }
+  50% {
+    transform: translateX(9px);
+  }
+}
+
+@keyframes ltSmog {
+  0% {
+    opacity: 0.75;
+    transform: translate(0, 0) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(18px, -34px) scale(2.2);
+  }
+}
+
+@keyframes ltHaze {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.36;
+  }
+}
+
+@keyframes ltRotor {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ltFloatAway {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  80% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(18px, -130px);
+  }
+}
+
+@keyframes ltHalo {
+  0%,
+  100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.12);
+  }
+}
+
+.lt-glint {
+  animation: ltGlint 2.6s ease-in-out infinite;
+}
+
+.lt-glint-b {
+  animation: ltGlint 3.7s ease-in-out -1.1s infinite;
+}
+
+.lt-far-beam {
+  animation: ltFarBeam 6s ease-in-out infinite;
+}
+
+.lt-walk {
+  animation: ltWalk 7s ease-in-out infinite;
+}
+
+.lt-walk-b {
+  animation: ltWalk 9s ease-in-out -3s infinite;
+}
+
+.lt-walk-c {
+  animation: ltWalk 6s ease-in-out -1.5s infinite;
+}
+
+.lt-smog {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ltSmog 4.2s ease-out infinite;
+}
+
+.lt-smog-b {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ltSmog 4.2s ease-out -1.4s infinite;
+}
+
+.lt-smog-c {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: ltSmog 4.2s ease-out -2.8s infinite;
+}
+
+.lt-haze {
+  animation: ltHaze 7s ease-in-out infinite;
+}
+
+.lt-rotor {
+  animation: ltRotor 7s linear infinite;
+}
+
+.lt-rotor-b {
+  animation: ltRotor 9s linear -3s infinite;
+}
+
+.lt-orbit {
+  animation: ltRotor 24s linear infinite;
+}
+
+.lt-orbit-r {
+  animation: ltRotor 32s linear infinite reverse;
+}
+
+.lt-float-away {
+  animation: ltFloatAway 9s ease-in infinite;
+}
+
+.lt-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ltHalo 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lt-glint,
+  .lt-glint-b,
+  .lt-far-beam,
+  .lt-walk,
+  .lt-walk-b,
+  .lt-walk-c,
+  .lt-smog,
+  .lt-smog-b,
+  .lt-smog-c,
+  .lt-haze,
+  .lt-rotor,
+  .lt-rotor-b,
+  .lt-orbit,
+  .lt-orbit-r,
+  .lt-float-away,
+  .lt-halo {
+    animation: none;
+  }
+
+  .lt-smog,
+  .lt-smog-b,
+  .lt-smog-c {
+    opacity: 0.35;
+  }
+}
+
+/* Ever Onward: Build It Higher, the scenes' living loops. Every picture keeps
+   something moving; a few rare beats (an eye in a dark window, a lamp lit for
+   no one, a crowd that gets smaller) are a little strange on purpose, and
+   never scary. Where a count grows, one group moves them all. */
+.bh-hop,
+.bh-hop-b,
+.bh-wobble,
+.bh-arm,
+.bh-arm-b,
+.bh-arm-c,
+.bh-tail,
+.bh-spin-slow,
+.bh-pulse,
+.bh-flap,
+.bh-bob,
+.bh-wave,
+.bh-sway,
+.bh-glint,
+.bh-glint-b,
+.bh-shadow {
+  transform-box: fill-box;
+}
+
+@keyframes bh-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-3px);
+  }
+}
+
+.bh-hop {
+  animation: bh-hop 1.1s ease-in-out infinite;
+}
+
+.bh-hop-b {
+  animation: bh-hop 1.3s ease-in-out -0.5s infinite;
+}
+
+@keyframes bh-wobble {
+  0%,
+  100% {
+    transform: rotate(-0.9deg);
+  }
+  50% {
+    transform: rotate(0.9deg);
+  }
+}
+
+.bh-wobble {
+  transform-origin: 50% 100%;
+  animation: bh-wobble 1.1s ease-in-out infinite;
+}
+
+@keyframes bh-twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.bh-twinkle {
+  animation: bh-twinkle 1.7s ease-in-out infinite;
+}
+
+.bh-twinkle-b {
+  animation: bh-twinkle 1.7s ease-in-out -0.85s infinite;
+}
+
+@keyframes bh-roll {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(14px, -7px);
+  }
+}
+
+.bh-roll {
+  animation: bh-roll 1.4s linear infinite;
+}
+
+@keyframes bh-arm {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+.bh-arm,
+.bh-arm-b,
+.bh-arm-c {
+  transform-origin: 85% 20%;
+}
+
+.bh-arm {
+  animation: bh-arm 4.2s ease-in-out infinite;
+}
+
+.bh-arm-b {
+  animation: bh-arm 5.1s ease-in-out -2s infinite;
+}
+
+.bh-arm-c {
+  animation: bh-arm 4.6s ease-in-out -3.4s infinite;
+}
+
+@keyframes bh-tail {
+  0%,
+  100% {
+    transform: rotate(-16deg);
+  }
+  50% {
+    transform: rotate(16deg);
+  }
+}
+
+.bh-tail {
+  transform-origin: 100% 100%;
+  animation: bh-tail 1.5s ease-in-out infinite;
+}
+
+@keyframes bh-plane {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  10%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(58px, -22px);
+    opacity: 0;
+  }
+}
+
+.bh-plane {
+  animation: bh-plane 7s linear infinite;
+}
+
+@keyframes bh-spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.bh-spin-slow {
+  transform-origin: 50% 50%;
+  animation: bh-spin-slow 20s linear infinite;
+}
+
+@keyframes bh-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+.bh-pulse {
+  transform-origin: 50% 50%;
+  animation: bh-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes bh-drift {
+  from {
+    transform: translateX(-30px);
+  }
+  to {
+    transform: translateX(70px);
+  }
+}
+
+.bh-drift {
+  animation: bh-drift 32s ease-in-out infinite alternate;
+}
+
+.bh-drift-b {
+  animation: bh-drift 46s ease-in-out -20s infinite alternate-reverse;
+}
+
+@keyframes bh-drive {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(560px);
+  }
+}
+
+.bh-drive {
+  animation: bh-drive 11s linear infinite;
+}
+
+@keyframes bh-fly {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(440px, -12px);
+  }
+}
+
+.bh-fly {
+  animation: bh-fly 19s linear infinite;
+}
+
+.bh-fly-b {
+  animation: bh-fly 26s linear -9s infinite;
+}
+
+@keyframes bh-flap {
+  from {
+    transform: scaleY(1);
+  }
+  to {
+    transform: scaleY(-0.6);
+  }
+}
+
+.bh-flap {
+  transform-origin: 50% 100%;
+  animation: bh-flap 0.35s steps(2) infinite alternate;
+}
+
+@keyframes bh-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.bh-bob {
+  animation: bh-bob 0.9s ease-in-out infinite;
+}
+
+@keyframes bh-wave {
+  0%,
+  100% {
+    transform: rotate(-14deg);
+  }
+  50% {
+    transform: rotate(14deg);
+  }
+}
+
+.bh-wave {
+  transform-origin: 50% 100%;
+  animation: bh-wave 0.8s ease-in-out infinite;
+}
+
+/* A beacon, or an eye in a dark window: mostly on, with a slow blink. */
+@keyframes bh-blink {
+  0%,
+  84%,
+  100% {
+    opacity: 1;
+  }
+  88%,
+  96% {
+    opacity: 0;
+  }
+}
+
+.bh-blink {
+  animation: bh-blink 2.6s steps(1) infinite;
+}
+
+@keyframes bh-glint {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.bh-glint {
+  animation: bh-glint 4s ease-in-out infinite;
+}
+
+.bh-glint-b {
+  animation: bh-glint 4s ease-in-out -2s infinite;
+}
+
+/* The damper swings from the ceiling of its window (view-box pixels). */
+@keyframes bh-ball {
+  0%,
+  100% {
+    transform: rotate(-24deg);
+  }
+  50% {
+    transform: rotate(24deg);
+  }
+}
+
+.bh-ball {
+  transform-box: view-box;
+  transform-origin: 200px 122px;
+  animation: bh-ball 3.4s ease-in-out infinite;
+}
+
+@keyframes bh-hum {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.bh-hum {
+  animation: bh-hum 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes bh-climb {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-170px);
+  }
+}
+
+.bh-climb {
+  animation: bh-climb 12s linear infinite;
+}
+
+@keyframes bh-shadow {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(1.06);
+  }
+}
+
+.bh-shadow {
+  transform-origin: 0 50%;
+  animation: bh-shadow 12s ease-in-out infinite alternate;
+}
+
+@keyframes bh-sway {
+  0%,
+  100% {
+    transform: skewX(-4deg);
+  }
+  50% {
+    transform: skewX(4deg);
+  }
+}
+
+.bh-sway {
+  transform-origin: 50% 100%;
+  animation: bh-sway 3.6s ease-in-out infinite;
+}
+
+@keyframes bh-creak {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1px);
+  }
+}
+
+.bh-creak {
+  animation: bh-creak 0.8s steps(2) infinite;
+}
+
+@keyframes bh-glow {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.bh-glow {
+  animation: bh-glow 2.4s ease-in-out infinite;
+}
+
+@keyframes bh-note {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-12px);
+    opacity: 0;
+  }
+}
+
+.bh-note {
+  animation: bh-note 3s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bh-hop,
+  .bh-hop-b,
+  .bh-wobble,
+  .bh-twinkle,
+  .bh-twinkle-b,
+  .bh-roll,
+  .bh-arm,
+  .bh-arm-b,
+  .bh-arm-c,
+  .bh-tail,
+  .bh-plane,
+  .bh-spin-slow,
+  .bh-pulse,
+  .bh-drift,
+  .bh-drift-b,
+  .bh-drive,
+  .bh-fly,
+  .bh-fly-b,
+  .bh-flap,
+  .bh-bob,
+  .bh-wave,
+  .bh-blink,
+  .bh-glint,
+  .bh-glint-b,
+  .bh-ball,
+  .bh-hum,
+  .bh-climb,
+  .bh-shadow,
+  .bh-sway,
+  .bh-shout,
+  .bh-flash,
+  .bh-flash-gold,
+  .bh-poof,
+  .bh-tumble-block,
+  .bh-ring,
+  .bh-spark,
+  .bh-confetti,
+  .bh-star-rise,
+  .bh-star-pop,
+  .bh-toddler-run,
+  .bh-toddler-stomp,
+  .bh-quake,
+  .bh-banner,
+  .bh-edge,
+  .bh-hat-toss,
+  .bh-hat-drop,
+  .bh-lamp-pop,
+  .bh-lights-ring,
+  .bh-wind,
+  .bh-beam-drop,
+  .bh-whip,
+  .bh-creak,
+  .bh-glow,
+  .bh-note {
+    animation: none;
+  }
+
+  /* A flash that cannot animate must not stay painted: hide the full-scene flashes. */
+  .bh-flash,
+  .bh-flash-gold {
+    opacity: 0;
+  }
+
+  /* Things that move across the picture rest where they can still be seen. */
+  .bh-drive,
+  .bh-fly,
+  .bh-fly-b {
+    transform: translateX(160px);
+  }
+
+  .bh-plane,
+  .bh-note {
+    opacity: 1;
+  }
+}
+
+/* ---- Build It Higher: the top's keepsakes (picked up, carried, left) ---- */
+.bh-plod,
+.bh-kp-pop,
+.bh-kp-spark,
+.bh-kp-lift,
+.bh-kp-bye {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The robot plods: slower and lower the more it carries. */
+@keyframes bh-plod {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1.5px);
+  }
+}
+.bh-plod {
+  animation: bh-plod 2s ease-in-out infinite;
+}
+
+/* The pack swells when something drops in. */
+@keyframes bh-kp-pop {
+  0% {
+    transform: scale(0.7);
+  }
+  35% {
+    transform: scale(1.4);
+  }
+  70% {
+    transform: scale(0.95);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.bh-kp-pop {
+  transform-origin: 100% 100%;
+  animation: bh-kp-pop 0.8s ease-out;
+}
+
+/* A sparkle ring where it was picked up. */
+@keyframes bh-kp-spark {
+  0% {
+    transform: scale(0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+.bh-kp-spark {
+  animation: bh-kp-spark 1.6s ease-out forwards;
+}
+
+/* The keepsake itself hops up and into the pack. */
+@keyframes bh-kp-lift {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: translateY(-12px) scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-4px) scale(0.3);
+    opacity: 0;
+  }
+}
+.bh-kp-lift {
+  animation: bh-kp-lift 1.3s ease-in forwards;
+}
+
+/* A soft goodbye: it shimmers, drifts up and leaves a faint ghost on the step. */
+@keyframes bh-kp-bye {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  20%,
+  50% {
+    opacity: 0.6;
+  }
+  35%,
+  65% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px);
+    opacity: 0.2;
+  }
+}
+.bh-kp-bye {
+  animation: bh-kp-bye 3.4s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bh-plod,
+  .bh-kp-pop,
+  .bh-kp-spark,
+  .bh-kp-lift,
+  .bh-kp-bye {
+    animation: none;
+  }
+
+  /* What cannot animate away must not stay painted. */
+  .bh-kp-spark,
+  .bh-kp-lift {
+    opacity: 0;
+  }
+
+  .bh-kp-bye {
+    opacity: 0.2;
+  }
+}
+
+/* ---- Build It Higher: the playroom's dials (pace, streak, tumble, bank) ---- */
+.bh-shout,
+.bh-tumble-block,
+.bh-poof,
+.bh-ring,
+.bh-spark,
+.bh-star-rise,
+.bh-star-pop,
+.bh-toddler-stomp {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes bh-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  12% {
+    transform: scale(1.35);
+  }
+  22% {
+    transform: scale(1);
+  }
+  85% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(-6px);
+    opacity: 0;
+  }
+}
+.bh-shout {
+  animation: bh-shout 5s ease-out forwards;
+}
+
+@keyframes bh-flash {
+  0%,
+  40%,
+  80% {
+    opacity: 0.45;
+  }
+  20%,
+  60%,
+  100% {
+    opacity: 0;
+  }
+}
+.bh-flash {
+  animation: bh-flash 1.2s steps(1, end) forwards;
+}
+
+@keyframes bh-flash-gold {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.bh-flash-gold {
+  animation: bh-flash-gold 1.6s ease-out forwards;
+}
+
+@keyframes bh-poof {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  60% {
+    transform: scale(1.4);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+.bh-poof {
+  animation: bh-poof 2.2s ease-out forwards;
+}
+
+@keyframes bh-tumble-block {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  25% {
+    transform: translate(calc(var(--bh-dx) * 0.5), -26px)
+      rotate(calc(var(--bh-rot) * 0.4));
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--bh-dx), var(--bh-dy)) rotate(var(--bh-rot));
+    opacity: 0;
+  }
+}
+.bh-tumble-block {
+  animation: bh-tumble-block 1.8s ease-in forwards;
+}
+.bh-tumble-0 {
+  --bh-dx: -70px;
+  --bh-dy: 120px;
+  --bh-rot: -200deg;
+}
+.bh-tumble-1 {
+  --bh-dx: 80px;
+  --bh-dy: 110px;
+  --bh-rot: 240deg;
+}
+.bh-tumble-2 {
+  --bh-dx: -110px;
+  --bh-dy: 90px;
+  --bh-rot: -320deg;
+}
+.bh-tumble-3 {
+  --bh-dx: 120px;
+  --bh-dy: 100px;
+  --bh-rot: 180deg;
+}
+
+@keyframes bh-ring {
+  0% {
+    transform: scale(0.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4.2);
+    opacity: 0;
+  }
+}
+.bh-ring {
+  animation: bh-ring 1.6s ease-out 3 both;
+}
+
+@keyframes bh-spark {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--bh-sx), var(--bh-sy)) scale(0.4);
+    opacity: 0;
+  }
+}
+.bh-spark {
+  animation: bh-spark 1.3s ease-out 3 both;
+}
+.bh-spark-0 {
+  --bh-sx: 70px;
+  --bh-sy: 0px;
+}
+.bh-spark-1 {
+  --bh-sx: 50px;
+  --bh-sy: 50px;
+}
+.bh-spark-2 {
+  --bh-sx: 0px;
+  --bh-sy: 70px;
+}
+.bh-spark-3 {
+  --bh-sx: -50px;
+  --bh-sy: 50px;
+}
+.bh-spark-4 {
+  --bh-sx: -70px;
+  --bh-sy: 0px;
+}
+.bh-spark-5 {
+  --bh-sx: -50px;
+  --bh-sy: -50px;
+}
+.bh-spark-6 {
+  --bh-sx: 0px;
+  --bh-sy: -70px;
+}
+.bh-spark-7 {
+  --bh-sx: 50px;
+  --bh-sy: -50px;
+}
+
+@keyframes bh-confetti {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(14px, 310px) rotate(300deg);
+    opacity: 0.2;
+  }
+}
+.bh-confetti {
+  animation: bh-confetti 2.2s ease-in 2 both;
+}
+
+@keyframes bh-star-rise {
+  0% {
+    transform: translateY(24px) scale(0.2);
+    opacity: 0;
+  }
+  30% {
+    transform: translateY(0) scale(1.6);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-4px) scale(1.2);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-16px) scale(1.3);
+    opacity: 0;
+  }
+}
+.bh-star-rise {
+  animation: bh-star-rise 4.5s ease-out forwards;
+}
+
+@keyframes bh-star-pop {
+  0% {
+    transform: scale(0.2);
+  }
+  60% {
+    transform: scale(1.5);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.bh-star-pop {
+  animation: bh-star-pop 0.4s ease-out both;
+}
+
+@keyframes bh-toddler-run {
+  0% {
+    transform: translateX(372px);
+  }
+  50% {
+    transform: translateX(70px);
+  }
+  100% {
+    transform: translateX(372px);
+  }
+}
+.bh-toddler-run {
+  animation: bh-toddler-run 3.6s ease-in-out infinite;
+}
+
+@keyframes bh-toddler-stomp {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+.bh-toddler-stomp {
+  animation: bh-toddler-stomp 0.3s ease-in-out infinite;
+}
+
+@keyframes bh-quake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-1.5px, 1px);
+  }
+  75% {
+    transform: translate(1.5px, -1px);
+  }
+}
+.bh-quake {
+  animation: bh-quake 0.18s linear infinite;
+}
+
+/* The faster the pace, the faster the teddies hop. */
+.bh-pace-0 .bh-hop,
+.bh-pace-0 .bh-hop-b {
+  animation-duration: 1.8s;
+}
+.bh-pace-2 .bh-hop,
+.bh-pace-2 .bh-hop-b {
+  animation-duration: 0.6s;
+}
+.bh-pace-3 .bh-hop,
+.bh-pace-3 .bh-hop-b {
+  animation-duration: 0.35s;
+}
+
+/* Full-width moment banners: HTML over the scene, so a phone's short strip still shouts. */
+@keyframes bh-banner {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  10% {
+    transform: scale(1.25);
+    opacity: 1;
+  }
+  20% {
+    transform: scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.bh-banner {
+  animation: bh-banner 4.6s ease-out forwards;
+}
+
+@keyframes bh-edge {
+  0%,
+  30%,
+  60% {
+    opacity: 0.95;
+  }
+  15%,
+  45%,
+  100% {
+    opacity: 0;
+  }
+}
+.bh-edge {
+  animation: bh-edge 1.8s steps(1, end) forwards;
+}
+
+/* ---- Build It Higher: the town's foremen, shadow and lights ---- */
+.bh-hat-toss,
+.bh-hat-drop,
+.bh-lamp-pop,
+.bh-lights-ring,
+.bh-wind {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes bh-hat-toss {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(10px, -64px) rotate(360deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(26px, 40px) rotate(780deg);
+    opacity: 0;
+  }
+}
+.bh-hat-toss {
+  animation: bh-hat-toss 2.2s ease-in-out forwards;
+}
+
+@keyframes bh-hat-drop {
+  0% {
+    transform: translateY(-70px) rotate(-200deg) scale(1.6);
+    opacity: 0;
+  }
+  50% {
+    transform: translateY(0) rotate(0deg) scale(1.4);
+    opacity: 1;
+  }
+  65% {
+    transform: translateY(-9px) rotate(8deg) scale(1.2);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+}
+.bh-hat-drop {
+  animation: bh-hat-drop 1.1s ease-out both;
+}
+
+@keyframes bh-lamp-pop {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.bh-lamp-pop {
+  animation: bh-lamp-pop 0.6s ease-out both;
+}
+
+@keyframes bh-lights-ring {
+  0% {
+    transform: scale(0.2);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(5);
+    opacity: 0;
+  }
+}
+.bh-lights-ring {
+  animation: bh-lights-ring 1.6s ease-out 2 both;
+}
+
+@keyframes bh-wind {
+  0% {
+    transform: translateX(-60px);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(460px);
+    opacity: 0;
+  }
+}
+.bh-wind {
+  animation: bh-wind 1.8s linear infinite;
+}
+
+/* ---- Build It Higher: the sky's wind, tie-down, drop, snap and climb ---- */
+.bh-beam-drop,
+.bh-whip {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes bh-beam-drop {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(34px, 250px) rotate(900deg);
+    opacity: 0;
+  }
+}
+.bh-beam-drop {
+  animation: bh-beam-drop 2.4s ease-in forwards;
+}
+
+@keyframes bh-whip {
+  0%,
+  100% {
+    transform: rotate(-24deg) scale(1.1);
+  }
+  25% {
+    transform: rotate(30deg) scale(0.9);
+  }
+  50% {
+    transform: rotate(-18deg) scale(1.2);
+  }
+  75% {
+    transform: rotate(20deg) scale(1);
+  }
+}
+.bh-whip {
+  animation: bh-whip 0.5s ease-in-out 5 both;
+}
+
+/* ---- Ever Onward intro films (components/ever-onward/game/film) ---- */
+
+.eo-film-move,
+.eo-film-step,
+.eo-film-glow,
+.eo-film-emote {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+
+.eo-film-glow {
+  transform-origin: 50% 50%;
+  animation: eoFilmGlow 2.8s ease-in-out infinite;
+}
+
+@keyframes eoFilmGlow {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+/* Little steps while walking. */
+@keyframes eoFilmStep {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.eo-film-enter .eo-film-step,
+.eo-film-walk .eo-film-step,
+.eo-film-exit .eo-film-step {
+  animation: eoFilmStep 0.32s steps(2, jump-none) infinite;
+}
+
+.eo-film-enter .eo-film-step {
+  animation-iteration-count: 9;
+}
+
+.eo-film-walk .eo-film-step {
+  animation-iteration-count: 10;
+}
+
+.eo-film-enter {
+  animation: eoFilmEnter 2.9s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+@keyframes eoFilmEnter {
+  from {
+    transform: translateX(-260px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.eo-film-walk {
+  animation: eoFilmWalk 3.2s ease-out both;
+}
+
+@keyframes eoFilmWalk {
+  from {
+    transform: translateX(-90px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.eo-film-exit {
+  animation: eoFilmExit 4s ease-in 1.4s both;
+}
+
+@keyframes eoFilmExit {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(420px);
+  }
+}
+
+.eo-film-idle {
+  animation: eoFilmIdle 2.6s ease-in-out infinite;
+}
+
+@keyframes eoFilmIdle {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  50% {
+    transform: translateY(0) scaleY(1.03);
+  }
+}
+
+.eo-film-look-up {
+  animation: eoFilmLookUp 2.4s cubic-bezier(0.3, 0.8, 0.3, 1) 0.4s both;
+}
+
+@keyframes eoFilmLookUp {
+  from {
+    transform: rotate(0) translateY(0);
+  }
+  to {
+    transform: rotate(-9deg) translateY(-2px);
+  }
+}
+
+.eo-film-hop {
+  animation: eoFilmHop 1.1s ease-out 0.3s 4;
+}
+
+@keyframes eoFilmHop {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  8% {
+    transform: translateY(0) scale(1.1, 0.88);
+  }
+  28% {
+    transform: translateY(-34px) scale(0.94, 1.08);
+  }
+  50% {
+    transform: translateY(0) scale(1.08, 0.92);
+  }
+}
+
+.eo-film-wave {
+  animation: eoFilmWave 0.7s ease-in-out 0.3s 5;
+}
+
+@keyframes eoFilmWave {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-7deg);
+  }
+  75% {
+    transform: rotate(7deg);
+  }
+}
+
+.eo-film-nod {
+  animation: eoFilmNod 0.9s ease-in-out 0.8s 2;
+}
+
+@keyframes eoFilmNod {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  40% {
+    transform: translateY(2px) scaleY(0.92);
+  }
+}
+
+.eo-film-gasp {
+  animation: eoFilmGasp 1.4s cubic-bezier(0.2, 1.4, 0.4, 1) 0.3s both;
+}
+
+@keyframes eoFilmGasp {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  25% {
+    transform: translate(-14px, -18px) scale(1.12);
+  }
+  100% {
+    transform: translate(-10px, 0) scale(1.04);
+  }
+}
+
+.eo-film-work {
+  animation: eoFilmWork 0.26s steps(2, jump-none) infinite;
+}
+
+@keyframes eoFilmWork {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  50% {
+    transform: translateY(-3px) rotate(3deg);
+  }
+}
+
+.eo-film-lift {
+  animation: eoFilmLift 2.2s cubic-bezier(0.3, 0.9, 0.3, 1) 0.4s both;
+}
+
+.eo-film-lift .eo-film-glow {
+  animation: eoFilmBlaze 2.6s ease-out 0.5s both;
+}
+
+@keyframes eoFilmLift {
+  from {
+    transform: translateY(0) scaleY(1);
+  }
+  to {
+    transform: translateY(-8px) scaleY(1.08);
+  }
+}
+
+@keyframes eoFilmBlaze {
+  from {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(3.2);
+  }
+}
+
+.eo-film-spin {
+  animation: eoFilmSpin 1s ease-in-out 0.3s 3;
+}
+
+@keyframes eoFilmSpin {
+  0%,
+  100% {
+    transform: scaleX(1) translateY(0);
+  }
+  25% {
+    transform: scaleX(0.1) translateY(-10px);
+  }
+  50% {
+    transform: scaleX(-1) translateY(-14px);
+  }
+  75% {
+    transform: scaleX(0.1) translateY(-10px);
+  }
+}
+
+.eo-film-sit {
+  animation: eoFilmSit 2.6s ease-in-out 0.4s both;
+}
+
+@keyframes eoFilmSit {
+  from {
+    transform: translateY(0) scaleY(1);
+  }
+  to {
+    transform: translateY(6px) scaleY(0.84);
+  }
+}
+
+.eo-film-emote {
+  transform-origin: 50% 100%;
+  animation: eoFilmEmote 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) 0.9s both;
+}
+
+@keyframes eoFilmEmote {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* The camera over the scene. */
+.eo-cam {
+  transform-origin: 50% 50%;
+  animation-duration: 13s;
+  animation-timing-function: cubic-bezier(0.25, 0.1, 0.25, 1);
+  animation-fill-mode: both;
+}
+
+.eo-cam-still {
+  animation-name: none;
+}
+
+.eo-cam-drift {
+  animation-name: eoCamDrift;
+}
+
+.eo-cam-push-in {
+  animation-name: eoCamPushIn;
+}
+
+.eo-cam-pull-out {
+  animation-name: eoCamPullOut;
+}
+
+.eo-cam-pan-left {
+  animation-name: eoCamPanLeft;
+}
+
+.eo-cam-pan-right {
+  animation-name: eoCamPanRight;
+}
+
+.eo-cam-tilt-up {
+  animation-name: eoCamTiltUp;
+}
+
+.eo-cam-tilt-down {
+  animation-name: eoCamTiltDown;
+}
+
+@keyframes eoCamDrift {
+  from {
+    transform: scale(1.04) translate(1%, 0.5%);
+  }
+  to {
+    transform: scale(1.12) translate(-1.5%, -0.5%);
+  }
+}
+
+@keyframes eoCamPushIn {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.4);
+  }
+}
+
+@keyframes eoCamPullOut {
+  from {
+    transform: scale(1.5);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+@keyframes eoCamPanLeft {
+  from {
+    transform: scale(1.3) translateX(9%);
+  }
+  to {
+    transform: scale(1.3) translateX(-9%);
+  }
+}
+
+@keyframes eoCamPanRight {
+  from {
+    transform: scale(1.3) translateX(-9%);
+  }
+  to {
+    transform: scale(1.3) translateX(9%);
+  }
+}
+
+@keyframes eoCamTiltUp {
+  from {
+    transform: scale(1.35) translateY(-10%);
+  }
+  to {
+    transform: scale(1.35) translateY(10%);
+  }
+}
+
+@keyframes eoCamTiltDown {
+  from {
+    transform: scale(1.35) translateY(10%);
+  }
+  to {
+    transform: scale(1.35) translateY(-10%);
+  }
+}
+
+/* A shot fades up from black. */
+.eo-film-cut {
+  animation: eoFilmCut 0.9s ease-out both;
+}
+
+@keyframes eoFilmCut {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* The title card's slow stars. */
+.eo-film-stars {
+  animation: eoFilmStars 16s linear both;
+}
+
+@keyframes eoFilmStars {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-6%);
+  }
+}
+
+.eo-film-title {
+  animation: eoFilmTitle 2.4s ease-out 0.3s both;
+}
+
+@keyframes eoFilmTitle {
+  from {
+    opacity: 0;
+    letter-spacing: 0.4em;
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    letter-spacing: 0.05em;
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eo-film-move,
+  .eo-film-step,
+  .eo-film-glow,
+  .eo-film-emote,
+  .eo-film-cut,
+  .eo-film-stars,
+  .eo-film-title,
+  .eo-cam {
+    animation: none !important;
+  }
+}
+
+/* ---- Ever Onward prestige map ---------------------------------------- */
+
+.eo-map-sea {
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, #dbeafe 50%, transparent 51%),
+    radial-gradient(1px 1px at 47% 63%, #bfdbfe 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 31%, #e0f2fe 50%, transparent 51%),
+    radial-gradient(1px 1px at 29% 84%, #c7d2fe 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 77%, #dbeafe 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 9%, #e0e7ff 50%, transparent 51%);
+  background-size: 140px 140px;
+}
+
+@keyframes eoMapFloat {
+  0%,
+  100% {
+    transform: translateY(-6%) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(6%) rotate(4deg);
+  }
+}
+.eo-map-float {
+  animation: eoMapFloat 4.5s ease-in-out infinite;
+}
+
+@keyframes eoMapHere {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.88);
+  }
+}
+.eo-map-here {
+  animation: eoMapHere 1.6s ease-in-out infinite;
+}
+
+@keyframes eoMapBeacon {
+  0%,
+  100% {
+    box-shadow: 0 0 2px 1px rgba(252, 211, 77, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 10px 4px rgba(252, 211, 77, 0.9);
+  }
+}
+.eo-map-beacon {
+  animation: eoMapBeacon 2.4s ease-in-out infinite;
+}
+
+@keyframes eoMapChoosable {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.85);
+  }
+  50% {
+    box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.3);
+  }
+}
+.eo-map-choosable {
+  animation: eoMapChoosable 1.2s ease-in-out infinite;
+}
+
+/* The find: rise out of the chart, then flip over. */
+@keyframes eoMapRise {
+  0% {
+    opacity: 0;
+    transform: translateY(70%) scale(0.3) rotateY(0deg);
+  }
+  45% {
+    opacity: 1;
+    transform: translateY(-6%) scale(1.05) rotateY(0deg);
+  }
+  80% {
+    transform: translateY(0) scale(1) rotateY(360deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotateY(360deg);
+  }
+}
+.eo-map-rise {
+  animation: eoMapRise 1.6s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+
+@keyframes eoMapBurst {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  55% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+  100% {
+    opacity: 0.55;
+    transform: scale(1.25);
+  }
+}
+.eo-map-burst {
+  animation: eoMapBurst 2.2s ease-out both;
+}
+
+@keyframes eoMapRays {
+  0% {
+    opacity: 0;
+    transform: rotate(0deg);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(360deg);
+  }
+}
+.eo-map-rays {
+  animation: eoMapRays 24s linear both infinite;
+}
+
+@keyframes eoMapCaret {
+  50% {
+    opacity: 0;
+  }
+}
+.eo-map-caret {
+  animation: eoMapCaret 0.8s steps(1) infinite;
+}
+
+/* Artifacts in the scene: they drift, the ghost walks the shore. */
+@keyframes eoArtFloat {
+  0%,
+  100% {
+    transform: translateY(-3px);
+  }
+  50% {
+    transform: translateY(3px);
+  }
+}
+.eo-art-float {
+  animation: eoArtFloat 5s ease-in-out infinite;
+  transform-box: fill-box;
+}
+
+@keyframes eoArtGhost {
+  0% {
+    transform: translateX(-30px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.75;
+  }
+  45% {
+    transform: translateX(220px);
+    opacity: 0.75;
+  }
+  50% {
+    transform: translateX(220px) translateY(-4px);
+    opacity: 0.9;
+  }
+  55% {
+    transform: translateX(220px);
+    opacity: 0.75;
+  }
+  90% {
+    opacity: 0.75;
+  }
+  100% {
+    transform: translateX(430px);
+    opacity: 0;
+  }
+}
+.eo-art-ghost {
+  animation: eoArtGhost 38s linear infinite;
+}
+
+@keyframes eoArtNew {
+  0% {
+    opacity: 0;
+    transform: scale(3);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.eo-art-new {
+  animation: eoArtNew 1.4s ease-out both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* The farm's harvest day and prize pumpkin (gf-*). */
+.gf-cart {
+  transition: none;
+}
+.gf-cart-0 {
+  transform: translateX(-110px);
+}
+.gf-cart-1 {
+  transform: translateX(-60px);
+  transition: transform 9s linear;
+}
+.gf-cart-2 {
+  transform: translateX(-20px);
+  transition: transform 9s linear;
+}
+.gf-cart-3 {
+  transform: translateX(10px);
+  transition: transform 9s linear;
+}
+.gf-cart-4 {
+  transform: translateX(26px);
+  transition: transform 9s linear;
+}
+
+@keyframes gf-jump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.gf-jump {
+  animation: gf-jump 0.5s ease-in-out infinite;
+}
+.gf-slump {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: translateY(2px) scaleY(0.9) rotate(4deg);
+}
+
+@keyframes gf-coin {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  55% {
+    transform: translate(calc(var(--gf-dx, 0) * 0.8), var(--gf-dy, -60px))
+      scale(1.5);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--gf-dx, 0), calc(var(--gf-dy, -60px) + 50px))
+      scale(1.2);
+    opacity: 0;
+  }
+}
+.gf-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-coin 1.8s ease-out 3 both;
+}
+.gf-coin-0 {
+  --gf-dx: 10px;
+  --gf-dy: -70px;
+  animation-delay: 0s;
+}
+.gf-coin-1 {
+  --gf-dx: 40px;
+  --gf-dy: -95px;
+  animation-delay: 0.12s;
+}
+.gf-coin-2 {
+  --gf-dx: 70px;
+  --gf-dy: -60px;
+  animation-delay: 0.24s;
+}
+.gf-coin-3 {
+  --gf-dx: 100px;
+  --gf-dy: -100px;
+  animation-delay: 0.36s;
+}
+.gf-coin-4 {
+  --gf-dx: 130px;
+  --gf-dy: -80px;
+  animation-delay: 0.48s;
+}
+.gf-coin-5 {
+  --gf-dx: 160px;
+  --gf-dy: -105px;
+  animation-delay: 0.6s;
+}
+.gf-coin-6 {
+  --gf-dx: 190px;
+  --gf-dy: -70px;
+  animation-delay: 0.72s;
+}
+.gf-coin-7 {
+  --gf-dx: 25px;
+  --gf-dy: -95px;
+  animation-delay: 0.84s;
+}
+.gf-coin-8 {
+  --gf-dx: 85px;
+  --gf-dy: -45px;
+  animation-delay: 0.96s;
+}
+.gf-coin-9 {
+  --gf-dx: 145px;
+  --gf-dy: -55px;
+  animation-delay: 1.08s;
+}
+.gf-coin-10 {
+  --gf-dx: 55px;
+  --gf-dy: -70px;
+  animation-delay: 1.2s;
+}
+.gf-coin-11 {
+  --gf-dx: 115px;
+  --gf-dy: -83px;
+  animation-delay: 1.32s;
+}
+.gf-coin-12 {
+  --gf-dx: 175px;
+  --gf-dy: -96px;
+  animation-delay: 1.44s;
+}
+.gf-coin-13 {
+  --gf-dx: 5px;
+  --gf-dy: -69px;
+  animation-delay: 1.56s;
+}
+
+@keyframes gf-confetti {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110px) translateX(14px) rotate(540deg);
+    opacity: 0;
+  }
+}
+.gf-confetti {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-confetti 2.4s linear 3 both;
+}
+
+@keyframes gf-rain {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(32px);
+    opacity: 0;
+  }
+}
+.gf-rain {
+  animation: gf-rain 0.7s linear infinite;
+}
+
+@keyframes gf-gloom {
+  0% {
+    opacity: 0;
+  }
+  8%,
+  75% {
+    opacity: 0.62;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.gf-gloom {
+  animation: gf-gloom 7s ease-out forwards;
+}
+
+@keyframes gf-glow {
+  0% {
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.gf-glow {
+  animation: gf-glow 3.5s ease-out forwards;
+}
+
+@keyframes gf-richen {
+  0% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.gf-richen {
+  animation: gf-richen 4s ease-out forwards;
+}
+
+@keyframes gf-sparkle-up {
+  0% {
+    transform: translateY(8px) scale(0.5);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-46px) scale(1.6);
+    opacity: 0;
+  }
+}
+.gf-sparkle-up {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-sparkle-up 1.6s ease-out 4 both;
+}
+
+@keyframes gf-tumble {
+  0% {
+    transform: translate(-20px, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(200px, -4px) rotate(360deg);
+  }
+  100% {
+    transform: translate(430px, 0) rotate(720deg);
+  }
+}
+.gf-tumble {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-tumble 6s linear forwards;
+}
+
+.gf-pk {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 0.9s cubic-bezier(0.3, 1.7, 0.5, 1);
+}
+.gf-pk-0 {
+  transform: scale(0.35);
+}
+.gf-pk-1 {
+  transform: scale(0.7);
+}
+.gf-pk-2 {
+  transform: scale(1.1);
+}
+.gf-pk-3 {
+  transform: scale(1.6);
+}
+.gf-pk-4 {
+  transform: scale(2.2);
+}
+.gf-pk-5 {
+  transform: scale(3);
+}
+
+@keyframes gf-wobble {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+.gf-wobble {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gf-wobble 0.35s ease-in-out infinite;
+}
+
+@keyframes gf-judge {
+  0% {
+    transform: translateX(130px);
+  }
+  100% {
+    transform: translateX(300px);
+  }
+}
+.gf-judge {
+  animation: gf-judge 5s linear forwards;
+}
+
+@keyframes gf-splat {
+  0% {
+    transform: scale(0, 0.3);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1, 1);
+    opacity: 0.55;
+  }
+}
+.gf-splat {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-splat 0.4s ease-out both;
+}
+
+@keyframes gf-bit {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.6);
+    opacity: 1;
+  }
+  45% {
+    transform: translate(var(--gf-dx, 0), var(--gf-dy, -50px)) rotate(240deg)
+      scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(var(--gf-dx, 0) * 1.25), 14px) rotate(520deg)
+      scale(1);
+    opacity: 0;
+  }
+}
+.gf-bit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gf-bit 1.7s ease-out 2 both;
+}
+.gf-bit-0 {
+  --gf-dx: -95px;
+  --gf-dy: -55px;
+}
+.gf-bit-1 {
+  --gf-dx: -70px;
+  --gf-dy: -85px;
+}
+.gf-bit-2 {
+  --gf-dx: -48px;
+  --gf-dy: -40px;
+}
+.gf-bit-3 {
+  --gf-dx: -30px;
+  --gf-dy: -95px;
+}
+.gf-bit-4 {
+  --gf-dx: -12px;
+  --gf-dy: -60px;
+}
+.gf-bit-5 {
+  --gf-dx: 8px;
+  --gf-dy: -100px;
+}
+.gf-bit-6 {
+  --gf-dx: 26px;
+  --gf-dy: -50px;
+}
+.gf-bit-7 {
+  --gf-dx: 44px;
+  --gf-dy: -90px;
+}
+.gf-bit-8 {
+  --gf-dx: 64px;
+  --gf-dy: -45px;
+}
+.gf-bit-9 {
+  --gf-dx: 86px;
+  --gf-dy: -75px;
+}
+.gf-bit-10 {
+  --gf-dx: 104px;
+  --gf-dy: -35px;
+}
+.gf-bit-11 {
+  --gf-dx: -110px;
+  --gf-dy: -30px;
+}
+.gf-bit-12 {
+  --gf-dx: -3px;
+  --gf-dy: -45px;
+}
+.gf-bit-13 {
+  --gf-dx: 116px;
+  --gf-dy: -62px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gf-cart,
+  .gf-jump,
+  .gf-coin,
+  .gf-confetti,
+  .gf-rain,
+  .gf-richen,
+  .gf-gloom,
+  .gf-glow,
+  .gf-sparkle-up,
+  .gf-tumble,
+  .gf-pk,
+  .gf-wobble,
+  .gf-judge,
+  .gf-splat,
+  .gf-bit {
+    animation: none;
+    transition: none;
+  }
+  .gf-gloom,
+  .gf-glow,
+  .gf-richen {
+    opacity: 0.3;
+  }
+}
+
+/* Ever Onward: Make It Grow, the world's water, blight and healing (gv-*). */
+.gv-cell {
+  transition: fill 0.9s ease;
+}
+
+@keyframes gv-glisten {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+.gv-glisten {
+  animation: gv-glisten 2.4s ease-in-out infinite;
+}
+
+@keyframes gv-sick {
+  0%,
+  100% {
+    stroke-opacity: 0.35;
+  }
+  50% {
+    stroke-opacity: 0.95;
+  }
+}
+.gv-sick {
+  animation: gv-sick 2s ease-in-out infinite;
+}
+
+@keyframes gv-vignette {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.gv-vignette {
+  animation: gv-vignette 2.2s ease-in-out infinite;
+}
+
+@keyframes gv-spore {
+  0% {
+    transform: translateY(2px) scale(0.6);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-16px) scale(1.5);
+    opacity: 0;
+  }
+}
+.gv-spore {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gv-spore 2.6s ease-out infinite;
+}
+
+@keyframes gv-wave {
+  0% {
+    transform: scale(0.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+.gv-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gv-wave 1.8s ease-out 3 both;
+}
+
+@keyframes gv-spark {
+  0% {
+    transform: translateY(8px) scale(0.4);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-26px) scale(1.4);
+    opacity: 0;
+  }
+}
+.gv-spark {
+  animation: gv-spark 1.6s ease-out 4 both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-cell {
+    transition: none;
+  }
+  .gv-glisten,
+  .gv-sick,
+  .gv-vignette,
+  .gv-spore,
+  .gv-wave,
+  .gv-spark {
+    animation: none;
+  }
+  .gv-spore,
+  .gv-wave,
+  .gv-spark {
+    opacity: 0;
+  }
+}
+
+/* The old window box: the blind, the weather and the pot's big moments. */
+.gb-blind {
+  transform-box: fill-box;
+  transform-origin: top center;
+  transition: transform 1s ease-in-out;
+}
+.gb-open-0 {
+  transform: scaleY(1);
+}
+.gb-open-1 {
+  transform: scaleY(0.88);
+}
+.gb-open-2 {
+  transform: scaleY(0.75);
+}
+.gb-open-3 {
+  transform: scaleY(0.62);
+}
+.gb-open-4 {
+  transform: scaleY(0.5);
+}
+.gb-open-5 {
+  transform: scaleY(0.38);
+}
+.gb-open-6 {
+  transform: scaleY(0.26);
+}
+.gb-open-7 {
+  transform: scaleY(0.14);
+}
+.gb-open-8 {
+  transform: scaleY(0.06);
+}
+
+@keyframes gb-beam {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.gb-beam {
+  animation: gb-beam 3.2s ease-in-out infinite;
+}
+
+@keyframes gb-motes {
+  0%,
+  100% {
+    transform: translate(0, 0);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(6px, -10px);
+    opacity: 0.3;
+  }
+}
+.gb-motes {
+  animation: gb-motes 4s ease-in-out infinite;
+}
+
+@keyframes gb-sun-rays {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.gb-sun-rays {
+  transform-box: view-box;
+  transform-origin: 150px 80px;
+  animation: gb-sun-rays 30s linear infinite;
+}
+
+@keyframes gb-rain {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(130px);
+    opacity: 0.2;
+  }
+}
+.gb-rain {
+  animation: gb-rain 0.75s linear infinite;
+}
+
+@keyframes gb-shimmer {
+  0%,
+  100% {
+    transform: translateX(-3px);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateX(3px);
+    opacity: 0.5;
+  }
+}
+.gb-shimmer {
+  animation: gb-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes gb-puddle {
+  0% {
+    transform: scaleX(0.2);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+.gb-puddle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gb-puddle 1.6s ease-out both;
+}
+
+@keyframes gb-drip {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+}
+.gb-drip {
+  animation: gb-drip 1.4s ease-in infinite;
+}
+
+@keyframes gb-sparkle {
+  0% {
+    transform: translateY(8px) scale(0.2);
+    opacity: 0;
+  }
+  25% {
+    transform: translateY(0) scale(1.3);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-16px) scale(0.6);
+    opacity: 0;
+  }
+}
+.gb-sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: gb-sparkle 1.5s ease-out 3 both;
+}
+
+@keyframes gb-thrive {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.12);
+  }
+  60% {
+    transform: scale(0.97);
+  }
+}
+.gb-thrive {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: gb-thrive 1.1s ease-in-out 4;
+}
+
+@keyframes gb-parched {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-1.5px);
+  }
+  75% {
+    transform: translateX(1.5px);
+  }
+}
+.gb-parched {
+  animation: gb-parched 0.4s linear 6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gb-blind {
+    transition: none;
+  }
+  .gb-beam,
+  .gb-motes,
+  .gb-sun-rays,
+  .gb-rain,
+  .gb-shimmer,
+  .gb-puddle,
+  .gb-drip,
+  .gb-sparkle,
+  .gb-thrive,
+  .gb-parched {
+    animation: none;
+  }
+}
+
+@keyframes gb-glint {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.gb-glint {
+  animation: gb-glint 2.4s ease-in-out infinite;
+}
+
+@keyframes gb-rainbow {
+  0%,
+  100% {
+    transform: translateX(-4px);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateX(4px);
+    opacity: 0.9;
+  }
+}
+.gb-rainbow {
+  animation: gb-rainbow 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gb-glint,
+  .gb-rainbow {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Keep the Light On, The Coast: the harbor toll, the oil tanker, the dark.
+   Ships choosing the harbor (or sailing on to the rival), coins at the toll,
+   barrels into the tanks, the lamp sputtering out and bursting back.
+   --------------------------------------------------------------------------- */
+
+/* A ship that chose the harbor: in, tied up (the coin pops), then off. */
+@keyframes lc-dock {
+  0% {
+    opacity: 0;
+    transform: translateX(190px);
+  }
+  8% {
+    opacity: 1;
+  }
+  44% {
+    transform: translateX(0);
+  }
+  84% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+.lc-dock {
+  animation: lc-dock 14s ease-in-out infinite;
+}
+
+@keyframes lc-coin {
+  0%,
+  45% {
+    opacity: 0;
+    transform: translateY(0) scale(0.4);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.5);
+  }
+  66% {
+    opacity: 1;
+    transform: translateY(-22px) scale(1);
+  }
+  76%,
+  100% {
+    opacity: 0;
+    transform: translateY(-32px) scale(0.8);
+  }
+}
+.lc-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-coin 14s ease-out infinite;
+}
+
+/* A ship that did not: up to the quay, a huff at the sign, then on to the rival. */
+@keyframes lc-pass {
+  0% {
+    opacity: 0;
+    transform: translateX(150px);
+  }
+  10% {
+    opacity: 1;
+  }
+  38%,
+  62% {
+    transform: translateX(74px);
+  }
+  90% {
+    opacity: 1;
+    transform: translateX(170px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(180px);
+  }
+}
+.lc-pass {
+  animation: lc-pass 14s ease-in-out infinite;
+}
+
+@keyframes lc-turn {
+  0%,
+  40% {
+    transform: scaleX(1);
+  }
+  46%,
+  100% {
+    transform: scaleX(-1);
+  }
+}
+.lc-turn {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-turn 14s steps(1, end) infinite;
+}
+
+@keyframes lc-huff {
+  0%,
+  35% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.5);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(0) scale(1.25);
+  }
+  45%,
+  84% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(1);
+  }
+}
+.lc-huff {
+  transform-box: fill-box;
+  transform-origin: bottom center;
+  animation: lc-huff 14s ease-out infinite;
+}
+
+/* A full quay: a golden glow, coins raining down and a shout. */
+@keyframes lc-full-glow {
+  0%,
+  100% {
+    opacity: 0.18;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+.lc-full-glow {
+  animation: lc-full-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes lc-rain-coin {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+    transform: translateY(58px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(66px) scale(0.8);
+  }
+}
+.lc-rain-coin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-rain-coin 2.7s ease-in infinite;
+}
+
+@keyframes lc-full-shout {
+  0%,
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.lc-full-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-full-shout 1.6s ease-in-out infinite;
+}
+
+/* The tanker sails in, glowing. */
+@keyframes lc-tanker-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-110px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.lc-tanker-in {
+  animation: lc-tanker-in 2.4s ease-out both;
+}
+
+@keyframes lc-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.lc-glow {
+  animation: lc-glow 1.4s ease-in-out infinite;
+}
+
+/* Barrels hop from the tanker to the depot's tanks. */
+@keyframes lc-barrel {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  8% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-20px, -24px) rotate(-200deg);
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-38px, 14px) rotate(-420deg);
+  }
+}
+.lc-barrel {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-barrel 1.7s ease-in-out both;
+}
+
+@keyframes lc-tank-glow {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.lc-tank-glow {
+  opacity: 0;
+  animation: lc-tank-glow 0.7s ease-in-out infinite;
+}
+
+/* In the dark: a ship drifts at the rocks, shudders, and veers off. */
+@keyframes lc-wreck {
+  0% {
+    opacity: 0;
+    transform: translate(70px, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  48% {
+    transform: translate(-30px, 0) rotate(0deg);
+  }
+  54% {
+    transform: translate(-36px, 2px) rotate(-9deg);
+  }
+  60% {
+    transform: translate(-31px, 0) rotate(7deg);
+  }
+  66% {
+    transform: translate(-35px, 1px) rotate(-6deg);
+  }
+  90% {
+    opacity: 1;
+    transform: translate(60px, -2px) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(80px, 0) rotate(0deg);
+  }
+}
+.lc-wreck {
+  animation: lc-wreck 6s ease-in-out infinite;
+}
+
+@keyframes lc-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0.4;
+  }
+}
+.lc-blink {
+  animation: lc-blink 0.7s steps(1, end) infinite;
+}
+
+/* The lamp coughing: a few weak flickers, then nearly out. */
+@keyframes lc-sputter {
+  0% {
+    opacity: 0.9;
+  }
+  4% {
+    opacity: 0.1;
+  }
+  8% {
+    opacity: 0.7;
+  }
+  12% {
+    opacity: 0;
+  }
+  16% {
+    opacity: 0.45;
+  }
+  22%,
+  100% {
+    opacity: 0.04;
+  }
+}
+.lc-sputter {
+  animation: lc-sputter 3.4s linear infinite;
+}
+
+/* A banner pops in, holds, and leaves (the one moment on show at a time). */
+@keyframes lc-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  10% {
+    transform: scale(1.3);
+    opacity: 1;
+  }
+  18% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.lc-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-shout 0.9s ease-out both;
+}
+
+/* The beam coming back: rings out from the lamp and a soft flash. */
+@keyframes lc-ring {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.2);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(4.2);
+  }
+}
+.lc-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lc-ring 1.5s ease-out 3 both;
+}
+
+@keyframes lc-relit-flash {
+  0% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.lc-relit-flash {
+  animation: lc-relit-flash 1.6s ease-out both;
+}
+
+/* Reduced motion: ships and signs hold still, and nothing flashes or rolls. */
+@media (prefers-reduced-motion: reduce) {
+  .lc-dock,
+  .lc-coin,
+  .lc-pass,
+  .lc-turn,
+  .lc-huff,
+  .lc-tanker-in,
+  .lc-glow,
+  .lc-barrel,
+  .lc-tank-glow,
+  .lc-wreck,
+  .lc-blink,
+  .lc-sputter,
+  .lc-shout,
+  .lc-ring,
+  .lc-relit-flash,
+  .lc-full-glow,
+  .lc-rain-coin,
+  .lc-full-shout {
+    animation: none;
+  }
+  /* What would flash or fly stays out of the picture (huffs and falling coins too). */
+  .lc-huff,
+  .lc-rain-coin,
+  .lc-barrel,
+  .lc-ring,
+  .lc-relit-flash,
+  .lc-tank-glow,
+  .lm-lightning {
+    opacity: 0;
+  }
+  .lc-glow {
+    opacity: 0.7;
+  }
+}
+
+/* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
+@keyframes ms-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes ms-sway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes ms-hop {
+  0%,
+  70%,
+  100% {
+    transform: translateY(0);
+  }
+  80% {
+    transform: translateY(-6px);
+  }
+  90% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes ms-wag {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+  }
+  50% {
+    transform: rotate(18deg);
+  }
+}
+
+@keyframes ms-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes ms-twinkle {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes ms-confetti {
+  0% {
+    opacity: 0;
+    transform: translate(0, -10px) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(10px, 70px) rotate(240deg);
+  }
+}
+
+@keyframes ms-march {
+  0%,
+  100% {
+    transform: translateX(-8px);
+  }
+  50% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes ms-flutter {
+  0%,
+  100% {
+    transform: skewX(-6deg);
+  }
+  50% {
+    transform: skewX(6deg);
+  }
+}
+
+@keyframes ms-puff {
+  0% {
+    opacity: 0.8;
+    transform: translate(0, 0) scale(0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(8px, -22px) scale(1.5);
+  }
+}
+
+@keyframes ms-burst {
+  0%,
+  60% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes ms-drift {
+  0%,
+  100% {
+    transform: translateX(-14px);
+  }
+  50% {
+    transform: translateX(14px);
+  }
+}
+
+@keyframes ms-ring {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+}
+
+@keyframes ms-eyes {
+  0%,
+  35% {
+    transform: translateX(-2px);
+  }
+  50%,
+  85% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(-2px);
+  }
+}
+
+@keyframes ms-grin {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(1.12);
+  }
+}
+
+@keyframes ms-frown {
+  0%,
+  60%,
+  100% {
+    opacity: 0;
+  }
+  68%,
+  90% {
+    opacity: 1;
+  }
+}
+
+@keyframes ms-rain {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  30% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@keyframes ms-flame {
+  0%,
+  100% {
+    transform: scale(1, 1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(0.85, 1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes ms-leaf {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-16px, 60px) rotate(180deg);
+  }
+}
+
+@keyframes ms-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes ms-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+.ms-bob,
+.ms-bob-b,
+.ms-sway,
+.ms-hop,
+.ms-wag,
+.ms-steam,
+.ms-twinkle,
+.ms-twinkle-b,
+.ms-confetti,
+.ms-confetti-b,
+.ms-march,
+.ms-march-b,
+.ms-flutter,
+.ms-puff,
+.ms-puff-b,
+.ms-burst,
+.ms-burst-b,
+.ms-drift,
+.ms-ring,
+.ms-ring-b,
+.ms-eyes,
+.ms-grin,
+.ms-frown,
+.ms-rain,
+.ms-rain-b,
+.ms-flame,
+.ms-leaf,
+.ms-blink,
+.ms-glow {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.ms-bob {
+  animation: ms-bob 3.2s ease-in-out infinite;
+}
+.ms-bob-b {
+  animation: ms-bob 4.1s ease-in-out -1.7s infinite;
+}
+.ms-sway {
+  transform-origin: 50% 100%;
+  animation: ms-sway 4s ease-in-out infinite;
+}
+.ms-hop {
+  animation: ms-hop 3.6s ease-in infinite;
+}
+.ms-wag {
+  transform-origin: 0% 100%;
+  animation: ms-wag 0.5s ease-in-out infinite;
+}
+.ms-steam {
+  animation: ms-steam 2.8s ease-out infinite;
+}
+.ms-twinkle {
+  animation: ms-twinkle 2.4s ease-in-out infinite;
+}
+.ms-twinkle-b {
+  animation: ms-twinkle 3.1s ease-in-out -1.2s infinite;
+}
+.ms-confetti {
+  animation: ms-confetti 4.2s linear infinite;
+}
+.ms-confetti-b {
+  animation: ms-confetti 5.3s linear -2.4s infinite;
+}
+.ms-march {
+  animation: ms-march 5s ease-in-out infinite;
+}
+.ms-march-b {
+  animation: ms-march 6.5s ease-in-out -2.5s infinite;
+}
+.ms-flutter {
+  transform-origin: 50% 0%;
+  animation: ms-flutter 1.6s ease-in-out infinite;
+}
+.ms-puff {
+  animation: ms-puff 3s ease-out infinite;
+}
+.ms-puff-b {
+  animation: ms-puff 3s ease-out -1.5s infinite;
+}
+.ms-burst {
+  animation: ms-burst 3.4s ease-out infinite;
+}
+.ms-burst-b {
+  animation: ms-burst 4.2s ease-out -1.9s infinite;
+}
+.ms-drift {
+  animation: ms-drift 9s ease-in-out infinite;
+}
+.ms-ring {
+  animation: ms-ring 2.6s ease-out infinite;
+}
+.ms-ring-b {
+  animation: ms-ring 2.6s ease-out -1.3s infinite;
+}
+.ms-eyes {
+  animation: ms-eyes 7s ease-in-out infinite;
+}
+.ms-grin {
+  animation: ms-grin 3.4s ease-in-out infinite;
+}
+.ms-frown {
+  animation: ms-frown 11s ease-in-out infinite;
+}
+.ms-rain {
+  animation: ms-rain 1.4s linear infinite;
+}
+.ms-rain-b {
+  animation: ms-rain 1.4s linear -0.7s infinite;
+}
+.ms-flame {
+  transform-origin: 50% 100%;
+  animation: ms-flame 1.1s ease-in-out infinite;
+}
+.ms-leaf {
+  animation: ms-leaf 9s linear infinite;
+}
+.ms-blink {
+  animation: ms-blink 6s ease-in-out infinite;
+}
+.ms-glow {
+  animation: ms-glow 3.6s ease-in-out infinite;
+}
+
+/* ---- What you do together (Make Everyone Smile, the friend): ms-t- ---- */
+/* They lit up: a flash, a sun, rings, sparks and a shout. */
+@keyframes ms-t-flash {
+  0% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-t-flash {
+  animation: ms-t-flash 1.2s ease-out forwards;
+}
+
+@keyframes ms-t-sun {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+.ms-t-sun {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-sun 3.6s ease-out forwards;
+}
+
+@keyframes ms-t-ring {
+  0% {
+    transform: scale(0.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4.6);
+    opacity: 0;
+  }
+}
+.ms-t-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-ring 1.4s ease-out 2 both;
+}
+
+@keyframes ms-t-spark {
+  0% {
+    transform: translate(0, 0) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--ms-dx, 0), var(--ms-dy, 0)) scale(0.3);
+    opacity: 0;
+  }
+}
+.ms-t-spark {
+  animation: ms-t-spark 1.3s ease-out 3 both;
+}
+.ms-t-spark-0 {
+  --ms-dx: 112px;
+  --ms-dy: 0px;
+  animation-delay: 0s;
+}
+.ms-t-spark-1 {
+  --ms-dx: 98px;
+  --ms-dy: -56px;
+  animation-delay: 0.08s;
+}
+.ms-t-spark-2 {
+  --ms-dx: 56px;
+  --ms-dy: -98px;
+  animation-delay: 0.16s;
+}
+.ms-t-spark-3 {
+  --ms-dx: 0px;
+  --ms-dy: -112px;
+  animation-delay: 0s;
+}
+.ms-t-spark-4 {
+  --ms-dx: -56px;
+  --ms-dy: -98px;
+  animation-delay: 0.08s;
+}
+.ms-t-spark-5 {
+  --ms-dx: -98px;
+  --ms-dy: -56px;
+  animation-delay: 0.16s;
+}
+.ms-t-spark-6 {
+  --ms-dx: -112px;
+  --ms-dy: 0px;
+  animation-delay: 0s;
+}
+.ms-t-spark-7 {
+  --ms-dx: -98px;
+  --ms-dy: 32px;
+  animation-delay: 0.08s;
+}
+.ms-t-spark-8 {
+  --ms-dx: -56px;
+  --ms-dy: 64px;
+  animation-delay: 0.16s;
+}
+.ms-t-spark-9 {
+  --ms-dx: 0px;
+  --ms-dy: 70px;
+  animation-delay: 0s;
+}
+.ms-t-spark-10 {
+  --ms-dx: 56px;
+  --ms-dy: 64px;
+  animation-delay: 0.08s;
+}
+.ms-t-spark-11 {
+  --ms-dx: 98px;
+  --ms-dy: 32px;
+  animation-delay: 0.16s;
+}
+
+@keyframes ms-t-shout {
+  0% {
+    transform: scale(0.4);
+    opacity: 1;
+  }
+  12% {
+    transform: scale(1.3);
+  }
+  22% {
+    transform: scale(1);
+  }
+  85% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(-6px);
+    opacity: 0;
+  }
+}
+.ms-t-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-shout 3.8s ease-out forwards;
+}
+
+/* A sigh: the friend slumps, a little grey cloud drifts in and drizzles. */
+@keyframes ms-t-slump {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  18%,
+  80% {
+    transform: translateY(4px);
+  }
+}
+.ms-t-slump {
+  animation: ms-t-slump 3.8s ease-in-out forwards;
+}
+
+@keyframes ms-t-cloud {
+  0% {
+    transform: translate(-14px, 6px) scale(0.4);
+    opacity: 0;
+  }
+  22% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.95;
+  }
+  80% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(8px, -4px) scale(1.05);
+    opacity: 0;
+  }
+}
+.ms-t-cloud {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-cloud 3.8s ease-out forwards;
+}
+
+@keyframes ms-t-drop {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(32px);
+    opacity: 0;
+  }
+}
+.ms-t-drop {
+  animation: ms-t-drop 1.1s ease-in 3 both;
+}
+
+@keyframes ms-t-grey {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 0.36;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-t-grey {
+  animation: ms-t-grey 3.8s ease-out forwards;
+}
+
+/* What you are doing together, going on all the time. */
+@keyframes ms-t-pop {
+  0%,
+  100% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  35% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+.ms-t-pop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-t-pop 2.4s ease-out infinite;
+}
+
+@keyframes ms-t-fetch {
+  0% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(40px, -40px);
+  }
+  100% {
+    transform: translate(80px, 0);
+  }
+}
+.ms-t-fetch {
+  animation: ms-t-fetch 2s ease-in-out infinite;
+}
+
+@keyframes ms-t-heart {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+}
+.ms-t-heart {
+  animation: ms-t-heart 2.8s ease-out infinite;
+}
+
+@keyframes ms-t-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ms-t-pulse {
+  animation: ms-t-pulse 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-t-flash,
+  .ms-t-sun,
+  .ms-t-ring,
+  .ms-t-spark,
+  .ms-t-shout,
+  .ms-t-slump,
+  .ms-t-cloud,
+  .ms-t-drop,
+  .ms-t-grey,
+  .ms-t-pop,
+  .ms-t-fetch,
+  .ms-t-heart,
+  .ms-t-pulse {
+    animation: none;
+  }
+
+  .ms-t-flash,
+  .ms-t-sun,
+  .ms-t-ring,
+  .ms-t-spark,
+  .ms-t-drop,
+  .ms-t-grey,
+  .ms-t-heart {
+    opacity: 0;
+  }
+
+  .ms-bob,
+  .ms-bob-b,
+  .ms-sway,
+  .ms-hop,
+  .ms-wag,
+  .ms-steam,
+  .ms-twinkle,
+  .ms-twinkle-b,
+  .ms-confetti,
+  .ms-confetti-b,
+  .ms-march,
+  .ms-march-b,
+  .ms-flutter,
+  .ms-puff,
+  .ms-puff-b,
+  .ms-burst,
+  .ms-burst-b,
+  .ms-drift,
+  .ms-ring,
+  .ms-ring-b,
+  .ms-eyes,
+  .ms-grin,
+  .ms-frown,
+  .ms-rain,
+  .ms-rain-b,
+  .ms-flame,
+  .ms-leaf,
+  .ms-blink,
+  .ms-glow {
+    animation: none;
+  }
+
+  .ms-steam,
+  .ms-confetti,
+  .ms-confetti-b,
+  .ms-puff,
+  .ms-puff-b,
+  .ms-burst,
+  .ms-burst-b,
+  .ms-ring,
+  .ms-ring-b,
+  .ms-rain,
+  .ms-rain-b,
+  .ms-leaf,
+  .ms-frown {
+    opacity: 0;
+  }
+}
+
+/* The town: the lemonade stand and the parade route. */
+@keyframes ms-mt-coin {
+  0% {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.6);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(46px) scale(1);
+  }
+}
+.ms-mt-coin {
+  animation: ms-mt-coin 1.6s ease-in infinite;
+}
+
+@keyframes ms-mt-rush {
+  0% {
+    transform: translateX(var(--mt-from, -40px));
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 0;
+  }
+}
+.ms-mt-rush-l {
+  --mt-from: -48px;
+  animation: ms-mt-rush 1.8s ease-out infinite;
+}
+.ms-mt-rush-r {
+  --mt-from: 48px;
+  animation: ms-mt-rush 1.8s ease-out infinite;
+}
+
+@keyframes ms-mt-hmph {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(4deg);
+  }
+}
+.ms-mt-hmph {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-mt-hmph 0.7s ease-in-out infinite;
+}
+
+@keyframes ms-mt-storm {
+  0%,
+  100% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+.ms-mt-storm {
+  animation: ms-mt-storm 0.9s ease-in-out infinite;
+}
+
+@keyframes ms-mt-bolt {
+  0%,
+  62%,
+  100% {
+    opacity: 0;
+  }
+  66%,
+  74% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 0.2;
+  }
+}
+.ms-mt-bolt {
+  animation: ms-mt-bolt 1.8s linear infinite;
+}
+
+@keyframes ms-mt-roll {
+  0%,
+  100% {
+    transform: translate(-2px, 0);
+  }
+  50% {
+    transform: translate(2px, -2px);
+  }
+}
+.ms-mt-roll {
+  animation: ms-mt-roll 1.1s ease-in-out infinite;
+}
+
+@keyframes ms-mt-onroad {
+  0% {
+    transform: translateX(-60px);
+  }
+  100% {
+    transform: translateX(60px);
+  }
+}
+.ms-mt-onroad {
+  animation: ms-mt-onroad 1.6s linear infinite;
+}
+
+@keyframes ms-mt-burst {
+  0% {
+    opacity: 0;
+    transform: translateY(-22px) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(70px) rotate(300deg);
+  }
+}
+.ms-mt-burst {
+  animation: ms-mt-burst 2.4s ease-in infinite;
+}
+
+@keyframes ms-mt-shout {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+  24% {
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+.ms-mt-shout {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-mt-shout 3.6s ease-out infinite;
+}
+
+@keyframes ms-mt-sun {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+.ms-mt-sun {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-mt-sun 1.4s ease-in-out infinite;
+}
+
+@keyframes ms-mt-drops {
+  0% {
+    transform: translateY(-14px);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(70px);
+    opacity: 0.1;
+  }
+}
+.ms-mt-drops {
+  animation: ms-mt-drops 0.7s linear infinite;
+}
+
+@keyframes ms-mt-disco {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+.ms-mt-disco {
+  animation: ms-mt-disco 0.6s steps(2, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-mt-coin,
+  .ms-mt-rush-l,
+  .ms-mt-rush-r,
+  .ms-mt-hmph,
+  .ms-mt-storm,
+  .ms-mt-bolt,
+  .ms-mt-roll,
+  .ms-mt-onroad,
+  .ms-mt-burst,
+  .ms-mt-shout,
+  .ms-mt-sun,
+  .ms-mt-drops,
+  .ms-mt-disco {
+    animation: none;
+  }
+
+  .ms-mt-coin,
+  .ms-mt-burst,
+  .ms-mt-bolt {
+    opacity: 1;
+  }
+}
+
+/* ---- Real smiles and painted smiles (Make Everyone Smile, the world): ms-w- ---- */
+/* A painted face's gloss: a slow glint that crosses the forehead. */
+@keyframes ms-w-gloss {
+  0%,
+  60%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.2;
+  }
+  80% {
+    transform: translateX(6px);
+    opacity: 1;
+  }
+}
+.ms-w-gloss {
+  animation: ms-w-gloss 4.4s ease-in-out infinite;
+}
+
+/* Faces get painted: a pale band sweeps across the crowd. */
+@keyframes ms-w-sweep {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(470px);
+    opacity: 0.9;
+  }
+}
+.ms-w-sweep {
+  animation: ms-w-sweep 1.5s ease-in forwards;
+}
+
+/* Real smiles back: warm colour floods the whole picture and drains away. */
+@keyframes ms-w-flood {
+  0% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-w-flood {
+  animation: ms-w-flood 3.6s ease-out forwards;
+}
+
+@keyframes ms-w-rise {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) scale(1.2);
+    opacity: 0;
+  }
+}
+.ms-w-rise {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-w-rise 2.6s ease-out both;
+}
+
+/* The drones sweep across the top of the picture, one after another. */
+@keyframes ms-w-fly {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(480px);
+  }
+}
+.ms-w-fly {
+  animation: ms-w-fly 2.4s ease-in-out both;
+}
+
+@keyframes ms-w-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.ms-w-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-w-spin 2.2s linear infinite;
+}
+.ms-w-spin-b {
+  animation-direction: reverse;
+  animation-duration: 3.4s;
+}
+
+@keyframes ms-w-dim {
+  0% {
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-w-dim {
+  animation: ms-w-dim 4.4s ease-in-out forwards;
+}
+
+@keyframes ms-w-beams {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.ms-w-beams {
+  animation: ms-w-beams 0.8s ease-in-out infinite;
+}
+
+/* Sound rings on the loudspeakers, and wavy lines for noise. */
+@keyframes ms-w-wave {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+.ms-w-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ms-w-wave 1.6s ease-out infinite;
+}
+.ms-w-wave-b {
+  animation-delay: 0.8s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-w-gloss,
+  .ms-w-sweep,
+  .ms-w-flood,
+  .ms-w-rise,
+  .ms-w-fly,
+  .ms-w-spin,
+  .ms-w-dim,
+  .ms-w-beams,
+  .ms-w-wave {
+    animation: none;
+  }
+
+  .ms-w-sweep,
+  .ms-w-flood,
+  .ms-w-rise,
+  .ms-w-fly,
+  .ms-w-dim {
+    opacity: 0;
+  }
+}
+
+/* ---- The bench (Make Everyone Smile, the quiet): qb- ---- */
+/* A banner band across the whole strip, then the word itself. */
+@keyframes ms-qb-band {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  78% {
+    opacity: 0.88;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-qb-band {
+  animation: ms-qb-band 4s ease-out forwards;
+}
+
+/* A warm wash for a step that landed, a cool one for a pull-away. */
+@keyframes ms-qb-wash {
+  0% {
+    opacity: 0;
+  }
+  14%,
+  60% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.ms-qb-wash {
+  animation: ms-qb-wash 3.6s ease-out forwards;
+}
+
+/* Hearts rise between the two of you. */
+@keyframes ms-qb-rise {
+  0% {
+    transform: translateY(8px) scale(0.5);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-64px) scale(1.4);
+    opacity: 0;
+  }
+}
+.ms-qb-rise {
+  animation: ms-qb-rise 2.2s ease-out 2 both;
+}
+
+/* A truck crosses the road, rumbling. */
+@keyframes ms-qb-truck {
+  0% {
+    transform: translateX(-260px);
+  }
+  100% {
+    transform: translateX(760px);
+  }
+}
+.ms-qb-truck {
+  animation: ms-qb-truck 7.5s linear forwards;
+}
+
+@keyframes ms-qb-rumble {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(1.5px, -1px);
+  }
+  75% {
+    transform: translate(-1.5px, 1px);
+  }
+}
+.ms-qb-rumble {
+  animation: ms-qb-rumble 0.18s linear infinite;
+}
+
+/* A bird flies in and lands on the back of the bench. */
+@keyframes ms-qb-bird {
+  0% {
+    transform: translate(-260px, -90px);
+  }
+  70% {
+    transform: translate(-30px, -30px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+.ms-qb-bird {
+  animation: ms-qb-bird 2.8s ease-out both;
+}
+
+/* They glance over, and look away again. */
+@keyframes ms-qb-glance {
+  0%,
+  45% {
+    transform: translateX(0);
+  }
+  55%,
+  100% {
+    transform: translateX(-2px);
+  }
+}
+.ms-qb-glance {
+  animation: ms-qb-glance 2.4s steps(1) infinite;
+}
+
+/* A pull-away: a quick shudder before the scoot. */
+@keyframes ms-qb-shudder {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  30% {
+    transform: translateX(3px);
+  }
+  60% {
+    transform: translateX(-2px);
+  }
+}
+.ms-qb-shudder {
+  animation: ms-qb-shudder 0.5s ease-out 2;
+}
+
+.ms-qb-rise,
+.ms-qb-glance,
+.ms-qb-shudder,
+.ms-qb-bird {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-qb-band,
+  .ms-qb-wash,
+  .ms-qb-rise,
+  .ms-qb-truck,
+  .ms-qb-rumble,
+  .ms-qb-bird,
+  .ms-qb-glance,
+  .ms-qb-shudder {
+    animation: none;
+  }
+
+  .ms-qb-wash,
+  .ms-qb-rise {
+    opacity: 0;
+  }
+
+  .ms-qb-truck {
+    transform: translateX(300px);
   }
 }

@@ -15,6 +15,7 @@ const EMPTY = normalizeView({ today: "2026-10-31" }) as ViewData;
 const HOME = {
   saves: { marks: {}, toast: null, toggle: () => {}, undo: () => {} },
   onLog: () => {},
+  onDraft: () => {},
 };
 
 describe("NotesHome", () => {
@@ -97,39 +98,74 @@ describe("NotesHome", () => {
 });
 
 describe("NotesHealth", () => {
-  it("shows the last injection, the next draw, the hold and lab cards", () => {
+  it("leads with the last shot's side and the next shot, then the plan", () => {
     render(<NotesHealth data={VIEW_FIXTURE} />);
-    expect(screen.getByText("Oct 28")).toBeInTheDocument();
-    expect(screen.getByText("50 mg · 3 days ago")).toBeInTheDocument();
-    expect(screen.getByText("Nov 20")).toBeInTheDocument();
-    expect(screen.getByText("in about 20 days")).toBeInTheDocument();
+    expect(screen.getByText("Right glute")).toBeInTheDocument();
+    expect(screen.getByText("Wed, Oct 28 · 8:10 AM")).toBeInTheDocument();
+    expect(screen.getByText(/50 mg \(0.25 mL\) · 3 days ago/)).toBeVisible();
+    // Wed 10-28 shot; Sat 10-31 is the next scheduled day, which is today.
+    expect(screen.getByText("Due today")).toBeInTheDocument();
+    expect(screen.getByText("Left glute (the other side)")).toBeInTheDocument();
+    const plan = screen.getByRole("region", { name: "Schedule" });
+    expect(within(plan).getByText("Wed, Sat")).toBeInTheDocument();
+    expect(within(plan).getByText("Twice a week")).toBeInTheDocument();
+    expect(
+      within(plan).getByText(/Labs Nov 20 · in about 20 days/)
+    ).toBeVisible();
+    const thisWeek = within(plan).getByRole("list", { name: "This week" });
+    expect(within(thisWeek).getAllByRole("listitem")).toHaveLength(7);
+    expect(
+      within(thisWeek).getByLabelText("Wed, Oct 28: Right glute 50 mg")
+    ).toBeInTheDocument();
+    expect(
+      within(thisWeek).getByLabelText("Sat, Oct 31: injection due")
+    ).toBeInTheDocument();
+  });
+
+  it("shows only the key lab charts and folds the rest away", async () => {
+    render(<NotesHealth data={VIEW_FIXTURE} />);
+    const labs = screen.getByRole("region", { name: "Labs" });
     expect(screen.getByText(/Set aside until the next draw/)).toHaveTextContent(
       "Estradiol"
     );
-    const labs = screen.getByRole("region", { name: "Labs" });
-    const cards = within(labs).getAllByRole("article");
-    expect(
-      cards.map((c) => within(c).getByRole("heading").textContent)
-    ).toEqual(["Hemoglobin", "Ferritin"]);
-    expect(within(cards[0]).getByText("High")).toBeInTheDocument();
-    expect(within(cards[0]).getByRole("img")).toHaveAccessibleName(
+    const heads = () =>
+      within(labs)
+        .getAllByRole("article")
+        .map((c) => within(c).getByRole("heading").textContent);
+    expect(heads()).toEqual(["Hemoglobin", "Ferritin"]);
+    const first = within(labs).getAllByRole("article")[0];
+    expect(within(first).getByText("High")).toBeInTheDocument();
+    expect(within(first).getByRole("img")).toHaveAccessibleName(
       /15.1 on Jun 1, 17.6 on Sep 1/
     );
+    expect(screen.queryByText(/more markers/)).toBeNull();
   });
 
-  it("lists injections newest first", () => {
+  it("lists injections newest first with the side", () => {
     render(<NotesHealth data={VIEW_FIXTURE} />);
     const list = screen.getByRole("region", { name: "Injections" });
-    const dates = within(list)
-      .getAllByRole("listitem")
-      .map((li) => li.querySelector("[data-date]")?.textContent);
-    expect(dates).toEqual(["Oct 28, 2026", "Oct 24, 2026", "Oct 21, 2026"]);
+    const items = within(list).getAllByRole("listitem");
+    expect(
+      items.map((li) => li.querySelector("[data-date]")?.textContent)
+    ).toEqual(["Oct 28, 2026", "Oct 24, 2026", "Oct 21, 2026"]);
+    expect(within(items[0]).getByText("Right")).toBeInTheDocument();
+    expect(within(items[1]).queryByText(/Left|Right/)).toBeNull();
+    expect(within(items[2]).getByText("Left")).toBeInTheDocument();
+  });
+
+  it("draws the weekly dose against the prescription", () => {
+    render(<NotesHealth data={VIEW_FIXTURE} />);
+    const chart = screen.getByRole("img", { name: /Milligrams per week/ });
+    expect(chart).toHaveAccessibleName(/Oct 26 50 so far/);
+    expect(chart).toHaveAccessibleName(/Prescribed 100/);
   });
 
   it("is calm with no health data", () => {
     render(<NotesHealth data={EMPTY} />);
     expect(screen.getByText("No injections logged yet.")).toBeInTheDocument();
     expect(screen.getByText("No lab results yet.")).toBeInTheDocument();
+    expect(screen.getByText("None yet")).toBeInTheDocument();
+    expect(screen.getByText("Not set")).toBeInTheDocument();
   });
 });
 
@@ -146,6 +182,36 @@ describe("NotesTraining", () => {
     expect(squat).toHaveTextContent("5RM 225");
     const pullup = within(moves).getByText("Pull-up").closest("li");
     expect(pullup).toHaveTextContent("Most 12 reps");
+  });
+
+  describe("lb | kg toggle", () => {
+    beforeEach(() => window.localStorage.clear());
+
+    it("defaults to lb", () => {
+      render(<NotesTraining data={VIEW_FIXTURE} />);
+      expect(screen.getByRole("radio", { name: "lb" })).toBeChecked();
+      expect(screen.getByRole("radio", { name: "kg" })).not.toBeChecked();
+    });
+
+    it("converts every weight, leaves heights alone, and remembers kg", async () => {
+      const { unmount } = render(<NotesTraining data={VIEW_FIXTURE} />);
+      await userEvent.click(screen.getByRole("radio", { name: "kg" }));
+      const moves = screen.getByRole("region", { name: "Movements" });
+      const squat = within(moves).getByText("Back squat").closest("li");
+      expect(squat).toHaveTextContent("Est. 1RM 119 kg");
+      expect(squat).toHaveTextContent("Best 115.5 kg ×1");
+      expect(squat).toHaveTextContent("1RM 115.5");
+      expect(squat).toHaveTextContent("5RM 102");
+      expect(squat).toHaveTextContent("1 @ 115.5 kg");
+      expect(squat).not.toHaveTextContent(" lb");
+      const jump = within(moves).getByText("Box jump").closest("li");
+      expect(jump).toHaveTextContent('@ 24"');
+      expect(window.localStorage.getItem("jim:weight-unit")).toBe("kg");
+      unmount();
+
+      render(<NotesTraining data={VIEW_FIXTURE} />);
+      expect(screen.getByRole("radio", { name: "kg" })).toBeChecked();
+    });
   });
 
   it("shows only the last 14 workouts", () => {
@@ -209,6 +275,115 @@ describe("NotesPeople", () => {
     expect(headings).toEqual(["Family 2", "Friends 1", "Work 1", "Others 1"]);
     await userEvent.click(screen.getByRole("button", { name: /Sam Okafor/ }));
     expect(onOpen).toHaveBeenCalledWith("people/sam-okafor.md");
+  });
+
+  it("lists coming-up dates in order, opening a person's profile", async () => {
+    const onOpen = jest.fn();
+    const data = {
+      ...VIEW_FIXTURE,
+      dates: [
+        {
+          kind: "birthday" as const,
+          name: "Jordan Lee",
+          on: "2026-11-05",
+          days: 5,
+          path: "people/jordan-lee.md",
+          turns: 40,
+        },
+        {
+          kind: "renewal" as const,
+          name: "Library card",
+          on: "2026-11-01",
+          days: 1,
+          path: "home/library.md",
+          turns: null,
+        },
+      ],
+    };
+    render(
+      <NotesPeople data={data} query="" onQuery={jest.fn()} onOpen={onOpen} />
+    );
+    const region = screen.getByRole("region", { name: "Coming up" });
+    expect(
+      within(region)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent)
+    ).toEqual([
+      "Jordan LeeNov 5 · in 5 days · turns 40›",
+      "Library cardNov 1 · tomorrow",
+    ]);
+    await userEvent.click(
+      within(region).getByRole("button", { name: /Jordan Lee/ })
+    );
+    expect(onOpen).toHaveBeenCalledWith("people/jordan-lee.md");
+    expect(
+      within(region).queryByRole("button", { name: /Library/ })
+    ).toBeNull();
+  });
+
+  it("hides coming up while searching", () => {
+    const data = {
+      ...VIEW_FIXTURE,
+      dates: [
+        {
+          kind: "birthday" as const,
+          name: "Jordan Lee",
+          on: "2026-11-05",
+          days: 5,
+          path: "people/jordan-lee.md",
+          turns: null,
+        },
+      ],
+    };
+    const { rerender } = render(
+      <NotesPeople
+        data={data}
+        query=""
+        onQuery={jest.fn()}
+        onOpen={jest.fn()}
+      />
+    );
+    expect(
+      screen.getByRole("region", { name: "Coming up" })
+    ).toBeInTheDocument();
+    rerender(
+      <NotesPeople
+        data={data}
+        query="college"
+        onQuery={jest.fn()}
+        onOpen={jest.fn()}
+      />
+    );
+    expect(screen.queryByRole("region", { name: "Coming up" })).toBeNull();
+  });
+
+  it("still draws a date whose kind it doesn't know", () => {
+    const data = {
+      ...VIEW_FIXTURE,
+      dates: [
+        {
+          kind: "party" as unknown as "birthday",
+          name: "Block party",
+          on: "2026-11-05",
+          days: 5,
+          path: "home/block-party.md",
+          turns: null,
+        },
+      ],
+    };
+    render(
+      <NotesPeople
+        data={data}
+        query=""
+        onQuery={jest.fn()}
+        onOpen={jest.fn()}
+      />
+    );
+    expect(
+      within(screen.getByRole("region", { name: "Coming up" })).getByText(
+        "Block party"
+      )
+    ).toBeInTheDocument();
   });
 
   it("filters by the search words", () => {

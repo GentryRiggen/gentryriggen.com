@@ -1,11 +1,12 @@
-import { LOCAL_HOSTS } from "@/lib/analytics/event";
+import { LOCAL_HOSTS } from "@/lib/analytics/localHosts";
 
 /**
- * The only host /jim runs on: the Cloud Run server allows just this origin.
- * The same Hosting site also answers on other domains (and www., web.app,
- * firebaseapp.com), so the page sends those here before doing anything.
+ * The only host /jim runs on: Jim's own Hosting site, the origin the Cloud
+ * Run server allows. Any other host that still serves the page (the main
+ * site's old address, web.app, firebaseapp.com) is sent here before
+ * anything else happens.
  */
-export const JIM_HOST = "gentryriggen.com";
+export const JIM_HOST = "jim.gentryriggen.com";
 export const JIM_URL = `https://${JIM_HOST}/jim`;
 
 export interface JimHostEnv {

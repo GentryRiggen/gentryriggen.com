@@ -21,6 +21,9 @@ import { toRuntimeEnvironment } from "./environmentRuntime";
 import Hull from "./Hull";
 import HullGash from "./HullGash";
 import Iceberg from "./Iceberg";
+import StrikeScenery from "./StrikeScenery";
+import BombTapLayer from "./BombTapLayer";
+import BoomScenery from "./BoomScenery";
 import LongPressRing from "./LongPressRing";
 import Ocean from "./Ocean";
 import PhotoCapture from "./PhotoCapture";
@@ -30,6 +33,8 @@ import ReflectionEnvironment from "./ReflectionEnvironment";
 import RenderInfoProbe from "./RenderInfoProbe";
 import RustDriver from "./RustDriver";
 import SeaFloor from "./SeaFloor";
+import EscapeEyes from "./EscapeEyes";
+import EscapeRunner from "./EscapeRunner";
 import SeaTrialEffects from "./SeaTrialEffects";
 import Crowd from "./Crowd";
 import FallingFunnels from "./FallingFunnels";
@@ -149,6 +154,7 @@ export default function Scene() {
               )}
             </PoweredGlow>
             <HullGash />
+            {!isPhoto && <BombTapLayer />}
             <Railings />
             {!isPhoto && <GridTargets />}
             {!isPhoto && <AttachMarkers />}
@@ -156,9 +162,13 @@ export default function Scene() {
           </ShipAnimation>
         </SailBank>
         <Iceberg />
+        <StrikeScenery />
+        <BoomScenery />
         <SeaTrialRunner />
         <SailRunner />
         <WalkRunner />
+        <EscapeRunner />
+        <EscapeEyes />
         <SailWorld />
         <SeaTrialEffects />
         <FallingFunnels />

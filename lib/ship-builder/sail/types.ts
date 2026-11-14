@@ -1,6 +1,7 @@
 import type { ShipKind } from "../model/kinds";
 
-export type ObstacleKind = "iceberg" | "rock" | "buoy" | "ship";
+export type ObstacleKind =
+  "iceberg" | "rock" | "buoy" | "ship" | "mine" | "island";
 
 /** Only buoys are soft: a bump with no damage. */
 export const SOFT_OBSTACLES: readonly ObstacleKind[] = ["buoy"];

@@ -198,6 +198,11 @@ export default function GamesView({ events }: GamesViewProps) {
             unit="parts"
           />
           <BreakdownList
+            title="How walkers escaped"
+            rows={ship.escapes}
+            unit="walks"
+          />
+          <BreakdownList
             title="Modes and sharing"
             rows={[
               { key: "Walks", views: ship.walks },

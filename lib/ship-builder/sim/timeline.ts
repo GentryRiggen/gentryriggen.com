@@ -1,5 +1,10 @@
 import { startDescent } from "./descent";
-import { ICEBERG_IMPACT_S, ICEBERG_MAX_S, STORM_SUNK_BY_S } from "./flooding";
+import {
+  ICEBERG_IMPACT_S,
+  ICEBERG_MAX_S,
+  STORM_SUNK_BY_S,
+  boomRunLimitOf,
+} from "./flooding";
 import { createTrial, stepTrial } from "./seaTrial";
 import {
   SIM_STEP_S,
@@ -21,6 +26,8 @@ export interface Timeline {
   states: readonly SimState[];
   /** True once the descent to the sea floor has been appended (see extendWithDescent). */
   descended: boolean;
+  /** Sim times playback slows down for a moment: each Boom! bomb. */
+  blasts?: readonly number[];
 }
 
 /** Slowest playback, at the moment she breaks. */
@@ -42,8 +49,10 @@ const MAX_TRIAL_S =
 /** Longest the descent to the floor may run. */
 const MAX_DESCENT_S = 120;
 
-/** Most steps any recording may take, in case a step stops the clock. */
-const MAX_STEPS = Math.ceil((MAX_TRIAL_S + MAX_DESCENT_S) / SIM_STEP_S);
+/** Longest the recording of `input` may run before the descent. */
+function maxTrialSecondsOf(input: TrialInput): number {
+  return input.boom ? boomRunLimitOf(input) : MAX_TRIAL_S;
+}
 
 /**
  * Steps `first` until the sim is done or `maxSeconds` have passed, keeping
@@ -56,10 +65,12 @@ function recordUntilDone(
 ): SimState[] {
   const states = [first];
   const until = first.time + maxSeconds;
+  // Most steps the recording may take, in case a step stops the clock.
+  const maxSteps = Math.ceil((maxSeconds + MAX_DESCENT_S) / SIM_STEP_S);
   let state = first;
   for (
     let step = 0;
-    step < MAX_STEPS && state.phase !== "done" && state.time < until;
+    step < maxSteps && state.phase !== "done" && state.time < until;
     step += 1
   ) {
     state = stepTrial(input, state);
@@ -70,10 +81,35 @@ function recordUntilDone(
 
 /** Runs the sim from the start to done and keeps every state. */
 export function buildTimeline(input: TrialInput): Timeline {
-  return {
-    states: recordUntilDone(input, createTrial(input), MAX_TRIAL_S),
+  const timeline: Timeline = {
+    states: recordUntilDone(
+      input,
+      createTrial(input),
+      maxTrialSecondsOf(input)
+    ),
     descended: false,
   };
+  return input.boom
+    ? { ...timeline, blasts: input.boom.bombs.map((bomb) => bomb.at) }
+    : timeline;
+}
+
+/**
+ * A timeline that runs at least to `until` (sim seconds): past its end it
+ * holds her last state, so a bomb dropped on the wreck still has a moment to
+ * go off in. Unchanged when it already reaches `until`.
+ */
+export function holdUntil(timeline: Timeline, until: number): Timeline {
+  const { states } = timeline;
+  const last = states[states.length - 1];
+  if (last.time >= until) return timeline;
+  const held: SimState[] = [...states];
+  let time = last.time;
+  while (time < until) {
+    time += SIM_STEP_S;
+    held.push({ ...last, time });
+  }
+  return { ...timeline, states: held };
 }
 
 /**
@@ -98,7 +134,11 @@ export function extendWithDescent(
   // entry stays one step apart.
   const appended =
     descent.length > 1 ? descent.slice(1) : [stepTrial(input, descent[0])];
-  return { states: [...timeline.states, ...appended], descended: true };
+  return {
+    ...timeline,
+    states: [...timeline.states, ...appended],
+    descended: true,
+  };
 }
 
 /** Sim time of the first state. */
@@ -161,9 +201,42 @@ function lerp(from: number, to: number, t: number): number {
 /**
  * Playback speed at `simTime`: 1, easing down to `SLOW_MO_SPEED` over the
  * `SLOW_MO_LEAD_S` before she breaks, holding for `SLOW_MO_HOLD_S`, then
- * easing back to 1 by `SLOW_MO_RECOVER_S` after. Always 1 if she never breaks.
+ * easing back to 1 by `SLOW_MO_RECOVER_S` after; and a shorter dip at every
+ * Boom! bomb. Always 1 if she never breaks and no bomb goes off.
  */
 export function slowMoSpeed(timeline: Timeline, simTime: number): number {
+  let speed = breakSlowMo(timeline, simTime);
+  for (const at of timeline.blasts ?? []) {
+    speed = Math.min(speed, blastSlowMo(simTime - at));
+  }
+  return speed;
+}
+
+/** Slowest playback just after a bomb goes off. */
+export const BLAST_SLOW_MO_SPEED = 0.35;
+/** Sim seconds before a bomb goes off that playback starts slowing down. */
+const BLAST_LEAD_S = 0.2;
+/** Sim seconds after it that playback stays at its slowest. */
+const BLAST_HOLD_S = 0.7;
+/** Sim seconds after it by which playback is back to normal. */
+const BLAST_RECOVER_S = 1.8;
+
+/** The dip in playback speed `since` sim seconds after one bomb went off. */
+function blastSlowMo(since: number): number {
+  if (since <= -BLAST_LEAD_S || since >= BLAST_RECOVER_S) return 1;
+  if (since < 0) {
+    return lerp(1, BLAST_SLOW_MO_SPEED, smoothstep(-BLAST_LEAD_S, 0, since));
+  }
+  if (since <= BLAST_HOLD_S) return BLAST_SLOW_MO_SPEED;
+  return lerp(
+    BLAST_SLOW_MO_SPEED,
+    1,
+    smoothstep(BLAST_HOLD_S, BLAST_RECOVER_S, since)
+  );
+}
+
+/** The slow-mo around her breaking in two (see `slowMoSpeed`). */
+function breakSlowMo(timeline: Timeline, simTime: number): number {
   const broke = firstEvent(timeline, "broke");
   if (!broke) return 1;
   const since = simTime - broke.at;

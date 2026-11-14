@@ -3,9 +3,11 @@ import {
   planEvacuation,
 } from "@/lib/ship-builder/crowd/evacuation";
 import type { Ship } from "@/lib/ship-builder/model/types";
+import { lastBombAt } from "@/lib/ship-builder/sim/flooding";
 import {
   buildTimeline,
   extendWithDescent,
+  holdUntil,
   stateAt,
   timelineEnd,
   type Timeline,
@@ -23,7 +25,10 @@ import { crowdPlanFor } from "./crowdView";
  */
 interface CachedTimeline {
   input: TrialInput;
+  /** As the sim recorded it (the descent is appended to this). */
   base: Timeline;
+  /** `base` held on for a Boom! trial's last blast (see `withBlastTail`). */
+  held: Timeline | null;
   descended: Timeline | null;
   /** The ship the evacuation plans were made for. */
   evacuationShip: Ship | null;
@@ -49,6 +54,7 @@ function cacheFor(input: TrialInput): CachedTimeline {
     cached = {
       input,
       base: buildTimeline(input),
+      held: null,
       descended: null,
       evacuationShip: null,
       evacuations: new Map(),
@@ -66,9 +72,28 @@ export function trialTimelineFor(
   descending = false
 ): Timeline {
   const entry = cacheFor(input);
-  if (!descending) return entry.base;
-  entry.descended ??= extendWithDescent(entry.base, input);
+  if (!descending) {
+    entry.held ??= withBlastTail(entry.base, input);
+    return entry.held;
+  }
+  entry.descended ??= withBlastTail(
+    extendWithDescent(entry.base, input),
+    input
+  );
   return entry.descended;
+}
+
+/**
+ * Sim seconds a Boom! timeline runs on after its last bomb, at the least, so
+ * a bomb dropped on the wreck has its bang, flying parts and smoke.
+ */
+export const BLAST_TAIL_S = 8;
+
+/** A Boom! timeline held on past its end for the last bomb's blast. */
+function withBlastTail(timeline: Timeline, input: TrialInput): Timeline {
+  return input.boom
+    ? holdUntil(timeline, lastBombAt(input) + BLAST_TAIL_S)
+    : timeline;
 }
 
 /**

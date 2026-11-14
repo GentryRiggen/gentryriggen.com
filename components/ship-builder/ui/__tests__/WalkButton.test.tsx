@@ -124,13 +124,13 @@ describe("WalkButton", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("hides with the Sea trial button while walking", () => {
+  it("hides with the Boom! button while walking", () => {
     act(() => store().loadShip(testShip(), null));
     render(<SeaTrialButton beside={<WalkButton />} />);
     expect(screen.getByRole("button", { name: "Walk" })).toBeInTheDocument();
     act(() => store().startWalk());
     expect(screen.queryByRole("button", { name: "Walk" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Sea trial" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Boom!" })).toBeNull();
     act(() => store().stopWalk());
     expect(screen.getByRole("button", { name: "Walk" })).toBeInTheDocument();
   });

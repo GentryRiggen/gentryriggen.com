@@ -4,8 +4,10 @@ import {
   clearViewCache,
   fetchView,
   getCachedView,
+  markRetroSaved,
   normalizeView,
   setViewSaver,
+  withRetroAnswers,
 } from "../view";
 import { VIEW_FIXTURE } from "./fixtures";
 
@@ -220,6 +222,110 @@ describe("normalizeView", () => {
       true
     );
   });
+
+  it("leaves the newer fields out when an older server sends none", () => {
+    const view = normalizeView({ today: "2026-10-31" });
+    expect(view?.actions).toBeUndefined();
+    expect(view?.actionsAsOf).toBeUndefined();
+    expect(view?.daily).toBeUndefined();
+    expect(view?.dates).toBeUndefined();
+    expect(view?.work).toBeUndefined();
+  });
+
+  it("keeps every newer field of a good payload as sent", () => {
+    const view = normalizeView(VIEW_FIXTURE);
+    expect(view?.actions).toEqual(VIEW_FIXTURE.actions);
+    expect(view?.actionsAsOf).toBe(VIEW_FIXTURE.actionsAsOf);
+    expect(view?.daily).toEqual(VIEW_FIXTURE.daily);
+    expect(view?.dates).toEqual(VIEW_FIXTURE.dates);
+    // An older meeting (no steps) gains empty defaults.
+    expect(view?.work).toMatchObject(VIEW_FIXTURE.work!);
+  });
+
+  it("keeps a good action and drops a malformed one", () => {
+    const good = VIEW_FIXTURE.actions![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      actions: [good, { ...good, tone: 5 }, { ...good, title: null }, "x"],
+    });
+    expect(view?.actions).toEqual([good]);
+  });
+
+  it("never links an action anywhere but https", () => {
+    const good = VIEW_FIXTURE.actions![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      actions: [{ ...good, link: "javascript:alert(1)" }],
+    });
+    expect(view?.actions?.[0].link).toBe("");
+  });
+
+  it("drops a daily word, dates and work that aren't the right shape", () => {
+    const date = VIEW_FIXTURE.dates![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      daily: "word",
+      dates: [
+        date,
+        { ...date, days: "3" },
+        { ...date, kind: "party" },
+        { ...date, days: Number.NaN },
+        { ...date, days: Number.POSITIVE_INFINITY },
+      ],
+      work: [],
+    });
+    expect(view?.daily).toBeNull();
+    expect(view?.dates).toEqual([date]);
+    expect(view?.work).toBeUndefined();
+  });
+
+  it("turns a non-finite age into null", () => {
+    const date = VIEW_FIXTURE.dates![0];
+    const view = normalizeView({
+      today: "2026-10-31",
+      dates: [{ ...date, turns: Number.NaN }],
+    });
+    expect(view?.dates?.[0].turns).toBeNull();
+  });
+
+  it("drops bad work entries one by one and keeps the rest", () => {
+    const work = VIEW_FIXTURE.work!;
+    const [member] = work.team;
+    const [meeting] = work.meetings;
+    const [person] = work.directory.people;
+    const view = normalizeView({
+      today: "2026-10-31",
+      work: {
+        team: [member, { ...member, wins: "two" }],
+        winsByWeek: [
+          work.winsByWeek[0],
+          { week: "2026-10-26", counts: { You: "1" } },
+        ],
+        winsKeys: ["You", 7],
+        meetings: [meeting, { ...meeting, people: "Ava" }],
+        directory: {
+          updated: work.directory.updated,
+          people: [person, { ...person, reportIds: ["1"] }, null],
+        },
+      },
+    });
+    expect(view?.work?.team).toEqual([member]);
+    expect(view?.work?.winsByWeek).toEqual([work.winsByWeek[0]]);
+    expect(view?.work?.winsKeys).toEqual(["You"]);
+    expect(view?.work?.meetings).toEqual([meeting]);
+    expect(view?.work?.directory.people).toEqual([person]);
+  });
+
+  it("fills in a work payload with lists missing", () => {
+    const view = normalizeView({ today: "2026-10-31", work: {} });
+    expect(view?.work).toEqual({
+      team: [],
+      winsByWeek: [],
+      winsKeys: [],
+      meetings: [],
+      directory: { updated: "", people: [] },
+    });
+  });
 });
 
 describe("keeping payloads on the device", () => {
@@ -259,5 +365,158 @@ describe("keeping payloads on the device", () => {
     const fetchFn = jest.fn().mockResolvedValue(json(500, {}));
     await expect(fetchView(async () => "t", fetchFn, API)).rejects.toThrow();
     expect(saver).not.toHaveBeenCalled();
+  });
+});
+
+describe("normalizeView, round 1 fields", () => {
+  const base = { today: "2026-10-31" };
+
+  it("leaves the new fields absent from an older server", () => {
+    const view = normalizeView(base);
+    expect(view?.noticed).toBeUndefined();
+    expect(view?.meetingCards).toBeUndefined();
+    expect(view?.reflection).toBeUndefined();
+    expect(view?.winsToday).toBeUndefined();
+  });
+
+  it("keeps good noticed rows and drops one missing its title", () => {
+    const view = normalizeView({
+      ...base,
+      noticed: [
+        {
+          kind: "todo",
+          title: "Water plants",
+          when: "Today",
+          tone: "soon",
+          ask: "a",
+        },
+        { kind: "todo", when: "Today", tone: "soon", ask: "a" },
+        { kind: "todo", title: "x", when: "", tone: "loud", ask: "a" },
+      ],
+    });
+    expect(view?.noticed).toEqual([
+      {
+        kind: "todo",
+        title: "Water plants",
+        when: "Today",
+        tone: "soon",
+        ask: "a",
+      },
+    ]);
+  });
+
+  it("keeps meeting cards, dropping malformed ones and attendees", () => {
+    const view = normalizeView({
+      ...base,
+      meetingCards: {
+        "0123456789abcdef": {
+          id: "0123456789abcdef",
+          subject: "Planning",
+          start: "2026-10-31T16:00:00Z",
+          end: "2026-10-31T17:00:00Z",
+          where: "Room 4",
+          attendees: [
+            {
+              name: "Sam Okafor",
+              role: "Lead",
+              path: "people/sam-okafor.md",
+              last: "",
+              todos: ["Send notes", 3],
+            },
+            { role: "no name" },
+          ],
+        },
+        bad: { id: "bad" },
+      },
+    });
+    expect(Object.keys(view?.meetingCards ?? {})).toEqual(["0123456789abcdef"]);
+    const card = view?.meetingCards?.["0123456789abcdef"];
+    expect(card?.attendees).toHaveLength(1);
+    expect(card?.attendees[0].todos).toEqual(["Send notes"]);
+  });
+
+  it("keeps reflection and winsToday only when well formed", () => {
+    expect(
+      normalizeView({
+        ...base,
+        reflection: { question: "What went well?" },
+        winsToday: 2,
+      })
+    ).toMatchObject({
+      reflection: { question: "What went well?" },
+      winsToday: 2,
+    });
+    const bad = normalizeView({
+      ...base,
+      reflection: { question: 4 },
+      winsToday: "2",
+    });
+    expect(bad?.reflection).toBeUndefined();
+    expect(bad?.winsToday).toBeUndefined();
+  });
+});
+
+describe("the retro payload", () => {
+  const base = { today: "2026-10-31" };
+  const Q = ["First?", "Second?", "Third?"];
+  const good = {
+    day: "2026-10-31",
+    morning: { questions: Q, answers: null },
+    evening: { questions: Q, answers: ["One", "", "Three"] },
+  };
+
+  it("keeps a well-formed retro", () => {
+    expect(normalizeView({ ...base, retro: good })?.retro).toEqual(good);
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["not an object", "x"],
+    ["no day", { ...good, day: 3 }],
+    ["a bad day", { ...good, day: "Oct 31" }],
+    [
+      "two questions",
+      { ...good, morning: { questions: ["a?", "b?"], answers: null } },
+    ],
+    ["no evening", { day: good.day, morning: good.morning }],
+  ])("drops a retro that is %s", (_name, retro) => {
+    expect(normalizeView({ ...base, retro })?.retro).toBeUndefined();
+  });
+
+  it("reads garbage answers as none saved", () => {
+    const view = normalizeView({
+      ...base,
+      retro: { ...good, evening: { questions: Q, answers: ["x", 2, "y"] } },
+    });
+    expect(view?.retro?.evening.answers).toBeNull();
+  });
+
+  it("marks a save on the cached payload", async () => {
+    clearViewCache();
+    const fetchFn = jest
+      .fn()
+      .mockResolvedValue(json(200, { ...VIEW_FIXTURE, retro: good }));
+    await fetchView(async () => "t", fetchFn, API);
+    const next = markRetroSaved("morning", "2026-10-31", ["a", "b", "c"]);
+    expect(next?.retro?.morning.answers).toEqual(["a", "b", "c"]);
+    expect(getCachedView()?.data.retro?.morning.answers).toEqual([
+      "a",
+      "b",
+      "c",
+    ]);
+    // Another day's save leaves the payload alone.
+    expect(markRetroSaved("evening", "2026-10-30", ["x", "", ""])).toBeNull();
+    expect(getCachedView()?.data.retro?.evening.answers).toEqual([
+      "One",
+      "",
+      "Three",
+    ]);
+  });
+
+  it("withRetroAnswers leaves a payload without a retro alone", () => {
+    const view = normalizeView(base)!;
+    expect(withRetroAnswers(view, "evening", "2026-10-31", ["a", "", ""])).toBe(
+      view
+    );
   });
 });

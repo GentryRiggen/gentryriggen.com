@@ -1,0 +1,104 @@
+import type { PhaseDef, RunState } from "../../engine/types";
+import {
+  COAST_LIGHTHOUSES,
+  PHASE_COAST,
+  PHASE_LAST,
+  PHASE_NIGHT,
+  PHASE_SKY,
+} from "./resources";
+import { CUTSCENES, TIPS } from "./cutscenes";
+import { startHarbor } from "./toll";
+import { TUNING } from "./tuning";
+import { syncDisplay } from "./tick";
+import { closeFund } from "./fund";
+import { resetGrid } from "./grid";
+import { startWarmth } from "./warmth";
+
+const headStart = (run: RunState): number => run.mods.headStart ?? 0;
+
+export const PHASES: readonly PhaseDef[] = [
+  {
+    id: PHASE_COAST,
+    cutscene: CUTSCENES[PHASE_COAST],
+    tips: TIPS[PHASE_COAST],
+    title: "The Coast",
+    intro:
+      "This is your lighthouse, and you are its keeper. Out on the dark water, little ships are looking for home, and your light is the only thing that shows them the way. Flash the lamp, guide them into the harbor, and build more lighthouses along the coast. Every ship you save matters.",
+    goal: "Guide ships home and light the whole coast.",
+    manualResource: "coins",
+    manualLabel: "Flash the light",
+    tapDoes:
+      "flash the light. Each flash guides ships home, and ships pay coins",
+    isDone: (run) => run.resources.lighthouses >= COAST_LIGHTHOUSES,
+    onEnter: (run) => {
+      startHarbor(run);
+      run.resources.coins += 40 * headStart(run);
+      syncDisplay(run);
+    },
+  },
+  {
+    id: PHASE_NIGHT,
+    cutscene: CUTSCENES[PHASE_NIGHT],
+    tips: TIPS[PHASE_NIGHT],
+    title: "No More Night",
+    intro:
+      "The coast is glowing, and the town noticed. Now they want streetlights, then the next town's, then the one after that. Crank the generator and wire up the grid. Nobody asks what the dark was for, and you are far too busy to wonder.",
+    goal: "Power the grid until there is no more night.",
+    manualResource: "power",
+    manualLabel: "Crank the generator",
+    tapDoes: "crank the generator for a little power",
+    isDone: (run) => run.resources.night <= 0.001,
+    onEnter: (run) => {
+      // Old coins no longer matter; the grid runs on power.
+      closeFund(run);
+      run.resources.power += 20 * headStart(run);
+      run.resources.night = 100;
+      resetGrid(run);
+      syncDisplay(run);
+    },
+  },
+  {
+    id: PHASE_SKY,
+    cutscene: CUTSCENES[PHASE_SKY],
+    tips: TIPS[PHASE_SKY],
+    title: "The Sky",
+    intro:
+      "The ground is bright, but look up. The sun pours light into the sky all day and nobody catches any of it, and the stars just sit there, burning for no one. You have a better idea. Aim your collectors and put every bit of that light to work.",
+    goal: "Collect the sky's light until the last star is used.",
+    manualResource: "energy",
+    manualLabel: "Aim a collector",
+    tapDoes: "aim a collector at the sun for a little energy",
+    isDone: (run) => run.resources.stars <= 0.5,
+    onEnter: (run) => {
+      closeFund(run);
+      run.resources.odLeft = 0;
+      run.resources.energy += 20 * headStart(run);
+      syncDisplay(run);
+    },
+  },
+  {
+    id: PHASE_LAST,
+    cutscene: CUTSCENES[PHASE_LAST],
+    tips: TIPS[PHASE_LAST],
+    title: "The Last Light",
+    intro:
+      "The sky is empty and very quiet. Every light you ever lit is still burning, and every one of them costs a little warmth to keep. One small boat is out on the dark water, and warmth is how it finds the way. It is up to you which lights stay, and when each one goes.",
+    goal: "Keep the flame warm and bring the last ship home.",
+    manualResource: "resolve",
+    manualLabel: "Tend the flame",
+    tapDoes: "tend the flame. Each tap earns a little resolve",
+    isDone: () => false,
+    onEnter: (run) => {
+      // The flame starts here whatever came before, so the ending is the same
+      // small thing for every player.
+      closeFund(run);
+      run.resources.odLeft = 0;
+      run.resources.flame = TUNING.last.startFlame;
+      run.resources.resolve = 0;
+      run.resources.ships = 0;
+      run.resources.boatProgress = 0;
+      startWarmth(run);
+      syncDisplay(run);
+    },
+  },
+];

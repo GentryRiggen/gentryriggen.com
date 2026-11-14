@@ -205,6 +205,91 @@ function playImpact(engine: Engine) {
   });
 }
 
+/** A sea mine: a sharp crack, a huge low boom, then water raining down. */
+function playExplosion(engine: Engine) {
+  const now = engine.ctx.currentTime;
+  noise(engine, {
+    buffer: engine.white,
+    start: now,
+    duration: 0.5,
+    filter: "highpass",
+    freq: 900,
+    freqEnd: 300,
+    gain: 1.2,
+    attack: 0.002,
+  });
+  tone(engine, {
+    type: "sine",
+    start: now,
+    duration: 2.8,
+    freq: 70,
+    freqEnd: 18,
+    gain: 1.6,
+    attack: 0.005,
+  });
+  noise(engine, {
+    buffer: engine.brown,
+    start: now,
+    duration: 3.5,
+    filter: "lowpass",
+    freq: 700,
+    freqEnd: 60,
+    gain: 1.8,
+    attack: 0.004,
+  });
+  // The water column falling back: a long hiss of spray.
+  noise(engine, {
+    buffer: engine.white,
+    start: now + 0.9,
+    duration: 2.4,
+    filter: "bandpass",
+    freq: 3000,
+    freqEnd: 1200,
+    q: 0.8,
+    gain: 0.35,
+    attack: 0.4,
+  });
+}
+
+/** Running aground: a heavy thud and rock grinding along the hull. */
+function playCrunch(engine: Engine) {
+  const now = engine.ctx.currentTime;
+  tone(engine, {
+    type: "sine",
+    start: now,
+    duration: 0.7,
+    freq: 110,
+    freqEnd: 40,
+    gain: 1.2,
+    attack: 0.004,
+  });
+  // Grinding: brown noise, chopped into bursts like rock catching on steel.
+  noise(engine, {
+    buffer: engine.brown,
+    start: now,
+    duration: 2.2,
+    filter: "bandpass",
+    freq: 380,
+    freqEnd: 150,
+    q: 1.6,
+    gain: 1.4,
+    attack: 0.01,
+    chop: 0.06,
+  });
+  noise(engine, {
+    buffer: engine.white,
+    start: now + 0.05,
+    duration: 1.8,
+    filter: "bandpass",
+    freq: 1800,
+    freqEnd: 700,
+    q: 3,
+    gain: 0.3,
+    attack: 0.05,
+    chop: 0.025,
+  });
+}
+
 /** The hull gives way: a layered crack, a sub boom, a long tearing groan. */
 function playBreak(engine: Engine) {
   const now = engine.ctx.currentTime;
@@ -451,6 +536,8 @@ const HUM_LEVEL = 0.05;
 /** How much each loud cue dips the music, and for how long (seconds). */
 const DUCK: Partial<Record<Cue["kind"], readonly [number, number]>> = {
   impact: [0.7, 2.2],
+  explosion: [0.9, 3],
+  crunch: [0.7, 2.4],
   break: [0.85, 4],
   "power-out": [0.5, 1.5],
   touchdown: [0.5, 1],
@@ -629,6 +716,10 @@ export function createTrialSynth(): TrialSynth {
     switch (cue.kind) {
       case "impact":
         return playImpact(engine);
+      case "explosion":
+        return playExplosion(engine);
+      case "crunch":
+        return playCrunch(engine);
       case "creak":
         return playCreak(engine, cue.intensity);
       case "groan":

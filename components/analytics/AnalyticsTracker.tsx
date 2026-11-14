@@ -3,10 +3,13 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { buildPageview } from "@/lib/analytics/event";
-import { sendPageview } from "@/lib/analytics/send";
 import { safeLocalStorage } from "@/lib/analytics/storage";
 
-/** Records one pageview per route change. Renders nothing. */
+/**
+ * Records one pageview per route change. Renders nothing. The sender (with
+ * its App Check) loads only when a view is actually sent, so pages that are
+ * never counted, like Jim, never download it.
+ */
 export default function AnalyticsTracker() {
   const pathname = usePathname();
   const firstView = useRef(true);
@@ -26,7 +29,11 @@ export default function AnalyticsTracker() {
       firstView: firstView.current,
     });
     firstView.current = false;
-    if (event) void sendPageview(event);
+    if (event) {
+      void import("@/lib/analytics/send")
+        .then(({ sendPageview }) => sendPageview(event))
+        .catch(() => {});
+    }
   }, [pathname]);
 
   return null;

@@ -314,6 +314,38 @@ describe("removal", () => {
     expect(store().pendingRemoval).toBeNull();
   });
 
+  it("deletes a held part and keeps the active tool", () => {
+    store().selectTool("deck-1x1");
+    store().deletePart("b");
+    expect(store().ship.parts.map((p) => p.id)).toEqual(["a"]);
+    expect(store().tool).toEqual({
+      kind: "place",
+      type: "deck-1x1",
+      rotation: 0,
+    });
+    expect(store().selectedId).toBeNull();
+  });
+
+  it("keeps the active tool through a cascade confirm or cancel", () => {
+    store().selectTool("deck-1x1");
+    store().deletePart("a");
+    expect(store().pendingRemoval).toEqual({ kind: "part", ids: ["a", "b"] });
+    expect(store().tool.kind).toBe("place");
+    store().cancelRemoval();
+    expect(store().tool.kind).toBe("place");
+    store().deletePart("a");
+    store().confirmRemoval();
+    expect(store().ship.parts).toHaveLength(0);
+    expect(store().tool.kind).toBe("place");
+  });
+
+  it("deletes a held part with no tool like select then Delete", () => {
+    store().deletePart("b");
+    expect(store().ship.parts.map((p) => p.id)).toEqual(["a"]);
+    expect(store().tool).toEqual({ kind: "none" });
+    expect(store().selectedId).toBeNull();
+  });
+
   it("cancels a pending removal", () => {
     store().select("a");
     store().requestDelete();

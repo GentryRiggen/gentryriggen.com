@@ -173,6 +173,7 @@ const HELP_TEXT = `Available commands:
   confetti         Celebrate!
   ships            Play my ship-building game
   planes           Play my plane-flying game
+  onward           Play Ever Onward, my incremental game
   hire me          Get in touch
   git status       Check repository status
   git blame        Find out who did it
@@ -353,6 +354,26 @@ function planesOutput(): ReactNode {
   );
 }
 
+function everOnwardOutput(): ReactNode {
+  return (
+    <div className="space-y-1">
+      <p>
+        Ever Onward. A little series of incremental games about robots who take
+        one job too far. 💡
+      </p>
+      <p>
+        Lighting the lamp...{" "}
+        <a
+          href="/ever-onward"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /ever-onward
+        </a>
+      </p>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Command matching & response
 // ---------------------------------------------------------------------------
@@ -400,6 +421,22 @@ export function getCommandResponse(
       output: planesOutput(),
       shouldClear: false,
       navigateTo: "/plane-builder",
+    };
+  }
+
+  // --- ever onward (machines and little-machines are old aliases) ---
+  if (
+    lower === "onward" ||
+    lower === "ever-onward" ||
+    lower === "ever onward" ||
+    lower === "machines" ||
+    lower === "little-machines" ||
+    lower === "little machines"
+  ) {
+    return {
+      output: everOnwardOutput(),
+      shouldClear: false,
+      navigateTo: "/ever-onward",
     };
   }
 

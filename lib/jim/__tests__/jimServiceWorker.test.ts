@@ -56,6 +56,17 @@ function keyOf(request: FakeRequest | string): string {
   return typeof request === "string" ? request : request.url;
 }
 
+/** Enough of Response for the pending-open note the worker writes. */
+class NoteResponse {
+  constructor(
+    readonly body: string,
+    readonly init?: unknown
+  ) {}
+  async text() {
+    return this.body;
+  }
+}
+
 /** Loads the worker into a sandbox with in-memory caches and mocks. */
 function loadWorker() {
   const listeners = new Map<string, Listener>();
@@ -107,6 +118,7 @@ function loadWorker() {
     URL,
     Set,
     Promise,
+    Response: NoteResponse,
     // The 4s navigation timeout fires on the next tick in tests.
     setTimeout: (fn: () => void) => setTimeout(fn, 0),
   });
@@ -142,9 +154,18 @@ function loadWorker() {
     showNotification,
     matchAll,
     openWindow,
+    skipWaiting: self.skipWaiting,
     dispatchFetch,
     dispatch,
-    cacheKeys: () => [...(stores.get("jim-shell-v1")?.keys() ?? [])].sort(),
+    cacheKeys: () => [...(stores.get("jim-shell-v2")?.keys() ?? [])].sort(),
+    /** The pending-open note a tap left, parsed, or null. */
+    note: () => {
+      const saved = stores.get("jim-open-v1")?.get("/jim/__open") as unknown as
+        NoteResponse | undefined;
+      return saved
+        ? (JSON.parse(saved.body) as { id: string; url: string; at: number })
+        : null;
+    },
   };
 }
 
@@ -170,12 +191,14 @@ describe("install and activate", () => {
 
   it("deletes its own old caches only", async () => {
     const worker = loadWorker();
-    worker.stores.set("jim-shell-v0", new Map());
-    worker.stores.set("ship-builder-v1", new Map());
     worker.stores.set("jim-shell-v1", new Map());
+    worker.stores.set("ship-builder-v1", new Map());
+    worker.stores.set("jim-open-v1", new Map());
+    worker.stores.set("jim-shell-v2", new Map());
     await worker.dispatch("activate");
     expect([...worker.stores.keys()].sort()).toEqual([
-      "jim-shell-v1",
+      "jim-open-v1",
+      "jim-shell-v2",
       "ship-builder-v1",
     ]);
   });
@@ -196,7 +219,15 @@ describe("fetch", () => {
       "the ship builder",
       makeRequest(`${ORIGIN}/ship-builder`, { mode: "navigate" }),
     ],
-    ["an icon", makeRequest(`${ORIGIN}/jim-icons/icon-192.png`)],
+    ["an icon", makeRequest(`${ORIGIN}/jim-icons/glow-pal-192.png`)],
+    [
+      "a file under /jim/",
+      makeRequest(`${ORIGIN}/jim/version.json`, { mode: "navigate" }),
+    ],
+    [
+      "a lookalike deep page",
+      makeRequest(`${ORIGIN}/jimmy/notes`, { mode: "navigate" }),
+    ],
   ])("leaves %s alone", (_label, request) => {
     expect(loadWorker().dispatchFetch(request)).toBeUndefined();
   });
@@ -210,6 +241,31 @@ describe("fetch", () => {
     expect(response?.body).toBe("page");
     expect(worker.cacheKeys()).toEqual([PAGE]);
   });
+
+  it.each([
+    "/jim/chat",
+    "/jim/notes",
+    "/jim/notes/people/sam-okafor",
+    "/jim/notes/note/home/garden",
+  ])(
+    "serves the app address %s like /jim, offline too, kept as /jim",
+    async (path) => {
+      const worker = loadWorker();
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("page"));
+      const online = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}${path}`, { mode: "navigate" })
+      );
+      expect(online?.body).toBe("page");
+      // Never a person's or note's address in the cache: the one page.
+      expect(worker.cacheKeys()).toEqual([PAGE]);
+
+      worker.fetchMock.mockRejectedValueOnce(new TypeError("offline"));
+      const offline = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}${path}`, { mode: "navigate" })
+      );
+      expect(offline?.body).toBe("page");
+    }
+  );
 
   it("falls back to the cached page offline, and when slow", async () => {
     const worker = loadWorker();
@@ -303,6 +359,50 @@ describe("CACHE_URLS", () => {
       PAGE,
     ]);
   });
+
+  it("keeps a page loaded at a deep address as /jim, fetched as /jim", async () => {
+    const worker = loadWorker();
+    worker.fetchMock.mockResolvedValue(makeResponse("x"));
+    await worker.dispatch("message", {
+      source: { type: "window" },
+      data: {
+        type: "CACHE_URLS",
+        urls: [`${ORIGIN}/jim/notes/people/sam-okafor`],
+      },
+    });
+    expect(worker.cacheKeys()).toEqual([PAGE]);
+    expect(worker.fetchMock).toHaveBeenCalledWith(PAGE, {
+      credentials: "same-origin",
+    });
+  });
+});
+
+describe("waiting and SKIP_WAITING", () => {
+  it("does not skip waiting on install", async () => {
+    const worker = loadWorker();
+    worker.fetchMock.mockResolvedValue(makeResponse("x"));
+    await worker.dispatch("install");
+    expect(worker.skipWaiting).not.toHaveBeenCalled();
+  });
+
+  it("skips waiting when a page asks", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("message", {
+      source: { type: "window" },
+      data: { type: "SKIP_WAITING" },
+    });
+    expect(worker.skipWaiting).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores SKIP_WAITING from anything but a window", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("message", {
+      source: { type: "worker" },
+      data: { type: "SKIP_WAITING" },
+    });
+    await worker.dispatch("message", { data: { type: "SKIP_WAITING" } });
+    expect(worker.skipWaiting).not.toHaveBeenCalled();
+  });
 });
 
 describe("push", () => {
@@ -322,12 +422,36 @@ describe("push", () => {
     });
     expect(worker.showNotification).toHaveBeenCalledWith("Good morning", {
       body: "2 due",
-      icon: "/jim-icons/icon-192.png",
-      badge: "/jim-icons/icon-192.png",
+      icon: "/jim-icons/glow-pal-192.png",
+      badge: "/jim-icons/glow-pal-192.png",
       tag: "jim-morning",
       data: { url: PAGE },
     });
   });
+
+  it.each([
+    ["jim-quiz", "jim-quiz"],
+    ["jim-reminder-abcdef012345", "jim-reminder-abcdef012345"],
+    ["jim-meeting-0123456789abcdef", "jim-meeting-0123456789abcdef"],
+    ["jim-x-12345678901234567", "jim-morning"],
+    ["Jim-Quiz", "jim-morning"],
+    ["other-tag", "jim-morning"],
+    ["jim-Reminder-abc", "jim-morning"],
+    [7, "jim-morning"],
+  ])(
+    "uses the payload's tag %p only when it's a jim- tag",
+    async (tag, want) => {
+      const worker = loadWorker();
+      await worker.dispatch("push", {
+        data: pushData({ title: "Quiz time", body: "b", url: "/jim", tag }),
+      });
+      const [, options] = worker.showNotification.mock.calls[0] as unknown as [
+        string,
+        { tag: string },
+      ];
+      expect(options.tag).toBe(want);
+    }
+  );
 
   it.each([
     ["no payload", undefined],
@@ -373,6 +497,210 @@ describe("notificationclick", () => {
     expect(notification.close).toHaveBeenCalled();
     expect(focus).toHaveBeenCalled();
     expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("focuses Jim open at a deep address", async () => {
+    const worker = loadWorker();
+    const focus = jest.fn(async () => {});
+    worker.matchAll.mockResolvedValue([
+      { url: `${ORIGIN}/jim/notes/people/sam-okafor`, focus },
+    ]);
+    await worker.dispatch("notificationclick", { notification: click() });
+    expect(focus).toHaveBeenCalled();
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("keeps a /jim?say= query when opening", async () => {
+    const worker = loadWorker();
+    const url = `${PAGE}?say=quiz%20me`;
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(url);
+  });
+
+  it("tells an open /jim the say text instead of reloading it", async () => {
+    const worker = loadWorker();
+    const url = `${PAGE}?say=quiz%20me`;
+    const focus = jest.fn(async () => {});
+    const navigate = jest.fn(async () => {});
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus, navigate, postMessage },
+    ]);
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(focus).toHaveBeenCalled();
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_SAY",
+      say: "quiz me",
+    });
+    expect(navigate).not.toHaveBeenCalled();
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("does the same for a client the worker doesn't control yet", async () => {
+    const worker = loadWorker();
+    const postMessage = jest.fn();
+    // matchAll is asked for uncontrolled clients too; one has no navigate.
+    worker.matchAll.mockResolvedValue([
+      {
+        url: `${PAGE}?say=keep%20going`,
+        focus: jest.fn(async () => {}),
+        postMessage,
+      },
+    ]);
+    await worker.dispatch("notificationclick", {
+      notification: {
+        close: jest.fn(),
+        data: { url: `${PAGE}?say=keep%20going` },
+      },
+    });
+    expect(worker.matchAll).toHaveBeenCalledWith(
+      expect.objectContaining({ includeUncontrolled: true })
+    );
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_SAY",
+      say: "keep going",
+    });
+  });
+
+  it("sends an open /jim only JIM_OPEN for a plain tap", async () => {
+    const worker = loadWorker();
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus: jest.fn(async () => {}), postMessage },
+    ]);
+    await worker.dispatch("notificationclick", { notification: click() });
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_OPEN",
+      url: PAGE,
+      id: expect.any(String),
+    });
+  });
+
+  it("tells an open page where a reminder tap goes, without a new window", async () => {
+    const worker = loadWorker();
+    const url = `${ORIGIN}/jim/reminders/abcdef012345`;
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      { url: PAGE, focus: jest.fn(async () => {}), postMessage },
+    ]);
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_OPEN",
+      url,
+      id: expect.any(String),
+    });
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("leaves a note of the tap before anything else", async () => {
+    const worker = loadWorker();
+    const url = `${ORIGIN}/jim/retro/evening`;
+    let noteAtMatchAll: unknown = undefined;
+    worker.matchAll.mockImplementation(async () => {
+      noteAtMatchAll = worker.note();
+      return [];
+    });
+    const before = Date.now();
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(noteAtMatchAll).toEqual({
+      id: expect.any(String),
+      url,
+      at: expect.any(Number),
+    });
+    const note = worker.note()!;
+    expect(note.at).toBeGreaterThanOrEqual(before);
+    expect(note.at).toBeLessThanOrEqual(Date.now());
+  });
+
+  it("still tells the page when focus() is refused, under the note's id", async () => {
+    const worker = loadWorker();
+    const url = `${ORIGIN}/jim/retro/evening`;
+    const postMessage = jest.fn();
+    worker.matchAll.mockResolvedValue([
+      {
+        url: PAGE,
+        focus: jest.fn(async () => {
+          throw new TypeError("Not allowed to focus a window");
+        }),
+        postMessage,
+      },
+    ]);
+    await expect(
+      worker.dispatch("notificationclick", {
+        notification: { close: jest.fn(), data: { url } },
+      })
+    ).resolves.toBeUndefined();
+    const note = worker.note()!;
+    expect(note.url).toBe(url);
+    expect(postMessage).toHaveBeenCalledWith({
+      type: "JIM_OPEN",
+      url,
+      id: note.id,
+    });
+    expect(worker.openWindow).not.toHaveBeenCalled();
+  });
+
+  it("gives each tap its own id", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("notificationclick", { notification: click() });
+    const first = worker.note()!.id;
+    await worker.dispatch("notificationclick", { notification: click() });
+    expect(worker.note()!.id).not.toBe(first);
+  });
+
+  it("still opens the page when the note can't be written", async () => {
+    const worker = loadWorker();
+    worker.broken.open = true;
+    const url = `${ORIGIN}/jim/retro/evening`;
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: { url } },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(url);
+  });
+
+  it("opens a retro push's address when Jim isn't open", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("push", {
+      data: {
+        json: () => ({
+          title: "Evening retro",
+          body: "b",
+          url: "/jim/retro/evening",
+          tag: "jim-retro-pm",
+        }),
+      },
+    });
+    const [, options] = worker.showNotification.mock.calls[0] as unknown as [
+      string,
+      { data: { url: string } },
+    ];
+    expect(options.data.url).toBe(`${ORIGIN}/jim/retro/evening`);
+    await worker.dispatch("notificationclick", {
+      notification: { close: jest.fn(), data: options.data },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(
+      `${ORIGIN}/jim/retro/evening`
+    );
+  });
+
+  it("turns a cross-origin url into /jim", async () => {
+    const worker = loadWorker();
+    await worker.dispatch("notificationclick", {
+      notification: {
+        close: jest.fn(),
+        data: { url: "https://evil.test/jim" },
+      },
+    });
+    expect(worker.openWindow).toHaveBeenCalledWith(PAGE);
   });
 
   it("opens /jim when it isn't open", async () => {

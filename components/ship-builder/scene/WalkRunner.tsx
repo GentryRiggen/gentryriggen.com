@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { SIM_STEP_S } from "@/lib/ship-builder/sim/types";
+import { getEscape } from "@/lib/ship-builder/state/escapeLive";
 import {
   getWalkState,
   publishWalk,
@@ -12,38 +13,41 @@ import { walkInput } from "@/lib/ship-builder/state/walkInput";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import {
   halfWalkGrid,
+  lookAround,
   stepWalker,
   walkGridOf,
   walkHalfOf,
   type WalkGrid,
-  type WalkState,
 } from "@/lib/ship-builder/walk";
 import { MAX_FRAME_DELTA } from "./animationMath";
 import { walkHalfShip } from "./partHalves";
 import { trialPlayback } from "./trialPlayback";
 import { testWalkSpawn } from "./testClock";
 
-/** Runs one walk: steps the walker in fixed steps and publishes it. */
+/**
+ * Runs one walk: steps the walker in fixed steps and publishes it. Only while
+ * they are aboard (see `EscapeRunner`): seated in a boat or frozen in the
+ * water they can still look about, and otherwise stay put.
+ */
 function Walking() {
   const ship = useShipBuilderStore((s) => s.ship);
   const grid = useMemo(() => walkGridOf(ship), [ship]);
   // Once she breaks: the grid cut to the walker's half, picked once.
   const halfGrid = useRef<{ atX: number; grid: WalkGrid } | null>(null);
-  // The store published the spawn when the walk started.
-  const state = useRef<WalkState | null>(getWalkState());
   const leftover = useRef(0);
 
-  // A test can start the walker somewhere particular.
+  // A test can start the walker somewhere particular. The store published
+  // the spawn when the walk started.
   useEffect(() => {
     const planted = testWalkSpawn();
-    const current = state.current;
+    const current = getWalkState();
     if (!planted || !current) return;
-    state.current = { ...current, ...planted };
-    publishWalk(state.current);
+    publishWalk({ ...current, ...planted });
   }, []);
 
   useFrame((_, delta) => {
-    const current = state.current;
+    // Read fresh each frame: the escape runner turns the walker too.
+    const current = getWalkState();
     if (!current) return;
     const { breakup } = trialPlayback;
     if (!breakup) {
@@ -63,6 +67,20 @@ function Walking() {
       };
       publishWalkHalf(side);
     }
+    const { kind } = getEscape().phase;
+    if (kind !== "aboard") {
+      // Off the deck: no walking or jumping, and nothing banked for later.
+      leftover.current = 0;
+      walkInput.jump = false;
+      if (kind !== "in-boat" && kind !== "frozen") return;
+      const yaw = lookAround(
+        current.yaw,
+        walkInput.turn,
+        Math.min(delta, MAX_FRAME_DELTA)
+      );
+      if (yaw !== current.yaw) publishWalk({ ...current, yaw });
+      return;
+    }
     const stepGrid = halfGrid.current?.grid ?? grid;
     leftover.current += Math.min(delta, MAX_FRAME_DELTA);
     let next = current;
@@ -74,7 +92,6 @@ function Walking() {
     // A tap is one request, however many steps it took to be heard.
     if (hadSteps) walkInput.jump = false;
     if (next === current) return;
-    state.current = next;
     publishWalk(next);
   });
 

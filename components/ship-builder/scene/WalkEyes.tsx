@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Group, Vector3 } from "three";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
+import { getEscape } from "@/lib/ship-builder/state/escapeLive";
 import { getWalkHalf, getWalkState } from "@/lib/ship-builder/state/walkLive";
 import { walkInput } from "@/lib/ship-builder/state/walkInput";
 import type { WalkHalf } from "@/lib/ship-builder/walk";
@@ -35,7 +36,8 @@ interface WalkEyesProps {
  * (see `swayShare`) so a calm sea's sway stays gentle; during a sea trial the
  * view follows the deck fully. A broken ship has one per half (`half`), and
  * only the one on the walker's half drives the camera; the whole ship's stops
- * once she breaks.
+ * once she breaks. Once the walker leaves the deck (a boat, the water),
+ * `EscapeEyes` has the camera instead.
  */
 export default function WalkEyes({ half }: WalkEyesProps) {
   const group = useRef<Group>(null);
@@ -48,6 +50,7 @@ export default function WalkEyes({ half }: WalkEyesProps) {
     const walk = getWalkState();
     const { ship, walk: status } = useShipBuilderStore.getState();
     if (!holder || !walk || status.status !== "walking") return;
+    if (getEscape().phase.kind !== "aboard") return;
     // One view at a time: the whole ship's, or the half the walker rides.
     const ridden = trialPlayback.breakup ? getWalkHalf() : null;
     if ((ridden ?? undefined) !== half) return;

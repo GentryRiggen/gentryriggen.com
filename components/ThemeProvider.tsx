@@ -7,7 +7,7 @@ import {
   useState,
   useCallback,
 } from "react";
-import { isJimPath } from "@/lib/theme/themeScript";
+import { fixedThemeColor } from "@/lib/theme/themeScript";
 
 type Theme = "light" | "dark";
 
@@ -63,13 +63,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     localStorage.setItem("theme", theme);
 
-    // Update theme-color meta tag for iOS Safari browser chrome (not on
-    // /jim, whose status bar is always Ayu Mirage).
+    // Update theme-color meta tag for iOS Safari browser chrome (/jim and
+    // Ever Onward keep their own fixed color).
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeColorMeta && !isJimPath(window.location.pathname)) {
+    if (themeColorMeta) {
       themeColorMeta.setAttribute(
         "content",
-        theme === "dark" ? "#030712" : "#ffffff"
+        fixedThemeColor(window.location.pathname) ??
+          (theme === "dark" ? "#030712" : "#ffffff")
       );
     }
   }, [theme, mounted]);

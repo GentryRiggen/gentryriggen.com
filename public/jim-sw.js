@@ -1,30 +1,45 @@
-/* Jim service worker: /jim opens without signal, and the morning briefing
- * arrives as a notification.
+/* Jim service worker: /jim opens without signal, and Jim's pushes (morning
+ * brief, reminders, heads-ups, wrap-ups) arrive as notifications.
  *
  * Registered by lib/jim/serviceWorker.ts with scope "/jim", so it only
  * controls the /jim page. Rules:
  * - Only same-origin GET requests are ever handled; everything else (the
  *   Jim server, Firebase, any POST) goes straight to the network untouched.
  *   Nothing under /api/ is ever cached.
- * - Navigations to /jim: network-first, falling back to the cached page when
- *   offline or slow (4s). When a deploy changes the files the page
- *   references, cached /_next/static/ files it no longer uses are pruned.
+ * - Navigations to /jim and every app address under it (/jim/notes/people/x;
+ *   Hosting serves the one page there): network-first, falling back to the
+ *   cached page when offline or slow (4s). Every one is stored as /jim. When
+ *   a deploy changes the files the page references, cached /_next/static/
+ *   files it no longer uses are pruned. A file under /jim/ (version.json) is
+ *   never an app address.
  * - /_next/static/* (content-hashed, immutable): cache-first.
  * - Install precaches /jim and the /_next/static/ files its HTML names; the
  *   page also posts { type: "CACHE_URLS", urls } with what it has loaded
  *   (chunks loaded before the worker took control).
  * - Only `ok`, same-origin (`type === "basic"`), non-redirected responses are
  *   cached, so opaque or cross-origin responses never enter the cache.
- * - push: { title, body, url } becomes a notification (a generic one when
- *   the payload can't be read: iOS wants one for every push). A tap focuses
- *   an open /jim or opens it.
+ * - A new worker waits (no automatic skipWaiting) until a page posts
+ *   { type: "SKIP_WAITING" }; the page then reloads on controllerchange.
+ * - push: { title, body, url, tag } becomes a notification (a generic one
+ *   when the payload can't be read: iOS wants one for every push). The tag
+ *   ("jim-" plus a kind, e.g. jim-quiz) keeps kinds from replacing each
+ *   other; a missing or odd one falls back to "jim-morning".
+ * - A tap first leaves a note of where it goes (cache "jim-open-v1", key
+ *   /jim/__open, { id, url, at }), then focuses an open /jim and sends it
+ *   JIM_OPEN { url, id } (plus JIM_SAY for older pages), or opens the URL.
+ *   iOS can refuse focus() or deliver the message to a page that is asleep;
+ *   the page reads the note when it is shown again, and the id keeps one
+ *   tap from being handled twice. A URL's query (/jim?say=quiz%20me) is kept.
  */
 
 const CACHE_PREFIX = "jim-shell-";
-const CACHE = `${CACHE_PREFIX}v1`;
+const CACHE = `${CACHE_PREFIX}v2`;
+/** Holds the one pending-open note; not a shell cache, so activate keeps it. */
+const OPEN_CACHE = "jim-open-v1";
+const OPEN_KEY = "/jim/__open";
 const PAGE_PATH = "/jim";
 const STATIC_PREFIX = "/_next/static/";
-const ICON = "/jim-icons/icon-192.png";
+const ICON = "/jim-icons/glow-pal-192.png";
 const NOTIFICATION_TAG = "jim-morning";
 /** Upper bound on URLs accepted from one CACHE_URLS message. */
 const MAX_PRECACHE_URLS = 300;
@@ -40,6 +55,18 @@ function isPagePath(pathname) {
     pathname === `${PAGE_PATH}/` ||
     pathname === `${PAGE_PATH}.html`
   );
+}
+
+/**
+ * True for an address the Jim page answers: the page, or any path under
+ * /jim/ whose last part has no dot (/jim/notes/people/x, not
+ * /jim/version.json).
+ */
+function isAppPath(pathname) {
+  if (isPagePath(pathname)) return true;
+  if (!pathname.startsWith(`${PAGE_PATH}/`)) return false;
+  const last = pathname.slice(pathname.lastIndexOf("/") + 1);
+  return !last.includes(".");
 }
 
 function isStaticAsset(pathname) {
@@ -106,7 +133,8 @@ async function precachePage() {
 }
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
+  // No skipWaiting here: a new worker waits until the page asks (SKIP_WAITING,
+  // from the "Update ready" pill) so the page and its worker change together.
   // Best effort: an install while offline still installs.
   event.waitUntil(precachePage().catch(() => {}));
 });
@@ -203,7 +231,7 @@ self.addEventListener("fetch", (event) => {
   if (!url || isApi(url.pathname)) return;
 
   if (request.mode === "navigate") {
-    if (isPagePath(url.pathname)) {
+    if (isAppPath(url.pathname)) {
       // Started here, and waitUntil called before any await (WebKit
       // rejects a late one), so a slow answer can still update the cache.
       const network = fetch(request).then(async (response) => {
@@ -253,6 +281,10 @@ self.addEventListener("message", (event) => {
   const { data, source } = event;
   // Only accept messages from our own pages (window clients are same-origin).
   if (!source || source.type !== "window") return;
+  if (data && data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
   if (!data || data.type !== "CACHE_URLS" || !Array.isArray(data.urls)) return;
 
   const seen = new Set();
@@ -260,9 +292,13 @@ self.addEventListener("message", (event) => {
   for (const value of data.urls.slice(0, MAX_PRECACHE_URLS)) {
     const url = toSameOriginUrl(value);
     if (!url) continue;
-    if (!isPagePath(url.pathname) && !isStaticAsset(url.pathname)) continue;
+    if (!isAppPath(url.pathname) && !isStaticAsset(url.pathname)) continue;
     url.hash = "";
-    if (isPagePath(url.pathname)) url.search = "";
+    // The page at any app address is the one page: kept as /jim.
+    if (isAppPath(url.pathname)) {
+      url.pathname = PAGE_PATH;
+      url.search = "";
+    }
     if (seen.has(url.href)) continue;
     seen.add(url.href);
     urls.push(url);
@@ -274,7 +310,7 @@ self.addEventListener("message", (event) => {
 /** Where a tap goes: the payload's /jim URL, or /jim. */
 function targetUrl(value) {
   const url = toSameOriginUrl(value);
-  return url && isPagePath(url.pathname) ? url.href : pageKey();
+  return url && isAppPath(url.pathname) ? url.href : pageKey();
 }
 
 /** The notification a push shows. Never throws. */
@@ -296,7 +332,12 @@ function notificationFor(data) {
       body: ok && typeof payload.body === "string" ? payload.body : "",
       icon: ICON,
       badge: ICON,
-      tag: NOTIFICATION_TAG,
+      tag:
+        ok &&
+        typeof payload.tag === "string" &&
+        /^jim-[a-z]{1,20}(-[a-z0-9]{1,16})?$/.test(payload.tag)
+          ? payload.tag
+          : NOTIFICATION_TAG,
       data: { url: targetUrl(ok ? payload.url : null) },
     },
   };
@@ -307,19 +348,55 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+/** A new id for one tap. */
+function tapId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Leaves the note of where a tap goes. Never throws. */
+async function leaveOpenNote(note) {
+  try {
+    const cache = await caches.open(OPEN_CACHE);
+    await cache.put(
+      OPEN_KEY,
+      new Response(JSON.stringify(note), {
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+  } catch {
+    // No note: the message and openWindow still carry the tap.
+  }
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const url = targetUrl(event.notification.data && event.notification.data.url);
+  const id = tapId();
   event.waitUntil(
     (async () => {
+      // Before anything else: whatever happens to focus or the message, the
+      // page finds this when it is next shown.
+      await leaveOpenNote({ id, url, at: Date.now() });
       const windows = await self.clients.matchAll({
         type: "window",
         includeUncontrolled: true,
       });
       for (const client of windows) {
         const at = toSameOriginUrl(client.url);
-        if (at && isPagePath(at.pathname) && "focus" in client) {
-          await client.focus();
+        if (at && isAppPath(at.pathname) && "focus" in client) {
+          try {
+            await client.focus();
+          } catch {
+            // iOS may refuse; the page still gets the message and the note.
+          }
+          // An open page: no reload (it would drop a draft and abort a turn).
+          // It is told where the tap goes (JIM_OPEN) and routes itself; JIM_SAY
+          // stays for pages opened before JIM_OPEN existed.
+          if (typeof client.postMessage === "function") {
+            client.postMessage({ type: "JIM_OPEN", url, id });
+            const say = new URL(url).searchParams.get("say");
+            if (say !== null) client.postMessage({ type: "JIM_SAY", say });
+          }
           return;
         }
       }

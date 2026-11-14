@@ -5,16 +5,51 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
   type FormEvent,
   type KeyboardEvent,
 } from "react";
-import { ArrowUp } from "lucide-react";
+import {
+  ArrowUp,
+  Check,
+  Lock,
+  Maximize2,
+  SquarePen,
+  Square,
+  Bell,
+  ShieldCheck,
+  Sunrise,
+  Volume2,
+} from "lucide-react";
+import AppLockSheet from "@/components/jim/AppLockSheet";
 import JimHeader, { type JimTab } from "@/components/jim/JimHeader";
-import NotesShell from "@/components/jim/notes/NotesShell";
+import JimMark from "@/components/jim/JimMark";
+import JimSidebar, { type SidebarAction } from "@/components/jim/JimSidebar";
+import { resetTodoFilters } from "@/components/jim/notes/useTodoFilters";
+import { onPlainClick } from "@/components/jim/notes/NotesUi";
+import useBasePage from "@/components/jim/useBasePage";
+import useJimRouter, {
+  replaceWithJimHome,
+  type JimLocation,
+} from "@/components/jim/useJimRouter";
+import useWideLayout from "@/components/jim/useWideLayout";
+import JimUpdatePill from "@/components/jim/JimUpdatePill";
+import useJimUpdate from "@/components/jim/useJimUpdate";
+import NowPlayingBar from "@/components/jim/NowPlayingBar";
+import NotificationsSheet from "@/components/jim/NotificationsSheet";
+import PersonaSheet, { sampleKey } from "@/components/jim/PersonaSheet";
+import SecuritySheet from "@/components/jim/SecuritySheet";
+import NotesShell, {
+  type NotesRouting,
+} from "@/components/jim/notes/NotesShell";
 import useMorningBriefing from "@/components/jim/useMorningBriefing";
+import usePersonas from "@/components/jim/usePersonas";
+import type { AppLock } from "@/components/jim/useAppLock";
+import useBriefAudio from "@/components/jim/useBriefAudio";
+import useReadAloud from "@/components/jim/useReadAloud";
 import useVisibleViewport from "@/components/jim/useVisibleViewport";
 import {
   JimError,
@@ -28,7 +63,28 @@ import {
   saveHistory,
   type ChatMessage,
 } from "@/lib/jim/history";
+import { clearDraft, loadDraft, saveDraft } from "@/lib/jim/draft";
 import JimMarkdown from "@/lib/jim/markdown";
+import {
+  CHAT_ROUTE,
+  formatJimPath,
+  HOME_ROUTE,
+  isDetail,
+  parseJimPath,
+  sameRoute,
+  type JimRoute,
+  type NotesPage,
+  type NotesRoute,
+} from "@/lib/jim/routes";
+import {
+  claimOpen,
+  clearParamsFromLocation,
+  consumePendingOpen,
+  dropPendingOpen,
+  emitOpenIntent,
+  parseOpen,
+} from "@/lib/jim/openUrl";
+import { allowedSay, sayFromLocation } from "@/lib/jim/say";
 
 interface JimChatProps {
   /** The signed-in user, whose chat is kept on this device. */
@@ -37,6 +93,13 @@ interface JimChatProps {
   api: string;
   getToken: (force?: boolean) => Promise<string | null>;
   onSignOut: () => void;
+  /**
+   * The app lock. While locked nothing of the chat is drawn (no text in the
+   * page or the accessibility tree); its state lives on underneath.
+   */
+  lock?: AppLock;
+  /** Signs out and wipes this device's Jim data, then says `notice`. */
+  onWipe?: (notice: string) => void;
 }
 
 type Message = ChatMessage;
@@ -60,7 +123,17 @@ const ERRORS: Record<JimErrorKind, string> = {
   rejected: "Jim couldn't take that message. Try a shorter one.",
 };
 
+/** Starters on an empty chat: a tap puts one in the box to finish or send. */
+const STARTERS = [
+  "What's on today?",
+  "What's due this week?",
+  "Remember that ",
+];
+
 /** After this long, the thinking indicator says it is still working. */
+/** Said on the sign-in screen after Sign out everywhere. */
+const SIGNED_OUT_EVERYWHERE = "You're signed out on every device.";
+
 const SLOW_MS = 20_000;
 
 /** Closer than this to the bottom counts as reading the latest message. */
@@ -71,10 +144,38 @@ function stepLabel(step: string | null): string {
   return `${(step ?? "").replace(/[.…\s]+$/, "")}…`;
 }
 
+interface ListenButtonProps {
+  speaking: boolean;
+  onClick: () => void;
+}
+
+/** Reads a reply aloud, or stops it. 44px to tap, calm to look at. */
+function ListenButton({ speaking, onClick }: ListenButtonProps) {
+  const label = speaking ? "Stop" : "Listen";
+  const Icon = speaking ? Square : Volume2;
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      className={`-my-2 -ml-2 flex size-11 shrink-0 items-center justify-center rounded-full transition-colors! duration-150! ${
+        speaking ? "text-ayu-accent" : "text-ayu-subtle hover:text-ayu-text"
+      }`}
+    >
+      <Icon aria-hidden="true" className="size-4" />
+    </button>
+  );
+}
+
 interface MessageListProps {
   messages: Message[];
   /** The message the error banner speaks for, if any. */
   heldId: number | null;
+  /** The reply being read aloud, if any. */
+  speakingId: number | null;
+  /** Reading aloud is available; null hides the Listen buttons. */
+  onListen: ((id: number, text: string) => void) | null;
 }
 
 /**
@@ -84,13 +185,15 @@ interface MessageListProps {
 const MessageList = memo(function MessageList({
   messages,
   heldId,
+  speakingId,
+  onListen,
 }: MessageListProps) {
   return (
     <>
       {messages.map((m) =>
         m.from === "me" ? (
-          <div key={m.id} className="ml-auto max-w-[85%] min-w-0">
-            <div className="rounded-2xl rounded-br-md bg-ayu-accent px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]">
+          <div key={m.id} className="jim-rise ml-auto max-w-[85%] min-w-0">
+            <div className="jim-glow rounded-[1.25rem] rounded-br-md px-4 py-2.5 whitespace-pre-wrap text-ayu-bg [overflow-wrap:anywhere]">
               {m.text}
             </div>
             {/* The banner says it for the message just sent. */}
@@ -101,18 +204,35 @@ const MessageList = memo(function MessageList({
             )}
           </div>
         ) : (
-          <div key={m.id} className="mr-auto max-w-[92%] min-w-0">
-            <div className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5">
+          <div key={m.id} className="jim-rise mr-auto max-w-[92%] min-w-0">
+            <div className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3">
               <JimMarkdown
                 text={m.text}
                 links={m.uncertain ? "plain" : "label-url"}
               />
             </div>
-            {m.changed && m.changed.length > 0 && (
-              <p className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
-                Saved: {m.changed.join(", ")}
-              </p>
-            )}
+            {(onListen && !m.uncertain) ||
+            (m.changed && m.changed.length > 0) ? (
+              <div className="mt-1 flex items-center gap-1 px-1">
+                {onListen && !m.uncertain && (
+                  <ListenButton
+                    speaking={speakingId === m.id}
+                    onClick={() => onListen(m.id, m.text)}
+                  />
+                )}
+                {m.changed && m.changed.length > 0 && (
+                  <p className="flex min-w-0 items-start gap-1.5 text-xs text-ayu-subtle [overflow-wrap:anywhere]">
+                    <span
+                      aria-hidden="true"
+                      className="mt-px flex size-3.5 shrink-0 items-center justify-center rounded-full bg-ayu-green/15 text-ayu-green"
+                    >
+                      <Check className="size-2.5" strokeWidth={3.5} />
+                    </span>
+                    <span>Saved: {m.changed.join(", ")}</span>
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
         )
       )}
@@ -146,12 +266,40 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+/** True while a field has the keys: Esc and shortcuts are the field's then. */
+function isTyping(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target.tagName === "INPUT" ||
+      target.tagName === "TEXTAREA" ||
+      target.tagName === "SELECT")
+  );
+}
+
+function isMac(): boolean {
+  return /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+}
+
+/** Notes before it has been opened: Home, as a fresh entry. */
+const NOTES_START: JimLocation = {
+  route: HOME_ROUTE,
+  key: "notes-start",
+  depth: 0,
+  back: null,
+  from: null,
+  nav: "initial",
+};
+
 export default function JimChat({
   uid,
   api,
   getToken,
   onSignOut,
+  lock,
+  onWipe,
 }: JimChatProps) {
+  const locked = lock?.locked === true;
   // Back from this device: a reload keeps the conversation and its session.
   const [kept] = useState(() => loadHistory(uid));
   const [session, setSession] = useState(
@@ -161,20 +309,45 @@ export default function JimChat({
     () => kept?.messages ?? []
   );
   const [live, setLive] = useState<Live>(NO_LIVE);
-  const [draft, setDraft] = useState("");
+  // A notification can open /jim?say=quiz%20me: the text waits in the box,
+  // unsent, for Gentry to send.
+  const [draft, setDraft] = useState(() => sayFromLocation() ?? loadDraft(uid));
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<JimErrorKind | null>(null);
   /** A message Jim may have acted on, kept out of the box until asked for. */
   const [held, setHeld] = useState<{ id: number; text: string } | null>(null);
   const [slow, setSlow] = useState(false);
   const [phone] = useState(isPhone);
-  const [tab, setTab] = useState<JimTab>("chat");
+  const [mac] = useState(isMac);
+  const { location, navigate, goBack } = useJimRouter();
+  const route = location.route;
+  const navigateRef = useRef(navigate);
+  useLayoutEffect(() => {
+    navigateRef.current = navigate;
+  });
+  const tab: JimTab = route.kind === "chat" ? "chat" : "notes";
+  const wide = useWideLayout();
+  /** The last Notes entry: what Notes shows (hidden) while Chat does. */
+  const [notesLocation, setNotesLocation] = useState<JimLocation>(() =>
+    route.kind === "chat" ? NOTES_START : location
+  );
+  if (route.kind !== "chat" && notesLocation !== location) {
+    setNotesLocation(location);
+  }
+  const notesRoute = notesLocation.route as NotesRoute;
+  const basePage = useBasePage(notesRoute);
   /** Notes is built (and fetches) only once it has been opened. */
-  const [notesOpened, setNotesOpened] = useState(false);
+  const notesOpened = notesLocation !== NOTES_START;
+  /** The search across all notes: in the page only, never the address. */
+  const [notesSearch, setNotesSearch] = useState("");
+  const [lockSheetOpen, setLockSheetOpen] = useState(false);
+  const [notifySheetOpen, setNotifySheetOpen] = useState(false);
+  const [securitySheetOpen, setSecuritySheetOpen] = useState(false);
 
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLTextAreaElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const nextId = useRef(
     (kept?.messages ?? []).reduce((max, m) => Math.max(max, m.id + 1), 0)
   );
@@ -191,9 +364,31 @@ export default function JimChat({
   const stuck = useRef(true);
   const lastTop = useRef(0);
 
-  const keyboardOpen = useVisibleViewport(rootRef);
+  const keyboardOpen = useVisibleViewport(rootRef, !locked);
   const online = useOnline();
   const briefing = useMorningBriefing(getToken, api);
+  const reader = useReadAloud(getToken, api, locked);
+  const brief = useBriefAudio(getToken, api, reader);
+  const { playBrief } = brief;
+  const { stop: stopReading, setArtist } = reader;
+  const personas = usePersonas(getToken, api);
+  const barShown = reader.state.status !== "idle";
+  // Locking shuts the lock's settings (the reader stops itself).
+  useLayoutEffect(() => {
+    if (locked) {
+      setLockSheetOpen(false);
+      setNotifySheetOpen(false);
+    }
+  }, [locked]);
+  // The lock screen names whoever Jim is speaking as.
+  useEffect(() => {
+    setArtist(personas.activeName ?? "Jim");
+  }, [personas.activeName, setArtist]);
+  // The latest auto-read, for the turn that outlives the render it began in.
+  const readNewRef = useRef(reader.readNew);
+  useLayoutEffect(() => {
+    readNewRef.current = reader.readNew;
+  });
 
   const scrollToEnd = useCallback((smooth: boolean) => {
     const el = scrollerRef.current;
@@ -203,6 +398,109 @@ export default function JimChat({
       behavior: smooth && !prefersReducedMotion() ? "smooth" : "instant",
     });
   }, []);
+
+  /**
+   * Acts on where a notification tap goes: its page, the brief, its say text
+   * (only into an empty box). Foreign or junk URLs do nothing.
+   */
+  const applyOpen = useCallback((url: string) => {
+    const open = parseOpen(url);
+    if (!open) return;
+    navigateRef.current(open.route);
+    emitOpenIntent({ listen: open.listen });
+    if (open.say) {
+      const text = open.say;
+      setDraft((current) => (current ? current : text));
+    }
+  }, []);
+
+  /**
+   * The mount's note read. Later reads wait for it: only it knows the tap
+   * that opened this page, and the load's own pageshow must not beat it.
+   */
+  const mountRead = useRef<Promise<void>>(Promise.resolve());
+
+  // A notification or link opened the app with ?say=, ?listen=brief or an
+  // old ?reflect=1: hand the chat intents on, then clear them from the
+  // address. A tap's note the worker left is then read (iOS can open the
+  // page without the message); one for this very address is already done.
+  useEffect(() => {
+    const opened = window.location.href;
+    const open = parseOpen(opened);
+    clearParamsFromLocation(["say", "listen", "reflect"]);
+    if (open) {
+      // ?reflect=1 names a page other than the address it came on.
+      const here = parseJimPath(window.location.pathname);
+      if (!sameRoute(open.route, here)) {
+        navigateRef.current(open.route, { replace: true });
+      }
+      emitOpenIntent({ listen: open.listen });
+    }
+    let live = true;
+    mountRead.current = consumePendingOpen().then((url) => {
+      if (!live || !url) return;
+      if (new URL(url, opened).href === opened) return;
+      applyOpen(url);
+    });
+    return () => {
+      live = false;
+    };
+  }, [applyOpen]);
+
+  // Shown again (iOS wakes an installed app it had frozen): a tap made while
+  // it slept left its note, and its message may never have arrived.
+  useEffect(() => {
+    function check() {
+      if (document.visibilityState !== "visible") return;
+      void mountRead.current
+        .then(() => consumePendingOpen())
+        .then((url) => {
+          if (url) applyOpen(url);
+        });
+    }
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("pageshow", check);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("pageshow", check);
+    };
+  }, [applyOpen]);
+  // A draft kept across an update reload is restored once, then dropped.
+  useEffect(() => clearDraft(uid), [uid]);
+
+  // A notification tapped while this page is open: the service worker sends
+  // its text here. Only allowed text, and only into an empty box.
+  useEffect(() => {
+    const worker =
+      "serviceWorker" in navigator ? navigator.serviceWorker : undefined;
+    // A partial or missing container (some browsers, test stubs) must never
+    // take the chat down with it.
+    if (typeof worker?.addEventListener !== "function") return;
+    function onMessage(event: MessageEvent) {
+      const data: unknown = event.data;
+      if (typeof data !== "object" || data === null) return;
+      const { type, say, url, id } = data as {
+        type?: unknown;
+        say?: unknown;
+        url?: unknown;
+        id?: unknown;
+      };
+      if (type === "JIM_OPEN" && typeof url === "string") {
+        // Its note may have been read first (the page woke before this came).
+        if (!claimOpen(id)) return;
+        applyOpen(url);
+        // Handled: its note goes too, or a reload would replay it.
+        if (typeof id === "string") void dropPendingOpen(id);
+        return;
+      }
+      const text = type === "JIM_SAY" ? allowedSay(say) : null;
+      if (text) setDraft((current) => (current ? current : text));
+    }
+    worker.addEventListener("message", onMessage);
+    // Messages queue until started; addEventListener alone doesn't start them.
+    (worker as { startMessages?: () => void }).startMessages?.();
+    return () => worker.removeEventListener("message", onMessage);
+  }, [applyOpen]);
 
   // A long turn (Jim can take minutes) gets a calmer note after a while.
   useEffect(() => {
@@ -215,6 +513,11 @@ export default function JimChat({
   useEffect(() => {
     if (stuck.current) scrollToEnd(true);
   }, [messages, sending, scrollToEnd]);
+
+  // The now-playing bar adds room under the list: keep the end in view.
+  useEffect(() => {
+    if (stuck.current) scrollToEnd(true);
+  }, [barShown, scrollToEnd]);
 
   // A reply growing as it streams keeps its end in view (no smooth scroll:
   // it would lag behind the text).
@@ -249,7 +552,16 @@ export default function JimChat({
     });
     observer.observe(scroller);
     return () => observer.disconnect();
-  }, [scrollToEnd]);
+  }, [scrollToEnd, locked, wide, tab]);
+
+  // Unlocked, or the chat moved (the desktop docks it beside Notes): the
+  // list is drawn afresh, at its end.
+  const chatDocked = wide && tab === "notes";
+  useLayoutEffect(() => {
+    if (locked) return;
+    stuck.current = true;
+    scrollToEnd(false);
+  }, [locked, scrollToEnd, wide, chatDocked]);
 
   // Grow the box with its text, up to its max height (10rem, or 30% of the
   // visible screen when that is less), then it scrolls.
@@ -258,7 +570,7 @@ export default function JimChat({
     if (!box) return;
     box.style.height = "auto";
     box.style.height = `${box.scrollHeight}px`;
-  }, [draft]);
+  }, [draft, locked]);
 
   function onScroll() {
     const el = scrollerRef.current;
@@ -308,13 +620,18 @@ export default function JimChat({
     const text = (given ?? draft).trim();
     // Offline it would only bounce back: the box keeps it meanwhile.
     if (!text || sending || !online) return;
+    // Every send starts from a tap or key press: unlock speech inside it.
+    reader.unlock();
     const id = nextId.current++;
     const run = chatRun.current;
     setError(null);
     setHeld(null);
     setSlow(false);
     setSending(true);
-    if (given === undefined) setDraft("");
+    if (given === undefined) {
+      setDraft("");
+      clearDraft(uid);
+    }
     stopDrawing();
     liveText.current = "";
     setLive(NO_LIVE);
@@ -339,15 +656,12 @@ export default function JimChat({
         controller.signal
       );
       if (run !== chatRun.current) return;
+      const replyId = nextId.current++;
       setMessages((prev) => [
         ...prev.map(settle),
-        {
-          id: nextId.current++,
-          from: "jim",
-          text: reply.reply,
-          changed: reply.changed,
-        },
+        { id: replyId, from: "jim", text: reply.reply, changed: reply.changed },
       ]);
+      readNewRef.current(replyId, reply.reply);
     } catch (err) {
       if (run !== chatRun.current) return;
       const kind = err instanceof JimError ? err.kind : "server";
@@ -391,10 +705,12 @@ export default function JimChat({
 
   /** Clears the conversation here and on this device; Jim starts afresh. */
   function newChat() {
+    clearDraft(uid);
     chatRun.current += 1;
     turn.current?.abort();
     stopDrawing();
     liveText.current = "";
+    stopReading();
     clearHistory(uid);
     setMessages([]);
     setSession(crypto.randomUUID());
@@ -411,29 +727,106 @@ export default function JimChat({
   }
 
   function showTab(next: JimTab) {
-    if (next === "notes") setNotesOpened(true);
     // A tap on a tab doesn't take focus on iOS: drop the keyboard by hand,
     // whichever field (the box, a search, a quick log) has it.
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    setTab(next);
+    if (next === "chat") {
+      navigate(CHAT_ROUTE);
+      return;
+    }
+    // Chat was opened from the Notes entry just before it: step back to
+    // it (its scroll and back link intact) rather than stack another.
+    if (
+      route.kind === "chat" &&
+      notesOpened &&
+      location.depth === notesLocation.depth + 1 &&
+      location.depth > 0
+    ) {
+      window.history.back();
+      return;
+    }
+    navigate(notesRoute);
+  }
+
+  /** A Notes page from the sidebar: leaves any search for it. */
+  function goToRoute(next: JimRoute) {
+    if (next.kind === "page" && notesSearch) setNotesSearch("");
+    // Todos picked again while it shows: its filters start over.
+    if (
+      next.kind === "page" &&
+      next.page === "todos" &&
+      route.kind === "page" &&
+      route.page === "todos"
+    ) {
+      resetTodoFilters();
+    }
+    navigate(next);
+  }
+
+  /** The sidebar's search: results show in the page, never the address. */
+  function searchFromSidebar(value: string) {
+    setNotesSearch(value);
+    if (value.trim() && route.kind !== "page") {
+      navigate({ kind: "page", page: basePage });
+    }
+  }
+
+  /** Leaves no person's or note's address showing on a shared screen. */
+  function forgetAddress() {
+    try {
+      replaceWithJimHome();
+    } catch {
+      // Best effort.
+    }
   }
 
   /** Drops the turn that is out and keeps nothing more on this device. */
   function signOut() {
+    forgetAddress();
+    clearDraft(uid);
     signedOut.current = true;
+    stopReading();
     chatRun.current += 1;
     turn.current?.abort();
     onSignOut();
   }
 
+  /**
+   * Every session ended on the server: this device signs out and is wiped
+   * too, saying so on the sign-in screen.
+   */
+  function signedOutEverywhere() {
+    setSecuritySheetOpen(false);
+    if (!onWipe) {
+      signOut();
+      return;
+    }
+    clearDraft(uid);
+    wipe(SIGNED_OUT_EVERYWHERE);
+  }
+
+  /** Too many wrong PINs or a forgotten one: out, and the device wiped. */
+  function wipe(notice: string) {
+    forgetAddress();
+    setLockSheetOpen(false);
+    signedOut.current = true;
+    stopReading();
+    chatRun.current += 1;
+    turn.current?.abort();
+    onWipe?.(notice);
+  }
+
   // The latest send and turn state, for the stable quick-log callback.
   const sendRef = useRef(send);
   const holdRef = useRef(sending || !online);
+  /** On a phone a quick log switches to Chat; on a desktop it is beside. */
+  const wideRef = useRef(wide);
   useLayoutEffect(() => {
     sendRef.current = send;
     holdRef.current = sending || !online;
+    wideRef.current = wide;
   });
 
   /**
@@ -442,13 +835,39 @@ export default function JimChat({
    * Stable, so the (memoized) Notes tree doesn't redraw with every frame
    * of a streaming reply.
    */
-  const logFromNotes = useCallback((text: string) => {
-    stuck.current = true;
-    setTab("chat");
-    if (holdRef.current) {
+  const logFromNotes = useCallback(
+    (text: string) => {
+      stuck.current = true;
+      if (!wideRef.current) navigate(CHAT_ROUTE);
+      if (holdRef.current) {
+        setDraft((current) => (current ? `${text}\n${current}` : text));
+      } else void sendRef.current(text);
+    },
+    [navigate]
+  );
+
+  // Stays where it was tapped: the now-playing bar shows on Notes too.
+  const hearBrief = useCallback(() => {
+    void playBrief();
+  }, [playBrief]);
+  const closeNotifySheet = useCallback(() => setNotifySheetOpen(false), []);
+  const closeLockSheet = useCallback(() => setLockSheetOpen(false), []);
+  const closeSecuritySheet = useCallback(() => setSecuritySheetOpen(false), []);
+
+  /**
+   * A Needs-you row whose words came from outside (email, calendar, Asana):
+   * never sent for him. It lands in the box, unsent, ahead of any draft, so
+   * he reads it and taps Send himself. No focus: the box is still hidden in
+   * this tap, and a late focus would fight iOS.
+   */
+  const draftFromNotes = useCallback(
+    (text: string) => {
+      stuck.current = true;
+      if (!wideRef.current) navigate(CHAT_ROUTE);
       setDraft((current) => (current ? `${text}\n${current}` : text));
-    } else void sendRef.current(text);
-  }, []);
+    },
+    [navigate]
+  );
 
   function restoreHeld() {
     if (held === null) return;
@@ -465,10 +884,13 @@ export default function JimChat({
     void send();
   }
 
+  const returnIsNewLine = phone && !wide;
+
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    // Phones: Return is a new line and the Send button sends.
-    // Desktop: Enter sends, Shift+Enter is a new line.
-    if (event.key !== "Enter" || event.shiftKey || phone) return;
+    // The phone layout on a touch screen: Return is a new line and the Send
+    // button sends. Otherwise (the desktop layout, an iPad with a keyboard,
+    // a mouse): Enter sends, Shift+Enter is a new line.
+    if (event.key !== "Enter" || event.shiftKey || returnIsNewLine) return;
     // Mid-composition (IME); Safari reports its commit Enter as keyCode 229.
     if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) {
       return;
@@ -478,172 +900,571 @@ export default function JimChat({
   }
 
   const canSend = draft.trim().length > 0 && !sending && online;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const keepDraft = useCallback(() => saveDraft(uid, draftRef.current), [uid]);
+  const jimUpdate = useJimUpdate({ onBeforeUpdate: keepDraft });
 
-  return (
-    <div
-      ref={rootRef}
-      data-keyboard={keyboardOpen ? "open" : "closed"}
-      className="jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] flex-col overflow-hidden bg-ayu-bg text-ayu-text"
+  const routing = useMemo<NotesRouting>(
+    () => ({
+      route: notesRoute,
+      basePage,
+      entryKey: notesLocation.key,
+      navType: notesLocation.nav,
+      backLabel: notesLocation.back,
+      backFrom: notesLocation.from,
+      navigate,
+      goBack,
+      search: notesSearch,
+      onSearch: setNotesSearch,
+      wide,
+    }),
+    [notesRoute, basePage, notesLocation, navigate, goBack, notesSearch, wide]
+  );
+
+  // The browser tab names the page (Notes names its own). Locked: just Jim.
+  useEffect(() => {
+    if (locked) document.title = "Jim";
+    else if (route.kind === "chat") document.title = "Chat · Jim";
+  }, [locked, route]);
+  useEffect(
+    () => () => {
+      document.title = "Jim";
+    },
+    []
+  );
+
+  // Desktop keys: ⌘K (Ctrl+K) to search, Esc back out of a profile or note.
+  const keysRef = useRef({ route, basePage, sheetOpen: false });
+  useLayoutEffect(() => {
+    keysRef.current = {
+      route,
+      basePage,
+      sheetOpen:
+        personas.open || lockSheetOpen || notifySheetOpen || securitySheetOpen,
+    };
+  });
+  useEffect(() => {
+    if (!wide || locked) return;
+    function onKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.defaultPrevented) return;
+      const { route: at, basePage: under, sheetOpen } = keysRef.current;
+      if (
+        event.key.toLowerCase() === "k" &&
+        (event.metaKey || event.ctrlKey) &&
+        !event.altKey &&
+        !event.shiftKey
+      ) {
+        event.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+      if (
+        event.key === "Escape" &&
+        isDetail(at) &&
+        !sheetOpen &&
+        !isTyping(event.target) &&
+        !document.querySelector("[role=dialog]")
+      ) {
+        event.preventDefault();
+        goBack({ kind: "page", page: under });
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [wide, locked, goBack]);
+
+  // A page reached by a link or Back: say its name, and on a desktop move
+  // focus to its heading (never out of a field being typed in).
+  const [announced, setAnnounced] = useState("");
+  const chatHeadingRef = useRef<HTMLHeadingElement>(null);
+  const focusComposerNext = useRef(false);
+  useEffect(() => {
+    if (locked || location.nav === "initial") return;
+    const frame = requestAnimationFrame(() => {
+      setAnnounced(document.title.replace(/ · Jim$/, ""));
+      if (focusComposerNext.current) {
+        focusComposerNext.current = false;
+        boxRef.current?.focus({ preventScroll: true });
+        return;
+      }
+      if (!wideRef.current || isTyping(document.activeElement)) return;
+      const heading =
+        location.route.kind === "chat"
+          ? chatHeadingRef.current
+          : [
+              ...document.querySelectorAll<HTMLElement>(
+                "#jim-notes-page h1, #jim-notes-page h2"
+              ),
+            ].find((el) => el.getClientRects().length > 0);
+      if (!heading) return;
+      if (!heading.hasAttribute("tabindex")) heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [location, locked]);
+
+  if (locked) return null;
+
+  const notifyItem =
+    briefing.status === "hidden"
+      ? null
+      : {
+          label: "Notifications",
+          onSelect: () => setNotifySheetOpen(true),
+        };
+
+  const securityItem = {
+    label: "Sign-in & security",
+    onSelect: () => setSecuritySheetOpen(true),
+  };
+
+  const lockItem =
+    lock && onWipe
+      ? {
+          label: `App lock: ${lock.enabled ? "On" : "Off"}`,
+          onSelect: () => setLockSheetOpen(true),
+        }
+      : null;
+
+  /** The now-playing bar and the brief's chip: in Chat, or over Notes. */
+  const dockInChat = wide || tab === "chat";
+  /** What floats over a phone's Notes: the page and its toast make room. */
+  const dock = dockInChat
+    ? "off"
+    : barShown && brief.chip
+      ? "both"
+      : barShown
+        ? "bar"
+        : brief.chip
+          ? "chip"
+          : "off";
+  const nowPlaying = (
+    <NowPlayingBar
+      state={reader.state}
+      onTogglePause={reader.togglePause}
+      onSpeed={reader.setSpeed}
+      onStop={reader.stop}
+      onDismiss={reader.dismiss}
+    />
+  );
+  const briefChip = brief.chip && (
+    <button
+      type="button"
+      onClick={brief.playFromChip}
+      onPointerDown={(e) => e.preventDefault()}
+      className="jim-rise mb-2 flex min-h-11 items-center gap-2 rounded-full border border-ayu-accent/30 bg-ayu-accent/10 px-4 text-sm font-medium text-ayu-accent backdrop-blur"
     >
-      <JimHeader
-        onSignOut={signOut}
-        tab={tab}
-        onTab={showTab}
-        menuItems={[
-          { label: "New chat", onSelect: newChat },
-          ...(briefing.item ? [briefing.item] : []),
-        ]}
-      />
+      <Sunrise aria-hidden="true" className="size-4" />
+      Tap to play your morning
+    </button>
+  );
 
-      <div className="relative min-h-0 flex-1">
+  const chatBody = (
+    <>
+      <div
+        ref={scrollerRef}
+        onScroll={onScroll}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
         <div
-          id="jim-chat"
-          role="tabpanel"
-          aria-labelledby="jim-tab-chat"
-          className={`absolute inset-0 flex flex-col ${tab === "chat" ? "" : "invisible"}`}
+          role="log"
+          aria-label="Conversation"
+          className={`mx-auto flex w-full max-w-[45rem] flex-col gap-4 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] transition-[padding] duration-200 motion-reduce:transition-none sm:py-6 ${
+            // Room under the last message for the now-playing bar,
+            // which floats over the list instead of pushing it up.
+            barShown ? "pb-[4.25rem]! sm:pb-[4.75rem]!" : ""
+          }`}
         >
-          <div
-            ref={scrollerRef}
-            onScroll={onScroll}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-          >
-            <div
-              role="log"
-              aria-label="Conversation"
-              className="mx-auto flex w-full max-w-[45rem] flex-col gap-4 py-4 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:py-6"
-            >
-              {messages.length === 0 && !sending && (
-                <p className="py-10 text-center text-ayu-subtle">
-                  Ask Jim something, or tell him something to remember.
-                </p>
-              )}
-              <MessageList messages={messages} heldId={held?.id ?? null} />
-              {sending && (
-                <div className="mr-auto max-w-[92%] min-w-0">
-                  {live.text ? (
-                    <div
-                      aria-busy="true"
-                      className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5"
-                    >
-                      <JimMarkdown
-                        text={live.text}
-                        links={live.final ? "label-url" : "plain"}
-                      />
-                    </div>
-                  ) : (
-                    <p
-                      role="status"
-                      className="rounded-2xl rounded-bl-md bg-ayu-panel px-4 py-2.5 text-ayu-subtle"
-                    >
-                      {slow ? "Still working…" : "Jim is thinking…"}
-                    </p>
-                  )}
-                  {(live.saving || live.step) && (
-                    <p
-                      role="status"
-                      className="mt-1 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]"
-                    >
-                      {live.saving ? "Saving…" : stepLabel(live.step)}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Clears the home bar, except over the keyboard: nothing sits
-              between the box and the keys. */}
-          <form
-            onSubmit={onSubmit}
-            className={`shrink-0 border-t border-ayu-line bg-ayu-bg pt-2 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
-              keyboardOpen
-                ? "pb-2"
-                : "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
-            }`}
-          >
-            <div className="mx-auto w-full max-w-[45rem] px-3 sm:px-4">
-              {!online && (
-                <p
-                  role="status"
-                  className="mb-2 rounded-lg bg-ayu-panel px-3 py-2 text-sm text-ayu-subtle"
-                >
-                  You&apos;re offline
-                </p>
-              )}
-              {error && (
-                <p
-                  role="alert"
-                  className={`mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg px-3 py-2 text-sm ${
-                    error === "waking" || error === "uncertain"
-                      ? "bg-ayu-accent/15 text-ayu-accent"
-                      : "bg-ayu-red/15 text-ayu-red"
-                  }`}
-                >
-                  <span>{ERRORS[error]}</span>
-                  {held !== null && (
-                    <button
-                      type="button"
-                      onClick={restoreHeld}
-                      className="-mx-2 -my-1 min-h-11 rounded-md px-2 font-medium underline underline-offset-2 transition-colors! duration-150!"
-                    >
-                      Put my message back
-                    </button>
-                  )}
-                </p>
-              )}
-              <div className="flex items-end gap-2">
-                <label htmlFor="jim-message" className="sr-only">
-                  Message
-                </label>
-                <textarea
-                  id="jim-message"
-                  ref={boxRef}
-                  rows={1}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={onKeyDown}
-                  placeholder="Message Jim"
-                  enterKeyHint={phone ? "enter" : "send"}
-                  autoComplete="off"
-                  className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none rounded-3xl border border-ayu-muted bg-ayu-panel px-4 py-2.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:border-ayu-accent focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  aria-label="Send"
-                  disabled={!canSend}
-                  // Keep the keyboard up: a tap on Send must not blur the box.
-                  onPointerDown={(e) => e.preventDefault()}
-                  className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ayu-accent transition-colors! duration-150! text-ayu-bg hover:bg-ayu-orange disabled:bg-ayu-raised disabled:text-ayu-subtle"
-                >
-                  <ArrowUp
-                    aria-hidden="true"
-                    className="size-5"
-                    strokeWidth={2.5}
-                  />
-                </button>
+          {messages.length === 0 && !sending && (
+            <div className="jim-rise flex flex-col items-center px-2 pt-[min(12vh,5rem)] pb-6 text-center">
+              <JimMark size="lg" />
+              <h2 className="mt-5 text-2xl font-semibold tracking-tight text-ayu-text">
+                What&apos;s on your mind?
+              </h2>
+              <p className="mt-2 max-w-xs text-ayu-subtle">
+                Ask Jim something, or tell him something to remember.
+              </p>
+              <div className="mt-6 flex flex-wrap justify-center gap-2">
+                {STARTERS.map((starter) => (
+                  <button
+                    key={starter}
+                    type="button"
+                    onClick={() => {
+                      setDraft(starter);
+                      boxRef.current?.focus({ preventScroll: true });
+                    }}
+                    className="min-h-11 rounded-full border border-white/[0.08] bg-ayu-panel/70 px-4 text-sm text-ayu-text backdrop-blur hover:border-ayu-accent/40 hover:text-ayu-accent"
+                  >
+                    {starter.trim()}
+                    {starter.endsWith(" ") ? "…" : ""}
+                  </button>
+                ))}
               </div>
             </div>
-          </form>
+          )}
+          <MessageList
+            messages={messages}
+            heldId={held?.id ?? null}
+            speakingId={reader.speakingId}
+            onListen={reader.supported ? reader.toggle : null}
+          />
+          {sending && (
+            <div className="jim-rise mr-auto max-w-[92%] min-w-0">
+              {live.text ? (
+                <div
+                  aria-busy="true"
+                  className="jim-card rounded-[1.25rem] rounded-bl-md px-4 py-3"
+                >
+                  <JimMarkdown
+                    text={live.text}
+                    links={live.final ? "label-url" : "plain"}
+                  />
+                </div>
+              ) : (
+                <p
+                  role="status"
+                  className="jim-card flex items-center gap-3 rounded-[1.25rem] rounded-bl-md px-4 py-3 text-ayu-subtle"
+                >
+                  <span aria-hidden="true" className="flex gap-1">
+                    {[0, 150, 300].map((delay) => (
+                      <span
+                        key={delay}
+                        className={`jim-dot size-1.5 rounded-full bg-ayu-accent ${
+                          delay === 150
+                            ? "[animation-delay:150ms]"
+                            : delay === 300
+                              ? "[animation-delay:300ms]"
+                              : ""
+                        }`}
+                      />
+                    ))}
+                  </span>
+                  {slow ? "Still working…" : "Jim is thinking…"}
+                </p>
+              )}
+              {(live.saving || live.step) && (
+                <p
+                  role="status"
+                  className="mt-1.5 px-1 text-xs text-ayu-subtle [overflow-wrap:anywhere]"
+                >
+                  {live.saving ? "Saving…" : stepLabel(live.step)}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Clears the home bar, except over the keyboard: nothing sits
+        between the box and the keys. */}
+      <form
+        onSubmit={onSubmit}
+        className={`shrink-0 pt-1 pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] ${
+          // Over the keyboard the pill sits 4px off the keys (its own
+          // border and padding make up the rest of the 8px).
+          keyboardOpen ? "pb-1" : "pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        }`}
+      >
+        <div className="relative mx-auto w-full max-w-[45rem] px-3 sm:px-4">
+          {/* Floats just above the composer (and so above the keyboard),
+            over the end of the list: showing it moves nothing. On a
+            phone's Notes it floats over the page instead (below). */}
+          {dockInChat && (
+            <div className="absolute inset-x-3 bottom-full sm:inset-x-4">
+              {nowPlaying}
+            </div>
+          )}
+          {dockInChat && briefChip}
+          {!online && (
+            <p
+              role="status"
+              className="jim-rise mb-2 flex items-center gap-2 rounded-xl border border-white/[0.06] bg-ayu-panel/80 px-3 py-2 text-sm text-ayu-subtle backdrop-blur"
+            >
+              <span
+                aria-hidden="true"
+                className="size-1.5 rounded-full bg-ayu-muted"
+              />
+              You&apos;re offline
+            </p>
+          )}
+          {error && (
+            <p
+              role="alert"
+              className={`jim-rise mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-xl border px-3 py-2 text-sm backdrop-blur ${
+                error === "waking" || error === "uncertain"
+                  ? "border-ayu-accent/25 bg-ayu-accent/10 text-ayu-accent"
+                  : "border-ayu-red/25 bg-ayu-red/10 text-ayu-red"
+              }`}
+            >
+              <span>{ERRORS[error]}</span>
+              {held !== null && (
+                <button
+                  type="button"
+                  onClick={restoreHeld}
+                  className="-mx-2 -my-1 min-h-11 rounded-md px-2 font-medium underline underline-offset-2 transition-colors! duration-150!"
+                >
+                  Put my message back
+                </button>
+              )}
+            </p>
+          )}
+          <div className="jim-glass flex items-end gap-2 rounded-[1.6rem] border border-white/[0.08] p-1 shadow-[0_12px_40px_-16px_rgb(0_0_0/0.8)] transition-colors duration-200 focus-within:border-ayu-accent/50 focus-within:shadow-[0_0_0_4px_rgb(255_204_102/0.08),0_12px_40px_-16px_rgb(0_0_0/0.8)]">
+            <label htmlFor="jim-message" className="sr-only">
+              Message
+            </label>
+            <textarea
+              id="jim-message"
+              ref={boxRef}
+              rows={1}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onKeyDown}
+              placeholder="Message Jim"
+              enterKeyHint={returnIsNewLine ? "enter" : "send"}
+              autoComplete="off"
+              className="max-h-[min(10rem,calc(var(--jim-vh,100dvh)*0.3))] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 pr-1 pl-3.5 text-base leading-6 text-ayu-text placeholder:text-ayu-subtle focus:outline-none"
+            />
+            <button
+              type="submit"
+              aria-label="Send"
+              disabled={!canSend}
+              // Keep the keyboard up: a tap on Send must not blur the box.
+              onPointerDown={(e) => e.preventDefault()}
+              className={`flex size-11 shrink-0 items-center justify-center rounded-full duration-200! ${
+                canSend
+                  ? "jim-glow text-ayu-bg hover:brightness-110"
+                  : "bg-white/[0.06] text-ayu-subtle"
+              }`}
+            >
+              <ArrowUp
+                aria-hidden="true"
+                className="size-5"
+                strokeWidth={2.5}
+              />
+            </button>
+          </div>
+        </div>
+      </form>
+    </>
+  );
+
+  const notes = notesOpened && (
+    <NotesShell
+      uid={uid}
+      api={api}
+      getToken={getToken}
+      active={tab === "notes"}
+      onLog={logFromNotes}
+      onDraft={draftFromNotes}
+      onHearBrief={hearBrief}
+      briefStage={brief.stage}
+      briefError={brief.error}
+      routing={routing}
+    />
+  );
+
+  const updatePill = jimUpdate.isUpdateReady && (
+    <JimUpdatePill onUpdate={jimUpdate.update} disabled={sending} />
+  );
+
+  const docked = wide && route.kind !== "chat";
+  const sidebarActive: "chat" | NotesPage | null =
+    route.kind === "chat"
+      ? "chat"
+      : route.kind === "notFound"
+        ? null
+        : basePage;
+  const sidebarActions: SidebarAction[] = [
+    { label: "New chat", icon: SquarePen, onSelect: newChat },
+    ...(reader.menuItem ? [{ ...reader.menuItem, icon: Volume2 }] : []),
+    ...(notifyItem ? [{ ...notifyItem, icon: Bell }] : []),
+    ...(lockItem ? [{ ...lockItem, icon: Lock }] : []),
+    { ...securityItem, icon: ShieldCheck },
+  ];
+
+  // One tree for both widths: crossing the breakpoint (an iPad rotating,
+  // Split View) only moves things, so the chat, Notes and every field in
+  // them stay mounted, and the root the viewport hook writes to is the same.
+  const layout = (
+    <div
+      ref={rootRef}
+      // Behind a sheet nothing can be tapped, focused or read.
+      inert={
+        personas.open || lockSheetOpen || notifySheetOpen || securitySheetOpen
+      }
+      data-keyboard={keyboardOpen ? "open" : "closed"}
+      data-layout={wide ? "wide" : "phone"}
+      className={`jim-app fixed inset-x-0 top-[var(--jim-vt,0px)] flex h-[var(--jim-vh,100dvh)] overflow-hidden bg-ayu-bg text-ayu-text ${
+        wide ? "" : "flex-col"
+      }`}
+    >
+      {wide ? (
+        <JimSidebar
+          active={sidebarActive}
+          onNavigate={goToRoute}
+          busy={sending}
+          search={notesSearch}
+          onSearch={searchFromSidebar}
+          searchRef={searchRef}
+          shortcut={mac ? "⌘K" : "Ctrl K"}
+          persona={{
+            name: personas.activeName ?? null,
+            onOpen: personas.menuItem.onSelect,
+          }}
+          actions={sidebarActions}
+          onSignOut={signOut}
+        />
+      ) : null}
+      {wide ? null : (
+        <JimHeader
+          busy={sending}
+          onSignOut={signOut}
+          tab={tab}
+          onTab={showTab}
+          menuItems={[
+            { label: "New chat", onSelect: newChat },
+            personas.menuItem,
+            ...(reader.menuItem ? [reader.menuItem] : []),
+            ...(notifyItem ? [notifyItem] : []),
+            ...(lockItem ? [lockItem] : []),
+            securityItem,
+          ]}
+        />
+      )}
+
+      <div className="relative min-h-0 min-w-0 flex-1">
+        {updatePill}
+        <div
+          id="jim-chat"
+          role={wide ? (docked ? "complementary" : "region") : "tabpanel"}
+          aria-label={wide ? "Chat with Jim" : undefined}
+          aria-labelledby={wide ? undefined : "jim-tab-chat"}
+          className={
+            docked
+              ? "absolute inset-y-0 right-0 z-10 flex w-[24rem] flex-col border-l border-white/[0.06] bg-ayu-bg/60 xl:w-[26rem]"
+              : `absolute inset-0 flex flex-col ${tab === "chat" || wide ? "" : "invisible"}`
+          }
+        >
+          {wide && !docked ? (
+            <div className="flex h-16 shrink-0 items-center gap-3 border-b border-white/[0.06] px-8">
+              <h1
+                ref={chatHeadingRef}
+                tabIndex={-1}
+                className="text-lg font-semibold tracking-tight text-ayu-text"
+              >
+                Chat
+              </h1>
+              {personas.activeName && (
+                <span className="text-sm text-ayu-subtle">
+                  as {personas.activeName}
+                </span>
+              )}
+            </div>
+          ) : null}
+          {docked ? (
+            <div className="flex h-16 shrink-0 items-center gap-2.5 border-b border-white/[0.06] pr-3 pl-5">
+              <JimMark busy={sending} />
+              <h2 className="min-w-0 flex-1 truncate font-semibold tracking-tight text-ayu-text">
+                Chat with Jim
+              </h2>
+              <a
+                href={formatJimPath(CHAT_ROUTE)}
+                onClick={onPlainClick(() => {
+                  focusComposerNext.current = true;
+                  navigate(CHAT_ROUTE);
+                })}
+                aria-label="Open chat full width"
+                title="Open chat full width"
+                className="flex size-10 items-center justify-center rounded-full text-ayu-subtle hover:bg-white/[0.06] hover:text-ayu-text"
+              >
+                <Maximize2 aria-hidden="true" className="size-4" />
+              </a>
+            </div>
+          ) : null}
+          {chatBody}
         </div>
 
         {notesOpened && (
           <div
             id="jim-notes"
-            role="tabpanel"
-            aria-labelledby="jim-tab-notes"
-            className={`absolute inset-0 bg-ayu-bg ${tab === "notes" ? "" : "invisible"}`}
+            role={wide ? undefined : "tabpanel"}
+            aria-labelledby={wide ? undefined : "jim-tab-notes"}
+            data-dock={dock}
+            className={`group/notes absolute inset-y-0 left-0 ${
+              docked ? "right-[24rem] xl:right-[26rem]" : "right-0"
+            } ${tab === "notes" ? "" : "invisible"}`}
           >
-            <NotesShell
-              uid={uid}
-              api={api}
-              getToken={getToken}
-              active={tab === "notes"}
-              onLog={logFromNotes}
-            />
+            {notes}
+            {/* A phone's Notes has no composer: the bar floats above the
+              home bar, over the page (which leaves room for it). */}
+            {!dockInChat && (
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 pr-[env(safe-area-inset-right)] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[env(safe-area-inset-left)]">
+                <div className="pointer-events-auto mx-auto w-full max-w-[45rem] px-3 sm:px-4">
+                  {briefChip}
+                  {nowPlaying}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
-      {briefing.notice}
+      {/* Says where a link went, for a screen reader. */}
+      <p aria-live="polite" className="sr-only">
+        {announced}
+      </p>
     </div>
+  );
+
+  return (
+    <>
+      {layout}
+      <NotificationsSheet
+        open={notifySheetOpen}
+        onClose={closeNotifySheet}
+        status={briefing.status}
+        onToggleMaster={briefing.toggle}
+        getToken={getToken}
+        api={api}
+      />
+      {briefing.notice}
+      <PersonaSheet
+        personas={personas}
+        playingKey={reader.state.key}
+        onHear={
+          reader.supported
+            ? (persona) =>
+                reader.toggleSample(
+                  sampleKey(persona.id),
+                  persona.examples[0] ?? "",
+                  persona.voice ?? undefined
+                )
+            : null
+        }
+        sampleError={
+          reader.state.status === "error" &&
+          reader.state.errorKey?.startsWith("persona:") &&
+          reader.state.error
+            ? { key: reader.state.errorKey, message: reader.state.error }
+            : null
+        }
+      />
+      <SecuritySheet
+        open={securitySheetOpen}
+        onClose={closeSecuritySheet}
+        onSignedOutEverywhere={signedOutEverywhere}
+        getToken={getToken}
+        api={api}
+      />
+      {lock && onWipe && (
+        <AppLockSheet
+          lock={lock}
+          open={lockSheetOpen}
+          onClose={closeLockSheet}
+          onWipe={wipe}
+        />
+      )}
+    </>
   );
 }

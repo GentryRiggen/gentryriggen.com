@@ -28,7 +28,10 @@ function blocks(source: string): Map<string, string> {
 
 // Plane Builder's worker adds a lie-fi timeout and pruning of old build files
 // to page navigations. Port those to ship-builder-sw.js, then empty this list.
+// Ship Builder also caches its spoken lines (voice/) like its models.
 const INTENTIONALLY_DIVERGED = [
+  "const VOICE_PREFIX = `${PAGE_PATH}/voice/`;",
+  "function isModelAsset(pathname) {",
   "async function handleNavigation(event, request, url) {",
   "async function handleNavigation(request, url) {",
   'self.addEventListener("fetch", (event) => {',

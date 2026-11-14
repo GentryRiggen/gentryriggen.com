@@ -1,0 +1,732 @@
+/**
+ * What changed in each Ever Onward release, newest first. Shown on the
+ * Versions page.
+ *
+ * Every bump of EVER_ONWARD_VERSION needs a new entry at the top (a test
+ * enforces it). Write the notes from the release's commits
+ * (`git log <previous release>..HEAD -- lib/ever-onward components/ever-onward app/ever-onward`),
+ * in plain words a young player or their parent would follow.
+ */
+export interface Release {
+  version: string;
+  /** ISO date, YYYY-MM-DD. */
+  date: string;
+  title: string;
+  highlights: string[];
+}
+
+export const CHANGELOG: readonly Release[] = [
+  {
+    version: "1.39.1",
+    date: "2026-11-14",
+    title: "A clearer top bar",
+    highlights: [
+      "Every gauge in the top bar now says what it is (OIL, BATTERY, SAFETY, WARMTH), so there are no mystery icons. Tap it to hear what it means and how to fill it",
+      "In the Sky, the flare gauge has a shield icon and tells you to fly farther from the sun or build shields",
+      "On a phone with the game on the home screen, the top of the screen is the same dark as the game, with no light haze",
+    ],
+  },
+  {
+    version: "1.39.0",
+    date: "2026-11-08",
+    title: "A calmer start and a tidier top bar",
+    highlights: [
+      "The top bar is one short row now: your money, plus small icons for the goal and anything you need to watch. Tap an icon to see what it means",
+      "The game no longer picks your next upgrade for you. You choose",
+      "Story lines come one at a time, with a breather in between, instead of four in a row",
+      "On the Coast, keepers cost more as you hire them, so upgrades come at a calmer pace",
+      "The same news no longer pops up twice",
+    ],
+  },
+  {
+    version: "1.38.0",
+    date: "2026-11-08",
+    title: "Keep the Light On, with real choices",
+    highlights: [
+      "On the Coast, you set a harbor toll and watch the oil market. Tankers come and go, so the price moves and you decide when to buy",
+      "In No More Night, you read the grid, fill the batteries and get ready for the evening rush. You also pick what your crews do",
+      "In the Sky, you design your own probe and choose how close to fly to the sun. Closer pays more but is riskier, and wild probes show up now and then",
+      "In the Last Light, you keep things warm, choose which lights to let go, and sail through the winds. The goodbye is bigger than before",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
+    version: "1.37.0",
+    date: "2026-11-08",
+    title: "Build It Higher, with real choices",
+    highlights: [
+      "In the Playroom, you now pick how fast to build: easy, steady or a rush. Rushing is quicker, but the tower leans more, and a good streak of careful blocks helps you out",
+      "In the Town, you give each crew a foreman by handing out hats. A foreman needs a shift to put the hat on, so choose with care",
+      "The town also has a shadow that dims the streets. A lights switch turns the lamps on, and lamps cost bricks",
+      "In the Sky, you check the wind forecast before each climb. Wind and a heavy load strain the cables, so watch the strain dial",
+      "Some climbs have no crane. You go up the slow way, and tying everything down keeps it from blowing off",
+      "At the Top, a few little keepsakes wait on the stairs. Pick the ones to carry down: a full pack slows you a little and makes the last picture warmer",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
+    version: "1.36.0",
+    date: "2026-11-07",
+    title: "Make Everyone Smile, with real choices",
+    highlights: [
+      "With One Sad Friend, the bank switch and the fetch machine are gone. Now you pick what to do together: tell jokes, play games or just listen",
+      "Doing the same thing again and again wears thin, so mix it up. Read their face to see what they want",
+      "In the Town, the cheer meter is gone. You set a lemonade stand price, plan a parade route and watch out for grumpy streets",
+      "In the World, you get a loudspeaker, and you learn the difference between real smiles and painted smiles. Beware the HypnoDrones",
+      "How many real smiles you keep changes how The Quiet goes",
+      "In The Quiet, the guessing machine is gone. Now you sit closer on the bench and read how they are sitting",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
+    version: "1.35.0",
+    date: "2026-11-07",
+    title: "The farm, the whole world and the window box",
+    highlights: [
+      "In Make It Grow's farm, the seed bank and the county fair quiz are gone. Now you plant for harvest day, using a weather forecast that gets more sure the closer you get",
+      "Soil wears out if you keep planting the same thing, and beans give it a rest. You also feed one prize pumpkin, which can split in two, and enter it at the end",
+      "In the whole world, the bird migration quiz is gone. Now you slide the biomes up and down to shape the world",
+      "Jungle drinks water and wetland stores it, so the mix matters. Cover too much of the world with one kind of land and blight sets in",
+      "In the old window box, the guessing game is gone. You get a sun-or-shade blind to set, you read the leaves to see how the plants feel, and the weather changes what is right",
+      "All of it plays out in the pictures, so you can see how your choices are going",
+    ],
+  },
+  {
+    version: "1.34.0",
+    date: "2026-11-07",
+    title: "A map in every universe",
+    highlights: [
+      "Make It Grow, Build It Higher and Make Everyone Smile have maps now too: the Garden Map, the Blueprint and the Crayon Map. Tap Map at the top any time",
+      "Finish a run, then pick your next square: one to the right, one down, or any square you've already been to. Each square changes the next run a little",
+      "Each map hides 14 strange things to find, from a Golden Trowel and a Teddy Crew to a clown who follows you around. Some are great, some are so-so, and some come with a catch you can switch off",
+      "Everything you find shows up in that universe's picture, and the deeper you go, the stranger it gets",
+      "The old shops (Acorns, Gold stars and Stickers) are gone. Anything you bought there still works: look for your Keepsake on the map",
+    ],
+  },
+  {
+    version: "1.33.0",
+    date: "2026-11-07",
+    title: "The Sea Chart",
+    highlights: [
+      "Keep the Light On has a map now: the Sea Chart. Tap Map at the top any time to look at it",
+      "Every time you finish a run, you pick your next square: one to the right (a farther coast) or one down (deeper into the lamp's dream), or any square you've already been to",
+      "Each square changes the next run a little, like calmer seas or pricier upgrades. The square tells you what before you step on it",
+      "Strange things float on some squares. You only find out what one is by finishing a run on its square. Some are great, some are so-so, and some come with a catch you can switch off",
+      "Everything you find shows up in the lighthouse picture, and the deeper you go, the stranger the sky gets",
+      "Runs slowly get faster as you find more. Reach the bottom-right corner to end the voyage",
+      "The old Embers shop is gone from this universe. If you bought upgrades there, they still work: look for your Keepsake on the map",
+    ],
+  },
+  {
+    version: "1.32.1",
+    date: "2026-11-07",
+    title: "Test mode on the universe list",
+    highlights: [
+      "For the game's maker only: Test mode now sits on the universe list too, so a locked universe can be opened for testing without playing to it",
+    ],
+  },
+  {
+    version: "1.32.0",
+    date: "2026-11-07",
+    title: "Bees and flower beds",
+    highlights: [
+      "In Make It Grow's backyard, the bee dance is gone. Now you plant flower beds (clover, sunflowers, lavender and an apple tree) and decide how many bees work each one",
+      "Every bed gives something different: clover makes honey fast, sunflowers make the garden ripen faster, lavender calms the bees, and the apple tree pays big in autumn",
+      "Work a bed too hard and it wilts! The bees fly home and you have to plant it again. Watch the bloom bar",
+      "Two healthy beds side by side can cross into a rare flower that makes the garden ripen faster for good",
+      "Honey sells for seeds (best in winter), but the hive eats honey in winter. Run out and some bees fly away until spring",
+      "The flower beds, the bees, wilting, rare flowers and hungry winters all play out in the garden picture",
+    ],
+  },
+  {
+    version: "1.31.1",
+    date: "2026-11-03",
+    title: "Every card says what it changes",
+    highlights: [
+      "In Make It Grow, the rain barrel, hose, well, irrigation and river bend now say Water tank instead of just Holds, and what a dry tank costs you",
+      "Cards everywhere name what they change: Power supply, Grid strain, Fleet drift and Probe trip instead of one bare word",
+      "Upgrades that help in a roundabout way now say why it matters, like A steady grid pays more, A leaning tower slows the crew and A worn-out crowd pays less",
+      "Helpers say what they do for you (Follows the bees for you), and big boosts say what they pay (Every place pays ×2 the green)",
+      "The friendship bank says what it is for, and two starting gifts say what they give you",
+    ],
+  },
+  {
+    version: "1.31.0",
+    date: "2026-11-03",
+    title: "Always know what things do",
+    highlights: [
+      "The top bar says what your money is for, like Resolve: spend it to let lights go dark. That is the goal",
+      "In The Last Light, the flame has its own meter on the top bar. It turns orange when it is low, and a warning tells you to tap Tend when it goes cold",
+      "At night the grid's steadiness, and in the sky the fleet's course, have meters on the top bar too",
+      "Every tap shows what it earned and what else it changed, like +3 resolve and Flame 42% → 57%, instead of just a number",
+      "Pressing a button (ride the rush, catch the flare, steady the tower) shows what it changed up in the top bar",
+      "The goal line always says the next step: which light to let go and what it costs, how much power the cities still need, or what unlocks the next milestone (A green tractor: unlocks at 3 × friendly scarecrow)",
+      "Each part tells you what its tap does for the first couple of minutes, and the last parts say that everything you earn moves the goal",
+      "The Last Light's tips explain the plan: spend resolve to let lights go, and keep the flame warm",
+      "Fixed choices that read you chose bigger mirrors instead of bigger mirrors, and Call an night shift",
+    ],
+  },
+  {
+    version: "1.30.2",
+    date: "2026-11-03",
+    title: "Upgrade cards that make sense",
+    highlights: [
+      "Upgrade cards only show what the upgrade changes. No more lines like Balancing by hand → by hand on the Load balancer",
+      "Cards say what you get: +3 blocks/sec, not just +3 per second",
+      "Ideas tell you plainly what they do, like Every field pays ×2 or The tower sways half as fast",
+      "Letting a light go dark shows how high the flame will leap, and the Lamp crew drills card no longer says half as many flashes when it really doubles them",
+    ],
+  },
+  {
+    version: "1.30.1",
+    date: "2026-11-03",
+    title: "Sound that comes back",
+    highlights: [
+      "Sometimes, after you switched to another app and came back, the game stayed silent even with sound on. Now the game checks that its sound is really playing when you come back",
+      "If the sound got stuck, your next tap anywhere (a sound switch counts) starts it fresh, and the music and storm come back",
+    ],
+  },
+  {
+    version: "1.30.0",
+    date: "2026-11-02",
+    title: "Speed in the Menu",
+    highlights: [
+      "The voice speed now lives in the Menu too, under Narration. Tap − or + to set it, so you can go back to normal speed without opening a film",
+      "The Menu and the films share one speed, so changing it in one place changes it everywhere",
+    ],
+  },
+  {
+    version: "1.29.1",
+    date: "2026-11-02",
+    title: "A tidy top bar on phones",
+    highlights: [
+      "On a phone, when you scroll down and the top bar folds to one row, your money and your goal no longer pile on top of each other",
+      "Your savings jar (like the Reservoir) stays in the full bar. Tap the folded row to see it",
+    ],
+  },
+  {
+    version: "1.29.0",
+    date: "2026-11-02",
+    title: "Tap through like a story",
+    highlights: [
+      "The little films work like the stories in your favourite apps: tap the right side for the next picture, tap the left side to go back and hear it again, and hold your finger down to pause",
+      "The bars along the bottom fill up as each picture plays, so you can see how far along you are",
+      "A big Mute button sits at the top. The voice is on to start, and one tap turns it off so you can just read",
+      "At 1.5x and 2x the narrator now sounds like themselves, only quicker, instead of squeaky",
+      "On iPhones and iPads, the buttons at the top of the films, the ending and the side panels no longer hide under the clock and battery",
+    ],
+  },
+  {
+    version: "1.28.0",
+    date: "2026-11-02",
+    title: "Film speed",
+    highlights: [
+      "The little films have a speed control at the top: tap + or − to go a quarter faster or slower, from 0.75x up to 2x. The words, the pictures and the voice all keep up",
+      "The game remembers your speed, and the narrator reads the story at it too",
+      "On a phone, the film's buttons sit in one tidy row under the part's name",
+    ],
+  },
+  {
+    version: "1.27.0",
+    date: "2026-11-02",
+    title: "Little films",
+    highlights: [
+      "Every part of every universe now opens with a little film that plays all by itself. Sit back and watch the robot find its next big job, fall in love with it, and get to work",
+      "Each universe starts with its name across the stars, then the robot walking in with its lantern. It walks, hops, gasps, looks up at tall things and lifts its lantern high while the camera glides over the scene",
+      "The words type out under the picture and the narrator reads them. Tap the picture to hurry along, or use Pause, Voice and Skip at the top",
+      "When the film ends you get your goal and three tips, then Start. Watch any film again from the Log",
+    ],
+  },
+  {
+    version: "1.26.0",
+    date: "2026-11-02",
+    title: "A log of everything that happens",
+    highlights: [
+      "When something happens (a storm lands, the nets come in, a probe gets home, the fair hands out ribbons, a parade starts), a little message pops up above the big button for a few seconds",
+      "You get a heads-up when a storm is coming, with the town the forecast thinks is likeliest",
+      "The Story button is now the Log. It keeps the story and everything that happened, in order, with the time it happened, so you can scroll back through it any time",
+    ],
+  },
+  {
+    version: "1.25.1",
+    date: "2026-11-02",
+    title: "A smooth fold",
+    highlights: [
+      "When the top bar folds on a phone it now slides shut, and the picture glides shorter with it, instead of snapping. Opening it again slides it back down",
+      "The bar now waits to fold until the picture has slid up to meet it, so there's no dark gap between them",
+    ],
+  },
+  {
+    version: "1.25.0",
+    date: "2026-11-02",
+    title: "More room on phones",
+    highlights: [
+      "On a phone, once you scroll down to the buttons the top bar folds into one slim row: your money, the goal and a small oil (or water, cheer or sway) bar that still turns orange and red. The picture gets shorter too, so far more of the game fits on the screen",
+      "Tap the slim row to see everything for a moment. Scroll back to the top and it all opens again",
+      "The page can no longer slide sideways on a phone",
+    ],
+  },
+  {
+    version: "1.24.1",
+    date: "2026-11-02",
+    title: "The oil gauge fits on phones",
+    highlights: [
+      "The oil numbers in the lamp panel are a bit smaller on phones, so they no longer run off the edge",
+    ],
+  },
+  {
+    version: "1.24.0",
+    date: "2026-11-02",
+    title: "Big gauges for what runs out",
+    highlights: [
+      "The top of the screen now has a big gauge for the thing you have to watch: water in Make It Grow, the cheer meter in Make Everyone Smile and the tower's sway in Build It Higher. It turns orange, then red, before anything slows down",
+      "In the later parts of the lighthouse story, what you have saved in the jar shows at the top too, and as a big number in its panel, so you remember to take it out before the part ends",
+      "Warnings now show further down the page, so they never push a button out from under your finger",
+      "The weather desk, the probe races and the delivery cards keep their buttons in the same spot as the numbers and words change",
+    ],
+  },
+  {
+    version: "1.23.1",
+    date: "2026-11-02",
+    title: "A big oil gauge, and Buy Oil stays put",
+    highlights: [
+      "The lamp's oil now has a big gauge at the top of the screen, so you can always see how much is left. It turns orange when the tank is getting low and red when it is empty",
+      "The Buy Oil button has its own full-width spot and no longer jumps around when the price or the words change",
+      "The out-of-oil warning sits under the lamp now, so it can't push the button down while you tap",
+    ],
+  },
+  {
+    version: "1.23.0",
+    date: "2026-11-02",
+    title: "Every story gets the Coast treatment",
+    highlights: [
+      "Every part of every story now shows its goal at the top, with a bar that fills as you go and what the next step costs. Spending never takes your progress away",
+      "Upgrade cards everywhere are short now: a name, a price and what you get, like +3 per second or ×2. Tap About for the story",
+      "Each card shows what it changes before you buy, and the first time something starts working by itself it says so",
+      "The shop comes first, with the main things for each part right under it. Visitors and the extra details wait further down",
+      "In the sky, your third and sixth sun collectors make every collector shine a bit brighter",
+    ],
+  },
+  {
+    version: "1.22.1",
+    date: "2026-11-02",
+    title: "Start over any time",
+    highlights: [
+      "The Menu has a Start over button. It asks first, then starts the universe again from the very beginning. Your embers, permanent upgrades and finished runs stay",
+    ],
+  },
+  {
+    version: "1.22.0",
+    date: "2026-11-02",
+    title: "A brighter Coast",
+    highlights: [
+      "Keep the Light On's first part shows its goal right at the top: light the coast, with a bar for every lighthouse and what the next one costs",
+      "Things grow fast now. Keepers are cheap, every 5, 10, 25 and 40 keepers doubles them, and every new lighthouse doubles your ships",
+      "A new lamp knob: Dim, Normal, Bright or Blazing. Brighter guides more ships but burns more oil, so blaze when oil is cheap and dim it when oil is dear. It shows what each setting would earn",
+      "Upgrade cards are short now: a name, a price and what it does, like ×2 ships. Tap About for the story",
+      "Less on screen: the savings jar and the tide clock left the Coast, the stats grid is gone, and visitors wait below the shop. The flash button no longer covers the cards",
+    ],
+  },
+  {
+    version: "1.21.0",
+    date: "2026-11-02",
+    title: "Make Everyone Smile",
+    highlights: [
+      "A new universe, Make Everyone Smile: a little robot who cheers up one sad friend, then a town, then the whole world. It opens when you finish Build It Higher",
+      "Spend smiles now, or set some aside as time together so the friendship grows",
+      "Every part has a pick-one choice with The catch on each side: jokes or kindness, clown school or a smile factory, loudspeakers or listening boxes, a few words or just sitting",
+      "Keep the crowd's cheer meter steady. Push too hard and everyone needs a rest",
+      "Throw the ball for the puppy, hold a parade, and watch four new moving pictures. Every upgrade shows up in the picture, and the story is read aloud",
+    ],
+  },
+  {
+    version: "1.20.0",
+    date: "2026-11-02",
+    title: "Build It Higher",
+    highlights: [
+      "A new universe, Build It Higher: a little robot who stacks blocks, then a whole tower. It opens when you finish Make It Grow",
+      "Keep part of what you earn for a strong base, or spend it all on floors now. Your choice, and both ways work",
+      "Every part has a pick-one choice with The catch on each side: tall and thin or wide and sturdy, steel or timber, a long cable or sunny terraces, the stairs or the old lift",
+      "The tower leans as it gets tall. Press Steady to set it straight, or build braces so it mostly looks after itself",
+      "A delivery arrives every so often. Read the three cards and place the one that helps most",
+      "Four new pictures that move: teddies hop, cranes swing, geese fly round the tower, and somebody waits on the grass at the very end. Every upgrade shows up in the picture, and the story is read aloud",
+    ],
+  },
+  {
+    version: "1.19.0",
+    date: "2026-11-01",
+    title: "Choices by the light",
+    highlights: [
+      "A savings jar in every part of Keep the Light On: put coins (or power, energy, resolve) in and they grow while you save up for something bigger. Taking them out early costs more, and the jar closes when the part ends, so spend it before then",
+      "Know-how now buys two things: ideas that last (the sky has its own now) or running it hot for one minute, when everything pays double and you have to keep the grid or the fleet steady",
+      "A fork in the road in every part: pick one of two and the other is closed for this run. Fresnel lens or more keepers, coal or wind, more probes or bigger mirrors, let it go or keep it. You will see the difference in the picture",
+      "Upgrades are bigger and every keeper walks into the picture. Steps that did very little got stronger, and the extra sun collectors that never showed up are gone",
+      "Old saves load as they were: no fork chosen, an empty jar, and any extra collectors give their energy back",
+    ],
+  },
+  {
+    version: "1.18.0",
+    date: "2026-11-01",
+    title: "Choices in the garden",
+    highlights: [
+      "You can now keep some of your harvest back as seed. Keep a quarter and the farm grows richer; keep too much and there is little to sell today",
+      "The farm and the world have know-how. Spend it on a lasting project, or on a festival where everything pays double for a while",
+      "Every part now has a choice with two sides: ask the bees or reach for the bug spray, a scarecrow crew or a hired hawk, old forest or wetland, morning sun or a night-light. Pick one, and the garden shows it",
+      "Upgrades are bigger: each one you buy makes something at least half again as strong, and there are fewer, bolder steps",
+      "The farm and the world are busier, with something to decide every minute or two",
+    ],
+  },
+  {
+    version: "1.17.0",
+    date: "2026-11-01",
+    title: "The little worlds come alive",
+    highlights: [
+      "Make It Grow's pictures move now: bees fly from their hives to the flowers and back, beds sway in the wind, sprinklers spray, robot gardeners bob, butterflies flutter, and snow or leaves fall with the season",
+      "On the farm, tractors drive their rows and puff smoke, drones hover and drop seeds, the ditch flows, and the houses you feed send up chimney smoke",
+      "Crows raid the yard until you have gardeners, and circle any field without a scarecrow. Watch the scarecrows' eyes",
+      "The green world has a moon that slips behind the globe, twinkling stars, drifting clouds and flocks, shooting stars and a dead satellite tumbling by",
+      "The last seed's window has fireflies, a blinking robot, a swinging chime, music box notes and a moth at the lantern. Something in the hills opens its eyes, now and then",
+      "Keep the Light On has new things to spot too: gulls, a jumping fish, something with tentacles far out at sea, eyes in the water when the lamp runs dry, and a very big shape drifting past the sun",
+    ],
+  },
+  {
+    version: "1.16.0",
+    date: "2026-11-01",
+    title: "Easier to play, easier to read",
+    highlights: [
+      "Upgrades now sit near the top, with the ones you can buy first. Each card says Tap to buy or how much more you need",
+      "The Menu opens as a drawer with a Sound section: music, effects, narration and play on silent",
+      "Bigger text everywhere, bigger buttons to tap, and easier-to-read words on the daytime sky",
+      "Every mini-game panel shares one look, so it all feels like one game",
+      "Fixed the iPad layout jumping when you tap the next goal, phone buttons running off the screen, and games opening part-way down the page",
+      "The out-of-oil warning takes you straight to Buy oil, and the hub puts the world you played last first",
+    ],
+  },
+  {
+    version: "1.15.0",
+    date: "2026-11-01",
+    title: "More to manage on the power grid",
+    highlights: [
+      "No More Night has Projects now. Your crews learn as they work and earn know-how. Spend it on ideas, and each one helps but has a catch, so choose well",
+      "A Streetlights setting: bright streets pay more power, soft ones light more towns and give your crews time to learn. The best setting changes as the night goes on",
+      "The Weather Desk is a real job now. Place your repair crews, move them as the forecast firms up, and fix towns that go dark",
+      "Fewer quiet stretches: there is almost always something worth deciding",
+      "Later power upgrades in the night now cost a bit more, so a game saved mid-night will find them dearer than before",
+    ],
+  },
+  {
+    version: "1.14.1",
+    date: "2026-11-01",
+    title: "Upgrades that always help",
+    highlights: [
+      "Fixed upgrades that did nothing: every Gardener Bot and Basket now always helps, and the next-goal bar never points at an upgrade that can't help yet.",
+    ],
+  },
+  {
+    version: "1.14.0",
+    date: "2026-11-01",
+    title: "Make It Grow",
+    highlights: [
+      "A brand-new universe: Make It Grow. A little garden robot is told to make one seed grow, and it never stops. It opens once you finish Keep the Light On",
+      "Four parts: the Backyard (seasons, bees and rain barrels), the Farm (a market, wells and the county fair), the Whole World (forests, jungles, meadows, wetlands and migrating birds), and the Old Window Box",
+      "Earn Acorns at the end and spend them on permanent upgrades for your next garden",
+      "Every part of both universes now opens with a short cutscene: where you are, why it matters, and three tips for doing well. Watch any of them again from the Story drawer",
+      "A new Your upgrades button shows everything you own this run and every permanent upgrade, with what each one is doing for you",
+      "The tap sound is quieter, so it sits under the music",
+    ],
+  },
+  {
+    version: "1.13.1",
+    date: "2026-11-01",
+    title: "Play sound on silent",
+    highlights: [
+      "New setting in the Menu: Play sound on silent. Leave it off to hear the game alongside your podcast (your phone's silent switch mutes the game). Turn it on to hear the game even on silent (it will pause other audio)",
+    ],
+  },
+  {
+    version: "1.13.0",
+    date: "2026-11-01",
+    title: "Less tapping, more helpers",
+    highlights: [
+      "Each part starts hands-on, then your helpers take over within a few minutes. After that, tapping is a little nudge for when you are stuck, not the whole game",
+      "Keepers, generators and collectors are cheaper and arrive sooner, and the tap upgrades are smaller",
+      "The tide mill, weather vane, mission control and rain barrel all arrive much sooner",
+      "Probe trips are longer and pay more, and watered plants stay wet longer, so there are fewer buttons to press for the same fun",
+      "The lantern's flame fades more slowly, and a tap tops it up instead of holding it full",
+      "Some tap upgrades have fewer levels now. If your save had more, the extra levels are refunded when you open the game",
+    ],
+  },
+  {
+    version: "1.12.3",
+    date: "2026-11-01",
+    title: "Your podcast keeps playing",
+    highlights: [
+      "The game no longer pauses your podcast or music. Narration now plays the same way as the music, so it mixes in instead of taking over, and it never shows up on your lock screen",
+    ],
+  },
+  {
+    version: "1.12.2",
+    date: "2026-11-01",
+    title: "Embers you can find",
+    highlights: [
+      "An Embers button with a little flame now sits next to Menu once you can start a world over. It shows how many embers are waiting for you",
+      "The first time, a friendly card explains embers: start over any time, keep your embers, and spend them on permanent upgrades so every run goes faster",
+      "The hub shows the embers and best time for each world, and the ending tells you how many embers your run earned",
+      "The little arrows next to upgrade names no longer look like a picture that did not load on iPhones",
+    ],
+  },
+  {
+    version: "1.12.1",
+    date: "2026-11-01",
+    title: "More room for upgrades",
+    highlights: [
+      "On phones the picture is smaller, so there is much more room to scroll through upgrades",
+      "The coin bar sits a little lower, clear of the blur under the clock on iPhones",
+      "The next-goal bar only shows once, in the coin bar, and the out-of-oil warning is a small chip beside your coins",
+    ],
+  },
+  {
+    version: "1.12.0",
+    date: "2026-11-01",
+    title: "Story intros, and your coins always in sight",
+    highlights: [
+      "Every part now opens with an intro: where you are, what you are doing and why it matters, with your goal. Tap Listen to hear it read aloud",
+      "The story moved out of the way. The newest line sits near the top, and the Story button opens the whole story, including every intro, any time",
+      "Your coins, income and next goal now stay pinned at the top of the screen all the time, and they never move around",
+    ],
+  },
+  {
+    version: "1.11.1",
+    date: "2026-11-01",
+    title: "Clearer Someday cards, and an out-of-oil warning",
+    highlights: [
+      "When the lamp runs out of oil, a red warning shows at the top and on the page, and the lamp in the picture goes dim, so you know to buy oil",
+      "When a Someday card's goal is already met, it now says it is ready and pops in when you buy one of the upgrades above, instead of showing a goal you already reached",
+    ],
+  },
+  {
+    version: "1.11.0",
+    date: "2026-11-01",
+    title: "The Memory Garden",
+    highlights: [
+      "The Last Light has a Memory Garden. Every light you let go plants a seed named after it: Porch lights, Harbor lamps, Moon mirror and more",
+      "The seeds sprout, bud and bloom on their own. Water the garden to help them grow faster",
+      "Pick the blooms for a little warm light: resolve, and a lift for the lantern's flame. Flowers wait for you and never wilt",
+      "A rain barrel waters the thirsty ones now and then, on top of your own watering",
+      "The Logbook keeps a Keepsakes list of every memory flower you have picked",
+    ],
+  },
+  {
+    version: "1.10.0",
+    date: "2026-11-01",
+    title: "Probe Races",
+    highlights: [
+      "The Sky has Probe Races once you buy Star charts. Pick a route on the star map, launch, and watch your probe fly it",
+      "Short hop, long loop or comet chase. Every card shows its time and haul up front, and the comet chase pays more when the comet is close",
+      "Your probe waits at the dock until you launch again, and ignoring it costs nothing",
+      "Racing fins make every run faster, and Mission control sends a scout probe out on its own, on top of your own runs",
+    ],
+  },
+  {
+    version: "1.9.0",
+    date: "2026-11-01",
+    title: "The Tide Clock",
+    highlights: [
+      "The Coast has a Tide Clock once you open the fish market. The sea rises and falls on its own, about every three minutes",
+      "Set the nets before high tide, then haul in a catch of coins. Setting them early catches more. Full nets wait for you forever, and ignoring the tide costs nothing",
+      "Bigger nets catch more, and a tide mill brings in a little extra every high tide on top of your own catch",
+      "Watch the tide pole and buoys in the picture rise and fall, with a splash when you haul in",
+      "Coast upgrades cost a little more now, to make room for the tide's extra coins",
+    ],
+  },
+  {
+    version: "1.8.0",
+    date: "2026-11-01",
+    title: "The Weather Desk",
+    highlights: [
+      "No More Night has a Weather Desk. Every few minutes a storm forms on its own, and the forecast shows the chance it hits Rivertown, Hilltop or Harbor",
+      "Shield a town with sandbags. If the storm lands there, you get a burst of bonus power. If it misses, the lights just flicker. You never lose anything, and you can ignore it",
+      "Storm crews let you shield two towns, and sandbags appear along the coast",
+      "A weather vane can watch the sky for you later on",
+      "Thunder rumbles at landfall, and the Logbook keeps a storm tally",
+    ],
+  },
+  {
+    version: "1.7.0",
+    date: "2026-11-01",
+    title: "See every upgrade land",
+    highlights: [
+      "Every upgrade now shows up in the picture, and a little label pops up right where it landed",
+      "A caption in the corner tells you what you are looking at: ships guided, cities lit, collectors, lights still burning",
+      "No More Night: real power plants, a puffing steam plant, a dam, and power racing along the wires to glowing cities. When the grid runs short, the far cities flicker",
+      "The Coast gets far lighthouses, docks, an oil depot that fills up, rescue boats and coins on every ship",
+      "The Sky gets bigger mirrors, relay rings, star charts, probe copies and a light sail",
+      "The Last Light shows each light going dark as you let it go",
+      "The game now notices updates while it stays open, so the Update ready button appears on its own",
+    ],
+  },
+  {
+    version: "1.6.1",
+    date: "2026-11-01",
+    title: "Play along with your podcast",
+    highlights: [
+      "The game's music and sounds now play alongside your podcast or music instead of stopping it. Like most games, they follow the silent switch",
+      "With music and sound both off, the game never touches your audio at all",
+      "When the power bar slides down from the top, the picture shrinks to fit underneath it, so nothing is hidden",
+      "On iPad the power bar no longer covers the top of the page; it only slides in once the coins scroll away",
+    ],
+  },
+  {
+    version: "1.6.0",
+    date: "2026-11-01",
+    title: "Visitors, a steady glow, and your own lantern",
+    highlights: [
+      "Visitors stop by now: a mail boat, whale-watchers, the town fair, a comet and a strange signal. They wait for you, bring a small gift, and go in the Logbook in the Menu. Nothing can be missed",
+      "Greyed Someday cards show what is coming and what unlocks it",
+      "The Sky has a star countdown bar, with ticks where more relays wake up",
+      "Steady glow: keep the grid or the fleet steady and the cities sparkle and the probes fly in formation, paying 15% more. Letting them wobble just loses the bonus",
+      "Sun collectors now come in six bigger steps, and a mirror field grows on the ground at three and six",
+      "More little stories along the way, so there is always something new to read",
+      "The Last Light: steering the boat true makes letting go go faster, and a low flame dims the night",
+      "At the start of a game you pick a lantern colour. The very last little boat carries it home. It stays on your device",
+    ],
+  },
+  {
+    version: "1.5.0",
+    date: "2026-11-01",
+    title: "More to juggle, and a new ending",
+    highlights: [
+      "No More Night: as cities light up, the grid gets wobbly. Tap Balance the grid to keep the lights steady",
+      "The Sky: your probes drift off course. Send a course correction to keep them on track",
+      "The evening rush and solar flares now wait for you. They stay until you take them, and nothing is lost if you wait",
+      "One tap on Buy oil now fills your whole lamp-oil tank, or as much as your coins can buy",
+      "Oil prices swing more, so buying low really pays off",
+      "New upgrades fill the quiet stretches, and taking a star now pays energy right away",
+      "The Last Light is new: the first ship that ever sailed past comes home. Let the lights go in any order, and each one leaves a gift",
+      "When three lights are left, a small boat with one lantern appears on the dark sea. Tap the old beam to steer it, then flash the lamp once to bring it home",
+    ],
+  },
+  {
+    version: "1.4.1",
+    date: "2026-11-01",
+    title: "Sharper numbers",
+    highlights: [
+      "The coin counter at the top stays crisp while it climbs instead of looking fuzzy",
+      "On the home screen, the game no longer slides under the clock and battery, so the top of the screen is never blurred",
+    ],
+  },
+  {
+    version: "1.4.0",
+    date: "2026-11-01",
+    title: "Arcade mode",
+    highlights: [
+      "The whole game now has the glowing retro arcade look of the start screen",
+      "The tap button sits in the middle at the bottom, right where your thumb is",
+      "New parts of the story type themselves out like an old computer",
+    ],
+  },
+  {
+    version: "1.3.0",
+    date: "2026-11-01",
+    title: "Retro all the way",
+    highlights: [
+      "The universe picker now looks like the start screen, with glowing pixel letters and game cartridges for each universe",
+      "Music plays on the start screen. Tap anywhere to start it, and use the speaker button to turn it off",
+      "The start screen sky follows the real time of day: sunrise, daytime, sunset and starry nights",
+      "Turn on Match my weather to see rain, snow or sunshine like outside your window. If the weather cannot be found, you get clear skies",
+    ],
+  },
+  {
+    version: "1.2.1",
+    date: "2026-11-01",
+    title: "The story, read aloud",
+    highlights: [
+      "Every story message can now be read aloud. When a new one arrives, tap Play to hear it",
+      "Tap the play button next to any message to hear it again, and Listen at the start of each part",
+      "Turn the voice on or off in the Menu, and choose whether new messages play by themselves",
+    ],
+  },
+  {
+    version: "1.2.0",
+    date: "2026-11-01",
+    title: "Every upgrade counts",
+    highlights: [
+      "Fewer upgrades, and each one matters. New ones appear as your lighthouse grows, a few at a time",
+      "Every upgrade tells you what it will do before you buy it, like Coins per second 25 to 30",
+      "You buy the lamp oil yourself now. The price goes up and down, so buy when it is cheap! Later you can hire an oil merchant to do it for you",
+      "Coins per second now shows what you really earn after paying for oil, and it glows green when it is climbing",
+    ],
+  },
+  {
+    version: "1.1.1",
+    date: "2026-11-01",
+    title: "Thumb button",
+    highlights: [
+      "The tap button now floats in the bottom corner, right under your thumb, wherever you scroll",
+      "Fast tapping no longer zooms the page in by accident",
+      "Music and sounds come back when you return to the game after switching apps",
+    ],
+  },
+  {
+    version: "1.1.0",
+    date: "2026-11-01",
+    title: "A brand-new start screen",
+    highlights: [
+      "A brand-new start screen: a retro glowing title, a little robot with a lantern, and a big blinking START (or CONTINUE if you have played before)",
+      "The look changes with the seasons. Right now the robot wears a tiny pumpkin hat. Come back in winter, spring and summer to see what it wears next",
+      "Add Ever Onward to your home screen and it gets its own robot icon, and opens like a real app",
+      "When a new version is ready, a button pops up so you can update. It never interrupts you while you play, and your game is saved first",
+    ],
+  },
+  {
+    version: "1.0.4",
+    date: "2026-11-01",
+    title: "Watch it grow",
+    highlights: [
+      "Your coins now stay at the top of the screen even when you scroll down to the upgrades, with a little button so you can keep tapping",
+      "Numbers roll up smoothly and flash green when they jump",
+      "See how much you earn every second",
+      "A bar fills up toward your next upgrade and glows when you can buy it. Tap it to jump straight there",
+    ],
+  },
+  {
+    version: "1.0.3",
+    date: "2026-11-01",
+    title: "Sound and music",
+    highlights: [
+      "Ever Onward has sound! Every tap goes ting, and tapping fast makes the notes climb higher and higher",
+      "Buying an upgrade, finding a new one and starting a new part all have their own sounds",
+      "Calm music plays while you build, and it changes in each part of the story",
+      "Music and sound effects each have their own switch next to the Menu button",
+    ],
+  },
+  {
+    version: "1.0.2",
+    date: "2026-11-01",
+    title: "Backup codes",
+    highlights: [
+      "New in the Menu: Backup code. Copy your code to keep your game safe, or paste it on another device to carry your progress over",
+    ],
+  },
+  {
+    version: "1.0.1",
+    date: "2026-10-31",
+    title: "Ever Onward",
+    highlights: [
+      "The game is now called Ever Onward. Your saved game came along, so you keep your progress",
+      "The old /little-machines link takes you to the new page",
+    ],
+  },
+  {
+    version: "1.0.0",
+    date: "2026-10-31",
+    title: "Keep the Light On",
+    highlights: [
+      "Ever Onward is here! Each universe gives a little machine one simple job, and you see how far it goes",
+      "The first universe is Keep the Light On: you run an old lighthouse. Tap to flash the light, guide ships, earn coins and buy upgrades",
+      "There are four parts, and each one plays differently from the last. The game changes as your machine grows, so keep going to see what happens",
+      "Finish a universe to earn embers, then spend them on permanent upgrades that make your next try faster",
+      "Your game saves on this device. It pauses when you leave the page, so nothing is lost while you are away",
+    ],
+  },
+];

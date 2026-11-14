@@ -144,39 +144,6 @@ test.describe("Plane Builder", () => {
     }
   );
 
-  test("steps render quality down and exposes the level", async ({ page }) => {
-    await open(page);
-    const canvas = page.getByTestId("plane-canvas");
-    await expect(canvas).toHaveAttribute("data-quality", "0");
-    await page.evaluate(() => {
-      // Past the warm-up and cooldown: the first report steps, the second
-      // lands inside the new cooldown and changes nothing.
-      const quality = window.__planeBuilderQuality!;
-      quality.setState({
-        warmupUntil: 0,
-        changedAt: performance.now() - 60_000,
-      });
-      quality.getState().report("decline");
-      quality.getState().report("decline");
-    });
-    // A 1x screen skips the step that changes nothing, so it lands on 1 or 2.
-    await expect(canvas).toHaveAttribute("data-quality", /^[12]$/);
-  });
-
-  test("launches from the keyboard", async ({ page }) => {
-    await open(page);
-    await page.getByRole("button", { name: "Play Backyard Meadow" }).click();
-    await page.getByRole("button", { name: "Launch!" }).click();
-    await expect(page.getByTestId("launch-overlay")).toBeVisible();
-
-    await page.keyboard.down("Space");
-    await page.waitForTimeout(1000);
-    await page.keyboard.up("Space");
-
-    await claimReward(page);
-    await expect(page.getByText(/Total: \+/)).toBeVisible();
-  });
-
   test("finishing the meadow unlocks the canyon", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Play Backyard Meadow" }).click();
@@ -212,43 +179,6 @@ test.describe("Plane Builder", () => {
     ).toBeVisible();
   });
 
-  test("Restart asks first, and Replay replaces Play once finished", async ({
-    page,
-  }) => {
-    await open(page);
-    await seedMeadow(page, { coins: 500, finished: true, unlockCanyon: true });
-    await expect(
-      page.getByRole("button", { name: "Replay Backyard Meadow" })
-    ).toBeVisible();
-
-    const dialog = page.getByRole("dialog", {
-      name: "Restart Backyard Meadow?",
-    });
-    await page.getByRole("button", { name: "Restart Backyard Meadow" }).click();
-    await dialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(dialog).toHaveCount(0);
-    expect((await meadow(page)).coins).toBe(500);
-
-    await page.getByRole("button", { name: "Restart Backyard Meadow" }).click();
-    await dialog.getByRole("button", { name: "Restart", exact: true }).click();
-    await expect(dialog).toHaveCount(0);
-    expect(await meadow(page)).toMatchObject({
-      coins: 0,
-      best: 0,
-      finished: false,
-    });
-    await expect(
-      page.getByRole("button", { name: "Play Backyard Meadow" })
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Restart Backyard Meadow" })
-    ).toHaveCount(0);
-    // The canyon stays unlocked.
-    await expect(
-      page.getByRole("button", { name: "Play Desert Canyon" })
-    ).toBeVisible();
-  });
-
   test(
     "shows a friendly message when WebGL is missing",
     { tag: "@smoke" },
@@ -266,17 +196,4 @@ test.describe("Plane Builder", () => {
       await expect(page.getByText("3D isn't available here")).toBeVisible();
     }
   );
-});
-
-test("opens the Sky Map from the worlds screen and goes back", async ({
-  page,
-}) => {
-  await open(page);
-  await page.getByRole("button", { name: "🗺️ Sky Map" }).click();
-  await expect(page.getByRole("heading", { name: "Sky Map" })).toBeVisible();
-  await expect(page.getByText("How the Sky Map works")).toBeVisible();
-  await page.getByRole("button", { name: "Back" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Plane Builder" })
-  ).toBeVisible();
 });

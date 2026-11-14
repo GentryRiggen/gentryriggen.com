@@ -1,16 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import JimGate from "@/components/jim/JimGate";
+import { JIM_THEME_COLOR } from "@/lib/theme/themeScript";
 
 export const metadata: Metadata = {
   title: "Jim",
   description: "Private chat.",
   robots: { index: false, follow: false },
   // Replace the layout's homepage canonical and share cards.
-  alternates: { canonical: "https://gentryriggen.com/jim" },
+  alternates: { canonical: "https://jim.gentryriggen.com/jim" },
   openGraph: {
     title: "Jim",
     description: "Private chat.",
-    url: "https://gentryriggen.com/jim",
+    url: "https://jim.gentryriggen.com/jim",
     type: "website",
   },
   twitter: { card: "summary", title: "Jim", description: "Private chat." },
@@ -27,12 +28,21 @@ export const metadata: Metadata = {
   // read the apple- prefixed tag. Replaces the layout's `other`, which asks
   // for a translucent status bar.
   other: { "apple-mobile-web-app-capable": "yes" },
-  // Page icons replace the layout's, so the favicon is repeated here.
+  // Page icons replace the layout's: Jim's tab shows the Glow Pal, not the site's icon. Versioned file
+  // names: iOS and Safari keep an icon by its URL, so a new icon gets a new name.
   icons: {
-    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    icon: [
+      { url: "/jim-icons/glow-pal.svg", type: "image/svg+xml" },
+      {
+        url: "/jim-icons/glow-pal-192.png",
+        sizes: "192x192",
+        type: "image/png",
+      },
+    ],
+    shortcut: "/jim-icons/glow-pal.svg",
     apple: [
       {
-        url: "/jim-icons/apple-touch-icon.png",
+        url: "/jim-icons/glow-pal-180.png",
         sizes: "180x180",
         type: "image/png",
       },
@@ -48,7 +58,7 @@ export const viewport: Viewport = {
   // chat follows the visual viewport there instead).
   interactiveWidget: "resizes-content",
   // Ayu Mirage in light and dark alike; the page draws it the same way.
-  themeColor: "#1f2430",
+  themeColor: JIM_THEME_COLOR,
   colorScheme: "dark",
 };
 

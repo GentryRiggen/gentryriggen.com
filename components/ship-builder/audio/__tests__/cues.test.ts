@@ -27,6 +27,40 @@ describe("cuesFor", () => {
     expect(cuesFor(snap({ time: 1 }), snap({ time: 1.01 }))).toEqual([]);
   });
 
+  it("a mine booms and an island crunches instead of the iceberg's scrape", () => {
+    const flooding = [{ kind: "flooding" as const }];
+    const hit = (strike: "mine" | "island") =>
+      kinds(
+        cuesFor(
+          snap({ time: 1, strike }),
+          snap({ time: 1.02, events: flooding, strike })
+        )
+      );
+    expect(hit("mine")).toContain("explosion");
+    expect(hit("mine")).not.toContain("impact");
+    expect(hit("island")).toContain("crunch");
+    expect(hit("island")).not.toContain("impact");
+  });
+
+  it("Boom! bangs once for every bomb, as it goes off", () => {
+    const bombs = [{ at: 1 }, { at: 3 }, { at: 3.01 }];
+    const flooding = [{ kind: "flooding" as const }];
+    expect(
+      kinds(
+        cuesFor(
+          snap({ time: 0.99, bombs }),
+          snap({ time: 1.02, bombs, events: flooding })
+        )
+      )
+    ).toEqual(["explosion"]);
+    expect(
+      kinds(cuesFor(snap({ time: 2.99, bombs }), snap({ time: 3.02, bombs })))
+    ).toEqual(["explosion", "explosion"]);
+    expect(
+      kinds(cuesFor(snap({ time: 1.5, bombs }), snap({ time: 1.6, bombs })))
+    ).toEqual([]);
+  });
+
   it("cues the impact once, on the first flooding event", () => {
     const flooding = [{ kind: "flooding" as const }];
     expect(

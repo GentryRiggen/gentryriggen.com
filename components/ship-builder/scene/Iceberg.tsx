@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import { beamOf } from "@/lib/ship-builder/model/grid";
+import { strikeOf } from "@/lib/ship-builder/sim/strike";
 import type { IcebergInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
 import usePrefersReducedMotion from "../hooks/usePrefersReducedMotion";
@@ -111,6 +112,7 @@ export default function Iceberg() {
       : undefined
   );
   const beam = useShipBuilderStore((s) => beamOf(s.ship));
-  if (!iceberg) return null;
+  // A mine or an island is drawn by StrikeScenery instead.
+  if (!iceberg || strikeOf(iceberg) !== "iceberg") return null;
   return <IcebergBody iceberg={iceberg} beam={beam} />;
 }

@@ -73,6 +73,26 @@ describe("WalkJoystick", () => {
     expect(walkInput.forward).toBeLessThan(0.8);
   });
 
+  it("lets go when hidden mid-drag", () => {
+    const { unmount } = render(<WalkJoystick />);
+    const stick = screen.getByRole("group", { name: /walk joystick/i });
+    mockBox(stick);
+    pointer("pointerDown", stick, 64, 64);
+    pointer("pointerMove", stick, 128, 0);
+    expect(walkInput.forward).toBeGreaterThan(0);
+    expect(walkInput.strafe).toBeGreaterThan(0);
+    unmount();
+    expect(walkInput.forward).toBe(0);
+    expect(walkInput.strafe).toBe(0);
+  });
+
+  it("leaves the keys' input alone when hidden without a drag", () => {
+    const { unmount } = render(<WalkJoystick />);
+    walkInput.forward = 1;
+    unmount();
+    expect(walkInput.forward).toBe(1);
+  });
+
   it("returns to centre on release and on cancel", () => {
     const stick = setup();
     pointer("pointerDown", stick, 64, 64);

@@ -11,6 +11,7 @@ import {
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
 import useKeyboardShortcuts from "../../hooks/useKeyboardShortcuts";
+import { ESCAPE_RESULT_LINES } from "@/lib/ship-builder/escapeCopy";
 import SeaTrialResult, { extraSummaryLines } from "../SeaTrialResult";
 
 function ShortcutsHost() {
@@ -310,5 +311,34 @@ describe("SeaTrialResult storm", () => {
     render(<SeaTrialResult />);
     expect(store().trial).toMatchObject({ state: { outcome: "steady" } });
     expect(screen.queryByTestId("lifeboat-line")).toBeNull();
+  });
+});
+
+describe("SeaTrialResult escape line", () => {
+  it("shows how the player got away, once they have", () => {
+    finishTrial();
+    const { rerender } = render(<SeaTrialResult />);
+    expect(screen.queryByTestId("escape-line")).toBeNull();
+    act(() =>
+      useShipBuilderStore.setState({
+        lastEscape: { ending: "frozen", boat: "none" },
+      })
+    );
+    rerender(<SeaTrialResult />);
+    expect(screen.getByTestId("escape-line")).toHaveTextContent(
+      ESCAPE_RESULT_LINES.frozen
+    );
+  });
+
+  it.each([
+    ["deck", "davit"],
+    ["swim", "raft"],
+  ] as const)("has a line for the %s ending", (ending, boat) => {
+    finishTrial();
+    act(() => useShipBuilderStore.setState({ lastEscape: { ending, boat } }));
+    render(<SeaTrialResult />);
+    expect(screen.getByTestId("escape-line")).toHaveTextContent(
+      ESCAPE_RESULT_LINES[ending]
+    );
   });
 });

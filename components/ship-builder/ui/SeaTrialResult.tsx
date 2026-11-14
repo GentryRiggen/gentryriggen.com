@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Bomb,
   LifeBuoy,
   Repeat,
   ThumbsUp,
@@ -13,7 +14,9 @@ import {
   type TrialSummary,
 } from "@/lib/ship-builder/sim/explain";
 import { lifeboatCount } from "@/lib/ship-builder/crowd/lifeboatCount";
+import { ESCAPE_RESULT_LINES } from "@/lib/ship-builder/escapeCopy";
 import { analyzeShip } from "@/lib/ship-builder/model/analysis";
+import { strikeOf } from "@/lib/ship-builder/sim/strike";
 import { isTimelineTrial, trialKindOf } from "@/lib/ship-builder/sim/trialKind";
 import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import {
@@ -96,7 +99,9 @@ interface ResultCardProps {
 
 function ResultCard({ trial }: ResultCardProps) {
   const endTrial = useShipBuilderStore((s) => s.endTrial);
+  const lastEscape = useShipBuilderStore((s) => s.lastEscape);
   const replay = useShipBuilderStore((s) => s.replay);
+  const armBombs = useShipBuilderStore((s) => s.armBombs);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const detailsButton = useRef<HTMLButtonElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -188,12 +193,37 @@ function ResultCard({ trial }: ResultCardProps) {
             </span>
           </button>
         </div>
+        {input.boom && (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="min-w-0 flex-1 text-sm text-slate-700 dark:text-slate-300">
+              {summary.message}
+            </p>
+            <button
+              type="button"
+              onClick={armBombs}
+              className={`${buttonClass} min-h-11`}
+            >
+              <Bomb aria-hidden="true" className="h-4 w-4 shrink-0" />
+              Bomb a fresh ship
+            </button>
+          </div>
+        )}
         {lifeboats && <LifeboatLine lines={lifeboats} />}
+        {lastEscape && (
+          <p
+            data-testid="escape-line"
+            className="text-sm font-medium text-slate-700 dark:text-slate-300"
+          >
+            {ESCAPE_RESULT_LINES[lastEscape.ending]}
+          </p>
+        )}
         {timeline && (
           <div className="flex items-center gap-2">
             <TrialScrubber
               timeline={timeline}
               isStorm={trialKindOf(input) === "storm"}
+              strike={strikeOf(input.iceberg)}
+              isBoom={!!input.boom}
               compact
             />
             <button

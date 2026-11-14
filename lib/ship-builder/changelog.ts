@@ -17,6 +17,69 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.41.0",
+    date: "2026-11-13",
+    title: "Boom!",
+    highlights: [
+      "New: Boom! Tap Boom!, pick Bombs, then tap anywhere on your ship to drop a bomb. No waiting and no questions first",
+      "Keep tapping! Every bomb blows parts off where it lands, and bombs in the same spot dig deeper",
+      "Each bomb opens its own hole, so she sinks slowly after one and faster the more you drop. A ship with good walls can take a few",
+      "The action slows down for a moment at every bang, so you can see the pieces fly",
+      "When she's gone you see how long she lasted after the first bomb. Watch it all again, or keep bombing the wreck",
+      "The Iceberg and the Shipwreck storm now live in the Boom! menu too. The Waves trial lives on as the Shipshape challenge",
+      "Time of day, lifeboats and how she breaks wait behind the gear, if you want them",
+    ],
+  },
+  {
+    version: "2.40.0",
+    date: "2026-11-12",
+    title: "Sea mines and islands",
+    highlights: [
+      "Two new things to dodge when you set sail: sea mines and islands",
+      "Hit a mine and it goes off with a big bang: fire, smoke, a tower of water, and parts of your ship blown into the sea",
+      "Run onto an island and she crunches to a stop on the rocks, tipped up, and fills with water slowly. Strong walls might keep her there instead of sinking",
+      "Where you hit matters: a mine at the bow blows off the front of your ship, a mine at the stern blows off the back, and an island lifts whichever end ran onto it",
+      "Every choice in the Set sail picker now has a picture, so you can pick without reading",
+      "Nothing waits right at your bow when you set sail any more, even on the longest ships",
+    ],
+  },
+  {
+    version: "2.39.2",
+    date: "2026-11-07",
+    title: "Keep building after a delete",
+    highlights: [
+      "Press and hold a part to delete it while you are building, and the part you picked stays picked, so you can carry on placing",
+    ],
+  },
+  {
+    version: "2.39.1",
+    date: "2026-11-02",
+    title: "A steadier sea trial bar",
+    highlights: [
+      "During the iceberg and the storm, the Stop button no longer slides around as the story clock changes",
+    ],
+  },
+  {
+    version: "2.39.0",
+    date: "2026-11-01",
+    title: "Escape the sinking ship",
+    highlights: [
+      "When your ship is sinking, walk up to a lifeboat and tap Board. Ride it down the side and row away to safety",
+      "Life rafts too: tap Jump in and leap into the orange raft",
+      "Miss the boats and you'll end up in the water! Swim with the stick, kick with the jump button, and climb into a lifeboat before you get too cold",
+      "Get too cold and a fishing boat scoops you up",
+      "A voice cheers you on. Turn it off with the new Voice switch next to Music and Effects",
+    ],
+  },
+  {
+    version: "2.38.2",
+    date: "2026-11-01",
+    title: "Update right away",
+    highlights: [
+      "When a new version is ready, a button lets you update right away. Your progress is saved first",
+    ],
+  },
+  {
     version: "2.38.1",
     date: "2026-10-31",
     title: "Every trial starts at normal speed",

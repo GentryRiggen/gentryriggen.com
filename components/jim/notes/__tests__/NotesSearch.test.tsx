@@ -200,3 +200,25 @@ describe("NotesNote", () => {
     expect(await screen.findByText("Hi")).toBeInTheDocument();
   });
 });
+
+describe("NotesSearch page jumps", () => {
+  it("offers a page whose name matches, above the note results", async () => {
+    searchNotes.mockResolvedValue(RESULTS);
+    const onOpenPage = jest.fn();
+    render(
+      <NotesSearch
+        query="todo"
+        api={API}
+        getToken={getToken}
+        onOpen={jest.fn()}
+        onOpenPage={onOpenPage}
+        pageHref={(page) => `/jim/${page}`}
+      />
+    );
+    const jump = screen.getByRole("link", { name: /Todos/ });
+    expect(jump).toHaveAttribute("href", "/jim/todos");
+    jump.click();
+    expect(onOpenPage).toHaveBeenCalledWith("todos");
+    expect(screen.queryByRole("link", { name: /Work/ })).toBeNull();
+  });
+});

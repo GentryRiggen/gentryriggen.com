@@ -23,7 +23,9 @@ interface HomeProps {
 /** Home with its saves, as the shell holds them. */
 function NotesHome({ data, api, getToken, onChanged, onLog }: HomeProps) {
   const saves = useTodoSaves({ data, api, getToken, onChanged });
-  return <NotesHomePage data={data} saves={saves} onLog={onLog} />;
+  return (
+    <NotesHomePage data={data} saves={saves} onLog={onLog} onDraft={() => {}} />
+  );
 }
 const API = "https://jim.example.test";
 const getToken = jest.fn().mockResolvedValue("t");
@@ -105,6 +107,33 @@ it("checks at once, shows it saving, then offers Undo and refetches", async () =
   const toast = screen.getByRole("status");
   expect(within(toast).getByText("Done")).toBeInTheDocument();
   expect(onChanged).toHaveBeenCalledTimes(1);
+});
+
+it("says when a repeating todo is next due, and hints it while saving", async () => {
+  const pending = deferred<view.TodoResult>();
+  toggleTodo.mockReturnValue(pending.promise);
+  renderHome();
+  await userEvent.click(box());
+  // From the text alone: it repeats, so a fresh copy is coming.
+  expect(screen.getByText("next one coming")).toBeInTheDocument();
+
+  await act(async () =>
+    pending.resolve({ ok: true, sha: "abc1235", nextDue: "2026-11-07" })
+  );
+  const toast = screen.getByRole("status");
+  expect(
+    within(toast).getByText("Done. Next one due Nov 7.")
+  ).toBeInTheDocument();
+  expect(within(toast).getByRole("button", { name: "Undo" })).toBeVisible();
+});
+
+it("an older server without next shows the plain Done", async () => {
+  toggleTodo.mockResolvedValue({ ok: true, sha: "s" });
+  renderHome();
+  await userEvent.click(box());
+  const toast = await screen.findByRole("status");
+  expect(await within(toast).findByText("Done")).toBeInTheDocument();
+  expect(within(toast).queryByText(/Next one due/)).toBeNull();
 });
 
 it("Undo unchecks the line as the refetch shows it (with its done stamp)", async () => {
@@ -264,4 +293,22 @@ it("unticking a box ticked this session sends the done line, not the open one", 
   expect(toggleTodo).toHaveBeenCalledTimes(2);
   expect(toggleTodo.mock.calls[1][0]).toEqual(AFTER.doneTodos[0]);
   expect(toggleTodo.mock.calls[1][1]).toBe(false);
+});
+
+it("links to the Todos page under its list", async () => {
+  const onOpenTodos = jest.fn();
+  render(
+    <NotesHomePage
+      data={VIEW_FIXTURE}
+      saves={{ marks: {}, toast: null, toggle: jest.fn(), undo: jest.fn() }}
+      onLog={jest.fn()}
+      onDraft={jest.fn()}
+      onOpenTodos={onOpenTodos}
+      todosHref="/jim/todos"
+    />
+  );
+  const link = screen.getByRole("link", { name: /All todos/ });
+  expect(link).toHaveAttribute("href", "/jim/todos");
+  await userEvent.click(link);
+  expect(onOpenTodos).toHaveBeenCalled();
 });

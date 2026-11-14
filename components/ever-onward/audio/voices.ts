@@ -1,0 +1,473 @@
+import { noise, tone, type VoiceEngine } from "../../game-audio/primitives";
+import { midiToHz } from "../../game-audio/music";
+
+/**
+ * One-shot voices. Each builds a tiny graph that disconnects itself when it
+ * ends. `at` is the audio-clock start time.
+ */
+
+/**
+ * Loudness of a tap relative to its voice's own level. Taps are the most
+ * frequent sound, so they sit well under the music bed (about 40% of the old
+ * level).
+ */
+export const TAP_LEVEL = 0.4;
+
+/** Base note of the tap per phase (MIDI); the combo climbs from here. */
+const TAP_BASE_MIDI = [69, 64, 72, 60] as const;
+
+/** Bright coin "ting": a bell-like pair of partials. */
+function coinTing(engine: VoiceEngine, at: number, hz: number, level: number) {
+  tone(engine, {
+    type: "triangle",
+    start: at,
+    duration: 0.16,
+    freq: hz,
+    gain: 0.2 * level,
+    attack: 0.002,
+  });
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.11,
+    freq: hz * 2.76,
+    gain: 0.07 * level,
+    attack: 0.002,
+  });
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.3,
+    freq: hz * 2,
+    gain: 0.06 * level,
+    attack: 0.002,
+  });
+}
+
+/** Electric zap-click: a fast downward square sweep and a tick of noise. */
+function zapClick(engine: VoiceEngine, at: number, hz: number, level: number) {
+  tone(engine, {
+    type: "square",
+    start: at,
+    duration: 0.07,
+    freq: hz * 2,
+    freqEnd: hz,
+    gain: 0.09 * level,
+    attack: 0.001,
+    filter: { type: "lowpass", freq: 5000, freqEnd: 1800, q: 2 },
+  });
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.14,
+    freq: hz,
+    gain: 0.12 * level,
+    attack: 0.002,
+  });
+  noise(engine, {
+    buffer: engine.white,
+    start: at,
+    duration: 0.025,
+    filter: "highpass",
+    freq: 5000,
+    gain: 0.05 * level,
+    attack: 0.001,
+  });
+}
+
+/** Shimmering glass: detuned sines with a bright overtone and a long tail. */
+function glass(engine: VoiceEngine, at: number, hz: number, level: number) {
+  for (const detune of [-7, 7]) {
+    tone(engine, {
+      type: "sine",
+      start: at,
+      duration: 0.45,
+      freq: hz,
+      detune,
+      gain: 0.1 * level,
+      attack: 0.003,
+    });
+  }
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.3,
+    freq: hz * 3,
+    gain: 0.04 * level,
+    attack: 0.003,
+  });
+  tone(engine, {
+    type: "sine",
+    start: at + 0.04,
+    duration: 0.25,
+    freq: hz * 2,
+    detune: 5,
+    gain: 0.04 * level,
+    attack: 0.004,
+  });
+}
+
+/** Soft, warm bell: low partials, slow-ish bloom. */
+function warmBell(engine: VoiceEngine, at: number, hz: number, level: number) {
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.6,
+    freq: hz,
+    gain: 0.14 * level,
+    attack: 0.01,
+  });
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.35,
+    freq: hz * 2,
+    gain: 0.05 * level,
+    attack: 0.01,
+  });
+  tone(engine, {
+    type: "triangle",
+    start: at,
+    duration: 0.2,
+    freq: hz * 3,
+    gain: 0.02 * level,
+    attack: 0.01,
+  });
+}
+
+const TAP_VOICES = [coinTing, zapClick, glass, warmBell] as const;
+
+/** A tap at a combo pitch (`semitones` above the phase's base). */
+export function playTapVoice(
+  engine: VoiceEngine,
+  phase: number,
+  semitones: number,
+  level: number
+) {
+  const index = Math.min(TAP_VOICES.length - 1, Math.max(0, phase));
+  // A touch of random detune keeps rapid taps from sounding mechanical.
+  const jitter = (Math.random() - 0.5) * 0.03;
+  const midi = TAP_BASE_MIDI[index] + semitones + jitter;
+  TAP_VOICES[index](engine, engine.ctx.currentTime, midiToHz(midi), level);
+}
+
+/** A rewarding plucked chord; one-off upgrades get more notes and a tail. */
+export function playBuyChord(
+  engine: VoiceEngine,
+  phase: number,
+  isOneOff: boolean
+) {
+  const at = engine.ctx.currentTime;
+  const isMinor = phase >= 3;
+  const root = TAP_BASE_MIDI[Math.min(3, Math.max(0, phase))] - 12;
+  const intervals = isMinor ? [0, 3, 7, 12] : [0, 4, 7, 12];
+  if (isOneOff) intervals.push(16, 19, 24);
+  intervals.forEach((interval, i) => {
+    const hz = midiToHz(root + interval);
+    const start = at + i * (isOneOff ? 0.06 : 0.045);
+    tone(engine, {
+      type: "triangle",
+      start,
+      duration: isOneOff ? 0.9 : 0.5,
+      freq: hz,
+      gain: (isOneOff ? 0.12 : 0.1) * (1 - i * 0.05),
+      attack: 0.004,
+    });
+    tone(engine, {
+      type: "sine",
+      start,
+      duration: 0.25,
+      freq: hz * 2,
+      gain: 0.04,
+      attack: 0.004,
+    });
+  });
+}
+
+/** A tiny, subtle chime: an upgrade just became affordable. */
+export function playAffordable(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.28,
+    freq: midiToHz(88),
+    gain: 0.04,
+    attack: 0.004,
+  });
+  tone(engine, {
+    type: "sine",
+    start: at + 0.07,
+    duration: 0.3,
+    freq: midiToHz(91),
+    gain: 0.03,
+    attack: 0.004,
+  });
+}
+
+/** A soft pop: a new upgrade appeared. */
+export function playReveal(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.12,
+    freq: 380,
+    freqEnd: 820,
+    gain: 0.1,
+    attack: 0.004,
+  });
+  tone(engine, {
+    type: "sine",
+    start: at + 0.05,
+    duration: 0.14,
+    freq: 1240,
+    gain: 0.03,
+    attack: 0.004,
+  });
+}
+
+/** A slow swell for a new phase: a rising chord and a breath of air. */
+export function playPhaseSwell(engine: VoiceEngine, phase: number) {
+  const at = engine.ctx.currentTime;
+  const root = TAP_BASE_MIDI[Math.min(3, Math.max(0, phase))] - 12;
+  const intervals = phase >= 3 ? [0, 3, 7, 10] : [0, 7, 12, 16];
+  for (const interval of intervals) {
+    tone(engine, {
+      type: "sine",
+      start: at,
+      duration: 3.2,
+      freq: midiToHz(root + interval),
+      gain: 0.09,
+      attack: 1.3,
+    });
+  }
+  noise(engine, {
+    buffer: engine.white,
+    start: at,
+    duration: 2.6,
+    filter: "bandpass",
+    freq: 400,
+    freqEnd: 3000,
+    q: 0.8,
+    gain: 0.03,
+    attack: 1.4,
+  });
+}
+
+/** A gentle, sad-sweet motif in A minor that thins out to nothing. */
+export function playEndingMotif(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime + 0.4;
+  const notes = [76, 72, 74, 69, 71, 67, 64, 57];
+  notes.forEach((midi, i) => {
+    const start = at + i * 0.85;
+    const fade = 1 - (i / notes.length) * 0.5;
+    tone(engine, {
+      type: "sine",
+      start,
+      duration: 2.6,
+      freq: midiToHz(midi),
+      gain: 0.13 * fade,
+      attack: 0.02,
+    });
+    tone(engine, {
+      type: "triangle",
+      start,
+      duration: 1.1,
+      freq: midiToHz(midi) * 2,
+      gain: 0.03 * fade,
+      attack: 0.02,
+    });
+  });
+}
+
+/** A low rumble of thunder. */
+export function playThunder(engine: VoiceEngine) {
+  noise(engine, {
+    buffer: engine.brown,
+    start: engine.ctx.currentTime,
+    duration: 2.8,
+    filter: "lowpass",
+    freq: 180,
+    freqEnd: 60,
+    q: 0.7,
+    gain: 0.5,
+    attack: 0.5,
+    chop: 0.12,
+  });
+}
+
+/** A soft, warm two-note chime: a memory flower is picked. */
+export function playChime(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  [72, 79, 84].forEach((note, i) => {
+    warmBell(engine, at + i * 0.11, midiToHz(note), 0.7);
+  });
+}
+
+/** A soft splash of water and two little droplet plinks: the nets come in. */
+export function playSplash(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  noise(engine, {
+    buffer: engine.white,
+    start: at,
+    duration: 0.5,
+    filter: "bandpass",
+    freq: 1400,
+    freqEnd: 600,
+    q: 0.9,
+    gain: 0.09,
+    attack: 0.04,
+  });
+  [0.12, 0.24].forEach((delay, i) =>
+    tone(engine, {
+      type: "sine",
+      start: at + delay,
+      duration: 0.16,
+      freq: 700 + i * 260,
+      freqEnd: 1100 + i * 300,
+      gain: 0.07,
+      attack: 0.004,
+    })
+  );
+}
+
+/** A rising whoosh: the racing probe leaves the dock. */
+export function playLaunch(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  noise(engine, {
+    buffer: engine.white,
+    start: at,
+    duration: 0.7,
+    filter: "bandpass",
+    freq: 300,
+    freqEnd: 2600,
+    q: 1.2,
+    gain: 0.08,
+    attack: 0.1,
+  });
+  tone(engine, {
+    type: "triangle",
+    start: at,
+    duration: 0.5,
+    freq: 220,
+    freqEnd: 660,
+    gain: 0.05,
+    attack: 0.02,
+  });
+}
+
+/** Two bright chimes: the racing probe is home with its haul. */
+export function playArrive(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  [0, 0.14].forEach((delay, i) =>
+    tone(engine, {
+      type: "sine",
+      start: at + delay,
+      duration: 0.5,
+      freq: 784 + i * 392,
+      gain: 0.07,
+      attack: 0.005,
+    })
+  );
+}
+
+/** Bees follow a dance: a quick wobbling hum and two tiny blips. */
+export function playBuzz(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  tone(engine, {
+    type: "triangle",
+    start: at,
+    duration: 0.4,
+    freq: 190,
+    freqEnd: 250,
+    gain: 0.06,
+    attack: 0.05,
+  });
+  tone(engine, {
+    type: "sine",
+    start: at + 0.04,
+    duration: 0.36,
+    freq: 380,
+    freqEnd: 330,
+    gain: 0.035,
+    attack: 0.05,
+  });
+  [0.2, 0.3].forEach((delay, i) =>
+    tone(engine, {
+      type: "sine",
+      start: at + delay,
+      duration: 0.1,
+      freq: 880 + i * 220,
+      gain: 0.05,
+      attack: 0.004,
+    })
+  );
+}
+
+/** A fair placing: a small fanfare of three rising plucks. */
+export function playRibbon(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  [67, 72, 76].forEach((note, i) => {
+    tone(engine, {
+      type: "triangle",
+      start: at + i * 0.09,
+      duration: 0.25,
+      freq: midiToHz(note),
+      gain: 0.1,
+      attack: 0.004,
+    });
+    tone(engine, {
+      type: "sine",
+      start: at + i * 0.09,
+      duration: 0.4,
+      freq: midiToHz(note + 12),
+      gain: 0.04,
+      attack: 0.004,
+    });
+  });
+}
+
+/** A flock lands: a soft airy rush and a few light flutters. */
+export function playFlutter(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  noise(engine, {
+    buffer: engine.white,
+    start: at,
+    duration: 0.45,
+    filter: "bandpass",
+    freq: 2600,
+    freqEnd: 1500,
+    q: 0.7,
+    gain: 0.05,
+    attack: 0.03,
+  });
+  [0.05, 0.14, 0.22, 0.34].forEach((delay, i) =>
+    tone(engine, {
+      type: "sine",
+      start: at + delay,
+      duration: 0.07,
+      freq: 1500 + (i % 2) * 300,
+      freqEnd: 1900 + (i % 2) * 300,
+      gain: 0.035,
+      attack: 0.005,
+    })
+  );
+}
+
+/** The pot grows: a rising, round bloom of two warm bells. */
+export function playBloom(engine: VoiceEngine) {
+  const at = engine.ctx.currentTime;
+  [64, 71, 76].forEach((note, i) => {
+    warmBell(engine, at + i * 0.13, midiToHz(note), 0.8);
+  });
+  tone(engine, {
+    type: "sine",
+    start: at,
+    duration: 0.7,
+    freq: 160,
+    freqEnd: 320,
+    gain: 0.05,
+    attack: 0.1,
+  });
+}

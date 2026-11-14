@@ -4,6 +4,10 @@ import {
   createInitialState,
   useShipBuilderStore,
 } from "@/lib/ship-builder/state/store";
+import {
+  publishEscape,
+  resetEscape,
+} from "@/lib/ship-builder/state/escapeLive";
 import { runTrial } from "@/lib/ship-builder/sim/seaTrial";
 import type { TrialOutcome } from "@/lib/ship-builder/sim/types";
 import { testShip } from "@/lib/ship-builder/testing";
@@ -31,7 +35,10 @@ function startWalking() {
 
 beforeEach(() => {
   resetWalkInput();
-  act(() => useShipBuilderStore.setState(createInitialState()));
+  act(() => {
+    resetEscape();
+    useShipBuilderStore.setState(createInitialState());
+  });
 });
 
 afterEach(() => {
@@ -183,5 +190,68 @@ describe("WalkHud outcome note", () => {
       .click(screen.getByRole("button", { name: "Stop walking" }));
     expect(store().walk.status).toBe("idle");
     expect(store().trial.status).toBe("result");
+  });
+});
+
+describe("WalkHud escape popup placement", () => {
+  it("keeps the splash card up top so the bottom controls stay usable", () => {
+    startWalking();
+    render(<WalkHud />);
+    act(() =>
+      publishEscape({
+        phase: {
+          kind: "swimming",
+          since: 1,
+          swimmer: { x: 0, z: 0, yaw: 0, warmth: 1, kick: 0 },
+          warned: false,
+        },
+        boardable: null,
+        pickup: null,
+      })
+    );
+    const card = screen.getByTestId("escape-popup");
+    const stack = card.parentElement as HTMLElement;
+    expect(card).toHaveClass("pointer-events-auto", "max-w-sm");
+    expect(card.className).not.toMatch(/bottom-/);
+    expect(stack).toHaveClass("pointer-events-none");
+    expect(stack.className).toMatch(/top-/);
+    // The warmth meter sits below the card rather than behind it.
+    expect(stack).toContainElement(screen.getByTestId("warmth-meter"));
+    expect(screen.getByRole("button", { name: "Kick" })).toBeInTheDocument();
+  });
+
+  it("drops the splash card for Climb in and keeps the button on top", () => {
+    startWalking();
+    render(<WalkHud />);
+    const swimming = {
+      kind: "swimming" as const,
+      since: 1,
+      swimmer: { x: 0, z: 0, yaw: 0, warmth: 1, kick: 0 },
+      warned: false,
+    };
+    act(() =>
+      publishEscape({ phase: swimming, boardable: null, pickup: null })
+    );
+    const stack = screen.getByTestId("escape-popup").parentElement!;
+    act(() =>
+      publishEscape({
+        phase: swimming,
+        boardable: null,
+        pickup: { boatId: "b" },
+      })
+    );
+    expect(screen.queryByTestId("escape-popup")).toBeNull();
+    const climb = screen.getByRole("button", { name: "Climb in" });
+    const z = (el: Element) => Number(/\bz-(\d+)\b/.exec(el.className)?.[1]);
+    expect(z(climb)).toBeGreaterThan(z(stack));
+    // Both sit above the below-deck inset (z-10) and the trial pill (z-20),
+    // not inside the controls' z-10 layer.
+    expect(z(stack)).toBeGreaterThan(20);
+    expect(stack.parentElement).toBe(climb.parentElement);
+    // Out of reach again, the splash card stays closed.
+    act(() =>
+      publishEscape({ phase: swimming, boardable: null, pickup: null })
+    );
+    expect(screen.queryByTestId("escape-popup")).toBeNull();
   });
 });

@@ -87,6 +87,13 @@ export interface BoatLaunch {
   outward: 1 | -1;
   /** People seated in it (ids): at most BOAT_SHOWN_MAX like the Titanic. */
   riders: readonly string[];
+  /**
+   * Where a walker boards it, in the resting world frame (the walk's own
+   * frame, before any bob), or null when the boat has no boarding spot.
+   */
+  spot: { x: number; y: number; z: number } | null;
+  /** The half that carries it once she breaks, or null while she is whole. */
+  half: WalkHalf | null;
 }
 
 export type PersonFate =
@@ -805,6 +812,8 @@ export function planEvacuation(
       pitch: body.pitch,
       outward: boat.outward,
       riders: raft.riders.map((i) => people[i].id),
+      spot: boat.spot >= 0 ? { ...boat.spotRest } : null,
+      half: boat.half,
     };
   };
 

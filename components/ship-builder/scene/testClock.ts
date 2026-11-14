@@ -11,6 +11,7 @@ import { sectorKey, SECTOR_SIZE } from "@/lib/ship-builder/sail/field";
 import type { Obstacle, ObstacleKind } from "@/lib/ship-builder/sail/types";
 import { TEST_HOOKS_ENABLED } from "@/lib/ship-builder/testHooks";
 import type { WalkState } from "@/lib/ship-builder/walk";
+import { WARMTH_S } from "@/lib/ship-builder/walk/escape";
 
 /** An obstacle a test plants in the drive field (x ahead, z to starboard). */
 export interface TestDriveObstacle {
@@ -50,6 +51,8 @@ export interface ShipBuilderTestConfig {
    * starts, instead of the usual spawn.
    */
   walkSpawn?: Pick<WalkState, "x" | "z" | "yaw" | "level">;
+  /** Escape: seconds in the water from warm to frozen, instead of `WARMTH_S`. */
+  escapeWarmthSeconds?: number;
 }
 
 declare global {
@@ -154,4 +157,14 @@ export function testWalkSpawn(): Pick<
   return [x, z, yaw, level].every(Number.isFinite)
     ? { x, z, yaw, level }
     : null;
+}
+
+/** Seconds a swimmer stays warm: the test's, else `WARMTH_S`. */
+export function testEscapeWarmthSeconds(): number {
+  if (!TEST_HOOKS_ENABLED) return WARMTH_S;
+  if (typeof window === "undefined") return WARMTH_S;
+  const seconds = finiteTestNumber(
+    window.__SHIP_BUILDER_TEST__?.escapeWarmthSeconds
+  );
+  return seconds !== null && seconds > 0 ? seconds : WARMTH_S;
 }

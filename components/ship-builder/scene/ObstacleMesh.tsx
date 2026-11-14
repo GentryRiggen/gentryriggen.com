@@ -24,6 +24,7 @@ import {
 } from "./envModels";
 import { IcebergShape } from "./Iceberg";
 import { sceneTime } from "./testClock";
+import { BobbingMine, IslandShape } from "./strikeModels";
 
 /** Half the width of the iceberg model's peak, so scale = radius / this. */
 const ICEBERG_MODEL_RADIUS = 3.4;
@@ -236,5 +237,9 @@ export default function ObstacleMesh({ obstacle }: ObstacleMeshProps) {
       return <Buoy radius={radius} id={id} />;
     case "ship":
       return <OtherShip radius={radius} id={id} />;
+    case "mine":
+      return <BobbingMine radius={radius} phase={idNoise(id) * Math.PI * 2} />;
+    case "island":
+      return <IslandShape radius={radius} seed={idNoise(id) * 1000} />;
   }
 }

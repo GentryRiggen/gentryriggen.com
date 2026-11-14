@@ -7,7 +7,7 @@ import type { SimSea, SimState } from "./sim/types";
 export function trackTrialRun(
   state: SimState,
   sea: SimSea,
-  kind: "weather" | "storm" | "iceberg"
+  kind: "weather" | "storm" | "iceberg" | "boom"
 ): void {
   trackGame("trial_run", {
     kind,

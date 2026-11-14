@@ -10,8 +10,12 @@
  * - /ship-builder/models/* (part models, not content-hashed): network-first,
  *   falling back to the cached copy when offline or slow (3s); stored without
  *   the query.
+ * - /ship-builder/voice/* (spoken lines): handled exactly like the models, so
+ *   a line heard once online still plays offline.
  * - Only `ok`, same-origin (`type === "basic"`), non-redirected responses are
  *   cached, so opaque or cross-origin responses never enter the cache.
+ * - /ship-builder/version.json is never handled, cached or precached.
+ * - The page posts { type: "SKIP_WAITING" } to make a waiting worker take over.
  * - The page posts { type: "CACHE_URLS", urls } with the resources it has
  *   already loaded, so a single online visit is enough to play offline.
  */
@@ -23,6 +27,9 @@ const STATIC_PREFIX = "/_next/static/";
 const MODEL_PREFIX = `${PAGE_PATH}/models/`;
 /** Upper bound on URLs accepted from one CACHE_URLS message. */
 const MAX_PRECACHE_URLS = 300;
+
+/** Spoken lines (public/ship-builder/voice/), handled like the models. */
+const VOICE_PREFIX = `${PAGE_PATH}/voice/`;
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -51,19 +58,30 @@ function isGamePath(pathname) {
   );
 }
 
-/** True for a part model the game loads (public/ship-builder/models/). */
+/**
+ * True for a part model or a spoken line the game loads
+ * (public/ship-builder/models/, public/ship-builder/voice/).
+ */
 function isModelAsset(pathname) {
-  return pathname.startsWith(MODEL_PREFIX);
+  return pathname.startsWith(MODEL_PREFIX) || pathname.startsWith(VOICE_PREFIX);
 }
 
 /** True for the game page or one of its sub-pages (e.g. /ship-builder/versions). */
 function isPagePath(pathname) {
-  if (isModelAsset(pathname)) return false;
+  if (isModelAsset(pathname) || isVersionFile(pathname)) return false;
   return (
     pathname === PAGE_PATH ||
     pathname === `${PAGE_PATH}.html` ||
     pathname.startsWith(`${PAGE_PATH}/`)
   );
+}
+
+/**
+ * The deployed-version file the page polls for updates. It must always come
+ * from the network, so the worker never stores or serves it.
+ */
+function isVersionFile(pathname) {
+  return pathname === `${PAGE_PATH}/version.json`;
 }
 
 function isStaticAsset(pathname) {
@@ -166,6 +184,7 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = toSameOriginUrl(request.url);
   if (!url) return;
+  if (isVersionFile(url.pathname)) return;
 
   if (request.mode === "navigate") {
     if (isPagePath(url.pathname)) {
@@ -207,6 +226,11 @@ self.addEventListener("message", (event) => {
   const { data, source } = event;
   // Only accept messages from our own pages (window clients are same-origin).
   if (!source || source.type !== "window") return;
+  // The page asks a waiting worker to take over when the player taps Update.
+  if (data && data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
   if (!data || data.type !== "CACHE_URLS" || !Array.isArray(data.urls)) return;
 
   const seen = new Set();
