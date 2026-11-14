@@ -248,7 +248,7 @@ export default function StickyHud({
                 >
                   <span
                     data-testid="lm-hud-gauge-label"
-                    className={`${pixelClass} text-[8px] leading-none text-slate-300`}
+                    className={`${pixelClass} text-[10px] leading-none text-slate-300`}
                   >
                     {gauge.label}
                   </span>
