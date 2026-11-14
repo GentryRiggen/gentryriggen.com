@@ -51,6 +51,17 @@ describe("InteractivePrompt navigation", () => {
     expect(assign).toHaveBeenCalledWith("/plane-builder");
   });
 
+  it("navigates to the planet game about 1.2s after `planets`", () => {
+    render(<InteractivePrompt onClear={jest.fn()} />);
+    runCommand("planets");
+
+    act(() => {
+      jest.advanceTimersByTime(1300);
+    });
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledWith("/planet-smasher");
+  });
+
   it("does not navigate for ordinary commands", () => {
     render(<InteractivePrompt onClear={jest.fn()} />);
     runCommand("pwd");
