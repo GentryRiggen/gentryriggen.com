@@ -58,7 +58,13 @@ function pressed(name: string): string[] {
 
 async function pickFromMenu(item: string) {
   const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: "Sea trial" }));
+  // Waves left the Boom! menu (it lives on as the Shipshape challenge), but
+  // its card still opens from the store.
+  if (item === "Waves") {
+    act(() => store().openTrialSetup("waves"));
+    return user;
+  }
+  await user.click(screen.getByRole("button", { name: "Boom!" }));
   await user.click(screen.getByRole("menuitem", { name: item }));
   return user;
 }

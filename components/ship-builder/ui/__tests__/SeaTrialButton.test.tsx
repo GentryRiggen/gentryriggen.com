@@ -14,11 +14,11 @@ beforeEach(() => {
 });
 
 function trigger() {
-  return screen.getByRole("button", { name: "Sea trial" });
+  return screen.getByRole("button", { name: "Boom!" });
 }
 
 describe("SeaTrialButton menu", () => {
-  it("is a menu button that opens on click and lists the three trials", async () => {
+  it("is a menu button that opens on click and lists the three ways to sink her", async () => {
     const user = userEvent.setup();
     render(<SeaTrialButton />);
     expect(trigger()).toHaveAttribute("aria-haspopup", "menu");
@@ -28,14 +28,14 @@ describe("SeaTrialButton menu", () => {
     await user.click(trigger());
     expect(trigger()).toHaveAttribute("aria-expanded", "true");
     expect(screen.getAllByRole("menuitem").map((i) => i.textContent)).toEqual([
-      "Waves",
-      "Shipwreck storm",
+      "Bombs",
       "Iceberg",
+      "Shipwreck storm",
     ]);
     for (const item of screen.getAllByRole("menuitem")) {
       expect(item.querySelector("svg")).not.toBeNull();
     }
-    expect(screen.getByRole("menuitem", { name: "Waves" })).toHaveFocus();
+    expect(screen.getByRole("menuitem", { name: "Bombs" })).toHaveFocus();
   });
 
   it("stays closed when the button comes back after being hidden", async () => {
@@ -45,7 +45,7 @@ describe("SeaTrialButton menu", () => {
     expect(screen.getByRole("menu")).toBeInTheDocument();
 
     act(() => store().aimIceberg());
-    expect(screen.queryByRole("button", { name: "Sea trial" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Boom!" })).toBeNull();
     act(() => store().cancelAim());
     expect(trigger()).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
@@ -54,21 +54,21 @@ describe("SeaTrialButton menu", () => {
   it("is hidden while the drive picker or a drive is on", () => {
     render(<SeaTrialButton />);
     act(() => store().openDrive());
-    expect(screen.queryByRole("button", { name: "Sea trial" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Boom!" })).toBeNull();
     act(() => store().startDrive({ seed: 1, kinds: [], density: "few" }));
-    expect(screen.queryByRole("button", { name: "Sea trial" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Boom!" })).toBeNull();
     act(() => store().endDrive());
     expect(trigger()).toBeVisible();
   });
 
-  it("Waves opens its setup card", async () => {
+  it("Bombs starts aiming bombs, with no card to fill in first", async () => {
     const user = userEvent.setup();
     render(<SeaTrialButton />);
     await user.click(trigger());
-    await user.click(screen.getByRole("menuitem", { name: "Waves" }));
+    await user.click(screen.getByRole("menuitem", { name: "Bombs" }));
     expect(store().trial).toEqual({
-      status: "setup",
-      kind: "waves",
+      status: "aiming",
+      kind: "boom",
       look: { sea: "calm", time: "day" },
     });
   });
@@ -111,24 +111,26 @@ describe("SeaTrialButton menu", () => {
     render(<SeaTrialButton />);
     trigger().focus();
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("menuitem", { name: "Waves" })).toHaveFocus();
+    expect(screen.getByRole("menuitem", { name: "Bombs" })).toHaveFocus();
+    await user.keyboard("{ArrowDown}");
+    expect(screen.getByRole("menuitem", { name: "Iceberg" })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(
       screen.getByRole("menuitem", { name: "Shipwreck storm" })
     ).toHaveFocus();
     await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("menuitem", { name: "Iceberg" })).toHaveFocus();
-    await user.keyboard("{ArrowDown}");
-    expect(screen.getByRole("menuitem", { name: "Waves" })).toHaveFocus();
+    expect(screen.getByRole("menuitem", { name: "Bombs" })).toHaveFocus();
     await user.keyboard("{ArrowUp}");
-    expect(screen.getByRole("menuitem", { name: "Iceberg" })).toHaveFocus();
+    expect(
+      screen.getByRole("menuitem", { name: "Shipwreck storm" })
+    ).toHaveFocus();
 
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(trigger()).toHaveFocus();
 
     await user.keyboard("{ArrowUp}");
-    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    await user.keyboard("{ArrowDown}{Enter}");
     expect(store().trial).toEqual({
       status: "aiming",
       look: { sea: "calm", time: "day" },

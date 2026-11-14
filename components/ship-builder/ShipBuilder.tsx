@@ -32,6 +32,7 @@ import PlacementHint from "./ui/PlacementHint";
 import RemovalConfirm from "./ui/RemovalConfirm";
 import BelowDeckInset from "./ui/BelowDeckInset";
 import IcebergAimHint from "./ui/IcebergAimHint";
+import BombAimHint from "./ui/BombAimHint";
 import SeaTrialButton from "./ui/SeaTrialButton";
 import TrialSetupCard from "./ui/TrialSetupCard";
 import SeaTrialResult from "./ui/SeaTrialResult";
@@ -205,6 +206,7 @@ export default function ShipBuilder() {
           {webgl && <TrialWalkButton />}
           {webgl && <TrialSetupCard />}
           {webgl && <IcebergAimHint />}
+          {webgl && <BombAimHint />}
           <SeaTrialStatus />
           {webgl && <BelowDeckInset />}
           <SeaTrialResult />

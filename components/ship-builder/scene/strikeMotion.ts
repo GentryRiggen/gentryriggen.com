@@ -213,3 +213,28 @@ export function blastPiecePose(
   out.visible = out.y > PIECE_GONE_Y;
   return out;
 }
+
+/**
+ * Boom!: every bomb that has gone off gives her a jolt, a smaller twin of a
+ * mine's, fading over a second or two. Added on top of whatever `out` holds.
+ */
+export function addBombJolts(
+  bombs: readonly { at: number; impactX: number }[],
+  length: number,
+  time: number,
+  out: StrikePose
+): StrikePose {
+  for (const bomb of bombs) {
+    const since = time - bomb.at;
+    if (since < 0 || since > BOMB_JOLT_S) continue;
+    const lever = leverOf(bomb.impactX, length);
+    const fade = Math.exp(-3 * since);
+    out.y += 0.3 * fade * Math.cos(since * 8);
+    out.roll += 0.07 * fade * Math.sin(since * 12);
+    out.pitch += 0.06 * lever * fade * Math.cos(since * 7);
+  }
+  return out;
+}
+
+/** A bomb's jolt is over this long after it goes off (sim seconds). */
+export const BOMB_JOLT_S = 2.5;

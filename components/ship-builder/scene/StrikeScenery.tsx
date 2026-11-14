@@ -7,6 +7,10 @@ import { beamOf, gridLength } from "@/lib/ship-builder/model/grid";
 import type { PlacedPart, Ship } from "@/lib/ship-builder/model/types";
 import { blastPiecesOf, type BlastPiece } from "@/lib/ship-builder/sim/blast";
 import { ICEBERG_IMPACT_S } from "@/lib/ship-builder/sim/flooding";
+import {
+  poseWorldPoint,
+  type BodyPose,
+} from "@/lib/ship-builder/sim/funnelFall";
 import { strikeOf } from "@/lib/ship-builder/sim/strike";
 import type { IcebergInput } from "@/lib/ship-builder/sim/types";
 import { useShipBuilderStore } from "@/lib/ship-builder/state/store";
@@ -100,16 +104,33 @@ function MineBody({ iceberg, length, beam }: StrikeBodyProps) {
 interface BlastFrame {
   seconds: number;
   x: number;
+  /** Height the blast went off at (0 on the water). */
+  y: number;
   z: number;
 }
 
+/** Where a blast goes off, in the water's frame (`y` absent is the water). */
+export interface BlastOrigin {
+  x: number;
+  y?: number;
+  z: number;
+}
+
+interface FireballProps {
+  origin: BlastOrigin;
+  /** Sim seconds it goes off. */
+  at: number;
+  /** False to leave the light out (Boom! shares one light between blasts). */
+  hasLight?: boolean;
+}
+
 /** The fireball and its light: a bright flash that swells and fades fast. */
-function Fireball({ origin }: { origin: { x: number; z: number } }) {
+export function Fireball({ origin, at, hasLight = true }: FireballProps) {
   const ball = useRef<Mesh>(null);
   const material = useRef<MeshBasicMaterial>(null);
   const light = useRef<PointLight>(null);
   useFrame(() => {
-    const seconds = trialPlayback.time - ICEBERG_IMPACT_S;
+    const seconds = trialPlayback.time - at;
     const live = seconds >= 0 && seconds < 1.2;
     const grow = clamp(seconds / 0.25, 0, 1);
     const fade = clamp(1 - (seconds - 0.15) / 1, 0, 1);
@@ -121,7 +142,7 @@ function Fireball({ origin }: { origin: { x: number; z: number } }) {
     if (light.current) light.current.intensity = live ? 120 * fade : 0;
   });
   return (
-    <group position={[origin.x, 0.6, origin.z]}>
+    <group position={[origin.x, (origin.y ?? 0) + 0.6, origin.z]}>
       <mesh ref={ball} visible={false}>
         <sphereGeometry args={[1, 16, 12]} />
         <meshBasicMaterial
@@ -132,13 +153,15 @@ function Fireball({ origin }: { origin: { x: number; z: number } }) {
           toneMapped={false}
         />
       </mesh>
-      <pointLight
-        ref={light}
-        color={FIRE_COLOR}
-        intensity={0}
-        distance={40}
-        decay={1.5}
-      />
+      {hasLight && (
+        <pointLight
+          ref={light}
+          color={FIRE_COLOR}
+          intensity={0}
+          distance={40}
+          decay={1.5}
+        />
+      )}
     </group>
   );
 }
@@ -155,7 +178,7 @@ function water(slot: number, f: BlastFrame, w: ParticleWriter) {
   w.set(
     slot,
     f.x + spreadX * (0.4 + t),
-    Math.max(0, y),
+    f.y + Math.max(0, y),
     f.z + spreadZ * (0.4 + t),
     0.35 + 0.35 * ((slotNoise(slot, 5) + 1) / 2),
     live ? 0.9 * (1 - t / life) : 0
@@ -173,7 +196,7 @@ function fire(slot: number, f: BlastFrame, w: ParticleWriter) {
   w.set(
     slot,
     f.x + vx * t,
-    0.5 + vy * t - 0.5 * GRAVITY * t * t,
+    f.y + 0.5 + vy * t - 0.5 * GRAVITY * t * t,
     f.z + vz * t,
     0.35 * (1 - age) + 0.05,
     t > 0 && t < life ? 1 - age * age : 0
@@ -188,7 +211,7 @@ function smoke(slot: number, f: BlastFrame, w: ParticleWriter) {
   w.set(
     slot,
     f.x + slotNoise(slot, 23) * (0.5 + t * 0.6),
-    1 + t * (1.4 + 0.8 * ((slotNoise(slot, 24) + 1) / 2)),
+    f.y + 1 + t * (1.4 + 0.8 * ((slotNoise(slot, 24) + 1) / 2)),
     f.z + slotNoise(slot, 25) * (0.5 + t * 0.6),
     0.8 + age * 2.6,
     t > 0 && t < life ? 0.55 * Math.min(1, t / 0.3) * (1 - age) : 0
@@ -201,7 +224,7 @@ function chunk(slot: number, f: BlastFrame, w: ParticleWriter) {
   const vx = slotNoise(slot, 31) * 5;
   const vy = 5 + 7 * ((slotNoise(slot, 32) + 1) / 2);
   const vz = slotNoise(slot, 33) * 5;
-  const y = 0.6 + vy * t - 0.5 * GRAVITY * t * t;
+  const y = f.y + 0.6 + vy * t - 0.5 * GRAVITY * t * t;
   w.set(
     slot,
     f.x + vx * t,
@@ -214,21 +237,43 @@ function chunk(slot: number, f: BlastFrame, w: ParticleWriter) {
 
 type Emitter = (slot: number, f: BlastFrame, w: ParticleWriter) => void;
 
+interface MineBlastProps {
+  origin: BlastOrigin;
+  /** Sim seconds it goes off. */
+  at: number;
+  /** Throw up a column of sea water (a blast at the waterline). */
+  hasWater?: boolean;
+  /** See `FireballProps.hasLight`. */
+  hasLight?: boolean;
+}
+
 /** The blast itself: fireball, water column, fire, smoke and chunks. */
-function MineBlast({ origin }: { origin: { x: number; z: number } }) {
-  const frame = useRef<BlastFrame>({ seconds: -1, x: origin.x, z: origin.z });
+export function MineBlast({
+  origin,
+  at,
+  hasWater = true,
+  hasLight = true,
+}: MineBlastProps) {
+  const originY = origin.y ?? 0;
+  const frame = useRef<BlastFrame>({
+    seconds: -1,
+    x: origin.x,
+    y: originY,
+    z: origin.z,
+  });
   const fill = useCallback(
     (writer: ParticleWriter, emit: Emitter, count: number, seconds: number) => {
-      const since = trialPlayback.time - ICEBERG_IMPACT_S;
+      const since = trialPlayback.time - at;
       if (since < 0 || since > seconds) return 0;
       const current = frame.current;
       current.seconds = since;
       current.x = origin.x;
+      current.y = originY;
       current.z = origin.z;
       for (let slot = 0; slot < count; slot++) emit(slot, current, writer);
       return count;
     },
-    [origin.x, origin.z]
+    [origin.x, originY, origin.z, at]
   );
   const updateWater = useCallback(
     (w: ParticleWriter) => fill(w, water, WATER_COUNT, BLAST_SECONDS),
@@ -248,17 +293,19 @@ function MineBlast({ origin }: { origin: { x: number; z: number } }) {
   );
   return (
     <>
-      <Fireball origin={origin} />
+      <Fireball origin={origin} at={at} hasLight={hasLight} />
       <ParticleField
         capacity={SMOKE_COUNT}
         color={SMOKE_COLOR}
         update={updateSmoke}
       />
-      <ParticleField
-        capacity={WATER_COUNT}
-        color={WATER_COLOR}
-        update={updateWater}
-      />
+      {hasWater && (
+        <ParticleField
+          capacity={WATER_COUNT}
+          color={WATER_COLOR}
+          update={updateWater}
+        />
+      )}
       <ParticleField
         capacity={FIRE_COUNT}
         color={FIRE_COLOR}
@@ -278,7 +325,11 @@ interface ThrownPartProps {
   part: PlacedPart;
   piece: BlastPiece;
   slot: number;
-  origin: { x: number; z: number };
+  origin: BlastOrigin;
+  /** Sim seconds the blast goes off. */
+  at: number;
+  /** The ship's pose (or her half's) when it goes off; absent is level. */
+  carrier?: BodyPose;
 }
 
 /**
@@ -286,16 +337,25 @@ interface ThrownPartProps {
  * but hidden until the blast; the ship hides the real one from the same
  * moment (`ShipParts`), so scrubbing back puts it back on board.
  */
-function ThrownPart({ ship, part, piece, slot, origin }: ThrownPartProps) {
+export function ThrownPart({
+  ship,
+  part,
+  piece,
+  slot,
+  origin,
+  at,
+  carrier,
+}: ThrownPartProps) {
   const group = useRef<Group>(null);
   const from = useMemo(() => {
-    const [x, y, z] = modelToWorld(gridLength(ship), beamOf(ship), {
+    const length = gridLength(ship);
+    const [x, y, z] = modelToWorld(length, beamOf(ship), {
       x: piece.x,
       y: piece.level,
       z: piece.z,
     });
-    return { x, y, z };
-  }, [ship, piece]);
+    return carrier ? poseWorldPoint(carrier, length, { x, y, z }) : { x, y, z };
+  }, [ship, piece, carrier]);
   const pose = useMemo<PiecePose>(
     () => ({ x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, visible: false }),
     []
@@ -303,7 +363,7 @@ function ThrownPart({ ship, part, piece, slot, origin }: ThrownPartProps) {
   useFrame(() => {
     const target = group.current;
     if (!target) return;
-    const seconds = trialPlayback.time - ICEBERG_IMPACT_S;
+    const seconds = trialPlayback.time - at;
     if (seconds < 0) {
       target.visible = false;
       return;
@@ -339,7 +399,7 @@ function MineStrike({ iceberg, length, beam }: StrikeBodyProps) {
   return (
     <>
       <MineBody iceberg={iceberg} length={length} beam={beam} />
-      {!reducedMotion && <MineBlast origin={origin} />}
+      {!reducedMotion && <MineBlast origin={origin} at={ICEBERG_IMPACT_S} />}
       {thrown.map(({ piece, part }, slot) => (
         <ThrownPart
           key={part.id}
@@ -348,6 +408,7 @@ function MineStrike({ iceberg, length, beam }: StrikeBodyProps) {
           piece={piece}
           slot={slot}
           origin={origin}
+          at={ICEBERG_IMPACT_S}
         />
       ))}
     </>

@@ -306,7 +306,7 @@ test.describe("Ship Builder budget", () => {
       template: TITANIC,
       trialSeconds: SINKING_SECONDS,
     });
-    await page.getByRole("button", { name: "Sea trial" }).click();
+    await page.getByRole("button", { name: "Boom!" }).click();
     await page.getByRole("menuitem", { name: "Iceberg" }).click();
     await expect(page.getByText("Tap where the iceberg hits")).toBeVisible();
     const box = await page.getByTestId("ship-canvas").boundingBox();

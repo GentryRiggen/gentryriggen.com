@@ -1,11 +1,10 @@
 "use client";
 
 import {
+  Bomb,
   ChevronUp,
-  Sailboat,
   Snowflake,
   Tornado,
-  Waves,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -33,8 +32,9 @@ const ITEM_CLASS =
   "flex min-h-11 w-full touch-manipulation items-center gap-2 rounded-lg px-3 text-left text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:bg-slate-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-sky-600 dark:text-slate-100 dark:hover:bg-slate-800 dark:focus-visible:bg-slate-800 dark:focus-visible:outline-sky-400";
 
 /**
- * Starts a sea trial: a menu button that offers Waves, Shipwreck storm (each
- * opens its setup card) or Iceberg (its aim card, then strike). It floats bottom-centre, the slot the placement
+ * Boom!: the menu button for sinking her. Bombs (tap the ship as often as you
+ * like), Iceberg (its aim card, then strike) or Shipwreck storm (its setup
+ * card). The Waves trial lives on as the Shipshape challenge. It floats bottom-centre, the slot the placement
  * hint and the selection bar use while a tool or a part is active, so it only
  * shows when both are idle, and not while a drive or a walk is on.
  */
@@ -55,14 +55,15 @@ export default function SeaTrialButton({
   );
   const openTrialSetup = useShipBuilderStore((s) => s.openTrialSetup);
   const aimIceberg = useShipBuilderStore((s) => s.aimIceberg);
+  const armBombs = useShipBuilderStore((s) => s.armBombs);
   const items: { label: string; Icon: LucideIcon; onPick: () => void }[] = [
-    { label: "Waves", Icon: Waves, onPick: () => openTrialSetup("waves") },
+    { label: "Bombs", Icon: Bomb, onPick: armBombs },
+    { label: "Iceberg", Icon: Snowflake, onPick: aimIceberg },
     {
       label: "Shipwreck storm",
       Icon: Tornado,
       onPick: () => openTrialSetup("storm"),
     },
-    { label: "Iceberg", Icon: Snowflake, onPick: aimIceberg },
   ];
   const [isOpen, setIsOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -138,7 +139,7 @@ export default function SeaTrialButton({
               ref={menu}
               id={MENU_ID}
               role="menu"
-              aria-label="Sea trial"
+              aria-label="Boom!"
               onKeyDown={handleMenuKeyDown}
               className="pointer-events-auto absolute bottom-full left-1/2 mb-2 w-48 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-900"
             >
@@ -170,8 +171,8 @@ export default function SeaTrialButton({
             onKeyDown={handleTriggerKeyDown}
             className="pointer-events-auto inline-flex min-h-11 touch-manipulation items-center justify-center gap-2 whitespace-nowrap rounded-full bg-sky-600 px-4 text-sm font-semibold text-white shadow-lg hover:bg-sky-500 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 dark:bg-sky-500 dark:hover:bg-sky-400 dark:focus-visible:outline-sky-300"
           >
-            <Sailboat aria-hidden="true" className="h-5 w-5 shrink-0" />
-            Sea trial
+            <Bomb aria-hidden="true" className="h-5 w-5 shrink-0" />
+            Boom!
             <ChevronUp
               aria-hidden="true"
               className={`h-4 w-4 shrink-0 ${isOpen ? "rotate-180" : ""}`}

@@ -84,9 +84,7 @@ test.describe("Ship Builder walk", () => {
         page.getByRole("group", { name: /Walk joystick/ })
       ).toBeVisible();
       // The builder's own buttons are tucked away while walking.
-      await expect(page.getByRole("button", { name: "Sea trial" })).toHaveCount(
-        0
-      );
+      await expect(page.getByRole("button", { name: "Boom!" })).toHaveCount(0);
 
       // Keys: turn with the arrows, walk forward with W.
       await page.keyboard.down("ArrowRight");
@@ -131,9 +129,7 @@ test.describe("Ship Builder walk", () => {
       await page.getByRole("button", { name: "Stop walking" }).click();
       expect(await walkStatus(page)).toBe("idle");
       await expect(page.getByRole("button", { name: "Walk" })).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Sea trial" })
-      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Boom!" })).toBeVisible();
       expect(await walker(page)).toBeNull();
     }
   );

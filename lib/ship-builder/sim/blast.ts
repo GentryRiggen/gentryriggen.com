@@ -48,6 +48,20 @@ function middleOf(
 /** At most this many parts fly, so a blast stays readable (and cheap). */
 export const MAX_THROWN = 24;
 
+/** How a blast picks its parts; every field defaults to a sea mine's. */
+export interface BlastOptions {
+  /** Cells either side of the blast along the hull. */
+  reach?: number;
+  /** Most parts thrown. */
+  max?: number;
+  /**
+   * The blast's deck level and cells across the beam: the nearest parts in
+   * all three directions go first. Absent, only the distance along the hull
+   * counts (a mine under her keel).
+   */
+  near?: { level: number; z: number };
+}
+
 /**
  * The parts a sea mine going off `impactX` cells from the bow throws into the
  * air. It peels the ship from the top down near the blast: a part only goes
@@ -58,8 +72,12 @@ export const MAX_THROWN = 24;
 export function blastPiecesOf(
   ship: Ship,
   impactX: number,
-  occupancy: Occupancy = buildOccupancy(ship)
+  occupancy: Occupancy = buildOccupancy(ship),
+  options: BlastOptions = {}
 ): BlastPiece[] {
+  const reach = options.reach ?? BLAST_REACH;
+  const most = options.max ?? MAX_THROWN;
+  const { near } = options;
   const middles = new Map<string, { x: number; level: number; z: number }>();
   for (const part of ship.parts) {
     const middle = middleOf(ship, part, occupancy);
@@ -94,14 +112,21 @@ export function blastPiecesOf(
 
   const candidates = ship.parts.filter((part) => {
     const middle = middles.get(part.id);
-    return !!middle && Math.abs(middle.x - impactX) <= BLAST_REACH;
+    return !!middle && Math.abs(middle.x - impactX) <= reach;
   });
   const order = (id: string) => {
     const middle = middles.get(id)!;
-    return Math.abs(middle.x - impactX) * 100 - middle.level;
+    const distance = near
+      ? Math.hypot(
+          middle.x - impactX,
+          middle.level - near.level,
+          middle.z - near.z
+        )
+      : Math.abs(middle.x - impactX);
+    return distance * 100 - middle.level;
   };
   const thrown = new Set<string>();
-  while (thrown.size < MAX_THROWN) {
+  while (thrown.size < most) {
     let best: string | null = null;
     for (const part of candidates) {
       if (thrown.has(part.id)) continue;
@@ -118,6 +143,21 @@ export function blastPiecesOf(
     const middle = middles.get(part.id);
     if (!thrown.has(part.id) || !middle) continue;
     pieces.push({ partId: part.id, ...middle });
+  }
+  return pieces;
+}
+
+/** Where each of these parts sits (model frame), in ship order. */
+export function piecesOf(
+  ship: Ship,
+  ids: ReadonlySet<string>,
+  occupancy: Occupancy = buildOccupancy(ship)
+): BlastPiece[] {
+  const pieces: BlastPiece[] = [];
+  for (const part of ship.parts) {
+    if (!ids.has(part.id)) continue;
+    const middle = middleOf(ship, part, occupancy);
+    if (middle) pieces.push({ partId: part.id, ...middle });
   }
   return pieces;
 }

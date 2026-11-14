@@ -16,6 +16,7 @@ import {
   ICEBERG_IMPACT_S,
   ICEBERG_MAX_S,
   STORM_SUNK_BY_S,
+  boomRunLimitOf,
   stepFlooding,
   stepPlunge,
 } from "./flooding";
@@ -532,6 +533,7 @@ function stepPhases(
 function runLimitOf(input: TrialInput): number {
   if (input.iceberg) return ICEBERG_IMPACT_S + ICEBERG_MAX_S + 30;
   if (input.storm) return STORM_SUNK_BY_S + 60;
+  if (input.boom) return boomRunLimitOf(input);
   return 60;
 }
 

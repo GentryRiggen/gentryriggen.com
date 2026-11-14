@@ -39,6 +39,7 @@ import type {
   TrialInput,
 } from "../sim/types";
 import { blastPiecesOf } from "../sim/blast";
+import { BOMB_FALL_S, withBomb, type BombDrop } from "../sim/bombs";
 import { STRIKES } from "../sim/strike";
 import { trackGame } from "@/lib/analytics/trackGame";
 import {
@@ -204,7 +205,12 @@ export type SetupKind = "waves" | "storm";
 export type TrialSlice =
   | { status: "idle" }
   | { status: "setup"; kind: SetupKind; look: TrialLook }
-  | { status: "aiming"; look: TrialLook }
+  | {
+      status: "aiming";
+      look: TrialLook;
+      /** `boom` while the player picks where the first bomb lands. */
+      kind?: "boom";
+    }
   | {
       status: "running";
       input: TrialInput;
@@ -215,6 +221,11 @@ export type TrialSlice =
       descending: boolean;
       /** Set when the trial was started from the Challenges panel. */
       challenge?: ChallengeId;
+      /**
+       * Sim seconds to carry on from instead of the start: a Boom! bomb was
+       * dropped mid-run, so the same run plays on from where it was.
+       */
+      resumeAt?: number;
     }
   | {
       status: "result";
@@ -357,6 +368,17 @@ export interface ShipBuilderState extends ShipBuilderData {
   aimIceberg: () => void;
   /** Backs out of aiming and returns to building. */
   cancelAim: () => void;
+  /**
+   * Boom!: starts aiming bombs (side view, ship frozen) from building or a
+   * finished trial. The first bomb dropped starts the trial.
+   */
+  armBombs: () => void;
+  /**
+   * Drops a bomb (Boom!): the first one starts the trial, each later one
+   * joins the running (or finished) Boom! trial at `drop.at` and it plays on
+   * from the tap. `fallen` lists funnels that have already snapped off.
+   */
+  dropBomb: (drop: BombDrop, fallen?: readonly string[]) => void;
   /** Opens the obstacle picker; only from building (no trial, no drive). */
   openDrive: () => void;
   /** Starts sailing with this obstacle field; only from the picker. */
@@ -1168,6 +1190,74 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     cancelAim() {
       if (get().trial.status !== "aiming") return;
       set({ trial: { status: "idle" } });
+    },
+
+    armBombs() {
+      const { trial, walk, drive } = get();
+      if (walk.status !== "idle" || drive.status !== "idle") return;
+      if (trial.status !== "idle" && trial.status !== "result") return;
+      // "Bomb again" keeps the last Boom!'s look; a fresh one starts from the
+      // main screen.
+      const look =
+        trial.status === "result" && trial.input.boom ? trial.look : mainLook();
+      set({
+        trial: { status: "aiming", look, kind: "boom" },
+        tool: { kind: "none" },
+        camera: { view: "side", nonce: get().camera.nonce + 1 },
+        ...CLEARED,
+      });
+    },
+
+    dropBomb(drop, fallen = []) {
+      const { trial, ship, walk } = get();
+      if (trial.status === "aiming" && trial.kind === "boom") {
+        if (walk.status !== "idle") return;
+        const length = gridLength(ship);
+        const { stats } = analyzeShip(ship);
+        const base: TrialInput = {
+          ship: simShipFromStats(stats, ship.hull.beam),
+          sea: trial.look.sea,
+          length,
+          funnels: trialFunnelsOf(ship),
+          boom: {
+            compartments: compartmentSpecsOf(ship.hull),
+            length,
+            breakMode: get().breakMode,
+            bombs: [],
+          },
+          lifeboats: getTrialChoices().lifeboats,
+        };
+        runId += 1;
+        trialSpeedSetting.set(1);
+        resetEscape();
+        set({
+          lastEscape: null,
+          trial: {
+            status: "running",
+            input: withBomb(base, ship, drop),
+            look: trial.look,
+            runId,
+            descending: true,
+          },
+          tool: { kind: "none" },
+          ...CLEARED,
+        });
+        return;
+      }
+      if (trial.status !== "running" && trial.status !== "result") return;
+      if (!trial.input.boom) return;
+      const input = withBomb(trial.input, ship, drop, new Set(fallen));
+      if (input === trial.input) return;
+      set({
+        trial: {
+          status: "running",
+          input,
+          look: trial.look,
+          runId: trial.runId,
+          descending: trial.descending,
+          resumeAt: Math.max(0, drop.at - BOMB_FALL_S),
+        },
+      });
     },
 
     finishTrial(state) {

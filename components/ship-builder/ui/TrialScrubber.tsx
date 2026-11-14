@@ -27,6 +27,7 @@ import {
   STRIKE_MARK_LABEL,
   TIMELINE_MARKS,
 } from "./seaTrialText";
+import { formatSeconds } from "@/lib/ship-builder/sim/explain";
 import type { StrikeKind } from "@/lib/ship-builder/sim/types";
 
 interface TrialScrubberProps {
@@ -37,6 +38,8 @@ interface TrialScrubberProps {
   isStorm?: boolean;
   /** What struck her (a drive hit): names the first mark and the clock. */
   strike?: StrikeKind;
+  /** Boom!: the first mark is the first bomb, the clock is real time. */
+  isBoom?: boolean;
 }
 
 interface Mark {
@@ -83,16 +86,19 @@ const FALLBACK_COLOR = {
 function marksOf(
   timeline: Timeline,
   isStorm: boolean,
-  strike: StrikeKind
+  strike: StrikeKind,
+  isBoom: boolean
 ): Mark[] {
   return TIMELINE_MARKS.flatMap(({ kind, label }) => {
     const event = firstEvent(timeline, kind);
     const name =
       kind !== "flooding"
         ? label
-        : isStorm
-          ? STORM_FLOODING_LABEL
-          : STRIKE_MARK_LABEL[strike];
+        : isBoom
+          ? "First bomb"
+          : isStorm
+            ? STORM_FLOODING_LABEL
+            : STRIKE_MARK_LABEL[strike];
     return event ? [{ kind, label: name, at: event.at }] : [];
   }).sort((a, b) => a.at - b.at);
 }
@@ -128,11 +134,15 @@ function describeMoment(
   marks: readonly Mark[],
   events: readonly SimEvent[],
   isStorm: boolean,
-  strike: StrikeKind
+  strike: StrikeKind,
+  isBoom: boolean
 ): string {
   const story = storyMinutesSinceImpact(storyClockSeconds(time, events));
   const after = isStorm ? "after the storm hit" : STRIKE_AFTER[strike];
-  const clock = `${formatStoryTime(story)} ${after}`;
+  const firstBomb = events.find((event) => event.kind === "flooding")?.at;
+  const clock = isBoom
+    ? `${formatSeconds(time - (firstBomb ?? time))} after the first bomb`
+    : `${formatStoryTime(story)} ${after}`;
   const latest = marks.filter((mark) => mark.at <= time).at(-1);
   return latest ? `${clock} · ${latest.label}` : clock;
 }
@@ -150,14 +160,15 @@ export default function TrialScrubber({
   compact = false,
   isStorm = false,
   strike = "iceberg",
+  isBoom = false,
 }: TrialScrubberProps) {
   const inputId = useId();
   const start = timelineStart(timeline);
   const end = timelineEnd(timeline);
   const span = Math.max(end - start, Number.EPSILON);
   const marks = useMemo(
-    () => marksOf(timeline, isStorm, strike),
-    [timeline, isStorm, strike]
+    () => marksOf(timeline, isStorm, strike, isBoom),
+    [timeline, isStorm, strike, isBoom]
   );
   const events = useMemo(() => timelineEvents(timeline), [timeline]);
   const lanes = useMemo(() => markLanes(marks, span), [marks, span]);
@@ -215,7 +226,14 @@ export default function TrialScrubber({
           max={end}
           step="any"
           value={time}
-          aria-valuetext={describeMoment(time, marks, events, isStorm, strike)}
+          aria-valuetext={describeMoment(
+            time,
+            marks,
+            events,
+            isStorm,
+            strike,
+            isBoom
+          )}
           onChange={(event) => showMoment(Number(event.target.value))}
           onKeyDown={handleKeyDown}
           onKeyUp={handleRelease}

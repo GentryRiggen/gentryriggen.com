@@ -37,7 +37,7 @@ const DRIFT_TOTAL = 1.5;
 const BOB_HEIGHT = 0.05;
 const BOB_PERIOD_S = FLOAT_S / 2;
 
-interface BodyPose {
+export interface BodyPose {
   roll: number;
   pitch: number;
   sink: number;
@@ -82,7 +82,7 @@ function hasSunk(events: readonly SimEvent[]): boolean {
 }
 
 /** The pose of the body that carries a funnel at `cellX`. */
-function carrierOf(state: SimState, cellX: number): BodyPose {
+export function carrierOf(state: SimState, cellX: number): BodyPose {
   const { halves, breakup } = state;
   if (halves && breakup) {
     return cellX < breakup.atX ? halves.bow : halves.stern;

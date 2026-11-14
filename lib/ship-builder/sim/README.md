@@ -15,9 +15,11 @@ identical.
 - `breakup.ts`, `power.ts`, `descent.ts`: Level 2b, breaking in two, the
   lights, and the way down to the sea floor.
 - `explain.ts`: `explainTrial(state, input)` for the result card.
-- `trialKind.ts`: `trialKindOf` (`waves`, `storm`, `iceberg`), `floodOf` (the
+- `trialKind.ts`: `trialKindOf` (`waves`, `storm`, `iceberg`, `boom`), `floodOf` (the
   compartments, length and break mode of a flooding trial, or null) and
-  `isTimelineTrial` (iceberg or storm).
+  `isTimelineTrial` (iceberg, storm or Boom!).
+- `bombs.ts`: Boom!'s `withBomb` (adds a bomb in time order with the parts it
+  blows off) and its limits.
 - `seaWaves.ts`: the summed sine waves, `WAVES` (calm, choppy, stormy) and
   `WILD_WAVES` (the storm's wild sea), with the scene's directions and
   wavelengths so the scene can be checked against them.
@@ -352,3 +354,17 @@ Ever Given) floods from 10, flickers 55.2, lights out 84.2, breaks 85.4, sunk
 no walls at about 85.8. A top-heavy or dangerous ship is held up until 30 s,
 capsizes at 30 to 34 s and is sunk about 6 s later (the 60 to 120 s window is
 for the templates, which are all stable enough not to capsize).
+
+## Boom!
+
+`input.boom` (`BoomInput`: compartments, length, optional `breakMode`, and
+`bombs`, each `{ at, impactX }` plus scene-only `point` and `thrown`) is a
+trial the player builds as it plays: every tap adds a bomb. Its clock runs in
+real seconds (like the storm). Nothing comes in before the first bomb; from
+each bomb's `at`, a `BOMB_GASH_LENGTH` (4) cell hole lets the sea in at
+`BOMB_INFLOW_SCALE` (0.03) of `INFLOW`, so one bomb on an unwalled hull takes
+about 30 s to sink her and every extra bomb hurries her on. A ship that
+settles afloat ends `BOOM_QUIET_S` (40 s) after the last bomb. A bomb only
+acts from its `at`, so a timeline with one more bomb is identical up to it:
+the scene rebuilds and plays on from the tap. `slowMoSpeed` dips to
+`BLAST_SLOW_MO_SPEED` (0.35) at every bomb.

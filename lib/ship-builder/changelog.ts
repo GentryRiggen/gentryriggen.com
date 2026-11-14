@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.41.0",
+    date: "2026-11-13",
+    title: "Boom!",
+    highlights: [
+      "New: Boom! Tap Boom!, pick Bombs, then tap anywhere on your ship to drop a bomb. No waiting and no questions first",
+      "Keep tapping! Every bomb blows parts off where it lands, and bombs in the same spot dig deeper",
+      "Each bomb opens its own hole, so she sinks slowly after one and faster the more you drop. A ship with good walls can take a few",
+      "The action slows down for a moment at every bang, so you can see the pieces fly",
+      "When she's gone you see how long she lasted after the first bomb. Watch it all again, or keep bombing the wreck",
+      "The Iceberg and the Shipwreck storm now live in the Boom! menu too. The Waves trial lives on as the Shipshape challenge",
+      "Time of day, lifeboats and how she breaks wait behind the gear, if you want them",
+    ],
+  },
+  {
     version: "2.40.0",
     date: "2026-11-12",
     title: "Sea mines and islands",
