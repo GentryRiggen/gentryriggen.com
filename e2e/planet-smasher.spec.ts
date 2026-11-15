@@ -105,6 +105,62 @@ test.describe("planet smasher", () => {
     await expect(button).toBeHidden();
   });
 
+  test("each 1.1 tool runs without page errors", async ({ page }) => {
+    test.setTimeout(300_000);
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await open(page);
+    await page.waitForFunction(
+      () => (window.__planetSmasherRenderInfo?.().calls ?? 0) > 0,
+      null,
+      { timeout: 60_000 }
+    );
+    await page.evaluate(() => window.__planetSmasher!.unlockAll());
+    const tools = [
+      "nukeTwin",
+      "nukeRain",
+      "ufoSwarm",
+      "gravityBeam",
+      "nanobots",
+      "mothership",
+    ] as const;
+    for (const tool of tools) {
+      const before = await page.evaluate(
+        () => window.__planetSmasher!.state().planet!.population
+      );
+      await page.evaluate(
+        (id) => window.__planetSmasher!.fire(id, 0.5, 0.5),
+        tool
+      );
+      // The population drops, or the planet has ended.
+      await page.waitForFunction(
+        (start) => {
+          const s = window.__planetSmasher!.state();
+          return s.phase !== "playing" || s.planet!.population < start;
+        },
+        before,
+        { timeout: 90_000 }
+      );
+      const phase = await page.evaluate(
+        () => window.__planetSmasher!.state().phase
+      );
+      if (phase !== "playing") {
+        await page.waitForFunction(
+          () => window.__planetSmasher!.state().phase === "ended",
+          null,
+          { timeout: 90_000 }
+        );
+        await page.getByRole("button", { name: /new planet/i }).click();
+        await page.waitForFunction(
+          () => window.__planetSmasher!.state().phase === "playing",
+          null,
+          { timeout: 30_000 }
+        );
+      }
+    }
+    expect(errors).toEqual([]);
+  });
+
   test("progress survives a reload", async ({ page }) => {
     await open(page);
     // One asteroid can lose less than a whole point: keep firing until it counts.

@@ -15,6 +15,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-11-14",
+    title: "Alien invasion!",
+    highlights: [
+      "Six new tools: Twin nuke, Nuke rain, UFO swarm, Gravity beam, Nanobot swarm and the Mothership",
+      "The new Consumed ending turns a planet into a metal ball",
+      "Smash fast to get COMBO bonus stars",
+      "More stars to earn, with new unlocks all the way up to 13,000",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-11-14",
     title: "Planet Smasher is here!",

@@ -70,6 +70,7 @@ describe("DamagePainter", () => {
       "crack",
       "ice",
       "trench",
+      "goo",
     ] as const;
     kinds.forEach((k, i) => {
       p.stamp(k, 0.3, 0.6, 0.1);
@@ -87,6 +88,26 @@ describe("DamagePainter", () => {
     expect([...p.takeDirty()].sort()).toEqual(["damage", "height", "lights"]);
     p.reset(null);
     expect(p.takeDirty().size).toBe(4);
+  });
+
+  it("abduct erases the lights and rings the ground without touching height", () => {
+    const p = new DamagePainter(null);
+    p.takeDirty();
+    const before = p.version;
+    p.stamp("abduct", 0.3, 0.6, 0.05);
+    expect(p.version).toBe(before + 1);
+    const dirty = p.takeDirty();
+    expect(dirty.has("lights")).toBe(true);
+    expect(dirty.has("height")).toBe(false);
+  });
+
+  it("goo bumps the version and touches damage, glow and lights", () => {
+    const p = new DamagePainter(null);
+    p.takeDirty();
+    const before = p.version;
+    p.stamp("goo", 0.3, 0.6, 0.07);
+    expect(p.version).toBe(before + 1);
+    expect([...p.takeDirty()].sort()).toEqual(["damage", "glow", "lights"]);
   });
 
   it("bumps the version on reset", () => {

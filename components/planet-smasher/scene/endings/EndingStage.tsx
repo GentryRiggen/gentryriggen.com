@@ -14,6 +14,7 @@ import {
   useParticles,
 } from "../effects/particles";
 import { playCue, type Cue } from "../../audio/sfx";
+import Consumed from "./Consumed";
 import Molten from "./Molten";
 import Shatter from "./Shatter";
 import Swallowed from "./Swallowed";
@@ -25,6 +26,7 @@ const ENDING_CUES: Record<string, Cue> = {
   shatter: "endShatter",
   molten: "endMolten",
   frozen: "endFrozen",
+  consumed: "endConsumed",
   swallowed: "endSwallowed",
 };
 
@@ -128,6 +130,7 @@ export default function EndingStage({ material }: EndingStageProps) {
         <Shatter key="frozen" frozen material={material} onDone={shown} />
       )}
       {active === "molten" && <Molten key="molten" onDone={shown} />}
+      {active === "consumed" && <Consumed key="consumed" onDone={shown} />}
       {active === "swallowed" && <Swallowed key="swallowed" onDone={shown} />}
       {grow && phase === "playing" && <GrowIn onDone={() => setGrow(false)} />}
     </>

@@ -51,7 +51,7 @@ export function createPlanetState(
     startPopulation: population,
     remaining,
     wreck: new Float32Array(grid.weights.length),
-    familyDamage: { shatter: 0, molten: 0, frozen: 0 },
+    familyDamage: { shatter: 0, molten: 0, frozen: 0, consumed: 0 },
     ended: null,
     w: grid.w,
     h: grid.h,
@@ -72,13 +72,13 @@ export function rawPointsFor(
   return (peopleLost / startPopulation) * 500;
 }
 
-/** The finisher wins; otherwise the most damaged family (ties: shatter, molten, frozen). */
+/** The finisher wins; otherwise the most damaged family (ties: shatter, molten, frozen, consumed). */
 export function chooseEnding(
   state: PlanetState,
   finisher?: EndingKind
 ): EndingKind {
   if (finisher) return finisher;
-  const order: EndingFamily[] = ["shatter", "molten", "frozen"];
+  const order: EndingFamily[] = ["shatter", "molten", "frozen", "consumed"];
   let best: EndingFamily = "shatter";
   for (const f of order) {
     if (state.familyDamage[f] > state.familyDamage[best]) best = f;

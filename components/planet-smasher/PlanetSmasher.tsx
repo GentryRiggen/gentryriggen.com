@@ -15,6 +15,7 @@ import { tryFire as tryCooldown } from "@/lib/planet-smasher/cooldown";
 import { isUnlocked } from "@/lib/planet-smasher/unlocks";
 import { uvToDir, type Vec3 } from "@/lib/planet-smasher/sphere";
 import Arsenal from "./ui/Arsenal";
+import ComboBadge from "./ui/ComboBadge";
 import Hud from "./ui/Hud";
 import VersionLink from "./ui/VersionLink";
 import PlanetPicker from "./ui/PlanetPicker";
@@ -29,6 +30,7 @@ import { DamagePainter } from "./scene/DamagePainter";
 import { laserAim } from "./scene/effects/laserAim";
 import { startLaserTicker } from "./scene/effects/laserTicker";
 import {
+  isLiveTool,
   pushEffect,
   type ActiveEffect,
   type ImpactOpts,
@@ -79,6 +81,9 @@ export default function PlanetSmasher() {
   useServiceWorker();
 
   const [effects, setEffects] = useState<ActiveEffect[]>([]);
+  // The same list, readable between renders (the one-live-mothership rule).
+  const effectsRef = useRef<ActiveEffect[]>([]);
+  effectsRef.current = effects;
   // Keeps a held laser firing while the pointer is still.
   const stopTicker = useRef<(() => void) | null>(null);
   const hookTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -94,6 +99,7 @@ export default function PlanetSmasher() {
   // wipes the painted wreck and any effects still in flight.
   useEffect(() => {
     painter?.reset(textures?.night ?? null);
+    effectsRef.current = [];
     setEffects([]);
     laserAim.held = false;
     stopTicker.current?.();
@@ -106,10 +112,17 @@ export default function PlanetSmasher() {
 
   // Damage lands when an effect hits: hit the planet and paint the scar.
   const handleImpact = useCallback(
-    (toolId: ToolId, u: number, v: number, _point: Vec3, opts?: ImpactOpts) => {
+    (
+      toolId: ToolId,
+      u: number,
+      v: number,
+      _point: Vec3,
+      opts?: ImpactOpts,
+      fireId?: number
+    ) => {
       // Effects still in flight once the planet is ending hit nothing.
       if (useGameStore.getState().phase !== "playing") return;
-      useGameStore.getState().hit(toolId, u, v);
+      useGameStore.getState().hit(toolId, u, v, undefined, fireId);
       const tool = TOOLS[toolId];
       // The laser hums for as long as it is held, not once per tick.
       if (tool.mode !== "hold") {
@@ -123,12 +136,20 @@ export default function PlanetSmasher() {
   );
 
   const handleEffectDone = useCallback((id: number) => {
+    effectsRef.current = effectsRef.current.filter((e) => e.id !== id);
     setEffects((list) => list.filter((e) => e.id !== id));
   }, []);
 
   /** Starts a weapon effect; returns its id. */
   const spawn = useCallback((toolId: ToolId, u: number, v: number) => {
     const id = nextId.current++;
+    if (toolId === "mothership") {
+      // Mark it live now, before the next render (a second tap right behind).
+      effectsRef.current = [
+        ...effectsRef.current,
+        { id, toolId, u, v, point: uvToDir(u, v), startedAt: 0 },
+      ];
+    }
     setEffects((list) =>
       pushEffect(
         list,
@@ -161,6 +182,7 @@ export default function PlanetSmasher() {
   const playerFire = useCallback(
     (u: number, v: number) => {
       const toolId = useGameStore.getState().progress.toolId;
+      if (isLiveTool(effectsRef.current, toolId)) return;
       if (!tryFire(toolId)) return;
       spawn(toolId, u, v);
     },
@@ -207,6 +229,7 @@ export default function PlanetSmasher() {
   const hookFire = useCallback(
     (toolId: ToolId, u: number, v: number) => {
       if (useGameStore.getState().phase !== "playing") return;
+      if (isLiveTool(effectsRef.current, toolId)) return;
       if (TOOLS[toolId].mode !== "hold") {
         spawn(toolId, u, v);
         return;
@@ -295,6 +318,7 @@ export default function PlanetSmasher() {
             }
             right={<SoundToggle />}
           />
+          <ComboBadge />
           <Arsenal />
           <UnlockToast />
           <EndingOverlay />

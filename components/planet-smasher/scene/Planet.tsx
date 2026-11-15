@@ -102,6 +102,7 @@ function markDirty(maps: Record<string, Texture>, layers: Set<string>) {
 
 interface FxUniforms {
   uMolten: { value: number };
+  uConsumed: { value: number };
   uFrozen: { value: number };
   uPulse: { value: number };
   uTime: { value: number };
@@ -114,6 +115,7 @@ function applyFxUniforms(
   time: number
 ) {
   fx.uMolten.value = planetFx.molten;
+  fx.uConsumed.value = planetFx.consumed;
   fx.uFrozen.value = planetFx.frozen;
   fx.uPulse.value = planetFx.pulse;
   fx.uTime.value = time;
@@ -147,6 +149,7 @@ const Planet = forwardRef<Mesh, PlanetProps>(function Planet(
   const fxUniforms = useMemo(
     () => ({
       uMolten: { value: 0 },
+      uConsumed: { value: 0 },
       uFrozen: { value: 0 },
       uPulse: { value: 0 },
       uTime: { value: 0 },
@@ -196,6 +199,7 @@ uniform sampler2D lightsMap;
 uniform vec3 sunDirView;
 uniform float oceanLift;
 uniform float uMolten;
+uniform float uConsumed;
 uniform float uFrozen;
 uniform float uPulse;
 uniform float uTime;
@@ -218,6 +222,25 @@ float psNoise(vec3 x) {
 }
 float psFbm(vec3 p) {
   return 0.5 * psNoise(p) + 0.3 * psNoise(p * 2.1) + 0.2 * psNoise(p * 4.3);
+}
+// Distance to the nearest and second-nearest cell point (Voronoi borders).
+vec2 psCells(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  float d1 = 8.0;
+  float d2 = 8.0;
+  for (int x = -1; x <= 1; x++) {
+    for (int y = -1; y <= 1; y++) {
+      for (int z = -1; z <= 1; z++) {
+        vec3 g = vec3(float(x), float(y), float(z));
+        vec3 c = i + g;
+        vec3 o = vec3(psHash(c), psHash(c + 17.3), psHash(c + 41.9));
+        float d = length(g + o - f);
+        if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+      }
+    }
+  }
+  return vec2(d1, d2);
 }`
         )
         .replace(
@@ -240,7 +263,27 @@ if (uMolten + uPulse > 0.0) {
   psHeat = psFbm(vObj * 3.2 + vec3(0.0, uTime * 0.15, 0.0));
   psLava = mix(vec3(0.55, 0.04, 0.0), vec3(1.0, 0.6, 0.12), smoothstep(0.42, 0.8, psHeat));
   diffuseColor.rgb = mix(diffuseColor.rgb, psLava * 0.45, uMolten);
+}
+float psSeam = 0.0;
+float psBrush = 0.0;
+if (uConsumed > 0.0) {
+  // Brushed silver: noise stretched into fine streaks around the planet.
+  psBrush = psNoise(vec3(vObj.x * 4.0, vObj.y * 90.0, vObj.z * 4.0));
+  vec3 psSilver = mix(vec3(0.5, 0.53, 0.58), vec3(0.9, 0.93, 0.97), psBrush);
+  diffuseColor.rgb = mix(diffuseColor.rgb, psSilver, uConsumed);
+  vec2 psC = psCells(vObj * 3.4);
+  psSeam = 1.0 - smoothstep(0.0, 0.07, psC.y - psC.x);
 }`
+        )
+        .replace(
+          "#include <roughnessmap_fragment>",
+          `#include <roughnessmap_fragment>
+roughnessFactor = mix(roughnessFactor, 0.35, uConsumed);`
+        )
+        .replace(
+          "#include <metalnessmap_fragment>",
+          `#include <metalnessmap_fragment>
+metalnessFactor = mix(metalnessFactor, 0.9, uConsumed);`
         )
         .replace(
           "#include <emissivemap_fragment>",
@@ -249,6 +292,11 @@ totalEmissiveRadiance += texture2D(lightsMap, vMapUv).rgb * nightK
   + texture2D(glowMap, vMapUv).rgb * 1.5;
 totalEmissiveRadiance += psLava * uMolten * (0.45 + 0.8 * psHeat)
   + vec3(1.0, 0.45, 0.1) * uPulse * (0.35 + 0.9 * psHeat);
+if (uConsumed > 0.0) {
+  float psBeat = 0.65 + 0.35 * sin(uTime * 3.0 + psHash(floor(vObj * 3.4)) * 6.28);
+  totalEmissiveRadiance += vec3(0.1, 0.55, 1.0) * psSeam * psBeat * 1.6 * uConsumed
+    + vec3(0.2, 0.22, 0.26) * (0.5 + psBrush * 0.5) * uConsumed;
+}
 if (uFrozen > 0.0) {
   float psSpark = pow(psHash(floor(vObj * 45.0) + floor(uTime * 4.0)), 40.0);
   totalEmissiveRadiance += vec3(0.04, 0.1, 0.18) * uFrozen

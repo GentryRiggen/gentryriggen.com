@@ -8,8 +8,14 @@ export type ToolId =
   | "alienLaser"
   | "freezeRay"
   | "moonRam"
-  | "blackHole";
-export type EndingFamily = "shatter" | "molten" | "frozen";
+  | "blackHole"
+  | "nukeTwin"
+  | "nukeRain"
+  | "ufoSwarm"
+  | "gravityBeam"
+  | "nanobots"
+  | "mothership";
+export type EndingFamily = "shatter" | "molten" | "frozen" | "consumed";
 export type EndingKind = EndingFamily | "swallowed";
 
 export interface ToolSpec {
@@ -28,7 +34,16 @@ export interface ToolSpec {
   mode: "tap" | "hold";
   /** Always ends the planet with this ending. */
   finisher?: EndingKind;
-  stamp: "crater" | "scorch" | "lava" | "crack" | "ice" | "trench" | "none";
+  stamp:
+    | "crater"
+    | "scorch"
+    | "lava"
+    | "crack"
+    | "ice"
+    | "trench"
+    | "goo"
+    | "abduct"
+    | "none";
 }
 
 export const TOOLS: Record<ToolId, ToolSpec> = {
@@ -107,7 +122,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
   alienLaser: {
     id: "alienLaser",
     name: "Alien laser",
-    icon: "🛸",
+    icon: "🔫",
     family: "molten",
     power: 0.8, // per tick, 8 ticks a second
     radius: 0.04,
@@ -154,6 +169,79 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     finisher: "swallowed",
     stamp: "none",
   },
+  nukeTwin: {
+    id: "nukeTwin",
+    name: "Twin nuke",
+    icon: "☢️",
+    family: "molten",
+    power: 10, // per warhead; the effect fires 2
+    radius: 0.18,
+    lethality: 0.95,
+    cooldownMs: 1800,
+    mode: "tap",
+    stamp: "scorch",
+  },
+  nukeRain: {
+    id: "nukeRain",
+    name: "Nuke rain",
+    icon: "🚀",
+    family: "molten",
+    power: 7, // per warhead; the effect fires 6
+    radius: 0.14,
+    lethality: 0.9,
+    cooldownMs: 3000,
+    mode: "tap",
+    stamp: "scorch",
+  },
+  ufoSwarm: {
+    id: "ufoSwarm",
+    name: "UFO swarm",
+    icon: "👾",
+    family: "molten",
+    power: 1.5, // per beam; the effect fires 12
+    radius: 0.05,
+    lethality: 1,
+    cooldownMs: 3500,
+    mode: "tap",
+    stamp: "abduct",
+  },
+  gravityBeam: {
+    id: "gravityBeam",
+    name: "Gravity beam",
+    icon: "🧲",
+    family: "shatter",
+    power: 9,
+    radius: 0.13,
+    lethality: 0.8,
+    cooldownMs: 1500,
+    mode: "tap",
+    stamp: "crater",
+  },
+  nanobots: {
+    id: "nanobots",
+    name: "Nanobot swarm",
+    icon: "🤖",
+    family: "consumed",
+    power: 1.1, // per tick; 40 ticks over 10 s
+    radius: 0.07,
+    lethality: 0.7,
+    cooldownMs: 4000,
+    mode: "tap",
+    stamp: "goo",
+  },
+  mothership: {
+    id: "mothership",
+    name: "Mothership",
+    icon: "🛸",
+    family: "shatter",
+    power: 100,
+    radius: 0.5,
+    lethality: 1,
+    cooldownMs: 6000,
+    mode: "tap",
+    finisher: "shatter",
+    stamp: "scorch",
+  },
 };
 
 export const TOOL_ORDER: readonly ToolId[] = [
@@ -161,10 +249,16 @@ export const TOOL_ORDER: readonly ToolId[] = [
   "meteorShower",
   "megaBomb",
   "nuke",
+  "nukeTwin",
+  "nukeRain",
   "supervolcano",
   "earthquake",
   "alienLaser",
+  "ufoSwarm",
+  "gravityBeam",
+  "nanobots",
   "freezeRay",
   "moonRam",
   "blackHole",
+  "mothership",
 ];

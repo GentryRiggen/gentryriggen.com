@@ -17,6 +17,7 @@ const ENDINGS: readonly EndingKind[] = [
   "shatter",
   "molten",
   "frozen",
+  "consumed",
   "swallowed",
 ];
 

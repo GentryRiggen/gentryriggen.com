@@ -54,6 +54,16 @@ export default function Arsenal() {
     return () => clearTimeout(t);
   }, [shaking]);
 
+  // Keep the chosen tile on screen when the tray is wider than the iPad: on
+  // a tap, and when a saved tool is restored.
+  useEffect(() => {
+    tiles.current[selected]?.scrollIntoView?.({
+      inline: "nearest",
+      block: "nearest",
+      behavior: "smooth",
+    });
+  }, [selected]);
+
   const tap = (id: ToolId, locked: boolean) => {
     if (locked) {
       setShaking(id);
@@ -92,9 +102,25 @@ export default function Arsenal() {
               isFresh ? "animate-pulse ring-4 ring-pink-400" : ""
             } ${shaking === id ? "animate-[ps-shake_0.4s_ease-in-out]" : ""}`}
           >
-            <span aria-hidden="true" className={locked ? "grayscale" : ""}>
-              {tool.icon}
-            </span>
+            {id === "nukeTwin" ? (
+              <span
+                aria-hidden="true"
+                className={`relative flex items-center justify-center ${
+                  locked ? "grayscale" : ""
+                }`}
+              >
+                <span className="-translate-x-2 -translate-y-1 scale-[0.8]">
+                  {tool.icon}
+                </span>
+                <span className="absolute translate-x-2 translate-y-1 scale-[0.8]">
+                  {tool.icon}
+                </span>
+              </span>
+            ) : (
+              <span aria-hidden="true" className={locked ? "grayscale" : ""}>
+                {tool.icon}
+              </span>
+            )}
             {locked && cost !== null && (
               <span className="absolute inset-x-0 bottom-0.5 text-center text-[11px] font-bold leading-none text-yellow-200">
                 ⭐ {formatInt(cost)}

@@ -34,7 +34,7 @@ describe("Hud", () => {
     expect(screen.queryByTestId("popoff")).toBeNull();
     act(() => {
       useGameStore.setState({
-        lastHit: { peopleLost: 1204883.4, u: 0.5, v: 0.5, seq: 1 },
+        lastHit: { peopleLost: 1204883.4, u: 0.5, v: 0.5, seq: 1, combo: 0 },
       });
     });
     expect(screen.getByTestId("popoff")).toHaveTextContent("−1,204,883");

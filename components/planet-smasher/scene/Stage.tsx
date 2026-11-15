@@ -38,7 +38,8 @@ interface StageProps {
     u: number,
     v: number,
     point: Vec3,
-    opts?: ImpactOpts
+    opts?: ImpactOpts,
+    fireId?: number
   ): void;
   onEffectDone(id: number): void;
 }

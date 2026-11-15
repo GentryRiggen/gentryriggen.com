@@ -78,4 +78,25 @@ describe("PlanetSmasher fire path", () => {
     act(() => stage!.onHoldStart(0.5, 0.5, [0, 0, 1]));
     expect(stage!.effects).toHaveLength(1);
   });
+
+  it("ignores a mothership fire while one is still live", async () => {
+    render(<PlanetSmasher />);
+    await screen.findByTestId("planet-stage");
+    act(() => {
+      useGameStore.setState({
+        progress: {
+          ...useGameStore.getState().progress,
+          points: 13000,
+          toolId: "mothership",
+        },
+      });
+    });
+    act(() => stage!.onFire(0.5, 0.5));
+    expect(stage!.effects).toHaveLength(1);
+    // Even with the cooldown out of the way, the first ship is still live.
+    resetCooldowns();
+    act(() => stage!.onFire(0.4, 0.5));
+    act(() => stage!.onFire(0.6, 0.5));
+    expect(stage!.effects).toHaveLength(1);
+  });
 });

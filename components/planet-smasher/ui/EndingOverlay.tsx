@@ -13,6 +13,7 @@ const EMOJI: Record<EndingKind, string> = {
   shatter: "💥",
   molten: "🌋",
   frozen: "🧊",
+  consumed: "🤖",
   swallowed: "🕳️",
 };
 

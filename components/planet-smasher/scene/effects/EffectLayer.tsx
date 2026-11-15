@@ -6,12 +6,17 @@ import type { ToolId } from "@/lib/planet-smasher/tools";
 import BlackHoleDrop from "./BlackHoleDrop";
 import Blast from "./Blast";
 import Eruption from "./Eruption";
+import GravityBeam from "./GravityBeam";
 import FreezeWave from "./FreezeWave";
 import LaserBeam from "./LaserBeam";
 import MeteorShower from "./MeteorShower";
 import MoonRam from "./MoonRam";
+import Mothership from "./Mothership";
+import Nanobots from "./Nanobots";
+import NukeVolley from "./NukeVolley";
 import Projectile from "./Projectile";
 import Quake from "./Quake";
+import UfoSwarm from "./UfoSwarm";
 import ParticleLayer from "./ParticleLayer";
 import { ShakeDriver } from "./particles";
 import type { ActiveEffect, EffectProps, ImpactOpts } from "./effectQueue";
@@ -27,6 +32,12 @@ const COMPONENTS: Record<ToolId, ComponentType<EffectProps>> = {
   freezeRay: FreezeWave,
   moonRam: MoonRam as ComponentType<EffectProps>,
   blackHole: BlackHoleDrop,
+  nukeTwin: NukeVolley,
+  nukeRain: NukeVolley,
+  ufoSwarm: UfoSwarm,
+  gravityBeam: GravityBeam,
+  nanobots: Nanobots,
+  mothership: Mothership,
 };
 
 interface EffectLayerProps {
@@ -38,7 +49,8 @@ interface EffectLayerProps {
     u: number,
     v: number,
     point: Vec3,
-    opts?: ImpactOpts
+    opts?: ImpactOpts,
+    fireId?: number
   ): void;
   onEffectDone(id: number): void;
 }
@@ -64,7 +76,7 @@ export default function EffectLayer({
             planetRadius={planetRadius}
             {...(e.toolId === "moonRam" ? { hasMoon } : {})}
             onImpact={(u, v, point, opts) =>
-              onImpact(e.toolId, u, v, point, opts)
+              onImpact(e.toolId, u, v, point, opts, e.id)
             }
             onDone={() => onEffectDone(e.id)}
           />

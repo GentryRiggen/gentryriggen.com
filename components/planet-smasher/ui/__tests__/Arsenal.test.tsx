@@ -16,11 +16,11 @@ describe("Arsenal", () => {
     setPoints(0);
     render(<Arsenal />);
     const tiles = screen.getAllByRole("button");
-    expect(tiles).toHaveLength(10);
+    expect(tiles).toHaveLength(16);
     const locked = tiles.filter(
       (t) => t.getAttribute("aria-disabled") === "true"
     );
-    expect(locked).toHaveLength(9);
+    expect(locked).toHaveLength(15);
     expect(
       screen.getByRole("button", { name: "Asteroid" })
     ).not.toHaveAttribute("aria-disabled", "true");
@@ -41,5 +41,55 @@ describe("Arsenal", () => {
     expect(tile).not.toHaveAttribute("aria-disabled", "true");
     fireEvent.click(tile);
     expect(useGameStore.getState().progress.toolId).toBe("supervolcano");
+  });
+
+  it("shows the Twin nuke's radiation sign twice", () => {
+    setPoints(0);
+    render(<Arsenal />);
+    const tile = screen.getByRole("button", { name: "Twin nuke" });
+    expect(tile.textContent?.match(/☢️/g)).toHaveLength(2);
+  });
+
+  it("scrolls a tapped tile into view", () => {
+    const scroll = jest.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    try {
+      setPoints(700);
+      render(<Arsenal />);
+      fireEvent.click(screen.getByRole("button", { name: "Supervolcano" }));
+      expect(scroll).toHaveBeenCalledWith({
+        inline: "nearest",
+        block: "nearest",
+        behavior: "smooth",
+      });
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+
+  it("scrolls a tool restored from a save into view on load", () => {
+    const scroll = jest.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scroll;
+    try {
+      act(() => {
+        useGameStore.setState({
+          progress: {
+            ...freshProgress(),
+            points: 13000,
+            toolId: "mothership",
+          },
+        });
+        resetFresh();
+      });
+      render(<Arsenal />);
+      expect(scroll).toHaveBeenCalledTimes(1);
+      expect(scroll.mock.contexts[0]).toBe(
+        screen.getByRole("button", { name: "Mothership" })
+      );
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
   });
 });

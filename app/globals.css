@@ -297,6 +297,26 @@ html:has(.jim-app) body {
   }
 }
 
+@keyframes ps-combo {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-6deg);
+  }
+  35% {
+    opacity: 1;
+    transform: scale(1.25) rotate(4deg);
+  }
+  55% {
+    transform: scale(0.95) rotate(-3deg);
+  }
+  75% {
+    transform: scale(1.05) rotate(2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
 @keyframes ps-shake {
   0%,
   100% {

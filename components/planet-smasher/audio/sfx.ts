@@ -1,5 +1,6 @@
 import {
   buildNoise,
+  loopingNoise,
   noise,
   tone,
   type VoiceEngine,
@@ -10,6 +11,8 @@ import { soundSetting } from "./soundSetting";
 
 export type Cue =
   | "launch"
+  | "whistle"
+  | "combo"
   | "impactSmall"
   | "impactBig"
   | "nuke"
@@ -19,10 +22,16 @@ export type Cue =
   | "freeze"
   | "moonWhoosh"
   | "blackHoleHum"
+  | "ufoWarble"
+  | "tractorBeam"
+  | "gravityHum"
+  | "gooPlop"
+  | "mothershipCharge"
   | "endShatter"
   | "endMolten"
   | "endFrozen"
   | "endSwallowed"
+  | "endConsumed"
   | "unlock"
   | "uiTap"
   | "newPlanet";
@@ -43,6 +52,16 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   freezeRay: { launch: null, impact: "freeze" },
   moonRam: { launch: "moonWhoosh", impact: "impactBig" },
   blackHole: { launch: "blackHoleHum", impact: "impactSmall" },
+  nukeTwin: { launch: "launch", impact: "nuke" },
+  nukeRain: { launch: "whistle", impact: "nuke" },
+  // The UFO swarm plays its own warble and tractor beam per saucer.
+  ufoSwarm: { launch: null, impact: "impactSmall" },
+  gravityBeam: { launch: "gravityHum", impact: "impactBig" },
+  // The nanobots hold their own goo loop (startGoo and stopGoo) from the effect;
+  // each of the 40 ticks is a small plop.
+  nanobots: { launch: null, impact: "gooPlop" },
+  // The charge whine runs until the beam fires, then the big impact.
+  mothership: { launch: "mothershipCharge", impact: "impactBig" },
 };
 
 /** The most voices sounding at once; cues past it are dropped. */
@@ -57,13 +76,25 @@ const SPEC: Record<
   { seconds: number; gap: number; play: Voice; priority?: boolean }
 > = {
   launch: { seconds: 0.4, gap: 0.08, play: playLaunch },
+  whistle: { seconds: 1.1, gap: 0.3, play: playWhistle },
+  combo: { seconds: 0.5, gap: 0.05, play: playCombo },
   impactSmall: { seconds: 0.4, gap: 0.05, play: playImpactSmall },
   impactBig: { seconds: 1, gap: 0.1, play: playImpactBig },
-  nuke: { seconds: 2, gap: 0.2, play: playNuke },
+  nuke: { seconds: 2, gap: 0.15, play: playNuke },
   rumble: { seconds: 1.5, gap: 0.2, play: playRumble },
   freeze: { seconds: 1, gap: 0.2, play: playFreeze },
   moonWhoosh: { seconds: 1, gap: 0.2, play: playMoonWhoosh },
   blackHoleHum: { seconds: 1.7, gap: 0.2, play: playBlackHoleHum },
+  ufoWarble: { seconds: 0.4, gap: 0.1, play: playUfoWarble },
+  tractorBeam: { seconds: 0.95, gap: 0.1, play: playTractorBeam },
+  gravityHum: { seconds: 2, gap: 0.3, play: playGravityHum },
+  gooPlop: { seconds: 0.2, gap: 0.08, play: playGooPlop },
+  mothershipCharge: {
+    seconds: 3.5,
+    gap: 0.5,
+    play: playMothershipCharge,
+    priority: true,
+  },
   endShatter: { seconds: 2.6, gap: 0.5, play: playEndShatter, priority: true },
   endMolten: { seconds: 2.8, gap: 0.5, play: playEndMolten, priority: true },
   endFrozen: { seconds: 2.4, gap: 0.5, play: playEndFrozen, priority: true },
@@ -71,6 +102,12 @@ const SPEC: Record<
     seconds: 3,
     gap: 0.5,
     play: playEndSwallowed,
+    priority: true,
+  },
+  endConsumed: {
+    seconds: 2.8,
+    gap: 0.5,
+    play: playEndConsumed,
     priority: true,
   },
   unlock: { seconds: 0.8, gap: 0.2, play: playUnlock, priority: true },
@@ -101,6 +138,10 @@ export function isAudioSupported(): boolean {
 let engine: Engine | null = null;
 let isOn = false;
 let zap: { stop(): void } | null = null;
+let goo: { stop(): void } | null = null;
+/** Nanobot effects currently holding the goo loop, each with its own timer. */
+const gooHolds = new Map<number, ReturnType<typeof setTimeout>>();
+let gooNext = 1;
 
 function buildEngine(Ctor: AudioContextConstructor): Engine {
   const ctx = new Ctor();
@@ -142,6 +183,8 @@ export function enableSfx(): boolean {
 export function disableSfx(): void {
   isOn = false;
   stopZap();
+  endGooLoop();
+  stopMothershipCharge();
   if (engine) void engine.ctx.suspend();
 }
 
@@ -149,6 +192,8 @@ export function disableSfx(): void {
 export function closeSfx(): void {
   isOn = false;
   stopZap();
+  endGooLoop();
+  stopMothershipCharge();
   const old = engine;
   engine = null;
   if (old) void old.ctx.close();
@@ -161,6 +206,8 @@ export function isSfxEnabled(): boolean {
 /** Suspends the audio while the tab is hidden. */
 export function pauseSfx(): void {
   stopZap();
+  endGooLoop();
+  stopMothershipCharge();
   if (engine) void engine.ctx.suspend();
 }
 
@@ -206,6 +253,59 @@ function playLaunch(e: VoiceEngine, t: number, k: number) {
     q: 1.2,
     gain: 0.16 * k,
     attack: 0.08,
+  });
+}
+
+/** A falling whistle: the nuke rain coming in. */
+function playWhistle(e: VoiceEngine, t: number, k: number) {
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 1,
+    freq: 2400,
+    freqEnd: 500,
+    gain: 0.1 * k,
+    attack: 0.05,
+  });
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 1,
+    filter: "bandpass",
+    freq: 3000,
+    freqEnd: 700,
+    q: 3,
+    gain: 0.08 * k,
+    attack: 0.1,
+  });
+}
+
+/** The combo count the next `combo` cue plays (it cannot take a count). */
+let comboCount = 3;
+
+/** A short bright ding, a semitone higher for each count from 3 (to x10). */
+export function playComboCue(count: number): void {
+  comboCount = Math.min(10, Math.max(3, Math.round(count)));
+  playCue("combo");
+}
+
+function playCombo(e: VoiceEngine, t: number, k: number) {
+  const f = 880 * 2 ** ((comboCount - 3) / 12);
+  tone(e, {
+    type: "triangle",
+    start: t,
+    duration: 0.3,
+    freq: f,
+    gain: 0.2 * k,
+    attack: 0.003,
+  });
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 0.22,
+    freq: f * 2,
+    gain: 0.1 * k,
+    attack: 0.003,
   });
 }
 
@@ -374,6 +474,202 @@ function playBlackHoleHum(e: VoiceEngine, t: number, k: number) {
     freq: 160,
     gain: 0.35 * k,
     attack: 0.8,
+  });
+}
+
+/** A wobbly sine with a fast LFO: one saucer arriving. */
+function playUfoWarble(e: VoiceEngine, t: number, k: number) {
+  const { ctx, bus } = e;
+  const osc = ctx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.value = rand(520, 760);
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = rand(13, 18);
+  const depth = ctx.createGain();
+  depth.gain.value = 110;
+  lfo.connect(depth).connect(osc.frequency);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, t);
+  gain.gain.linearRampToValueAtTime(0.07 * k, t + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.36);
+  osc.connect(gain).connect(bus);
+  osc.start(t);
+  lfo.start(t);
+  osc.stop(t + 0.4);
+  lfo.stop(t + 0.4);
+  osc.onended = () => {
+    for (const n of [osc, lfo, depth, gain]) n.disconnect();
+  };
+}
+
+/** A filtered noise swell: one beam switching on. */
+function playTractorBeam(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 0.9,
+    filter: "bandpass",
+    freq: 350,
+    freqEnd: 1500,
+    q: 2.5,
+    gain: 0.16 * k,
+    attack: 0.6,
+  });
+}
+
+/** A low rising saw with a lowpass sweep: the gravity beam charging. */
+function playGravityHum(e: VoiceEngine, t: number, k: number) {
+  tone(e, {
+    type: "sawtooth",
+    start: t,
+    duration: 1.9,
+    freq: 48,
+    freqEnd: 150,
+    gain: 0.22 * k,
+    attack: 0.9,
+    filter: { type: "lowpass", freq: 180, freqEnd: 1500, q: 3 },
+  });
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 1.8,
+    freq: 70,
+    freqEnd: 200,
+    gain: 0.25 * k,
+    attack: 0.8,
+  });
+}
+
+/** A tiny wet bubble: one nanobot tick. */
+function playGooPlop(e: VoiceEngine, t: number, k: number) {
+  const f = rand(260, 520);
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 0.14,
+    freq: f,
+    freqEnd: f * 2.2,
+    gain: 0.1 * k,
+    attack: 0.01,
+  });
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 0.08,
+    filter: "bandpass",
+    freq: 1800,
+    q: 4,
+    gain: 0.03 * k,
+  });
+}
+
+/** A rising whine and growl: the mothership powering up its beam. */
+/** The charge whine in flight, so the ship can cut it short. */
+let charge: { hold: GainNode; ctx: AudioContext } | null = null;
+
+/** Cuts the mothership's charge whine (the ship left before it fired). */
+export function stopMothershipCharge(): void {
+  const c = charge;
+  charge = null;
+  if (!c) return;
+  try {
+    const t = c.ctx.currentTime;
+    c.hold.gain.cancelScheduledValues(t);
+    c.hold.gain.setValueAtTime(c.hold.gain.value, t);
+    c.hold.gain.linearRampToValueAtTime(0, t + 0.1);
+    setTimeout(() => c.hold.disconnect(), 300);
+  } catch {
+    // Already closed.
+  }
+}
+
+function playMothershipCharge(voice: VoiceEngine, t: number, k: number) {
+  // Everything runs through one gain so the whole whine can be cut.
+  stopMothershipCharge();
+  const hold = voice.ctx.createGain();
+  hold.connect(voice.bus);
+  charge = { hold, ctx: voice.ctx };
+  const e: VoiceEngine = { ...voice, bus: hold };
+  tone(e, {
+    type: "sawtooth",
+    start: t,
+    duration: 3.4,
+    freq: 40,
+    freqEnd: 230,
+    gain: 0.22 * k,
+    attack: 2.2,
+    filter: { type: "lowpass", freq: 120, freqEnd: 2600, q: 4 },
+  });
+  tone(e, {
+    type: "sine",
+    start: t + 0.6,
+    duration: 2.8,
+    freq: 220,
+    freqEnd: 2400,
+    gain: 0.1 * k,
+    attack: 2.2,
+  });
+  tone(e, {
+    type: "triangle",
+    start: t,
+    duration: 3.4,
+    freq: 80,
+    freqEnd: 480,
+    gain: 0.12 * k,
+    attack: 2.4,
+  });
+  noise(e, {
+    buffer: e.white,
+    start: t + 1.2,
+    duration: 2.2,
+    filter: "bandpass",
+    freq: 500,
+    freqEnd: 5000,
+    q: 1.5,
+    gain: 0.07 * k,
+    attack: 1.8,
+  });
+}
+
+/** A metallic shimmer, then a deep clang. */
+function playEndConsumed(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 1.8,
+    filter: "bandpass",
+    freq: 3000,
+    freqEnd: 7000,
+    q: 5,
+    gain: 0.1 * k,
+    attack: 1.2,
+    chop: 0.03,
+  });
+  tinkles(e, t + 0.1, 9, 0.12 * k);
+  const clang = t + 1.8;
+  for (const [f, g] of [
+    [310, 0.3],
+    [517, 0.22],
+    [803, 0.16],
+    [1211, 0.1],
+  ] as const) {
+    tone(e, {
+      type: "sine",
+      start: clang,
+      duration: 1.1,
+      freq: f,
+      gain: g * k,
+      attack: 0.004,
+    });
+  }
+  tone(e, {
+    type: "sine",
+    start: clang,
+    duration: 1.4,
+    freq: 90,
+    freqEnd: 48,
+    gain: 0.6 * k,
+    attack: 0.006,
   });
 }
 
@@ -610,4 +906,95 @@ function stopZap() {
   const z = zap;
   zap = null;
   z?.stop();
+}
+
+/* ------------------------------------------------------------------ */
+/* The nanobots' crawl: bubbly filtered noise, looping while they work  */
+/* ------------------------------------------------------------------ */
+
+const GOO_SAFETY_MS = 12000;
+
+/**
+ * One nanobot effect takes a hold on the goo loop. Returns its token, or null
+ * when sound is off. The loop plays until every hold is released.
+ */
+export function startGoo(): number | null {
+  if (!isOn || !engine || !soundSetting.get()) return null;
+  const token = gooNext++;
+  gooHolds.set(
+    token,
+    setTimeout(() => stopGoo(token), GOO_SAFETY_MS)
+  );
+  if (!goo) beginGooLoop(engine);
+  return token;
+}
+
+/** Releases one hold; the loop ends with the last. A second release is a no-op. */
+export function stopGoo(token: number | null): void {
+  if (token === null) return;
+  const timer = gooHolds.get(token);
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  gooHolds.delete(token);
+  if (gooHolds.size === 0) endGooLoop();
+}
+
+function beginGooLoop(e: Engine) {
+  const { ctx, bus } = e;
+  const now = ctx.currentTime;
+  const src = loopingNoise(ctx, e.white);
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 700;
+  filter.Q.value = 5;
+  // A wobbling filter and a fast flutter in loudness make it bubble.
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 6;
+  const depth = ctx.createGain();
+  depth.gain.value = 420;
+  lfo.connect(depth).connect(filter.frequency);
+  const flutter = ctx.createOscillator();
+  flutter.frequency.value = 11;
+  const flutterDepth = ctx.createGain();
+  flutterDepth.gain.value = 0.03;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(0.06, now + 0.3);
+  flutter.connect(flutterDepth).connect(gain.gain);
+  src.connect(filter).connect(gain).connect(bus);
+  lfo.start(now);
+  flutter.start(now);
+  let ended = false;
+  goo = {
+    stop() {
+      if (ended) return;
+      ended = true;
+      const t = ctx.currentTime;
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.setValueAtTime(0.05, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      for (const o of [src, lfo, flutter]) o.stop(t + 0.25);
+      src.onended = () => {
+        for (const n of [
+          src,
+          filter,
+          lfo,
+          depth,
+          flutter,
+          flutterDepth,
+          gain,
+        ]) {
+          n.disconnect();
+        }
+      };
+    },
+  };
+}
+
+function endGooLoop() {
+  for (const timer of gooHolds.values()) clearTimeout(timer);
+  gooHolds.clear();
+  const g = goo;
+  goo = null;
+  g?.stop();
 }
