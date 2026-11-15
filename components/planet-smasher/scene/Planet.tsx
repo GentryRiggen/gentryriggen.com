@@ -44,7 +44,7 @@ const ATMOSPHERE: Record<PlanetId, [[number, number, number], number]> = {
   ice: [[0.65, 0.95, 1.0], 1.3],
   lava: [[1.0, 0.35, 0.1], 1.1],
   candy: [[1.0, 0.6, 0.85], 1.1],
-  ocean: [[0.3, 0.7, 1.0], 1.2],
+  ocean: [[0.2, 0.92, 0.88], 1.25],
 };
 
 const ATMOSPHERE_VERTEX = `

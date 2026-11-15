@@ -20,6 +20,7 @@ export default function PlanetPicker() {
   const planetId = useGameStore((s) => s.progress.planetId);
   const points = useGameStore((s) => s.progress.points);
   const owned = useGameStore((s) => s.progress.owned);
+  const wrecks = useGameStore((s) => s.progress.stats.endedByPlanet);
   const [open, setOpen] = useState(false);
   const [shaking, setShaking] = useState<PlanetId | null>(null);
 
@@ -53,6 +54,7 @@ export default function PlanetPicker() {
             const planet = PLANETS[id];
             const locked = !isUnlocked({ kind: "planet", id }, points, owned);
             const cost = costOf(id);
+            const wrecked = wrecks[id] ?? 0;
             return (
               <button
                 key={id}
@@ -74,6 +76,11 @@ export default function PlanetPicker() {
                 {locked && cost !== null && (
                   <span className="absolute -bottom-1 rounded-full bg-black/80 px-1 text-[11px] font-bold leading-4 text-yellow-200">
                     ⭐ {formatInt(cost)}
+                  </span>
+                )}
+                {!locked && wrecked > 0 && (
+                  <span className="absolute -bottom-1 rounded-full bg-black/80 px-1 text-[11px] font-bold leading-4 text-white">
+                    💥 {formatInt(wrecked)}
                   </span>
                 )}
                 {locked && (
