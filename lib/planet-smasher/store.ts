@@ -16,7 +16,12 @@ import {
   type PlanetRun,
   type TrophyId,
 } from "./trophies";
-import { isUnlocked, unlocksBetween, type Unlockable } from "./unlocks";
+import {
+  isUnlocked,
+  ownedKey,
+  unlocksBetween,
+  type Unlockable,
+} from "./unlocks";
 
 export const COMBO_WINDOW_MS = 1200;
 export const COMBO_MIN = 3;
@@ -131,12 +136,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // A saved selection can never be ahead of the points.
     const progress: Progress = {
       ...loaded,
-      toolId: isUnlocked({ kind: "tool", id: loaded.toolId }, loaded.points)
+      toolId: isUnlocked(
+        { kind: "tool", id: loaded.toolId },
+        loaded.points,
+        loaded.owned
+      )
         ? loaded.toolId
         : "asteroid",
       planetId: isUnlocked(
         { kind: "planet", id: loaded.planetId },
-        loaded.points
+        loaded.points,
+        loaded.owned
       )
         ? loaded.planetId
         : "earth",
@@ -162,7 +172,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   selectTool(id) {
     const { progress } = get();
-    if (!isUnlocked({ kind: "tool", id }, progress.points)) return;
+    if (!isUnlocked({ kind: "tool", id }, progress.points, progress.owned))
+      return;
     const next = { ...progress, toolId: id };
     saveProgress(next);
     set({ progress: next });
@@ -170,7 +181,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   selectPlanet(id, grid) {
     const { progress } = get();
-    if (!isUnlocked({ kind: "planet", id }, progress.points)) return;
+    if (!isUnlocked({ kind: "planet", id }, progress.points, progress.owned))
+      return;
     const next = { ...progress, planetId: id };
     saveProgress(next);
     set({
@@ -286,8 +298,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       };
     }
     const points = nextProgress.points;
+    const unlocked = unlocksBetween(progress.points, points, progress.owned);
+    if (unlocked.length) {
+      nextProgress = {
+        ...nextProgress,
+        owned: [...(progress.owned ?? []), ...unlocked.map(ownedKey)],
+      };
+    }
     saveProgress(nextProgress);
-    const unlocked = unlocksBetween(progress.points, points);
     set((s) => ({
       progress: nextProgress,
       planetRun: run,

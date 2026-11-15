@@ -5,6 +5,7 @@ import {
   loadProgress,
   saveProgress,
 } from "../progress";
+import { legacyOwned, pathOwned } from "../unlocks";
 
 function fakeStorage(init: Record<string, string> = {}): Storage {
   const data = { ...init };
@@ -29,7 +30,13 @@ describe("progress", () => {
       ...p,
       stats: freshStats(),
       trophies: [],
+      // A save from before 1.3 keeps what the 1.2 path had open, plus what
+      // the current path opens at these points.
+      owned: [...new Set([...legacyOwned(4000), ...pathOwned(4000)])],
     });
+    expect(loadProgress(s).owned).toEqual(
+      expect.arrayContaining(["tool:moonRam", "tool:nukeTwin"])
+    );
   });
 
   it("keeps the consumed ending", () => {
@@ -48,6 +55,7 @@ describe("progress", () => {
       toolId: "nuke" as const,
       stats: freshStats(),
       trophies: [],
+      owned: pathOwned(321),
     };
     saveProgress(p, s);
     expect(loadProgress(s)).toEqual(p);
@@ -90,6 +98,21 @@ describe("progress", () => {
       toolId: "asteroid",
       stats: freshStats(),
       trophies: [],
+      owned: ["tool:meteorShower"],
     });
+  });
+
+  it("keeps a saved owned list and drops junk in it", () => {
+    const s = fakeStorage({
+      [PROGRESS_KEY]: JSON.stringify({
+        points: 9000,
+        owned: ["tool:nuke", 7, "planet:mars"],
+      }),
+    });
+    expect(loadProgress(s).owned).toEqual([
+      "tool:nuke",
+      "planet:mars",
+      ...pathOwned(9000).filter((k) => k !== "tool:nuke"),
+    ]);
   });
 });

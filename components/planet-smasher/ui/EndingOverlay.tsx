@@ -8,6 +8,7 @@ import { playCue } from "../audio/sfx";
 import type { PopulationGrid } from "@/lib/planet-smasher/population";
 import { loadPlanetTextures } from "../scene/planetTextures";
 import { formatInt } from "./format";
+import NextUnlock from "./NextUnlock";
 
 const EMOJI: Record<EndingKind, string> = {
   shatter: "💥",
@@ -46,6 +47,7 @@ export default function EndingOverlay() {
   const ending = useGameStore((s) => s.ending);
   const earned = useGameStore((s) => s.planetPoints);
   const planetId = useGameStore((s) => s.progress.planetId);
+  const points = useGameStore((s) => s.progress.points);
   const shown = useCountUp(phase === "ended" ? earned : 0);
 
   if (phase !== "ended" || !ending) return null;
@@ -88,6 +90,7 @@ export default function EndingOverlay() {
         >
           <span aria-hidden="true">⭐ +{formatInt(shown)}</span>
         </span>
+        <NextUnlock animateFrom={Math.max(0, points - earned)} />
         <button
           type="button"
           onClick={newPlanet}

@@ -1,4 +1,4 @@
-export type PlanetId = "earth" | "mars" | "ice";
+export type PlanetId = "earth" | "mars" | "ice" | "lava" | "candy" | "ocean";
 
 export interface PlanetSpec {
   id: PlanetId;
@@ -35,6 +35,37 @@ export const PLANETS: Record<PlanetId, PlanetSpec> = {
     peopleIcon: "🐧",
     hasMoon: false,
   },
+  lava: {
+    id: "lava",
+    name: "Magmar",
+    icon: "🌋",
+    population: 600_000_000,
+    peopleIcon: "🔥",
+    hasMoon: false,
+  },
+  candy: {
+    id: "candy",
+    name: "Sweetopia",
+    icon: "🍭",
+    population: 2_500_000_000,
+    peopleIcon: "🍬",
+    hasMoon: false,
+  },
+  ocean: {
+    id: "ocean",
+    name: "Aquaria",
+    icon: "🌊",
+    population: 1_200_000_000,
+    peopleIcon: "🐙",
+    hasMoon: false,
+  },
 };
 
-export const PLANET_ORDER: readonly PlanetId[] = ["earth", "mars", "ice"];
+export const PLANET_ORDER: readonly PlanetId[] = [
+  "earth",
+  "lava",
+  "mars",
+  "candy",
+  "ice",
+  "ocean",
+];

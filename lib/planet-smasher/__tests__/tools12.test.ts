@@ -26,8 +26,9 @@ describe("1.2 tools", () => {
     for (let i = 1; i < UNLOCK_PATH.length; i++) {
       expect(UNLOCK_PATH[i].at).toBeGreaterThan(UNLOCK_PATH[i - 1].at);
     }
-    expect(nextUnlock(20000)).toBeNull();
-    expect(nextUnlock(18000)?.at).toBe(20000);
+    const last = UNLOCK_PATH.at(-1)!.at;
+    expect(nextUnlock(last)).toBeNull();
+    expect(nextUnlock(last - 1)?.at).toBe(last);
   });
 
   it("sunDive vaporizes and planetCollision collides", () => {

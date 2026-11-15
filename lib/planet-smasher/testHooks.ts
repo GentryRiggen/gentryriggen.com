@@ -2,7 +2,7 @@ import type { GameStore } from "./store";
 import { useGameStore } from "./store";
 import { fxClock } from "./fxClock";
 import { saveProgress } from "./progress";
-import { UNLOCK_PATH } from "./unlocks";
+import { UNLOCK_PATH, ownedKey } from "./unlocks";
 import type { EndingKind, ToolId } from "./tools";
 
 /**
@@ -57,6 +57,12 @@ export function installTestHooks(
       const next = {
         ...progress,
         points: Math.max(progress.points, UNLOCK_PATH.at(-1)?.at ?? 0),
+        owned: [
+          ...new Set([
+            ...(progress.owned ?? []),
+            ...UNLOCK_PATH.map((e) => ownedKey(e.item)),
+          ]),
+        ],
       };
       saveProgress(next);
       useGameStore.setState({ progress: next });

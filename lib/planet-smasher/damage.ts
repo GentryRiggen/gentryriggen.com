@@ -35,6 +35,12 @@ export interface HitResult {
 
 export const ENDING_BONUS = 100;
 
+/**
+ * Divides the health a non-finisher hit takes, so a planet lasts long enough
+ * to enjoy. People lost and points are unchanged; finishers still end it.
+ */
+export const PLANET_TOUGHNESS = 3;
+
 export function createPlanetState(
   planetId: PlanetId,
   grid: PopulationGrid
@@ -114,7 +120,8 @@ export function applyHit(
   let wreckSum = 0;
   for (const c of cells) wreckSum += state.wreck[c];
   const w = wreckSum / cells.length;
-  const healthLost = Math.min(state.health, tool.power * (1 - 0.7 * w));
+  const power = tool.finisher ? tool.power : tool.power / PLANET_TOUGHNESS;
+  const healthLost = Math.min(state.health, power * (1 - 0.7 * w));
 
   const before = sumRemaining(state);
   for (const c of cells) {

@@ -1,5 +1,6 @@
 import {
   ENDING_BONUS,
+  PLANET_TOUGHNESS,
   applyHit,
   createPlanetState,
   pointsFor,
@@ -29,11 +30,11 @@ describe("damage", () => {
     expect(pointsFor(80_000_000, 8_000_000_000)).toBe(5);
   });
 
-  it("an asteroid costs 4 health and some people", () => {
+  it("an asteroid costs 4 health (over the toughness) and some people", () => {
     const s: PlanetState = fresh();
     const r = applyHit(s, "asteroid", 0.5, 0.5);
-    expect(s.health).toBeCloseTo(96);
-    expect(r.healthLost).toBeCloseTo(4);
+    expect(s.health).toBeCloseTo(100 - 4 / PLANET_TOUGHNESS);
+    expect(r.healthLost).toBeCloseTo(4 / PLANET_TOUGHNESS);
     expect(s.population).toBeLessThan(s.startPopulation);
     expect(r.peopleLost).toBeGreaterThan(0);
     expect(r.points).toBeGreaterThanOrEqual(0);

@@ -348,6 +348,16 @@ html:has(.jim-app) body {
   }
 }
 
+@keyframes ps-tap {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-14px) scale(1.15);
+  }
+}
+
 @keyframes ps-sparkle {
   0% {
     opacity: 1;

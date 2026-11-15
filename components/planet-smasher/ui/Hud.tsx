@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { PLANETS } from "@/lib/planet-smasher/planets";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import HealthBar from "./HealthBar";
+import NextUnlock from "./NextUnlock";
 import Odometer from "./Odometer";
 import { formatInt } from "./format";
 
@@ -54,6 +55,7 @@ export default function Hud({ left, right }: HudProps) {
             {formatInt(points)}
           </span>
         </div>
+        <NextUnlock />
         {right && <div className="pointer-events-auto">{right}</div>}
       </div>
     </div>

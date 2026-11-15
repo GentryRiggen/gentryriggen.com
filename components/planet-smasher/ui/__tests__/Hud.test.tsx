@@ -25,7 +25,7 @@ describe("Hud", () => {
 
   it("shows health as a progress bar", () => {
     render(<Hud />);
-    const bar = screen.getByRole("progressbar");
+    const bar = screen.getByRole("progressbar", { name: /health/i });
     expect(bar).toHaveAttribute("aria-valuenow", "100");
   });
 

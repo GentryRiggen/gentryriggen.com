@@ -19,11 +19,13 @@ const costOf = (id: PlanetId): number | null =>
 export default function PlanetPicker() {
   const planetId = useGameStore((s) => s.progress.planetId);
   const points = useGameStore((s) => s.progress.points);
+  const owned = useGameStore((s) => s.progress.owned);
+  const wrecks = useGameStore((s) => s.progress.stats.endedByPlanet);
   const [open, setOpen] = useState(false);
   const [shaking, setShaking] = useState<PlanetId | null>(null);
 
   const choose = (id: PlanetId) => {
-    if (!isUnlocked({ kind: "planet", id }, points)) {
+    if (!isUnlocked({ kind: "planet", id }, points, owned)) {
       setShaking(id);
       setTimeout(() => setShaking(null), 450);
       return;
@@ -47,11 +49,12 @@ export default function PlanetPicker() {
         <span aria-hidden="true">{PLANETS[planetId].icon}</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-2 flex gap-2 rounded-3xl bg-black/70 p-2">
+        <div className="mt-2 grid w-max grid-cols-2 gap-2 rounded-3xl bg-black/70 p-2">
           {PLANET_ORDER.map((id) => {
             const planet = PLANETS[id];
-            const locked = !isUnlocked({ kind: "planet", id }, points);
+            const locked = !isUnlocked({ kind: "planet", id }, points, owned);
             const cost = costOf(id);
+            const wrecked = wrecks[id] ?? 0;
             return (
               <button
                 key={id}
@@ -73,6 +76,11 @@ export default function PlanetPicker() {
                 {locked && cost !== null && (
                   <span className="absolute -bottom-1 rounded-full bg-black/80 px-1 text-[11px] font-bold leading-4 text-yellow-200">
                     ⭐ {formatInt(cost)}
+                  </span>
+                )}
+                {!locked && wrecked > 0 && (
+                  <span className="absolute -bottom-1 rounded-full bg-black/80 px-1 text-[11px] font-bold leading-4 text-white">
+                    💥 {formatInt(wrecked)}
                   </span>
                 )}
                 {locked && (
