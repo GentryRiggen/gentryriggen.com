@@ -235,3 +235,21 @@ slow tools.
 Retro: the per-tool earning rate, not the path shape, is what made Rounds 2 and
 3 impossible to fit. Next time start from a table of stars per minute by newest
 tool, and place tools by that table.
+
+## Final (2026-11-14): shipped as 1.3.0
+
+The Round 4 path ships unchanged. Final run, 3 seeds per bot: mean **71.2 / 100**
+(nukeLover 76.4, explorer 78.1, casual 59.0), up from the 50.0 baseline. Nukes
+open at 6-12 min and all alien tech at 29-53 min (1.2: 3 and 5 min for the whole
+path, then 50-80 minutes with nothing new). The casual bot is still gate-capped
+at 59 (max gap 9-10 min against 8) and the nukeLover needs about 102 min for
+every tool.
+
+Next ideas:
+
+- Fill the 8-10 min gaps for slow players with small stars-only rewards (more
+  trophies, or a cheap cosmetic) rather than moving big unlocks.
+- A starter planet-skin or crater-style unlock around 40 min, where the
+  nukeLover's path is thinnest.
+- Retune only from the stars-per-minute-by-newest-tool table.
+- Playtest with the kids before the next number change: the score is not fun.

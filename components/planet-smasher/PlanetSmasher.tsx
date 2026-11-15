@@ -22,6 +22,7 @@ import PlanetPicker from "./ui/PlanetPicker";
 import EndingOverlay from "./ui/EndingOverlay";
 import SoundToggle from "./ui/SoundToggle";
 import UnlockToast from "./ui/UnlockToast";
+import TapHint from "./ui/TapHint";
 import TrophyShelf from "./ui/TrophyShelf";
 import TrophyToast from "./ui/TrophyToast";
 import { useSoundEnabled } from "./audio/soundSetting";
@@ -328,6 +329,7 @@ export default function PlanetSmasher() {
             }
             right={<SoundToggle />}
           />
+          <TapHint />
           <ComboBadge />
           <Arsenal />
           <UnlockToast />

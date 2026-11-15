@@ -174,6 +174,63 @@ test.describe("planet smasher", () => {
     });
   }
 
+  test("each new world can be picked and nuked", async ({ page }) => {
+    test.setTimeout(300_000);
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await open(page);
+    await page.waitForFunction(
+      () => (window.__planetSmasherRenderInfo?.().calls ?? 0) > 0,
+      null,
+      { timeout: 60_000 }
+    );
+    await page.evaluate(() => window.__planetSmasher!.unlockAll());
+    for (const [name, id] of [
+      ["Magmar", "lava"],
+      ["Sweetopia", "candy"],
+      ["Aquaria", "ocean"],
+    ] as const) {
+      await page.getByRole("button", { name: "Choose a planet" }).click();
+      await page.getByRole("button", { name, exact: true }).click();
+      await page.waitForFunction(
+        (planet) =>
+          window.__planetSmasher!.state().progress.planetId === planet &&
+          window.__planetSmasher!.state().planet?.planetId === planet,
+        id,
+        { timeout: 60_000 }
+      );
+      const before = await page.evaluate(
+        () => window.__planetSmasher!.state().planet!.population
+      );
+      await page.evaluate(() => window.__planetSmasher!.fire("nuke", 0.5, 0.5));
+      await page.waitForFunction(
+        (start) => {
+          const s = window.__planetSmasher!.state();
+          return s.phase !== "playing" || s.planet!.population < start;
+        },
+        before,
+        { timeout: 90_000 }
+      );
+      if (
+        (await page.evaluate(() => window.__planetSmasher!.state().phase)) !==
+        "playing"
+      ) {
+        await page.waitForFunction(
+          () => window.__planetSmasher!.state().phase === "ended",
+          null,
+          { timeout: 90_000 }
+        );
+        await page.getByRole("button", { name: /new planet/i }).click();
+        await page.waitForFunction(
+          () => window.__planetSmasher!.state().phase === "playing",
+          null,
+          { timeout: 30_000 }
+        );
+      }
+    }
+    expect(errors).toEqual([]);
+  });
+
   test("the trophy shelf opens with 20 trophies", async ({ page }) => {
     await open(page);
     await page.getByRole("button", { name: "Trophies" }).click();

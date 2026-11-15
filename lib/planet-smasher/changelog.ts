@@ -15,6 +15,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-11-14",
+    title: "New worlds and a faster path!",
+    highlights: [
+      "Three new worlds to wreck: Magmar, Sweetopia and Aquaria",
+      "Your tools are sorted into tabs: Space, Bombs, Nature and Aliens",
+      "A bar shows the next thing you will unlock and how close you are",
+      "Nukes and alien tech unlock much sooner, and now come first",
+      "Planets are tougher, so there is more smashing before they blow",
+      "Every planet shows how many times you wrecked it",
+      "You keep everything you already unlocked",
+      "A little pointing hand shows new players where to tap",
+    ],
+  },
+  {
     version: "1.2.1",
     date: "2026-11-14",
     title: "Smoother endings",
