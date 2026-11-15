@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import type { ToolId } from "../lib/planet-smasher/tools";
 
 // Headless Chromium has no GPU and no longer falls back to software WebGL on
 // its own, so ask for SwiftShader (Chromium only; WebKit refuses these flags).
@@ -41,6 +42,55 @@ async function centre(page: Page) {
   const box = await page.getByTestId("planet-canvas").boundingBox();
   if (!box) throw new Error("no canvas");
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+}
+
+/** Fire each tool at the canvas centre and wait for it to land or end. */
+async function runTools(page: Page, tools: readonly string[]) {
+  test.setTimeout(300_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page);
+  await page.waitForFunction(
+    () => (window.__planetSmasherRenderInfo?.().calls ?? 0) > 0,
+    null,
+    { timeout: 60_000 }
+  );
+  await page.evaluate(() => window.__planetSmasher!.unlockAll());
+  for (const tool of tools) {
+    const before = await page.evaluate(
+      () => window.__planetSmasher!.state().planet!.population
+    );
+    await page.evaluate(
+      (id) => window.__planetSmasher!.fire(id as ToolId, 0.5, 0.5),
+      tool
+    );
+    // The population drops, or the planet has ended.
+    await page.waitForFunction(
+      (start) => {
+        const s = window.__planetSmasher!.state();
+        return s.phase !== "playing" || s.planet!.population < start;
+      },
+      before,
+      { timeout: 90_000 }
+    );
+    const phase = await page.evaluate(
+      () => window.__planetSmasher!.state().phase
+    );
+    if (phase !== "playing") {
+      await page.waitForFunction(
+        () => window.__planetSmasher!.state().phase === "ended",
+        null,
+        { timeout: 90_000 }
+      );
+      await page.getByRole("button", { name: /new planet/i }).click();
+      await page.waitForFunction(
+        () => window.__planetSmasher!.state().phase === "playing",
+        null,
+        { timeout: 30_000 }
+      );
+    }
+  }
+  expect(errors).toEqual([]);
 }
 
 test.describe("planet smasher", () => {
@@ -105,60 +155,34 @@ test.describe("planet smasher", () => {
     await expect(button).toBeHidden();
   });
 
-  test("each 1.1 tool runs without page errors", async ({ page }) => {
-    test.setTimeout(300_000);
-    const errors: string[] = [];
-    page.on("pageerror", (e) => errors.push(e.message));
+  for (const [label, tools] of [
+    [
+      "1.1",
+      [
+        "nukeTwin",
+        "nukeRain",
+        "ufoSwarm",
+        "gravityBeam",
+        "nanobots",
+        "mothership",
+      ],
+    ],
+    ["1.2", ["monster", "tsunami", "sunDive", "planetCollision"]],
+  ] as const) {
+    test(`each ${label} tool runs without page errors`, async ({ page }) => {
+      await runTools(page, tools);
+    });
+  }
+
+  test("the trophy shelf opens with 20 trophies", async ({ page }) => {
     await open(page);
-    await page.waitForFunction(
-      () => (window.__planetSmasherRenderInfo?.().calls ?? 0) > 0,
-      null,
-      { timeout: 60_000 }
-    );
-    await page.evaluate(() => window.__planetSmasher!.unlockAll());
-    const tools = [
-      "nukeTwin",
-      "nukeRain",
-      "ufoSwarm",
-      "gravityBeam",
-      "nanobots",
-      "mothership",
-    ] as const;
-    for (const tool of tools) {
-      const before = await page.evaluate(
-        () => window.__planetSmasher!.state().planet!.population
-      );
-      await page.evaluate(
-        (id) => window.__planetSmasher!.fire(id, 0.5, 0.5),
-        tool
-      );
-      // The population drops, or the planet has ended.
-      await page.waitForFunction(
-        (start) => {
-          const s = window.__planetSmasher!.state();
-          return s.phase !== "playing" || s.planet!.population < start;
-        },
-        before,
-        { timeout: 90_000 }
-      );
-      const phase = await page.evaluate(
-        () => window.__planetSmasher!.state().phase
-      );
-      if (phase !== "playing") {
-        await page.waitForFunction(
-          () => window.__planetSmasher!.state().phase === "ended",
-          null,
-          { timeout: 90_000 }
-        );
-        await page.getByRole("button", { name: /new planet/i }).click();
-        await page.waitForFunction(
-          () => window.__planetSmasher!.state().phase === "playing",
-          null,
-          { timeout: 30_000 }
-        );
-      }
-    }
-    expect(errors).toEqual([]);
+    await page.getByRole("button", { name: "Trophies" }).click();
+    await expect(page.getByTestId("trophy-tile")).toHaveCount(20);
+    await expect(page.getByTestId("trophy-tile").first()).toBeVisible();
+    await page.getByRole("button", { name: "Close trophies" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "Trophy shelf" })
+    ).toBeHidden();
   });
 
   test("progress survives a reload", async ({ page }) => {

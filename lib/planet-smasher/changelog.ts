@@ -15,6 +15,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.2.0",
+    date: "2026-11-14",
+    title: "Monsters and trophies!",
+    highlights: [
+      "Four new tools: Giant monster, Tsunami, Sun dive and Planet collision",
+      "Two new endings: a planet can be vaporized by the Sun, or burst apart in a crash",
+      "Endings now play in slow motion so you can watch every second",
+      "Rocks are left orbiting the planet after a big smash",
+      "A trophy shelf with 20 trophies to win, each worth bonus stars",
+      "More stars to earn, with new unlocks all the way up to 20,000",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-11-14",
     title: "Alien invasion!",
