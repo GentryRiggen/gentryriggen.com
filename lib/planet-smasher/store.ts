@@ -15,6 +15,8 @@ import { isUnlocked, unlocksBetween, type Unlockable } from "./unlocks";
 export const COMBO_WINDOW_MS = 1200;
 export const COMBO_MIN = 3;
 export const COMBO_CAP = 10;
+/** The most combo bonus one planet can pay, however many shots it takes. */
+export const COMBO_PLANET_CAP = 300;
 const COMBO_FIRE_IDS_KEPT = 32;
 
 const NO_COMBO = { count: 0, lastAt: 0 };
@@ -35,6 +37,8 @@ export interface GameStore {
   combo: { count: number; lastAt: number };
   /** Recent fires (effect ids) that moved the combo; a fire counts once ever. */
   comboFireIds: number[];
+  /** Combo bonus paid on the current planet (at most COMBO_PLANET_CAP). */
+  comboBonus: number;
   lastHit: {
     peopleLost: number;
     u: number;
@@ -83,6 +87,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   lastHit: null,
   combo: { ...NO_COMBO },
   comboFireIds: [],
+  comboBonus: 0,
 
   init(grid) {
     const loaded = loadProgress();
@@ -110,6 +115,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lastHit: null,
       combo: { ...NO_COMBO },
       comboFireIds: [],
+      comboBonus: 0,
     });
   },
 
@@ -135,6 +141,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lastHit: null,
       combo: { ...NO_COMBO },
       comboFireIds: [],
+      comboBonus: 0,
     });
   },
 
@@ -147,6 +154,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pointsCarry,
       combo,
       comboFireIds,
+      comboBonus,
     } = get();
     if (!planet || phase !== "playing") return { ...ZERO };
     const result = applyHit(planet, toolId, u, v);
@@ -163,6 +171,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // combo once, however many damage ticks or warheads it lands.
     let nextCombo = combo;
     let nextFireIds = comboFireIds;
+    let nextBonus = comboBonus;
     const sameFire = fireId !== undefined && comboFireIds.includes(fireId);
     if (sameFire) {
       // Report the live count, or none once the window has lapsed.
@@ -176,7 +185,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
           ? combo.count + 1
           : 1;
       nextCombo = { count, lastAt: now };
-      if (count >= COMBO_MIN) gained += Math.min(count, COMBO_CAP);
+      if (count >= COMBO_MIN) {
+        const bonus = Math.min(
+          Math.min(count, COMBO_CAP),
+          COMBO_PLANET_CAP - comboBonus
+        );
+        gained += bonus;
+        nextBonus += bonus;
+      }
     }
     const points = progress.points + gained;
     const nextProgress: Progress = { ...progress, points, endingsSeen };
@@ -191,6 +207,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       pointsCarry: carry,
       combo: sameFire ? combo : nextCombo,
       comboFireIds: nextFireIds,
+      comboBonus: nextBonus,
       planetPoints: s.planetPoints + gained,
       phase: result.ending ? "ending" : s.phase,
       ending: result.ending ?? s.ending,
@@ -227,6 +244,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lastHit: null,
       combo: { ...NO_COMBO },
       comboFireIds: [],
+      comboBonus: 0,
     });
   },
 

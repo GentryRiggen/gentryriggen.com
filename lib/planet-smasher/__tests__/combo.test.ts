@@ -1,5 +1,6 @@
 import { POP_H, POP_W, gridFromLuminance } from "../population";
-import { COMBO_CAP, useGameStore } from "../store";
+import { FIRST_ENDING_BONUS } from "../progress";
+import { COMBO_CAP, COMBO_PLANET_CAP, useGameStore } from "../store";
 
 const grid = gridFromLuminance(new Array(POP_W * POP_H).fill(1), POP_W, POP_H);
 const s = () => useGameStore.getState();
@@ -140,5 +141,45 @@ describe("combo counts only shots that kill people", () => {
     // The window still runs from the last people-killing shot.
     s().hit("asteroid", 0.15, 0.5, 1300, 4);
     expect(s().combo.count).toBe(3);
+  });
+});
+
+describe("combo bonus cap per planet", () => {
+  it("200 fast distinct fires earn exactly the planet cap", () => {
+    const start = s().progress.points;
+    let raw = 0;
+    for (let i = 0; i < 200; i++) {
+      raw += s().hit(
+        "alienLaser",
+        (i % 50) / 50 + 0.01,
+        0.3 + (i % 4) * 0.13,
+        i * 100,
+        i + 1
+      ).rawPoints;
+    }
+    // The planet may end along the way; its first-ending bonus is not combo.
+    const ending = s().ending ? FIRST_ENDING_BONUS : 0;
+    expect(COMBO_PLANET_CAP).toBe(300);
+    expect(s().comboBonus).toBe(COMBO_PLANET_CAP);
+    expect(s().progress.points - start).toBe(
+      Math.floor(raw + 1e-9) + COMBO_PLANET_CAP + ending
+    );
+  });
+
+  it("resets on a new planet, a planet switch and init", () => {
+    for (let i = 0; i < 40; i++)
+      s().hit("alienLaser", 0.5, 0.5, i * 100, i + 1);
+    expect(s().comboBonus).toBeGreaterThan(0);
+    s().init(grid);
+    expect(s().comboBonus).toBe(0);
+    for (let i = 0; i < 40; i++)
+      s().hit("alienLaser", 0.5, 0.5, i * 100, i + 1);
+    useGameStore.setState({ phase: "ended" });
+    s().newPlanet(grid);
+    expect(s().comboBonus).toBe(0);
+    for (let i = 0; i < 40; i++)
+      s().hit("alienLaser", 0.5, 0.5, i * 100, i + 1);
+    s().selectPlanet("earth", grid);
+    expect(s().comboBonus).toBe(0);
   });
 });
