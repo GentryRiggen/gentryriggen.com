@@ -2,6 +2,7 @@ import {
   DOLLY_AMOUNT,
   createSlowMo,
   dollyAmount,
+  realAt,
   slowMoScale,
 } from "../slowMoClock";
 
@@ -68,5 +69,32 @@ describe("createSlowMo", () => {
     ctl.update(0.5);
     expect(scales.at(-1)).toBe(0.25);
     expect(zoom.factor).toBe(1);
+  });
+});
+
+describe("realAt", () => {
+  it("is the real time at which sim time reaches a value", () => {
+    expect(realAt(0)).toBe(0);
+    expect(realAt(0.2)).toBeCloseTo(0.8);
+    expect(realAt(0.45)).toBeCloseTo(1.2);
+  });
+  it("is continuous across the ramp", () => {
+    expect(realAt(0.2001) - realAt(0.2)).toBeLessThan(0.001);
+    expect(realAt(0.4501) - realAt(0.45)).toBeLessThan(0.001);
+    expect(realAt(0.3)).toBeGreaterThan(0.8);
+    expect(realAt(0.3)).toBeLessThan(1.2);
+  });
+  it("has slope 1 once time is back to normal", () => {
+    expect(realAt(5) - realAt(4)).toBeCloseTo(1);
+    expect(realAt(2.5)).toBeCloseTo(3.25);
+  });
+  it("inverts the slow-mo integral", () => {
+    for (const s of [0.1, 0.3, 0.4, 1, 2]) {
+      let sim = 0;
+      const r = realAt(s);
+      const step = 0.0005;
+      for (let t = 0; t < r; t += step) sim += slowMoScale(t) * step;
+      expect(sim).toBeCloseTo(s, 1);
+    }
   });
 });

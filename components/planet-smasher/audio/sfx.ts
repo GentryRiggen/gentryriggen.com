@@ -5,6 +5,7 @@ import {
   tone,
   type VoiceEngine,
 } from "@/components/game-audio/primitives";
+import { realAt } from "../scene/endings/slowMoClock";
 import { softnessGain } from "@/components/game-audio/channels";
 import type { ToolId } from "@/lib/planet-smasher/tools";
 import { soundSetting } from "./soundSetting";
@@ -761,11 +762,22 @@ function playMothershipCharge(voice: VoiceEngine, t: number, k: number) {
 }
 
 /** A metallic shimmer, then a deep clang. */
+/**
+ * The big beat of each ending, in real seconds. The visuals run on the slowed
+ * sim clock, so a beat written for sim time `s` plays at `realAt(s)`.
+ */
+export const END_BEATS = {
+  shatterBoom: realAt(0.7),
+  frozenCrack: realAt(1.4),
+  consumedClang: realAt(1.8),
+  vaporizedGone: realAt(2.5),
+} as const;
+
 function playEndConsumed(e: VoiceEngine, t: number, k: number) {
   noise(e, {
     buffer: e.white,
     start: t,
-    duration: 1.8,
+    duration: END_BEATS.consumedClang,
     filter: "bandpass",
     freq: 3000,
     freqEnd: 7000,
@@ -775,7 +787,7 @@ function playEndConsumed(e: VoiceEngine, t: number, k: number) {
     chop: 0.03,
   });
   tinkles(e, t + 0.1, 9, 0.12 * k);
-  const clang = t + 1.8;
+  const clang = t + END_BEATS.consumedClang;
   for (const [f, g] of [
     [310, 0.3],
     [517, 0.22],
@@ -807,7 +819,7 @@ function playEndShatter(e: VoiceEngine, t: number, k: number) {
   noise(e, {
     buffer: e.white,
     start: t,
-    duration: 0.7,
+    duration: END_BEATS.shatterBoom,
     filter: "bandpass",
     freq: 1200,
     q: 2,
@@ -815,7 +827,7 @@ function playEndShatter(e: VoiceEngine, t: number, k: number) {
     attack: 0.5,
     chop: 0.04,
   });
-  const boom = t + 0.7;
+  const boom = t + END_BEATS.shatterBoom;
   noise(e, {
     buffer: e.brown,
     start: boom,
@@ -881,7 +893,7 @@ function playEndFrozen(e: VoiceEngine, t: number, k: number) {
   noise(e, {
     buffer: e.white,
     start: t,
-    duration: 1.4,
+    duration: END_BEATS.frozenCrack,
     filter: "highpass",
     freq: 3000,
     gain: 0.18 * k,
@@ -890,7 +902,7 @@ function playEndFrozen(e: VoiceEngine, t: number, k: number) {
   });
   tinkles(e, t + 0.2, 8, 0.16 * k);
   // The shatter itself, thinner and brighter than the rocky one.
-  const crack = t + 1.4;
+  const crack = t + END_BEATS.frozenCrack;
   noise(e, {
     buffer: e.white,
     start: crack,
@@ -1007,14 +1019,14 @@ function playEndVaporized(e: VoiceEngine, t: number, k: number) {
   noise(e, {
     buffer: e.white,
     start: t,
-    duration: 2.5,
+    duration: END_BEATS.vaporizedGone,
     filter: "highpass",
     freq: 1500,
     freqEnd: 6500,
     gain: 0.3 * k,
-    attack: 2.2,
+    attack: END_BEATS.vaporizedGone - 0.3,
   });
-  const gone = t + 2.5;
+  const gone = t + END_BEATS.vaporizedGone;
   noise(e, {
     buffer: e.white,
     start: gone,
