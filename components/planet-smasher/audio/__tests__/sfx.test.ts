@@ -128,4 +128,26 @@ describe("playCue", () => {
     // One loop (a saw and its vibrato), however often it is started.
     expect(made.sources).toBe(2);
   });
+
+  it("keeps one goo loop for overlapping nanobot swarms", () => {
+    enableSfx();
+    playCue("gooCrawl");
+    const one = made.sources;
+    playCue("gooCrawl");
+    // The second swarm shares the loop.
+    expect(made.sources).toBe(one);
+    playCue("gooStop");
+    playCue("gooStop");
+    // Stopping extra times never throws.
+    playCue("gooStop");
+  });
+
+  it("plays the 1.1 cues", () => {
+    enableSfx();
+    for (const cue of ["gooPlop", "mothershipCharge", "endConsumed"] as const) {
+      const before = made.sources;
+      playCue(cue);
+      expect(made.sources).toBeGreaterThan(before);
+    }
+  });
 });

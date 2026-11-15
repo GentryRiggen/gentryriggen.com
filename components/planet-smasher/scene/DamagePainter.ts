@@ -235,8 +235,10 @@ export class DamagePainter {
         this.lava(ellipses, rand);
         break;
       case "ice":
-      case "goo":
         this.ice(ellipses, rand);
+        break;
+      case "goo":
+        this.goo(ellipses, rand);
         break;
       case "crack":
       case "trench":
@@ -384,6 +386,50 @@ export class DamagePainter {
           [1, "rgba(255,255,255,0)"],
         ]);
       }
+    });
+  }
+
+  /**
+   * A blob of silver nanobot goo: a lighter centre highlight, a darker rim, a
+   * thin faint cyan edge on the glow layer, and the lights put out.
+   */
+  private goo(ellipses: StampEllipse[], rand: () => number) {
+    this.erase(ellipses, 1);
+    const lumps = Array.from({ length: 5 }, () => ({
+      a: rand() * Math.PI * 2,
+      d: 0.3 + rand() * 0.55,
+      r: 0.18 + rand() * 0.2,
+    }));
+    this.each("damage", ellipses, (ctx) => {
+      blob(ctx, 0, 0, 1.05, [
+        [0, "rgba(214,220,228,0.97)"],
+        [0.5, "rgba(158,166,178,0.96)"],
+        [0.82, "rgba(104,112,124,0.96)"],
+        [0.94, "rgba(52,58,68,0.9)"],
+        [1, "rgba(40,46,56,0)"],
+      ]);
+      for (const l of lumps) {
+        const x = Math.cos(l.a) * l.d;
+        const y = Math.sin(l.a) * l.d;
+        blob(ctx, x, y, l.r, [
+          [0, "rgba(232,238,245,0.7)"],
+          [1, "rgba(232,238,245,0)"],
+        ]);
+      }
+      // The bright highlight sits up and to the left of the centre.
+      blob(ctx, -0.25, -0.25, 0.4, [
+        [0, "rgba(255,255,255,0.85)"],
+        [1, "rgba(255,255,255,0)"],
+      ]);
+    });
+    this.each("glow", ellipses, (ctx) => {
+      ctx.globalCompositeOperation = "lighter";
+      blob(ctx, 0, 0, 1.05, [
+        [0, "rgba(20,100,120,0)"],
+        [0.72, "rgba(20,100,120,0)"],
+        [0.9, "rgba(40,170,200,0.2)"],
+        [1, "rgba(40,170,200,0)"],
+      ]);
     });
   }
 

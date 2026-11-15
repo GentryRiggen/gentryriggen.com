@@ -1,5 +1,6 @@
 import {
   buildNoise,
+  loopingNoise,
   noise,
   tone,
   type VoiceEngine,
@@ -24,10 +25,15 @@ export type Cue =
   | "ufoWarble"
   | "tractorBeam"
   | "gravityHum"
+  | "gooCrawl"
+  | "gooStop"
+  | "gooPlop"
+  | "mothershipCharge"
   | "endShatter"
   | "endMolten"
   | "endFrozen"
   | "endSwallowed"
+  | "endConsumed"
   | "unlock"
   | "uiTap"
   | "newPlanet";
@@ -53,9 +59,11 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   // The UFO swarm plays its own warble and tractor beam per saucer.
   ufoSwarm: { launch: null, impact: "impactSmall" },
   gravityBeam: { launch: "gravityHum", impact: "impactBig" },
-  // Placeholders until the real cues land.
-  nanobots: { launch: null, impact: "freeze" },
-  mothership: { launch: "moonWhoosh", impact: "impactBig" },
+  // The nanobots start their own gooCrawl loop (and stop it) from the effect;
+  // each of the 40 ticks is a small plop.
+  nanobots: { launch: null, impact: "gooPlop" },
+  // The charge whine runs until the beam fires, then the big impact.
+  mothership: { launch: "mothershipCharge", impact: "impactBig" },
 };
 
 /** The most voices sounding at once; cues past it are dropped. */
@@ -66,7 +74,7 @@ type Voice = (engine: VoiceEngine, t: number, level: number) => void;
 
 /** Seconds a cue sounds for (to count voices), and the gap before a repeat. */
 const SPEC: Record<
-  Exclude<Cue, "zapStart" | "zapStop">,
+  Exclude<Cue, "zapStart" | "zapStop" | "gooCrawl" | "gooStop">,
   { seconds: number; gap: number; play: Voice; priority?: boolean }
 > = {
   launch: { seconds: 0.4, gap: 0.08, play: playLaunch },
@@ -82,6 +90,13 @@ const SPEC: Record<
   ufoWarble: { seconds: 0.4, gap: 0.1, play: playUfoWarble },
   tractorBeam: { seconds: 0.95, gap: 0.1, play: playTractorBeam },
   gravityHum: { seconds: 2, gap: 0.3, play: playGravityHum },
+  gooPlop: { seconds: 0.2, gap: 0.08, play: playGooPlop },
+  mothershipCharge: {
+    seconds: 3.5,
+    gap: 0.5,
+    play: playMothershipCharge,
+    priority: true,
+  },
   endShatter: { seconds: 2.6, gap: 0.5, play: playEndShatter, priority: true },
   endMolten: { seconds: 2.8, gap: 0.5, play: playEndMolten, priority: true },
   endFrozen: { seconds: 2.4, gap: 0.5, play: playEndFrozen, priority: true },
@@ -89,6 +104,12 @@ const SPEC: Record<
     seconds: 3,
     gap: 0.5,
     play: playEndSwallowed,
+    priority: true,
+  },
+  endConsumed: {
+    seconds: 2.8,
+    gap: 0.5,
+    play: playEndConsumed,
     priority: true,
   },
   unlock: { seconds: 0.8, gap: 0.2, play: playUnlock, priority: true },
@@ -119,6 +140,9 @@ export function isAudioSupported(): boolean {
 let engine: Engine | null = null;
 let isOn = false;
 let zap: { stop(): void } | null = null;
+let goo: { stop(): void } | null = null;
+/** Nanobot effects currently holding the goo loop. */
+let gooUsers = 0;
 
 function buildEngine(Ctor: AudioContextConstructor): Engine {
   const ctx = new Ctor();
@@ -160,6 +184,7 @@ export function enableSfx(): boolean {
 export function disableSfx(): void {
   isOn = false;
   stopZap();
+  stopGoo();
   if (engine) void engine.ctx.suspend();
 }
 
@@ -167,6 +192,7 @@ export function disableSfx(): void {
 export function closeSfx(): void {
   isOn = false;
   stopZap();
+  stopGoo();
   const old = engine;
   engine = null;
   if (old) void old.ctx.close();
@@ -179,6 +205,7 @@ export function isSfxEnabled(): boolean {
 /** Suspends the audio while the tab is hidden. */
 export function pauseSfx(): void {
   stopZap();
+  stopGoo();
   if (engine) void engine.ctx.suspend();
 }
 
@@ -191,6 +218,8 @@ export function playCue(cue: Cue, intensity = 1): void {
   if (!isOn || !engine || !soundSetting.get()) return;
   if (cue === "zapStart") return startZap(engine);
   if (cue === "zapStop") return stopZap();
+  if (cue === "gooCrawl") return startGoo(engine);
+  if (cue === "gooStop") return releaseGoo();
   const spec = SPEC[cue];
   const { ctx } = engine;
   const now = ctx.currentTime;
@@ -511,6 +540,114 @@ function playGravityHum(e: VoiceEngine, t: number, k: number) {
   });
 }
 
+/** A tiny wet bubble: one nanobot tick. */
+function playGooPlop(e: VoiceEngine, t: number, k: number) {
+  const f = rand(260, 520);
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 0.14,
+    freq: f,
+    freqEnd: f * 2.2,
+    gain: 0.1 * k,
+    attack: 0.01,
+  });
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 0.08,
+    filter: "bandpass",
+    freq: 1800,
+    q: 4,
+    gain: 0.03 * k,
+  });
+}
+
+/** A rising whine and growl: the mothership powering up its beam. */
+function playMothershipCharge(e: VoiceEngine, t: number, k: number) {
+  tone(e, {
+    type: "sawtooth",
+    start: t,
+    duration: 3.4,
+    freq: 40,
+    freqEnd: 230,
+    gain: 0.22 * k,
+    attack: 2.2,
+    filter: { type: "lowpass", freq: 120, freqEnd: 2600, q: 4 },
+  });
+  tone(e, {
+    type: "sine",
+    start: t + 0.6,
+    duration: 2.8,
+    freq: 220,
+    freqEnd: 2400,
+    gain: 0.1 * k,
+    attack: 2.2,
+  });
+  tone(e, {
+    type: "triangle",
+    start: t,
+    duration: 3.4,
+    freq: 80,
+    freqEnd: 480,
+    gain: 0.12 * k,
+    attack: 2.4,
+  });
+  noise(e, {
+    buffer: e.white,
+    start: t + 1.2,
+    duration: 2.2,
+    filter: "bandpass",
+    freq: 500,
+    freqEnd: 5000,
+    q: 1.5,
+    gain: 0.07 * k,
+    attack: 1.8,
+  });
+}
+
+/** A metallic shimmer, then a deep clang. */
+function playEndConsumed(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 1.8,
+    filter: "bandpass",
+    freq: 3000,
+    freqEnd: 7000,
+    q: 5,
+    gain: 0.1 * k,
+    attack: 1.2,
+    chop: 0.03,
+  });
+  tinkles(e, t + 0.1, 9, 0.12 * k);
+  const clang = t + 1.8;
+  for (const [f, g] of [
+    [310, 0.3],
+    [517, 0.22],
+    [803, 0.16],
+    [1211, 0.1],
+  ] as const) {
+    tone(e, {
+      type: "sine",
+      start: clang,
+      duration: 1.1,
+      freq: f,
+      gain: g * k,
+      attack: 0.004,
+    });
+  }
+  tone(e, {
+    type: "sine",
+    start: clang,
+    duration: 1.4,
+    freq: 90,
+    freqEnd: 48,
+    gain: 0.6 * k,
+    attack: 0.006,
+  });
+}
+
 function playEndShatter(e: VoiceEngine, t: number, k: number) {
   // The cracks groan, then the big boom.
   noise(e, {
@@ -744,4 +881,79 @@ function stopZap() {
   const z = zap;
   zap = null;
   z?.stop();
+}
+
+/* ------------------------------------------------------------------ */
+/* The nanobots' crawl: bubbly filtered noise, looping while they work  */
+/* ------------------------------------------------------------------ */
+
+const GOO_SAFETY_MS = 12000;
+
+function startGoo(e: Engine) {
+  gooUsers++;
+  if (goo) return;
+  const { ctx, bus } = e;
+  const now = ctx.currentTime;
+  const src = loopingNoise(ctx, e.white);
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 700;
+  filter.Q.value = 5;
+  // A wobbling filter and a fast flutter in loudness make it bubble.
+  const lfo = ctx.createOscillator();
+  lfo.frequency.value = 6;
+  const depth = ctx.createGain();
+  depth.gain.value = 420;
+  lfo.connect(depth).connect(filter.frequency);
+  const flutter = ctx.createOscillator();
+  flutter.frequency.value = 11;
+  const flutterDepth = ctx.createGain();
+  flutterDepth.gain.value = 0.03;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.linearRampToValueAtTime(0.06, now + 0.3);
+  flutter.connect(flutterDepth).connect(gain.gain);
+  src.connect(filter).connect(gain).connect(bus);
+  lfo.start(now);
+  flutter.start(now);
+  let ended = false;
+  const timer = setTimeout(() => stopGoo(), GOO_SAFETY_MS);
+  goo = {
+    stop() {
+      if (ended) return;
+      ended = true;
+      clearTimeout(timer);
+      const t = ctx.currentTime;
+      gain.gain.cancelScheduledValues(t);
+      gain.gain.setValueAtTime(0.05, t);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+      for (const o of [src, lfo, flutter]) o.stop(t + 0.25);
+      src.onended = () => {
+        for (const n of [
+          src,
+          filter,
+          lfo,
+          depth,
+          flutter,
+          flutterDepth,
+          gain,
+        ]) {
+          n.disconnect();
+        }
+      };
+    },
+  };
+}
+
+/** One nanobot effect lets go; the loop ends with the last one. */
+function releaseGoo() {
+  gooUsers = Math.max(0, gooUsers - 1);
+  if (gooUsers === 0) stopGoo();
+}
+
+function stopGoo() {
+  gooUsers = 0;
+  const g = goo;
+  goo = null;
+  g?.stop();
 }

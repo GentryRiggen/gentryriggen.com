@@ -8,6 +8,8 @@ import { Quaternion, Vector3 } from "three";
 export interface PlanetFx {
   /** 0..1 red-hot surface. */
   molten: number;
+  /** 0..1 brushed-silver surface with glowing seams (nanobots). */
+  consumed: number;
   /** 0..1 frosted surface. */
   frozen: number;
   /** 0..1 orange glow pulse (the cracks before a shatter). */
@@ -28,6 +30,7 @@ export interface PlanetFx {
 
 export const planetFx: PlanetFx = {
   molten: 0,
+  consumed: 0,
   frozen: 0,
   pulse: 0,
   hidden: false,
@@ -41,6 +44,7 @@ export const planetFx: PlanetFx = {
 
 export function resetPlanetFx(): void {
   planetFx.molten = 0;
+  planetFx.consumed = 0;
   planetFx.frozen = 0;
   planetFx.pulse = 0;
   planetFx.hidden = false;

@@ -11,6 +11,8 @@ import FreezeWave from "./FreezeWave";
 import LaserBeam from "./LaserBeam";
 import MeteorShower from "./MeteorShower";
 import MoonRam from "./MoonRam";
+import Mothership from "./Mothership";
+import Nanobots from "./Nanobots";
 import NukeVolley from "./NukeVolley";
 import Projectile from "./Projectile";
 import Quake from "./Quake";
@@ -34,9 +36,8 @@ const COMPONENTS: Record<ToolId, ComponentType<EffectProps>> = {
   nukeRain: NukeVolley,
   ufoSwarm: UfoSwarm,
   gravityBeam: GravityBeam,
-  // Placeholders until the real effects land.
-  nanobots: FreezeWave,
-  mothership: Blast,
+  nanobots: Nanobots,
+  mothership: Mothership,
 };
 
 interface EffectLayerProps {
