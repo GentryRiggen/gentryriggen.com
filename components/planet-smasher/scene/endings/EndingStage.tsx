@@ -28,6 +28,8 @@ const ENDING_CUES: Record<string, Cue> = {
   frozen: "endFrozen",
   consumed: "endConsumed",
   swallowed: "endSwallowed",
+  vaporized: "endMolten",
+  collided: "endShatter",
 };
 
 /** A new planet pops in from nothing with a puff of sparkles. */
@@ -123,13 +125,15 @@ export default function EndingStage({ material }: EndingStageProps) {
 
   return (
     <>
-      {active === "shatter" && (
-        <Shatter key="shatter" material={material} onDone={shown} />
+      {(active === "shatter" || active === "collided") && (
+        <Shatter key={active} material={material} onDone={shown} />
       )}
       {active === "frozen" && (
         <Shatter key="frozen" frozen material={material} onDone={shown} />
       )}
-      {active === "molten" && <Molten key="molten" onDone={shown} />}
+      {(active === "molten" || active === "vaporized") && (
+        <Molten key={active} onDone={shown} />
+      )}
       {active === "consumed" && <Consumed key="consumed" onDone={shown} />}
       {active === "swallowed" && <Swallowed key="swallowed" onDone={shown} />}
       {grow && phase === "playing" && <GrowIn onDone={() => setGrow(false)} />}

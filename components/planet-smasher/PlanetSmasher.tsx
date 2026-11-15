@@ -128,8 +128,9 @@ export default function PlanetSmasher() {
       if (tool.mode !== "hold") {
         playCue(TOOL_CUES[toolId].impact, 0.5 + tool.power / 16);
       }
-      if (tool.stamp !== "none") {
-        painter?.stamp(tool.stamp, u, v, tool.radius, opts);
+      const stamp = opts?.stamp ?? tool.stamp;
+      if (stamp !== "none") {
+        painter?.stamp(stamp, u, v, tool.radius, opts);
       }
     },
     [painter]

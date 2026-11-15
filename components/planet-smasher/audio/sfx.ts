@@ -62,6 +62,10 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   nanobots: { launch: null, impact: "gooPlop" },
   // The charge whine runs until the beam fires, then the big impact.
   mothership: { launch: "mothershipCharge", impact: "impactBig" },
+  monster: { launch: null, impact: "impactBig" },
+  tsunami: { launch: null, impact: "impactBig" },
+  sunDive: { launch: "moonWhoosh", impact: "impactBig" },
+  planetCollision: { launch: "moonWhoosh", impact: "impactBig" },
 };
 
 /** The most voices sounding at once; cues past it are dropped. */

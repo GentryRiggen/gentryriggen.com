@@ -1,5 +1,13 @@
 export type StampKind =
-  "crater" | "scorch" | "lava" | "crack" | "ice" | "trench" | "goo" | "abduct";
+  | "crater"
+  | "scorch"
+  | "lava"
+  | "crack"
+  | "ice"
+  | "trench"
+  | "goo"
+  | "abduct"
+  | "flood";
 
 export interface StampEllipse {
   cx: number;
@@ -228,6 +236,7 @@ export class DamagePainter {
       case "abduct":
         this.abduct(ellipses);
         break;
+      case "flood": // placeholder until the flood stamp lands
       case "scorch":
         this.scorch(ellipses, rand);
         break;

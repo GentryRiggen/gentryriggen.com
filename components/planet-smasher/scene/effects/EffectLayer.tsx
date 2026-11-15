@@ -38,6 +38,11 @@ const COMPONENTS: Record<ToolId, ComponentType<EffectProps>> = {
   gravityBeam: GravityBeam,
   nanobots: Nanobots,
   mothership: Mothership,
+  // Placeholders until the new effects land.
+  monster: Blast,
+  tsunami: Blast,
+  sunDive: MoonRam as ComponentType<EffectProps>,
+  planetCollision: MoonRam as ComponentType<EffectProps>,
 };
 
 interface EffectLayerProps {

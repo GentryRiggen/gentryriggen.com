@@ -1,6 +1,7 @@
 import {
   PROGRESS_KEY,
   freshProgress,
+  freshStats,
   loadProgress,
   saveProgress,
 } from "../progress";
@@ -24,7 +25,11 @@ describe("progress", () => {
       toolId: "megaBomb",
     };
     const s = fakeStorage({ [PROGRESS_KEY]: JSON.stringify(p) });
-    expect(loadProgress(s)).toEqual(p);
+    expect(loadProgress(s)).toEqual({
+      ...p,
+      stats: freshStats(),
+      trophies: [],
+    });
   });
 
   it("keeps the consumed ending", () => {
@@ -41,6 +46,8 @@ describe("progress", () => {
       endingsSeen: ["molten" as const],
       planetId: "mars" as const,
       toolId: "nuke" as const,
+      stats: freshStats(),
+      trophies: [],
     };
     saveProgress(p, s);
     expect(loadProgress(s)).toEqual(p);
@@ -81,6 +88,8 @@ describe("progress", () => {
       endingsSeen: ["frozen"],
       planetId: "earth",
       toolId: "asteroid",
+      stats: freshStats(),
+      trophies: [],
     });
   });
 });

@@ -10,6 +10,12 @@ import {
   type Progress,
 } from "./progress";
 import type { EndingKind, ToolId } from "./tools";
+import {
+  newlyEarned,
+  TROPHY_REWARD,
+  type PlanetRun,
+  type TrophyId,
+} from "./trophies";
 import { isUnlocked, unlocksBetween, type Unlockable } from "./unlocks";
 
 export const COMBO_WINDOW_MS = 1200;
@@ -21,6 +27,11 @@ const COMBO_FIRE_IDS_KEPT = 32;
 
 const NO_COMBO = { count: 0, lastAt: 0 };
 
+const freshRun = (): PlanetRun => ({
+  toolsUsed: [],
+  startedAt: typeof performance === "undefined" ? 0 : performance.now(),
+});
+
 export type Phase = "playing" | "ending" | "ended";
 
 export interface GameStore {
@@ -29,6 +40,12 @@ export interface GameStore {
   phase: Phase;
   ending: EndingKind | null;
   lastUnlocks: Unlockable[];
+  /** Trophies earned and not yet shown (the UI clears them). */
+  lastTrophies: TrophyId[];
+  /** Tools used and start time of the current planet. */
+  planetRun: PlanetRun;
+  /** Recent fires (effect ids) already counted in the shot stats. */
+  shotFireIds: number[];
   /** Sub-point remainder of earlier hits (not saved). */
   pointsCarry: number;
   /** Points earned on the current planet (shown when it ends). */
@@ -66,6 +83,7 @@ export interface GameStore {
   /** Fresh state for the current planet, phase "playing". */
   newPlanet(grid: PopulationGrid): void;
   clearUnlocks(): void;
+  clearTrophies(): void;
 }
 
 const ZERO: HitResult = {
@@ -82,6 +100,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   phase: "playing",
   ending: null,
   lastUnlocks: [],
+  lastTrophies: [],
+  planetRun: freshRun(),
+  shotFireIds: [],
   pointsCarry: 0,
   planetPoints: 0,
   lastHit: null,
@@ -110,6 +131,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: "playing",
       ending: null,
       lastUnlocks: [],
+      lastTrophies: [],
+      planetRun: freshRun(),
+      shotFireIds: [],
       pointsCarry: 0,
       planetPoints: 0,
       lastHit: null,
@@ -138,6 +162,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: "playing",
       ending: null,
       planetPoints: 0,
+      planetRun: freshRun(),
       lastHit: null,
       combo: { ...NO_COMBO },
       comboFireIds: [],
@@ -155,6 +180,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       combo,
       comboFireIds,
       comboBonus,
+      planetRun,
+      shotFireIds,
     } = get();
     if (!planet || phase !== "playing") return { ...ZERO };
     const result = applyHit(planet, toolId, u, v);
@@ -194,14 +221,62 @@ export const useGameStore = create<GameStore>((set, get) => ({
         nextBonus += bonus;
       }
     }
-    const points = progress.points + gained;
-    const nextProgress: Progress = { ...progress, points, endingsSeen };
-    if (gained > 0 || endingsSeen.length !== progress.endingsSeen.length) {
-      saveProgress(nextProgress);
+    // Lifetime stats. A shot (one fire id) counts once, like the combo.
+    const stats = {
+      ...progress.stats,
+      shots: { ...progress.stats.shots },
+      endedBy: { ...progress.stats.endedBy },
+      endedByPlanet: { ...progress.stats.endedByPlanet },
+    };
+    let nextShotIds = shotFireIds;
+    if (fireId === undefined || !shotFireIds.includes(fireId)) {
+      stats.shots[toolId] = (stats.shots[toolId] ?? 0) + 1;
+      if (fireId !== undefined)
+        nextShotIds = [...shotFireIds, fireId].slice(-COMBO_FIRE_IDS_KEPT);
     }
+    stats.peopleLost += result.peopleLost;
+    if (!sameFire) stats.bestCombo = Math.max(stats.bestCombo, nextCombo.count);
+    const run: PlanetRun = planetRun.toolsUsed.includes(toolId)
+      ? planetRun
+      : { ...planetRun, toolsUsed: [...planetRun.toolsUsed, toolId] };
+    const endedNow = result.ending
+      ? { ending: result.ending, planetId: progress.planetId, at: now }
+      : null;
+    if (endedNow) {
+      stats.planetsEnded += 1;
+      stats.endedByPlanet[endedNow.planetId] =
+        (stats.endedByPlanet[endedNow.planetId] ?? 0) + 1;
+      stats.endedBy[endedNow.ending] =
+        (stats.endedBy[endedNow.ending] ?? 0) + 1;
+      const took = Math.max(0, now - run.startedAt);
+      stats.fastestEndMs =
+        stats.fastestEndMs === null ? took : Math.min(stats.fastestEndMs, took);
+    }
+    // Trophies pay once each; their points can complete a star trophy.
+    let nextProgress: Progress = { ...progress, endingsSeen, stats };
+    nextProgress.points = progress.points + gained;
+    const earned: TrophyId[] = [];
+    for (;;) {
+      const fresh = newlyEarned(nextProgress, run, endedNow);
+      if (!fresh.length) break;
+      earned.push(...fresh);
+      gained += fresh.length * TROPHY_REWARD;
+      nextProgress = {
+        ...nextProgress,
+        points: nextProgress.points + fresh.length * TROPHY_REWARD,
+        trophies: [...nextProgress.trophies, ...fresh],
+      };
+    }
+    const points = nextProgress.points;
+    saveProgress(nextProgress);
     const unlocked = unlocksBetween(progress.points, points);
     set((s) => ({
       progress: nextProgress,
+      planetRun: run,
+      shotFireIds: nextShotIds,
+      lastTrophies: earned.length
+        ? [...s.lastTrophies, ...earned]
+        : s.lastTrophies,
       // The state is mutated in place; a new reference wakes subscribers.
       planet: { ...planet },
       pointsCarry: carry,
@@ -241,6 +316,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: "playing",
       ending: null,
       planetPoints: 0,
+      planetRun: freshRun(),
       lastHit: null,
       combo: { ...NO_COMBO },
       comboFireIds: [],
@@ -250,5 +326,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   clearUnlocks() {
     set({ lastUnlocks: [] });
+  },
+
+  clearTrophies() {
+    set({ lastTrophies: [] });
   },
 }));

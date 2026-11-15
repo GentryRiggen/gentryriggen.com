@@ -15,6 +15,8 @@ const EMOJI: Record<EndingKind, string> = {
   frozen: "🧊",
   consumed: "🤖",
   swallowed: "🕳️",
+  vaporized: "☀️",
+  collided: "🪐",
 };
 
 const COUNT_MS = 1200;
