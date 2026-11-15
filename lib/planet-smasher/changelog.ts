@@ -15,6 +15,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.2.1",
+    date: "2026-11-14",
+    title: "Smoother endings",
+    highlights: [
+      "Ending sounds now hit right on the big moment, even in slow motion",
+      "The giant monster and the tsunami get out of the way when a planet blows up",
+      "Trophy cards wait until you close the trophy shelf",
+      "The first planet collision starts without a pause",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-11-14",
     title: "Monsters and trophies!",
