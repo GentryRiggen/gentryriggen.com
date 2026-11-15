@@ -57,13 +57,11 @@ function Message({ children }: { children: React.ReactNode }) {
 function tryFire(toolId: ToolId): boolean {
   const { progress, phase } = useGameStore.getState();
   if (phase !== "playing") return false;
-  const { points } = progress;
-  if (!isUnlocked({ kind: "tool", id: toolId }, points)) return false;
+  if (
+    !isUnlocked({ kind: "tool", id: toolId }, progress.points, progress.owned)
+  )
+    return false;
   return tryCooldown(toolId);
-}
-
-function points(): number {
-  return useGameStore.getState().progress.points;
 }
 
 export default function PlanetSmasher() {
@@ -200,7 +198,15 @@ export default function PlanetSmasher() {
       if (TOOLS[toolId].mode !== "hold") return;
       // Like a tap: nothing starts after an ending or for a locked tool.
       if (useGameStore.getState().phase !== "playing") return;
-      if (!isUnlocked({ kind: "tool", id: toolId }, points())) return;
+      const { progress } = useGameStore.getState();
+      if (
+        !isUnlocked(
+          { kind: "tool", id: toolId },
+          progress.points,
+          progress.owned
+        )
+      )
+        return;
       laserAim.owner = spawn(toolId, u, v);
       laserAim.held = true;
       laserAim.ticks = 0;

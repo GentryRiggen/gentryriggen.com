@@ -29,6 +29,18 @@ describe("progress", () => {
       ...p,
       stats: freshStats(),
       trophies: [],
+      // A save from before 1.3 keeps what the 1.2 path had open.
+      owned: [
+        "tool:meteorShower",
+        "tool:megaBomb",
+        "tool:nuke",
+        "tool:supervolcano",
+        "tool:earthquake",
+        "tool:alienLaser",
+        "planet:mars",
+        "tool:freezeRay",
+        "tool:moonRam",
+      ],
     });
   });
 
@@ -48,6 +60,7 @@ describe("progress", () => {
       toolId: "nuke" as const,
       stats: freshStats(),
       trophies: [],
+      owned: ["tool:meteorShower"],
     };
     saveProgress(p, s);
     expect(loadProgress(s)).toEqual(p);
@@ -90,6 +103,17 @@ describe("progress", () => {
       toolId: "asteroid",
       stats: freshStats(),
       trophies: [],
+      owned: ["tool:meteorShower"],
     });
+  });
+
+  it("keeps a saved owned list and drops junk in it", () => {
+    const s = fakeStorage({
+      [PROGRESS_KEY]: JSON.stringify({
+        points: 9000,
+        owned: ["tool:nuke", 7, "planet:mars"],
+      }),
+    });
+    expect(loadProgress(s).owned).toEqual(["tool:nuke", "planet:mars"]);
   });
 });

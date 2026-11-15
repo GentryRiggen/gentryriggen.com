@@ -12,6 +12,12 @@ capabilities; plan, build and deploy")
      at 9,500, behind tools they care less about. The alien tech sits from 7,000
      to 13,000.
    - The path is append-only by release, not designed as a whole.
+   - **Simulator finding (Round 0): the premise was reversed.** Planets ended
+     in about 12 s of active play, so every tool unlocked in about 7 minutes and
+     then nothing new appeared for 49-78 minutes (score 50, the gap gate failed
+     for every bot). The fix is tougher planets (`PLANET_TOUGHNESS`) and a
+     longer, re-spaced path, not a shorter one. See
+     `docs/planet-smasher/lab-notebook.md`.
 2. **The tray is a 20-tile scrolling strip.**
    - On an iPad mini, a 6-year-old can't find tools.
    - There's no grouping, and most of the strip is off-screen.

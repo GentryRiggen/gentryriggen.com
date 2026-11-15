@@ -19,11 +19,12 @@ const costOf = (id: PlanetId): number | null =>
 export default function PlanetPicker() {
   const planetId = useGameStore((s) => s.progress.planetId);
   const points = useGameStore((s) => s.progress.points);
+  const owned = useGameStore((s) => s.progress.owned);
   const [open, setOpen] = useState(false);
   const [shaking, setShaking] = useState<PlanetId | null>(null);
 
   const choose = (id: PlanetId) => {
-    if (!isUnlocked({ kind: "planet", id }, points)) {
+    if (!isUnlocked({ kind: "planet", id }, points, owned)) {
       setShaking(id);
       setTimeout(() => setShaking(null), 450);
       return;
@@ -50,7 +51,7 @@ export default function PlanetPicker() {
         <div className="absolute left-0 top-full mt-2 flex gap-2 rounded-3xl bg-black/70 p-2">
           {PLANET_ORDER.map((id) => {
             const planet = PLANETS[id];
-            const locked = !isUnlocked({ kind: "planet", id }, points);
+            const locked = !isUnlocked({ kind: "planet", id }, points, owned);
             const cost = costOf(id);
             return (
               <button

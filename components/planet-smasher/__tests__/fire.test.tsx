@@ -86,7 +86,7 @@ describe("PlanetSmasher fire path", () => {
       useGameStore.setState({
         progress: {
           ...useGameStore.getState().progress,
-          points: 13000,
+          points: 75000,
           toolId: "mothership",
         },
       });

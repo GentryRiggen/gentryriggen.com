@@ -3,6 +3,7 @@ import { PLANETS } from "./planets";
 import type { EndingKind, ToolId } from "./tools";
 import { TOOLS } from "./tools";
 import { TROPHIES, type TrophyId } from "./trophies";
+import { legacyOwned } from "./unlocks";
 
 export const PROGRESS_KEY = "planet-smasher:progress:v1";
 export const FIRST_ENDING_BONUS = 300;
@@ -24,6 +25,11 @@ export interface Progress {
   toolId: ToolId;
   stats: Stats;
   trophies: TrophyId[];
+  /**
+   * Items kept for good, like "tool:nuke": a kid never loses a tool or planet.
+   * Saves from before 1.3 get what the 1.2 path had open.
+   */
+  owned?: string[];
 }
 
 export function freshStats(): Stats {
@@ -93,6 +99,7 @@ export function freshProgress(): Progress {
     toolId: "asteroid",
     stats: freshStats(),
     trophies: [],
+    owned: [],
   };
 }
 
@@ -112,13 +119,14 @@ export function loadProgress(storage?: Storage | null): Progress {
     if (!raw) return fresh;
     const data = JSON.parse(raw) as Partial<Record<keyof Progress, unknown>>;
     if (!data || typeof data !== "object") return fresh;
+    const points =
+      typeof data.points === "number" &&
+      Number.isFinite(data.points) &&
+      data.points >= 0
+        ? data.points
+        : 0;
     return {
-      points:
-        typeof data.points === "number" &&
-        Number.isFinite(data.points) &&
-        data.points >= 0
-          ? data.points
-          : 0,
+      points,
       endingsSeen: Array.isArray(data.endingsSeen)
         ? ENDINGS.filter((e) => (data.endingsSeen as unknown[]).includes(e))
         : [],
@@ -138,6 +146,9 @@ export function loadProgress(storage?: Storage | null): Progress {
             (data.trophies as unknown[]).includes(id)
           )
         : [],
+      owned: Array.isArray(data.owned)
+        ? data.owned.filter((k): k is string => typeof k === "string")
+        : legacyOwned(points),
     };
   } catch {
     return fresh;

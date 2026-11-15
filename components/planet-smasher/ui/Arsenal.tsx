@@ -20,6 +20,7 @@ const costOf = (id: ToolId): number | null =>
 /** The weapons tray along the bottom edge. */
 export default function Arsenal() {
   const points = useGameStore((s) => s.progress.points);
+  const owned = useGameStore((s) => s.progress.owned);
   const selected = useGameStore((s) => s.progress.toolId);
   const fresh = useFreshItems();
   const [shaking, setShaking] = useState<ToolId | null>(null);
@@ -79,7 +80,7 @@ export default function Arsenal() {
     <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex snap-x touch-pan-x gap-2 overflow-x-auto bg-gradient-to-t from-black/70 to-transparent px-[max(1rem,env(safe-area-inset-left))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-6">
       {TOOL_ORDER.map((id) => {
         const tool = TOOLS[id];
-        const locked = !isUnlocked({ kind: "tool", id }, points);
+        const locked = !isUnlocked({ kind: "tool", id }, points, owned);
         const isSelected = id === selected && !locked;
         const isFresh = fresh.has(freshKey({ kind: "tool", id }));
         const cost = costOf(id);

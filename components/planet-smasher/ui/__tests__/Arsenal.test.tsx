@@ -24,7 +24,7 @@ describe("Arsenal", () => {
     expect(
       screen.getByRole("button", { name: "Asteroid" })
     ).not.toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByText("⭐ 30")).toBeInTheDocument();
+    expect(screen.getByText("⭐ 25")).toBeInTheDocument();
   });
 
   it("ignores a tap on a locked tile", () => {
@@ -34,8 +34,8 @@ describe("Arsenal", () => {
     expect(useGameStore.getState().progress.toolId).toBe("asteroid");
   });
 
-  it("opens the supervolcano at 700 points and selects it", () => {
-    setPoints(700);
+  it("opens the supervolcano at 6,500 points and selects it", () => {
+    setPoints(6500);
     render(<Arsenal />);
     const tile = screen.getByRole("button", { name: "Supervolcano" });
     expect(tile).not.toHaveAttribute("aria-disabled", "true");
@@ -55,7 +55,7 @@ describe("Arsenal", () => {
     const original = HTMLElement.prototype.scrollIntoView;
     HTMLElement.prototype.scrollIntoView = scroll;
     try {
-      setPoints(700);
+      setPoints(6500);
       render(<Arsenal />);
       fireEvent.click(screen.getByRole("button", { name: "Supervolcano" }));
       expect(scroll).toHaveBeenCalledWith({

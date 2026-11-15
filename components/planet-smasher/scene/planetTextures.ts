@@ -197,7 +197,8 @@ async function load(id: PlanetId): Promise<Omit<PlanetTextures, "id">> {
       population: gridFromLuminance(earthLuminance(night), POP_W, POP_H),
     };
   }
-  return id === "mars" ? marsWorld() : iceWorld();
+  // Lava, candy and ocean reuse these until their own maps arrive.
+  return id === "mars" || id === "lava" ? marsWorld() : iceWorld();
 }
 
 /** Loads (and caches) a planet's maps and its population grid. */

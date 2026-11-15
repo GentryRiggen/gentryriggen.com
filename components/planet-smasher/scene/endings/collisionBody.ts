@@ -25,6 +25,9 @@ const PLAIN: Record<PlanetId, string> = {
   earth: "#3a78c8",
   mars: "#c45a32",
   ice: "#bfe3f2",
+  lava: "#c45a32",
+  candy: "#e88ac0",
+  ocean: "#2a8ac8",
 };
 
 /**
