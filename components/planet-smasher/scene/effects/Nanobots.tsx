@@ -5,7 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { Vector3, type Mesh } from "three";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import { dirToUv } from "@/lib/planet-smasher/sphere";
-import { playCue } from "../../audio/sfx";
+import { startGoo, stopGoo } from "../../audio/sfx";
 import {
   FlashSprite,
   clamp01,
@@ -51,7 +51,7 @@ export default function Nanobots({
     age: 0,
     shimmer: 0,
     started: false,
-    sound: false,
+    goo: null as number | null,
     done: false,
   });
   const n = useMemo(() => toVec(effect.point), [effect.point]);
@@ -69,9 +69,8 @@ export default function Nanobots({
 
   const stopSound = () => {
     const r = run.current;
-    if (!r.sound) return;
-    r.sound = false;
-    playCue("gooStop");
+    stopGoo(r.goo);
+    r.goo = null;
   };
   useEffect(() => stopSound, []);
 
@@ -82,8 +81,7 @@ export default function Nanobots({
     r.age += dt;
     if (!r.started) {
       r.started = true;
-      r.sound = true;
-      playCue("gooCrawl");
+      r.goo = startGoo();
     }
     const playing = useGameStore.getState().phase === "playing";
     const due = schedule.step(dt, playing);

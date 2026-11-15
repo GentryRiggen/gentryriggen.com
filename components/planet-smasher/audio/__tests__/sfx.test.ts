@@ -5,6 +5,8 @@ import {
   closeSfx,
   enableSfx,
   playCue,
+  startGoo,
+  stopGoo,
   type Cue,
 } from "../sfx";
 import { soundSetting } from "../soundSetting";
@@ -131,15 +133,45 @@ describe("playCue", () => {
 
   it("keeps one goo loop for overlapping nanobot swarms", () => {
     enableSfx();
-    playCue("gooCrawl");
+    const a = startGoo();
     const one = made.sources;
-    playCue("gooCrawl");
+    const b = startGoo();
     // The second swarm shares the loop.
     expect(made.sources).toBe(one);
-    playCue("gooStop");
-    playCue("gooStop");
-    // Stopping extra times never throws.
-    playCue("gooStop");
+    stopGoo(a);
+    stopGoo(a); // releasing twice is a no-op
+    stopGoo(b);
+    stopGoo(b);
+    // Everyone let go: the next swarm starts a fresh loop.
+    startGoo();
+    expect(made.sources).toBeGreaterThan(one);
+  });
+
+  it("gives each goo hold its own safety timer", () => {
+    jest.useFakeTimers();
+    try {
+      enableSfx();
+      const a = startGoo();
+      const one = made.sources;
+      jest.advanceTimersByTime(6000);
+      const b = startGoo();
+      // A's timer fires at 12 s; B (started at 6 s) still holds the loop.
+      jest.advanceTimersByTime(6000);
+      const c = startGoo();
+      expect(made.sources).toBe(one);
+      stopGoo(a); // already released by its timer
+      stopGoo(b);
+      stopGoo(c);
+      startGoo();
+      expect(made.sources).toBeGreaterThan(one);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("hands out no goo token while sound is off", () => {
+    expect(startGoo()).toBeNull();
+    stopGoo(null);
   });
 
   it("plays the 1.1 cues", () => {

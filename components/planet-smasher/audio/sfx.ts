@@ -25,8 +25,6 @@ export type Cue =
   | "ufoWarble"
   | "tractorBeam"
   | "gravityHum"
-  | "gooCrawl"
-  | "gooStop"
   | "gooPlop"
   | "mothershipCharge"
   | "endShatter"
@@ -59,7 +57,7 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   // The UFO swarm plays its own warble and tractor beam per saucer.
   ufoSwarm: { launch: null, impact: "impactSmall" },
   gravityBeam: { launch: "gravityHum", impact: "impactBig" },
-  // The nanobots start their own gooCrawl loop (and stop it) from the effect;
+  // The nanobots hold their own goo loop (startGoo and stopGoo) from the effect;
   // each of the 40 ticks is a small plop.
   nanobots: { launch: null, impact: "gooPlop" },
   // The charge whine runs until the beam fires, then the big impact.
@@ -74,7 +72,7 @@ type Voice = (engine: VoiceEngine, t: number, level: number) => void;
 
 /** Seconds a cue sounds for (to count voices), and the gap before a repeat. */
 const SPEC: Record<
-  Exclude<Cue, "zapStart" | "zapStop" | "gooCrawl" | "gooStop">,
+  Exclude<Cue, "zapStart" | "zapStop">,
   { seconds: number; gap: number; play: Voice; priority?: boolean }
 > = {
   launch: { seconds: 0.4, gap: 0.08, play: playLaunch },
@@ -141,8 +139,9 @@ let engine: Engine | null = null;
 let isOn = false;
 let zap: { stop(): void } | null = null;
 let goo: { stop(): void } | null = null;
-/** Nanobot effects currently holding the goo loop. */
-let gooUsers = 0;
+/** Nanobot effects currently holding the goo loop, each with its own timer. */
+const gooHolds = new Map<number, ReturnType<typeof setTimeout>>();
+let gooNext = 1;
 
 function buildEngine(Ctor: AudioContextConstructor): Engine {
   const ctx = new Ctor();
@@ -184,7 +183,7 @@ export function enableSfx(): boolean {
 export function disableSfx(): void {
   isOn = false;
   stopZap();
-  stopGoo();
+  endGooLoop();
   if (engine) void engine.ctx.suspend();
 }
 
@@ -192,7 +191,7 @@ export function disableSfx(): void {
 export function closeSfx(): void {
   isOn = false;
   stopZap();
-  stopGoo();
+  endGooLoop();
   const old = engine;
   engine = null;
   if (old) void old.ctx.close();
@@ -205,7 +204,7 @@ export function isSfxEnabled(): boolean {
 /** Suspends the audio while the tab is hidden. */
 export function pauseSfx(): void {
   stopZap();
-  stopGoo();
+  endGooLoop();
   if (engine) void engine.ctx.suspend();
 }
 
@@ -218,8 +217,6 @@ export function playCue(cue: Cue, intensity = 1): void {
   if (!isOn || !engine || !soundSetting.get()) return;
   if (cue === "zapStart") return startZap(engine);
   if (cue === "zapStop") return stopZap();
-  if (cue === "gooCrawl") return startGoo(engine);
-  if (cue === "gooStop") return releaseGoo();
   const spec = SPEC[cue];
   const { ctx } = engine;
   const now = ctx.currentTime;
@@ -889,9 +886,32 @@ function stopZap() {
 
 const GOO_SAFETY_MS = 12000;
 
-function startGoo(e: Engine) {
-  gooUsers++;
-  if (goo) return;
+/**
+ * One nanobot effect takes a hold on the goo loop. Returns its token, or null
+ * when sound is off. The loop plays until every hold is released.
+ */
+export function startGoo(): number | null {
+  if (!isOn || !engine || !soundSetting.get()) return null;
+  const token = gooNext++;
+  gooHolds.set(
+    token,
+    setTimeout(() => stopGoo(token), GOO_SAFETY_MS)
+  );
+  if (!goo) beginGooLoop(engine);
+  return token;
+}
+
+/** Releases one hold; the loop ends with the last. A second release is a no-op. */
+export function stopGoo(token: number | null): void {
+  if (token === null) return;
+  const timer = gooHolds.get(token);
+  if (timer === undefined) return;
+  clearTimeout(timer);
+  gooHolds.delete(token);
+  if (gooHolds.size === 0) endGooLoop();
+}
+
+function beginGooLoop(e: Engine) {
   const { ctx, bus } = e;
   const now = ctx.currentTime;
   const src = loopingNoise(ctx, e.white);
@@ -917,12 +937,10 @@ function startGoo(e: Engine) {
   lfo.start(now);
   flutter.start(now);
   let ended = false;
-  const timer = setTimeout(() => stopGoo(), GOO_SAFETY_MS);
   goo = {
     stop() {
       if (ended) return;
       ended = true;
-      clearTimeout(timer);
       const t = ctx.currentTime;
       gain.gain.cancelScheduledValues(t);
       gain.gain.setValueAtTime(0.05, t);
@@ -945,14 +963,9 @@ function startGoo(e: Engine) {
   };
 }
 
-/** One nanobot effect lets go; the loop ends with the last one. */
-function releaseGoo() {
-  gooUsers = Math.max(0, gooUsers - 1);
-  if (gooUsers === 0) stopGoo();
-}
-
-function stopGoo() {
-  gooUsers = 0;
+function endGooLoop() {
+  for (const timer of gooHolds.values()) clearTimeout(timer);
+  gooHolds.clear();
   const g = goo;
   goo = null;
   g?.stop();
