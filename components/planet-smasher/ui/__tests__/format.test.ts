@@ -1,4 +1,4 @@
-import { formatStars } from "../format";
+import { formatPeople, formatStars } from "../format";
 
 describe("formatStars", () => {
   it("groups below 10,000", () => {
@@ -13,5 +13,16 @@ describe("formatStars", () => {
     expect(formatStars(12500)).toBe("12.5k");
     expect(formatStars(109000)).toBe("109k");
     expect(formatStars(999999)).toBe("999.9k");
+  });
+});
+
+describe("formatPeople", () => {
+  it("is compact", () => {
+    expect(formatPeople(950)).toBe("950");
+    expect(formatPeople(12_345)).toBe("12K");
+    expect(formatPeople(1_200)).toBe("1.2K");
+    expect(formatPeople(41_300_000)).toBe("41M");
+    expect(formatPeople(1_250_000_000)).toBe("1.2B");
+    expect(formatPeople(2_000_000)).toBe("2M");
   });
 });
