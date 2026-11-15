@@ -10,12 +10,14 @@ import GravityBeam from "./GravityBeam";
 import FreezeWave from "./FreezeWave";
 import LaserBeam from "./LaserBeam";
 import MeteorShower from "./MeteorShower";
+import Monster from "./Monster";
 import MoonRam from "./MoonRam";
 import Mothership from "./Mothership";
 import Nanobots from "./Nanobots";
 import NukeVolley from "./NukeVolley";
 import Projectile from "./Projectile";
 import Quake from "./Quake";
+import Tsunami from "./Tsunami";
 import UfoSwarm from "./UfoSwarm";
 import ParticleLayer from "./ParticleLayer";
 import { ShakeDriver } from "./particles";
@@ -38,9 +40,9 @@ const COMPONENTS: Record<ToolId, ComponentType<EffectProps>> = {
   gravityBeam: GravityBeam,
   nanobots: Nanobots,
   mothership: Mothership,
+  monster: Monster,
+  tsunami: Tsunami,
   // Placeholders until the new effects land.
-  monster: Blast,
-  tsunami: Blast,
   sunDive: MoonRam as ComponentType<EffectProps>,
   planetCollision: MoonRam as ComponentType<EffectProps>,
 };

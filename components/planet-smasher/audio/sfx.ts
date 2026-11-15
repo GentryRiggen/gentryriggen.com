@@ -27,6 +27,9 @@ export type Cue =
   | "gravityHum"
   | "gooPlop"
   | "mothershipCharge"
+  | "monsterRoar"
+  | "monsterStomp"
+  | "tsunamiRush"
   | "endShatter"
   | "endMolten"
   | "endFrozen"
@@ -62,8 +65,10 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   nanobots: { launch: null, impact: "gooPlop" },
   // The charge whine runs until the beam fires, then the big impact.
   mothership: { launch: "mothershipCharge", impact: "impactBig" },
-  monster: { launch: null, impact: "impactBig" },
-  tsunami: { launch: null, impact: "impactBig" },
+  // The monster roars from the effect; each stomp (and laser hit) is a thud.
+  monster: { launch: null, impact: "monsterStomp" },
+  // The rush swells from the tap; each wave hit is a small splash.
+  tsunami: { launch: "tsunamiRush", impact: "impactSmall" },
   sunDive: { launch: "moonWhoosh", impact: "impactBig" },
   planetCollision: { launch: "moonWhoosh", impact: "impactBig" },
 };
@@ -99,6 +104,14 @@ const SPEC: Record<
     play: playMothershipCharge,
     priority: true,
   },
+  monsterRoar: {
+    seconds: 1.3,
+    gap: 0.5,
+    play: playMonsterRoar,
+    priority: true,
+  },
+  monsterStomp: { seconds: 0.5, gap: 0.12, play: playMonsterStomp },
+  tsunamiRush: { seconds: 3.4, gap: 0.5, play: playTsunamiRush },
   endShatter: { seconds: 2.6, gap: 0.5, play: playEndShatter, priority: true },
   endMolten: { seconds: 2.8, gap: 0.5, play: playEndMolten, priority: true },
   endFrozen: { seconds: 2.4, gap: 0.5, play: playEndFrozen, priority: true },
@@ -404,6 +417,91 @@ function playRumble(e: VoiceEngine, t: number, k: number) {
     freqEnd: 34,
     gain: 0.5 * k,
     attack: 0.2,
+  });
+}
+
+/** A big cartoon roar: a falling saw growl with a wobble, plus breath. */
+function playMonsterRoar(e: VoiceEngine, t: number, k: number) {
+  for (const detune of [-18, 18]) {
+    tone(e, {
+      type: "sawtooth",
+      start: t,
+      duration: 1.2,
+      freq: 150,
+      freqEnd: 62,
+      detune,
+      gain: 0.16 * k,
+      attack: 0.12,
+      filter: { type: "lowpass", q: 3, freq: 1100, freqEnd: 260 },
+    });
+  }
+  tone(e, {
+    type: "square",
+    start: t + 0.05,
+    duration: 1.1,
+    freq: 75,
+    freqEnd: 41,
+    gain: 0.12 * k,
+    attack: 0.15,
+    filter: { type: "lowpass", q: 1, freq: 400 },
+  });
+  noise(e, {
+    buffer: e.brown,
+    start: t,
+    duration: 1.25,
+    filter: "lowpass",
+    freq: 900,
+    freqEnd: 150,
+    gain: 0.5 * k,
+    attack: 0.1,
+    chop: 0.035,
+  });
+}
+
+/** A deep footstep: a low thump and a dull crunch. */
+function playMonsterStomp(e: VoiceEngine, t: number, k: number) {
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 0.45,
+    freq: 78,
+    freqEnd: 26,
+    gain: 0.95 * k,
+    attack: 0.004,
+  });
+  noise(e, {
+    buffer: e.brown,
+    start: t,
+    duration: 0.4,
+    filter: "lowpass",
+    freq: 700,
+    freqEnd: 70,
+    gain: 0.7 * k,
+  });
+}
+
+/** Water piling up and rushing past: noise that swells, then ebbs. */
+function playTsunamiRush(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 3.2,
+    filter: "bandpass",
+    freq: 380,
+    freqEnd: 1700,
+    q: 0.8,
+    gain: 0.3 * k,
+    attack: 2.1,
+  });
+  noise(e, {
+    buffer: e.brown,
+    start: t,
+    duration: 3.2,
+    filter: "lowpass",
+    freq: 200,
+    freqEnd: 600,
+    gain: 0.75 * k,
+    attack: 1.8,
   });
 }
 

@@ -236,7 +236,9 @@ export class DamagePainter {
       case "abduct":
         this.abduct(ellipses);
         break;
-      case "flood": // placeholder until the flood stamp lands
+      case "flood":
+        this.flood(ellipses, rand);
+        break;
       case "scorch":
         this.scorch(ellipses, rand);
         break;
@@ -336,6 +338,33 @@ export class DamagePainter {
         [0.95, "rgba(120,255,160,0.1)"],
         [1, "rgba(120,255,160,0)"],
       ]);
+    });
+  }
+
+  /**
+   * A muddy brown-blue wash at 0.5 opacity: the lights go out, the height is
+   * left alone, and a few darker silt patches keep it from looking flat.
+   */
+  private flood(ellipses: StampEllipse[], rand: () => number) {
+    this.erase(ellipses, 1);
+    const silt = Array.from({ length: 6 }, () => ({
+      a: rand() * Math.PI * 2,
+      d: rand() * 0.6,
+      r: 0.3 + rand() * 0.3,
+    }));
+    this.each("damage", ellipses, (ctx) => {
+      blob(ctx, 0, 0, 1.1, [
+        [0, "rgba(74,82,92,0.5)"],
+        [0.6, "rgba(78,86,96,0.5)"],
+        [0.9, "rgba(84,92,100,0.3)"],
+        [1, "rgba(84,92,100,0)"],
+      ]);
+      for (const s of silt) {
+        blob(ctx, Math.cos(s.a) * s.d, Math.sin(s.a) * s.d, s.r, [
+          [0, "rgba(96,78,58,0.3)"],
+          [1, "rgba(96,78,58,0)"],
+        ]);
+      }
     });
   }
 
