@@ -1,5 +1,6 @@
 import { POP_H, POP_W, gridFromLuminance } from "../population";
 import { FIRST_ENDING_BONUS } from "../progress";
+import { TROPHY_REWARD } from "../trophies";
 import { COMBO_CAP, COMBO_PLANET_CAP, useGameStore } from "../store";
 
 const grid = gridFromLuminance(new Array(POP_W * POP_H).fill(1), POP_W, POP_H);
@@ -33,8 +34,13 @@ describe("combo", () => {
     let now = 0;
     for (let i = 0; i < 15; i++) {
       const before = s().progress.points;
+      const trophiesBefore = s().progress.trophies.length;
       const r = s().hit("asteroid", (i % 10) / 10 + 0.05, 0.5, now);
-      const gained = s().progress.points - before;
+      const gained =
+        s().progress.points -
+        before -
+        // Trophies pay their own reward.
+        (s().progress.trophies.length - trophiesBefore) * TROPHY_REWARD;
       // Carried fractions can add at most 1 whole point on top of the bonus.
       expect(gained).toBeLessThanOrEqual(r.points + 1 + COMBO_CAP);
       if (i >= 11) expect(s().combo.count).toBe(i + 1);
@@ -161,8 +167,9 @@ describe("combo bonus cap per planet", () => {
     const ending = s().ending ? FIRST_ENDING_BONUS : 0;
     expect(COMBO_PLANET_CAP).toBe(300);
     expect(s().comboBonus).toBe(COMBO_PLANET_CAP);
+    const trophyPay = s().progress.trophies.length * TROPHY_REWARD;
     expect(s().progress.points - start).toBe(
-      Math.floor(raw + 1e-9) + COMBO_PLANET_CAP + ending
+      Math.floor(raw + 1e-9) + COMBO_PLANET_CAP + ending + trophyPay
     );
   });
 

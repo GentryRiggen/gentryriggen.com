@@ -16,7 +16,7 @@ describe("unlocks", () => {
   });
 
   it("has nothing after the last unlock", () => {
-    expect(nextUnlock(13000)).toBeNull();
+    expect(nextUnlock(20000)).toBeNull();
     expect(nextUnlock(5200)?.item).toEqual({ kind: "tool", id: "nukeTwin" });
     expect(nextUnlock(0)?.at).toBe(30);
   });

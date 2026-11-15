@@ -110,6 +110,15 @@ describe("DamagePainter", () => {
     expect([...p.takeDirty()].sort()).toEqual(["damage", "glow", "lights"]);
   });
 
+  it("flood washes the damage layer and the lights, never the height", () => {
+    const p = new DamagePainter(null);
+    p.takeDirty();
+    const before = p.version;
+    p.stamp("flood", 0.3, 0.6, 0.09);
+    expect(p.version).toBe(before + 1);
+    expect([...p.takeDirty()].sort()).toEqual(["damage", "lights"]);
+  });
+
   it("bumps the version on reset", () => {
     const p = new DamagePainter(null);
     const before = p.version;

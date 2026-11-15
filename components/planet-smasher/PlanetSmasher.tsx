@@ -22,6 +22,8 @@ import PlanetPicker from "./ui/PlanetPicker";
 import EndingOverlay from "./ui/EndingOverlay";
 import SoundToggle from "./ui/SoundToggle";
 import UnlockToast from "./ui/UnlockToast";
+import TrophyShelf from "./ui/TrophyShelf";
+import TrophyToast from "./ui/TrophyToast";
 import { useSoundEnabled } from "./audio/soundSetting";
 import useSoundUnlock from "./audio/useSoundUnlock";
 import useServiceWorker from "./hooks/useServiceWorker";
@@ -128,8 +130,9 @@ export default function PlanetSmasher() {
       if (tool.mode !== "hold") {
         playCue(TOOL_CUES[toolId].impact, 0.5 + tool.power / 16);
       }
-      if (tool.stamp !== "none") {
-        painter?.stamp(tool.stamp, u, v, tool.radius, opts);
+      const stamp = opts?.stamp ?? tool.stamp;
+      if (stamp !== "none") {
+        painter?.stamp(stamp, u, v, tool.radius, opts);
       }
     },
     [painter]
@@ -313,6 +316,7 @@ export default function PlanetSmasher() {
             left={
               <div className="flex flex-col items-start">
                 <PlanetPicker />
+                <TrophyShelf />
                 <VersionLink />
               </div>
             }
@@ -321,6 +325,7 @@ export default function PlanetSmasher() {
           <ComboBadge />
           <Arsenal />
           <UnlockToast />
+          <TrophyToast />
           <EndingOverlay />
         </>
       )}

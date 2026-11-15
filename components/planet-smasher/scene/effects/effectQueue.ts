@@ -1,3 +1,4 @@
+import type { StampKind } from "../DamagePainter";
 import type { Vec3 } from "@/lib/planet-smasher/sphere";
 import type { ToolId } from "@/lib/planet-smasher/tools";
 
@@ -16,6 +17,8 @@ export const MAX_EFFECTS = 12;
 export interface ImpactOpts {
   angle?: number;
   length?: number;
+  /** Paints this stamp instead of the tool's own (the monster's laser). */
+  stamp?: StampKind;
 }
 
 export interface EffectProps {

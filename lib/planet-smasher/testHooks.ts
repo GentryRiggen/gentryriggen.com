@@ -77,6 +77,14 @@ export function installTestHooks(
       hit("blackHole", 0.5, 0.5);
       return;
     }
+    if (kind === "vaporized") {
+      hit("sunDive", 0.5, 0.5);
+      return;
+    }
+    if (kind === "collided") {
+      hit("planetCollision", 0.5, 0.5);
+      return;
+    }
     // Make this family the clear leader with one point of health left.
     planet.familyDamage[kind] += 1e6;
     planet.health = 0.001;

@@ -6,11 +6,11 @@ import { UNLOCK_PATH, nextUnlock } from "../unlocks";
 const grid = gridFromLuminance(new Array(POP_W * POP_H).fill(1), POP_W, POP_H);
 
 describe("1.1 tools", () => {
-  it("has a spec for each of 16 unique tools in the order", () => {
-    expect(TOOL_ORDER).toHaveLength(16);
-    expect(new Set(TOOL_ORDER).size).toBe(16);
+  it("has a spec for each of 20 unique tools in the order", () => {
+    expect(TOOL_ORDER).toHaveLength(20);
+    expect(new Set(TOOL_ORDER).size).toBe(20);
     for (const id of TOOL_ORDER) expect(TOOLS[id].id).toBe(id);
-    expect(Object.keys(TOOLS)).toHaveLength(16);
+    expect(Object.keys(TOOLS)).toHaveLength(20);
   });
 
   it("unlocks every non-free tool exactly once, ascending", () => {
@@ -22,8 +22,8 @@ describe("1.1 tools", () => {
     for (let i = 1; i < UNLOCK_PATH.length; i++) {
       expect(UNLOCK_PATH[i].at).toBeGreaterThan(UNLOCK_PATH[i - 1].at);
     }
-    expect(UNLOCK_PATH.at(-1)?.at).toBe(13000);
-    expect(nextUnlock(13000)).toBeNull();
+    expect(UNLOCK_PATH.at(-1)?.at).toBe(20000);
+    expect(nextUnlock(20000)).toBeNull();
   });
 
   it("gives the Mothership the saucer icon", () => {

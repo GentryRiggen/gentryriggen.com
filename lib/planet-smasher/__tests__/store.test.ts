@@ -1,6 +1,11 @@
 import { POP_H, POP_W, gridFromLuminance } from "../population";
 import { FIRST_ENDING_BONUS, PROGRESS_KEY } from "../progress";
 import { useGameStore } from "../store";
+import { TROPHY_REWARD } from "../trophies";
+
+/** Points paid for the trophies held (a quick first ending also earns Speed smash). */
+const trophyPoints = () =>
+  useGameStore.getState().progress.trophies.length * TROPHY_REWARD;
 
 const grid = gridFromLuminance(new Array(POP_W * POP_H).fill(1), POP_W, POP_H);
 
@@ -15,7 +20,7 @@ describe("game store", () => {
     expect(r1.ending).toBe("shatter");
     expect(useGameStore.getState().phase).toBe("ending");
     expect(useGameStore.getState().progress.points).toBe(
-      r1.points + FIRST_ENDING_BONUS
+      r1.points + FIRST_ENDING_BONUS + trophyPoints()
     );
     expect(useGameStore.getState().progress.endingsSeen).toEqual(["shatter"]);
 
@@ -52,7 +57,7 @@ describe("game store", () => {
   it("counts the points earned on this planet and resets them", () => {
     const r = useGameStore.getState().hit("moonRam", 0.5, 0.5);
     expect(useGameStore.getState().planetPoints).toBe(
-      r.points + FIRST_ENDING_BONUS
+      r.points + FIRST_ENDING_BONUS + trophyPoints()
     );
     useGameStore.getState().endingShown();
     useGameStore.getState().newPlanet(grid);
@@ -93,8 +98,27 @@ describe("game store", () => {
     expect(useGameStore.getState().lastUnlocks.length).toBeGreaterThan(0);
     expect(
       JSON.parse(window.localStorage.getItem(PROGRESS_KEY) ?? "{}").points
-    ).toBe(r.points + big.points + FIRST_ENDING_BONUS);
+    ).toBe(r.points + big.points + FIRST_ENDING_BONUS + trophyPoints());
     useGameStore.getState().clearUnlocks();
     expect(useGameStore.getState().lastUnlocks).toEqual([]);
+  });
+});
+
+describe("debris intent", () => {
+  const ended = (kind: "shatter" | "frozen" | "collided" | "molten") => {
+    useGameStore.setState({ phase: "ending", ending: kind, debris: null });
+    useGameStore.getState().endingShown();
+    return useGameStore.getState().debris;
+  };
+
+  it("records a ring after shatter, frozen and collided endings", () => {
+    expect(ended("shatter")).toMatchObject({ count: 60, icy: false });
+    expect(ended("frozen")).toMatchObject({ count: 60, icy: true });
+    expect(ended("collided")).toMatchObject({ count: 60, icy: false });
+  });
+
+  it("clears it after any other ending", () => {
+    ended("shatter");
+    expect(ended("molten")).toBeNull();
   });
 });

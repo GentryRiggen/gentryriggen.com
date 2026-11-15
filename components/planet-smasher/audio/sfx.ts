@@ -27,12 +27,20 @@ export type Cue =
   | "gravityHum"
   | "gooPlop"
   | "mothershipCharge"
+  | "monsterRoar"
+  | "monsterStomp"
+  | "tsunamiRush"
+  | "sunRoar"
+  | "incomingWhoosh"
   | "endShatter"
   | "endMolten"
   | "endFrozen"
   | "endSwallowed"
+  | "endVaporized"
+  | "endCollided"
   | "endConsumed"
   | "unlock"
+  | "trophy"
   | "uiTap"
   | "newPlanet";
 
@@ -62,6 +70,14 @@ export const TOOL_CUES: Record<ToolId, { launch: Cue | null; impact: Cue }> = {
   nanobots: { launch: null, impact: "gooPlop" },
   // The charge whine runs until the beam fires, then the big impact.
   mothership: { launch: "mothershipCharge", impact: "impactBig" },
+  // The monster roars from the effect; each stomp (and laser hit) is a thud.
+  monster: { launch: null, impact: "monsterStomp" },
+  // The rush swells from the tap; each wave hit is a small splash.
+  tsunami: { launch: "tsunamiRush", impact: "impactSmall" },
+  // The Sun roars as it arrives; the ending carries the rest.
+  sunDive: { launch: "sunRoar", impact: "impactSmall" },
+  // The body whooshes in; the double boom is the ending's.
+  planetCollision: { launch: "incomingWhoosh", impact: "impactBig" },
 };
 
 /** The most voices sounding at once; cues past it are dropped. */
@@ -95,6 +111,33 @@ const SPEC: Record<
     play: playMothershipCharge,
     priority: true,
   },
+  monsterRoar: {
+    seconds: 1.3,
+    gap: 0.5,
+    play: playMonsterRoar,
+    priority: true,
+  },
+  monsterStomp: { seconds: 0.5, gap: 0.12, play: playMonsterStomp },
+  tsunamiRush: { seconds: 3.4, gap: 0.5, play: playTsunamiRush },
+  sunRoar: { seconds: 2.8, gap: 0.5, play: playSunRoar, priority: true },
+  incomingWhoosh: {
+    seconds: 2.6,
+    gap: 0.5,
+    play: playIncomingWhoosh,
+    priority: true,
+  },
+  endVaporized: {
+    seconds: 3,
+    gap: 0.5,
+    play: playEndVaporized,
+    priority: true,
+  },
+  endCollided: {
+    seconds: 3,
+    gap: 0.5,
+    play: playEndCollided,
+    priority: true,
+  },
   endShatter: { seconds: 2.6, gap: 0.5, play: playEndShatter, priority: true },
   endMolten: { seconds: 2.8, gap: 0.5, play: playEndMolten, priority: true },
   endFrozen: { seconds: 2.4, gap: 0.5, play: playEndFrozen, priority: true },
@@ -111,6 +154,7 @@ const SPEC: Record<
     priority: true,
   },
   unlock: { seconds: 0.8, gap: 0.2, play: playUnlock, priority: true },
+  trophy: { seconds: 1.3, gap: 0.3, play: playTrophy, priority: true },
   uiTap: { seconds: 0.1, gap: 0.04, play: playUiTap },
   newPlanet: { seconds: 0.9, gap: 0.3, play: playNewPlanet, priority: true },
 };
@@ -400,6 +444,91 @@ function playRumble(e: VoiceEngine, t: number, k: number) {
     freqEnd: 34,
     gain: 0.5 * k,
     attack: 0.2,
+  });
+}
+
+/** A big cartoon roar: a falling saw growl with a wobble, plus breath. */
+function playMonsterRoar(e: VoiceEngine, t: number, k: number) {
+  for (const detune of [-18, 18]) {
+    tone(e, {
+      type: "sawtooth",
+      start: t,
+      duration: 1.2,
+      freq: 150,
+      freqEnd: 62,
+      detune,
+      gain: 0.16 * k,
+      attack: 0.12,
+      filter: { type: "lowpass", q: 3, freq: 1100, freqEnd: 260 },
+    });
+  }
+  tone(e, {
+    type: "square",
+    start: t + 0.05,
+    duration: 1.1,
+    freq: 75,
+    freqEnd: 41,
+    gain: 0.12 * k,
+    attack: 0.15,
+    filter: { type: "lowpass", q: 1, freq: 400 },
+  });
+  noise(e, {
+    buffer: e.brown,
+    start: t,
+    duration: 1.25,
+    filter: "lowpass",
+    freq: 900,
+    freqEnd: 150,
+    gain: 0.5 * k,
+    attack: 0.1,
+    chop: 0.035,
+  });
+}
+
+/** A deep footstep: a low thump and a dull crunch. */
+function playMonsterStomp(e: VoiceEngine, t: number, k: number) {
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 0.45,
+    freq: 78,
+    freqEnd: 26,
+    gain: 0.95 * k,
+    attack: 0.004,
+  });
+  noise(e, {
+    buffer: e.brown,
+    start: t,
+    duration: 0.4,
+    filter: "lowpass",
+    freq: 700,
+    freqEnd: 70,
+    gain: 0.7 * k,
+  });
+}
+
+/** Water piling up and rushing past: noise that swells, then ebbs. */
+function playTsunamiRush(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 3.2,
+    filter: "bandpass",
+    freq: 380,
+    freqEnd: 1700,
+    q: 0.8,
+    gain: 0.3 * k,
+    attack: 2.1,
+  });
+  noise(e, {
+    buffer: e.brown,
+    start: t,
+    duration: 3.2,
+    filter: "lowpass",
+    freq: 200,
+    freqEnd: 600,
+    gain: 0.75 * k,
+    attack: 1.8,
   });
 }
 
@@ -815,6 +944,133 @@ function playEndSwallowed(e: VoiceEngine, t: number, k: number) {
   });
 }
 
+/** A low roar swelling as the Sun slides in, with crackle on top. */
+function playSunRoar(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.brown,
+    start: t,
+    duration: 2.7,
+    filter: "lowpass",
+    freq: 120,
+    freqEnd: 520,
+    gain: 1 * k,
+    attack: 1.8,
+  });
+  tone(e, {
+    type: "sawtooth",
+    start: t,
+    duration: 2.7,
+    freq: 46,
+    freqEnd: 58,
+    gain: 0.16 * k,
+    attack: 1.6,
+    filter: { type: "lowpass", freq: 260, freqEnd: 420, q: 1 },
+  });
+  noise(e, {
+    buffer: e.white,
+    start: t + 0.5,
+    duration: 2.2,
+    filter: "highpass",
+    freq: 3200,
+    gain: 0.2 * k,
+    attack: 1.4,
+    chop: 0.035,
+  });
+}
+
+/** A planet-sized whoosh that rises as it closes in. */
+function playIncomingWhoosh(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 2.5,
+    filter: "bandpass",
+    freq: 150,
+    freqEnd: 1800,
+    q: 0.8,
+    gain: 0.45 * k,
+    attack: 2.2,
+  });
+  tone(e, {
+    type: "sine",
+    start: t,
+    duration: 2.5,
+    freq: 55,
+    freqEnd: 190,
+    gain: 0.5 * k,
+    attack: 2.1,
+  });
+}
+
+/** A hiss that climbs, then a whoosh as the planet is gone. */
+function playEndVaporized(e: VoiceEngine, t: number, k: number) {
+  noise(e, {
+    buffer: e.white,
+    start: t,
+    duration: 2.5,
+    filter: "highpass",
+    freq: 1500,
+    freqEnd: 6500,
+    gain: 0.3 * k,
+    attack: 2.2,
+  });
+  const gone = t + 2.5;
+  noise(e, {
+    buffer: e.white,
+    start: gone,
+    duration: 0.5,
+    filter: "bandpass",
+    freq: 3000,
+    freqEnd: 300,
+    q: 0.8,
+    gain: 0.6 * k,
+    attack: 0.04,
+  });
+  tone(e, {
+    type: "sine",
+    start: gone,
+    duration: 0.5,
+    freq: 160,
+    freqEnd: 40,
+    gain: 0.6 * k,
+  });
+}
+
+/** A double boom: the hit, then the second world going. */
+function playEndCollided(e: VoiceEngine, t: number, k: number) {
+  for (const [at, g] of [
+    [0, 1],
+    [0.28, 0.8],
+  ] as const) {
+    noise(e, {
+      buffer: e.brown,
+      start: t + at,
+      duration: 2,
+      filter: "lowpass",
+      freq: 2600,
+      freqEnd: 60,
+      gain: g * k,
+    });
+    tone(e, {
+      type: "sine",
+      start: t + at,
+      duration: 1.9,
+      freq: at ? 62 : 82,
+      freqEnd: 20,
+      gain: 0.9 * g * k,
+    });
+    noise(e, {
+      buffer: e.white,
+      start: t + at,
+      duration: 1.1,
+      filter: "highpass",
+      freq: 2400,
+      gain: 0.25 * g * k,
+      chop: 0.05,
+    });
+  }
+}
+
 function playUnlock(e: VoiceEngine, t: number, k: number) {
   [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
     tone(e, {
@@ -824,6 +1080,30 @@ function playUnlock(e: VoiceEngine, t: number, k: number) {
       freq: f,
       gain: 0.22 * k,
       attack: 0.005,
+    });
+  });
+}
+
+function playTrophy(e: VoiceEngine, t: number, k: number) {
+  // A bright fanfare: a rising arpeggio, then a held chord on top.
+  [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+    tone(e, {
+      type: "triangle",
+      start: t + i * 0.1,
+      duration: 0.3,
+      freq: f,
+      gain: 0.2 * k,
+      attack: 0.005,
+    });
+  });
+  [1046.5, 1318.5, 1568].forEach((f) => {
+    tone(e, {
+      type: "square",
+      start: t + 0.55,
+      duration: 0.6,
+      freq: f,
+      gain: 0.07 * k,
+      attack: 0.01,
     });
   });
 }

@@ -14,9 +14,13 @@ export type ToolId =
   | "ufoSwarm"
   | "gravityBeam"
   | "nanobots"
-  | "mothership";
+  | "mothership"
+  | "monster"
+  | "tsunami"
+  | "sunDive"
+  | "planetCollision";
 export type EndingFamily = "shatter" | "molten" | "frozen" | "consumed";
-export type EndingKind = EndingFamily | "swallowed";
+export type EndingKind = EndingFamily | "swallowed" | "vaporized" | "collided";
 
 export interface ToolSpec {
   id: ToolId;
@@ -43,6 +47,7 @@ export interface ToolSpec {
     | "trench"
     | "goo"
     | "abduct"
+    | "flood"
     | "none";
 }
 
@@ -242,6 +247,56 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     finisher: "shatter",
     stamp: "scorch",
   },
+  monster: {
+    id: "monster",
+    name: "Giant monster",
+    icon: "🦖",
+    family: "shatter",
+    power: 3, // per stomp (4); each eye laser hit adds 2 (2)
+    radius: 0.07,
+    lethality: 0.8,
+    cooldownMs: 7000,
+    mode: "tap",
+    stamp: "crater",
+  },
+  tsunami: {
+    id: "tsunami",
+    name: "Tsunami",
+    icon: "🌊",
+    family: "shatter",
+    power: 1, // per wave hit (16)
+    radius: 0.09,
+    lethality: 0.6,
+    cooldownMs: 5000,
+    mode: "tap",
+    stamp: "flood",
+  },
+  sunDive: {
+    id: "sunDive",
+    name: "Sun dive",
+    icon: "☀️",
+    family: "molten",
+    power: 100,
+    radius: 0.5,
+    lethality: 1,
+    cooldownMs: 8000,
+    mode: "tap",
+    finisher: "vaporized",
+    stamp: "scorch",
+  },
+  planetCollision: {
+    id: "planetCollision",
+    name: "Planet collision",
+    icon: "🪐",
+    family: "shatter",
+    power: 100,
+    radius: 0.6,
+    lethality: 1,
+    cooldownMs: 8000,
+    mode: "tap",
+    finisher: "collided",
+    stamp: "crater",
+  },
 };
 
 export const TOOL_ORDER: readonly ToolId[] = [
@@ -261,4 +316,8 @@ export const TOOL_ORDER: readonly ToolId[] = [
   "moonRam",
   "blackHole",
   "mothership",
+  "monster",
+  "tsunami",
+  "sunDive",
+  "planetCollision",
 ];
