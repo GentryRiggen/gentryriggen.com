@@ -15,6 +15,7 @@ import { isUnlocked, unlocksBetween, type Unlockable } from "./unlocks";
 export const COMBO_WINDOW_MS = 1200;
 export const COMBO_MIN = 3;
 export const COMBO_CAP = 10;
+const COMBO_FIRE_IDS_KEPT = 32;
 
 const NO_COMBO = { count: 0, lastAt: 0 };
 
@@ -32,8 +33,8 @@ export interface GameStore {
   planetPoints: number;
   /** Quick hits in a row; count 0 = none. */
   combo: { count: number; lastAt: number };
-  /** The last fire (effect id) that moved the combo; its other hits do not. */
-  comboFireId: number | null;
+  /** Recent fires (effect ids) that moved the combo; a fire counts once ever. */
+  comboFireIds: number[];
   lastHit: {
     peopleLost: number;
     u: number;
@@ -81,7 +82,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   planetPoints: 0,
   lastHit: null,
   combo: { ...NO_COMBO },
-  comboFireId: null,
+  comboFireIds: [],
 
   init(grid) {
     const loaded = loadProgress();
@@ -108,7 +109,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       planetPoints: 0,
       lastHit: null,
       combo: { ...NO_COMBO },
-      comboFireId: null,
+      comboFireIds: [],
     });
   },
 
@@ -133,7 +134,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       planetPoints: 0,
       lastHit: null,
       combo: { ...NO_COMBO },
-      comboFireId: null,
+      comboFireIds: [],
     });
   },
 
@@ -145,7 +146,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       lastHit,
       pointsCarry,
       combo,
-      comboFireId,
+      comboFireIds,
     } = get();
     if (!planet || phase !== "playing") return { ...ZERO };
     const result = applyHit(planet, toolId, u, v);
@@ -161,14 +162,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // Quick shots in a row pay a growing bonus. A shot (one fire id) moves the
     // combo once, however many damage ticks or warheads it lands.
     let nextCombo = combo;
-    let nextFireId = comboFireId;
-    const sameFire = fireId !== undefined && fireId === comboFireId;
+    let nextFireIds = comboFireIds;
+    const sameFire = fireId !== undefined && comboFireIds.includes(fireId);
     if (sameFire) {
       // Report the live count, or none once the window has lapsed.
       if (now - combo.lastAt > COMBO_WINDOW_MS)
         nextCombo = { ...combo, count: 0 };
     } else if (result.peopleLost > 0 || result.healthLost > 0) {
-      nextFireId = fireId ?? null;
+      if (fireId !== undefined)
+        nextFireIds = [...comboFireIds, fireId].slice(-COMBO_FIRE_IDS_KEPT);
       const count =
         now - combo.lastAt <= COMBO_WINDOW_MS && combo.count > 0
           ? combo.count + 1
@@ -188,7 +190,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       planet: { ...planet },
       pointsCarry: carry,
       combo: sameFire ? combo : nextCombo,
-      comboFireId: nextFireId,
+      comboFireIds: nextFireIds,
       planetPoints: s.planetPoints + gained,
       phase: result.ending ? "ending" : s.phase,
       ending: result.ending ?? s.ending,
@@ -224,7 +226,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       planetPoints: 0,
       lastHit: null,
       combo: { ...NO_COMBO },
-      comboFireId: null,
+      comboFireIds: [],
     });
   },
 

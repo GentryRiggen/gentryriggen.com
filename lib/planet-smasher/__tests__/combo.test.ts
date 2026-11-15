@@ -50,6 +50,24 @@ describe("combo", () => {
     expect(s().combo).toEqual({ count: 0, lastAt: 0 });
   });
 
+  it("ignores repeat ticks of overlapping shots", () => {
+    const start = s().progress.points;
+    let raw = 0;
+    for (let i = 0; i < 10; i++) {
+      raw += s().hit(
+        "asteroid",
+        i / 10 + 0.05,
+        0.5,
+        i * 100,
+        (i % 2) + 1
+      ).rawPoints;
+    }
+    // No combo bonus on top of the hits' own (floored) points.
+    expect(s().progress.points - start).toBe(Math.floor(raw + 1e-9));
+    expect(s().combo.count).toBeLessThanOrEqual(2);
+    expect(s().lastHit?.combo ?? 0).toBeLessThanOrEqual(2);
+  });
+
   it("ignores hits while ending", () => {
     s().hit("moonRam", 0.2, 0.5, 100);
     const combo = { ...s().combo };
