@@ -95,8 +95,14 @@ export function unlocksBetween(
   ).map((e) => e.item);
 }
 
+/** The next item above `points` that the save does not already own. */
 export function nextUnlock(
-  points: number
+  points: number,
+  owned?: readonly string[]
 ): { at: number; item: Unlockable } | null {
-  return UNLOCK_PATH.find((e) => e.at > points) ?? null;
+  return (
+    UNLOCK_PATH.find(
+      (e) => e.at > points && !owned?.includes(ownedKey(e.item))
+    ) ?? null
+  );
 }

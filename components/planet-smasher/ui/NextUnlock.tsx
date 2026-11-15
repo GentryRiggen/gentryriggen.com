@@ -10,7 +10,7 @@ import {
   nextUnlock,
   type Unlockable,
 } from "@/lib/planet-smasher/unlocks";
-import { formatInt } from "./format";
+import { formatStars } from "./format";
 
 const FILL_MS = 1200;
 
@@ -55,8 +55,9 @@ interface NextUnlockProps {
 /** The next thing to open as a dark silhouette, a bar and "⭐ 100 / 160". */
 export default function NextUnlock({ animateFrom }: NextUnlockProps) {
   const points = useGameStore((s) => s.progress.points);
+  const owned = useGameStore((s) => s.progress.owned);
   const shown = useAnimatedPoints(animateFrom, points);
-  const next = nextUnlock(Math.floor(shown));
+  const next = nextUnlock(Math.floor(shown), owned);
 
   if (!next) {
     return (
@@ -102,7 +103,7 @@ export default function NextUnlock({ animateFrom }: NextUnlockProps) {
           />
         </div>
         <span className="font-mono text-xs font-bold tabular-nums text-yellow-200 sm:text-sm">
-          ⭐ {formatInt(shown)} / {formatInt(next.at)}
+          ⭐ {formatStars(shown)} / {formatStars(next.at)}
         </span>
       </div>
     </div>

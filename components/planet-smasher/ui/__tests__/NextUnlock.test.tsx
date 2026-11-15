@@ -3,7 +3,12 @@ import NextUnlock from "../NextUnlock";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import { freshProgress } from "@/lib/planet-smasher/progress";
 import { TOOLS } from "@/lib/planet-smasher/tools";
-import { UNLOCK_PATH, nextUnlock } from "@/lib/planet-smasher/unlocks";
+import {
+  UNLOCK_PATH,
+  nextUnlock,
+  ownedKey,
+} from "@/lib/planet-smasher/unlocks";
+import { formatStars } from "../format";
 
 function setPoints(points: number) {
   act(() => {
@@ -28,14 +33,39 @@ describe("NextUnlock", () => {
     );
   });
 
-  it("groups thousands", () => {
-    const entry = UNLOCK_PATH.find((e) => e.at >= 1000)!;
+  it("groups thousands and uses k for big costs", () => {
+    const entry = UNLOCK_PATH.find((e) => e.at >= 1000 && e.at < 10000)!;
     setPoints(entry.at - 1);
-    render(<NextUnlock />);
+    const { unmount } = render(<NextUnlock />);
     expect(
       screen.getByText(
         `⭐ ${(entry.at - 1).toLocaleString("en-US")} / ${entry.at.toLocaleString("en-US")}`
       )
+    ).toBeInTheDocument();
+    unmount();
+    const big = UNLOCK_PATH.find((e) => e.at >= 10000)!;
+    setPoints(big.at - 1);
+    render(<NextUnlock />);
+    expect(
+      screen.getByText(`⭐ ${formatStars(big.at - 1)} / ${formatStars(big.at)}`)
+    ).toBeInTheDocument();
+  });
+
+  it("never shows an owned item as next", () => {
+    const first = nextUnlock(0)!;
+    const second = nextUnlock(first.at)!;
+    act(() => {
+      useGameStore.setState({
+        progress: {
+          ...freshProgress(),
+          points: 0,
+          owned: [ownedKey(first.item)],
+        },
+      });
+    });
+    render(<NextUnlock />);
+    expect(
+      screen.getByText(`⭐ 0 / ${formatStars(second.at)}`)
     ).toBeInTheDocument();
   });
 

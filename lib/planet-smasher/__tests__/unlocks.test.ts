@@ -1,4 +1,4 @@
-import { isUnlocked, nextUnlock, unlocksBetween } from "../unlocks";
+import { isUnlocked, nextUnlock, ownedKey, unlocksBetween } from "../unlocks";
 
 describe("unlocks", () => {
   it("lists what a point jump crosses, in order", () => {
@@ -22,5 +22,14 @@ describe("unlocks", () => {
       id: "supervolcano",
     });
     expect(nextUnlock(0)?.at).toBe(25);
+  });
+});
+
+describe("nextUnlock with owned items", () => {
+  it("skips owned items above the points", () => {
+    const first = nextUnlock(0)!;
+    const second = nextUnlock(first.at)!;
+    expect(nextUnlock(0, [ownedKey(first.item)])).toEqual(second);
+    expect(nextUnlock(0, [ownedKey(second.item)])).toEqual(first);
   });
 });

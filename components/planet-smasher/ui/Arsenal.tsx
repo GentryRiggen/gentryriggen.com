@@ -11,7 +11,7 @@ import {
 } from "@/lib/planet-smasher/unlocks";
 import { playCue } from "../audio/sfx";
 import { clearFresh, freshKey, useFreshItems } from "./freshItems";
-import { formatInt } from "./format";
+import { formatStars } from "./format";
 
 const costOf = (id: ToolId): number | null =>
   UNLOCK_PATH.find((e) => e.item.kind === "tool" && e.item.id === id)?.at ??
@@ -124,7 +124,7 @@ export default function Arsenal() {
             )}
             {locked && cost !== null && (
               <span className="absolute inset-x-0 bottom-0.5 text-center text-[11px] font-bold leading-none text-yellow-200">
-                ⭐ {formatInt(cost)}
+                ⭐ {formatStars(cost)}
               </span>
             )}
             {locked && (
