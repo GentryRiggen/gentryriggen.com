@@ -22,11 +22,15 @@ export type ToolId =
 export type EndingFamily = "shatter" | "molten" | "frozen" | "consumed";
 export type EndingKind = EndingFamily | "swallowed" | "vaporized" | "collided";
 
+export type ToolCategory = "space" | "bombs" | "nature" | "aliens";
+
 export interface ToolSpec {
   id: ToolId;
   /** Kid-readable English name (used for aria-labels). */
   name: string;
   icon: string;
+  /** Which arsenal tab the tool lives on. */
+  category: ToolCategory;
   family: EndingFamily;
   /** Health % removed per hit (before wreck scaling). */
   power: number;
@@ -56,6 +60,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "asteroid",
     name: "Asteroid",
     icon: "☄️",
+    category: "space",
     family: "shatter",
     power: 4,
     radius: 0.08,
@@ -68,6 +73,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "meteorShower",
     name: "Meteor shower",
     icon: "🌠",
+    category: "space",
     family: "shatter",
     power: 1.2, // per meteor; the effect fires 10
     radius: 0.04,
@@ -80,6 +86,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "megaBomb",
     name: "Mega bomb",
     icon: "💣",
+    category: "bombs",
     family: "molten",
     power: 7,
     radius: 0.12,
@@ -92,6 +99,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "nuke",
     name: "Nuke",
     icon: "☢️",
+    category: "bombs",
     family: "molten",
     power: 12,
     radius: 0.2,
@@ -104,6 +112,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "supervolcano",
     name: "Supervolcano",
     icon: "🌋",
+    category: "nature",
     family: "molten",
     power: 10,
     radius: 0.15,
@@ -116,6 +125,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "earthquake",
     name: "Earthquake",
     icon: "⚡",
+    category: "nature",
     family: "shatter",
     power: 11,
     radius: 0.1, // along a crack
@@ -128,6 +138,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "alienLaser",
     name: "Alien laser",
     icon: "🔫",
+    category: "aliens",
     family: "molten",
     power: 0.8, // per tick, 8 ticks a second
     radius: 0.04,
@@ -140,6 +151,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "freezeRay",
     name: "Freeze ray",
     icon: "❄️",
+    category: "nature",
     family: "frozen",
     power: 14,
     radius: 0.35,
@@ -152,6 +164,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "moonRam",
     name: "Moon ram",
     icon: "🌙",
+    category: "space",
     family: "shatter",
     power: 100,
     radius: 0.5,
@@ -165,6 +178,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "blackHole",
     name: "Black hole",
     icon: "🕳️",
+    category: "space",
     family: "shatter",
     power: 100,
     radius: 0.3,
@@ -178,6 +192,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "nukeTwin",
     name: "Twin nuke",
     icon: "☢️",
+    category: "bombs",
     family: "molten",
     power: 10, // per warhead; the effect fires 2
     radius: 0.18,
@@ -190,6 +205,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "nukeRain",
     name: "Nuke rain",
     icon: "🚀",
+    category: "bombs",
     family: "molten",
     power: 7, // per warhead; the effect fires 6
     radius: 0.14,
@@ -202,6 +218,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "ufoSwarm",
     name: "UFO swarm",
     icon: "👾",
+    category: "aliens",
     family: "molten",
     power: 1.5, // per beam; the effect fires 12
     radius: 0.05,
@@ -214,6 +231,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "gravityBeam",
     name: "Gravity beam",
     icon: "🧲",
+    category: "aliens",
     family: "shatter",
     power: 9,
     radius: 0.13,
@@ -226,6 +244,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "nanobots",
     name: "Nanobot swarm",
     icon: "🤖",
+    category: "aliens",
     family: "consumed",
     power: 1.1, // per tick; 40 ticks over 10 s
     radius: 0.07,
@@ -238,6 +257,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "mothership",
     name: "Mothership",
     icon: "🛸",
+    category: "aliens",
     family: "shatter",
     power: 100,
     radius: 0.5,
@@ -251,6 +271,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "monster",
     name: "Giant monster",
     icon: "🦖",
+    category: "nature",
     family: "shatter",
     power: 3, // per stomp (4); each eye laser hit adds 2 (2)
     radius: 0.07,
@@ -263,6 +284,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "tsunami",
     name: "Tsunami",
     icon: "🌊",
+    category: "nature",
     family: "shatter",
     power: 1, // per wave hit (16)
     radius: 0.09,
@@ -275,6 +297,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "sunDive",
     name: "Sun dive",
     icon: "☀️",
+    category: "space",
     family: "molten",
     power: 100,
     radius: 0.5,
@@ -288,6 +311,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     id: "planetCollision",
     name: "Planet collision",
     icon: "🪐",
+    category: "space",
     family: "shatter",
     power: 100,
     radius: 0.6,
@@ -320,4 +344,44 @@ export const TOOL_ORDER: readonly ToolId[] = [
   "tsunami",
   "sunDive",
   "planetCollision",
+];
+
+/** The arsenal tabs, in order, with the tools each one holds. */
+export const CATEGORIES: readonly {
+  id: ToolCategory;
+  icon: string;
+  name: string;
+  tools: readonly ToolId[];
+}[] = [
+  {
+    id: "space",
+    icon: "🌠",
+    name: "Space",
+    tools: [
+      "asteroid",
+      "meteorShower",
+      "moonRam",
+      "blackHole",
+      "sunDive",
+      "planetCollision",
+    ],
+  },
+  {
+    id: "bombs",
+    icon: "💣",
+    name: "Bombs",
+    tools: ["megaBomb", "nuke", "nukeTwin", "nukeRain"],
+  },
+  {
+    id: "nature",
+    icon: "🌋",
+    name: "Nature",
+    tools: ["supervolcano", "earthquake", "tsunami", "freezeRay", "monster"],
+  },
+  {
+    id: "aliens",
+    icon: "👽",
+    name: "Aliens",
+    tools: ["alienLaser", "ufoSwarm", "gravityBeam", "nanobots", "mothership"],
+  },
 ];
