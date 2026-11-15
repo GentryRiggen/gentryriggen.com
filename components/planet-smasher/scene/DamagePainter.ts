@@ -579,8 +579,14 @@ export class DamagePainter {
   ) {
     this.line("lights", pts, width * 3, "rgba(0,0,0,1)", "destination-out");
     this.line("damage", pts, width * 2.2, "rgba(22,14,10,0.9)");
-    this.line("glow", pts, width * 0.8, "rgba(255,100,20,0.55)", "lighter");
-    this.line("glow", pts, width * 0.3, "rgba(255,200,110,0.7)", "lighter");
+    if (crack) {
+      this.line("glow", pts, width * 0.8, "rgba(255,100,20,0.55)", "lighter");
+      this.line("glow", pts, width * 0.3, "rgba(255,200,110,0.7)", "lighter");
+    } else {
+      // The laser keeps its bright seam.
+      this.line("glow", pts, width * 1.2, "rgba(255,110,20,0.9)", "lighter");
+      this.line("glow", pts, width * 0.5, "rgba(255,210,120,0.9)", "lighter");
+    }
     const grey = (g: number) => {
       const c = Math.round(255 - (255 - g) * depth);
       return `rgb(${c},${c},${c})`;

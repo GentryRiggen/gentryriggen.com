@@ -72,4 +72,8 @@ describe("easeCrack", () => {
   it("clears at once when the planet heals (a new planet)", () => {
     expect(easeCrack(0.9, 0, 1 / 60)).toBe(0);
   });
+
+  it("snaps shut when a full-health planet starts mid-crack", () => {
+    expect(easeCrack(0.7, crackTarget(100), 1 / 60)).toBe(0);
+  });
 });

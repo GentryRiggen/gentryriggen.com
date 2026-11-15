@@ -20,7 +20,7 @@ import {
   type WebGLProgramParametersWithUniforms,
 } from "three";
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
-import type { PlanetId } from "@/lib/planet-smasher/planets";
+import { PLANET_ORDER, type PlanetId } from "@/lib/planet-smasher/planets";
 import type { DamagePainter } from "./DamagePainter";
 import type { PlanetTextures } from "./planetTextures";
 import { planetFx } from "./endings/planetFx";
@@ -143,6 +143,38 @@ function faultTexture(id: PlanetId): DataTexture {
   t.needsUpdate = true;
   faultCache.set(id, t);
   return t;
+}
+
+/**
+ * Builds the other planets' fault maps one per idle slot, so a later planet
+ * switch finds its map cached. Returns a cancel function.
+ */
+function precomputeFaultTextures(first: PlanetId): () => void {
+  const queue = PLANET_ORDER.filter(
+    (id) => id !== first && !faultCache.has(id)
+  );
+  // Older Safari has no requestIdleCallback.
+  const hasIdle = typeof window.requestIdleCallback === "function";
+  let handle: number | undefined;
+  let cancelled = false;
+  const schedule = () => {
+    if (cancelled || queue.length === 0) return;
+    handle = hasIdle
+      ? window.requestIdleCallback(step)
+      : window.setTimeout(step, 400);
+  };
+  const step = () => {
+    const id = queue.shift();
+    if (id) faultTexture(id);
+    schedule();
+  };
+  schedule();
+  return () => {
+    cancelled = true;
+    if (handle === undefined) return;
+    if (hasIdle) window.cancelIdleCallback(handle);
+    else window.clearTimeout(handle);
+  };
 }
 
 /** Shared by both shaders: how much of a fault is showing at this texel. */
@@ -269,7 +301,6 @@ const Planet = forwardRef<Mesh, PlanetProps>(function Planet(
       shader.uniforms.damageMap = { value: maps.damage };
       shader.uniforms.glowMap = { value: maps.glow };
       shader.uniforms.lightsMap = { value: maps.lights };
-      shader.uniforms.heightMap = { value: maps.height };
       shader.uniforms.faultMap = { value: faults };
       shader.uniforms.sunDirView = { value: sunDirView };
       shader.uniforms.oceanLift = { value: earth ? 1 : 0 };
@@ -306,7 +337,6 @@ if (uCrack > 0.001) {
 uniform sampler2D damageMap;
 uniform sampler2D glowMap;
 uniform sampler2D lightsMap;
-uniform sampler2D heightMap;
 uniform vec3 sunDirView;
 uniform float oceanLift;
 uniform float uMolten;
@@ -372,7 +402,7 @@ diffuseColor.rgb = mix(diffuseColor.rgb, dm.rgb, dm.a);
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.9, 1.0), uFrozen * 0.85);
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.5, 0.12), smoothstep(0.0, 0.6, uVapor));
 // Dug down to the core: magma shows where the ground is nearly gone.
-float psDepth = texture2D(heightMap, vMapUv).r;
+float psDepth = texture2D(bumpMap, vBumpMapUv).r;
 float psCore = 1.0 - smoothstep(0.08, 0.22, psDepth);
 float psCorePulse = 0.85 + 0.15 * sin(uTime * 1.6 + psDepth * 40.0);
 vec3 psMagma = mix(vec3(0.5, 0.03, 0.0), vec3(1.0, 0.4, 0.06), smoothstep(0.0, 0.2, psDepth) * 0.6 + 0.4 * psCorePulse);
@@ -452,6 +482,9 @@ if (uFrozen > 0.0) {
       sunDirView: { value: sunDirView },
     };
   }, [textures.id, sunDirView]);
+
+  // Once this planet is up, build the rest off the critical path.
+  useEffect(() => precomputeFaultTextures(textures.id), [textures.id]);
 
   useEffect(
     () => () => {
