@@ -18,6 +18,7 @@ import {
 import { playCue } from "../audio/sfx";
 import { clearFresh, freshKey, useFreshItems } from "./freshItems";
 import { formatStars } from "./format";
+import { useShownUnlock } from "./shownUnlock";
 
 const costOf = (id: ToolId): number | null =>
   UNLOCK_PATH.find((e) => e.item.kind === "tool" && e.item.id === id)?.at ??
@@ -29,24 +30,26 @@ const COST = Object.fromEntries(
 /** The weapons tray along the bottom edge: four tabs, one row of tiles. */
 export default function Arsenal() {
   const points = useGameStore((s) => s.progress.points);
-  const lastUnlocks = useGameStore((s) => s.lastUnlocks);
+  const shownUnlock = useShownUnlock();
   const owned = useGameStore((s) => s.progress.owned);
   const selected = useGameStore((s) => s.progress.toolId);
   const fresh = useFreshItems();
   const [shaking, setShaking] = useState<ToolId | null>(null);
   const [tab, setTab] = useState<ToolCategory>(TOOLS[selected].category);
   // The tab follows the selected tool (a restore, the test hook) and an
-  // unlock toast's tool. Adjusted during render, not in an effect.
+  // unlock toast's tool (the one it is showing). Adjusted during render, not in an effect.
   const [seenTool, setSeenTool] = useState(selected);
-  const [seenUnlocks, setSeenUnlocks] = useState(lastUnlocks);
+  const shownKey = shownUnlock ? `${shownUnlock.kind}:${shownUnlock.id}` : "";
+  const [seenShown, setSeenShown] = useState(shownKey);
   if (seenTool !== selected) {
     setSeenTool(selected);
     setTab(TOOLS[selected].category);
   }
-  if (seenUnlocks !== lastUnlocks) {
-    setSeenUnlocks(lastUnlocks);
-    const jump = lastUnlocks.find((u) => u.kind === "tool");
-    if (jump && jump.kind === "tool") setTab(TOOLS[jump.id].category);
+  // Once per shown item, so a tab the child taps afterwards stays put.
+  if (seenShown !== shownKey) {
+    setSeenShown(shownKey);
+    if (shownUnlock && shownUnlock.kind === "tool")
+      setTab(TOOLS[shownUnlock.id].category);
   }
   const category = CATEGORIES.find((c) => c.id === tab) ?? CATEGORIES[0];
   const tiles = useRef<Partial<Record<ToolId, HTMLButtonElement | null>>>({});

@@ -7,6 +7,7 @@ import { TOOLS } from "@/lib/planet-smasher/tools";
 import type { Unlockable } from "@/lib/planet-smasher/unlocks";
 import { playCue } from "../audio/sfx";
 import { markFresh } from "./freshItems";
+import { setShownUnlock } from "./shownUnlock";
 
 const SHOW_MS = 2500;
 const SPARKLES = [
@@ -57,6 +58,11 @@ export default function UnlockToast() {
   useEffect(() => {
     if (itemKey) playCue("unlock");
   }, [itemKey]);
+  // Tell the tray which item is on screen; clear when it goes away.
+  useEffect(() => {
+    setShownUnlock(item ?? null);
+  }, [item]);
+  useEffect(() => () => setShownUnlock(null), []);
   if (!item) return null;
   const { icon, name } = describe(item);
   return (

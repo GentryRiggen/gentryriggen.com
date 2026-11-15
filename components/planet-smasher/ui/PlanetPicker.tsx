@@ -49,7 +49,7 @@ export default function PlanetPicker() {
         <span aria-hidden="true">{PLANETS[planetId].icon}</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-2 flex gap-2 rounded-3xl bg-black/70 p-2">
+        <div className="mt-2 grid w-max grid-cols-2 gap-2 rounded-3xl bg-black/70 p-2">
           {PLANET_ORDER.map((id) => {
             const planet = PLANETS[id];
             const locked = !isUnlocked({ kind: "planet", id }, points, owned);

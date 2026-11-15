@@ -9,6 +9,7 @@ import {
   type ToolId,
 } from "@/lib/planet-smasher/tools";
 import { markFresh, resetFresh } from "../freshItems";
+import { setShownUnlock } from "../shownUnlock";
 
 function setProgress(patch: Partial<ReturnType<typeof freshProgress>>) {
   act(() => {
@@ -102,14 +103,28 @@ describe("Arsenal tabs", () => {
     expect(screen.queryByTestId("tab-dot-space")).toBeNull();
   });
 
-  it("jumps to the tab of an unlocked tool", () => {
+  it("jumps to the tab of the tool the toast is showing", () => {
     setPoints(100000);
     render(<Arsenal />);
-    act(() =>
-      useGameStore.setState({
-        lastUnlocks: [{ kind: "tool", id: "tsunami" }],
-      })
-    );
+    act(() => setShownUnlock({ kind: "tool", id: "tsunami" }));
+    expect(tab("Nature")).toHaveAttribute("aria-selected", "true");
+    act(() => setShownUnlock(null));
+  });
+
+  it("follows each queued unlock once and keeps a tab the child tapped", () => {
+    setPoints(100000);
+    render(<Arsenal />);
+    act(() => setShownUnlock({ kind: "tool", id: "nuke" }));
+    expect(tab("Bombs")).toHaveAttribute("aria-selected", "true");
+    // The child taps another tab; the same item showing again (a later
+    // append) must not yank the tray back.
+    fireEvent.click(tab("Space"));
+    act(() => setShownUnlock({ kind: "tool", id: "nuke" }));
+    expect(tab("Space")).toHaveAttribute("aria-selected", "true");
+    // The toast moves on to the second unlock, in another tab.
+    act(() => setShownUnlock({ kind: "tool", id: "tsunami" }));
+    expect(tab("Nature")).toHaveAttribute("aria-selected", "true");
+    act(() => setShownUnlock(null));
     expect(tab("Nature")).toHaveAttribute("aria-selected", "true");
   });
 
