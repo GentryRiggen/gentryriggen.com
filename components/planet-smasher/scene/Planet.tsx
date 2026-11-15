@@ -52,6 +52,9 @@ export const SUN_VIEW_DIR: [number, number, number] = [-0.6, 0.4, 0.7];
 /** How far (of the radius) pure white lifts and pure black sinks the ground. */
 const DISPLACEMENT_SCALE = 0.16;
 const BUMP_SCALE = 3;
+/** Chunks of a shattered planet have flat inner faces, so the relief eases. */
+const ENDING_RELIEF = 0.03 / DISPLACEMENT_SCALE;
+const RELIEF_EASE_SECONDS = 0.2;
 
 /** Atmosphere rim colours: [rgb, strength]. */
 const ATMOSPHERE: Record<PlanetId, [[number, number, number], number]> = {
@@ -146,6 +149,7 @@ function faultTexture(id: PlanetId): DataTexture {
 const FAULT_GLSL = `
 uniform sampler2D faultMap;
 uniform float uCrack;
+uniform float uRelief;
 // x: how close to a plate border (1 on it), y: 1 once its border is open.
 vec2 psFault(vec2 uv) {
   vec4 f = texture2D(faultMap, uv);
@@ -161,11 +165,35 @@ interface FxUniforms {
   uPulse: { value: number };
   uTime: { value: number };
   uCrack: { value: number };
+  /** 1 while playing; eases down in the endings (scales the fault sink). */
+  uRelief: { value: number };
 }
 
 /** Eases the fault lines toward what the planet's health calls for. */
 function applyCrack(fx: FxUniforms, health: number, dt: number) {
   fx.uCrack.value = easeCrack(fx.uCrack.value, crackTarget(health), dt);
+}
+
+/**
+ * Chunks share the planet material but their cut faces do not displace, so
+ * outside "playing" the relief eases down (uniforms only, no recompile).
+ * A new material (planet switch) snaps to where it should be.
+ */
+function easeRelief(
+  fx: FxUniforms,
+  material: MeshStandardMaterial,
+  isPlaying: boolean,
+  dt: number,
+  seenFor: { current: MeshStandardMaterial | null }
+) {
+  const target = isPlaying ? 1 : ENDING_RELIEF;
+  const snap = seenFor.current !== material;
+  seenFor.current = material;
+  const step = snap ? 1 : Math.min(1, dt / RELIEF_EASE_SECONDS);
+  const k = fx.uRelief.value + (target - fx.uRelief.value) * step;
+  fx.uRelief.value = Math.abs(k - target) < 0.001 ? target : k;
+  material.displacementScale = DISPLACEMENT_SCALE * fx.uRelief.value;
+  material.displacementBias = (-material.displacementScale * 128) / 255;
 }
 
 /** Copies the ending state into the shader uniforms. */
@@ -216,6 +244,7 @@ const Planet = forwardRef<Mesh, PlanetProps>(function Planet(
       uPulse: { value: 0 },
       uTime: { value: 0 },
       uCrack: { value: 0 },
+      uRelief: { value: 1 },
     }),
     []
   );
@@ -259,11 +288,15 @@ vObj = position;`
         )
         .replace(
           "#include <displacementmap_vertex>",
-          `#include <displacementmap_vertex>
+          `// Relief fades out at the poles, where the sphere's rows pinch to a point.
+float psPole = 1.0 - smoothstep(0.97, 0.995, abs(normalize(objectNormal).y));
+#ifdef USE_DISPLACEMENTMAP
+transformed += normalize(objectNormal) * (texture2D(displacementMap, vDisplacementMapUv).x * displacementScale + displacementBias) * psPole;
+#endif
 if (uCrack > 0.001) {
   // Open borders sink into real grooves (a wide, soft V so the vertices see it).
   vec2 psF = psFault(vMapUv);
-  transformed -= normalize(objectNormal) * 0.02 * psF.y * smoothstep(0.15, 1.0, psF.x);
+  transformed -= normalize(objectNormal) * 0.02 * uRelief * psPole * psF.y * smoothstep(0.15, 1.0, psF.x);
 }`
         );
       shader.fragmentShader = shader.fragmentShader
@@ -431,12 +464,14 @@ if (uFrozen > 0.0) {
 
   // One texture upload per frame at most, and only after a stamp.
   const seen = useRef({ painter, version: -1 });
+  const reliefFor = useRef<MeshStandardMaterial | null>(null);
   useFrame(({ camera, clock }, delta) => {
     // The faults open as health drops; the endings take over once it is over.
     const { planet, phase } = useGameStore.getState();
     if (phase === "playing") {
       applyCrack(fxUniforms, planet?.health ?? 100, delta);
     }
+    easeRelief(fxUniforms, material, phase === "playing", delta, reliefFor);
     sunDirView.copy(sunDir).transformDirection(camera.matrixWorldInverse);
     applyFxUniforms(fxUniforms, atmosphereUniforms, clock.elapsedTime);
     const g = outer.current;

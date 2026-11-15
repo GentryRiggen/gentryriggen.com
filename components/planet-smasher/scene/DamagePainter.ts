@@ -33,11 +33,27 @@ export function stampEllipses(
   const cx = u * width;
   const cy = (1 - v) * height;
   const out: StampEllipse[] = [{ cx, cy, rx, ry }];
+  // Near a pole the main ellipse already covers the whole row; a seam copy
+  // would make multiply stamps dig the same ground twice.
+  if (2.4 * rx > width) return out;
   // Crater blobs reach about 1.65 radii, so copy across the seam early.
   if (cx - 1.7 * rx < 0) out.push({ cx: cx + width, cy, rx, ry });
   if (cx + 1.7 * rx > width) out.push({ cx: cx - width, cy, rx, ry });
   return out;
 }
+
+/**
+ * Per-hit dig factors on the height map (multiply: grey / 255 of what is
+ * left). Exported so tests can pin how fast repeated hits reach the core.
+ */
+export const CRATER_CENTRE_GREY = 140;
+export const CRATER_CENTRE_DIG = CRATER_CENTRE_GREY / 255;
+export const CRACK_CORE_GREY = 60;
+export const CRACK_CORE_DIG = CRACK_CORE_GREY / 255;
+/** Untouched ground on the height map. */
+export const HEIGHT_NEUTRAL = 128 / 255;
+/** The rim is never pushed above this grey, so hits cannot build walls. */
+export const CRATER_RIM_GREY = 150;
 
 const DAMAGE_W = 2048;
 const DAMAGE_H = 1024;
@@ -286,19 +302,24 @@ export class DamagePainter {
       // spot cuts deeper (about 0.55 of what is left at the centre).
       ctx.globalCompositeOperation = "multiply";
       blob(ctx, 0, 0, 1.2, [
-        [0, "rgb(140,140,140)"],
+        [
+          0,
+          `rgb(${CRATER_CENTRE_GREY},${CRATER_CENTRE_GREY},${CRATER_CENTRE_GREY})`,
+        ],
         [0.45, "rgb(172,172,172)"],
         [0.7, "rgb(236,236,236)"],
         [0.82, "rgb(255,255,255)"],
         [1, "rgb(255,255,255)"],
       ]);
       // A soft raised ring (thrown-up rock) just outside the bowl.
-      ctx.globalCompositeOperation = "lighter";
+      // "lighten" keeps the max, so repeated hits do not stack it into walls.
+      ctx.globalCompositeOperation = "lighten";
+      const rim = `${CRATER_RIM_GREY},${CRATER_RIM_GREY},${CRATER_RIM_GREY}`;
       blob(ctx, 0, 0, 1.25, [
-        [0.6, "rgba(255,255,255,0)"],
-        [0.76, "rgba(255,255,255,0.09)"],
-        [0.9, "rgba(255,255,255,0.03)"],
-        [1, "rgba(255,255,255,0)"],
+        [0.6, `rgba(${rim},0)`],
+        [0.76, `rgba(${rim},1)`],
+        [0.9, `rgba(${rim},0.35)`],
+        [1, `rgba(${rim},0)`],
       ]);
     });
   }
@@ -568,7 +589,7 @@ export class DamagePainter {
       // A wide soft slope, then a narrow very dark core (reaches the magma).
       this.line("height", pts, width * 3, grey(205), "multiply");
       this.line("height", pts, width * 1.6, grey(150), "multiply");
-      this.line("height", pts, width * 0.7, grey(60), "multiply");
+      this.line("height", pts, width * 0.7, grey(CRACK_CORE_GREY), "multiply");
     } else {
       // Holding the laser carves the groove deeper.
       this.line("height", pts, width * 1.2, "rgb(170,170,170)", "multiply");

@@ -1,4 +1,16 @@
-import { DamagePainter, stampEllipses } from "../DamagePainter";
+import {
+  CRACK_CORE_DIG,
+  CRATER_CENTRE_DIG,
+  CRATER_RIM_GREY,
+  DamagePainter,
+  HEIGHT_NEUTRAL,
+  stampEllipses,
+} from "../DamagePainter";
+
+/** The shader's magma starts to show below this height (psCore). */
+const CORE_GLOW_START = 0.22;
+/** ...and is fully molten below this. */
+const CORE_GLOW_FULL = 0.08;
 
 function mockContext(): CanvasRenderingContext2D {
   const gradient = { addColorStop: jest.fn() };
@@ -124,5 +136,31 @@ describe("DamagePainter", () => {
     const before = p.version;
     p.reset(null);
     expect(p.version).toBeGreaterThan(before);
+  });
+});
+
+describe("huge stamps near a pole", () => {
+  it("skips the seam copy when one ellipse covers the whole row", () => {
+    // Cos(lat) is clamped at 0.15, so this Moon Ram-sized stamp spans > 2.4 rx.
+    const e = stampEllipses(0.02, 0.995, 0.9, 2048, 1024);
+    expect(e).toHaveLength(1);
+  });
+  it("still copies across the seam for ordinary stamps", () => {
+    expect(stampEllipses(0.999, 0.5, 0.1, 2048, 1024)).toHaveLength(2);
+  });
+});
+
+describe("stacked hits", () => {
+  it("four asteroid hits on one spot dig to the core", () => {
+    expect(HEIGHT_NEUTRAL * CRATER_CENTRE_DIG ** 4).toBeLessThan(
+      CORE_GLOW_FULL
+    );
+  });
+  it("one crack core reaches the core glow", () => {
+    expect(HEIGHT_NEUTRAL * CRACK_CORE_DIG).toBeLessThan(CORE_GLOW_START);
+  });
+  it("the crater rim is capped at a fixed grey", () => {
+    expect(CRATER_RIM_GREY).toBeLessThan(160);
+    expect(CRATER_RIM_GREY).toBeGreaterThan(128);
   });
 });
