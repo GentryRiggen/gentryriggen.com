@@ -77,7 +77,7 @@ describe("Arsenal", () => {
         useGameStore.setState({
           progress: {
             ...freshProgress(),
-            points: 9000,
+            points: 13000,
             toolId: "mothership",
           },
         });
