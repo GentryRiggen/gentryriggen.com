@@ -14,6 +14,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Vector3, type DirectionalLight, type Mesh } from "three";
 import type { Vec3 } from "@/lib/planet-smasher/sphere";
 import type { ToolId } from "@/lib/planet-smasher/tools";
+import DebrisRing from "./DebrisRing";
 import Moon from "./Moon";
 import type { DamagePainter } from "./DamagePainter";
 import Planet, { SUN_VIEW_DIR } from "./Planet";
@@ -218,6 +219,7 @@ function Scene({
         onPointerMove={holdingNow ? handleMove : undefined}
         renderEnding={(m) => <EndingStage material={m} />}
       />
+      <DebrisRing />
       {hasMoon && <Moon />}
       <EffectLayer
         effects={effects}

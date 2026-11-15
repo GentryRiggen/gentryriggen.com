@@ -18,6 +18,7 @@ import Collided from "./Collided";
 import Consumed from "./Consumed";
 import Molten from "./Molten";
 import Shatter from "./Shatter";
+import SlowMo from "./SlowMo";
 import Swallowed from "./Swallowed";
 import Vaporized from "./Vaporized";
 import { planetFx, resetPlanetFx } from "./planetFx";
@@ -127,6 +128,7 @@ export default function EndingStage({ material }: EndingStageProps) {
 
   return (
     <>
+      {phase === "ending" && ending && <SlowMo key={ending} />}
       {active === "shatter" && (
         <Shatter key={active} material={material} onDone={shown} />
       )}

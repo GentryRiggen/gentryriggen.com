@@ -40,6 +40,7 @@ export type Cue =
   | "endCollided"
   | "endConsumed"
   | "unlock"
+  | "trophy"
   | "uiTap"
   | "newPlanet";
 
@@ -153,6 +154,7 @@ const SPEC: Record<
     priority: true,
   },
   unlock: { seconds: 0.8, gap: 0.2, play: playUnlock, priority: true },
+  trophy: { seconds: 1.3, gap: 0.3, play: playTrophy, priority: true },
   uiTap: { seconds: 0.1, gap: 0.04, play: playUiTap },
   newPlanet: { seconds: 0.9, gap: 0.3, play: playNewPlanet, priority: true },
 };
@@ -1078,6 +1080,30 @@ function playUnlock(e: VoiceEngine, t: number, k: number) {
       freq: f,
       gain: 0.22 * k,
       attack: 0.005,
+    });
+  });
+}
+
+function playTrophy(e: VoiceEngine, t: number, k: number) {
+  // A bright fanfare: a rising arpeggio, then a held chord on top.
+  [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+    tone(e, {
+      type: "triangle",
+      start: t + i * 0.1,
+      duration: 0.3,
+      freq: f,
+      gain: 0.2 * k,
+      attack: 0.005,
+    });
+  });
+  [1046.5, 1318.5, 1568].forEach((f) => {
+    tone(e, {
+      type: "square",
+      start: t + 0.55,
+      duration: 0.6,
+      freq: f,
+      gain: 0.07 * k,
+      attack: 0.01,
     });
   });
 }

@@ -22,6 +22,8 @@ import PlanetPicker from "./ui/PlanetPicker";
 import EndingOverlay from "./ui/EndingOverlay";
 import SoundToggle from "./ui/SoundToggle";
 import UnlockToast from "./ui/UnlockToast";
+import TrophyShelf from "./ui/TrophyShelf";
+import TrophyToast from "./ui/TrophyToast";
 import { useSoundEnabled } from "./audio/soundSetting";
 import useSoundUnlock from "./audio/useSoundUnlock";
 import useServiceWorker from "./hooks/useServiceWorker";
@@ -314,6 +316,7 @@ export default function PlanetSmasher() {
             left={
               <div className="flex flex-col items-start">
                 <PlanetPicker />
+                <TrophyShelf />
                 <VersionLink />
               </div>
             }
@@ -322,6 +325,7 @@ export default function PlanetSmasher() {
           <ComboBadge />
           <Arsenal />
           <UnlockToast />
+          <TrophyToast />
           <EndingOverlay />
         </>
       )}

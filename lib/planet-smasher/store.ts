@@ -32,6 +32,16 @@ const freshRun = (): PlanetRun => ({
   startedAt: typeof performance === "undefined" ? 0 : performance.now(),
 });
 
+export interface DebrisIntent {
+  count: number;
+  seed: number;
+  /** Frozen endings leave icy rocks. */
+  icy: boolean;
+}
+
+const DEBRIS_ENDINGS: readonly EndingKind[] = ["shatter", "frozen", "collided"];
+const DEBRIS_COUNT = 60;
+
 export type Phase = "playing" | "ending" | "ended";
 
 export interface GameStore {
@@ -42,6 +52,11 @@ export interface GameStore {
   lastUnlocks: Unlockable[];
   /** Trophies earned and not yet shown (the UI clears them). */
   lastTrophies: TrophyId[];
+  /**
+   * The ring of rocks left after a shatter, frozen or collided ending. It
+   * shows on the next planet; any other ending clears it.
+   */
+  debris: DebrisIntent | null;
   /** Tools used and start time of the current planet. */
   planetRun: PlanetRun;
   /** Recent fires (effect ids) already counted in the shot stats. */
@@ -101,6 +116,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   ending: null,
   lastUnlocks: [],
   lastTrophies: [],
+  debris: null,
   planetRun: freshRun(),
   shotFireIds: [],
   pointsCarry: 0,
@@ -132,6 +148,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       ending: null,
       lastUnlocks: [],
       lastTrophies: [],
+      debris: null,
       planetRun: freshRun(),
       shotFireIds: [],
       pointsCarry: 0,
@@ -161,6 +178,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       planet: createPlanetState(id, grid),
       phase: "playing",
       ending: null,
+      debris: null,
       planetPoints: 0,
       planetRun: freshRun(),
       lastHit: null,
@@ -304,7 +322,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   endingShown() {
-    if (get().phase === "ending") set({ phase: "ended" });
+    const { phase, ending } = get();
+    if (phase !== "ending") return;
+    set({
+      phase: "ended",
+      debris:
+        ending && DEBRIS_ENDINGS.includes(ending)
+          ? {
+              count: DEBRIS_COUNT,
+              seed: Math.floor(Math.random() * 1e9),
+              icy: ending === "frozen",
+            }
+          : null,
+    });
   },
 
   newPlanet(grid) {

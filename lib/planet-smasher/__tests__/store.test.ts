@@ -103,3 +103,22 @@ describe("game store", () => {
     expect(useGameStore.getState().lastUnlocks).toEqual([]);
   });
 });
+
+describe("debris intent", () => {
+  const ended = (kind: "shatter" | "frozen" | "collided" | "molten") => {
+    useGameStore.setState({ phase: "ending", ending: kind, debris: null });
+    useGameStore.getState().endingShown();
+    return useGameStore.getState().debris;
+  };
+
+  it("records a ring after shatter, frozen and collided endings", () => {
+    expect(ended("shatter")).toMatchObject({ count: 60, icy: false });
+    expect(ended("frozen")).toMatchObject({ count: 60, icy: true });
+    expect(ended("collided")).toMatchObject({ count: 60, icy: false });
+  });
+
+  it("clears it after any other ending", () => {
+    ended("shatter");
+    expect(ended("molten")).toBeNull();
+  });
+});
