@@ -1,4 +1,10 @@
-import { angularDistance, dirToUv, uvToDir } from "../sphere";
+import {
+  angularDistance,
+  dirToUv,
+  moveOnSphere,
+  moveOnSphereInto,
+  uvToDir,
+} from "../sphere";
 
 describe("sphere", () => {
   it("maps uv to the three.js SphereGeometry direction", () => {
@@ -38,5 +44,21 @@ describe("dirToUv", () => {
         Math.min(Math.abs(back.u - u), 1 - Math.abs(back.u - u))
       ).toBeCloseTo(0, 6);
     }
+  });
+
+  it("moveOnSphereInto matches moveOnSphere, even in place", () => {
+    const p = { x: 0.6, y: 0, z: 0.8 };
+    const t = { x: 0, y: 1, z: 0 };
+    const want = moveOnSphere(p, t, 0.3);
+    const outP = { x: 0, y: 0, z: 0 };
+    const outT = { x: 0, y: 0, z: 0 };
+    moveOnSphereInto(p, t, 0.3, outP, outT);
+    expect(outP).toEqual(want.p);
+    expect(outT).toEqual(want.t);
+    const a = { ...p };
+    const b = { ...t };
+    moveOnSphereInto(a, b, 0.3, a, b);
+    expect(a).toEqual(want.p);
+    expect(b).toEqual(want.t);
   });
 });

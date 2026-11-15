@@ -22,10 +22,12 @@ import {
   CylinderGeometry,
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { seeded } from "@/lib/planet-smasher/rng";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import {
   dirToUv,
   moveOnSphere,
+  moveOnSphereInto,
   surfaceBasis,
   uvToDir,
   type Vec3,
@@ -44,6 +46,7 @@ import {
   useLatest,
   useSharedParticles,
 } from "./particles";
+import type { EmitSpec } from "./particles";
 import type { EffectProps } from "./effectQueue";
 
 /* ------------------------------------------------------------------ */
@@ -65,17 +68,6 @@ const END = 7.3;
 const STEP = 0.12;
 /** The monster's height in planet radii. */
 const HEIGHT = 0.5;
-
-/** Small seeded generator (mulberry32). */
-function seeded(seed: number): () => number {
-  let a = seed | 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /**
  * The four stomp points: the first is the tap, and each next one is about
@@ -366,6 +358,10 @@ const t1 = new Vector3();
 const t2 = new Vector3();
 const basis = new Matrix4();
 const Y = new Vector3(0, 1, 0);
+// Eye-laser scratch: nothing in the frame loop may allocate.
+const sweepPos = new Vector3();
+const startPos = new Vector3();
+const hitDir = new Vector3();
 
 const SPLASH: readonly [number, number, number] = [0.8, 0.95, 1];
 const SPLASH_END: readonly [number, number, number] = [0.35, 0.65, 0.9];
@@ -373,6 +369,33 @@ const DUST: readonly [number, number, number] = [0.62, 0.55, 0.45];
 const DUST_END: readonly [number, number, number] = [0.45, 0.4, 0.34];
 const SPARK: readonly [number, number, number] = [1, 0.6, 0.25];
 const SPARK_END: readonly [number, number, number] = [0.9, 0.15, 0.05];
+const sparkSpec: EmitSpec = {
+  x: 0,
+  y: 0,
+  z: 0,
+  vx: 0,
+  vy: 0,
+  vz: 0,
+  life: 0,
+  size: 0,
+  endSize: 0.01,
+  color: SPARK,
+  endColor: SPARK_END,
+  pull: 2,
+};
+
+/** Index of the laser blast running at `now`, or -1. */
+function blastAt(now: number): number {
+  for (let i = 0; i < LASER_BLASTS.length; i++) {
+    if (now >= LASER_BLASTS[i][0] && now < LASER_BLASTS[i][1]) return i;
+  }
+  return -1;
+}
+
+/** Plays a cue unless the ending has taken over (no closure per frame). */
+function cue(muted: boolean, c: Parameters<typeof playCue>[0]) {
+  if (!muted) playCue(c);
+}
 
 const smooth = (t: number) => {
   const x = clamp01(t);
@@ -567,9 +590,6 @@ export default function Monster({
     const beams = live.current.beams;
     const playing = useGameStore.getState().phase === "playing";
     if (!playing) s.muted = true;
-    const cue = (c: Parameters<typeof playCue>[0]) => {
-      if (!s.muted) playCue(c);
-    };
 
     // Where it stands: on the tap, stepping 1 s apart, then still.
     const walk = clamp01((now - STOMP_TIMES[0]) / (WALK_END - STOMP_TIMES[0]));
@@ -600,10 +620,8 @@ export default function Monster({
         (now < RISE_END ? Math.sin(now * 28) * 0.05 * (1 - rise) : 0)
     );
     // Legs alternate: one lifts and swings forward on each step.
-    for (const [leg, mine] of [
-      [legL, 0],
-      [legR, 1],
-    ] as const) {
+    for (let mine = 0; mine < 2; mine++) {
+      const leg = mine === 0 ? legL : legR;
       const active = stepping && seg % 2 === mine;
       leg.position.set(0, 0.24 + (active ? swing * 0.13 : 0), 0);
       leg.rotation.set(active ? -swing * 0.5 : 0, 0, 0);
@@ -615,7 +633,8 @@ export default function Monster({
         ? Math.sin(((now - RISE_END) / (ROAR_END - RISE_END)) * Math.PI)
         : 0;
     head.rotation.set(-0.75 * roar + sq * 0.12 + (swing > 0 ? 0.04 : 0), 0, 0);
-    const firing = LASER_BLASTS.some(([a, b]) => now >= a && now < b);
+    const blast = blastAt(now);
+    const firing = blast >= 0;
     const eyeScale = 1 + roar * 0.45 + (firing ? 0.5 : 0);
     eyes.scale.set(1, eyeScale, eyeScale);
 
@@ -628,7 +647,7 @@ export default function Monster({
     }
     if (!s.roared && now >= RISE_END) {
       s.roared = true;
-      cue("monsterRoar");
+      cue(s.muted, "monsterRoar");
       shake(0.01, 0.6);
     }
     // Footfalls.
@@ -644,10 +663,9 @@ export default function Monster({
 
     // Eye lasers.
     root.updateMatrixWorld(true);
-    const blast = LASER_BLASTS.findIndex(([a, b]) => now >= a && now < b);
     if (blast >= 0 && blast !== s.blast) {
       s.blast = blast;
-      cue("launch");
+      cue(s.muted, "launch");
       shake(0.012, 0.5);
       // Ahead of the last stomp: 0.1 rad out, sweeping to 0.32, off to the
       // side a little so the two blasts carve two trenches.
@@ -659,10 +677,8 @@ export default function Monster({
         .normalize();
       tangentBasisInto(end, t1, t2);
       nrm.crossVectors(end, ahead).multiplyScalar(side * 0.05);
-      const startDir = moveOnSphere(end, ahead, 0.1);
-      const hit = new Vector3(startDir.p.x, startDir.p.y, startDir.p.z)
-        .add(nrm)
-        .normalize();
+      moveOnSphereInto(end, ahead, 0.1, startPos);
+      const hit = hitDir.copy(startPos).add(nrm).normalize();
       const uv = dirToUv(hit);
       // Angle of the trench on the map: along the walk, east = 0.
       const sb = surfaceBasis(hit);
@@ -682,7 +698,9 @@ export default function Monster({
     }
     for (let i = 0; i < 2; i++) {
       const beam = beams[i];
-      const [a, b] = LASER_BLASTS[Math.max(0, s.blast)];
+      const span = LASER_BLASTS[Math.max(0, s.blast)];
+      const a = span[0];
+      const b = span[1];
       const on = blast >= 0 && now >= a && now < b && !s.muted;
       if (!on) {
         // Zero width hides it (no direct writes to hook values).
@@ -692,13 +710,9 @@ export default function Monster({
       const k = (now - a) / (b - a);
       // The point on the ground the beam is aiming at, sweeping outward.
       const travel = 0.1 + 0.22 * smooth(k);
-      const at = moveOnSphere(
-        { x: s.sweepFrom.x, y: s.sweepFrom.y, z: s.sweepFrom.z },
-        { x: s.sweepDir.x, y: s.sweepDir.y, z: s.sweepDir.z },
-        travel - 0.1
-      ).p;
+      moveOnSphereInto(s.sweepFrom, s.sweepDir, travel - 0.1, sweepPos);
       ground
-        .set(at.x, at.y, at.z)
+        .copy(sweepPos)
         .normalize()
         .multiplyScalar(planetRadius * 1.004);
       eyeW.copy(EYE_LOCAL);
@@ -723,26 +737,21 @@ export default function Monster({
           tangentBasisInto(scratch2.copy(ground).normalize(), t1, t2);
           for (let j = 0; j < 3; j++) {
             const a2 = rand(0, Math.PI * 2);
-            glow.emit({
-              x: ground.x,
-              y: ground.y,
-              z: ground.z,
-              vx:
-                (t1.x * Math.cos(a2) + t2.x * Math.sin(a2)) * 0.5 +
-                scratch2.x * 0.7,
-              vy:
-                (t1.y * Math.cos(a2) + t2.y * Math.sin(a2)) * 0.5 +
-                scratch2.y * 0.7,
-              vz:
-                (t1.z * Math.cos(a2) + t2.z * Math.sin(a2)) * 0.5 +
-                scratch2.z * 0.7,
-              life: rand(0.3, 0.7),
-              size: rand(0.025, 0.05),
-              endSize: 0.01,
-              color: SPARK,
-              endColor: SPARK_END,
-              pull: 2,
-            });
+            sparkSpec.x = ground.x;
+            sparkSpec.y = ground.y;
+            sparkSpec.z = ground.z;
+            sparkSpec.vx =
+              (t1.x * Math.cos(a2) + t2.x * Math.sin(a2)) * 0.5 +
+              scratch2.x * 0.7;
+            sparkSpec.vy =
+              (t1.y * Math.cos(a2) + t2.y * Math.sin(a2)) * 0.5 +
+              scratch2.y * 0.7;
+            sparkSpec.vz =
+              (t1.z * Math.cos(a2) + t2.z * Math.sin(a2)) * 0.5 +
+              scratch2.z * 0.7;
+            sparkSpec.life = rand(0.3, 0.7);
+            sparkSpec.size = rand(0.025, 0.05);
+            glow.emit(sparkSpec);
           }
         }
       }

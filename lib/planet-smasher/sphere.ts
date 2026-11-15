@@ -73,3 +73,33 @@ export function moveOnSphere(
     },
   };
 }
+
+/**
+ * `moveOnSphere` without allocating: writes the new position to `outP` and
+ * (if given) the new tangent to `outT`. `p`, `t` and the outputs may be the
+ * same objects.
+ */
+export function moveOnSphereInto(
+  p: Vec3,
+  t: Vec3,
+  angle: number,
+  outP: Vec3,
+  outT?: Vec3
+): void {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const px = p.x;
+  const py = p.y;
+  const pz = p.z;
+  const tx = t.x;
+  const ty = t.y;
+  const tz = t.z;
+  outP.x = px * c + tx * s;
+  outP.y = py * c + ty * s;
+  outP.z = pz * c + tz * s;
+  if (outT) {
+    outT.x = -px * s + tx * c;
+    outT.y = -py * s + ty * c;
+    outT.z = -pz * s + tz * c;
+  }
+}
