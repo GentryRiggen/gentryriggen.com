@@ -184,6 +184,7 @@ export function disableSfx(): void {
   isOn = false;
   stopZap();
   endGooLoop();
+  stopMothershipCharge();
   if (engine) void engine.ctx.suspend();
 }
 
@@ -192,6 +193,7 @@ export function closeSfx(): void {
   isOn = false;
   stopZap();
   endGooLoop();
+  stopMothershipCharge();
   const old = engine;
   engine = null;
   if (old) void old.ctx.close();
@@ -205,6 +207,7 @@ export function isSfxEnabled(): boolean {
 export function pauseSfx(): void {
   stopZap();
   endGooLoop();
+  stopMothershipCharge();
   if (engine) void engine.ctx.suspend();
 }
 
@@ -561,7 +564,32 @@ function playGooPlop(e: VoiceEngine, t: number, k: number) {
 }
 
 /** A rising whine and growl: the mothership powering up its beam. */
-function playMothershipCharge(e: VoiceEngine, t: number, k: number) {
+/** The charge whine in flight, so the ship can cut it short. */
+let charge: { hold: GainNode; ctx: AudioContext } | null = null;
+
+/** Cuts the mothership's charge whine (the ship left before it fired). */
+export function stopMothershipCharge(): void {
+  const c = charge;
+  charge = null;
+  if (!c) return;
+  try {
+    const t = c.ctx.currentTime;
+    c.hold.gain.cancelScheduledValues(t);
+    c.hold.gain.setValueAtTime(c.hold.gain.value, t);
+    c.hold.gain.linearRampToValueAtTime(0, t + 0.1);
+    setTimeout(() => c.hold.disconnect(), 300);
+  } catch {
+    // Already closed.
+  }
+}
+
+function playMothershipCharge(voice: VoiceEngine, t: number, k: number) {
+  // Everything runs through one gain so the whole whine can be cut.
+  stopMothershipCharge();
+  const hold = voice.ctx.createGain();
+  hold.connect(voice.bus);
+  charge = { hold, ctx: voice.ctx };
+  const e: VoiceEngine = { ...voice, bus: hold };
   tone(e, {
     type: "sawtooth",
     start: t,

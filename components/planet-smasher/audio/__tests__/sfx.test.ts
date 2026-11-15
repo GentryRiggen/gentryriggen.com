@@ -6,6 +6,7 @@ import {
   enableSfx,
   playCue,
   startGoo,
+  stopMothershipCharge,
   stopGoo,
   type Cue,
 } from "../sfx";
@@ -172,6 +173,14 @@ describe("playCue", () => {
   it("hands out no goo token while sound is off", () => {
     expect(startGoo()).toBeNull();
     stopGoo(null);
+  });
+
+  it("cuts the mothership whine without throwing, however often", () => {
+    enableSfx();
+    stopMothershipCharge(); // nothing playing yet
+    playCue("mothershipCharge");
+    stopMothershipCharge();
+    stopMothershipCharge();
   });
 
   it("plays the 1.1 cues", () => {

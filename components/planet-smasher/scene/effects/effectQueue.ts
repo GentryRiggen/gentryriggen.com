@@ -36,3 +36,13 @@ export function pushEffect(
     ? next.slice(next.length - MAX_EFFECTS)
     : next;
 }
+
+/** Tools that may have only one effect running at a time. */
+const ONE_AT_A_TIME: readonly ToolId[] = ["mothership"];
+
+/** True when `toolId` allows one live effect and one is already running. */
+export function isLiveTool(list: ActiveEffect[], toolId: ToolId): boolean {
+  return (
+    ONE_AT_A_TIME.includes(toolId) && list.some((e) => e.toolId === toolId)
+  );
+}

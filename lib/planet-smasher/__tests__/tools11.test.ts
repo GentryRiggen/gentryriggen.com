@@ -28,6 +28,7 @@ describe("1.1 tools", () => {
 
   it("gives the Mothership the saucer icon", () => {
     expect(TOOLS.mothership.icon).toBe("🛸");
+    expect(TOOLS.mothership.cooldownMs).toBe(6000);
     expect(TOOLS.alienLaser.icon).toBe("🔫");
   });
 

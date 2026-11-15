@@ -237,7 +237,7 @@ export const TOOLS: Record<ToolId, ToolSpec> = {
     power: 100,
     radius: 0.5,
     lethality: 1,
-    cooldownMs: 0,
+    cooldownMs: 6000,
     mode: "tap",
     finisher: "shatter",
     stamp: "scorch",

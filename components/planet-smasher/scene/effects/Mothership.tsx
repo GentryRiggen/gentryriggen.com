@@ -30,6 +30,8 @@ import {
   useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
+import { useGameStore } from "@/lib/planet-smasher/store";
+import { stopMothershipCharge } from "../../audio/sfx";
 
 /** Seconds: the descent, the charge, the beam, the hover, the climb away. */
 const DESCEND = 1.4;
@@ -79,7 +81,16 @@ export default function Mothership({
   const cannon = useRef<Mesh>(null);
   const beam = useRef<Mesh>(null);
   const core = useRef<Mesh>(null);
-  const run = useRef({ age: 0, fired: false, done: false, sparks: 0 });
+  const run = useRef({
+    age: 0,
+    fired: false,
+    done: false,
+    sparks: 0,
+    // The planet ended during the charge: no beam, no flash.
+    muted: false,
+  });
+  // The whine ends with the ship (New planet, a planet switch).
+  useEffect(() => stopMothershipCharge, []);
 
   const n = useMemo(() => toVec(effect.point), [effect.point]);
   const surface = useMemo(
@@ -206,7 +217,7 @@ export default function Mothership({
         .lerp(HOT, charge)
         .multiplyScalar(0.7 + charge);
     }
-    const beaming = now >= FIRE_AT && now < FIRE_AT + BEAM;
+    const beaming = !r.muted && now >= FIRE_AT && now < FIRE_AT + BEAM;
     const glowSize = 0.25 + 1.7 * charge * charge;
     const glowOpacity = now < DESCEND ? 0 : 0.15 + 0.8 * charge;
     glow.set(
@@ -250,12 +261,21 @@ export default function Mothership({
     // The shot: a thick white-cyan beam, a huge flash, the finisher.
     if (now >= FIRE_AT && !r.fired) {
       r.fired = true;
-      shake(0.04, 1);
-      debris(sys, surface, n, 160, 2.4, 0.06);
-      cb.current.onImpact(effect.u, effect.v, effect.point);
+      if (useGameStore.getState().phase !== "playing") {
+        // Something else ended the planet while this ship charged.
+        r.muted = true;
+        stopMothershipCharge();
+      } else {
+        shake(0.04, 1);
+        debris(sys, surface, n, 160, 2.4, 0.06);
+        cb.current.onImpact(effect.u, effect.v, effect.point);
+      }
     }
     const bk = clamp01((now - FIRE_AT) / BEAM);
-    const env = beaming ? Math.min(1, bk * 10) * Math.min(1, (1 - bk) * 4) : 0;
+    const env =
+      beaming && !r.muted
+        ? Math.min(1, bk * 10) * Math.min(1, (1 - bk) * 4)
+        : 0;
     const flick = 0.85 + 0.15 * Math.sin(now * 60);
     const length = under.distanceTo(surface);
     for (const [mesh, w, a] of [
@@ -274,7 +294,7 @@ export default function Mothership({
       mesh.scale.set(wd, length, wd);
       (mesh.material as MeshBasicMaterial).opacity = a * env;
     }
-    if (now >= FIRE_AT) {
+    if (now >= FIRE_AT && !r.muted) {
       const f = clamp01((now - FIRE_AT) / 0.9);
       flash.set(
         scratch.copy(surface).multiplyScalar(1.03),

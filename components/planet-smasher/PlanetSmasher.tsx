@@ -30,6 +30,7 @@ import { DamagePainter } from "./scene/DamagePainter";
 import { laserAim } from "./scene/effects/laserAim";
 import { startLaserTicker } from "./scene/effects/laserTicker";
 import {
+  isLiveTool,
   pushEffect,
   type ActiveEffect,
   type ImpactOpts,
@@ -80,6 +81,9 @@ export default function PlanetSmasher() {
   useServiceWorker();
 
   const [effects, setEffects] = useState<ActiveEffect[]>([]);
+  // The same list, readable between renders (the one-live-mothership rule).
+  const effectsRef = useRef<ActiveEffect[]>([]);
+  effectsRef.current = effects;
   // Keeps a held laser firing while the pointer is still.
   const stopTicker = useRef<(() => void) | null>(null);
   const hookTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -95,6 +99,7 @@ export default function PlanetSmasher() {
   // wipes the painted wreck and any effects still in flight.
   useEffect(() => {
     painter?.reset(textures?.night ?? null);
+    effectsRef.current = [];
     setEffects([]);
     laserAim.held = false;
     stopTicker.current?.();
@@ -131,12 +136,20 @@ export default function PlanetSmasher() {
   );
 
   const handleEffectDone = useCallback((id: number) => {
+    effectsRef.current = effectsRef.current.filter((e) => e.id !== id);
     setEffects((list) => list.filter((e) => e.id !== id));
   }, []);
 
   /** Starts a weapon effect; returns its id. */
   const spawn = useCallback((toolId: ToolId, u: number, v: number) => {
     const id = nextId.current++;
+    if (toolId === "mothership") {
+      // Mark it live now, before the next render (a second tap right behind).
+      effectsRef.current = [
+        ...effectsRef.current,
+        { id, toolId, u, v, point: uvToDir(u, v), startedAt: 0 },
+      ];
+    }
     setEffects((list) =>
       pushEffect(
         list,
@@ -169,6 +182,7 @@ export default function PlanetSmasher() {
   const playerFire = useCallback(
     (u: number, v: number) => {
       const toolId = useGameStore.getState().progress.toolId;
+      if (isLiveTool(effectsRef.current, toolId)) return;
       if (!tryFire(toolId)) return;
       spawn(toolId, u, v);
     },
@@ -215,6 +229,7 @@ export default function PlanetSmasher() {
   const hookFire = useCallback(
     (toolId: ToolId, u: number, v: number) => {
       if (useGameStore.getState().phase !== "playing") return;
+      if (isLiveTool(effectsRef.current, toolId)) return;
       if (TOOLS[toolId].mode !== "hold") {
         spawn(toolId, u, v);
         return;
