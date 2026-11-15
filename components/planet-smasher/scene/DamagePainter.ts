@@ -43,8 +43,8 @@ const DAMAGE_W = 2048;
 const DAMAGE_H = 1024;
 const GLOW_W = 1024;
 const GLOW_H = 512;
-const HEIGHT_W = 512;
-const HEIGHT_H = 256;
+const HEIGHT_W = 1024;
+const HEIGHT_H = 512;
 
 function makeCanvas(w: number, h: number): HTMLCanvasElement {
   const c = document.createElement("canvas");
@@ -95,7 +95,7 @@ const SCALE: Record<LayerKey, number> = {
   damage: 1,
   lights: 1,
   glow: 0.5,
-  height: 0.25,
+  height: 0.5,
 };
 
 export class DamagePainter {
@@ -282,11 +282,23 @@ export class DamagePainter {
       }
     });
     this.each("height", ellipses, (ctx) => {
+      // Multiply digs: white leaves the ground alone, so each hit on the same
+      // spot cuts deeper (about 0.55 of what is left at the centre).
+      ctx.globalCompositeOperation = "multiply";
       blob(ctx, 0, 0, 1.2, [
-        [0, "rgba(30,30,30,1)"],
-        [0.62, "rgba(70,70,70,1)"],
-        [0.8, "rgba(185,185,185,0.9)"],
-        [1, "rgba(128,128,128,0)"],
+        [0, "rgb(140,140,140)"],
+        [0.45, "rgb(172,172,172)"],
+        [0.7, "rgb(236,236,236)"],
+        [0.82, "rgb(255,255,255)"],
+        [1, "rgb(255,255,255)"],
+      ]);
+      // A soft raised ring (thrown-up rock) just outside the bowl.
+      ctx.globalCompositeOperation = "lighter";
+      blob(ctx, 0, 0, 1.25, [
+        [0.6, "rgba(255,255,255,0)"],
+        [0.76, "rgba(255,255,255,0.09)"],
+        [0.9, "rgba(255,255,255,0.03)"],
+        [1, "rgba(255,255,255,0)"],
       ]);
     });
   }
@@ -320,9 +332,12 @@ export class DamagePainter {
       ]);
     });
     this.each("height", ellipses, (ctx) => {
-      blob(ctx, 0, 0, 1, [
-        [0, "rgba(100,100,100,0.7)"],
-        [1, "rgba(128,128,128,0)"],
+      // A wide shallow bowl that stacks like the crater's.
+      ctx.globalCompositeOperation = "multiply";
+      blob(ctx, 0, 0, 1.05, [
+        [0, "rgb(158,158,158)"],
+        [0.6, "rgb(205,205,205)"],
+        [1, "rgb(255,255,255)"],
       ]);
     });
   }
@@ -506,6 +521,11 @@ export class DamagePainter {
     this.line("damage", pts, width * 2.2, "rgba(22,14,10,0.9)");
     this.line("glow", pts, width * 1.2, "rgba(255,110,20,0.9)", "lighter");
     this.line("glow", pts, width * 0.5, "rgba(255,210,120,0.9)", "lighter");
-    this.line("height", pts, width * 1.2, "rgba(45,45,45,0.95)");
+    if (crack) {
+      this.line("height", pts, width * 1.2, "rgba(45,45,45,0.95)");
+    } else {
+      // Multiply, so holding the laser carves the groove deeper.
+      this.line("height", pts, width * 1.2, "rgb(170,170,170)", "multiply");
+    }
   }
 }

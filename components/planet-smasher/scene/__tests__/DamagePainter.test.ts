@@ -58,7 +58,7 @@ describe("DamagePainter", () => {
     expect([p.damage.width, p.damage.height]).toEqual([2048, 1024]);
     expect([p.glow.width, p.glow.height]).toEqual([1024, 512]);
     expect([p.lights.width, p.lights.height]).toEqual([2048, 1024]);
-    expect([p.height.width, p.height.height]).toEqual([512, 256]);
+    expect([p.height.width, p.height.height]).toEqual([1024, 512]);
   });
 
   it("bumps the version for every kind of stamp", () => {

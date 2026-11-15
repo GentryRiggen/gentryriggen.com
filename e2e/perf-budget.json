@@ -33,10 +33,10 @@
   },
   "planet-earth-idle": {
     "calls": 6,
-    "triangles": 43968
+    "triangles": 154176
   },
   "planet-earth-shatter": {
     "calls": 11,
-    "triangles": 44226
+    "triangles": 154434
   }
 }

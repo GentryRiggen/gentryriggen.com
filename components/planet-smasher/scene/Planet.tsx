@@ -37,6 +37,10 @@ interface PlanetProps {
 /** The sun's direction as the camera sees it: upper left, in front. */
 export const SUN_VIEW_DIR: [number, number, number] = [-0.6, 0.4, 0.7];
 
+/** How far (of the radius) pure white lifts and pure black sinks the ground. */
+const DISPLACEMENT_SCALE = 0.16;
+const BUMP_SCALE = 3;
+
 /** Atmosphere rim colours: [rgb, strength]. */
 const ATMOSPHERE: Record<PlanetId, [[number, number, number], number]> = {
   earth: [[0.25, 0.6, 1.0], 1.15],
@@ -172,15 +176,17 @@ const Planet = forwardRef<Mesh, PlanetProps>(function Planet(
       roughness: 0.9,
       metalness: 0,
       bumpMap: maps.height,
-      bumpScale: 4,
+      bumpScale: BUMP_SCALE,
       displacementMap: maps.height,
-      displacementScale: 0.03,
-      displacementBias: -0.015,
+      displacementScale: DISPLACEMENT_SCALE,
+      // Grey 128 is the untouched surface: no change in radius.
+      displacementBias: (-DISPLACEMENT_SCALE * 128) / 255,
     });
     m.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
       shader.uniforms.damageMap = { value: maps.damage };
       shader.uniforms.glowMap = { value: maps.glow };
       shader.uniforms.lightsMap = { value: maps.lights };
+      shader.uniforms.heightMap = { value: maps.height };
       shader.uniforms.sunDirView = { value: sunDirView };
       shader.uniforms.oceanLift = { value: earth ? 1 : 0 };
       Object.assign(shader.uniforms, fxUniforms);
@@ -202,6 +208,7 @@ vObj = position;`
 uniform sampler2D damageMap;
 uniform sampler2D glowMap;
 uniform sampler2D lightsMap;
+uniform sampler2D heightMap;
 uniform vec3 sunDirView;
 uniform float oceanLift;
 uniform float uMolten;
@@ -265,6 +272,12 @@ vec4 dm = texture2D(damageMap, vMapUv);
 diffuseColor.rgb = mix(diffuseColor.rgb, dm.rgb, dm.a);
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.9, 1.0), uFrozen * 0.85);
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.5, 0.12), smoothstep(0.0, 0.6, uVapor));
+// Dug down to the core: magma shows where the ground is nearly gone.
+float psDepth = texture2D(heightMap, vMapUv).r;
+float psCore = 1.0 - smoothstep(0.08, 0.22, psDepth);
+float psCorePulse = 0.85 + 0.15 * sin(uTime * 1.6 + psDepth * 40.0);
+vec3 psMagma = mix(vec3(0.5, 0.03, 0.0), vec3(1.0, 0.4, 0.06), smoothstep(0.0, 0.2, psDepth) * 0.6 + 0.4 * psCorePulse);
+diffuseColor.rgb = mix(diffuseColor.rgb, psMagma * 0.4, psCore);
 float psHeat = 0.0;
 vec3 psLava = vec3(0.0);
 if (uMolten + uPulse > 0.0) {
@@ -298,6 +311,7 @@ metalnessFactor = mix(metalnessFactor, 0.9, uConsumed);`
           `float nightK = smoothstep(0.1, -0.2, dot(normal, sunDirView));
 totalEmissiveRadiance += texture2D(lightsMap, vMapUv).rgb * nightK
   + texture2D(glowMap, vMapUv).rgb * 1.5;
+totalEmissiveRadiance += psMagma * psCore * psCorePulse * 1.2;
 totalEmissiveRadiance += psLava * uMolten * (0.45 + 0.8 * psHeat)
   + vec3(1.0, 0.45, 0.1) * uPulse * (0.35 + 0.9 * psHeat);
 if (uConsumed > 0.0) {
@@ -371,7 +385,7 @@ if (uFrozen > 0.0) {
             onPointerUp={onPointerUp}
             onPointerMove={onPointerMove}
           >
-            <sphereGeometry args={[1, 192, 96]} />
+            <sphereGeometry args={[1, 384, 192]} />
           </mesh>
           <mesh raycast={() => null}>
             <sphereGeometry args={[1.04, 64, 48]} />
