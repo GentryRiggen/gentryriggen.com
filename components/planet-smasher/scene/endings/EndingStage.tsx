@@ -128,7 +128,7 @@ export default function EndingStage({ material }: EndingStageProps) {
 
   return (
     <>
-      {phase === "ending" && ending && <SlowMo key={ending} />}
+      {phase === "ending" && ending && <SlowMo key={`slowmo-${ending}`} />}
       {active === "shatter" && (
         <Shatter key={active} material={material} onDone={shown} />
       )}

@@ -9,9 +9,13 @@ import {
   type WebGLRenderer,
 } from "three";
 import { getChunkSet } from "./chunks";
+import { getBodyChunks } from "./collisionBody";
 
 /** Build the chunk set about this long after the planet appears. */
 export const WARMUP_DELAY_MS = 1500;
+
+/** The collision body's 12 chunks are cut this long after the main set. */
+export const BODY_WARMUP_DELAY_MS = 600;
 
 /**
  * The shatter's inner material in each variant Shatter uses. Keep these in
@@ -57,8 +61,14 @@ export function scheduleChunkWarmup(
       done();
     }
   }, WARMUP_DELAY_MS);
+  // The collision body's chunks are the same for every planet, so the one
+  // set covers whichever body comes; cut it in its own idle slice.
+  const bodyTimer = setTimeout(() => {
+    if (!cancelled) getBodyChunks();
+  }, WARMUP_DELAY_MS + BODY_WARMUP_DELAY_MS);
   return () => {
     cancelled = true;
     clearTimeout(timer);
+    clearTimeout(bodyTimer);
   };
 }

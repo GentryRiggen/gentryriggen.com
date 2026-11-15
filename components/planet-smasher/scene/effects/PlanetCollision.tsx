@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Vector3, type Mesh } from "three";
 import { useGameStore } from "@/lib/planet-smasher/store";
@@ -8,7 +8,6 @@ import {
   BODY_RADIUS,
   collisionBody,
   collisionState,
-  getBodyChunks,
   useBodyMaterial,
 } from "../endings/collisionBody";
 import {
@@ -27,7 +26,7 @@ const END = FLIGHT + 0.2;
 /**
  * Another planet (Mars at Earth, Earth at the rest) swings in from far off
  * screen on a curved path, growing as it comes, and slams into the planet.
- * Its 12 chunks are cut ahead of time so the burst does not stall.
+ * Its 12 chunks are cut in the idle warm-up so the burst does not stall.
  */
 export default function PlanetCollision({
   effect,
@@ -58,12 +57,6 @@ export default function PlanetCollision({
   const up = useMemo(() => new Vector3(), []);
   const toCam = useMemo(() => new Vector3(), []);
 
-  // Cut the chunks while the body is still on its way.
-  useEffect(() => {
-    const t = setTimeout(getBodyChunks, 120);
-    return () => clearTimeout(t);
-  }, []);
-
   useFrame((state, rawDt) => {
     const r = run.current;
     const dt = stepDt(rawDt);
@@ -82,15 +75,15 @@ export default function PlanetCollision({
         .normalize();
       collisionState.id = bodyId;
       p2.copy(n).multiplyScalar(planetRadius + BODY_RADIUS);
-      // Starts small and far behind the planet on the left, then swings in
-      // and down toward the viewer, staying in frame for the whole flight.
+      // Starts far off screen (beyond the frustum at any aspect) behind and
+      // to the left, then swings in and down toward the viewer.
       p0.copy(p2)
-        .addScaledVector(right, -3.4)
-        .addScaledVector(up, 1.4)
+        .addScaledVector(right, -16)
+        .addScaledVector(up, 5)
         .addScaledVector(toCam, -6);
       p1.copy(p2)
-        .addScaledVector(right, -1)
-        .addScaledVector(up, 0.65)
+        .addScaledVector(right, -4)
+        .addScaledVector(up, 1.8)
         .addScaledVector(toCam, -2.4);
     }
     r.age += dt;

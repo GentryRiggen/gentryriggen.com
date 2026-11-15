@@ -116,17 +116,18 @@ export default function Collided({ material, onDone }: CollidedProps) {
       }
     }
     const k = clamp01(age / LIFE);
-    motion.forEach((m, i) => {
+    for (let i = 0; i < motion.length; i++) {
+      const m = motion[i];
       const mesh = meshes.current[i];
-      if (!mesh) return;
+      if (!mesh) continue;
       mesh.visible = k < 1;
-      if (!mesh.visible) return;
+      if (!mesh.visible) continue;
       mesh.position
         .copy(m.pivot)
         .addScaledVector(m.dir, m.speed * LIFE * ease(k));
       mesh.quaternion.copy(q.setFromAxisAngle(m.axis, m.spin * age));
       mesh.scale.setScalar(1 - clamp01((k - 0.7) / 0.3));
-    });
+    }
     // A giant white flash, and a warm glow that lingers.
     const f = clamp01(age / 0.7);
     flash.set(surface, 5 + 8 * ease(f), (1 - f) ** 2);
