@@ -15,6 +15,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.4.0",
+    date: "2026-11-15",
+    title: "Holes and canyons",
+    highlights: [
+      "People live in cities now: smash a city for huge numbers, but the oceans hardly have anyone",
+      "A 💀 count pops up right where you hit, so you see how many people you got",
+      "Craters dig deeper with every hit, until you reach the glowing core",
+      "Earthquakes rip open long glowing canyons",
+      "Volcanoes push up real mountains",
+      "As a planet gets weaker, it cracks along glowing fault lines",
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-11-14",
     title: "New worlds and a faster path!",
