@@ -1,5 +1,6 @@
 import { TOOL_ORDER } from "@/lib/planet-smasher/tools";
 import {
+  END_BEATS,
   MAX_VOICES,
   TOOL_CUES,
   closeSfx,
@@ -190,5 +191,14 @@ describe("playCue", () => {
       playCue(cue);
       expect(made.sources).toBeGreaterThan(before);
     }
+  });
+});
+
+describe("ending beats follow the slow motion", () => {
+  it("schedules each beat at the real time its sim time arrives", () => {
+    expect(END_BEATS.shatterBoom).toBeCloseTo(1.45);
+    expect(END_BEATS.frozenCrack).toBeCloseTo(2.15);
+    expect(END_BEATS.consumedClang).toBeCloseTo(2.55);
+    expect(END_BEATS.vaporizedGone).toBeCloseTo(3.25);
   });
 });

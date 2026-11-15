@@ -1,11 +1,15 @@
 import { act, render, screen } from "@testing-library/react";
 import TrophyToast from "../TrophyToast";
+import { useShelfOpen } from "../shelfState";
 import { useGameStore } from "@/lib/planet-smasher/store";
 
 describe("TrophyToast", () => {
   beforeEach(() => {
     jest.useFakeTimers();
-    act(() => useGameStore.setState({ lastUnlocks: [], lastTrophies: [] }));
+    act(() => {
+      useGameStore.setState({ lastUnlocks: [], lastTrophies: [] });
+      useShelfOpen.getState().setOpen(false);
+    });
   });
   afterEach(() => jest.useRealTimers());
 
@@ -44,6 +48,19 @@ describe("TrophyToast", () => {
     render(<TrophyToast />);
     expect(screen.queryByText("TROPHY!")).toBeNull();
     act(() => useGameStore.setState({ lastUnlocks: [] }));
+    expect(screen.getByText("TROPHY!")).toBeInTheDocument();
+  });
+
+  it("hides while the trophy shelf is open and shows after it closes", () => {
+    act(() => useShelfOpen.getState().setOpen(true));
+    act(() => useGameStore.setState({ lastTrophies: ["firstSmash"] }));
+    render(<TrophyToast />);
+    expect(screen.queryByText("TROPHY!")).toBeNull();
+    act(() => {
+      jest.advanceTimersByTime(10000);
+    });
+    expect(useGameStore.getState().lastTrophies).toEqual(["firstSmash"]);
+    act(() => useShelfOpen.getState().setOpen(false));
     expect(screen.getByText("TROPHY!")).toBeInTheDocument();
   });
 });

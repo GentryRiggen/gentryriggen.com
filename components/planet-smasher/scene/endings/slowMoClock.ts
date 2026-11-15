@@ -17,6 +17,32 @@ export function slowMoScale(t: number): number {
   );
 }
 
+/** Sim seconds elapsed at the end of the slow-motion floor. */
+const SIM_HOLD = SLOW_SCALE * SLOW_HOLD;
+/** Sim seconds elapsed when time is back to normal. */
+const SIM_END =
+  SIM_HOLD +
+  SLOW_SCALE * (SLOW_END - SLOW_HOLD) +
+  ((1 - SLOW_SCALE) * (SLOW_END - SLOW_HOLD)) / 2;
+
+/**
+ * Real seconds after an ending began at which its sim clock reaches
+ * `simSeconds` (the inverse of the slow-motion integral). Sounds play in real
+ * time, so a beat meant for sim time `s` is scheduled at `realAt(s)`.
+ */
+export function realAt(simSeconds: number): number {
+  if (simSeconds <= 0) return 0;
+  if (simSeconds <= SIM_HOLD) return simSeconds / SLOW_SCALE;
+  if (simSeconds >= SIM_END) return SLOW_END + (simSeconds - SIM_END);
+  // On the ramp: sim = SIM_HOLD + a*d + b*d^2, solve for d.
+  const span = SLOW_END - SLOW_HOLD;
+  const b = (1 - SLOW_SCALE) / (2 * span);
+  const rest = simSeconds - SIM_HOLD;
+  const d =
+    (-SLOW_SCALE + Math.sqrt(SLOW_SCALE * SLOW_SCALE + 4 * b * rest)) / (2 * b);
+  return SLOW_HOLD + d;
+}
+
 const smooth = (x: number) => {
   const k = Math.min(1, Math.max(0, x));
   return k * k * (3 - 2 * k);

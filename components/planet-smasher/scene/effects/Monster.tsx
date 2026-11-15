@@ -48,6 +48,7 @@ import {
 } from "./particles";
 import type { EmitSpec } from "./particles";
 import type { EffectProps } from "./effectQueue";
+import { shouldWindDown, windDownFactor } from "./windDown";
 
 /* ------------------------------------------------------------------ */
 /* Timeline and path                                                   */
@@ -491,6 +492,7 @@ export default function Monster({
     sunk: false,
     blast: -1,
     muted: false,
+    mutedAt: 0,
     sparkAt: 0,
     splashed: false,
     // Where the current laser blast started and which way it sweeps.
@@ -499,7 +501,7 @@ export default function Monster({
   });
 
   /** Lays the monster on the sphere at `pos`, facing along the walk. */
-  function place(pos: Vector3, lift: number) {
+  function place(pos: Vector3, lift: number, away = 1) {
     const { root } = scene.rig;
     nrm.copy(pos).normalize();
     // The monster's own up: the surface normal, leaning towards screen up.
@@ -511,7 +513,7 @@ export default function Monster({
     basis.makeBasis(right, up, fwd);
     root.quaternion.setFromRotationMatrix(basis);
     const h = HEIGHT * planetRadius;
-    root.scale.setScalar(h);
+    root.scale.setScalar(h * away);
     root.position
       .copy(nrm)
       .multiplyScalar(planetRadius * 0.998)
@@ -519,11 +521,13 @@ export default function Monster({
   }
 
   function dustRing(dir: Vector3, now: number) {
+    if (state.current.muted) return;
     state.current.ringAt = now;
     state.current.ringDir.copy(dir);
   }
 
   function puff(dir: Vector3, count: number, big = 1) {
+    if (state.current.muted) return;
     tangentBasisInto(dir, t1, t2);
     for (let i = 0; i < count; i++) {
       const a = rand(0, Math.PI * 2);
@@ -552,6 +556,7 @@ export default function Monster({
   }
 
   function splash(dir: Vector3, count: number) {
+    if (state.current.muted) return;
     tangentBasisInto(dir, t1, t2);
     for (let i = 0; i < count; i++) {
       const a = rand(0, Math.PI * 2);
@@ -588,8 +593,12 @@ export default function Monster({
     const s = state.current;
     const { root, rig, head, eyes, legL, legR } = live.current.rig;
     const beams = live.current.beams;
-    const playing = useGameStore.getState().phase === "playing";
-    if (!playing) s.muted = true;
+    if (!s.muted && shouldWindDown(useGameStore.getState().phase)) {
+      s.muted = true;
+      s.mutedAt = now;
+    }
+    // Once the ending takes over it shrinks away and stops kicking up dust.
+    const away = s.muted ? windDownFactor(now - s.mutedAt) : 1;
 
     // Where it stands: on the tap, stepping 1 s apart, then still.
     const walk = clamp01((now - STOMP_TIMES[0]) / (WALK_END - STOMP_TIMES[0]));
@@ -606,7 +615,7 @@ export default function Monster({
     else if (now >= SINK_START)
       rise = 1 - smooth((now - SINK_START) / (SINK_END - SINK_START));
     const lift = -(1 - rise) * 1.08;
-    place(pos, lift);
+    place(pos, lift, away);
 
     // Squash on each stomp, a bob while walking, a wobble while rising.
     const sq = Math.exp(-(now - s.stompAt) * 7);

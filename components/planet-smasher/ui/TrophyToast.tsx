@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import { TROPHIES, TROPHY_REWARD } from "@/lib/planet-smasher/trophies";
 import { playCue } from "../audio/sfx";
+import { useShelfOpen } from "./shelfState";
 
 const SHOW_MS = 2500;
 const SPARKLES = [
@@ -25,8 +26,9 @@ export default function TrophyToast() {
   const trophies = useGameStore((s) => s.lastTrophies);
   const waiting = useGameStore((s) => s.lastUnlocks.length > 0);
   const ended = useGameStore((s) => s.phase !== "playing");
+  const shelfOpen = useShelfOpen((s) => s.open);
   const [index, setIndex] = useState(0);
-  const count = waiting ? 0 : trophies.length;
+  const count = waiting || shelfOpen ? 0 : trophies.length;
 
   useEffect(() => {
     if (count === 0) return;

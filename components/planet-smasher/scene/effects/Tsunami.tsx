@@ -29,6 +29,7 @@ import {
   useSharedParticles,
 } from "./particles";
 import type { EffectProps } from "./effectQueue";
+import { shouldWindDown, windDownFactor } from "./windDown";
 
 export const TSUNAMI_HITS = 16;
 const FIRST_HIT = 0.4;
@@ -184,6 +185,7 @@ export default function Tsunami({
   const next = useRef(0);
   const foamDebt = useRef(0);
   const muted = useRef(false);
+  const mutedAt = useRef(0);
   const foam = useSharedParticles(true, 0);
   const smoke = useSharedParticles(false, 0);
 
@@ -237,13 +239,17 @@ export default function Tsunami({
     const prev = age.current;
     age.current += dt;
     const now = age.current;
-    if (useGameStore.getState().phase !== "playing") muted.current = true;
+    if (!muted.current && shouldWindDown(useGameStore.getState().phase)) {
+      muted.current = true;
+      mutedAt.current = now;
+    }
     if (prev === 0) shake(0.015, 0.8);
 
     const front = tsunamiFront(now);
     const fade =
       Math.min(1, now * 6) *
-      (1 - clamp01((now - FADE_START) / (END - FADE_START)));
+      (1 - clamp01((now - FADE_START) / (END - FADE_START))) *
+      (muted.current ? windDownFactor(now - mutedAt.current) : 1);
     const band = 0.04 + 0.08 * Math.min(1, front / 0.5);
     const mesh = meshRef.current;
     const u = (mesh.material as ShaderMaterial).uniforms;
