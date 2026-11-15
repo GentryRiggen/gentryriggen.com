@@ -17,7 +17,8 @@ interface Shown {
 /**
  * "COMBO ×4!" under the health bar while quick hits chain. It listens to
  * the store's `lastHit` (like the Odometer's pop-off), not to a selector,
- * so the ding plays once per hit.
+ * so the ding plays once per hit. The store only moves the combo, and sets
+ * `lastHit`, on hits that kill people, so the two always agree.
  */
 export default function ComboBadge() {
   const [shown, setShown] = useState<Shown | null>(null);

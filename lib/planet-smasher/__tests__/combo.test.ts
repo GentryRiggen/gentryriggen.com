@@ -113,3 +113,32 @@ describe("combo counts once per shot", () => {
     expect(s().combo.count).toBe(1);
   });
 });
+
+describe("combo counts only shots that kill people", () => {
+  // People on the left half of the map only.
+  const half = gridFromLuminance(
+    Array.from({ length: POP_W * POP_H }, (_, i) =>
+      i % POP_W < POP_W / 2 ? 1 : 0
+    ),
+    POP_W,
+    POP_H,
+    0
+  );
+
+  it("leaves the combo, its window and the badge alone on empty ground", () => {
+    s().init(half);
+    s().hit("asteroid", 0.1, 0.5, 0, 1);
+    s().hit("asteroid", 0.2, 0.5, 400, 2);
+    expect(s().combo).toEqual({ count: 2, lastAt: 400 });
+    const lastHit = s().lastHit;
+    const points = s().progress.points;
+    const r = s().hit("asteroid", 0.9, 0.5, 900, 3);
+    expect(r.peopleLost).toBe(0);
+    expect(s().combo).toEqual({ count: 2, lastAt: 400 });
+    expect(s().lastHit).toBe(lastHit);
+    expect(s().progress.points - points).toBeLessThanOrEqual(r.points + 1);
+    // The window still runs from the last people-killing shot.
+    s().hit("asteroid", 0.15, 0.5, 1300, 4);
+    expect(s().combo.count).toBe(3);
+  });
+});

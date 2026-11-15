@@ -168,7 +168,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Report the live count, or none once the window has lapsed.
       if (now - combo.lastAt > COMBO_WINDOW_MS)
         nextCombo = { ...combo, count: 0 };
-    } else if (result.peopleLost > 0 || result.healthLost > 0) {
+    } else if (result.peopleLost > 0) {
       if (fireId !== undefined)
         nextFireIds = [...comboFireIds, fireId].slice(-COMBO_FIRE_IDS_KEPT);
       const count =
