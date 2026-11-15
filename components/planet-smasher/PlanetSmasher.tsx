@@ -29,6 +29,12 @@ import { useSoundEnabled } from "./audio/soundSetting";
 import useSoundUnlock from "./audio/useSoundUnlock";
 import useServiceWorker from "./hooks/useServiceWorker";
 import { TOOL_CUES, playCue } from "./audio/sfx";
+import DeathLabels from "./ui/DeathLabels";
+import {
+  addDeathLabel,
+  clearDeathLabels,
+  shouldLabel,
+} from "@/lib/planet-smasher/deathLabels";
 import { DamagePainter } from "./scene/DamagePainter";
 import { laserAim } from "./scene/effects/laserAim";
 import { startLaserTicker } from "./scene/effects/laserTicker";
@@ -102,6 +108,7 @@ export default function PlanetSmasher() {
     painter?.reset(textures?.night ?? null);
     effectsRef.current = [];
     setEffects([]);
+    clearDeathLabels();
     laserAim.held = false;
     stopTicker.current?.();
     stopTicker.current = null;
@@ -123,7 +130,19 @@ export default function PlanetSmasher() {
     ) => {
       // Effects still in flight once the planet is ending hit nothing.
       if (useGameStore.getState().phase !== "playing") return;
-      useGameStore.getState().hit(toolId, u, v, undefined, fireId);
+      const result = useGameStore
+        .getState()
+        .hit(toolId, u, v, undefined, fireId);
+      // The ending's kill-everyone is not a hit, so it gets no label.
+      const state = useGameStore.getState();
+      if (shouldLabel(result, "playing")) {
+        addDeathLabel(
+          result.peopleLost,
+          u,
+          v,
+          state.planet?.startPopulation ?? 0
+        );
+      }
       const tool = TOOLS[toolId];
       // The laser hums for as long as it is held, not once per tick.
       if (tool.mode !== "hold") {
@@ -329,6 +348,7 @@ export default function PlanetSmasher() {
             }
             right={<SoundToggle />}
           />
+          <DeathLabels />
           <TapHint />
           <ComboBadge />
           <Arsenal />

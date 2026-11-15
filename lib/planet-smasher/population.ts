@@ -11,10 +11,14 @@ export interface PopulationGrid {
   weights: Float32Array;
 }
 
+/** Share of the brightest cell that every cell holds at least. */
+export const POP_FLOOR = 0.001;
+
 /**
- * Builds the population grid from a brightness map: bright land holds more
- * people. The floor keeps dark land and ocean slightly populated, so every hit
- * counts a little.
+ * Builds the population grid from a brightness map: bright land (cities) holds
+ * most people. Oceans and empty land hold almost nobody (the floor is
+ * POP_FLOOR of the brightest cell), so a hit on a city kills far more than one
+ * in the sea, yet every hit still counts a little.
  */
 export function gridFromLuminance(
   lum: ArrayLike<number>,
@@ -25,7 +29,7 @@ export function gridFromLuminance(
   const n = w * h;
   let max = 0;
   for (let i = 0; i < n; i++) if (lum[i] > max) max = lum[i];
-  const min = floor ?? 0.02 * max;
+  const min = floor ?? POP_FLOOR * max;
   const raw = new Float64Array(n);
   let sum = 0;
   for (let i = 0; i < n; i++) {

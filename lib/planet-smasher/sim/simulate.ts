@@ -1,5 +1,9 @@
 import { useGameStore } from "../store";
-import { gridFromLuminance, type PopulationGrid } from "../population";
+import {
+  POP_FLOOR,
+  gridFromLuminance,
+  type PopulationGrid,
+} from "../population";
 import type { PlanetId } from "../planets";
 import { PROGRESS_KEY } from "../progress";
 import { seeded } from "../rng";
@@ -77,7 +81,7 @@ export interface SynthGrid {
   centres: [number, number][];
 }
 
-/** Seeded grid: about 40 gaussian cities over a 0.02 floor. */
+/** Seeded grid: about 40 gaussian cities over the POP_FLOOR. */
 export function buildGrid(seed = 7, w = 256, h = 128): SynthGrid {
   const rng = seeded(seed);
   const centres: [number, number][] = [];
@@ -107,7 +111,7 @@ export function buildGrid(seed = 7, w = 256, h = 128): SynthGrid {
       lum[row * w + col] = sum;
     }
   }
-  return { grid: gridFromLuminance(lum, w, h, 0.02), centres };
+  return { grid: gridFromLuminance(lum, w, h, POP_FLOOR), centres };
 }
 
 let cachedGrid: SynthGrid | null = null;

@@ -33,18 +33,34 @@ export function stampEllipses(
   const cx = u * width;
   const cy = (1 - v) * height;
   const out: StampEllipse[] = [{ cx, cy, rx, ry }];
+  // Near a pole the main ellipse already covers the whole row; a seam copy
+  // would make multiply stamps dig the same ground twice.
+  if (2.4 * rx > width) return out;
   // Crater blobs reach about 1.65 radii, so copy across the seam early.
   if (cx - 1.7 * rx < 0) out.push({ cx: cx + width, cy, rx, ry });
   if (cx + 1.7 * rx > width) out.push({ cx: cx - width, cy, rx, ry });
   return out;
 }
 
+/**
+ * Per-hit dig factors on the height map (multiply: grey / 255 of what is
+ * left). Exported so tests can pin how fast repeated hits reach the core.
+ */
+export const CRATER_CENTRE_GREY = 140;
+export const CRATER_CENTRE_DIG = CRATER_CENTRE_GREY / 255;
+export const CRACK_CORE_GREY = 60;
+export const CRACK_CORE_DIG = CRACK_CORE_GREY / 255;
+/** Untouched ground on the height map. */
+export const HEIGHT_NEUTRAL = 128 / 255;
+/** The rim is never pushed above this grey, so hits cannot build walls. */
+export const CRATER_RIM_GREY = 150;
+
 const DAMAGE_W = 2048;
 const DAMAGE_H = 1024;
 const GLOW_W = 1024;
 const GLOW_H = 512;
-const HEIGHT_W = 512;
-const HEIGHT_H = 256;
+const HEIGHT_W = 1024;
+const HEIGHT_H = 512;
 
 function makeCanvas(w: number, h: number): HTMLCanvasElement {
   const c = document.createElement("canvas");
@@ -95,7 +111,7 @@ const SCALE: Record<LayerKey, number> = {
   damage: 1,
   lights: 1,
   glow: 0.5,
-  height: 0.25,
+  height: 0.5,
 };
 
 export class DamagePainter {
@@ -282,11 +298,28 @@ export class DamagePainter {
       }
     });
     this.each("height", ellipses, (ctx) => {
+      // Multiply digs: white leaves the ground alone, so each hit on the same
+      // spot cuts deeper (about 0.55 of what is left at the centre).
+      ctx.globalCompositeOperation = "multiply";
       blob(ctx, 0, 0, 1.2, [
-        [0, "rgba(30,30,30,1)"],
-        [0.62, "rgba(70,70,70,1)"],
-        [0.8, "rgba(185,185,185,0.9)"],
-        [1, "rgba(128,128,128,0)"],
+        [
+          0,
+          `rgb(${CRATER_CENTRE_GREY},${CRATER_CENTRE_GREY},${CRATER_CENTRE_GREY})`,
+        ],
+        [0.45, "rgb(172,172,172)"],
+        [0.7, "rgb(236,236,236)"],
+        [0.82, "rgb(255,255,255)"],
+        [1, "rgb(255,255,255)"],
+      ]);
+      // A soft raised ring (thrown-up rock) just outside the bowl.
+      // "lighten" keeps the max, so repeated hits do not stack it into walls.
+      ctx.globalCompositeOperation = "lighten";
+      const rim = `${CRATER_RIM_GREY},${CRATER_RIM_GREY},${CRATER_RIM_GREY}`;
+      blob(ctx, 0, 0, 1.25, [
+        [0.6, `rgba(${rim},0)`],
+        [0.76, `rgba(${rim},1)`],
+        [0.9, `rgba(${rim},0.35)`],
+        [1, `rgba(${rim},0)`],
       ]);
     });
   }
@@ -320,9 +353,12 @@ export class DamagePainter {
       ]);
     });
     this.each("height", ellipses, (ctx) => {
-      blob(ctx, 0, 0, 1, [
-        [0, "rgba(100,100,100,0.7)"],
-        [1, "rgba(128,128,128,0)"],
+      // A wide shallow bowl that stacks like the crater's.
+      ctx.globalCompositeOperation = "multiply";
+      blob(ctx, 0, 0, 1.05, [
+        [0, "rgb(158,158,158)"],
+        [0.6, "rgb(205,205,205)"],
+        [1, "rgb(255,255,255)"],
       ]);
     });
   }
@@ -398,8 +434,14 @@ export class DamagePainter {
       ]);
     });
     this.each("height", ellipses, (ctx) => {
-      blob(ctx, 0, 0, 1, [
-        [0, "rgba(160,160,160,0.8)"],
+      // A cone: a steep dark caldera in the middle (it glows as magma), a
+      // high rim ring around it, then the slope easing back to the ground.
+      blob(ctx, 0, 0, 1.1, [
+        [0, "rgb(14,14,14)"],
+        [0.15, "rgb(22,22,22)"],
+        [0.23, "rgb(217,217,217)"],
+        [0.4, "rgb(200,200,200)"],
+        [0.7, "rgba(160,160,160,0.7)"],
         [1, "rgba(128,128,128,0)"],
       ]);
     });
@@ -482,30 +524,81 @@ export class DamagePainter {
   ) {
     const crack = kind === "crack";
     const angle = opts.angle ?? rand() * Math.PI * 2;
-    const length = opts.length ?? (crack ? 0.6 : radius * 2);
+    const length = opts.length ?? (crack ? 0.8 : radius * 2);
     const lat = (v - 0.5) * Math.PI;
     const pxPerRadX = DAMAGE_W / (2 * Math.PI) / Math.max(Math.cos(lat), 0.15);
     const pxPerRadY = DAMAGE_H / Math.PI;
     const x0 = u * DAMAGE_W;
     const y0 = (1 - v) * DAMAGE_H;
     const steps = crack ? 16 : 3;
-    const dirX = Math.cos(angle);
-    const dirY = -Math.sin(angle); // canvas y points south
     const width = Math.max(2, radius * pxPerRadY * (crack ? 0.22 : 1.2));
-    const pts: { x: number; y: number }[] = [];
-    for (let i = 0; i <= steps; i++) {
-      const t = (i / steps) * length;
-      const jitter = crack && i > 0 ? (rand() - 0.5) * length * 0.18 : 0;
-      pts.push({
-        x: x0 + (dirX * t - dirY * jitter) * pxPerRadX,
-        y: y0 + (dirY * t + dirX * jitter) * pxPerRadY,
-      });
+    const path = (
+      a: number,
+      len: number,
+      n: number,
+      sx: number,
+      sy: number
+    ) => {
+      const dirX = Math.cos(a);
+      const dirY = -Math.sin(a); // canvas y points south
+      const pts: { x: number; y: number }[] = [];
+      for (let i = 0; i <= n; i++) {
+        const t = (i / n) * len;
+        const jitter = crack && i > 0 ? (rand() - 0.5) * len * 0.18 : 0;
+        pts.push({
+          x: sx + (dirX * t - dirY * jitter) * pxPerRadX,
+          y: sy + (dirY * t + dirX * jitter) * pxPerRadY,
+        });
+      }
+      return pts;
+    };
+    const main = path(angle, length, steps, x0, y0);
+    this.carve(main, width, 1, crack);
+    if (!crack) return;
+    // Short side cracks branch off at random points, thinner and shallower.
+    const branches = 3 + Math.floor(rand() * 3);
+    for (let b = 0; b < branches; b++) {
+      const at = main[2 + Math.floor(rand() * (main.length - 4))];
+      const side = rand() < 0.5 ? -1 : 1;
+      const a = angle + side * (0.6 + rand() * 0.6);
+      const len = length * (0.15 + rand() * 0.15);
+      this.carve(path(a, len, 5, at.x, at.y), width * 0.55, 0.6, true);
     }
-    // The wider erase/dark pass, then the bright core.
+  }
+
+  /**
+   * One crack or trench along `pts`: lights out, a dark scar, a glowing seam
+   * and a multiply-dug groove (so repeats cut deeper). `depth` 1 is the main
+   * crack; less is shallower.
+   */
+  private carve(
+    pts: { x: number; y: number }[],
+    width: number,
+    depth: number,
+    crack: boolean
+  ) {
     this.line("lights", pts, width * 3, "rgba(0,0,0,1)", "destination-out");
     this.line("damage", pts, width * 2.2, "rgba(22,14,10,0.9)");
-    this.line("glow", pts, width * 1.2, "rgba(255,110,20,0.9)", "lighter");
-    this.line("glow", pts, width * 0.5, "rgba(255,210,120,0.9)", "lighter");
-    this.line("height", pts, width * 1.2, "rgba(45,45,45,0.95)");
+    if (crack) {
+      this.line("glow", pts, width * 0.8, "rgba(255,100,20,0.55)", "lighter");
+      this.line("glow", pts, width * 0.3, "rgba(255,200,110,0.7)", "lighter");
+    } else {
+      // The laser keeps its bright seam.
+      this.line("glow", pts, width * 1.2, "rgba(255,110,20,0.9)", "lighter");
+      this.line("glow", pts, width * 0.5, "rgba(255,210,120,0.9)", "lighter");
+    }
+    const grey = (g: number) => {
+      const c = Math.round(255 - (255 - g) * depth);
+      return `rgb(${c},${c},${c})`;
+    };
+    if (crack) {
+      // A wide soft slope, then a narrow very dark core (reaches the magma).
+      this.line("height", pts, width * 3, grey(205), "multiply");
+      this.line("height", pts, width * 1.6, grey(150), "multiply");
+      this.line("height", pts, width * 0.7, grey(CRACK_CORE_GREY), "multiply");
+    } else {
+      // Holding the laser carves the groove deeper.
+      this.line("height", pts, width * 1.2, "rgb(170,170,170)", "multiply");
+    }
   }
 }

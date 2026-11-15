@@ -10,6 +10,7 @@ import {
 import { OrbitControls, Stars } from "@react-three/drei";
 import RenderInfoProbe from "./RenderInfoProbe";
 import ChunkWarmup from "./ChunkWarmup";
+import DeathLabelDriver from "./DeathLabelDriver";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Vector3, type DirectionalLight, type Mesh } from "three";
 import type { Vec3 } from "@/lib/planet-smasher/sphere";
@@ -252,6 +253,7 @@ export default function Stage(props: StageProps) {
         <Scene {...props} />
         <RenderInfoProbe />
         <ChunkWarmup />
+        <DeathLabelDriver />
       </Canvas>
     </div>
   );
