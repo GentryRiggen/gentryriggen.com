@@ -22,8 +22,8 @@ describe("1.1 tools", () => {
     for (let i = 1; i < UNLOCK_PATH.length; i++) {
       expect(UNLOCK_PATH[i].at).toBeGreaterThan(UNLOCK_PATH[i - 1].at);
     }
-    expect(UNLOCK_PATH.at(-1)?.at).toBe(109000);
-    expect(nextUnlock(109000)).toBeNull();
+    const last = UNLOCK_PATH.at(-1)!.at;
+    expect(nextUnlock(last)).toBeNull();
   });
 
   it("gives the Mothership the saucer icon", () => {

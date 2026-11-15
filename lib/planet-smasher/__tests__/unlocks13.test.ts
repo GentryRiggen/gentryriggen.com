@@ -95,7 +95,9 @@ describe("keeping owned unlocks", () => {
     useGameStore.getState().init(grid);
     const s = useGameStore.getState();
     expect(s.lastUnlocks).toEqual([]);
-    expect(s.progress.owned).toEqual(legacyAt(13000));
+    expect(s.progress.owned).toEqual(
+      expect.arrayContaining([...legacyAt(13000), "planet:lava"])
+    );
     expect(s.progress.toolId).toBe("mothership");
     expect(s.progress.planetId).toBe("ice");
     for (const e of LEGACY_UNLOCK_PATH_1_2.filter((x) => x.at <= 13000)) {
@@ -107,13 +109,37 @@ describe("keeping owned unlocks", () => {
     saveOld({ points: 20000, planetId: "mars", toolId: "planetCollision" });
     useGameStore.getState().init(grid);
     const { owned } = useGameStore.getState().progress;
-    expect(owned).toHaveLength(21);
     for (const id of TOOL_ORDER.filter((t) => t !== "asteroid")) {
       expect(owned).toContain(`tool:${id}`);
     }
     expect(owned).toContain("planet:mars");
     expect(owned).toContain("planet:ice");
     expect(useGameStore.getState().lastUnlocks).toEqual([]);
+  });
+
+  it("a 1.2 save at 13,000 points owns Magmar after load", () => {
+    saveOld({ points: 13000, planetId: "earth", toolId: "nuke" });
+    expect(loadProgress(null).owned).toEqual([]);
+    useGameStore.getState().init(grid);
+    expect(useGameStore.getState().progress.owned).toContain("planet:lava");
+  });
+
+  it("loading twice gives the same owned set", () => {
+    saveOld({ points: 13000, planetId: "earth", toolId: "nuke" });
+    const once = loadProgress(window.localStorage);
+    window.localStorage.setItem(PROGRESS_KEY, JSON.stringify(once));
+    const twice = loadProgress(window.localStorage);
+    expect(twice.owned).toEqual(once.owned);
+    expect(new Set(twice.owned).size).toBe((twice.owned ?? []).length);
+  });
+
+  it("every load adds what the current path opens at the save's points", () => {
+    saveOld({ points: 50000, owned: ["tool:nuke"] });
+    const { owned } = loadProgress(window.localStorage);
+    for (const e of UNLOCK_PATH.filter((x) => x.at <= 50000)) {
+      expect(owned).toContain(ownedKey(e.item));
+    }
+    expect(owned).toContain("tool:nuke");
   });
 
   it("a 1.2 save with 500 points keeps exactly what it had at 500", () => {

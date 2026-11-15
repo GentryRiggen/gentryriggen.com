@@ -65,7 +65,7 @@ describe("PlanetSmasher fire path", () => {
       useGameStore.setState({
         progress: {
           ...useGameStore.getState().progress,
-          points: 5200,
+          points: 6000,
           toolId: "alienLaser",
         },
       });

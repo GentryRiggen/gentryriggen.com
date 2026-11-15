@@ -3,7 +3,7 @@ import { PLANETS } from "./planets";
 import type { EndingKind, ToolId } from "./tools";
 import { TOOLS } from "./tools";
 import { TROPHIES, type TrophyId } from "./trophies";
-import { legacyOwned } from "./unlocks";
+import { legacyOwned, pathOwned } from "./unlocks";
 
 export const PROGRESS_KEY = "planet-smasher:progress:v1";
 export const FIRST_ENDING_BONUS = 300;
@@ -146,9 +146,16 @@ export function loadProgress(storage?: Storage | null): Progress {
             (data.trophies as unknown[]).includes(id)
           )
         : [],
-      owned: Array.isArray(data.owned)
-        ? data.owned.filter((k): k is string => typeof k === "string")
-        : legacyOwned(points),
+      // Every load adds what the current path has open at these points, so a
+      // later retune of the path can never re-lock anything.
+      owned: [
+        ...new Set([
+          ...(Array.isArray(data.owned)
+            ? data.owned.filter((k): k is string => typeof k === "string")
+            : legacyOwned(points)),
+          ...pathOwned(points),
+        ]),
+      ],
     };
   } catch {
     return fresh;

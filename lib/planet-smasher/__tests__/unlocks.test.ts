@@ -1,4 +1,10 @@
-import { isUnlocked, nextUnlock, ownedKey, unlocksBetween } from "../unlocks";
+import {
+  UNLOCK_PATH,
+  isUnlocked,
+  nextUnlock,
+  ownedKey,
+  unlocksBetween,
+} from "../unlocks";
 
 describe("unlocks", () => {
   it("lists what a point jump crosses, in order", () => {
@@ -16,8 +22,8 @@ describe("unlocks", () => {
   });
 
   it("has nothing after the last unlock", () => {
-    expect(nextUnlock(109000)).toBeNull();
-    expect(nextUnlock(4750)?.item).toEqual({
+    expect(nextUnlock(UNLOCK_PATH.at(-1)!.at)).toBeNull();
+    expect(nextUnlock(10000)?.item).toEqual({
       kind: "tool",
       id: "supervolcano",
     });

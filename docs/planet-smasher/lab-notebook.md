@@ -171,3 +171,67 @@ target of 85 was not reached; the blocker is the casual bot's speed (see the
 bold ideas), not the path. Next if this resumes: pick the path against the
 slowest keen bot and fill the empty tail with real unlocks (Task 4 adds three
 planets, which helps the tail).
+
+## Round 4 (2026-11-14): softer toughness, nukes and alien tech first (priorities over score)
+
+Hypothesis: the controller review of Rounds 1-3 found the shipped path tuned for
+the fast bots, while the casual bot (the 6-year-old proxy) waited 35 min for
+nuke rain and 106-110 min for the last alien tool. Gentry's stated direction is
+"they reach for nukes a lot, they want tons more alien tech", and the playtest
+outranks the score. So: set `PLANET_TOUGHNESS` to 3 (4 made every weapon feel
+quarter strength to the 1.2 veterans), move the nuke family and all alien tech
+to the front of the path, and push the weak or slow tools and the planets
+later. Targets: casual bot nuke family (nuke, twin, rain) by 25 min and all alien
+tech (alienLaser, ufoSwarm, gravityBeam, nanobots, mothership) by 75 min, while
+explorer and nukeLover still pass every gate.
+
+Changes:
+
+- `PLANET_TOUGHNESS` 4 to 3.
+- `progress.owned` is now topped up on every load with every item the current
+  path opens at the save's points (the legacy 1.2 set is still added when
+  `owned` is missing). A later retune can never re-lock anything.
+- The path was re-ordered and re-spaced (24 items, 25 to 178,500 stars):
+  nukeTwin, alienLaser, nukeRain, supervolcano, Magmar, ufoSwarm, monster,
+  earthquake, gravityBeam, nanobots, mothership, tsunami, freezeRay, moonRam,
+  Mars, Sweetopia, blackHole, Frostia, Aquaria, sunDive, planetCollision.
+  Magmar sits at 12,500 so a 1.2 save at 13,000 owns it.
+- How the fit went (what finally worked): the nukeLover bot earns about 1k stars
+  a minute no matter what is unlocked, except while the newest tool is the moon
+  ram or the black hole (about 2.5k a minute). The explorer cycles every tool and
+  earns 2.5-3k a minute late. Fitting one path to the mean bot (Rounds 2 and 3)
+  fought that. Two rules fixed it: keep the planets and the strong tools last, so
+  the newest tool is a strong earner for the long tail, and size every late step
+  to at most 7 minutes of the slowest bot (about 17k stars). Planets do not
+  change the newest tool, so they fill the tail without slowing the nukeLover.
+
+| metric (3 seeds)      | Round 2 (toughness 4) | Round 4 (toughness 3) |
+| --------------------- | --------------------- | --------------------- |
+| mean score            | 68.3                  | 71.2                  |
+| casual nuke family    | 34.8-35.3 min         | 12.0-12.2 min         |
+| casual all alien tech | 105.8-110.5 min       | 51.8-52.8 min         |
+| casual all tools      | 121-125 min           | 125-129 min           |
+| casual max gap        | 9.1-9.5 min (X)       | 9.1-10.1 min (X)      |
+| nukeLover nuke family | 24.2-24.6 min         | 8.1-8.5 min           |
+| nukeLover alien tech  | 78.5-80.7 min         | 40.4-40.7 min         |
+| nukeLover max gap     | 7.0-7.6 min           | 7.1-7.2 min           |
+| nukeLover all tools   | 91.5-93.9 min         | 101-104 min           |
+| explorer nuke family  | 18.1-18.5 min         | 6.2-6.3 min           |
+| explorer alien tech   | 64.2-64.7 min         | 29.4-29.5 min         |
+| explorer max gap      | 6.9-7.2 min           | 7.6-7.7 min           |
+| explorer all tools    | 84.4-85.0 min         | 82.5-82.7 min         |
+| bot means (nL/ex/ca)  | 77.6 / 82.7 / 44.6    | 76.4 / 78.1 / 59.0    |
+
+(An intermediate run, toughness 3 on the Round 2 path, scored 62.6 with both
+fast bots gate-capped: they ran out of path at minute 75.)
+
+Result: every Round 4 target is met, and the mean did not drop (68.3 to 71.2),
+mostly because the casual bot no longer fails the first-unlock-and-alien bands.
+The casual bot is still gate-capped at 59 (max gap 9-10 min against a gate of 8) and takes 125 min for everything; the nukeLover now needs 101-104 min for all
+tools (the band is 60-90). Both are accepted: Gentry's priorities (nukes, then
+tons of alien tech, early) outrank the score, and the late tail is planets and
+slow tools.
+
+Retro: the per-tool earning rate, not the path shape, is what made Rounds 2 and
+3 impossible to fit. Next time start from a table of stars per minute by newest
+tool, and place tools by that table.

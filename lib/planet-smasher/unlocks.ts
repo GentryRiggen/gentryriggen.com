@@ -37,27 +37,27 @@ export const UNLOCK_PATH: readonly { at: number; item: Unlockable }[] = [
   { at: 25, item: { kind: "tool", id: "meteorShower" } },
   { at: 80, item: { kind: "tool", id: "megaBomb" } },
   { at: 160, item: { kind: "tool", id: "nuke" } },
-  { at: 3450, item: { kind: "tool", id: "alienLaser" } },
-  { at: 4750, item: { kind: "tool", id: "nukeTwin" } },
-  { at: 6500, item: { kind: "tool", id: "supervolcano" } },
-  { at: 8750, item: { kind: "tool", id: "ufoSwarm" } },
-  { at: 11500, item: { kind: "planet", id: "lava" } },
-  { at: 14500, item: { kind: "tool", id: "earthquake" } },
-  { at: 17500, item: { kind: "tool", id: "nukeRain" } },
-  { at: 21000, item: { kind: "tool", id: "gravityBeam" } },
-  { at: 24500, item: { kind: "planet", id: "mars" } },
-  { at: 28500, item: { kind: "tool", id: "tsunami" } },
-  { at: 32000, item: { kind: "tool", id: "freezeRay" } },
-  { at: 36000, item: { kind: "tool", id: "nanobots" } },
-  { at: 40500, item: { kind: "planet", id: "candy" } },
-  { at: 46000, item: { kind: "tool", id: "monster" } },
-  { at: 51000, item: { kind: "tool", id: "moonRam" } },
-  { at: 56500, item: { kind: "tool", id: "blackHole" } },
-  { at: 64500, item: { kind: "planet", id: "ice" } },
-  { at: 74500, item: { kind: "tool", id: "mothership" } },
-  { at: 85000, item: { kind: "planet", id: "ocean" } },
-  { at: 97000, item: { kind: "tool", id: "sunDive" } },
-  { at: 109000, item: { kind: "tool", id: "planetCollision" } },
+  { at: 3300, item: { kind: "tool", id: "nukeTwin" } },
+  { at: 5600, item: { kind: "tool", id: "alienLaser" } },
+  { at: 8000, item: { kind: "tool", id: "nukeRain" } },
+  { at: 10800, item: { kind: "tool", id: "supervolcano" } },
+  { at: 12500, item: { kind: "planet", id: "lava" } },
+  { at: 15000, item: { kind: "tool", id: "ufoSwarm" } },
+  { at: 19000, item: { kind: "tool", id: "monster" } },
+  { at: 23500, item: { kind: "tool", id: "earthquake" } },
+  { at: 28000, item: { kind: "tool", id: "gravityBeam" } },
+  { at: 33000, item: { kind: "tool", id: "nanobots" } },
+  { at: 38500, item: { kind: "tool", id: "mothership" } },
+  { at: 44000, item: { kind: "tool", id: "tsunami" } },
+  { at: 50000, item: { kind: "tool", id: "freezeRay" } },
+  { at: 56000, item: { kind: "tool", id: "moonRam" } },
+  { at: 72500, item: { kind: "planet", id: "mars" } },
+  { at: 89000, item: { kind: "planet", id: "candy" } },
+  { at: 105500, item: { kind: "tool", id: "blackHole" } },
+  { at: 122000, item: { kind: "planet", id: "ice" } },
+  { at: 138500, item: { kind: "planet", id: "ocean" } },
+  { at: 158500, item: { kind: "tool", id: "sunDive" } },
+  { at: 178500, item: { kind: "tool", id: "planetCollision" } },
 ];
 
 const same = (a: Unlockable, b: Unlockable) =>
@@ -82,6 +82,11 @@ export function legacyOwned(points: number): string[] {
   return LEGACY_UNLOCK_PATH_1_2.filter((e) => points >= e.at).map((e) =>
     ownedKey(e.item)
   );
+}
+
+/** Everything the current path has open at these points, as owned keys. */
+export function pathOwned(points: number): string[] {
+  return UNLOCK_PATH.filter((e) => points >= e.at).map((e) => ownedKey(e.item));
 }
 
 /** Newly crossed items; ones the save already owns do not count. */

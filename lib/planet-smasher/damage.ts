@@ -39,7 +39,7 @@ export const ENDING_BONUS = 100;
  * Divides the health a non-finisher hit takes, so a planet lasts long enough
  * to enjoy. People lost and points are unchanged; finishers still end it.
  */
-export const PLANET_TOUGHNESS = 4;
+export const PLANET_TOUGHNESS = 3;
 
 export function createPlanetState(
   planetId: PlanetId,

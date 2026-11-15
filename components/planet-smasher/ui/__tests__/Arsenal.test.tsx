@@ -121,8 +121,8 @@ describe("Arsenal tabs", () => {
     expect(useGameStore.getState().progress.toolId).toBe("asteroid");
   });
 
-  it("opens the supervolcano at 6,500 points and selects it", () => {
-    setPoints(6500);
+  it("opens the supervolcano at 10,800 points and selects it", () => {
+    setPoints(10800);
     render(<Arsenal />);
     fireEvent.click(tab("Nature"));
     const tile = screen.getByRole("button", { name: "Supervolcano" });

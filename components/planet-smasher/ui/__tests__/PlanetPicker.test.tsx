@@ -14,7 +14,7 @@ describe("PlanetPicker", () => {
   beforeEach(() => {
     act(() => {
       useGameStore.setState({
-        progress: { ...freshProgress(), points: 25000 },
+        progress: { ...freshProgress(), points: 80000 },
       });
     });
   });
@@ -30,7 +30,7 @@ describe("PlanetPicker", () => {
       "aria-disabled",
       "true"
     );
-    expect(screen.getByText("⭐ 64,500")).toBeInTheDocument();
+    expect(screen.getByText("⭐ 122,000")).toBeInTheDocument();
   });
 
   it("selects Mars", async () => {
