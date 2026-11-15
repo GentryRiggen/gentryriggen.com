@@ -102,6 +102,7 @@ function markDirty(maps: Record<string, Texture>, layers: Set<string>) {
 
 interface FxUniforms {
   uMolten: { value: number };
+  uVapor: { value: number };
   uConsumed: { value: number };
   uFrozen: { value: number };
   uPulse: { value: number };
@@ -115,6 +116,7 @@ function applyFxUniforms(
   time: number
 ) {
   fx.uMolten.value = planetFx.molten;
+  fx.uVapor.value = planetFx.vapor;
   fx.uConsumed.value = planetFx.consumed;
   fx.uFrozen.value = planetFx.frozen;
   fx.uPulse.value = planetFx.pulse;
@@ -149,6 +151,7 @@ const Planet = forwardRef<Mesh, PlanetProps>(function Planet(
   const fxUniforms = useMemo(
     () => ({
       uMolten: { value: 0 },
+      uVapor: { value: 0 },
       uConsumed: { value: 0 },
       uFrozen: { value: 0 },
       uPulse: { value: 0 },
@@ -199,6 +202,7 @@ uniform sampler2D lightsMap;
 uniform vec3 sunDirView;
 uniform float oceanLift;
 uniform float uMolten;
+uniform float uVapor;
 uniform float uConsumed;
 uniform float uFrozen;
 uniform float uPulse;
@@ -257,6 +261,7 @@ vec2 psCells(vec3 p) {
 vec4 dm = texture2D(damageMap, vMapUv);
 diffuseColor.rgb = mix(diffuseColor.rgb, dm.rgb, dm.a);
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.78, 0.9, 1.0), uFrozen * 0.85);
+diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.5, 0.12), smoothstep(0.0, 0.6, uVapor));
 float psHeat = 0.0;
 vec3 psLava = vec3(0.0);
 if (uMolten + uPulse > 0.0) {
@@ -296,6 +301,11 @@ if (uConsumed > 0.0) {
   float psBeat = 0.65 + 0.35 * sin(uTime * 3.0 + psHash(floor(vObj * 3.4)) * 6.28);
   totalEmissiveRadiance += vec3(0.1, 0.55, 1.0) * psSeam * psBeat * 1.6 * uConsumed
     + vec3(0.2, 0.22, 0.26) * (0.5 + psBrush * 0.5) * uConsumed;
+}
+if (uVapor > 0.0) {
+  // Orange first, then white-hot as the Sun takes the planet.
+  vec3 psPlasma = mix(vec3(1.0, 0.42, 0.08), vec3(1.0, 0.95, 0.8), smoothstep(0.5, 1.0, uVapor));
+  totalEmissiveRadiance += psPlasma * uVapor * (0.8 + 1.8 * uVapor);
 }
 if (uFrozen > 0.0) {
   float psSpark = pow(psHash(floor(vObj * 45.0) + floor(uTime * 4.0)), 40.0);

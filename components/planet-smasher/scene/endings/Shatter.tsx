@@ -30,6 +30,8 @@ import { planetFx } from "./planetFx";
 interface ShatterProps {
   /** Frost the planet first, then shatter into icy chunks. */
   frozen?: boolean;
+  /** Another planet just hit it: no cracking, it bursts at once. */
+  collided?: boolean;
   /** The planet's material: the chunks share it. */
   material: Material;
   onDone(): void;
@@ -45,8 +47,9 @@ interface Beat {
   /** When the planet bursts apart. */
   burst: number;
 }
-const BEATS: Record<"shatter" | "frozen", Beat> = {
+const BEATS: Record<"shatter" | "frozen" | "collided", Beat> = {
   shatter: { freeze: 0, cracks: 0, burst: 0.7 },
+  collided: { freeze: 0, cracks: 0, burst: 0.05 },
   frozen: { freeze: 1, cracks: 1, burst: 1.4 },
 };
 
@@ -64,10 +67,11 @@ const ease = (t: number) => 1 - (1 - clamp01(t)) ** 2;
  */
 export default function Shatter({
   frozen = false,
+  collided = false,
   material,
   onDone,
 }: ShatterProps) {
-  const beat = BEATS[frozen ? "frozen" : "shatter"];
+  const beat = BEATS[frozen ? "frozen" : collided ? "collided" : "shatter"];
   const cb = useLatest({ onDone });
   const camera = useThree((s) => s.camera);
   const { seeds, set } = useMemo(() => getChunkSet(), []);

@@ -16,7 +16,9 @@ import Mothership from "./Mothership";
 import Nanobots from "./Nanobots";
 import NukeVolley from "./NukeVolley";
 import Projectile from "./Projectile";
+import PlanetCollision from "./PlanetCollision";
 import Quake from "./Quake";
+import SunDive from "./SunDive";
 import Tsunami from "./Tsunami";
 import UfoSwarm from "./UfoSwarm";
 import ParticleLayer from "./ParticleLayer";
@@ -42,9 +44,8 @@ const COMPONENTS: Record<ToolId, ComponentType<EffectProps>> = {
   mothership: Mothership,
   monster: Monster,
   tsunami: Tsunami,
-  // Placeholders until the new effects land.
-  sunDive: MoonRam as ComponentType<EffectProps>,
-  planetCollision: MoonRam as ComponentType<EffectProps>,
+  sunDive: SunDive,
+  planetCollision: PlanetCollision,
 };
 
 interface EffectLayerProps {

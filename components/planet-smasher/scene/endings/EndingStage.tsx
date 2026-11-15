@@ -14,10 +14,12 @@ import {
   useParticles,
 } from "../effects/particles";
 import { playCue, type Cue } from "../../audio/sfx";
+import Collided from "./Collided";
 import Consumed from "./Consumed";
 import Molten from "./Molten";
 import Shatter from "./Shatter";
 import Swallowed from "./Swallowed";
+import Vaporized from "./Vaporized";
 import { planetFx, resetPlanetFx } from "./planetFx";
 
 const GROW_SECONDS = 0.8;
@@ -28,8 +30,8 @@ const ENDING_CUES: Record<string, Cue> = {
   frozen: "endFrozen",
   consumed: "endConsumed",
   swallowed: "endSwallowed",
-  vaporized: "endMolten",
-  collided: "endShatter",
+  vaporized: "endVaporized",
+  collided: "endCollided",
 };
 
 /** A new planet pops in from nothing with a puff of sparkles. */
@@ -125,15 +127,17 @@ export default function EndingStage({ material }: EndingStageProps) {
 
   return (
     <>
-      {(active === "shatter" || active === "collided") && (
+      {active === "shatter" && (
         <Shatter key={active} material={material} onDone={shown} />
       )}
       {active === "frozen" && (
         <Shatter key="frozen" frozen material={material} onDone={shown} />
       )}
-      {(active === "molten" || active === "vaporized") && (
-        <Molten key={active} onDone={shown} />
+      {active === "collided" && (
+        <Collided key="collided" material={material} onDone={shown} />
       )}
+      {active === "molten" && <Molten key="molten" onDone={shown} />}
+      {active === "vaporized" && <Vaporized key="vaporized" onDone={shown} />}
       {active === "consumed" && <Consumed key="consumed" onDone={shown} />}
       {active === "swallowed" && <Swallowed key="swallowed" onDone={shown} />}
       {grow && phase === "playing" && <GrowIn onDone={() => setGrow(false)} />}

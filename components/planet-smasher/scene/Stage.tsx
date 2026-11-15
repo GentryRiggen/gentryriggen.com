@@ -21,6 +21,7 @@ import type { PlanetTextures } from "./planetTextures";
 import { isTap } from "./tapGesture";
 import EndingStage from "./endings/EndingStage";
 import EffectLayer from "./effects/EffectLayer";
+import { sunState } from "./effects/sunState";
 import type { ActiveEffect, ImpactOpts } from "./effects/effectQueue";
 
 interface StageProps {
@@ -45,6 +46,7 @@ interface StageProps {
 }
 
 const AUTO_ROTATE_PAUSE_MS = 4000;
+const tmpSun = new Vector3();
 
 interface Down {
   id: number;
@@ -100,7 +102,19 @@ function Scene({
       .set(...SUN_VIEW_DIR)
       .normalize()
       .transformDirection(camera.matrixWorld);
-    sun.current?.position.copy(sunDir).multiplyScalar(6);
+    // A Sun sliding in swings the light toward its side and turns it warm.
+    const warm = sunState.warm;
+    if (warm > 0) {
+      sunDir
+        .lerp(tmpSun.copy(sunState.pos).normalize(), 0.8 * warm)
+        .normalize();
+    }
+    const light = sun.current;
+    if (light) {
+      light.position.copy(sunDir).multiplyScalar(6);
+      light.color.setRGB(1, 1 - 0.3 * warm, 1 - 0.65 * warm);
+      light.intensity = 2.2 * (1 + 0.6 * warm);
+    }
   });
 
   const pauseRotate = useCallback(() => {
