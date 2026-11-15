@@ -1,14 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useGameStore } from "@/lib/planet-smasher/store";
 import { TROPHIES, progressToward } from "@/lib/planet-smasher/trophies";
 import { playCue } from "../audio/sfx";
+import { useShelfOpen } from "./shelfState";
 
 /** A 🏆 button under the planet picker; opens every trophy, earned or not. */
 export default function TrophyShelf() {
   const progress = useGameStore((s) => s.progress);
-  const [open, setOpen] = useState(false);
+  const open = useShelfOpen((s) => s.open);
+  const setOpen = useShelfOpen((s) => s.setOpen);
+  // Never leave the toast hidden if the shelf goes away while open.
+  useEffect(() => () => useShelfOpen.getState().setOpen(false), []);
   const earned = TROPHIES.filter((t) => progress.trophies.includes(t.id));
 
   return (
