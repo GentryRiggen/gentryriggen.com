@@ -26,9 +26,9 @@ describe("buildFaultMap", () => {
     for (let i = 0; i < map.length; i += 4) {
       if (map[i] > 200) orders.add(map[i + 1]);
     }
-    // 14 plates share at most ~40 borders; far fewer values than texels.
+    // 20 plates share at most ~60 borders; far fewer values than texels.
     expect(orders.size).toBeGreaterThan(3);
-    expect(orders.size).toBeLessThan(60);
+    expect(orders.size).toBeLessThan(90);
   });
 
   it("is the same for the same seed and different for another", () => {
@@ -37,11 +37,20 @@ describe("buildFaultMap", () => {
   });
 });
 
+describe("buildFaultMap cost", () => {
+  it("builds a full 512x256 map quickly", () => {
+    const t0 = performance.now();
+    buildFaultMap(faultSeed("earth"));
+    // Generous bound; the target is ~40 ms on a quiet machine.
+    expect(performance.now() - t0).toBeLessThan(400);
+  });
+});
+
 describe("crackTarget", () => {
   it("is closed for a healthy planet and fully open near death", () => {
     expect(crackTarget(100)).toBe(0);
-    expect(crackTarget(65)).toBe(0);
-    expect(crackTarget(5)).toBe(1);
+    expect(crackTarget(85)).toBe(0);
+    expect(crackTarget(8)).toBe(1);
     expect(crackTarget(0)).toBe(1);
   });
 
