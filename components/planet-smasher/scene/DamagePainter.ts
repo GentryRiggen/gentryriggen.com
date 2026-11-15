@@ -413,8 +413,14 @@ export class DamagePainter {
       ]);
     });
     this.each("height", ellipses, (ctx) => {
-      blob(ctx, 0, 0, 1, [
-        [0, "rgba(160,160,160,0.8)"],
+      // A cone: a steep dark caldera in the middle (it glows as magma), a
+      // high rim ring around it, then the slope easing back to the ground.
+      blob(ctx, 0, 0, 1.1, [
+        [0, "rgb(14,14,14)"],
+        [0.15, "rgb(22,22,22)"],
+        [0.23, "rgb(217,217,217)"],
+        [0.4, "rgb(200,200,200)"],
+        [0.7, "rgba(160,160,160,0.7)"],
         [1, "rgba(128,128,128,0)"],
       ]);
     });
@@ -497,34 +503,74 @@ export class DamagePainter {
   ) {
     const crack = kind === "crack";
     const angle = opts.angle ?? rand() * Math.PI * 2;
-    const length = opts.length ?? (crack ? 0.6 : radius * 2);
+    const length = opts.length ?? (crack ? 0.8 : radius * 2);
     const lat = (v - 0.5) * Math.PI;
     const pxPerRadX = DAMAGE_W / (2 * Math.PI) / Math.max(Math.cos(lat), 0.15);
     const pxPerRadY = DAMAGE_H / Math.PI;
     const x0 = u * DAMAGE_W;
     const y0 = (1 - v) * DAMAGE_H;
     const steps = crack ? 16 : 3;
-    const dirX = Math.cos(angle);
-    const dirY = -Math.sin(angle); // canvas y points south
     const width = Math.max(2, radius * pxPerRadY * (crack ? 0.22 : 1.2));
-    const pts: { x: number; y: number }[] = [];
-    for (let i = 0; i <= steps; i++) {
-      const t = (i / steps) * length;
-      const jitter = crack && i > 0 ? (rand() - 0.5) * length * 0.18 : 0;
-      pts.push({
-        x: x0 + (dirX * t - dirY * jitter) * pxPerRadX,
-        y: y0 + (dirY * t + dirX * jitter) * pxPerRadY,
-      });
+    const path = (
+      a: number,
+      len: number,
+      n: number,
+      sx: number,
+      sy: number
+    ) => {
+      const dirX = Math.cos(a);
+      const dirY = -Math.sin(a); // canvas y points south
+      const pts: { x: number; y: number }[] = [];
+      for (let i = 0; i <= n; i++) {
+        const t = (i / n) * len;
+        const jitter = crack && i > 0 ? (rand() - 0.5) * len * 0.18 : 0;
+        pts.push({
+          x: sx + (dirX * t - dirY * jitter) * pxPerRadX,
+          y: sy + (dirY * t + dirX * jitter) * pxPerRadY,
+        });
+      }
+      return pts;
+    };
+    const main = path(angle, length, steps, x0, y0);
+    this.carve(main, width, 1, crack);
+    if (!crack) return;
+    // Short side cracks branch off at random points, thinner and shallower.
+    const branches = 3 + Math.floor(rand() * 3);
+    for (let b = 0; b < branches; b++) {
+      const at = main[2 + Math.floor(rand() * (main.length - 4))];
+      const side = rand() < 0.5 ? -1 : 1;
+      const a = angle + side * (0.6 + rand() * 0.6);
+      const len = length * (0.15 + rand() * 0.15);
+      this.carve(path(a, len, 5, at.x, at.y), width * 0.55, 0.6, true);
     }
-    // The wider erase/dark pass, then the bright core.
+  }
+
+  /**
+   * One crack or trench along `pts`: lights out, a dark scar, a glowing seam
+   * and a multiply-dug groove (so repeats cut deeper). `depth` 1 is the main
+   * crack; less is shallower.
+   */
+  private carve(
+    pts: { x: number; y: number }[],
+    width: number,
+    depth: number,
+    crack: boolean
+  ) {
     this.line("lights", pts, width * 3, "rgba(0,0,0,1)", "destination-out");
     this.line("damage", pts, width * 2.2, "rgba(22,14,10,0.9)");
-    this.line("glow", pts, width * 1.2, "rgba(255,110,20,0.9)", "lighter");
-    this.line("glow", pts, width * 0.5, "rgba(255,210,120,0.9)", "lighter");
+    this.line("glow", pts, width * 0.8, "rgba(255,100,20,0.55)", "lighter");
+    this.line("glow", pts, width * 0.3, "rgba(255,200,110,0.7)", "lighter");
+    const grey = (g: number) => {
+      const c = Math.round(255 - (255 - g) * depth);
+      return `rgb(${c},${c},${c})`;
+    };
     if (crack) {
-      this.line("height", pts, width * 1.2, "rgba(45,45,45,0.95)");
+      // A wide soft slope, then a narrow very dark core (reaches the magma).
+      this.line("height", pts, width * 3, grey(205), "multiply");
+      this.line("height", pts, width * 1.6, grey(150), "multiply");
+      this.line("height", pts, width * 0.7, grey(60), "multiply");
     } else {
-      // Multiply, so holding the laser carves the groove deeper.
+      // Holding the laser carves the groove deeper.
       this.line("height", pts, width * 1.2, "rgb(170,170,170)", "multiply");
     }
   }
