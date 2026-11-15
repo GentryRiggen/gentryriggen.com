@@ -6,6 +6,7 @@ import {
   clearDeathLabels,
   deathLabels,
   labelTier,
+  shouldLabel,
 } from "../deathLabels";
 
 const START = 8_000_000_000;
@@ -20,7 +21,8 @@ describe("deathLabels", () => {
     addDeathLabel(500, 0.51, 0.5, START);
     expect(active()).toHaveLength(1);
     expect(active()[0].people).toBe(1500);
-    expect(active()[0].age).toBe(0);
+    expect(active()[0].age).toBeCloseTo(0.1);
+    expect(active()[0].lastHitAge).toBe(0);
   });
 
   it("does not merge after 250 ms or beyond 0.15 rad", () => {
@@ -34,9 +36,10 @@ describe("deathLabels", () => {
     expect(active()).toHaveLength(2);
   });
 
-  it("retires labels after their life and ignores zero deaths", () => {
+  it("retires labels after their life and keeps a zero-death splash", () => {
     addDeathLabel(0, 0.5, 0.5, START);
-    expect(active()).toHaveLength(0);
+    expect(active()).toHaveLength(1);
+    clearDeathLabels();
     addDeathLabel(10, 0.5, 0.5, START);
     advanceDeathLabels(LABEL_SECONDS + 0.01);
     expect(active()).toHaveLength(0);
@@ -59,5 +62,29 @@ describe("deathLabels", () => {
     expect(labelTier(START * 0.01, START)).toBe("big");
     expect(labelTier(START * 0.05, START)).toBe("huge");
     expect(labelTier(5, 0)).toBe("small");
+  });
+
+  it("keeps rising through a held laser's merges and pops once per tier", () => {
+    addDeathLabel(1000, 0.5, 0.5, START);
+    let pops = 0;
+    for (let i = 0; i < 20; i++) {
+      advanceDeathLabels(0.03);
+      const l = active()[0];
+      const before = l.popAge;
+      addDeathLabel(1000, 0.5, 0.5, START);
+      if (l.popAge < before) pops++;
+    }
+    expect(active()).toHaveLength(1);
+    const l = active()[0];
+    expect(l.age).toBeGreaterThan(0.5);
+    expect(l.age).toBeLessThanOrEqual(LABEL_SECONDS * 0.6);
+    expect(pops).toBeLessThanOrEqual(3);
+  });
+
+  it("labels only landed hits while playing", () => {
+    expect(shouldLabel({ ending: undefined }, "playing")).toBe(true);
+    expect(shouldLabel({ ending: "boom" }, "playing")).toBe(false);
+    expect(shouldLabel({}, "ending")).toBe(false);
+    expect(shouldLabel({}, "menu")).toBe(false);
   });
 });

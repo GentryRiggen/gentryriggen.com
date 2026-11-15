@@ -5,6 +5,7 @@ import {
   MAX_LABELS,
   SPLASH_BELOW,
   deathLabelEls,
+  deathLabels,
   labelTier,
   type DeathLabel,
   type LabelTier,
@@ -44,9 +45,16 @@ export function labelOpacity(age: number): number {
   return Math.max(0, 1 - (age - fadeFrom) / (LABEL_SECONDS - fadeFrom));
 }
 
+/** What each pooled node last showed, so unchanged frames write nothing. */
+const paintedVersion: number[] = Array.from({ length: MAX_LABELS }, () => -1);
+const paintedOpacity: number[] = Array.from({ length: MAX_LABELS }, () => -1);
+const paintedX: number[] = Array.from({ length: MAX_LABELS }, () => NaN);
+const paintedY: number[] = Array.from({ length: MAX_LABELS }, () => NaN);
+const paintedScale: number[] = Array.from({ length: MAX_LABELS }, () => NaN);
+
 /**
  * Paints one label at a screen position. Called from the frame loop: it only
- * touches the text and classes when the label changed.
+ * touches the text, classes, opacity and transform when they changed.
  */
 export function paintDeathLabel(
   el: HTMLElement,
@@ -54,23 +62,44 @@ export function paintDeathLabel(
   x: number,
   y: number
 ): void {
+  const slot = Math.max(0, deathLabels.indexOf(label));
   const tier = labelTier(label.people, label.startPopulation);
-  if (el.dataset.version !== String(label.version)) {
-    el.dataset.version = String(label.version);
+  if (paintedVersion[slot] !== label.version) {
+    paintedVersion[slot] = label.version;
     el.textContent = deathLabelText(label.people);
     el.className = TIER_CLASS[tier];
   }
   const t = Math.min(1, label.age / LABEL_SECONDS);
   const rise = RISE_PX * (1 - (1 - t) * (1 - t));
-  const pop = POP[tier] * Math.max(0, 1 - label.age / POP_SECONDS);
-  el.style.transform = `translate3d(${x.toFixed(1)}px,${(y - rise).toFixed(1)}px,0) translate(-50%,-100%) scale(${(1 + pop).toFixed(3)})`;
-  el.style.opacity = String(labelOpacity(label.age));
+  const pop = POP[tier] * Math.max(0, 1 - label.popAge / POP_SECONDS);
+  const px = Math.round(x * 10) / 10;
+  const py = Math.round((y - rise) * 10) / 10;
+  const scale = Math.round((1 + pop) * 1000) / 1000;
+  if (
+    px !== paintedX[slot] ||
+    py !== paintedY[slot] ||
+    scale !== paintedScale[slot]
+  ) {
+    paintedX[slot] = px;
+    paintedY[slot] = py;
+    paintedScale[slot] = scale;
+    el.style.transform = `translate3d(${px}px,${py}px,0) translate(-50%,-100%) scale(${scale})`;
+  }
+  const opacity = labelOpacity(label.age);
+  if (Math.abs(opacity - paintedOpacity[slot]) > 0.01) {
+    paintedOpacity[slot] = opacity;
+    el.style.opacity = String(opacity);
+  }
 }
 
 /** Hides a label node. */
 export function hideDeathLabel(el: HTMLElement): void {
   el.style.opacity = "0";
-  delete el.dataset.version;
+  const slot = deathLabelEls.indexOf(el);
+  if (slot >= 0) {
+    paintedVersion[slot] = -1;
+    paintedOpacity[slot] = -1;
+  }
 }
 
 /**

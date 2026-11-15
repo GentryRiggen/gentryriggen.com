@@ -33,6 +33,7 @@ import DeathLabels from "./ui/DeathLabels";
 import {
   addDeathLabel,
   clearDeathLabels,
+  shouldLabel,
 } from "@/lib/planet-smasher/deathLabels";
 import { DamagePainter } from "./scene/DamagePainter";
 import { laserAim } from "./scene/effects/laserAim";
@@ -133,8 +134,15 @@ export default function PlanetSmasher() {
         .getState()
         .hit(toolId, u, v, undefined, fireId);
       // The ending's kill-everyone is not a hit, so it gets no label.
-      const start = useGameStore.getState().planet?.startPopulation ?? 0;
-      if (!result.ending) addDeathLabel(result.peopleLost, u, v, start);
+      const state = useGameStore.getState();
+      if (shouldLabel(result, "playing")) {
+        addDeathLabel(
+          result.peopleLost,
+          u,
+          v,
+          state.planet?.startPopulation ?? 0
+        );
+      }
       const tool = TOOLS[toolId];
       // The laser hums for as long as it is held, not once per tick.
       if (tool.mode !== "hold") {

@@ -21,14 +21,31 @@ export function labelTier(people: number, startPopulation: number): LabelTier {
   return "huge";
 }
 
+const TIER_ORDER: LabelTier[] = ["small", "medium", "big", "huge"];
+function tierRank(tier: LabelTier): number {
+  return TIER_ORDER.indexOf(tier);
+}
+
+/** Only a landed hit while playing gets a label; the ending's wipe does not. */
+export function shouldLabel(
+  result: { ending?: unknown },
+  phase: string
+): boolean {
+  return phase === "playing" && !result.ending;
+}
+
 export interface DeathLabel {
   active: boolean;
   /** Unit direction of the hit on the planet. */
   dir: Vec3;
   people: number;
   startPopulation: number;
-  /** Seconds since it appeared or last grew. */
+  /** Seconds since it appeared. Drives the rise and the fade. */
   age: number;
+  /** Seconds since it last grew; only the merge window reads it. */
+  lastHitAge: number;
+  /** Seconds since its tier last went up; drives the pop. */
+  popAge: number;
   /** Bumps whenever the text or tier changes, so the DOM updates only then. */
   version: number;
 }
@@ -40,6 +57,8 @@ function blank(): DeathLabel {
     people: 0,
     startPopulation: 1,
     age: 0,
+    lastHitAge: 0,
+    popAge: 0,
     version: 0,
   };
 }
@@ -57,16 +76,22 @@ export function addDeathLabel(
   v: number,
   startPopulation: number
 ): void {
-  if (!(people > 0)) return;
+  if (!(people >= 0)) return;
   const dir = uvToDir(u, v);
   for (const l of deathLabels) {
     if (
       l.active &&
-      l.age <= MERGE_SECONDS &&
+      l.lastHitAge <= MERGE_SECONDS &&
       angularDistance(l.dir, dir) <= MERGE_RADIANS
     ) {
+      const before = labelTier(l.people, l.startPopulation);
       l.people += people;
-      l.age = 0;
+      // Keep a still-growing label readable without restarting its life.
+      l.age = Math.min(l.age, LABEL_SECONDS * 0.6);
+      l.lastHitAge = 0;
+      if (tierRank(labelTier(l.people, l.startPopulation)) > tierRank(before)) {
+        l.popAge = 0;
+      }
       l.version++;
       return;
     }
@@ -82,6 +107,8 @@ export function addDeathLabel(
   slot.people = people;
   slot.startPopulation = startPopulation;
   slot.age = 0;
+  slot.lastHitAge = 0;
+  slot.popAge = 0;
   slot.version++;
 }
 
@@ -90,6 +117,8 @@ export function advanceDeathLabels(dt: number): void {
   for (const l of deathLabels) {
     if (!l.active) continue;
     l.age += dt;
+    l.lastHitAge += dt;
+    l.popAge += dt;
     if (l.age >= LABEL_SECONDS) l.active = false;
   }
 }
