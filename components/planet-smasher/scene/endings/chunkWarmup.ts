@@ -9,7 +9,9 @@ import {
   type WebGLRenderer,
 } from "three";
 import { getChunkSet } from "./chunks";
-import { getBodyChunks } from "./collisionBody";
+import type { PlanetId } from "@/lib/planet-smasher/planets";
+import { loadPlanetTextures } from "../planetTextures";
+import { collisionBody, getBodyChunks } from "./collisionBody";
 
 /** Build the chunk set about this long after the planet appears. */
 export const WARMUP_DELAY_MS = 1500;
@@ -41,7 +43,8 @@ export function innerMaterial(frozen: boolean): MeshStandardMaterial {
  */
 export function scheduleChunkWarmup(
   gl: WebGLRenderer,
-  camera: Camera
+  camera: Camera,
+  getPlanetId?: () => PlanetId
 ): () => void {
   let cancelled = false;
   const timer = setTimeout(() => {
@@ -64,7 +67,14 @@ export function scheduleChunkWarmup(
   // The collision body's chunks are the same for every planet, so the one
   // set covers whichever body comes; cut it in its own idle slice.
   const bodyTimer = setTimeout(() => {
-    if (!cancelled) getBodyChunks();
+    if (cancelled) return;
+    getBodyChunks();
+    // Build the body's texture now (Mars's is a procedural one that costs
+    // ~100 ms) rather than on the tap of the first collision.
+    if (getPlanetId) {
+      // Intended: a failed prefetch just means it loads on the tap instead.
+      loadPlanetTextures(collisionBody(getPlanetId())).catch(() => {});
+    }
   }, WARMUP_DELAY_MS + BODY_WARMUP_DELAY_MS);
   return () => {
     cancelled = true;

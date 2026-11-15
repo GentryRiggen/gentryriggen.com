@@ -1,7 +1,19 @@
 import { PerspectiveCamera, type WebGLRenderer } from "three";
+import { loadPlanetTextures } from "../../planetTextures";
 import { getChunkSet } from "../chunks";
-import { WARMUP_DELAY_MS, scheduleChunkWarmup } from "../chunkWarmup";
+import {
+  BODY_WARMUP_DELAY_MS,
+  WARMUP_DELAY_MS,
+  scheduleChunkWarmup,
+} from "../chunkWarmup";
 
+jest.mock("../../planetTextures", () => ({
+  loadPlanetTextures: jest.fn(() => Promise.resolve({})),
+}));
+jest.mock("../collisionBody", () => ({
+  ...jest.requireActual("../collisionBody"),
+  getBodyChunks: jest.fn(),
+}));
 jest.mock("../chunks", () => ({
   getChunkSet: jest.fn(() => ({
     seeds: [],
@@ -35,5 +47,25 @@ describe("scheduleChunkWarmup", () => {
     cancel();
     jest.advanceTimersByTime(WARMUP_DELAY_MS * 2);
     expect(compileAsync).not.toHaveBeenCalled();
+  });
+
+  it("prefetches the collision body's textures in idle time", () => {
+    const load = loadPlanetTextures as jest.Mock;
+    load.mockClear();
+    const gl = { compileAsync: jest.fn() } as unknown as WebGLRenderer;
+    scheduleChunkWarmup(gl, new PerspectiveCamera(), () => "earth");
+    jest.advanceTimersByTime(WARMUP_DELAY_MS + BODY_WARMUP_DELAY_MS - 1);
+    expect(load).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(load).toHaveBeenCalledWith("mars");
+  });
+
+  it("prefetches Earth when the planet is not Earth", () => {
+    const load = loadPlanetTextures as jest.Mock;
+    load.mockClear();
+    const gl = { compileAsync: jest.fn() } as unknown as WebGLRenderer;
+    scheduleChunkWarmup(gl, new PerspectiveCamera(), () => "mars");
+    jest.advanceTimersByTime(WARMUP_DELAY_MS + BODY_WARMUP_DELAY_MS);
+    expect(load).toHaveBeenCalledWith("earth");
   });
 });
