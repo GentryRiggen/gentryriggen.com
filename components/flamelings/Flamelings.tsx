@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { installTestHooks } from "@/lib/flamelings/testHooks";
 import { releaseLock, useFlamelings } from "@/lib/flamelings/store";
 import { HEARTBEAT_MS } from "@/lib/flamelings/tabLock";
 import GameShell from "@/components/game-kit/GameShell";
+import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
+import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
+import UpdatePill from "@/components/update/UpdatePill";
 import CelebrationCard from "./CelebrationCard";
 import Hatch from "./Hatch";
 import MemoryGrove from "./MemoryGrove";
@@ -25,35 +28,51 @@ export default function Flamelings() {
   const heartbeat = useFlamelings((s) => s.heartbeat);
   const onStorage = useFlamelings((s) => s.onStorage);
 
+  const timers = useRef<{ tick?: number; beat?: number }>({});
+
+  const startTimers = useCallback(() => {
+    window.clearInterval(timers.current.tick);
+    window.clearInterval(timers.current.beat);
+    timers.current.tick = window.setInterval(tick, TICK_MS);
+    timers.current.beat = window.setInterval(heartbeat, HEARTBEAT_MS);
+  }, [tick, heartbeat]);
+  const stopTimers = useCallback(() => {
+    window.clearInterval(timers.current.tick);
+    window.clearInterval(timers.current.beat);
+  }, []);
+
   useEffect(() => {
     const removeHooks = installTestHooks();
     init();
-    const interval = window.setInterval(tick, TICK_MS);
-    const beat = window.setInterval(heartbeat, HEARTBEAT_MS);
-    const onVisible = () => tick();
-    const onHide = () => {
-      tick();
-      releaseLock();
-    };
-    const onShow = (event: PageTransitionEvent) => {
-      if (event.persisted) init();
-    };
+    startTimers();
+    const onPageHide = () => releaseLock();
     const onStore = (event: StorageEvent) => onStorage(event.key);
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("pagehide", onHide);
-    window.addEventListener("pageshow", onShow);
+    window.addEventListener("pagehide", onPageHide);
     window.addEventListener("storage", onStore);
     return () => {
       removeHooks();
-      window.clearInterval(interval);
-      window.clearInterval(beat);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("pagehide", onHide);
-      window.removeEventListener("pageshow", onShow);
+      stopTimers();
+      window.removeEventListener("pagehide", onPageHide);
       window.removeEventListener("storage", onStore);
       releaseLock();
     };
-  }, [init, tick, heartbeat, onStorage]);
+  }, [init, startTimers, stopTimers, onStorage]);
+
+  // Hidden pages stop their timers and save; coming back catches up at once
+  // (an idle iPad fires no other event, so the version poll runs on its own).
+  useVisibilityPause({
+    onPersist: tick,
+    onHidden: stopTimers,
+    onVisible: () => {
+      heartbeat();
+      tick();
+      startTimers();
+    },
+  });
+
+  const { isUpdateReady, update } = useGameUpdate("flamelings", {
+    saveNow: tick,
+  });
 
   return (
     <GameShell
@@ -78,6 +97,15 @@ export default function Flamelings() {
         <MemoryGrove />
       ) : (
         <PetView key={view.petId} petId={view.petId} />
+      )}
+      {isUpdateReady && !locked && (
+        <UpdatePill
+          onUpdate={update}
+          testId="flamelings-update"
+          label="Update ready ✨ — tap to update"
+          className="pointer-events-none fixed inset-x-0 bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4"
+          buttonClassName="pointer-events-auto min-h-16 touch-manipulation rounded-full border-4 border-orange-300 bg-orange-500 px-6 py-3 text-lg font-extrabold text-white shadow-xl active:scale-95"
+        />
       )}
       {ready && !locked && celebration && (
         <CelebrationCard celebration={celebration} />

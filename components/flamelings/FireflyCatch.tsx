@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
 import { FOCUS_RING, PRIMARY_BUTTON } from "./styles";
 
@@ -28,10 +29,25 @@ export default function FireflyCatch({ onDone }: FireflyCatchProps) {
   const [caughtAt, setCaughtAt] = useState<Record<number, number>>({});
   const [nowMs, setNowMs] = useState(0);
   const endsAt = useRef(0);
+  const hiddenAt = useRef<number | null>(null);
+
+  // The clock stops while the page is hidden, so a phone call costs no fireflies.
+  useVisibilityPause({
+    onHidden: () => {
+      hiddenAt.current = Date.now();
+    },
+    onVisible: () => {
+      if (hiddenAt.current !== null) {
+        endsAt.current += Date.now() - hiddenAt.current;
+        hiddenAt.current = null;
+      }
+    },
+  });
 
   useEffect(() => {
     endsAt.current = Date.now() + CATCH_SECONDS * 1000;
     const id = window.setInterval(() => {
+      if (hiddenAt.current !== null) return;
       const remaining = Math.max(
         0,
         Math.ceil((endsAt.current - Date.now()) / 1000)

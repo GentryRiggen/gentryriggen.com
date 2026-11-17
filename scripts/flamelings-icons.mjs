@@ -2,6 +2,10 @@
  * Renders the Flamelings home-screen icons: the ember blob on a night-purple
  * tile, rasterised with sharp into public/flamelings-icons/.
  *
+ * File names carry a version (gameIconPaths in lib/game-kit/metadata.ts): iOS keeps
+ * an icon by URL, so a changed icon needs a new name AND the page's
+ * `iconVersion` bumped.
+ *
  * Usage: node scripts/flamelings-icons.mjs
  */
 import { mkdir } from "node:fs/promises";
@@ -61,10 +65,10 @@ function tile(size, scale) {
 }
 
 const ICONS = [
-  { file: "apple-touch-icon.png", size: 180, scale: 1.0 },
-  { file: "icon-192.png", size: 192, scale: 1.0 },
-  { file: "icon-512.png", size: 512, scale: 1.0 },
-  { file: "icon-512-maskable.png", size: 512, scale: 0.78 },
+  { file: "apple-touch-icon-v1.png", size: 180, scale: 1.0 },
+  { file: "icon-192-v1.png", size: 192, scale: 1.0 },
+  { file: "icon-512-v1.png", size: 512, scale: 1.0 },
+  { file: "icon-512-maskable-v1.png", size: 512, scale: 0.78 },
 ];
 
 await mkdir(OUT_DIR, { recursive: true });

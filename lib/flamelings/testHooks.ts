@@ -4,12 +4,9 @@ import type { Pet } from "./types";
 import { useFlamelings } from "./store";
 import { now } from "./clock";
 
-/**
- * Whether the page exposes its test hooks. On in development and in the e2e
- * build (`NEXT_PUBLIC_E2E=1`), off in the build that ships.
- */
-export const TEST_HOOKS_ENABLED =
-  process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_E2E === "1";
+import { TEST_HOOKS_ENABLED, createTestHooks } from "@/lib/game-kit/testHooks";
+
+export { TEST_HOOKS_ENABLED };
 
 declare global {
   interface Window {
@@ -28,30 +25,34 @@ declare global {
 
 /** Puts the hooks on `window` when enabled. Returns a cleanup function. */
 export function installTestHooks(): () => void {
-  if (!TEST_HOOKS_ENABLED || typeof window === "undefined") return () => {};
-  window.__flamelings = {
-    setNow(ms) {
-      setNow(ms);
-      useFlamelings.getState().tick();
-    },
-    skip(ms) {
-      skip(ms);
-      useFlamelings.getState().tick();
-    },
-    now,
-    state: () => useFlamelings.getState(),
-    patchPet(index, patch) {
-      const { save } = useFlamelings.getState();
-      useFlamelings.setState({
-        save: {
-          ...save,
-          pets: save.pets.map((p, i) => (i === index ? { ...p, ...patch } : p)),
-        },
-      });
-    },
-  };
+  const remove = createTestHooks<NonNullable<Window["__flamelings"]>>(
+    "__flamelings",
+    {
+      setNow(ms) {
+        setNow(ms);
+        useFlamelings.getState().tick();
+      },
+      skip(ms) {
+        skip(ms);
+        useFlamelings.getState().tick();
+      },
+      now,
+      state: () => useFlamelings.getState(),
+      patchPet(index, patch) {
+        const { save } = useFlamelings.getState();
+        useFlamelings.setState({
+          save: {
+            ...save,
+            pets: save.pets.map((p, i) =>
+              i === index ? { ...p, ...patch } : p
+            ),
+          },
+        });
+      },
+    }
+  );
   return () => {
-    delete window.__flamelings;
+    remove();
     resetClock();
   };
 }

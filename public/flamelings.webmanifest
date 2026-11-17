@@ -11,19 +11,19 @@
   "background_color": "#2a1a4a",
   "icons": [
     {
-      "src": "/flamelings-icons/icon-192.png",
+      "src": "/flamelings-icons/icon-192-v1.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/flamelings-icons/icon-512.png",
+      "src": "/flamelings-icons/icon-512-v1.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/flamelings-icons/icon-512-maskable.png",
+      "src": "/flamelings-icons/icon-512-maskable-v1.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { FLAMELINGS_THEME_COLOR } from "@/lib/theme/themeScript";
 import VersionHistory from "@/components/flamelings/VersionHistory";
 
 const description = "What changed in each release of Flamelings.";
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2a1a4a",
+  themeColor: FLAMELINGS_THEME_COLOR,
 };
 
 export default function FlamelingsVersionsPage() {

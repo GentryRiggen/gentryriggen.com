@@ -352,6 +352,24 @@
           ]
         },
         {
+          "source": "/flamelings/version.json",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/flamelings-icons/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
           "source": "/admin",
           "headers": [
             {
