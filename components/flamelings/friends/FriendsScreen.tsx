@@ -332,7 +332,7 @@ function FriendCard({
           type="button"
           onClick={() => setConfirming(true)}
           aria-label={`Remove ${name} from my friends`}
-          className={`absolute right-2 top-3 grid size-12 place-items-center rounded-full bg-[#fff6e6]/80 text-xl shadow-[0_2px_0_#e7c9a3] ${FOCUS_RING}`}
+          className={`absolute right-1.5 top-2.5 grid size-16 place-items-center rounded-full bg-[#fff6e6]/80 text-2xl shadow-[0_2px_0_#e7c9a3] ${FOCUS_RING}`}
         >
           <span aria-hidden="true">🗑️</span>
         </button>

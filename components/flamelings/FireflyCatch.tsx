@@ -90,12 +90,17 @@ export default function FireflyCatch({ onDone }: FireflyCatchProps) {
           </span>
         </p>
         <p
-          className={`${TIMER_CHIP} ${left <= 5 && left > 0 ? "fl-pulse-soft text-[#c0264b]" : ""}`}
+          className={`${TIMER_CHIP} ${left <= 5 && left > 0 ? "fl-pulse-soft" : ""}`}
           role="timer"
           aria-label={`${left} seconds left`}
         >
           <span aria-hidden="true">⏱</span>
-          {left}
+          {/* Its own colour, so the red never loses to the chip's text colour. */}
+          <span
+            className={left <= 5 && left > 0 ? "text-[#c0264b]" : undefined}
+          >
+            {left}
+          </span>
         </p>
       </div>
       {!over &&

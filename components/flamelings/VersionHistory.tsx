@@ -32,7 +32,7 @@ export default function VersionHistory() {
         <header className="flex items-center gap-3 py-2">
           <Link
             href="/flamelings"
-            aria-label="Back to Flamelings"
+            aria-label="← Back to Flamelings"
             className={`${STICKER_BUTTON} size-16 shrink-0`}
           >
             <FlIcon name="back" className="size-8" />

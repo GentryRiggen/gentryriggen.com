@@ -36,7 +36,7 @@ export const JAR_CARD =
   "relative overflow-hidden rounded-[30px] border-2 border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.30))] text-[#3a2340] shadow-[inset_0_0_56px_rgba(255,140,60,.22),0_10px_24px_rgba(58,35,64,.14)] backdrop-blur-[2px] dark:border-[rgba(255,230,200,.22)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.04))] dark:text-[#ffe6c4] dark:shadow-[inset_0_0_60px_rgba(255,140,60,.16),0_10px_24px_rgba(0,0,0,.25)]";
 
 /** The dimmed dusk behind a dialog card. */
-export const DIALOG_BACKDROP = "bg-[#1b1430]/55 backdrop-blur-[2px]";
+export const DIALOG_BACKDROP = "bg-[#1b1430]/55";
 
 /** A tab chip: a cream sticker with an icon; callers add TAB_ON or TAB_OFF. */
 export const TAB_CHIP = `${DISPLAY} flex min-h-16 shrink-0 items-center justify-center gap-2 rounded-full px-4 py-2 text-lg font-semibold transition-transform active:translate-y-[3px] ${FOCUS_RING}`;
