@@ -43,9 +43,15 @@ iconVersion: 1 })` from `@/lib/game-kit/metadata`; render one client
 8. **Updates**: `app/<slug>/version.json/route.ts` (`export const dynamic =
 "force-static"; export const GET = versionRoute(VERSION)`), then
    `useGameUpdate("<slug>", { saveNow })` and `<UpdatePill>` in the root.
+   8b. **Offline play** (only if the game needs it): add the game to
+   `GENERATED_GAME_WORKERS` in `lib/game-kit/serviceWorker/generate.ts`, run
+   `npx tsx scripts/generate-game-sw.ts`, call `useGameServiceWorker("<slug>")`
+   and pass `serviceWorker: true` to `useGameUpdate`; add
+   `e2e/<slug>-offline.spec.ts` (copy `e2e/flamelings-offline.spec.ts`). Never
+   hand-write a worker.
 9. **`firebase.json` headers**: `no-cache` for `/<slug>`, `/<slug>.html`,
    `/<slug>/versions(.html)`, `/<slug>.webmanifest`, `/<slug>/version.json`,
-   `/<slug>-icons/**`, after the generic year-long image rule. Add a test in
+   `/<slug>-icons/**` (and `/<slug>-sw.js` with offline play), after the generic year-long image rule. Add a test in
    `app/__tests__/jimHosting.test.ts` like the Flamelings ones.
 10. **Release plumbing**: `lib/<slug>/version.ts` (`1.0.0`), `changelog.ts`, a
     changelog test, a "`<Name>` releases" section in `CLAUDE.md`, a "What's
