@@ -203,7 +203,7 @@ export default function LogStack({ pet, onDone }: LogStackProps) {
 
       <div className="pointer-events-none absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-1/2 top-[18%] w-[min(88vw,40rem)] -translate-x-1/2">
         <div
-          className="absolute inset-x-0 bottom-0 rounded-2xl bg-stone-600 shadow-lg"
+          className="pointer-events-none absolute inset-x-0 bottom-0 rounded-2xl bg-stone-600 shadow-lg"
           style={{ height: `${SLAB_H}%` }}
         >
           <span

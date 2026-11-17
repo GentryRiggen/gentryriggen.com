@@ -9549,6 +9549,94 @@ html:has(.jim-app) body {
   }
 }
 
+/* ---------- Flamelings: Marshmallow Toast and Log Stack ---------- */
+.fl-mallow-wobble {
+  animation: fl-mallow-wobble 0.4s ease-in-out infinite;
+}
+@keyframes fl-mallow-wobble {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg) scale(1.03);
+  }
+}
+.fl-smoke {
+  animation: fl-smoke 1.1s ease-out infinite;
+}
+@keyframes fl-smoke {
+  0% {
+    transform: translate(-50%, 10px) scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50px) scale(1.5);
+    opacity: 0;
+  }
+}
+.fl-giggle {
+  animation: fl-giggle 0.5s ease-in-out 2;
+}
+@keyframes fl-giggle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(-3deg);
+  }
+  75% {
+    transform: translateY(-10px) rotate(3deg);
+  }
+}
+.fl-log {
+  border-radius: 9999px;
+  background: linear-gradient(#b4742f, #7a4519 70%, #5a3011);
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
+    inset 6px 0 0 #d9a15a,
+    inset -6px 0 0 #d9a15a,
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  will-change: transform;
+}
+.fl-log-drop {
+  animation: fl-log-drop 0.22s ease-in both;
+}
+@keyframes fl-log-drop {
+  0% {
+    transform: translateY(calc(var(--fl-drop, 1) * -100%));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.fl-log-fall {
+  animation: fl-log-fall 0.8s ease-in forwards;
+}
+@keyframes fl-log-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(70vh) rotate(40deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-mallow-wobble,
+  .fl-smoke,
+  .fl-giggle,
+  .fl-log-drop,
+  .fl-log-fall {
+    animation: none !important;
+  }
+  .fl-log-fall {
+    opacity: 0;
+  }
+}
+
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
 @keyframes ms-bob {
   0%,
@@ -10848,93 +10936,5 @@ html:has(.jim-app) body {
 
   .ms-qb-truck {
     transform: translateX(300px);
-  }
-}
-
-/* ---------- Flamelings: Marshmallow Toast and Log Stack ---------- */
-.fl-mallow-wobble {
-  animation: fl-mallow-wobble 0.4s ease-in-out infinite;
-}
-@keyframes fl-mallow-wobble {
-  0%,
-  100% {
-    transform: rotate(-3deg);
-  }
-  50% {
-    transform: rotate(3deg) scale(1.03);
-  }
-}
-.fl-smoke {
-  animation: fl-smoke 1.1s ease-out infinite;
-}
-@keyframes fl-smoke {
-  0% {
-    transform: translate(-50%, 10px) scale(0.6);
-    opacity: 0.9;
-  }
-  100% {
-    transform: translate(-50%, -50px) scale(1.5);
-    opacity: 0;
-  }
-}
-.fl-giggle {
-  animation: fl-giggle 0.5s ease-in-out 2;
-}
-@keyframes fl-giggle {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
-  25% {
-    transform: translateY(-10px) rotate(-3deg);
-  }
-  75% {
-    transform: translateY(-10px) rotate(3deg);
-  }
-}
-.fl-log {
-  border-radius: 9999px;
-  background: linear-gradient(#b4742f, #7a4519 70%, #5a3011);
-  box-shadow:
-    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
-    inset 6px 0 0 #d9a15a,
-    inset -6px 0 0 #d9a15a,
-    0 2px 4px rgba(0, 0, 0, 0.4);
-  will-change: transform;
-}
-.fl-log-drop {
-  animation: fl-log-drop 0.22s ease-in both;
-}
-@keyframes fl-log-drop {
-  0% {
-    transform: translateY(calc(var(--fl-drop, 1) * -100%));
-  }
-  100% {
-    transform: translateY(0);
-  }
-}
-.fl-log-fall {
-  animation: fl-log-fall 0.8s ease-in forwards;
-}
-@keyframes fl-log-fall {
-  0% {
-    transform: translateY(0) rotate(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(70vh) rotate(40deg);
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .fl-mallow-wobble,
-  .fl-smoke,
-  .fl-giggle,
-  .fl-log-drop,
-  .fl-log-fall {
-    animation: none !important;
-  }
-  .fl-log-fall {
-    opacity: 0;
   }
 }
