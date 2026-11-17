@@ -15,6 +15,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-11-18",
+    title: "Grown-up forms and new games",
+    highlights: [
+      "When your flameling gets to level 10 it grows up into a new form, and the form depends on how you looked after it. Mostly feeding and cleaning makes a Cozy flameling, mostly playing makes a Wild one, and lots of petting, emotes and dress-ups makes a Sparkly one",
+      "Cozy flamelings have a warm round glow, floating hearts and rosy cheeks. Wild ones have tall jagged flames, little crackles and bold eyebrows. Sparkly ones shimmer in rainbow colours with twinkling stars",
+      "There is a big grown-up moment with a glow, a spin, a reveal and confetti, and a card that shows the new form's name. The form stays for good and gets even stronger when your flameling reaches Bonfire at level 15",
+      "A flameling that was already level 10 or more gets its form the next time you open the game",
+      "You can see the form next to the level (like Lv 12 · Cozy Blaze) and in the Memory Grove",
+      "Tapping Play now shows three games with big pictures. New: Marshmallow Toast, where you hold to toast a marshmallow over the flame and let go when it is golden, and Log Stack, where you tap to drop logs and build a tall tower on the hearth",
+      "All three games share the same sparkly rounds each morning and evening, and every game still cheers up your flameling and gives it XP",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-11-17",
     title: "Happenings",
