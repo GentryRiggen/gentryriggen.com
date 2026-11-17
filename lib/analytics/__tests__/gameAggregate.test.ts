@@ -166,6 +166,9 @@ describe("summarizeFlamelings", () => {
     fl("fl_happening", { kind: "visitor", done: 0 }),
     fl("fl_happening", { kind: "visitor", done: 1 }),
     fl("fl_happening", { kind: "rain", done: 0 }),
+    fl("fl_friend", { action: "add" }),
+    fl("fl_friend", { action: "add" }),
+    fl("fl_friend", { action: "playdate" }),
   ];
   const summary = summarizeFlamelings(events);
 
@@ -210,6 +213,13 @@ describe("summarizeFlamelings", () => {
       key: "rain · started",
       views: 1,
     });
+  });
+
+  it("counts friend actions", () => {
+    expect(summary.friends).toEqual([
+      { key: "add", views: 2 },
+      { key: "playdate", views: 1 },
+    ]);
   });
 
   it("has empty answers with no events", () => {

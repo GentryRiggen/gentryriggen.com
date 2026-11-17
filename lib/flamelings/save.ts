@@ -14,9 +14,20 @@ import {
 } from "./catalog";
 import { emptySave, MAX_PETS, MAX_SPARKS } from "./actions";
 import { isHappeningKind, variantsOf, type Happening } from "./happenings";
-import { isFormId, MAX_CARE_COUNT, NO_CARE } from "./forms";
-import { SAVE_SCHEMA } from "./types";
-import type { CareStats, Look, Memorial, Pet, SaveData, Worn } from "./types";
+import { FORM_LEVEL, isFormId, MAX_CARE_COUNT, NO_CARE } from "./forms";
+import { isCode, parseFriend } from "./online/card";
+import { isNameId } from "./online/names";
+import { MAX_FRIENDS, SAVE_SCHEMA } from "./types";
+import type {
+  CareStats,
+  Friend,
+  Look,
+  Memorial,
+  Pet,
+  PetOnline,
+  SaveData,
+  Worn,
+} from "./types";
 
 export const SAVE_KEY = "flamelings:v1";
 /** Prefix of the backups of saves that could not be read in full. */
@@ -85,6 +96,59 @@ function parseCare(v: unknown): CareStats {
   };
 }
 
+/**
+ * A save from before care was counted (1.2) has no `care`. A pet still below
+ * the grow-up level then starts with its level's worth of care spread evenly
+ * over the three forms, so what it does from now on decides; one that already
+ * reached the level keeps all zeros and gets the seeded pick.
+ */
+function parseCareOrSeed(v: unknown, level: number): CareStats {
+  if (isObj(v) || level >= FORM_LEVEL) return parseCare(v);
+  return {
+    ...NO_CARE,
+    feeds: level,
+    cleans: level,
+    plays: level,
+    pets: level,
+    styles: 0,
+  };
+}
+
+/** A pet's online side: unknown or invalid codes and cards are dropped. */
+function parseOnline(v: unknown): PetOnline {
+  const o = isObj(v) ? v : {};
+  const code = isCode(o.code) ? o.code : null;
+  const friends: Friend[] = [];
+  for (const entry of Array.isArray(o.friends) ? o.friends : []) {
+    const friend = parseFriend(entry);
+    if (
+      friend &&
+      friend.code !== code &&
+      friends.length < MAX_FRIENDS &&
+      !friends.some((f) => f.code === friend.code)
+    ) {
+      friends.push(friend);
+    }
+  }
+  const played: Record<string, string> = {};
+  const marks = isObj(o.played) ? o.played : {};
+  for (const [friendCode, window] of Object.entries(marks)) {
+    if (
+      friends.some((f) => f.code === friendCode) &&
+      typeof window === "string" &&
+      window.length <= 32
+    ) {
+      played[friendCode] = window;
+    }
+  }
+  return {
+    code,
+    nameId: isNameId(o.nameId) ? o.nameId : null,
+    friends,
+    played,
+  };
+}
+
 function parseName(v: unknown): string {
   const name = typeof v === "string" ? v.trim().slice(0, MAX_NAME_LENGTH) : "";
   return name || DEFAULT_NAME;
@@ -144,6 +208,7 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
     : [];
   const taps = isObj(v.petTaps) ? v.petTaps : {};
   const rounds = isObj(v.sparkRounds) ? v.sparkRounds : {};
+  const credit = isObj(v.careCredit) ? v.careCredit : {};
   return {
     id: v.id,
     name: parseName(v.name),
@@ -171,7 +236,12 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
     },
     happening: parseHappening(v.happening),
     wish: Math.floor(num(v.wish, 0, 100, 0)),
-    care: parseCare(v.care),
+    online: parseOnline(v.online),
+    care: parseCareOrSeed(v.care, Math.floor(num(v.level, 1, 99, 1))),
+    careCredit: {
+      day: typeof credit.day === "string" ? credit.day : "",
+      count: Math.floor(num(credit.count, 0, 999, 0)),
+    },
     // An unknown form (from a newer build) is dropped; a pet of level 10 or
     // more with no form picks one when the game settles it.
     form: isFormId(v.form) ? v.form : null,

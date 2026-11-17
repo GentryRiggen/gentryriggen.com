@@ -27,6 +27,16 @@ import {
 } from "./catalog";
 import { now } from "./clock";
 import type { HappeningKind } from "./happenings";
+import {
+  addFriend as addFriendAction,
+  playdate as playdateAction,
+  receiveVisit as receiveVisitAction,
+  removeFriend as removeFriendAction,
+  setCode as setCodeAction,
+  setOnlineName as setOnlineNameAction,
+  updateFriend as updateFriendAction,
+} from "./online/friendActions";
+import { sameCard } from "./online/card";
 import { playEventSounds } from "./sound";
 import { trackEvents, trackHatch, trackPlayEnd, trackVisit } from "./analytics";
 import { emptySave } from "./actions";
@@ -35,6 +45,7 @@ import { acquire, heldByOther, readLock, release, LOCK_KEY } from "./tabLock";
 import { SAVE_KEY } from "./save";
 import type {
   FormId,
+  Friend,
   Look,
   Outcome,
   Pet,
@@ -55,12 +66,14 @@ export type Celebration =
   | { kind: "gift"; petId: string; key: UnlockKey | null }
   | { kind: "bought"; petId: string; key: UnlockKey }
   | { kind: "relit"; petId: string }
-  | { kind: "evolve"; petId: string; form: FormId };
+  | { kind: "evolve"; petId: string; form: FormId }
+  | { kind: "visited"; petId: string; friend: Friend };
 
 export type View =
   | { screen: "shelf" }
   | { screen: "hatch" }
   | { screen: "grove" }
+  | { screen: "friends"; petId: string; from: "shelf" | "pet" }
   | { screen: "pet"; petId: string };
 
 export function celebrationsFrom(
@@ -159,6 +172,17 @@ export interface FlamelingsStore {
   collectWish(petId: string): PetEvent[];
   /** Puts an owned decor item out in the glade, or away. */
   setDecor(petId: string, id: DecorId, on: boolean): void;
+  /** The pet's card now exists online under this friend code. */
+  registerCode(petId: string, code: string): void;
+  chooseOnlineName(petId: string, nameId: number): void;
+  addFriend(petId: string, friend: Friend): PetEvent[];
+  removeFriend(petId: string, code: string): void;
+  /** Keeps a friend's cached look current (no save when nothing changed). */
+  refreshFriend(petId: string, friend: Friend): void;
+  /** A finished playdate: pays joy and sparks once per friend per window. */
+  playdate(petId: string, code: string): PetEvent[];
+  /** A friend's visit was received (already removed from the inbox): pays and shows a card. */
+  receiveVisit(petId: string, code: string): PetEvent[];
   dismissCelebration(): void;
 }
 
@@ -182,8 +206,21 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     const loaded = loadSaveResult(t);
     canWrite = loaded.writable;
     lastRaw = readRaw();
-    const { save } = settle(loaded.save, t, get().holding);
-    set({ save, clock: t, outdated: loaded.newer });
+    const { save, events } = settle(loaded.save, t, get().holding);
+    // A form picked while settling needs its card and its stat, as in init.
+    const grown = events
+      .filter((e) => e.event.type === "evolve")
+      .map((e) => e.event);
+    const cards = events.flatMap((e) =>
+      e.event.type === "evolve" ? celebrationsFrom(e.petId, [e.event]) : []
+    );
+    trackEvents(grown);
+    set((s) => ({
+      save,
+      clock: t,
+      outdated: loaded.newer,
+      celebrations: [...s.celebrations, ...cards],
+    }));
   }
 
   /**
@@ -359,14 +396,18 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     },
     emote(petId) {
       const pet = petOf(petId);
-      if (pet) commit(petId, emoteAction(pet));
+      if (pet) commit(petId, emoteAction(pet, now()));
     },
     tapPet: (petId) => act(petId, (pet, t) => tapAction(pet, t)),
     openGift: (petId) => act(petId, (pet, t) => openGiftAction(pet, t)),
 
     dress(petId, slot, id) {
       const pet = petOf(petId);
-      if (pet) commit(petId, { pet: dressAction(pet, slot, id), events: [] });
+      if (pet)
+        commit(petId, {
+          pet: dressAction(pet, slot, id, now()),
+          events: [],
+        });
     },
     buy: (petId, key) => act(petId, (pet, t) => buyAction(pet, key, t)),
     markHappeningSeen: (petId) =>
@@ -384,6 +425,46 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     restyle(petId, look) {
       const pet = petOf(petId);
       if (pet) commit(petId, { pet: restyleAction(pet, look), events: [] });
+    },
+
+    registerCode(petId, code) {
+      const pet = petOf(petId);
+      if (pet) commit(petId, { pet: setCodeAction(pet, code), events: [] });
+    },
+    chooseOnlineName(petId, nameId) {
+      const pet = petOf(petId);
+      if (pet) {
+        commit(petId, { pet: setOnlineNameAction(pet, nameId), events: [] });
+      }
+    },
+    addFriend: (petId, friend) =>
+      act(petId, (pet) => addFriendAction(pet, friend)),
+    removeFriend(petId, code) {
+      const pet = petOf(petId);
+      if (pet) {
+        commit(petId, { pet: removeFriendAction(pet, code), events: [] });
+      }
+    },
+    refreshFriend(petId, friend) {
+      const pet = petOf(petId);
+      const known = pet?.online.friends.find((f) => f.code === friend.code);
+      if (!pet || !known || sameCard(known.card, friend.card)) return;
+      commit(petId, {
+        pet: updateFriendAction(pet, friend.code, friend.card),
+        events: [],
+      });
+    },
+    playdate: (petId, code) =>
+      act(petId, (pet, t) => playdateAction(pet, code, t)),
+    receiveVisit(petId, code) {
+      const events = act(petId, (pet) => receiveVisitAction(pet, code));
+      const friend = petOf(petId)?.online.friends.find((f) => f.code === code);
+      if (events.length > 0 && friend) {
+        set((s) => ({
+          celebrations: [...s.celebrations, { kind: "visited", petId, friend }],
+        }));
+      }
+      return events;
     },
 
     dismissCelebration() {

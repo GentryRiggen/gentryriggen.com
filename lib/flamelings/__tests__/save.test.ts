@@ -1,4 +1,5 @@
 import { createPet, hatch, emptySave } from "../actions";
+import { formScores, pickForm } from "../forms";
 import { SAVE_SCHEMA } from "../types";
 import {
   BACKUPS_KEPT,
@@ -7,6 +8,7 @@ import {
   loadSave,
   loadSaveResult,
   parseSave,
+  parseSaveSalvaging,
   writeSave,
 } from "../save";
 
@@ -284,6 +286,137 @@ describe("migrating a 1.0 save", () => {
       expect(save.pets).toHaveLength(1);
       expect(save.pets[0].sparks).toBeGreaterThanOrEqual(0);
       expect(save.pets[0].sparks).toBeLessThanOrEqual(1_000_000);
+    }
+  });
+});
+
+describe("migrating care from a 1.2 save", () => {
+  const withoutCare = (level: number) => {
+    const old = hatch(emptySave(NOW), { id: "a", name: "Pip", look, now: NOW });
+    const { care: _care, ...pet } = old.pets[0];
+    void _care;
+    return { ...old, pets: [{ ...pet, level }] };
+  };
+
+  it("spreads a young pet's level evenly over the forms", () => {
+    const parsed = parseSaveSalvaging(withoutCare(6));
+    expect(formScores(parsed!.save.pets[0].care)).toEqual({
+      cozy: 6,
+      wild: 6,
+      sparkly: 6,
+    });
+  });
+
+  it("leaves a pet that already reached level 10 at zero", () => {
+    const parsed = parseSaveSalvaging(withoutCare(12));
+    expect(parsed!.save.pets[0].care.plays).toBe(0);
+  });
+
+  it("lets later care decide for a seeded pet", () => {
+    const pet = parseSaveSalvaging(withoutCare(6))!.save.pets[0];
+    const care = { ...pet.care, plays: pet.care.plays + 3 };
+    expect(pickForm(care, pet.id)).toBe("wild");
+  });
+});
+
+describe("friends in the save", () => {
+  const card = {
+    look: {
+      colour: "sky",
+      shape: "drop",
+      eyes: "wide",
+      hat: "none",
+      face: "none",
+      neck: "none",
+    },
+    level: 4,
+    stage: "flicker",
+    form: "none",
+    nameId: 2,
+  };
+  const withOnline = (online: unknown) => {
+    const old = hatch(emptySave(NOW), { id: "a", name: "Pip", look, now: NOW });
+    return { ...old, pets: [{ ...old.pets[0], online }] };
+  };
+
+  it("loads a 1.3 save (schema 4, no online) with an empty online side", () => {
+    const old = hatch(emptySave(NOW), { id: "a", name: "Pip", look, now: NOW });
+    const { online: _online, ...pet } = old.pets[0];
+    void _online;
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({ ...old, schema: 4, pets: [pet] })
+    );
+    const result = loadSaveResult(NOW, storage);
+    expect(result.writable).toBe(true);
+    expect(result.newer).toBe(false);
+    expect(result.save.schema).toBe(SAVE_SCHEMA);
+    expect(result.save.pets[0].online).toEqual({
+      code: null,
+      nameId: null,
+      friends: [],
+      played: {},
+    });
+  });
+
+  it("keeps a valid code, friends and playdate marks", () => {
+    const parsed = parseSaveSalvaging(
+      withOnline({
+        code: "ABCDEF",
+        nameId: 5,
+        friends: [{ code: "GHJKMN", card }],
+        played: { GHJKMN: "2026-11-17:am" },
+      })
+    );
+    expect(parsed?.save.pets[0].online).toEqual({
+      code: "ABCDEF",
+      nameId: 5,
+      friends: [{ code: "GHJKMN", card }],
+      played: { GHJKMN: "2026-11-17:am" },
+    });
+  });
+
+  it("drops invalid codes, bad cards, duplicates, yourself and stray marks", () => {
+    const parsed = parseSaveSalvaging(
+      withOnline({
+        code: "abc",
+        nameId: 99999,
+        friends: [
+          { code: "GHJKMN", card },
+          { code: "GHJKMN", card },
+          { code: "ghjkmn", card },
+          { code: "PQRSTU", card: { ...card, stage: "mega" } },
+          { code: "PQRSTV", card: "nope" },
+          null,
+          "x",
+        ],
+        played: { GHJKMN: "w", PQRSTV: "w", GHJKMM: 5 },
+      })
+    );
+    const online = parsed?.save.pets[0].online;
+    expect(parsed?.skipped).toBe(0);
+    expect(online?.code).toBeNull();
+    expect(online?.nameId).toBeNull();
+    expect(online?.friends.map((f) => f.code)).toEqual(["GHJKMN"]);
+    expect(online?.played).toEqual({ GHJKMN: "w" });
+  });
+
+  it("caps friends at 20 and never lists the pet's own code", () => {
+    const friends = Array.from({ length: 30 }, (_, i) => ({
+      code: `AAAAA${"BCDEFGHJKMNPQRSTUVWXYZ23456789"[i]}`,
+      card,
+    }));
+    const parsed = parseSaveSalvaging(withOnline({ code: "AAAAAB", friends }));
+    const list = parsed?.save.pets[0].online.friends ?? [];
+    expect(list).toHaveLength(20);
+    expect(list.some((f) => f.code === "AAAAAB")).toBe(false);
+  });
+
+  it("survives garbage in place of the online side", () => {
+    for (const bad of [null, 5, "x", [], { friends: "no", played: [] }]) {
+      const parsed = parseSaveSalvaging(withOnline(bad));
+      expect(parsed?.save.pets[0].online.friends).toEqual([]);
     }
   });
 });

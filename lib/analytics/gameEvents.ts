@@ -324,6 +324,14 @@ export const GAME_EVENTS = {
       done: { kind: "int", min: 0, max: 1 },
     },
   },
+  /** A friend added, a playdate played, or a friend's visit received. */
+  fl_friend: {
+    site: "flamelings",
+    sample: 1,
+    props: {
+      action: { kind: "enum", values: ["add", "playdate", "visited"] },
+    },
+  },
 } as const satisfies Record<
   string,
   { site: GameSite; sample: number; props: Record<string, PropSpec> }

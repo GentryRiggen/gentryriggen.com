@@ -3,6 +3,7 @@ import { setNow, resetClock } from "@/lib/flamelings/clock";
 import { SAVE_KEY } from "@/lib/flamelings/save";
 import { LOCK_KEY, readLock } from "@/lib/flamelings/tabLock";
 import { createPet } from "@/lib/flamelings/actions";
+import { SAVE_SCHEMA } from "@/lib/flamelings/types";
 import {
   forcedHappening,
   happeningWindowAt,
@@ -288,6 +289,29 @@ describe("two tabs", () => {
     expect(
       JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}").pets
     ).toHaveLength(2);
+  });
+
+  it("shows the grow-up card for a form set by an adopted save", () => {
+    render(<Flamelings />);
+    const pet = createPet({ id: "x", name: "Big", look, now: NOON });
+    window.localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        v: 1,
+        schema: SAVE_SCHEMA,
+        pets: [{ ...pet, level: 10, form: null }],
+        memorial: [],
+        collection: [],
+        updatedAt: NOON + 1,
+      })
+    );
+    act(() => {
+      useFlamelings.getState().takeOver();
+    });
+    expect(useFlamelings.getState().celebrations[0]).toMatchObject({
+      kind: "evolve",
+      petId: "x",
+    });
   });
 
   it("adopts a save announced by a storage event", () => {

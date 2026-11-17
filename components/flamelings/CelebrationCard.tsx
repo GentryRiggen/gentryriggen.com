@@ -6,6 +6,9 @@ import { playSound } from "@/lib/flamelings/sound";
 import { labelOf } from "@/lib/flamelings/status";
 import { useFlamelings, type Celebration } from "@/lib/flamelings/store";
 import Blob from "./Blob";
+import CardBlob from "./friends/CardBlob";
+import { VISITED_REWARD } from "@/lib/flamelings/online/friendActions";
+import { onlineName } from "@/lib/flamelings/online/names";
 import { burstConfetti } from "./confetti";
 import ItemPreview from "./ItemPreview";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
@@ -127,6 +130,61 @@ function EvolutionCard({
   );
 }
 
+/** "<friend> visited!": their pet, and what the visit paid. */
+function VisitedCard({
+  celebration,
+}: {
+  celebration: Extract<Celebration, { kind: "visited" }>;
+}) {
+  const dismiss = useFlamelings((s) => s.dismissCelebration);
+  const petName = useFlamelings(
+    (s) => s.save.pets.find((p) => p.id === celebration.petId)?.name
+  );
+  useEffect(() => {
+    playSound("arrive");
+    void burstConfetti();
+  }, [celebration]);
+  if (!petName) return null;
+  const name = onlineName(celebration.friend.card.nameId);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${name} visited ${petName}!`}
+      data-testid="visited"
+      className={`fixed inset-0 z-40 grid place-items-center bg-black/60 ${SAFE_INSETS}`}
+    >
+      <div className="fl-card-in mx-4 flex w-[calc(100%-2rem)] max-w-md flex-col items-center gap-3 rounded-[2rem] bg-gradient-to-b from-amber-100 to-orange-200 p-6 text-center text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50">
+        <p className="text-4xl font-black">
+          <span aria-hidden="true">🎉 </span>
+          {name} visited!
+        </p>
+        <CardBlob
+          card={celebration.friend.card}
+          mood="excited"
+          className="size-44"
+        />
+        <p
+          role="img"
+          aria-label={`${VISITED_REWARD.sparks} sparks and ${VISITED_REWARD.joy} joy`}
+          className="flex gap-3 text-3xl font-black"
+        >
+          <span aria-hidden="true">✨ +{VISITED_REWARD.sparks}</span>
+          <span aria-hidden="true">😊 +{VISITED_REWARD.joy}</span>
+        </p>
+        <button
+          type="button"
+          autoFocus
+          onClick={dismiss}
+          className={PRIMARY_BUTTON}
+        >
+          Yay!
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /** The "NEW!" level-up, present and relight cards. One shows at a time. */
 export default function CelebrationCard({
   celebration,
@@ -136,13 +194,16 @@ export default function CelebrationCard({
   if (celebration.kind === "evolve") {
     return <EvolutionCard key={celebration.petId} celebration={celebration} />;
   }
+  if (celebration.kind === "visited") {
+    return <VisitedCard celebration={celebration} />;
+  }
   return <PlainCard celebration={celebration} />;
 }
 
 function PlainCard({
   celebration,
 }: {
-  celebration: Exclude<Celebration, { kind: "evolve" }>;
+  celebration: Exclude<Celebration, { kind: "evolve" | "visited" }>;
 }) {
   const dismiss = useFlamelings((s) => s.dismissCelebration);
   const pet = useFlamelings((s) =>

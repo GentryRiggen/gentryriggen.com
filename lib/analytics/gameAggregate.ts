@@ -87,6 +87,7 @@ export interface FlamelingsSummary {
   /** Happenings finished, and each kind as "kind · started" or "kind · done". */
   happeningsDone: number;
   happenings: Count[];
+  friends: Count[];
 }
 
 function average(values: number[]): number | null {
@@ -237,6 +238,7 @@ export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
     purchases: buys.length,
     sparksSpent: buys.reduce((sum, e) => sum + num(e, "price"), 0),
     buys: tally(buys.map((e) => str(e, "kind"))),
+    friends: tally(ofName(events, "fl_friend").map((e) => str(e, "action"))),
     happeningsDone: happenings.filter((e) => num(e, "done") === 1).length,
     happenings: tally(
       happenings.map(

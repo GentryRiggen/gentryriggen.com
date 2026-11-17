@@ -146,6 +146,18 @@ export default function MarshmallowToast({
     }, TICK_MS);
   }, [finish, go]);
 
+  // Only the finger that started the hold can end it (a second touch or a
+  // stray pointer is ignored); losing the capture also lets go.
+  const holdPointer = useRef<number | null>(null);
+  const endHold = useCallback(
+    (pointerId: number) => {
+      if (holdPointer.current !== pointerId) return;
+      holdPointer.current = null;
+      finish();
+    },
+    [finish]
+  );
+
   // Hiding the page lets go of the stick, so nothing burns while away.
   useVisibilityPause({ onHidden: finish });
 
@@ -166,6 +178,13 @@ export default function MarshmallowToast({
           data-testid="toast-hold"
           aria-label="Hold to toast the marshmallow, let go when it is golden"
           onPointerDown={(e) => {
+            if (
+              phaseRef.current === "toasting" &&
+              holdPointer.current !== null
+            ) {
+              return;
+            }
+            holdPointer.current = e.pointerId;
             try {
               e.currentTarget.setPointerCapture(e.pointerId);
             } catch {
@@ -173,8 +192,9 @@ export default function MarshmallowToast({
             }
             press();
           }}
-          onPointerUp={finish}
-          onPointerCancel={finish}
+          onPointerUp={(e) => endHold(e.pointerId)}
+          onPointerCancel={(e) => endHold(e.pointerId)}
+          onLostPointerCapture={(e) => endHold(e.pointerId)}
           onContextMenu={(e) => e.preventDefault()}
           onKeyDown={(e) => {
             if ((e.key === " " || e.key === "Enter") && !e.repeat) press();

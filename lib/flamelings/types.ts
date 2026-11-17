@@ -78,8 +78,46 @@ export interface Pet {
   /** Sparks a shooting-star wish is holding for the morning (0 when none). */
   wish: number;
   care: CareStats;
+  /** Care credit given today for emotes, taps and dress-ups (see CARE_CREDIT_CAP). */
+  careCredit: { day: string; count: number };
   /** The grown-up form picked at level 10; permanent (null before). */
   form: FormId | null;
+  online: PetOnline;
+}
+
+/** The public face of a pet that friends see (what a card online holds). */
+export interface CardLook extends Look {
+  hat: HatId | "none";
+  face: FaceId | "none";
+  neck: NeckId | "none";
+}
+
+export interface PetCard {
+  look: CardLook;
+  level: number;
+  stage: StageId;
+  form: FormId | "none";
+  /** An index into ONLINE_NAMES: a pet's typed name never leaves the device. */
+  nameId: number;
+}
+
+/** A friend as saved on this device: their code and the card last seen. */
+export interface Friend {
+  code: string;
+  card: PetCard;
+}
+
+export const MAX_FRIENDS = 20;
+
+/** A pet's online side: its friend code, chosen online name and friends. */
+export interface PetOnline {
+  /** The friend code once the pet's card exists online. */
+  code: string | null;
+  /** The chosen index into ONLINE_NAMES, or null to use the typed name or a seeded pick. */
+  nameId: number | null;
+  friends: Friend[];
+  /** Per friend code, the check-in window of the last playdate here (for the local reward limit). */
+  played: Record<string, string>;
 }
 
 export interface Memorial {
@@ -96,9 +134,9 @@ export interface Memorial {
 
 /**
  * The shape of the saved data, bumped whenever a build adds fields (1.0 = 1,
- * 1.1 = 2, 1.2 = 3, 1.3 = 4). A build never writes over a save from a newer schema.
+ * 1.1 = 2, 1.2 = 3, 1.3 = 4, 1.4 = 5). A build never writes over a save from a newer schema.
  */
-export const SAVE_SCHEMA = 4;
+export const SAVE_SCHEMA = 5;
 
 export interface SaveData {
   v: 1;
@@ -127,11 +165,22 @@ export type PetEvent =
   | { type: "sparks"; amount: number; source: SparkSource }
   | { type: "buy"; key: UnlockKey; price: number }
   | { type: "happening"; kind: HappeningKind; done: boolean }
-  | { type: "evolve"; form: FormId };
+  | { type: "evolve"; form: FormId }
+  | { type: "friend"; action: FriendAction };
+
+/** What the Friends screen counts: a friend added, a playdate played, a visit received. */
+export type FriendAction = "add" | "playdate" | "visited";
 
 /** Where sparks came from: the screen flies them in from the matching spot. */
 export type SparkSource =
-  "feed" | "clean" | "play" | "gift" | "level" | "relight" | "happening";
+  | "feed"
+  | "clean"
+  | "play"
+  | "gift"
+  | "level"
+  | "relight"
+  | "happening"
+  | "friend";
 
 /** The mini-games in the Play picker; all share one cap of paying rounds. */
 export type PlayGame = "fireflies" | "marshmallow" | "logs";
