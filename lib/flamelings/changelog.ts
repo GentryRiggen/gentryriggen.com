@@ -15,6 +15,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.0.0",
+    date: "2026-11-21",
+    title: "The storybook glow-up",
+    highlights: [
+      "Your flameling now lives in a real campfire! It sits in a ring of stones on crossed logs, with a warm glow on the grass, sparks floating up and a string of twinkly lanterns between the trees",
+      "Flamelings look more alive: rosy cheeks, sparkly eyes, a little wiggle when they breathe and a squish when you tap them",
+      "New buttons and need circles. Fuel, joy and tidy are round gauges at the top now, and a gauge wobbles with a red ! when it needs you. Your flameling also tells you what it wants in a speech bubble",
+      "Your flamelings glow in jars on a wooden shelf when you open the game, and new eggs wait in a twig nest",
+      "Hatching is more exciting: the egg wobbles harder and cracks a bit more with every tap, then bursts with light",
+      "The Shop, Wardrobe, Friends and every card got a cozy new look, with bigger buttons that squish when you press them and panels that slide in",
+      "Everything you had is still here: your flamelings, sparks, clothes, decor and friends",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-11-20",
     title: "Play anywhere, and share a picture",
