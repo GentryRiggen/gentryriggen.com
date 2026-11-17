@@ -183,6 +183,8 @@ export function createResilientAudioContext(
         current ??= build();
         if (!current) return false;
         isUnlocked = true;
+        // A gesture means the page is showing, even if it was hidden before the first tap.
+        isPaused = false;
         void current.ctx.resume?.()?.catch?.(() => undefined);
         noteClock(current.ctx);
         scheduleHealthCheck(current.ctx);
@@ -207,9 +209,9 @@ export function createResilientAudioContext(
     },
 
     resume() {
+      isPaused = false;
       if (!isUnlocked || !current) return;
       const { ctx } = current;
-      isPaused = false;
       noteClock(ctx);
       scheduleHealthCheck(ctx);
       if (ctx.state !== "running") {

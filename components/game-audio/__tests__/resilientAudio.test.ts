@@ -30,6 +30,15 @@ describe("createResilientAudioContext", () => {
     expect(ctxOf().resume).toHaveBeenCalled();
   });
 
+  it("plays on the first tap even if the page was hidden before it", () => {
+    const audio = createResilientAudioContext();
+    audio.pause();
+    audio.resume();
+    audio.pause();
+    expect(audio.wake()).toBe(true);
+    expect(audio.engine()?.ctx).toBe(ctxOf());
+  });
+
   it("sets the audio session before creating the context, ambient by default", () => {
     const order: string[] = [];
     const session = {
