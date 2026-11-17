@@ -1,6 +1,6 @@
 import { COLOURS, EYES, FACES, HATS, NECKS, SHAPES } from "../catalog";
 import { FORMS } from "../forms";
-import { STAGES, stageFor } from "../progress";
+import { stageFor } from "../progress";
 import type { CardLook, Friend, Pet, PetCard } from "../types";
 import { isNameId, onlineNameIdFor } from "./names";
 
@@ -81,10 +81,8 @@ export function parseCard(v: unknown): PetCard | null {
     !Number.isInteger(level) ||
     level < 1 ||
     level > 99 ||
-    !oneOf(
-      STAGES.map((s) => s.id),
-      c.stage
-    ) ||
+    typeof level !== "number" ||
+    c.stage !== stageFor(level).id ||
     !(c.form === "none" || oneOf(FORMS, c.form)) ||
     !isNameId(c.nameId)
   ) {

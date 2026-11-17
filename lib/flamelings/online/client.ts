@@ -101,9 +101,11 @@ function resultOf(status: number, body: unknown): WriteResult {
 async function commitOne(
   path: string,
   fields: Record<string, FirestoreValue>,
-  stamp: "updatedAt" | "createdAt",
+  stamps: readonly ("updatedAt" | "createdAt")[],
   exists: boolean,
-  deps: OnlineDeps
+  deps: OnlineDeps,
+  /** Only these fields change (the rest of the document stays as it is). */
+  mask?: readonly string[]
 ): Promise<WriteResult> {
   try {
     const ready = await prepare(deps);
@@ -115,9 +117,11 @@ async function commitOne(
             name: `projects/${ready.config.projectId}/databases/(default)/documents/${path}`,
             fields,
           },
-          updateTransforms: [
-            { fieldPath: stamp, setToServerValue: "REQUEST_TIME" },
-          ],
+          ...(mask ? { updateMask: { fieldPaths: [...mask] } } : {}),
+          updateTransforms: stamps.map((fieldPath) => ({
+            fieldPath,
+            setToServerValue: "REQUEST_TIME",
+          })),
           currentDocument: { exists },
         },
       ],
@@ -167,7 +171,7 @@ export async function createCard(
   return commitOne(
     `flPets/${code}`,
     cardFields(card, who.uid),
-    "updatedAt",
+    ["updatedAt", "createdAt"],
     false,
     deps
   );
@@ -185,9 +189,11 @@ export async function updateCard(
   return commitOne(
     `flPets/${code}`,
     cardFields(card, who.uid),
-    "updatedAt",
+    ["updatedAt"],
     true,
-    deps
+    deps,
+    // createdAt is set once at create and the rules keep it unchanged.
+    ["uid", "look", "level", "stage", "form", "nameId"]
   );
 }
 
@@ -296,7 +302,7 @@ export async function createVisit(
   return commitOne(
     `flPets/${to}/visits/${from}_${day}`,
     { from: str(from), day: str(day) },
-    "createdAt",
+    ["createdAt"],
     false,
     deps
   );
@@ -308,31 +314,77 @@ export interface Visit {
   from: string;
 }
 
-/** The visits waiting in `code`'s inbox (the owner only), or null on failure. */
+/** Documents read per request, and per inbox scan (a flood is drained over several opens). */
+export const INBOX_PAGE = 250;
+export const INBOX_SCAN_MAX = 1000;
+
+/**
+ * The visits waiting in `code`'s inbox (the owner only), oldest first, up to
+ * `max` of them, or null on failure. Only visits left since the card was
+ * created are listed (the rules require the query to say so). Never throws.
+ */
 export async function listVisits(
   code: string,
-  deps: OnlineDeps = {}
+  deps: OnlineDeps = {},
+  max = INBOX_SCAN_MAX
 ): Promise<Visit[] | null> {
   if (!isCode(code)) return null;
   try {
     const ready = await prepare(deps);
     if (!ready) return null;
-    const response = await ready.fetchImpl(
-      `${ready.base}/flPets/${code}/visits?pageSize=100&key=${ready.config.apiKey}`,
+    const own = await ready.fetchImpl(
+      `${ready.base}/flPets/${code}?key=${ready.config.apiKey}`,
       { method: "GET", headers: ready.headers }
     );
-    if (!response.ok) return null;
-    const json = (await response.json()) as { documents?: unknown } | null;
-    const docs = Array.isArray(json?.documents) ? json.documents : [];
+    if (!own.ok) return null;
+    const created = (
+      (await own.json()) as {
+        fields?: { createdAt?: { timestampValue?: unknown } };
+      } | null
+    )?.fields?.createdAt?.timestampValue;
+    if (typeof created !== "string") return null;
     const visits: Visit[] = [];
-    for (const d of docs as { name?: unknown; fields?: unknown }[]) {
-      const id = typeof d.name === "string" ? d.name.split("/").pop() : null;
-      const fields = d.fields as Record<string, unknown> | undefined;
-      const from = stringOf(fields?.from);
-      const day = stringOf(fields?.day);
-      if (id && isCode(from) && day && id === `${from}_${day}`) {
-        visits.push({ id, from });
+    for (let offset = 0; offset < max; offset += INBOX_PAGE) {
+      const response = await ready.fetchImpl(
+        `${ready.base}/flPets/${code}:runQuery?key=${ready.config.apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...ready.headers },
+          body: JSON.stringify({
+            structuredQuery: {
+              from: [{ collectionId: "visits" }],
+              where: {
+                fieldFilter: {
+                  field: { fieldPath: "createdAt" },
+                  op: "GREATER_THAN_OR_EQUAL",
+                  value: { timestampValue: created },
+                },
+              },
+              orderBy: [
+                { field: { fieldPath: "createdAt" }, direction: "ASCENDING" },
+              ],
+              offset,
+              limit: Math.min(INBOX_PAGE, max - offset),
+            },
+          }),
+        }
+      );
+      if (!response.ok) return offset === 0 ? null : visits;
+      const rows = (await response.json()) as unknown;
+      const docs = (Array.isArray(rows) ? rows : []).flatMap(
+        (r: { document?: { name?: unknown; fields?: unknown } }) =>
+          r.document ? [r.document] : []
+      );
+      for (const d of docs) {
+        const id = typeof d.name === "string" ? d.name.split("/").pop() : null;
+        const fields = d.fields as Record<string, unknown> | undefined;
+        const from = stringOf(fields?.from);
+        const day = stringOf(fields?.day);
+        if (id && isCode(from) && day && id === `${from}_${day}`) {
+          visits.push({ id, from });
+        }
       }
+      if (docs.length < INBOX_PAGE) break;
     }
     return visits;
   } catch {

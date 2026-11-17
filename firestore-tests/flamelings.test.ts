@@ -103,6 +103,10 @@ const look = {
   neck: "none",
 };
 
+/** When seeded cards were created (an hour ago). */
+const CREATED = new Date(Date.now() - 3_600_000);
+
+/** A card for a create (both stamps are the server time). */
 function card(uid: string, patch: Record<string, unknown> = {}) {
   return {
     uid,
@@ -112,8 +116,14 @@ function card(uid: string, patch: Record<string, unknown> = {}) {
     form: "none",
     nameId: 4,
     updatedAt: serverTimestamp(),
+    createdAt: serverTimestamp(),
     ...patch,
   };
+}
+
+/** A card for an update: createdAt must stay what it was. */
+function edit(uid: string, patch: Record<string, unknown> = {}) {
+  return card(uid, { createdAt: CREATED, ...patch });
 }
 
 /** A card written with the rules off, last updated `ageMs` ago. */
@@ -122,6 +132,7 @@ async function seedCard(code: string, uid: string, ageMs = 60_000) {
     await setDoc(doc(ctx.firestore(), `flPets/${code}`), {
       ...card(uid),
       updatedAt: new Date(Date.now() - ageMs),
+      createdAt: CREATED,
     });
   });
 }
@@ -139,6 +150,13 @@ async function seedVisit(to: string, from: string, day = today()) {
 function visit(from: string, patch: Record<string, unknown> = {}) {
   return { from, day: today(), createdAt: serverTimestamp(), ...patch };
 }
+
+/** The query the client uses: visits since the card was created. */
+const inbox = (db: ReturnType<typeof as>, code: string, since = CREATED) =>
+  query(
+    collection(db, `flPets/${code}/visits`),
+    where("createdAt", ">=", since)
+  );
 
 const visitPath = (to: string, from: string, day = today()) =>
   `flPets/${to}/visits/${from}_${day}`;
@@ -201,14 +219,62 @@ describe("flPets cards: create", () => {
     );
   });
 
-  it.each(["uid", "look", "level", "stage", "form", "nameId", "updatedAt"])(
-    "denies a card missing %s",
-    async (field) => {
-      const data: Record<string, unknown> = card(ALICE);
-      delete data[field];
-      await assertFails(setDoc(doc(as(ALICE), `flPets/${A}`), data));
+  it.each([
+    "uid",
+    "look",
+    "level",
+    "stage",
+    "form",
+    "nameId",
+    "updatedAt",
+    "createdAt",
+  ])("denies a card missing %s", async (field) => {
+    const data: Record<string, unknown> = card(ALICE);
+    delete data[field];
+    await assertFails(setDoc(doc(as(ALICE), `flPets/${A}`), data));
+  });
+
+  it("denies a createdAt that is not the server time", async () => {
+    for (const createdAt of [new Date(0), new Date(Date.now() + 3_600_000)]) {
+      await assertFails(
+        setDoc(doc(as(ALICE), `flPets/${A}`), card(ALICE, { createdAt }))
+      );
     }
-  );
+  });
+
+  it.each([
+    [1, "flicker"],
+    [2, "bonfire"],
+    [3, "spark"],
+    [5, "flame"],
+    [6, "flicker"],
+    [9, "blaze"],
+    [10, "flame"],
+    [14, "bonfire"],
+    [15, "blaze"],
+    [99, "flame"],
+  ])("denies level %i with the %s stage", async (level, stage) => {
+    await assertFails(
+      setDoc(doc(as(ALICE), `flPets/${A}`), card(ALICE, { level, stage }))
+    );
+  });
+
+  it.each([
+    [1, "spark"],
+    [2, "spark"],
+    [3, "flicker"],
+    [5, "flicker"],
+    [6, "flame"],
+    [9, "flame"],
+    [10, "blaze"],
+    [14, "blaze"],
+    [15, "bonfire"],
+    [99, "bonfire"],
+  ])("allows level %i as the %s stage", async (level, stage) => {
+    await assertSucceeds(
+      setDoc(doc(as(ALICE), `flPets/${A}`), card(ALICE, { level, stage }))
+    );
+  });
 
   it("denies an updatedAt that is not the server time", async () => {
     await assertFails(
@@ -285,10 +351,10 @@ describe("flPets cards: create", () => {
       ...HATS.map((hat) => ({ look: { ...look, hat } })),
       ...FACES.map((face) => ({ look: { ...look, face } })),
       ...NECKS.map((neck) => ({ look: { ...look, neck } })),
-      ...STAGES.map((s) => ({ stage: s.id })),
+      ...STAGES.map((s) => ({ stage: s.id, level: s.from })),
       ...FORMS.map((form) => ({ form })),
-      { level: 1 },
-      { level: 99 },
+      { level: 1, stage: "spark" },
+      { level: 99, stage: "bonfire" },
       { nameId: 0 },
       { nameId: ONLINE_NAMES.length - 1 },
     ];
@@ -340,33 +406,33 @@ describe("flPets cards: update and delete", () => {
   it("lets the owner update after 10 seconds", async () => {
     await seedCard(A, ALICE, 60_000);
     await assertSucceeds(
-      setDoc(doc(as(ALICE), `flPets/${A}`), card(ALICE, { level: 4 }))
+      setDoc(doc(as(ALICE), `flPets/${A}`), edit(ALICE, { level: 4 }))
     );
   });
 
   it("denies a second update within 10 seconds", async () => {
     await seedCard(A, ALICE, 60_000);
     const db = as(ALICE);
-    await assertSucceeds(setDoc(doc(db, `flPets/${A}`), card(ALICE)));
+    await assertSucceeds(setDoc(doc(db, `flPets/${A}`), edit(ALICE)));
     await assertFails(
-      setDoc(doc(db, `flPets/${A}`), card(ALICE, { level: 5 }))
+      setDoc(doc(db, `flPets/${A}`), edit(ALICE, { level: 5 }))
     );
   });
 
   it("denies an update 5 seconds after the last write", async () => {
     await seedCard(A, ALICE, 5_000);
-    await assertFails(setDoc(doc(as(ALICE), `flPets/${A}`), card(ALICE)));
+    await assertFails(setDoc(doc(as(ALICE), `flPets/${A}`), edit(ALICE)));
   });
 
   it("denies an update by another player", async () => {
     await seedCard(A, ALICE);
-    await assertFails(setDoc(doc(as(EVE), `flPets/${A}`), card(ALICE)));
-    await assertFails(setDoc(doc(as(EVE), `flPets/${A}`), card(EVE)));
+    await assertFails(setDoc(doc(as(EVE), `flPets/${A}`), edit(ALICE)));
+    await assertFails(setDoc(doc(as(EVE), `flPets/${A}`), edit(EVE)));
   });
 
   it("denies an owner changing the uid", async () => {
     await seedCard(A, ALICE);
-    await assertFails(setDoc(doc(as(ALICE), `flPets/${A}`), card(EVE)));
+    await assertFails(setDoc(doc(as(ALICE), `flPets/${A}`), edit(EVE)));
     await assertFails(
       updateDoc(doc(as(ALICE), `flPets/${A}`), {
         uid: EVE,
@@ -378,16 +444,49 @@ describe("flPets cards: update and delete", () => {
   it("denies an update that adds a field or breaks a value", async () => {
     await seedCard(A, ALICE);
     await assertFails(
-      setDoc(doc(as(ALICE), `flPets/${A}`), card(ALICE, { note: "hi" }))
+      setDoc(doc(as(ALICE), `flPets/${A}`), edit(ALICE, { note: "hi" }))
     );
     await assertFails(
-      setDoc(doc(as(ALICE), `flPets/${A}`), card(ALICE, { stage: "huge" }))
+      setDoc(doc(as(ALICE), `flPets/${A}`), edit(ALICE, { stage: "huge" }))
     );
   });
 
   it("denies a signed-out update", async () => {
     await seedCard(A, ALICE);
-    await assertFails(setDoc(doc(signedOut(), `flPets/${A}`), card(ALICE)));
+    await assertFails(setDoc(doc(signedOut(), `flPets/${A}`), edit(ALICE)));
+  });
+
+  it("denies an update that changes createdAt", async () => {
+    await seedCard(A, ALICE);
+    for (const createdAt of [serverTimestamp(), new Date(0)]) {
+      await assertFails(
+        setDoc(doc(as(ALICE), `flPets/${A}`), edit(ALICE, { createdAt }))
+      );
+    }
+    await assertFails(
+      updateDoc(doc(as(ALICE), `flPets/${A}`), {
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it("allows a masked update that leaves createdAt as stored", async () => {
+    await seedCard(A, ALICE);
+    await assertSucceeds(
+      updateDoc(doc(as(ALICE), `flPets/${A}`), {
+        level: 6,
+        stage: "flame",
+        updatedAt: serverTimestamp(),
+      })
+    );
+  });
+
+  it("denies an update that breaks the stage for the level", async () => {
+    await seedCard(A, ALICE);
+    await assertFails(
+      setDoc(doc(as(ALICE), `flPets/${A}`), edit(ALICE, { level: 20 }))
+    );
   });
 
   it("lets only the owner delete", async () => {
@@ -531,28 +630,53 @@ describe("visits: inbox", () => {
   it("lets the owner get, list and delete their inbox", async () => {
     const db = as(ALICE);
     await assertSucceeds(getDoc(doc(db, visitPath(A, B))));
-    const snap = await assertSucceeds(
-      getDocs(collection(db, `flPets/${A}/visits`))
-    );
+    const snap = await assertSucceeds(getDocs(inbox(db, A)));
     expect(snap.size).toBe(1);
     await assertSucceeds(deleteDoc(doc(db, visitPath(A, B))));
   });
 
   it("denies reading someone else's inbox", async () => {
     await assertFails(getDoc(doc(as(EVE), visitPath(A, B))));
+    await assertFails(getDocs(inbox(as(EVE), A)));
+    await assertFails(getDocs(inbox(as(BOB), A)));
     await assertFails(getDocs(collection(as(EVE), `flPets/${A}/visits`)));
-    await assertFails(getDocs(collection(as(BOB), `flPets/${A}/visits`)));
   });
 
   it("denies a signed-out read", async () => {
     await assertFails(getDoc(doc(signedOut(), visitPath(A, B))));
-    await assertFails(getDocs(collection(signedOut(), `flPets/${A}/visits`)));
+    await assertFails(getDocs(inbox(signedOut(), A)));
   });
 
   it("denies deleting someone else's visit (even the sender's own)", async () => {
     await assertFails(deleteDoc(doc(as(EVE), visitPath(A, B))));
     await assertFails(deleteDoc(doc(as(BOB), visitPath(A, B))));
     await assertFails(deleteDoc(doc(signedOut(), visitPath(A, B))));
+  });
+
+  it("denies an unfiltered list even for the owner", async () => {
+    await assertFails(getDocs(collection(as(ALICE), `flPets/${A}/visits`)));
+    await assertFails(
+      getDocs(inbox(as(ALICE), A, new Date(CREATED.getTime() - 86_400_000)))
+    );
+  });
+
+  it("denies a re-created card's new owner the visits a previous owner left", async () => {
+    // Alice's card is deleted, then Eve claims the same code.
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await deleteDoc(doc(ctx.firestore(), `flPets/${A}`));
+    });
+    const eve = as(EVE);
+    await assertSucceeds(setDoc(doc(eve, `flPets/${A}`), card(EVE)));
+    await assertFails(getDoc(doc(eve, visitPath(A, B))));
+    await assertFails(deleteDoc(doc(eve, visitPath(A, B))));
+    await assertFails(getDocs(collection(eve, `flPets/${A}/visits`)));
+    // Filtering from her own card's creation shows nothing of Alice's.
+    const mine = await getDoc(doc(eve, `flPets/${A}`));
+    const since = mine.data()?.createdAt.toDate() as Date;
+    const snap = await assertSucceeds(getDocs(inbox(eve, A, since)));
+    expect(snap.size).toBe(0);
+    // Asking for the older visits is refused.
+    await assertFails(getDocs(inbox(eve, A, CREATED)));
   });
 
   it("denies the owner of a deleted card reading old visits", async () => {
@@ -607,7 +731,9 @@ describe("the REST client against the rules", () => {
   it("creates, reads, updates a card and runs a playdate through the rules", async () => {
     expect(await createCard(A, pet, deps(ALICE))).toBe("ok");
     expect(await createCard(A, pet, deps(EVE))).not.toBe("ok");
-    expect(await createCard(B, { ...pet, level: 2 }, deps(BOB))).toBe("ok");
+    expect(
+      await createCard(B, { ...pet, level: 2, stage: "spark" }, deps(BOB))
+    ).toBe("ok");
 
     const found = await getCard(A, deps(BOB));
     expect(found).toEqual({ kind: "found", card: pet });

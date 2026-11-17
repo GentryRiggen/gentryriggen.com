@@ -105,6 +105,8 @@ export async function finishPlaydate(
 let collecting = false;
 /** Opening the game or coming back checks the inbox at most this often. */
 export const COLLECT_EVERY_MS = 60_000;
+/** Visits from non-friends deleted per pet per run. */
+export const STRANGER_DELETES_PER_RUN = 200;
 
 /**
  * Reads each coded pet's inbox. A visit from a friend pays and shows a card;
@@ -127,10 +129,25 @@ export async function collectVisits(force = false): Promise<void> {
       );
     for (const { id, code } of coded) {
       if (!isCode(code)) continue;
-      const visits = await listVisits(code, deps);
-      for (const visit of (visits ?? []).slice(0, 25)) {
+      const visits = (await listVisits(code, deps)) ?? [];
+      const known = (): Set<string> =>
+        new Set(
+          useFlamelings
+            .getState()
+            .save.pets.find((p) => p.id === id)
+            ?.online.friends.map((f) => f.code) ?? []
+        );
+      // Friends first, so a flood from strangers cannot bury a real visit.
+      const friends = known();
+      const fromFriends = visits.filter((v) => friends.has(v.from));
+      const strangers = visits.filter((v) => !friends.has(v.from));
+      for (const visit of fromFriends) {
         const gone = await deleteVisit(code, visit.id, deps);
         if (gone) useFlamelings.getState().receiveVisit(id, visit.from);
+      }
+      // A flood is cleared over a few opens, not all at once.
+      for (const visit of strangers.slice(0, STRANGER_DELETES_PER_RUN)) {
+        await deleteVisit(code, visit.id, deps);
       }
     }
   } finally {

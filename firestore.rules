@@ -608,7 +608,7 @@ service cloud.firestore {
     // flPets/{code}: a pet's public card, so friends can see its look. The
     // code is 6 characters from a 31-letter alphabet (no 0 O 1 I L). A card
     // holds only closed enums, small numbers and an index into the name list
-    // (nameId, never a typed name); `uid` is the owner's anonymous uid, who
+    // (nameId, never a typed name); `createdAt` is set once at create; `uid` is the owner's anonymous uid, who
     // alone may change or delete it. Cards can be read one at a time by a
     // signed-in player (so a code is the only way to see one) but never
     // listed. flPets/{code}/visits/{from_day} is the playdate inbox: anyone
@@ -636,12 +636,13 @@ service cloud.firestore {
 
     function validFlCard() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['uid', 'look', 'level', 'stage', 'form', 'nameId', 'updatedAt'])
-        && d.keys().hasAll(['uid', 'look', 'level', 'stage', 'form', 'nameId', 'updatedAt'])
+      return d.keys().hasOnly(['uid', 'look', 'level', 'stage', 'form', 'nameId', 'updatedAt', 'createdAt'])
+        && d.keys().hasAll(['uid', 'look', 'level', 'stage', 'form', 'nameId', 'updatedAt', 'createdAt'])
         && d.uid is string
         && validFlLook(d.look)
         && d.level is int && d.level >= 1 && d.level <= 99
         && d.stage in ['spark', 'flicker', 'flame', 'blaze', 'bonfire']
+        && d.stage == (d.level >= 15 ? 'bonfire' : d.level >= 10 ? 'blaze' : d.level >= 6 ? 'flame' : d.level >= 3 ? 'flicker' : 'spark')
         && d.form in ['none', 'cozy', 'wild', 'sparkly']
         && d.nameId is int && d.nameId >= 0 && d.nameId < 150
         && d.updatedAt == request.time;
@@ -656,11 +657,13 @@ service cloud.firestore {
       allow list: if false;
       allow create: if flCode(code)
         && isPlayer(request.resource.data.uid)
-        && validFlCard();
+        && validFlCard()
+        && request.resource.data.createdAt == request.time;
       allow update: if flCode(code)
         && isPlayer(resource.data.uid)
         && request.resource.data.uid == resource.data.uid
         && validFlCard()
+        && request.resource.data.createdAt == resource.data.createdAt
         && request.time > resource.data.updatedAt + duration.value(10, 's');
       allow delete: if isPlayer(resource.data.uid);
 
@@ -676,7 +679,11 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time
           && isPlayer(flCardOwner(request.resource.data.from))
           && exists(/databases/$(database)/documents/flPets/$(code));
-        allow get, list, delete: if isPlayer(flCardOwner(code));
+        // Only visits left since the card was created: a re-created card's
+        // owner cannot read what a previous owner left. A list must filter
+        // `createdAt >= <the card's createdAt>` to be allowed.
+        allow get, list, delete: if isPlayer(flCardOwner(code))
+          && resource.data.createdAt >= get(/databases/$(database)/documents/flPets/$(code)).data.createdAt;
         allow update: if false;
       }
     }

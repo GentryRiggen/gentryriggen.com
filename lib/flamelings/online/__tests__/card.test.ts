@@ -100,6 +100,26 @@ describe("parseCard and parseFriend", () => {
     expect(parseCard({ ...good, ...patch })).toBeNull();
   });
 
+  it.each([
+    [1, "spark"],
+    [2, "spark"],
+    [3, "flicker"],
+    [5, "flicker"],
+    [6, "flame"],
+    [9, "flame"],
+    [10, "blaze"],
+    [14, "blaze"],
+    [15, "bonfire"],
+    [99, "bonfire"],
+  ])("accepts level %i only as the %s stage", (level, stage) => {
+    expect(parseCard({ ...good, level, stage })).not.toBeNull();
+    for (const other of ["spark", "flicker", "flame", "blaze", "bonfire"]) {
+      if (other !== stage) {
+        expect(parseCard({ ...good, level, stage: other })).toBeNull();
+      }
+    }
+  });
+
   it("rejects non-objects", () => {
     expect(parseCard(null)).toBeNull();
     expect(parseCard("x")).toBeNull();

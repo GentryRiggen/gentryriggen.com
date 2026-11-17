@@ -34,6 +34,21 @@ describe("firestore.rules stays in sync with the Flamelings catalog", () => {
     expect(enumIn("d.form")).toEqual(["none", ...FORMS]);
   });
 
+  it("derives the stage from the level with the catalog's bands", () => {
+    const line = rules.match(/d\.stage == \((.*)\)\n/);
+    expect(line).not.toBeNull();
+    const bands = [
+      ...(line?.[1] ?? "").matchAll(/d\.level >= (\d+) \? '(\w+)'/g),
+    ];
+    expect(bands.map((m) => [Number(m[1]), m[2]])).toEqual(
+      [...STAGES]
+        .reverse()
+        .filter((s) => s.from > 1)
+        .map((s) => [s.from, s.id])
+    );
+    expect(line?.[1].endsWith(`: '${STAGES[0].id}'`)).toBe(true);
+  });
+
   it("bounds the level by MAX_LEVEL", () => {
     expect(rules).toContain(
       `d.level is int && d.level >= 1 && d.level <= ${MAX_LEVEL}`

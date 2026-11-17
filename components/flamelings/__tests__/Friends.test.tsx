@@ -208,7 +208,7 @@ describe("a friend on the list", () => {
       online: {
         code: null,
         nameId: null,
-        friends: [{ code: FRIEND, card: { ...FRIEND_CARD, level: 2 } }],
+        friends: [{ code: FRIEND, card: { ...FRIEND_CARD, level: 7 } }],
         played: {},
       },
     });

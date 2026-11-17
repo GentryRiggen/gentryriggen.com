@@ -75,16 +75,29 @@ describe("createCard and updateCard", () => {
     ).toEqual(["colour", "eyes", "face", "hat", "neck", "shape"]);
     expect(write.updateTransforms).toEqual([
       { fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" },
+      { fieldPath: "createdAt", setToServerValue: "REQUEST_TIME" },
     ]);
+    expect(write.updateMask).toBeUndefined();
     expect(write.currentDocument).toEqual({ exists: false });
   });
 
   it("requires the card to exist for an update", async () => {
     const fetchImpl = jest.fn().mockResolvedValue(reply(200));
     expect(await updateCard("ABCDEF", card, deps(fetchImpl))).toBe("ok");
-    expect(wire(fetchImpl.mock.calls[0]).currentDocument).toEqual({
-      exists: true,
-    });
+    const write = wire(fetchImpl.mock.calls[0]);
+    expect(write.currentDocument).toEqual({ exists: true });
+    // createdAt stays as it was: it is neither masked in nor stamped again.
+    expect(write.updateMask.fieldPaths.sort()).toEqual([
+      "form",
+      "level",
+      "look",
+      "nameId",
+      "stage",
+      "uid",
+    ]);
+    expect(write.updateTransforms).toEqual([
+      { fieldPath: "updatedAt", setToServerValue: "REQUEST_TIME" },
+    ]);
   });
 
   it("tells a refusal, a conflict and an outage apart", async () => {
@@ -268,35 +281,81 @@ describe("visits", () => {
     expect(utcDay(Date.UTC(2026, 0, 1, 23, 59))).toBe("2026-01-01");
   });
 
-  it("lists the inbox and keeps only well-formed visits", async () => {
-    const entry = (id: string, from: string, day: string) => ({
+  const CREATED = "2026-11-17T11:00:00Z";
+  const own = reply(200, {
+    fields: { createdAt: { timestampValue: CREATED } },
+  });
+  const row = (id: string, from: string, day: string) => ({
+    document: {
       name: `projects/proj/databases/(default)/documents/flPets/ME/visits/${id}`,
       fields: { from: { stringValue: from }, day: { stringValue: day } },
-    });
-    const fetchImpl = jest.fn().mockResolvedValue(
-      reply(200, {
-        documents: [
-          entry("AAAAAA_2026-11-17", "AAAAAA", "2026-11-17"),
-          entry("wrong-id", "BBBBBB", "2026-11-17"),
-          entry("bbbbbb_2026-11-17", "bbbbbb", "2026-11-17"),
-          { name: "x" },
-        ],
-      })
-    );
+    },
+  });
+
+  it("lists the inbox with a query that starts at the card's creation, keeping only well-formed visits", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(own)
+      .mockResolvedValueOnce(
+        reply(200, [
+          row("AAAAAA_2026-11-17", "AAAAAA", "2026-11-17"),
+          row("wrong-id", "BBBBBB", "2026-11-17"),
+          row("bbbbbb_2026-11-17", "bbbbbb", "2026-11-17"),
+          {},
+        ])
+      );
     expect(await listVisits("ABCDEF", deps(fetchImpl))).toEqual([
       { id: "AAAAAA_2026-11-17", from: "AAAAAA" },
     ]);
-    expect(fetchImpl.mock.calls[0][0]).toContain(
-      "/documents/flPets/ABCDEF/visits?"
+    expect(fetchImpl.mock.calls[1][0]).toContain(
+      "/documents/flPets/ABCDEF:runQuery"
     );
+    const query = JSON.parse(fetchImpl.mock.calls[1][1].body).structuredQuery;
+    expect(query.from).toEqual([{ collectionId: "visits" }]);
+    expect(query.where.fieldFilter).toEqual({
+      field: { fieldPath: "createdAt" },
+      op: "GREATER_THAN_OR_EQUAL",
+      value: { timestampValue: CREATED },
+    });
   });
 
-  it("lists nothing on an empty inbox and null on failure", async () => {
-    expect(
-      await listVisits("ABCDEF", deps(jest.fn().mockResolvedValue(reply(200))))
-    ).toEqual([]);
+  it("pages through a big inbox, up to the scan cap", async () => {
+    const page = (n: number, offset: number) =>
+      reply(
+        200,
+        Array.from({ length: n }, (_, i) =>
+          row(`AAAAAA_2026-01-${String(offset + i)}`, "AAAAAA", "x")
+        )
+      );
+    const calls: number[] = [];
+    const fetchImpl = jest.fn(async (url: string, init?: RequestInit) => {
+      if (!String(url).includes(":runQuery")) return own;
+      const q = JSON.parse(init!.body as string).structuredQuery;
+      calls.push(q.offset);
+      return page(q.limit, q.offset);
+    });
+    await listVisits("ABCDEF", deps(fetchImpl as unknown as jest.Mock), 600);
+    expect(calls).toEqual([0, 250, 500]);
+  });
+
+  it("stops paging at a short page", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(own)
+      .mockResolvedValueOnce(reply(200, [{}]));
+    expect(await listVisits("ABCDEF", deps(fetchImpl))).toEqual([]);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("is null on failure or when the card has no createdAt", async () => {
     expect(
       await listVisits("ABCDEF", deps(jest.fn().mockResolvedValue(reply(403))))
+    ).toBeNull();
+    expect(
+      await listVisits(
+        "ABCDEF",
+        deps(jest.fn().mockResolvedValue(reply(200, { fields: {} })))
+      )
     ).toBeNull();
     expect(
       await listVisits(

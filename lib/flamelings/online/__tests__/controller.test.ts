@@ -85,7 +85,7 @@ describe("friends", () => {
   it("keeps a friend's cached look current", async () => {
     backend.putCard(FRIEND, FRIEND_CARD);
     addFriend("p", { code: FRIEND, card: FRIEND_CARD });
-    backend.putCard(FRIEND, { ...FRIEND_CARD, level: 11 });
+    backend.putCard(FRIEND, { ...FRIEND_CARD, level: 11, stage: "blaze" });
     await refreshFriends("p");
     expect(pet().online.friends[0].card.level).toBe(11);
   });
@@ -142,6 +142,25 @@ describe("a playdate and visits", () => {
     expect(pet().sparks).toBe(sparks);
     expect(backend.hasVisit(mine, STRANGER)).toBe(false);
     expect(useFlamelings.getState().celebrations).toEqual([]);
+  });
+
+  it("finds a friend's visit buried last in a 300-visit flood, and drains the flood over opens", async () => {
+    const mine = pet().online.code as string;
+    const letters = "BCDEFGHJKMNPQRSTUVWXYZ23456789";
+    for (let i = 0; i < 300; i++) {
+      const from = `S${letters[i % 30]}${letters[Math.floor(i / 30) % 30]}AAA`;
+      backend.putVisit(mine, from, "2026-11-17", i);
+    }
+    backend.putVisit(mine, FRIEND, "2026-11-17", 5000);
+    const sparks = pet().sparks;
+    await collectVisits(true);
+    expect(pet().sparks).toBe(sparks + 5);
+    expect(backend.hasVisit(mine, FRIEND)).toBe(false);
+    const left = () =>
+      [...backend.docs.keys()].filter((k) => k.includes("/visits/")).length;
+    expect(left()).toBe(100);
+    await collectVisits(true);
+    expect(left()).toBe(0);
   });
 
   it("pays nothing when the visit cannot be deleted", async () => {
