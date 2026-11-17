@@ -1,10 +1,11 @@
 import { useId } from "react";
 import type { EmoteId } from "@/lib/flamelings/catalog";
-import type { StageId } from "@/lib/flamelings/types";
+import type { FormId, StageId } from "@/lib/flamelings/types";
 import type { Mood } from "@/lib/flamelings/sim";
 import type { Look, Worn } from "@/lib/flamelings/types";
 import Accessories, { AccessoriesBack } from "./Accessories";
 import EmoteFx from "./EmoteFx";
+import { FormBack, FormFront, FormTips } from "./FormFx";
 
 export interface BlobProps {
   look: Look;
@@ -12,6 +13,8 @@ export interface BlobProps {
   /** Growth stage: sets the scale and the embers. Defaults to full size. */
   stage?: StageId;
   worn?: Worn;
+  /** The grown-up form (from level 10), drawn on top of the look. */
+  form?: FormId | null;
   /** 0 (healthy) to 4 (nearly out): how faded the pet looks. */
   fade?: number;
   emote?: EmoteId | null;
@@ -33,6 +36,7 @@ export default function Blob({
   mood,
   stage = "bonfire",
   worn = NO_WORN,
+  form = null,
   fade = 0,
   emote = null,
   emoteKey = 0,
@@ -42,10 +46,12 @@ export default function Blob({
   const id = useId().replace(/:/g, "");
   const goo = `fl-goo-${id}`;
   const fill = `fl-fill-${id}`;
+  const halo = `fl-halo-${id}`;
   return (
     <div
       className={`fl-pet relative ${className}`}
       data-stage={stage}
+      data-form={form ?? undefined}
       data-mood={mood}
       data-fade={fade}
       data-emote={emote ?? undefined}
@@ -58,6 +64,7 @@ export default function Blob({
         data-colour={look.colour}
         data-shape={look.shape}
         data-eyes={look.eyes}
+        data-form={form ?? undefined}
         data-mood={mood}
         data-fade={fade}
       >
@@ -88,6 +95,7 @@ export default function Blob({
         </defs>
         <g className="fl-all">
           <g className="fl-droop">
+            <FormBack form={form} gradientId={halo} />
             <AccessoriesBack neck={worn.neck} />
             <g filter={`url(#${goo})`} fill={`url(#${fill})`}>
               <circle className="fl-body" cx="60" cy="78" r="30" />
@@ -98,6 +106,7 @@ export default function Blob({
               <circle className="fl-lick fl-lick-2" cx="46" cy="54" r="8" />
               <circle className="fl-lick fl-lick-3" cx="74" cy="54" r="8" />
               <circle className="fl-lick fl-lick-4" cx="64" cy="50" r="6" />
+              <FormTips form={form} />
             </g>
             <ellipse className="fl-core" cx="60" cy="95" rx="16" ry="7" />
             <g className="fl-eyes">
@@ -127,6 +136,7 @@ export default function Blob({
             <path className="fl-brow fl-brow-l" d="M43 66 L56 62" />
             <path className="fl-brow fl-brow-r" d="M64 62 L77 66" />
             <path className="fl-mouth fl-mouth-sad" d="M54 91 Q60 86 66 91" />
+            <FormFront form={form} />
             <Accessories hat={worn.hat} face={worn.face} neck={worn.neck} />
           </g>
         </g>

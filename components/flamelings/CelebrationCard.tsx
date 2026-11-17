@@ -1,6 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { parseUnlockKey } from "@/lib/flamelings/catalog";
-import { STAGES } from "@/lib/flamelings/progress";
+import { FORM_INFO } from "@/lib/flamelings/forms";
+import { STAGES, stageFor } from "@/lib/flamelings/progress";
+import { playSound } from "@/lib/flamelings/sound";
 import { labelOf } from "@/lib/flamelings/status";
 import { useFlamelings, type Celebration } from "@/lib/flamelings/store";
 import Blob from "./Blob";
@@ -21,11 +23,126 @@ const KIND_WORD: Record<string, string> = {
   decor: "decoration",
 };
 
+/** How long the glow-out and the spin last before the reveal. */
+const GLOW_MS = 1300;
+const SPIN_MS = 1200;
+
+function reducedMotion(): boolean {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The big grown-up moment: the pet glows out, spins, then the new form is
+ * revealed with confetti, a sound and a name card. Reduced motion goes
+ * straight to the reveal.
+ */
+function EvolutionCard({
+  celebration,
+}: {
+  celebration: Extract<Celebration, { kind: "evolve" }>;
+}) {
+  const dismiss = useFlamelings((s) => s.dismissCelebration);
+  const pet = useFlamelings((s) =>
+    s.save.pets.find((p) => p.id === celebration.petId)
+  );
+  const [phase, setPhase] = useState<"glow" | "spin" | "reveal">(() =>
+    reducedMotion() ? "reveal" : "glow"
+  );
+  useEffect(() => {
+    if (phase === "reveal") {
+      playSound("evolve");
+      void burstConfetti({ particleCount: 160, originY: 0.5 });
+      return;
+    }
+    const id = window.setTimeout(
+      () => setPhase(phase === "glow" ? "spin" : "reveal"),
+      phase === "glow" ? GLOW_MS : SPIN_MS
+    );
+    return () => window.clearTimeout(id);
+  }, [phase]);
+  if (!pet) return null;
+  const info = FORM_INFO[celebration.form];
+  const revealed = phase === "reveal";
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${pet.name} grew up!`}
+      data-testid="evolution"
+      data-phase={phase}
+      className={`fixed inset-0 z-40 grid place-items-center overflow-hidden bg-black/75 p-5 ${SAFE_INSETS}`}
+    >
+      <div className="flex w-full max-w-md flex-col items-center gap-3 text-center text-amber-50">
+        <p className="text-4xl font-black drop-shadow-lg">
+          {revealed ? `${pet.name} grew up!` : "Something is happening..."}
+        </p>
+        <div className="relative grid size-72 place-items-center sm:size-80">
+          <span
+            aria-hidden="true"
+            className={`fl-evo-glow pointer-events-none absolute inset-0 rounded-full ${
+              phase === "glow" ? "fl-evo-glow-out" : ""
+            } ${phase === "spin" ? "fl-evo-glow-full" : ""} ${
+              revealed ? "fl-evo-flash" : ""
+            }`}
+          />
+          <div className={phase === "spin" ? "fl-evo-spin" : ""}>
+            <Blob
+              look={pet.look}
+              worn={pet.worn}
+              form={revealed ? celebration.form : null}
+              mood={revealed ? "excited" : "happy"}
+              stage={stageFor(pet.level).id}
+              className="size-60 sm:size-64"
+            />
+          </div>
+        </div>
+        {revealed && (
+          <div
+            data-testid="evolution-name"
+            className="fl-card-in flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-b from-amber-100 to-orange-200 px-8 py-4 text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50"
+          >
+            <span aria-hidden="true" className="text-6xl">
+              {info.glyph}
+            </span>
+            <span className="text-3xl font-black">{info.name} Blaze</span>
+            <span className="text-base font-bold opacity-80">{info.blurb}</span>
+          </div>
+        )}
+        {revealed && (
+          <button
+            type="button"
+            autoFocus
+            onClick={dismiss}
+            className={PRIMARY_BUTTON}
+          >
+            Yay!
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** The "NEW!" level-up, present and relight cards. One shows at a time. */
 export default function CelebrationCard({
   celebration,
 }: {
   celebration: Celebration;
+}) {
+  if (celebration.kind === "evolve") {
+    return <EvolutionCard key={celebration.petId} celebration={celebration} />;
+  }
+  return <PlainCard celebration={celebration} />;
+}
+
+function PlainCard({
+  celebration,
+}: {
+  celebration: Exclude<Celebration, { kind: "evolve" }>;
 }) {
   const dismiss = useFlamelings((s) => s.dismissCelebration);
   const pet = useFlamelings((s) =>

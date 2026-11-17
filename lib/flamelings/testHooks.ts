@@ -4,6 +4,7 @@ import type { Pet } from "./types";
 import { useFlamelings } from "./store";
 import { forcedHappening, type HappeningKind } from "./happenings";
 import { now } from "./clock";
+import { resetPlayTuning, tunePlay, playTuning } from "./playTuning";
 
 import { TEST_HOOKS_ENABLED, createTestHooks } from "@/lib/game-kit/testHooks";
 
@@ -28,6 +29,11 @@ declare global {
       ): void;
       /** Marks every pet's happening for this window as done (no intro cards). */
       quietHappenings(): void;
+      /**
+       * Scales the mini-games' speed: `toast` above 1 toasts faster, `logs`
+       * near 0 holds the swinging log still (so a tap lands dead on).
+       */
+      tunePlay(speeds: Partial<typeof playTuning>): void;
     };
   }
 }
@@ -76,6 +82,7 @@ export function installTestHooks(): () => void {
         // Settling saves it, so a reload shows the same happening.
         useFlamelings.getState().tick();
       },
+      tunePlay: tunePlay,
       patchPet(index, patch) {
         const { save } = useFlamelings.getState();
         useFlamelings.setState({
@@ -92,5 +99,6 @@ export function installTestHooks(): () => void {
   return () => {
     remove();
     resetClock();
+    resetPlayTuning();
   };
 }

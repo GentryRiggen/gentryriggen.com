@@ -80,8 +80,6 @@ export function soundsForEvents(events: readonly PetEvent[]): SoundName[] {
       if (event.action === "pet") sounds.add("chirp");
       if (event.action === "clean") sounds.add("pip");
       if (event.action === "gift") sounds.add("unwrap");
-    } else if (event.type === "evolve") {
-      sounds.add("evolve");
     } else if (event.type === "levelUp") {
       sounds.add("sparkle");
     } else if (event.type === "unlock") {
