@@ -189,13 +189,17 @@ describe("Flamelings", () => {
         },
       });
     });
+    const before = useFlamelings.getState().save.pets[0];
     expect(screen.getByTestId("happening-intro")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("happening-go"));
     expect(screen.queryByTestId("happening-intro")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /came to visit/ }));
     expect(useFlamelings.getState().save.pets[0].happening?.done).toBe(true);
     const pet = useFlamelings.getState().save.pets[0];
-    expect(pet.sparks > 0 || pet.unlocked.length > 13).toBe(true);
+    // The present is random: sparks or a still-locked item.
+    expect(
+      pet.sparks > before.sparks || pet.unlocked.length > before.unlocked.length
+    ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Back to the shelf" }));
     expect(screen.queryByTestId("happening-bubble")).toBeNull();
   });
