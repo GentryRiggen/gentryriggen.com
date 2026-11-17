@@ -13,181 +13,182 @@ import { emptySave, MAX_PETS } from "./actions";
 import type { Look, Memorial, Pet, SaveData, Worn } from "./types";
 
 export const SAVE_KEY = "flamelings:v1";
-export const CORRUPT_KEY = "flamelings:v1:corrupt";
+/** Prefix of the backups of saves that could not be read in full. */
+export const CORRUPT_PREFIX = "flamelings:v1:corrupt";
+const BACKUP_INDEX_KEY = `${CORRUPT_PREFIX}:index`;
+export const BACKUPS_KEPT = 3;
+const DEFAULT_NAME = "Flameling";
 
 type Json = Record<string, unknown>;
 
 const isObj = (v: unknown): v is Json =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
-function num(v: unknown, lo: number, hi: number): number | null {
+function num(v: unknown, lo: number, hi: number, fallback: number): number {
   return typeof v === "number" && Number.isFinite(v)
     ? Math.min(hi, Math.max(lo, v))
-    : null;
+    : fallback;
 }
 
-function oneOf<T extends string>(v: unknown, list: readonly T[]): T | null {
+function oneOf<T extends string>(
+  v: unknown,
+  list: readonly T[],
+  fallback: T
+): T {
+  return typeof v === "string" && (list as readonly string[]).includes(v)
+    ? (v as T)
+    : fallback;
+}
+
+/** An item id this build does not know is dropped (null), not fatal. */
+function slot<T extends string>(v: unknown, list: readonly T[]): T | null {
   return typeof v === "string" && (list as readonly string[]).includes(v)
     ? (v as T)
     : null;
 }
 
-function parseLook(v: unknown): Look | null {
-  if (!isObj(v)) return null;
-  const colour = oneOf(v.colour, COLOURS);
-  const shape = oneOf(v.shape, SHAPES);
-  const eyes = oneOf(v.eyes, EYES);
-  return colour && shape && eyes ? { colour, shape, eyes } : null;
+function parseLook(v: unknown): Look {
+  const o = isObj(v) ? v : {};
+  return {
+    colour: oneOf(o.colour, COLOURS, "ember"),
+    shape: oneOf(o.shape, SHAPES, "flame"),
+    eyes: oneOf(o.eyes, EYES, "round"),
+  };
 }
 
-function parseWorn(v: unknown): Worn | null {
+function parseWorn(v: unknown): Worn {
+  const o = isObj(v) ? v : {};
+  return {
+    hat: slot(o.hat, HATS),
+    face: slot(o.face, FACES),
+    neck: slot(o.neck, NECKS),
+  };
+}
+
+function parseName(v: unknown): string {
+  const name = typeof v === "string" ? v.trim().slice(0, MAX_NAME_LENGTH) : "";
+  return name || DEFAULT_NAME;
+}
+
+/** A pet with every bad field defaulted, or null if it has no usable id. */
+function parsePet(v: unknown, fallbackTime: number): Pet | null {
   if (!isObj(v)) return null;
-  const slot = <T extends string>(x: unknown, list: readonly T[]) =>
-    x === null || x === undefined ? null : oneOf(x, list);
-  const hat = slot(v.hat, HATS);
-  const face = slot(v.face, FACES);
-  const neck = slot(v.neck, NECKS);
-  if (
-    (v.hat != null && hat === null) ||
-    (v.face != null && face === null) ||
-    (v.neck != null && neck === null)
-  ) {
+  if (typeof v.id !== "string" || v.id.length === 0 || v.id.length > 64) {
     return null;
   }
-  return { hat, face, neck };
-}
-
-function parseName(v: unknown): string | null {
-  return typeof v === "string" && v.trim().length > 0
-    ? v.trim().slice(0, MAX_NAME_LENGTH)
-    : null;
-}
-
-function parsePet(v: unknown): Pet | null {
-  if (!isObj(v)) return null;
-  const look = parseLook(v.look);
-  const worn = parseWorn(v.worn);
-  const name = parseName(v.name);
-  const fuel = num(v.fuel, 0, 100);
-  const joy = num(v.joy, 0, 100);
-  const glow = num(v.glow, 0, 100);
-  const ash = num(v.ash, 0, 4);
-  const ashHours = num(v.ashHours, 0, 4);
-  const level = num(v.level, 1, 99);
-  const xp = num(v.xp, 0, 1e9);
-  const bornAt = num(v.bornAt, 0, 1e15);
-  const tickedAt = num(v.tickedAt, 0, 1e15);
-  const state = oneOf(v.state, ["alive", "ember"] as const);
-  if (
-    typeof v.id !== "string" ||
-    v.id.length === 0 ||
-    v.id.length > 64 ||
-    !look ||
-    !worn ||
-    !name ||
-    state === null ||
-    fuel === null ||
-    joy === null ||
-    glow === null ||
-    ash === null ||
-    ashHours === null ||
-    level === null ||
-    xp === null ||
-    bornAt === null ||
-    tickedAt === null ||
-    !Array.isArray(v.unlocked)
-  ) {
-    return null;
-  }
-  const emberAt = v.emberAt === null ? null : num(v.emberAt, 0, 1e15);
-  if (state === "ember" && emberAt === null) return null;
-  const relightFeeds = num(v.relightFeeds ?? 0, 0, 2) ?? 0;
-  const unlocked = [...new Set(v.unlocked.filter(isUnlockKey))] as UnlockKey[];
+  const bornAt = num(v.bornAt, 0, 1e15, fallbackTime);
+  const tickedAt = num(v.tickedAt, 0, 1e15, bornAt);
+  const emberRaw = typeof v.emberAt === "number" ? v.emberAt : null;
+  const state = oneOf(v.state, ["alive", "ember"] as const, "alive");
+  const emberAt =
+    state === "ember"
+      ? num(emberRaw, 0, 1e15, tickedAt)
+      : emberRaw === null
+        ? null
+        : num(emberRaw, 0, 1e15, tickedAt);
+  const unlocked = Array.isArray(v.unlocked)
+    ? ([...new Set(v.unlocked.filter(isUnlockKey))] as UnlockKey[])
+    : [];
   const taps = isObj(v.petTaps) ? v.petTaps : {};
   return {
     id: v.id,
-    name,
-    look,
-    worn,
-    fuel,
-    joy,
-    glow,
-    ash: Math.floor(ash),
-    ashHours,
+    name: parseName(v.name),
+    look: parseLook(v.look),
+    worn: parseWorn(v.worn),
+    fuel: num(v.fuel, 0, 100, 100),
+    joy: num(v.joy, 0, 100, 100),
+    glow: num(v.glow, 0, 100, state === "ember" ? 0 : 100),
+    ash: Math.floor(num(v.ash, 0, 4, 0)),
+    ashHours: num(v.ashHours, 0, 4, 0),
     state,
-    emberAt,
-    relightFeeds: Math.floor(relightFeeds),
-    level: Math.floor(level),
-    xp,
+    emberAt: state === "ember" ? emberAt : null,
+    relightFeeds: Math.floor(num(v.relightFeeds, 0, 2, 0)),
+    level: Math.floor(num(v.level, 1, 99, 1)),
+    xp: num(v.xp, 0, 1e9, 0),
     unlocked,
     bornAt,
     tickedAt,
     giftWindow: typeof v.giftWindow === "string" ? v.giftWindow : null,
     petTaps: {
       day: typeof taps.day === "string" ? taps.day : "",
-      count: Math.floor(num(taps.count, 0, 999) ?? 0),
+      count: Math.floor(num(taps.count, 0, 999, 0)),
     },
   };
 }
 
-function parseMemorial(v: unknown): Memorial | null {
-  if (!isObj(v)) return null;
-  const look = parseLook(v.look);
-  const worn = parseWorn(v.worn);
-  const name = parseName(v.name);
-  const level = num(v.level, 1, 99);
-  const daysLived = num(v.daysLived, 0, 1e6);
-  const bornAt = num(v.bornAt, 0, 1e15);
-  const outAt = num(v.outAt, 0, 1e15);
-  if (
-    typeof v.id !== "string" ||
-    !look ||
-    !worn ||
-    !name ||
-    level === null ||
-    daysLived === null ||
-    bornAt === null ||
-    outAt === null
-  ) {
-    return null;
-  }
+function parseMemorial(v: unknown, fallbackTime: number): Memorial | null {
+  if (!isObj(v) || typeof v.id !== "string" || v.id.length === 0) return null;
+  const bornAt = num(v.bornAt, 0, 1e15, fallbackTime);
   return {
     id: v.id,
-    name,
-    look,
-    worn,
-    level: Math.floor(level),
-    daysLived: Math.floor(daysLived),
+    name: parseName(v.name),
+    look: parseLook(v.look),
+    worn: parseWorn(v.worn),
+    level: Math.floor(num(v.level, 1, 99, 1)),
+    daysLived: Math.floor(num(v.daysLived, 0, 1e6, 0)),
     bornAt,
-    outAt,
+    outAt: num(v.outAt, 0, 1e15, bornAt),
   };
 }
 
-/** A save the game can trust, or null when anything is off. */
-export function parseSave(raw: unknown): SaveData | null {
+export interface ParsedSave {
+  save: SaveData;
+  /** Entries that could not be salvaged (so the original should be backed up). */
+  skipped: number;
+}
+
+/**
+ * Reads a save, salvaging what it can: an unknown hat, colour, emote or food
+ * is dropped or defaulted and the pet is kept; only a pet with no usable id
+ * is skipped. Null only when the save as a whole is unreadable.
+ */
+export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
   if (!isObj(raw) || raw.v !== 1) return null;
-  if (!Array.isArray(raw.pets) || !Array.isArray(raw.memorial)) return null;
-  if (raw.pets.length > MAX_PETS) return null;
-  const pets = raw.pets.map(parsePet);
-  const memorial = raw.memorial.map(parseMemorial);
-  if (pets.includes(null) || memorial.includes(null)) return null;
-  const ids = new Set((pets as Pet[]).map((p) => p.id));
-  if (ids.size !== pets.length) return null;
+  if (!Array.isArray(raw.pets)) return null;
+  const updatedAt = num(raw.updatedAt, 0, 1e15, 0);
+  let skipped = 0;
+  const seen = new Set<string>();
+  const pets: Pet[] = [];
+  for (const entry of raw.pets) {
+    const pet = parsePet(entry, updatedAt);
+    if (!pet || seen.has(pet.id) || pets.length >= MAX_PETS) {
+      skipped += 1;
+      continue;
+    }
+    seen.add(pet.id);
+    pets.push(pet);
+  }
+  const memorial: Memorial[] = [];
+  for (const entry of Array.isArray(raw.memorial) ? raw.memorial : []) {
+    const m = parseMemorial(entry, updatedAt);
+    if (m) memorial.push(m);
+    else skipped += 1;
+  }
   const collection = Array.isArray(raw.collection)
     ? [...new Set(raw.collection.filter(isUnlockKey))]
     : [];
   return {
-    v: 1,
-    pets: pets as Pet[],
-    memorial: memorial as Memorial[],
-    collection: collection as UnlockKey[],
-    updatedAt: num(raw.updatedAt, 0, 1e15) ?? 0,
+    save: {
+      v: 1,
+      pets,
+      memorial,
+      collection: collection as UnlockKey[],
+      updatedAt,
+    },
+    skipped,
   };
 }
 
-interface StorageLike {
+/** A save the game can trust as-is, or null when anything had to be dropped. */
+export function parseSave(raw: unknown): SaveData | null {
+  const parsed = parseSaveSalvaging(raw);
+  return parsed && parsed.skipped === 0 ? parsed.save : null;
+}
+
+export interface StorageLike {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
+  removeItem?(key: string): void;
 }
 
 function browserStorage(): StorageLike | null {
@@ -198,35 +199,92 @@ function browserStorage(): StorageLike | null {
   }
 }
 
+/** Saves `text` in a new timestamped slot and keeps only the last three. */
+function backUp(text: string, storage: StorageLike, nowMs: number): boolean {
+  try {
+    let index: string[] = [];
+    try {
+      const stored = JSON.parse(storage.getItem(BACKUP_INDEX_KEY) ?? "[]");
+      if (Array.isArray(stored)) {
+        index = stored.filter((k): k is string => typeof k === "string");
+      }
+    } catch {
+      index = [];
+    }
+    let key = `${CORRUPT_PREFIX}:${nowMs}`;
+    for (let n = 1; index.includes(key); n++) {
+      key = `${CORRUPT_PREFIX}:${nowMs}-${n}`;
+    }
+    storage.setItem(key, text);
+    index.push(key);
+    while (index.length > BACKUPS_KEPT) {
+      const old = index.shift();
+      if (old) storage.removeItem?.(old);
+    }
+    storage.setItem(BACKUP_INDEX_KEY, JSON.stringify(index));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export interface LoadResult {
+  save: SaveData;
+  /**
+   * False when the stored save could not be read, or could not be backed up
+   * before being replaced: the game then plays on but must not overwrite it.
+   */
+  writable: boolean;
+}
+
 /**
- * Reads the save. A missing or unreadable save starts fresh; a corrupt one is
- * first copied to `flamelings:v1:corrupt` so nothing is lost. Never throws.
+ * Reads the save. A missing save starts fresh. A damaged one is salvaged pet
+ * by pet; the original is first backed up to a timestamped slot, and if that
+ * fails (or storage cannot be read at all) the main key is left alone.
+ * Never throws.
  */
+export function loadSaveResult(
+  now: number,
+  storage: StorageLike | null = browserStorage()
+): LoadResult {
+  if (!storage) return { save: emptySave(now), writable: false };
+  let text: string | null;
+  try {
+    text = storage.getItem(SAVE_KEY);
+  } catch {
+    return { save: emptySave(now), writable: false };
+  }
+  if (text === null) return { save: emptySave(now), writable: true };
+  let parsed: ParsedSave | null = null;
+  try {
+    parsed = parseSaveSalvaging(JSON.parse(text));
+  } catch {
+    parsed = null;
+  }
+  if (parsed && parsed.skipped === 0) {
+    return { save: parsed.save, writable: true };
+  }
+  const saved = backUp(text, storage, now);
+  return { save: parsed?.save ?? emptySave(now), writable: saved };
+}
+
+/** Like {@link loadSaveResult}, for callers that only need the save. */
 export function loadSave(
   now: number,
   storage: StorageLike | null = browserStorage()
 ): SaveData {
-  if (!storage) return emptySave(now);
-  let text: string | null = null;
+  return loadSaveResult(now, storage).save;
+}
+
+/** The raw stored text (null when absent or unreadable). */
+export function readRaw(
+  storage: StorageLike | null = browserStorage()
+): string | null {
   try {
-    text = storage.getItem(SAVE_KEY);
+    return storage ? storage.getItem(SAVE_KEY) : null;
   } catch {
-    return emptySave(now);
+    return null;
   }
-  if (text === null) return emptySave(now);
-  let parsed: SaveData | null = null;
-  try {
-    parsed = parseSave(JSON.parse(text));
-  } catch {
-    parsed = null;
-  }
-  if (parsed) return parsed;
-  try {
-    storage.setItem(CORRUPT_KEY, text);
-  } catch {
-    // Nothing more can be done.
-  }
-  return emptySave(now);
 }
 
 /** Writes the save; returns false (never throws) if storage refuses. */
