@@ -304,6 +304,7 @@ export default function GamesView({ events }: GamesViewProps) {
             rows={flame.happenings}
             unit="events"
           />
+          <BreakdownList title="Friends" rows={flame.friends} unit="actions" />
         </div>
       </Section>
     </div>
