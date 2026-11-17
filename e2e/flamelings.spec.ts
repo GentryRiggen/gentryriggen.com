@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { FRIEND_CODE, mockFriends } from "./support/friendsMock";
+import { FLAMELINGS_VERSION } from "../lib/flamelings/version";
 
 const DAY_MS = 24 * 3_600_000;
 
@@ -386,7 +387,7 @@ test("the home-screen files are served", async ({ page, request }) => {
     (await request.get("/flamelings-icons/apple-touch-icon-v1.png")).ok()
   ).toBe(true);
   const version = await request.get("/flamelings/version.json");
-  expect((await version.json()).version).toBe("1.4.0");
+  expect((await version.json()).version).toBe(FLAMELINGS_VERSION);
 });
 
 test("a level 9 pet grows up into the form its care earned", async ({
