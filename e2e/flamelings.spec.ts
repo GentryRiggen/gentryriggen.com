@@ -131,3 +131,42 @@ test("the pet sleeps at night", async ({ page }) => {
   ).toBeDisabled();
   await expect(page.getByRole("button", { name: "Wardrobe" })).toBeEnabled();
 });
+
+test("a second tab does not save over the first, and can take over", async ({
+  browser,
+}) => {
+  const context = await browser.newContext();
+  const first = await context.newPage();
+  await open(first);
+  await hatch(first, "Solo");
+
+  const second = await context.newPage();
+  await second.goto("/flamelings");
+  await expect(second.getByTestId("tab-locked")).toBeVisible();
+  await expect(second.getByTestId("hatch-new")).toBeHidden();
+
+  await second.getByRole("button", { name: "Play here" }).click();
+  await expect(second.getByTestId("pet-card")).toContainText("Solo");
+  // The first tab notices and steps aside instead of fighting for the save.
+  await expect(first.getByTestId("tab-locked")).toBeVisible({
+    timeout: 10_000,
+  });
+  await context.close();
+});
+
+test("the home-screen files are served", async ({ page, request }) => {
+  await page.goto("/flamelings");
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute(
+    "href",
+    "/flamelings.webmanifest"
+  );
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
+    "href",
+    "/flamelings-icons/apple-touch-icon-v1.png"
+  );
+  expect(
+    (await request.get("/flamelings-icons/apple-touch-icon-v1.png")).ok()
+  ).toBe(true);
+  const version = await request.get("/flamelings/version.json");
+  expect((await version.json()).version).toBe("1.0.0");
+});

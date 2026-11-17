@@ -78,7 +78,7 @@ export default function FireflyCatch({ onDone }: FireflyCatchProps) {
       role="dialog"
       aria-modal="true"
       aria-label="Firefly Catch"
-      className={`fixed inset-0 z-20 overflow-hidden bg-indigo-950/55 ${SAFE_INSETS}`}
+      className={`fixed inset-0 z-20 overflow-hidden bg-indigo-950/90 backdrop-blur-sm ${SAFE_INSETS}`}
     >
       <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         <p className="rounded-2xl bg-black/50 px-4 py-2 text-2xl font-black text-white">
