@@ -9249,6 +9249,54 @@ html:has(.jim-app) body {
   }
 }
 
+/* ---- Flamelings friends and playdates ---- */
+.fl-walk-in {
+  animation: fl-walk-in 1.8s cubic-bezier(0.25, 0.8, 0.4, 1) both;
+}
+@keyframes fl-walk-in {
+  0% {
+    transform: translateX(70vw);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+.fl-hint-bob {
+  animation: fl-hint-bob 0.9s ease-in-out infinite;
+}
+@keyframes fl-hint-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.fl-heart-rise {
+  animation: fl-heart-rise 1.4s ease-out both;
+}
+@keyframes fl-heart-rise {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) scale(1.2);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-walk-in,
+  .fl-hint-bob,
+  .fl-heart-rise {
+    animation: none !important;
+  }
+}
+
 /* ---- Flamelings sparks and shop ---- */
 .fl-spark-pop {
   display: inline-grid;

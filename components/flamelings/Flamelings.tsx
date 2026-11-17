@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useRef } from "react";
 import { installTestHooks } from "@/lib/flamelings/testHooks";
 import { releaseLock, useFlamelings } from "@/lib/flamelings/store";
+import {
+  collectVisits,
+  startOnlineSync,
+} from "@/lib/flamelings/online/controller";
 import { HEARTBEAT_MS } from "@/lib/flamelings/tabLock";
 import GameShell from "@/components/game-kit/GameShell";
 import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
@@ -10,6 +14,7 @@ import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
 import { useFlamelingsSound } from "./audio/useFlamelingsSound";
 import CelebrationCard from "./CelebrationCard";
+import FriendsScreen from "./friends/FriendsScreen";
 import Hatch from "./Hatch";
 import MemoryGrove from "./MemoryGrove";
 import PetView from "./PetView";
@@ -31,6 +36,14 @@ export default function Flamelings() {
   const onStorage = useFlamelings((s) => s.onStorage);
 
   useFlamelingsSound();
+
+  // Friends: keep each coded pet's card current, and pick up playdate visits
+  // when the game opens (pets without a code never touch the network).
+  useEffect(() => {
+    if (!ready || locked) return;
+    void collectVisits();
+    return startOnlineSync();
+  }, [ready, locked]);
 
   const timers = useRef<{ tick?: number; beat?: number }>({});
 
@@ -68,6 +81,7 @@ export default function Flamelings() {
     onPersist: tick,
     onHidden: stopTimers,
     onVisible: () => {
+      void collectVisits();
       heartbeat();
       tick();
       startTimers();
@@ -99,6 +113,8 @@ export default function Flamelings() {
         <Hatch />
       ) : view.screen === "grove" ? (
         <MemoryGrove />
+      ) : view.screen === "friends" ? (
+        <FriendsScreen key={view.petId} petId={view.petId} from={view.from} />
       ) : (
         <PetView key={view.petId} petId={view.petId} />
       )}

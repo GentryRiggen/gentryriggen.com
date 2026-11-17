@@ -31,46 +31,57 @@ function PetCard({ pet, nowMs }: { pet: Pet; nowMs: number }) {
   const stage = stageFor(pet.level);
   const waiting = hasHappeningWaiting(pet, nowMs, isAwake(nowMs));
   return (
-    <button
-      type="button"
-      onClick={() => go({ screen: "pet", petId: pet.id })}
-      aria-label={`${pet.name}, level ${pet.level} ${stageTitle(pet.level, pet.form)}${glyph ? `, ${glyph.label}` : ""}${waiting ? ", something is happening" : ""}`}
-      data-testid="pet-card"
-      className={`${CARD} relative flex flex-col items-center gap-1 p-4 pb-3 transition-transform active:scale-95 ${FOCUS_RING}`}
-    >
-      {waiting && (
-        <span
-          aria-hidden="true"
-          data-testid="happening-bubble"
-          className="fl-bob absolute left-3 top-3 grid size-11 place-items-center rounded-full bg-red-500 text-2xl font-black text-white shadow"
-        >
-          !
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => go({ screen: "pet", petId: pet.id })}
+        aria-label={`${pet.name}, level ${pet.level} ${stageTitle(pet.level, pet.form)}${glyph ? `, ${glyph.label}` : ""}${waiting ? ", something is happening" : ""}`}
+        data-testid="pet-card"
+        className={`${CARD} relative flex flex-col items-center gap-1 p-4 pb-3 transition-transform active:scale-95 ${FOCUS_RING}`}
+      >
+        {waiting && (
+          <span
+            aria-hidden="true"
+            data-testid="happening-bubble"
+            className="fl-bob absolute left-3 top-3 grid size-11 place-items-center rounded-full bg-red-500 text-2xl font-black text-white shadow"
+          >
+            !
+          </span>
+        )}
+        {glyph && (
+          <span
+            aria-hidden="true"
+            className="absolute right-3 top-3 grid size-11 place-items-center rounded-full bg-white text-2xl shadow dark:bg-slate-700"
+          >
+            {glyph.glyph}
+          </span>
+        )}
+        <Blob
+          look={pet.look}
+          worn={pet.worn}
+          form={pet.form}
+          fade={fadeLevel(pet)}
+          mood={moodOf(pet, nowMs)}
+          stage={stage.id}
+          className="size-40 sm:size-48"
+        />
+        <span className="max-w-full truncate text-xl font-extrabold">
+          {pet.name}
         </span>
-      )}
-      {glyph && (
-        <span
-          aria-hidden="true"
-          className="absolute right-3 top-3 grid size-11 place-items-center rounded-full bg-white text-2xl shadow dark:bg-slate-700"
-        >
-          {glyph.glyph}
+        <span className="text-sm font-semibold text-stone-600 dark:text-amber-200/80">
+          {levelLabel(pet.level, pet.form)}
         </span>
-      )}
-      <Blob
-        look={pet.look}
-        worn={pet.worn}
-        form={pet.form}
-        fade={fadeLevel(pet)}
-        mood={moodOf(pet, nowMs)}
-        stage={stage.id}
-        className="size-40 sm:size-48"
-      />
-      <span className="max-w-full truncate text-xl font-extrabold">
-        {pet.name}
-      </span>
-      <span className="text-sm font-semibold text-stone-600 dark:text-amber-200/80">
-        {levelLabel(pet.level, pet.form)}
-      </span>
-    </button>
+      </button>
+      <button
+        type="button"
+        onClick={() => go({ screen: "friends", petId: pet.id, from: "shelf" })}
+        aria-label={`Friends of ${pet.name}`}
+        data-testid="pet-friends"
+        className={`absolute bottom-2 right-2 grid size-14 place-items-center rounded-full bg-sky-100 text-2xl shadow-md active:scale-90 dark:bg-slate-700 ${FOCUS_RING}`}
+      >
+        <span aria-hidden="true">👫</span>
+      </button>
+    </div>
   );
 }
 

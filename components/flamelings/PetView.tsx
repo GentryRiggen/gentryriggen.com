@@ -465,9 +465,9 @@ export default function PetView({ petId }: { petId: string }) {
             onClick={() => toggle("emotes")}
           />
           <BarButton
-            icon="🏠"
-            label="Shelf"
-            onClick={() => go({ screen: "shelf" })}
+            icon="👫"
+            label="Friends"
+            onClick={() => go({ screen: "friends", petId, from: "pet" })}
           />
         </div>
       </div>
