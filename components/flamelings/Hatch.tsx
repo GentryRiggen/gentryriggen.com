@@ -15,19 +15,31 @@ import { STARTING_UNLOCKS } from "@/lib/flamelings/catalog";
 import { useFlamelings } from "@/lib/flamelings/store";
 import type { Look } from "@/lib/flamelings/types";
 import Blob from "./Blob";
-import EggArt from "./EggArt";
+import { burstConfetti } from "./confetti";
+import EggArt, { EggNest, EggShell } from "./EggArt";
+import FlIcon from "./FlIcon";
 import {
-  BIG_BUTTON,
-  CARD,
   CHROME_BG,
+  DISPLAY,
   FOCUS_RING,
   PRIMARY_BUTTON,
   SAFE_BOTTOM,
   SAFE_SIDES,
   SAFE_TOP,
+  STICKER,
+  STICKER_BUTTON,
 } from "./styles";
 
 const TAPS_TO_HATCH = 5;
+
+/** What the egg screen says as it cracks: a little more excited each tap. */
+const EGG_TALK = [
+  "Tap the egg!",
+  "Something wiggled!",
+  "Keep going!",
+  "It's cracking!",
+  "One more tap!",
+];
 
 function Choice({
   selected,
@@ -47,16 +59,27 @@ function Choice({
       aria-checked={selected}
       aria-label={label}
       onClick={onPick}
-      className={`grid size-24 place-items-center rounded-3xl border-4 transition-transform active:scale-95 ${FOCUS_RING} ${
+      className={`relative grid size-24 place-items-center rounded-3xl border-4 transition-transform active:scale-95 ${FOCUS_RING} ${
         selected
-          ? "border-orange-500 bg-orange-100 dark:border-orange-300 dark:bg-orange-950"
-          : "border-transparent bg-white/70 dark:bg-slate-800/70"
+          ? "border-[#ff8a3d] bg-[#ffe3c4] shadow-[0_4px_0_#e0874a]"
+          : "border-white bg-white shadow-[0_4px_0_#e7c9a3]"
       }`}
     >
       {children}
+      {selected && (
+        <span
+          aria-hidden="true"
+          className="fl-pop-in absolute -right-2 -top-2 grid size-8 place-items-center rounded-full border-[3px] border-white bg-[#e8fff3] shadow-[0_2px_0_rgba(58,35,64,.2)]"
+        >
+          <FlIcon name="check" className="size-5" />
+        </span>
+      )}
     </button>
   );
 }
+
+/** A label on a naming panel. */
+const PANEL_LABEL = `${DISPLAY} text-xl font-semibold`;
 
 /** Tap the egg five times, then name the baby spark and pick its look. */
 export default function Hatch() {
@@ -83,6 +106,9 @@ export default function Hatch() {
     if (cracked) return;
     setTaps((n) => n + 1);
     setHit((n) => n + 1);
+    if (taps + 1 >= TAPS_TO_HATCH) {
+      void burstConfetti({ particleCount: 140, originY: 0.5 });
+    }
   }
 
   function finish() {
@@ -91,6 +117,7 @@ export default function Hatch() {
   }
 
   const shell = `flex h-full flex-col items-center overflow-y-auto overflow-x-hidden ${CHROME_BG} ${SAFE_TOP} ${SAFE_BOTTOM} ${SAFE_SIDES}`;
+  const heading = `${DISPLAY} text-center text-3xl font-bold text-[#7a3d2c] [text-shadow:0_0_18px_rgba(255,170,90,.7)] sm:text-4xl dark:text-[#ffe6c4] dark:[text-shadow:0_0_24px_rgba(255,150,60,.55)]`;
 
   if (step === "egg") {
     return (
@@ -100,42 +127,72 @@ export default function Hatch() {
             type="button"
             onClick={() => go({ screen: "shelf" })}
             aria-label="Back to the shelf"
-            className={`${BIG_BUTTON} bg-white/80 px-5 text-2xl dark:bg-slate-800/80`}
+            className={`${STICKER_BUTTON} size-16`}
           >
-            <span aria-hidden="true">🏠</span>
+            <FlIcon name="home" className="size-8" />
           </button>
         </div>
-        <p
-          className="mt-2 text-center text-2xl font-extrabold"
-          aria-live="polite"
-        >
-          {cracked ? "It hatched!" : "Tap the egg!"}
+        <p className={`mt-2 ${heading}`} aria-live="polite">
+          {cracked ? "It hatched!" : EGG_TALK[taps]}
         </p>
         <div className="my-auto flex flex-col items-center gap-6 py-6">
           {cracked ? (
-            <Blob
-              look={look}
-              mood="excited"
-              stage="spark"
-              className="size-64 sm:size-80"
-            />
+            <div className="relative size-64 sm:size-80">
+              <div
+                aria-hidden="true"
+                className="fl-hatch-rays absolute inset-[-30%] rounded-full bg-[repeating-conic-gradient(rgba(255,226,140,.6)_0deg_9deg,transparent_9deg_30deg)] [mask-image:radial-gradient(circle,#000_20%,transparent_68%)]"
+              />
+              <div
+                aria-hidden="true"
+                className="fl-hatch-burst absolute inset-[-10%] rounded-full bg-[radial-gradient(circle,#fff_0%,#fff3b0_22%,rgba(255,170,60,.55)_45%,transparent_70%)]"
+              />
+              <EggNest
+                part="back"
+                className="absolute bottom-[1%] left-[-4%] w-[108%]"
+              />
+              <div className="fl-hatch-pop pointer-events-none absolute inset-x-0 bottom-[6%] top-0">
+                <Blob
+                  look={look}
+                  mood="excited"
+                  stage="spark"
+                  fit
+                  className="size-full"
+                />
+              </div>
+              <EggNest
+                part="front"
+                className="absolute bottom-[1%] left-[-4%] w-[108%]"
+              />
+              <EggShell
+                side="left"
+                className="fl-shell-left absolute inset-x-[13%] bottom-[9%] top-[2%]"
+              />
+              <EggShell
+                side="right"
+                className="fl-shell-right absolute inset-x-[13%] bottom-[9%] top-[2%]"
+              />
+            </div>
           ) : (
             <button
               type="button"
               onClick={tapEgg}
               aria-label={`Tap the egg (${taps} of ${TAPS_TO_HATCH})`}
               data-testid="egg"
-              className={`size-56 rounded-full sm:size-72 ${FOCUS_RING}`}
+              className={`size-64 rounded-full sm:size-80 ${FOCUS_RING}`}
             >
               <EggArt taps={taps} hit={hit} />
             </button>
           )}
           {!cracked && (
-            <div aria-hidden="true" className="flex gap-2">
+            <div aria-hidden="true" className="flex gap-3">
               {Array.from({ length: TAPS_TO_HATCH }, (_, i) => (
                 <span
                   key={i}
-                  className={`size-4 rounded-full ${i < taps ? "bg-orange-500" : "bg-orange-500/25"}`}
+                  className={`size-5 rounded-full transition-transform duration-300 ${
+                    i < taps
+                      ? "scale-110 bg-gradient-to-b from-[#ffd166] to-[#ff8a3d] shadow-[0_0_12px_rgba(255,150,60,.8)]"
+                      : "bg-[#7a5a78]/20 dark:bg-white/15"
+                  }`}
                 />
               ))}
             </div>
@@ -144,7 +201,7 @@ export default function Hatch() {
             <button
               type="button"
               onClick={() => setStep("name")}
-              className={PRIMARY_BUTTON}
+              className={`fl-hatch-pop ${PRIMARY_BUTTON}`}
             >
               Hello, little flame!
             </button>
@@ -157,14 +214,21 @@ export default function Hatch() {
   return (
     <div className={shell}>
       <div className="flex w-full max-w-xl flex-1 flex-col items-center gap-4 py-4">
-        <Blob
-          look={look}
-          mood="happy"
-          stage="spark"
-          className="size-44 shrink-0"
-        />
-        <div className={`${CARD} flex w-full flex-col gap-3 p-5`}>
-          <label htmlFor="fl-name" className="text-xl font-extrabold">
+        <div className="relative size-44 shrink-0">
+          <div
+            aria-hidden="true"
+            className="absolute inset-[-12%] rounded-full bg-[radial-gradient(circle,rgba(255,200,110,.55)_0%,transparent_65%)]"
+          />
+          <Blob
+            look={look}
+            mood="happy"
+            stage="spark"
+            fit
+            className="relative size-full"
+          />
+        </div>
+        <div className={`${STICKER} flex w-full flex-col gap-3 p-5`}>
+          <label htmlFor="fl-name" className={PANEL_LABEL}>
             Name your flameling
           </label>
           <div className="flex gap-3">
@@ -179,20 +243,20 @@ export default function Hatch() {
               enterKeyHint="done"
               onChange={(e) => setName(e.target.value)}
               placeholder="Type a name"
-              className={`min-w-0 flex-1 rounded-2xl border-4 border-orange-300 bg-white px-4 py-3 text-2xl font-bold text-stone-900 dark:border-orange-400/60 dark:bg-slate-900 dark:text-amber-50 ${FOCUS_RING}`}
+              className={`${DISPLAY} min-w-0 flex-1 rounded-full border-4 border-[#f5d0a6] bg-white px-5 py-3 text-2xl font-semibold text-[#3a2340] placeholder:text-[#b9a0b4] focus:border-[#ff8a3d] focus:outline-none focus:ring-[6px] focus:ring-[#ff8a3d]/45`}
             />
             <button
               type="button"
               onClick={() => setName(randomName())}
               aria-label="Pick a random name"
-              className={`${BIG_BUTTON} bg-white text-3xl dark:bg-slate-700`}
+              className={`grid size-16 shrink-0 place-items-center rounded-full bg-[#efe6ff] shadow-[0_4px_0_#cbb8f0,0_8px_18px_rgba(30,10,40,.2)] transition-transform active:translate-y-[3px] active:shadow-[0_2px_0_#cbb8f0] ${FOCUS_RING}`}
             >
-              <span aria-hidden="true">🎲</span>
+              <FlIcon name="dice" className="size-9" />
             </button>
           </div>
         </div>
-        <div className={`${CARD} flex w-full flex-col gap-2 p-4`}>
-          <p className="text-lg font-extrabold">Colour</p>
+        <div className={`${STICKER} flex w-full flex-col gap-3 p-5`}>
+          <p className={PANEL_LABEL}>Colour</p>
           <div
             role="radiogroup"
             aria-label="Colour"
@@ -217,7 +281,7 @@ export default function Hatch() {
           </div>
           {shapes.length > 1 && (
             <>
-              <p className="text-lg font-extrabold">Shape</p>
+              <p className={PANEL_LABEL}>Shape</p>
               <div
                 role="radiogroup"
                 aria-label="Shape"
@@ -242,7 +306,7 @@ export default function Hatch() {
               </div>
             </>
           )}
-          <p className="text-lg font-extrabold">Eyes</p>
+          <p className={PANEL_LABEL}>Eyes</p>
           <div
             role="radiogroup"
             aria-label="Eyes"

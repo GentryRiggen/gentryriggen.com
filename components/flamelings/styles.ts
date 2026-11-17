@@ -25,6 +25,13 @@ export const SPARK_PILL = `${DISPLAY} flex h-16 shrink-0 items-center gap-1 roun
 export const CHROME_BG =
   "bg-[linear-gradient(180deg,#ffe3c4_0%,#f3c9d9_55%,#d9c6ef_100%)] text-[#3a2340] dark:bg-[radial-gradient(ellipse_at_50%_30%,#4b2f6b_0%,#2a1d47_55%,#1b1430_100%)] dark:text-[#fff6e6]";
 
+/**
+ * A glass jar: translucent, a thin light rim and a warm glow inside. Used for
+ * pets on the shelf and friends; callers add size, layout and padding.
+ */
+export const JAR_CARD =
+  "relative overflow-hidden rounded-[30px] border-2 border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.30))] text-[#3a2340] shadow-[inset_0_0_56px_rgba(255,140,60,.22),0_10px_24px_rgba(58,35,64,.14)] backdrop-blur-[2px] dark:border-[rgba(255,230,200,.22)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.04))] dark:text-[#ffe6c4] dark:shadow-[inset_0_0_60px_rgba(255,140,60,.16),0_10px_24px_rgba(0,0,0,.25)]";
+
 export const CARD =
   "rounded-3xl bg-[#fff6e6] text-[#3a2340] shadow-[0_5px_0_#e7c9a3,0_12px_28px_rgba(30,10,40,.30)]";
 
