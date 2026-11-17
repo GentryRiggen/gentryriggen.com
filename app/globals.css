@@ -9685,6 +9685,31 @@ html:has(.jim-app) body {
   }
 }
 
+/* The share picture reads the pet's styles from a still copy of it. */
+.fl-share-still,
+.fl-share-still * {
+  animation: none !important;
+  transition: none !important;
+}
+.fl-share-still .fl-heart,
+.fl-share-still .fl-zap {
+  opacity: 0.85;
+}
+
+/* Previews (Friends): a young pet nearly fills its box instead of floating. */
+.fl-pet-fit[data-stage="spark"] {
+  --fl-stage: 0.88;
+}
+.fl-pet-fit[data-stage="flicker"] {
+  --fl-stage: 0.9;
+}
+.fl-pet-fit[data-stage="flame"] {
+  --fl-stage: 0.93;
+}
+.fl-pet-fit[data-stage="blaze"] {
+  --fl-stage: 0.96;
+}
+
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
 @keyframes ms-bob {
   0%,
@@ -10985,29 +11010,4 @@ html:has(.jim-app) body {
   .ms-qb-truck {
     transform: translateX(300px);
   }
-}
-
-/* The share picture reads the pet's styles from a still copy of it. */
-.fl-share-still,
-.fl-share-still * {
-  animation: none !important;
-  transition: none !important;
-}
-.fl-share-still .fl-heart,
-.fl-share-still .fl-zap {
-  opacity: 0.85;
-}
-
-/* Previews (Friends): a young pet nearly fills its box instead of floating. */
-.fl-pet-fit[data-stage="spark"] {
-  --fl-stage: 0.88;
-}
-.fl-pet-fit[data-stage="flicker"] {
-  --fl-stage: 0.9;
-}
-.fl-pet-fit[data-stage="flame"] {
-  --fl-stage: 0.93;
-}
-.fl-pet-fit[data-stage="blaze"] {
-  --fl-stage: 0.96;
 }
