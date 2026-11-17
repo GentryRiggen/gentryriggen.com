@@ -15,8 +15,4 @@ export const CHROME_BG =
 export const CARD =
   "rounded-3xl bg-white/80 shadow-md dark:bg-slate-800/80 dark:shadow-black/30";
 
-/** Safe areas, so nothing hides under a notch or the home bar. */
-export const SAFE_TOP = "pt-[max(0.75rem,env(safe-area-inset-top))]";
-export const SAFE_BOTTOM = "pb-[max(0.75rem,env(safe-area-inset-bottom))]";
-export const SAFE_SIDES =
-  "pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]";
+export { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";

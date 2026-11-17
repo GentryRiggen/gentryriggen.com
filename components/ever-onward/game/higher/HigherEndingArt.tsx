@@ -109,6 +109,7 @@ export default function HigherEndingArt({ run }: { run: RunState }) {
         <Px x={240} y={224} w={10} h={10} c="#f2b134" />
         <Px x={254} y={228} w={8} h={8} c="#ff8fb1" />
       </svg>
+      {/* safe-area-ok: a decorative gradient, nothing to tap */}
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black to-transparent" />
       <p
         data-testid="lm-ending-carried"

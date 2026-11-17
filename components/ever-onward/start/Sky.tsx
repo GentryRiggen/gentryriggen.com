@@ -278,6 +278,7 @@ function WeatherEffects({
       {heat === "hot" && (
         <>
           <div className="absolute inset-0 bg-linear-to-t from-orange-400/50 via-orange-300/15 to-transparent" />
+          {/* safe-area-ok: a decorative gradient, nothing to tap */}
           <div className="eo-shimmer absolute inset-x-0 bottom-0 h-2/5 bg-[repeating-linear-gradient(to_bottom,rgba(255,214,150,0.16)_0,rgba(255,214,150,0.16)_2px,transparent_2px,transparent_7px)]" />
         </>
       )}

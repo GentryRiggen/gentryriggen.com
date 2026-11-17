@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { installTestHooks } from "@/lib/flamelings/testHooks";
 import { releaseLock, useFlamelings } from "@/lib/flamelings/store";
 import { HEARTBEAT_MS } from "@/lib/flamelings/tabLock";
+import GameShell from "@/components/game-kit/GameShell";
 import CelebrationCard from "./CelebrationCard";
 import Hatch from "./Hatch";
 import MemoryGrove from "./MemoryGrove";
@@ -55,7 +56,10 @@ export default function Flamelings() {
   }, [init, tick, heartbeat, onStorage]);
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-amber-100 dark:bg-slate-900">
+    <GameShell
+      className="bg-amber-100 dark:bg-slate-900"
+      testId="flamelings-root"
+    >
       {!ready ? (
         <div
           role="status"
@@ -78,6 +82,6 @@ export default function Flamelings() {
       {ready && !locked && celebration && (
         <CelebrationCard celebration={celebration} />
       )}
-    </div>
+    </GameShell>
   );
 }

@@ -81,6 +81,7 @@ export default function SmileEndingArt({ run }: { run: RunState }) {
             <rect x="204" y="118" width="3" height="3" className="ms-twinkle" />
           </g>
         </svg>
+        {/* safe-area-ok: a decorative gradient, nothing to tap */}
         <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black to-transparent" />
       </div>
       {hasKept(run) && (

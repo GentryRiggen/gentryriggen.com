@@ -5,6 +5,7 @@ import { labelOf } from "@/lib/flamelings/status";
 import { useFlamelings, type Celebration } from "@/lib/flamelings/store";
 import Blob from "./Blob";
 import ItemPreview from "./ItemPreview";
+import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
 import { PRIMARY_BUTTON } from "./styles";
 
 const KIND_WORD: Record<string, string> = {
@@ -70,7 +71,7 @@ export default function CelebrationCard({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className="fixed inset-0 z-40 grid place-items-center bg-black/60 p-5"
+      className={`fixed inset-0 z-40 grid place-items-center bg-black/60 p-5 ${SAFE_INSETS}`}
     >
       <div className="fl-card-in flex w-full max-w-md flex-col items-center gap-3 rounded-[2rem] bg-gradient-to-b from-amber-100 to-orange-200 p-6 text-center text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50">
         <p className="text-4xl font-black">{title}</p>
