@@ -53,6 +53,7 @@ export default function Blob({
   const goo = `fl-goo-${id}`;
   const fill = `fl-fill-${id}`;
   const halo = `fl-halo-${id}`;
+  const glow = `fl-glow-${id}`;
   return (
     <div
       className={`fl-pet relative ${fit ? "fl-pet-fit " : ""}${className}`}
@@ -98,6 +99,10 @@ export default function Blob({
             <stop className="fl-mid" offset="0.55" />
             <stop className="fl-tip" offset="1" />
           </linearGradient>
+          <radialGradient id={glow}>
+            <stop className="fl-core-stop" offset="0" stopOpacity="0.95" />
+            <stop className="fl-core-stop" offset="1" stopOpacity="0" />
+          </radialGradient>
         </defs>
         <g className="fl-all">
           <g className="fl-droop">
@@ -108,31 +113,44 @@ export default function Blob({
               <circle className="fl-side-l" cx="42" cy="70" r="16" />
               <circle className="fl-side-r" cx="78" cy="70" r="16" />
               <circle className="fl-peak" cx="60" cy="48" r="14" />
-              <circle className="fl-lick fl-lick-1" cx="60" cy="42" r="11" />
-              <circle className="fl-lick fl-lick-2" cx="46" cy="54" r="8" />
-              <circle className="fl-lick fl-lick-3" cx="74" cy="54" r="8" />
-              <circle className="fl-lick fl-lick-4" cx="64" cy="50" r="6" />
+              <g className="fl-licks">
+                <circle className="fl-lick fl-lick-1" cx="60" cy="42" r="11" />
+                <circle className="fl-lick fl-lick-2" cx="46" cy="54" r="8" />
+                <circle className="fl-lick fl-lick-3" cx="74" cy="54" r="8" />
+                <circle className="fl-lick fl-lick-4" cx="64" cy="50" r="6" />
+              </g>
               <FormTips form={form} />
             </g>
-            <ellipse className="fl-core" cx="60" cy="95" rx="16" ry="7" />
+            <ellipse
+              className="fl-core"
+              cx="60"
+              cy="90"
+              rx="24"
+              ry="15"
+              fill={`url(#${glow})`}
+            />
             <g className="fl-eyes">
               <ellipse
                 className="fl-eye fl-eye-l"
                 cx="50"
                 cy="76"
-                rx="4"
-                ry="5.5"
+                rx="5"
+                ry="6.5"
               />
               <ellipse
                 className="fl-eye fl-eye-r"
                 cx="70"
                 cy="76"
-                rx="4"
-                ry="5.5"
+                rx="5"
+                ry="6.5"
               />
-              <circle className="fl-shine" cx="51.5" cy="74" r="1.4" />
-              <circle className="fl-shine" cx="71.5" cy="74" r="1.4" />
+              <circle className="fl-shine" cx="52" cy="73.4" r="1.7" />
+              <circle className="fl-shine" cx="72" cy="73.4" r="1.7" />
+              <circle className="fl-shine" cx="48.6" cy="78.6" r="0.8" />
+              <circle className="fl-shine" cx="68.6" cy="78.6" r="0.8" />
             </g>
+            <ellipse className="fl-cheek" cx="44" cy="84" rx="5" ry="3" />
+            <ellipse className="fl-cheek" cx="76" cy="84" rx="5" ry="3" />
             <path className="fl-mouth fl-mouth-smile" d="M54 87 Q60 92 66 87" />
             <path
               className="fl-mouth fl-mouth-open"

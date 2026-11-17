@@ -206,6 +206,8 @@ export default function PetView({ petId }: { petId: string }) {
   const [flying, setFlying] = useState<FoodId | null>(null);
   const [eating, setEating] = useState(false);
   const [shaking, setShaking] = useState(0);
+  /** Taps so far: each one replays the squish (it flips between a and b). */
+  const [squishes, setSquishes] = useState(0);
   const { emote, emoteKey, play } = useEmote();
   const timers = useRef<number[]>([]);
   const [bursts, setBursts] = useState<Burst[]>([]);
@@ -314,6 +316,7 @@ export default function PetView({ petId }: { petId: string }) {
 
   function pokePet() {
     if (!pet || !alive) return;
+    setSquishes((n) => n + 1);
     if (!awake) {
       play("sleepy");
       return;
@@ -364,6 +367,9 @@ export default function PetView({ petId }: { petId: string }) {
               aria-label={`${pet.name}, tap to say hi`}
               data-testid="pet"
               data-mood={mood}
+              data-squish={
+                squishes === 0 ? undefined : squishes % 2 ? "a" : "b"
+              }
               className={`fl-hearth-pet block rounded-full ${FOCUS_RING}`}
             >
               <Blob
