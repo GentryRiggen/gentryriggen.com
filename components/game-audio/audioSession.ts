@@ -3,7 +3,7 @@ import {
   type StoredSetting,
 } from "@/components/ship-builder/hooks/createStoredSetting";
 
-type SessionType = "ambient" | "playback";
+export type SessionType = "ambient" | "playback";
 
 /**
  * "Play sound on silent", remembered per device (default off). Off keeps the
@@ -29,12 +29,13 @@ export const playOnSilent: StoredSetting<boolean> =
  * Call it before creating an AudioContext or playing an <audio> element, and
  * again when the setting changes (`setPlayOnSilent` does).
  */
-export function applyAudioSession(): void {
+export function applyAudioSession(override?: SessionType): void {
   if (typeof navigator === "undefined") return;
   const session = (navigator as Navigator & { audioSession?: { type: string } })
     .audioSession;
   if (!session) return;
-  const type: SessionType = playOnSilent.get() ? "playback" : "ambient";
+  const type: SessionType =
+    override ?? (playOnSilent.get() ? "playback" : "ambient");
   try {
     if (session.type !== type) session.type = type;
   } catch {
