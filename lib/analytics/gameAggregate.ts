@@ -56,6 +56,33 @@ export interface ShipSummary {
   shares: number;
 }
 
+export interface FlamelingsSummary {
+  visits: number;
+  /** Opening the shelf in the morning, evening or at night. */
+  visitWindows: Count[];
+  /** Average pets on the shelf at a visit, or null with no visits. */
+  averagePets: number | null;
+  hatches: number;
+  /** Sampled (about 1 in 4), so only the proportions mean anything. */
+  care: Count[];
+  playRuns: number;
+  averageScore: number | null;
+  levelUps: number;
+  highestLevel: number;
+  /** Level-ups by the stage reached. */
+  stages: Count[];
+  /** Embers, relights and flamelings that went out. */
+  states: Count[];
+  /** Unlocks as "kind · via", e.g. "hat · gift". */
+  unlocks: Count[];
+}
+
+function average(values: number[]): number | null {
+  return values.length === 0
+    ? null
+    : values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
 function ofName<N extends GameEventName>(events: GameEvent[], name: N) {
   return events.filter((event) => event.name === name);
 }
@@ -167,5 +194,29 @@ export function summarizeShip(events: GameEvent[]): ShipSummary {
     walks: ofName(events, "walk_started").length,
     drives: ofName(events, "drive_started").length,
     shares: ofName(events, "ship_shared").length,
+  };
+}
+
+export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
+  const visits = ofName(events, "fl_visit");
+  const plays = ofName(events, "fl_play_end");
+  const levels = ofName(events, "fl_level");
+  return {
+    visits: visits.length,
+    visitWindows: tally(visits.map((e) => str(e, "window"))),
+    averagePets: average(visits.map((e) => num(e, "pets"))),
+    hatches: ofName(events, "fl_hatch").length,
+    care: tally(ofName(events, "fl_care").map((e) => str(e, "action"))),
+    playRuns: plays.length,
+    averageScore: average(plays.map((e) => num(e, "score"))),
+    levelUps: levels.length,
+    highestLevel: Math.max(0, ...levels.map((e) => num(e, "level"))),
+    stages: tally(levels.map((e) => str(e, "stage"))),
+    states: tally(ofName(events, "fl_state").map((e) => str(e, "to"))),
+    unlocks: tally(
+      ofName(events, "fl_unlock").map(
+        (e) => `${str(e, "kind")} · ${str(e, "via")}`
+      )
+    ),
   };
 }

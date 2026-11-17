@@ -1,4 +1,5 @@
 import {
+  summarizeFlamelings,
   summarizePlane,
   summarizeShip,
   type WorldSummary,
@@ -100,6 +101,7 @@ function WorldCard({ summary }: { summary: WorldSummary }) {
 export default function GamesView({ events }: GamesViewProps) {
   const plane = useMemo(() => summarizePlane(events), [events]);
   const ship = useMemo(() => summarizeShip(events), [events]);
+  const flame = useMemo(() => summarizeFlamelings(events), [events]);
   const playedWorlds = plane.worlds.filter(
     (world) => world.flights > 0 || world.quits > 0
   );
@@ -211,6 +213,66 @@ export default function GamesView({ events }: GamesViewProps) {
             ]}
             unit="times"
           />
+        </div>
+      </Section>
+
+      <Section title="Flamelings">
+        <div className="grid gap-4 sm:grid-cols-4">
+          {[
+            { id: "visits", label: "Visits", value: flame.visits },
+            { id: "hatches", label: "Hatched", value: flame.hatches },
+            { id: "plays", label: "Firefly Catch runs", value: flame.playRuns },
+            { id: "levels", label: "Level-ups", value: flame.levelUps },
+          ].map((tile) => (
+            <div
+              key={tile.id}
+              className="rounded-lg border border-gray-200 p-4 dark:border-gray-800"
+            >
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {tile.label}
+              </div>
+              <div
+                data-testid={`flamelings-${tile.id}`}
+                className="mt-1 text-3xl font-semibold tabular-nums"
+              >
+                {tile.value.toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p
+          data-testid="flamelings-averages"
+          className="text-sm text-gray-600 dark:text-gray-400"
+        >
+          {flame.averagePets === null
+            ? "No visits yet"
+            : `${flame.averagePets.toFixed(1)} pets per visit`}
+          {flame.averageScore !== null &&
+            ` · ${flame.averageScore.toFixed(1)} fireflies per run`}
+          {flame.highestLevel > 0 && ` · highest level ${flame.highestLevel}`}
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <BreakdownList
+            title="When they visit"
+            rows={flame.visitWindows}
+            unit="visits"
+          />
+          <BreakdownList
+            title="Care (sampled)"
+            rows={flame.care}
+            unit="actions"
+          />
+          <BreakdownList
+            title="Stages reached"
+            rows={flame.stages}
+            unit="level-ups"
+          />
+          <BreakdownList
+            title="Embers and relights"
+            rows={flame.states}
+            unit="changes"
+          />
+          <BreakdownList title="Unlocks" rows={flame.unlocks} unit="unlocks" />
         </div>
       </Section>
     </div>

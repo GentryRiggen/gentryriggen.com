@@ -212,6 +212,11 @@ describe("create", () => {
       "an ever-onward subpath",
       { site: "ever-onward", path: "/ever-onward/versions" },
     ],
+    ["a flamelings event", { site: "flamelings", path: "/flamelings" }],
+    [
+      "a flamelings subpath",
+      { site: "flamelings", path: "/flamelings/versions" },
+    ],
   ])("allows %s", async (_label, patch) => {
     await assertSucceeds(
       addDoc(collection(anon(), "pageviews"), stamped(patch))
@@ -292,6 +297,10 @@ describe("create", () => {
     [
       "ever-onward with a lookalike path",
       { site: "ever-onward", path: "/ever-onwardx" },
+    ],
+    [
+      "flamelings with a lookalike path",
+      { site: "flamelings", path: "/flamelingsx" },
     ],
     ["an unknown site jim", { site: "jim", path: "/jim" }],
     ["an oversized path", { path: "/ship-builder/" + "a".repeat(250) }],

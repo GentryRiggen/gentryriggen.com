@@ -239,13 +239,12 @@ describe("every event in the schema", () => {
     );
   });
 
-  it("rejects a plane event on the ship site and the other way round", async () => {
+  it("rejects every event on any other game's site", async () => {
+    const sites = ["plane-builder", "ship-builder", "flamelings"];
     for (const name of GAME_EVENT_NAMES) {
-      const other =
-        GAME_EVENTS[name].site === "plane-builder"
-          ? "ship-builder"
-          : "plane-builder";
-      await assertFails(create(anon(), docFor(name, { site: other })));
+      for (const other of sites.filter((s) => s !== GAME_EVENTS[name].site)) {
+        await assertFails(create(anon(), docFor(name, { site: other })));
+      }
     }
   });
 });
@@ -311,9 +310,11 @@ describe("the event envelope", () => {
     await assertFails(create(anon(), docFor("ship_shared", { props: null })));
   });
 
-  it("accepts an empty props map for ship_shared only", async () => {
+  it("accepts an empty props map for the prop-less events only", async () => {
     await assertSucceeds(create(anon(), docFor("ship_shared", { props: {} })));
+    await assertSucceeds(create(anon(), docFor("fl_hatch", { props: {} })));
     await assertFails(create(anon(), docFor("flight_end", { props: {} })));
+    await assertFails(create(anon(), docFor("fl_visit", { props: {} })));
   });
 
   it("accepts only UUIDv4-shaped document ids", async () => {
@@ -355,6 +356,35 @@ describe("the event envelope", () => {
     await assertFails(create(anon(), flightEnd({ world: { a: 1 } })));
     await assertFails(create(anon(), flightEnd({ world: ["meadow"] })));
     await assertFails(create(anon(), flightEnd({ dist: [1] })));
+  });
+});
+
+describe("flamelings specifics", () => {
+  it("takes the pet count of a full shelf and no more", async () => {
+    const visit = (pets: number) =>
+      docFor("fl_visit", { props: { window: "night", pets } });
+    await assertSucceeds(create(anon(), visit(0)));
+    await assertSucceeds(create(anon(), visit(8)));
+    await assertFails(create(anon(), visit(9)));
+  });
+
+  it("only takes levels from 2 to 99 and a stage name", async () => {
+    const level = (n: number, stage = "spark") =>
+      docFor("fl_level", { props: { level: n, stage } });
+    await assertSucceeds(create(anon(), level(2)));
+    await assertSucceeds(create(anon(), level(99, "bonfire")));
+    await assertFails(create(anon(), level(1)));
+    await assertFails(create(anon(), level(100)));
+    await assertFails(create(anon(), level(5, "Rex the Flame")));
+  });
+
+  it("never lets a typed name ride along", async () => {
+    await assertFails(
+      create(anon(), docFor("fl_hatch", { props: { name: "Sparky" } }))
+    );
+    await assertFails(
+      create(anon(), docFor("fl_care", { props: { action: "Sparky" } }))
+    );
   });
 });
 

@@ -1,5 +1,9 @@
 import type { GameEvent } from "../gameEvents";
-import { summarizePlane, summarizeShip } from "../gameAggregate";
+import {
+  summarizeFlamelings,
+  summarizePlane,
+  summarizeShip,
+} from "../gameAggregate";
 
 function plane(name: GameEvent["name"], props: GameEvent["props"]): GameEvent {
   return { site: "plane-builder", name, props, day: "2026-10-30" };
@@ -124,5 +128,59 @@ describe("summarizeShip", () => {
     expect(summary.templates).toEqual([{ key: "titanic", views: 1 }]);
     expect(summary.partCategories).toEqual([{ key: "decks", views: 1 }]);
     expect([summary.walks, summary.drives, summary.shares]).toEqual([1, 1, 1]);
+  });
+});
+
+describe("summarizeFlamelings", () => {
+  const fl = (
+    name: GameEvent["name"],
+    props: GameEvent["props"]
+  ): GameEvent => ({
+    site: "flamelings",
+    name,
+    props,
+    day: "2026-11-16",
+  });
+  const events = [
+    fl("fl_visit", { window: "morning", pets: 2 }),
+    fl("fl_visit", { window: "morning", pets: 4 }),
+    fl("fl_visit", { window: "night", pets: 0 }),
+    fl("fl_hatch", {}),
+    fl("fl_care", { action: "feed" }),
+    fl("fl_care", { action: "feed" }),
+    fl("fl_care", { action: "clean" }),
+    fl("fl_play_end", { score: 10 }),
+    fl("fl_play_end", { score: 20 }),
+    fl("fl_level", { level: 2, stage: "spark" }),
+    fl("fl_level", { level: 3, stage: "flicker" }),
+    fl("fl_state", { to: "ember" }),
+    fl("fl_unlock", { kind: "hat", via: "gift" }),
+    fl("fl_unlock", { kind: "hat", via: "gift" }),
+    fl("fl_unlock", { kind: "food", via: "level" }),
+  ];
+  const summary = summarizeFlamelings(events);
+
+  it("counts visits, hatches and averages", () => {
+    expect(summary.visits).toBe(3);
+    expect(summary.hatches).toBe(1);
+    expect(summary.averagePets).toBe(2);
+    expect(summary.averageScore).toBe(15);
+    expect(summary.playRuns).toBe(2);
+    expect(summary.visitWindows[0]).toEqual({ key: "morning", views: 2 });
+  });
+
+  it("ranks care, stages, states and unlocks", () => {
+    expect(summary.care[0]).toEqual({ key: "feed", views: 2 });
+    expect(summary.levelUps).toBe(2);
+    expect(summary.highestLevel).toBe(3);
+    expect(summary.states).toEqual([{ key: "ember", views: 1 }]);
+    expect(summary.unlocks[0]).toEqual({ key: "hat · gift", views: 2 });
+  });
+
+  it("has empty answers with no events", () => {
+    const empty = summarizeFlamelings([]);
+    expect(empty.averagePets).toBeNull();
+    expect(empty.averageScore).toBeNull();
+    expect(empty.highestLevel).toBe(0);
   });
 });

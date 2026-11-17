@@ -16,13 +16,14 @@ service cloud.firestore {
       return d.keys().hasOnly(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
         && d.keys().hasAll(['ts', 'site', 'path', 'ref', 'device', 'browser', 'os', 'screen', 'tz', 'vid'])
         && d.ts == request.time
-        && d.site in ['home', 'ship-builder', 'plane-builder', 'planet-smasher', 'ever-onward']
+        && d.site in ['home', 'ship-builder', 'plane-builder', 'planet-smasher', 'ever-onward', 'flamelings']
         && d.path is string
         && ((d.site == 'home' && d.path == '/')
           || (d.site == 'ship-builder' && d.path.matches('^/ship-builder(/.*)?$'))
           || (d.site == 'plane-builder' && d.path.matches('^/plane-builder(/.*)?$'))
           || (d.site == 'planet-smasher' && d.path.matches('^/planet-smasher(/.*)?$'))
-          || (d.site == 'ever-onward' && d.path.matches('^/ever-onward(/.*)?$')))
+          || (d.site == 'ever-onward' && d.path.matches('^/ever-onward(/.*)?$'))
+          || (d.site == 'flamelings' && d.path.matches('^/flamelings(/.*)?$')))
         && d.path is string && d.path.size() > 0 && d.path.size() <= 200
         && d.ref is string && d.ref.size() <= 100
         && d.device in ['mobile', 'tablet', 'desktop']
@@ -445,7 +446,7 @@ service cloud.firestore {
     }
 
     // ---- Gameplay analytics --------------------------------------------
-    // gameEvents/{id}: anonymous events from the two games, whose players are
+    // gameEvents/{id}: anonymous events from the games, whose players are
     // children. An event has NO user id, session id or free text: only an
     // enum-and-small-number `props` map with a fixed schema per event name.
     // Create only (never update or delete); only the admin reads. createdAt is
@@ -533,6 +534,31 @@ service cloud.firestore {
         || (name == 'ship_shared' && p.keys().size() == 0);
     }
 
+    function validFlamelingsEvent(name, p) {
+      return (name == 'fl_visit'
+          && p.keys().hasOnly(['window', 'pets']) && p.keys().hasAll(['window', 'pets'])
+          && p.window in ['morning', 'evening', 'night']
+          && p.pets is int && p.pets >= 0 && p.pets <= 8)
+        || (name == 'fl_hatch' && p.keys().size() == 0)
+        || (name == 'fl_care'
+          && p.keys().hasOnly(['action']) && p.keys().hasAll(['action'])
+          && p.action in ['feed', 'play', 'clean', 'pet', 'gift', 'relight'])
+        || (name == 'fl_play_end'
+          && p.keys().hasOnly(['score']) && p.keys().hasAll(['score'])
+          && p.score is int && p.score >= 0 && p.score <= 99)
+        || (name == 'fl_level'
+          && p.keys().hasOnly(['level', 'stage']) && p.keys().hasAll(['level', 'stage'])
+          && p.level is int && p.level >= 2 && p.level <= 99
+          && p.stage in ['spark', 'flicker', 'flame', 'blaze', 'bonfire'])
+        || (name == 'fl_state'
+          && p.keys().hasOnly(['to']) && p.keys().hasAll(['to'])
+          && p.to in ['ember', 'relit', 'out'])
+        || (name == 'fl_unlock'
+          && p.keys().hasOnly(['kind', 'via']) && p.keys().hasAll(['kind', 'via'])
+          && p.kind in ['colour', 'shape', 'eyes', 'hat', 'face', 'neck', 'emote', 'food']
+          && p.via in ['level', 'gift']);
+    }
+
     // The client sends its UTC day, which must be the server's UTC day.
     function validGameDay(day) {
       return day is string && day == dayString(request.time);
@@ -553,7 +579,8 @@ service cloud.firestore {
         && d.name is string && d.name.size() <= 30
         && d.props is map && d.props.size() <= 8
         && ((d.site == 'plane-builder' && validPlaneEvent(d.name, d.props))
-          || (d.site == 'ship-builder' && validShipEvent(d.name, d.props)));
+          || (d.site == 'ship-builder' && validShipEvent(d.name, d.props))
+          || (d.site == 'flamelings' && validFlamelingsEvent(d.name, d.props)));
     }
 
     match /gameEvents/{id} {
