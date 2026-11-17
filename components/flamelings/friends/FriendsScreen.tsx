@@ -408,22 +408,20 @@ export default function FriendsScreen({
             aria-label="My code"
             className={`${CARD} flex flex-col items-center gap-3 p-4`}
           >
-            <div className="flex items-center gap-4">
-              <CardBlob card={card} className="size-36 sm:size-44" />
-              <div className="flex flex-col items-start gap-2">
-                <span data-testid="my-name" className="text-2xl font-black">
-                  {onlineName(card.nameId)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setNaming(true)}
-                  aria-label="Change the name friends see"
-                  data-testid="change-name"
-                  className={`${BIG_BUTTON} bg-indigo-100 px-4 text-2xl dark:bg-indigo-900`}
-                >
-                  <span aria-hidden="true">🏷️</span>
-                </button>
-              </div>
+            <CardBlob card={card} className="size-52 sm:size-64" />
+            <div className="flex items-center gap-3">
+              <span data-testid="my-name" className="text-3xl font-black">
+                {onlineName(card.nameId)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setNaming(true)}
+                aria-label="Change the name friends see"
+                data-testid="change-name"
+                className={`${BIG_BUTTON} bg-indigo-100 px-4 text-2xl dark:bg-indigo-900`}
+              >
+                <span aria-hidden="true">🏷️</span>
+              </button>
             </div>
             {code ? (
               <>

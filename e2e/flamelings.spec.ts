@@ -638,16 +638,39 @@ async function mockFriends(page: Page, opts: { offline?: boolean } = {}) {
     if (method === "OPTIONS") return route.fulfill({ headers: CORS });
     const json = (status: number, body: unknown = {}) =>
       route.fulfill({ status, headers: CORS, json: body });
+    if (method === "POST" && request.url().includes(":runQuery")) {
+      const parent = decodeURIComponent(
+        new URL(request.url()).pathname
+          .split("/documents/")[1]
+          .replace(":runQuery", "")
+      );
+      const rows = [...docs.entries()]
+        .filter(([key]) => key.startsWith(`${parent}/visits/`))
+        .map(([key, fields]) => ({
+          document: { name: `x/documents/${key}`, fields },
+        }));
+      return json(200, rows.length ? rows : [{}]);
+    }
     if (method === "POST") {
       const write = request.postDataJSON().writes[0] as {
         update: { name: string; fields: Record<string, unknown> };
+        updateMask?: unknown;
+        updateTransforms?: { fieldPath: string }[];
         currentDocument: { exists: boolean };
       };
       const path = write.update.name.split("/documents/")[1];
       if (docs.has(path) !== write.currentDocument.exists) {
         return json(409, { error: { status: "ALREADY_EXISTS" } });
       }
-      docs.set(path, write.update.fields);
+      const stamped: Record<string, unknown> = {};
+      for (const t of write.updateTransforms ?? []) {
+        stamped[t.fieldPath] = { timestampValue: new Date().toISOString() };
+      }
+      docs.set(path, {
+        ...(write.updateMask ? docs.get(path) : {}),
+        ...write.update.fields,
+        ...stamped,
+      });
       return json(200);
     }
     const path = decodeURIComponent(
@@ -656,12 +679,6 @@ async function mockFriends(page: Page, opts: { offline?: boolean } = {}) {
     if (method === "DELETE") {
       docs.delete(path);
       return json(200);
-    }
-    if (/^flPets\/[A-Z0-9]{6}\/visits$/.test(path)) {
-      const documents = [...docs.entries()]
-        .filter(([key]) => key.startsWith(`${path}/`))
-        .map(([key, fields]) => ({ name: `x/documents/${key}`, fields }));
-      return json(200, documents.length ? { documents } : {});
     }
     const found = docs.get(path);
     return found ? json(200, { fields: found }) : json(404);
@@ -679,6 +696,7 @@ async function mockFriends(page: Page, opts: { offline?: boolean } = {}) {
       docs.set(`flPets/${to}/visits/${from}_${day}`, {
         from: { stringValue: from },
         day: { stringValue: day },
+        createdAt: { timestampValue: new Date().toISOString() },
       });
     },
   };
