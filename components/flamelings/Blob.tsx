@@ -12,6 +12,8 @@ export interface BlobProps {
   /** Growth stage: sets the scale and the embers. Defaults to full size. */
   stage?: StageId;
   worn?: Worn;
+  /** 0 (healthy) to 4 (nearly out): how faded the pet looks. */
+  fade?: number;
   emote?: EmoteId | null;
   /** Bumps to replay the same emote. */
   emoteKey?: number;
@@ -31,6 +33,7 @@ export default function Blob({
   mood,
   stage = "bonfire",
   worn = NO_WORN,
+  fade = 0,
   emote = null,
   emoteKey = 0,
   className = "size-48",
@@ -44,6 +47,7 @@ export default function Blob({
       className={`fl-pet relative ${className}`}
       data-stage={stage}
       data-mood={mood}
+      data-fade={fade}
       data-emote={emote ?? undefined}
     >
       <svg
@@ -55,6 +59,7 @@ export default function Blob({
         data-shape={look.shape}
         data-eyes={look.eyes}
         data-mood={mood}
+        data-fade={fade}
       >
         <defs>
           <filter
@@ -82,40 +87,47 @@ export default function Blob({
           </linearGradient>
         </defs>
         <g className="fl-all">
-          <g filter={`url(#${goo})`} fill={`url(#${fill})`}>
-            <circle className="fl-body" cx="60" cy="78" r="30" />
-            <circle className="fl-side-l" cx="42" cy="70" r="16" />
-            <circle className="fl-side-r" cx="78" cy="70" r="16" />
-            <circle className="fl-peak" cx="60" cy="48" r="14" />
-            <circle className="fl-lick fl-lick-1" cx="60" cy="42" r="11" />
-            <circle className="fl-lick fl-lick-2" cx="46" cy="54" r="8" />
-            <circle className="fl-lick fl-lick-3" cx="74" cy="54" r="8" />
-            <circle className="fl-lick fl-lick-4" cx="64" cy="50" r="6" />
-          </g>
-          <ellipse className="fl-core" cx="60" cy="95" rx="16" ry="7" />
-          <g className="fl-eyes">
-            <ellipse
-              className="fl-eye fl-eye-l"
-              cx="50"
-              cy="76"
-              rx="4"
-              ry="5.5"
+          <g className="fl-droop">
+            <g filter={`url(#${goo})`} fill={`url(#${fill})`}>
+              <circle className="fl-body" cx="60" cy="78" r="30" />
+              <circle className="fl-side-l" cx="42" cy="70" r="16" />
+              <circle className="fl-side-r" cx="78" cy="70" r="16" />
+              <circle className="fl-peak" cx="60" cy="48" r="14" />
+              <circle className="fl-lick fl-lick-1" cx="60" cy="42" r="11" />
+              <circle className="fl-lick fl-lick-2" cx="46" cy="54" r="8" />
+              <circle className="fl-lick fl-lick-3" cx="74" cy="54" r="8" />
+              <circle className="fl-lick fl-lick-4" cx="64" cy="50" r="6" />
+            </g>
+            <ellipse className="fl-core" cx="60" cy="95" rx="16" ry="7" />
+            <g className="fl-eyes">
+              <ellipse
+                className="fl-eye fl-eye-l"
+                cx="50"
+                cy="76"
+                rx="4"
+                ry="5.5"
+              />
+              <ellipse
+                className="fl-eye fl-eye-r"
+                cx="70"
+                cy="76"
+                rx="4"
+                ry="5.5"
+              />
+              <circle className="fl-shine" cx="51.5" cy="74" r="1.4" />
+              <circle className="fl-shine" cx="71.5" cy="74" r="1.4" />
+            </g>
+            <path className="fl-mouth fl-mouth-smile" d="M54 87 Q60 92 66 87" />
+            <path
+              className="fl-mouth fl-mouth-open"
+              d="M54 86 Q60 96 66 86 Z"
             />
-            <ellipse
-              className="fl-eye fl-eye-r"
-              cx="70"
-              cy="76"
-              rx="4"
-              ry="5.5"
-            />
-            <circle className="fl-shine" cx="51.5" cy="74" r="1.4" />
-            <circle className="fl-shine" cx="71.5" cy="74" r="1.4" />
+            <path className="fl-mouth fl-mouth-flat" d="M56 89 L64 89" />
+            <path className="fl-brow fl-brow-l" d="M43 66 L56 62" />
+            <path className="fl-brow fl-brow-r" d="M64 62 L77 66" />
+            <path className="fl-mouth fl-mouth-sad" d="M54 91 Q60 86 66 91" />
+            <Accessories hat={worn.hat} face={worn.face} neck={worn.neck} />
           </g>
-          <path className="fl-mouth fl-mouth-smile" d="M54 87 Q60 92 66 87" />
-          <path className="fl-mouth fl-mouth-open" d="M54 86 Q60 96 66 86 Z" />
-          <path className="fl-mouth fl-mouth-flat" d="M56 89 L64 89" />
-          <path className="fl-mouth fl-mouth-sad" d="M54 91 Q60 86 66 91" />
-          <Accessories hat={worn.hat} face={worn.face} neck={worn.neck} />
         </g>
         <g className="fl-embers">
           <circle cx="44" cy="40" r="2.4" />

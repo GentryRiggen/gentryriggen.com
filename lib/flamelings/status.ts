@@ -49,3 +49,37 @@ export function lockText(key: UnlockKey): string {
 export function tidiness(pet: Pet): number {
   return Math.max(0, 100 - pet.ash * 25);
 }
+
+/**
+ * How faded a pet looks, 0 (healthy) to 4 (nearly out): mostly its glow, but
+ * low fuel or joy dim it a little too, so a hungry pet already looks off.
+ */
+export function fadeLevel(pet: Pet): number {
+  if (pet.state === "ember") return 0;
+  const byGlow =
+    pet.glow >= 85
+      ? 0
+      : pet.glow >= 65
+        ? 1
+        : pet.glow >= 45
+          ? 2
+          : pet.glow >= 25
+            ? 3
+            : 4;
+  const low = Math.min(pet.fuel, pet.joy);
+  const byNeeds = low < 10 ? 2 : low < 25 ? 1 : 0;
+  return Math.max(byGlow, byNeeds);
+}
+
+export type Bubble = "food" | "play";
+
+/** Thought bubbles for a hungry or bored pet (icon-only), when it is up. */
+export function bubblesFor(pet: Pet, nowMs: number): Bubble[] {
+  if (pet.state !== "alive" || !isAwake(nowMs)) return [];
+  const bubbles: Bubble[] = [];
+  if (pet.fuel < 25) bubbles.push("food");
+  if (pet.joy < 25) bubbles.push("play");
+  return bubbles;
+}
+
+export const BUBBLE_GLYPH: Record<Bubble, string> = { food: "🍽", play: "😢" };

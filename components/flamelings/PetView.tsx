@@ -6,7 +6,12 @@ import {
 } from "@/lib/flamelings/catalog";
 import { hasGiftWaiting, stageFor, xpToNext } from "@/lib/flamelings/progress";
 import { isAwake, moodOf, RELIGHT_FEEDS } from "@/lib/flamelings/sim";
-import { emotesOf } from "@/lib/flamelings/status";
+import {
+  BUBBLE_GLYPH,
+  bubblesFor,
+  emotesOf,
+  fadeLevel,
+} from "@/lib/flamelings/status";
 import { useFlamelings } from "@/lib/flamelings/store";
 import EmotePanel from "./EmotePanel";
 import FeedTray from "./FeedTray";
@@ -27,6 +32,15 @@ const ASH_SPOTS = [
   "left-[30%] top-[82%]",
   "right-[30%] top-[83%]",
 ];
+
+/** Where the thought bubbles sit above the pet, by stage (the pet shrinks towards its feet). */
+const BUBBLE_TOP: Record<string, string> = {
+  spark: "top-[30%]",
+  flicker: "top-[22%]",
+  flame: "top-[15%]",
+  blaze: "top-[8%]",
+  bonfire: "top-[1%]",
+};
 
 const EATING_MS = 1500;
 const FLY_MS = 600;
@@ -99,6 +113,7 @@ export default function PetView({ petId }: { petId: string }) {
   const baseMood = moodOf(pet, clock);
   const mood = eating && alive ? "eating" : baseMood;
   const gift = hasGiftWaiting(pet, clock) && awake;
+  const bubbles = bubblesFor(pet, clock);
 
   function later(fn: () => void, ms: number) {
     timers.current.push(window.setTimeout(fn, ms));
@@ -148,7 +163,10 @@ export default function PetView({ petId }: { petId: string }) {
 
       {/* The pet sits on the hearth. */}
       <div className="absolute left-1/2 top-[80%] -translate-x-1/2 -translate-y-full">
-        <div key={shaking} className={shaking > 0 ? "fl-headshake" : ""}>
+        <div
+          key={shaking}
+          className={`relative ${shaking > 0 ? "fl-headshake" : ""}`}
+        >
           <button
             type="button"
             onClick={pokePet}
@@ -160,6 +178,7 @@ export default function PetView({ petId }: { petId: string }) {
             <Blob
               look={pet.look}
               worn={pet.worn}
+              fade={fadeLevel(pet)}
               mood={mood}
               stage={stage.id}
               emote={emote}
@@ -167,6 +186,18 @@ export default function PetView({ petId }: { petId: string }) {
               className="size-full"
             />
           </button>
+          {bubbles.length > 0 && !eating && (
+            <div
+              data-testid="bubbles"
+              className={`fl-bubbles right-[2%] ${BUBBLE_TOP[stage.id]}`}
+            >
+              {bubbles.map((b) => (
+                <span key={b} className="fl-bubble" aria-hidden="true">
+                  {BUBBLE_GLYPH[b]}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

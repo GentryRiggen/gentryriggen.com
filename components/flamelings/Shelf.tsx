@@ -2,7 +2,7 @@ import Link from "next/link";
 import { MAX_PETS } from "@/lib/flamelings/actions";
 import { stageFor } from "@/lib/flamelings/progress";
 import { moodOf } from "@/lib/flamelings/sim";
-import { stateGlyph } from "@/lib/flamelings/status";
+import { fadeLevel, stateGlyph } from "@/lib/flamelings/status";
 import { useFlamelings } from "@/lib/flamelings/store";
 import { FLAMELINGS_VERSION } from "@/lib/flamelings/version";
 import type { Pet } from "@/lib/flamelings/types";
@@ -41,6 +41,7 @@ function PetCard({ pet, nowMs }: { pet: Pet; nowMs: number }) {
       <Blob
         look={pet.look}
         worn={pet.worn}
+        fade={fadeLevel(pet)}
         mood={moodOf(pet, nowMs)}
         stage={stage.id}
         className="size-40 sm:size-48"
