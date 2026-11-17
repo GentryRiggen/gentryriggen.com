@@ -32,9 +32,9 @@ const ASSET_PATHS = ["/flamelings.webmanifest"];
 /** Upper bound on URLs accepted from one CACHE_URLS message. */
 const MAX_PRECACHE_URLS = 300;
 
-self.addEventListener("install", () => {
-  self.skipWaiting();
-});
+// No skipWaiting on install: a new worker waits while a game is being played,
+// and takes over only when the page asks (SKIP_WAITING, after a tap on the
+// update pill). A first install has nothing to wait for and activates alone.
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
@@ -140,10 +140,11 @@ function sameSet(a, b) {
 /**
  * A new deploy changes the hashed files the game page references, which
  * would otherwise stay in the cache forever. When the page's references
- * change, drop every cached /_next/static/ file the new page does not
- * reference. Lazily loaded chunks are cache-first on demand, so any still
- * needed are stored again when the page loads them. Does nothing when the
- * references cannot be read or have not changed.
+ * change, drop only the cached /_next/static/ files the previous page
+ * referenced and the new page dropped. Lazily loaded chunks are never named in
+ * the HTML, so they stay: an offline feature opened once must keep working
+ * after a deploy. Does nothing when the references cannot be read or have not
+ * changed.
  */
 async function pruneStaleStatic(cache, previous, response) {
   let before;
@@ -157,7 +158,7 @@ async function pruneStaleStatic(cache, previous, response) {
   if (after.size === 0 || sameSet(before, after)) return;
   for (const request of await cache.keys()) {
     const { pathname } = new URL(request.url);
-    if (isStaticAsset(pathname) && !after.has(pathname)) {
+    if (before.has(pathname) && !after.has(pathname)) {
       await cache.delete(request);
     }
   }
@@ -192,7 +193,9 @@ async function handleNavigation(event, request, url) {
   const slow = new Promise((resolve) =>
     setTimeout(() => resolve(cached), NAVIGATION_NETWORK_TIMEOUT_MS)
   );
-  return Promise.race([network.catch(() => cached), slow]);
+  // A 404 or 5xx is as good as no answer: the cached page is better.
+  const usable = network.then((response) => (response.ok ? response : cached));
+  return Promise.race([usable.catch(() => cached), slow]);
 }
 
 async function handleStaticAsset(request) {
@@ -234,7 +237,9 @@ async function handleGameAsset(event, request, url) {
   const slow = new Promise((resolve) =>
     setTimeout(() => resolve(cached), ASSET_NETWORK_TIMEOUT_MS)
   );
-  return Promise.race([network.catch(() => cached), slow]);
+  // A 404 or 5xx is as good as no answer: the cached copy is better.
+  const usable = network.then((response) => (response.ok ? response : cached));
+  return Promise.race([usable.catch(() => cached), slow]);
 }
 
 self.addEventListener("fetch", (event) => {

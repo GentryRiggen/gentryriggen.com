@@ -121,7 +121,7 @@ function loadWorker() {
 
   async function dispatchExtendable(type: string, init = {}) {
     const pending: Promise<unknown>[] = [];
-    listeners.get(type)!({
+    listeners.get(type)?.({
       ...init,
       waitUntil: (promise: Promise<unknown>) => pending.push(promise),
     });
@@ -130,6 +130,7 @@ function loadWorker() {
 
   return {
     stores,
+    skipWaiting: self.skipWaiting,
     fetchMock,
     claim,
     dispatchFetch,
@@ -246,12 +247,18 @@ describe("flamelings service worker", () => {
         await worker.dispatchFetch(
           makeRequest(`${ORIGIN}/flamelings-icons/a/a.glb`)
         );
+        // A lazily loaded chunk no page names must survive a deploy.
+        worker.fetchMock.mockResolvedValueOnce(makeResponse("lazy"));
+        await worker.dispatchFetch(
+          makeRequest(`${ORIGIN}/_next/static/chunks/lazy.js`)
+        );
 
         await visitWith(worker, html("chunks/kept.js", "chunks/new.js"));
 
         const keys = worker.cacheKeys();
         expect(keys).not.toContain(`${ORIGIN}/_next/static/chunks/old.js`);
         expect(keys).toContain(`${ORIGIN}/_next/static/chunks/kept.js`);
+        expect(keys).toContain(`${ORIGIN}/_next/static/chunks/lazy.js`);
         expect(keys).toContain(`${ORIGIN}/flamelings-icons/a/a.glb`);
       });
 
@@ -392,6 +399,50 @@ describe("flamelings service worker", () => {
       ).rejects.toThrow("offline");
     });
 
+    it("falls back to the cached page when the network answers 500 or 404", async () => {
+      const worker = loadWorker();
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("page"));
+      await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/flamelings`, { mode: "navigate" })
+      );
+      for (const bad of [{ ok: false }, { ok: false }]) {
+        worker.fetchMock.mockResolvedValueOnce(makeResponse("oops", bad));
+        const response = await worker.dispatchFetch(
+          makeRequest(`${ORIGIN}/flamelings`, { mode: "navigate" })
+        );
+        expect(response?.body).toBe("page");
+      }
+      expect(worker.cacheKeys()).toEqual([`${ORIGIN}/flamelings`]);
+    });
+
+    it("returns a bad answer when there is nothing cached, without caching it", async () => {
+      const worker = loadWorker();
+      worker.fetchMock.mockResolvedValueOnce(
+        makeResponse("missing", { ok: false })
+      );
+      const response = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/flamelings`, { mode: "navigate" })
+      );
+      expect(response?.body).toBe("missing");
+      expect(worker.cacheKeys()).toEqual([]);
+    });
+
+    it("serves the cached asset when the network answers 500", async () => {
+      const worker = loadWorker();
+      worker.fetchMock.mockResolvedValueOnce(makeResponse("icon"));
+      await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/flamelings-icons/a.png`)
+      );
+      worker.fetchMock.mockResolvedValueOnce(
+        makeResponse("oops", { ok: false })
+      );
+      const response = await worker.dispatchFetch(
+        makeRequest(`${ORIGIN}/flamelings-icons/a.png`)
+      );
+      expect(response?.body).toBe("icon");
+      expect(worker.cacheKeys()).toEqual([`${ORIGIN}/flamelings-icons/a.png`]);
+    });
+
     it("serves the manifest network-first and caches it", async () => {
       const worker = loadWorker();
       worker.fetchMock.mockResolvedValueOnce(makeResponse("manifest"));
@@ -440,6 +491,14 @@ describe("flamelings service worker", () => {
       );
 
       expect(worker.cacheKeys()).toEqual([]);
+    });
+  });
+
+  describe("install", () => {
+    it("waits for the page's tap instead of taking over a game in play", async () => {
+      const worker = loadWorker();
+      await worker.dispatchExtendable("install");
+      expect(worker.skipWaiting).not.toHaveBeenCalled();
     });
   });
 
