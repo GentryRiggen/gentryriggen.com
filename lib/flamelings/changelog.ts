@@ -15,6 +15,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-11-16",
+    title: "Sparks and shop",
+    highlights: [
+      "Every flameling now earns sparks! Feed it when it is hungry, clean up the ash, catch fireflies, open your present, level up and light an ember back up",
+      "Watch the sparks fly up to the counter at the top, with a little ding",
+      "The new Shop button has 8 hats, 4 face things, 4 neck things and 11 glade decorations, like a pirate hat, bunny ears, a cape, a tent and a mushroom house",
+      "Pick something you can pay for and it goes on your flameling or into its glade right away. If you do not have enough sparks yet, it shows how many more you need",
+      "Put your decorations out or tuck them away again in the Shop's Glade tab",
+      "Each flameling keeps its own sparks, and anything you buy is shared with new hatchlings",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-11-16",
     title: "Hello, little flame!",

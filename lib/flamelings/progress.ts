@@ -1,4 +1,4 @@
-import { ALL_UNLOCKS, UNLOCK_ORDER, type UnlockKey } from "./catalog";
+import { GIFTABLE_UNLOCKS, UNLOCK_ORDER, type UnlockKey } from "./catalog";
 import type { Pet, StageId } from "./types";
 
 export type { StageId };
@@ -39,7 +39,7 @@ export function nextLevelUnlock(
 }
 
 export function lockedItems(unlocked: readonly UnlockKey[]): UnlockKey[] {
-  return ALL_UNLOCKS.filter((key) => !unlocked.includes(key));
+  return GIFTABLE_UNLOCKS.filter((key) => !unlocked.includes(key));
 }
 
 export interface LevelGain {

@@ -1,8 +1,10 @@
 import {
   FOOD_INFO,
+  isShopKey,
   STARTING_UNLOCKS,
   parseUnlockKey,
   unlockKey,
+  type DecorId,
   type FoodId,
   type UnlockKey,
 } from "./catalog";
@@ -14,6 +16,7 @@ import {
   lockedItems,
   stageFor,
 } from "./progress";
+import { shopItem } from "./shop";
 import { RELIGHT_FEEDS, advance, isAwake, isOut } from "./sim";
 import type {
   Look,
@@ -22,12 +25,51 @@ import type {
   Pet,
   PetEvent,
   SaveData,
+  SparkSource,
   Worn,
 } from "./types";
 
 export const MAX_PETS = 8;
 export const PET_TAP_XP_CAP = 10;
 const DAY_MS = 86_400_000;
+
+/**
+ * What a pet earns in sparks. For two normal visits a day (a morning and an
+ * evening gift, feeds whenever it is hungry, every ash pile cleaned, and a
+ * Firefly Catch round of about 6 fireflies each visit) a day pays roughly:
+ *   gifts 2 x (10..25, average ~17)         ~ 34
+ *   feeds ~4 x 3 = 12, ash ~4 x 2 = 8       ~ 20
+ *   play 2 x 6                              ~ 12
+ *   level-ups 10 x level, one every few days, fewer the higher it goes
+ *                                           ~ 7 to 15
+ * which is 40 to 80 over a month. The "normal day" test in actions.test.ts
+ * plays 28 such days and checks the average. A round pays at most `playCap`.
+ */
+export const SPARKS = {
+  feedHungry: 3,
+  clean: 2,
+  perFirefly: 1,
+  playCap: 12,
+  giftMin: 10,
+  giftMax: 25,
+  relight: 5,
+  levelPerLevel: 10,
+} as const;
+
+/** Shop pets and sparks stay small whole numbers. */
+export const MAX_SPARKS = 1_000_000;
+
+function earn(
+  pet: Pet,
+  amount: number,
+  source: SparkSource,
+  events: PetEvent[]
+): Pet {
+  const gained = Math.floor(amount);
+  if (gained <= 0) return pet;
+  events.push({ type: "sparks", amount: gained, source });
+  return { ...pet, sparks: Math.min(MAX_SPARKS, pet.sparks + gained) };
+}
 
 const clamp = (n: number) => Math.min(100, Math.max(0, n));
 
@@ -57,6 +99,8 @@ export function createPet(params: {
     relightFeeds: 0,
     level: 1,
     xp: 0,
+    sparks: 0,
+    decor: [],
     unlocked: [
       ...new Set<UnlockKey>([
         ...STARTING_UNLOCKS,
@@ -75,6 +119,7 @@ function grantXp(pet: Pet, amount: number, events: PetEvent[]): Pet {
   if (amount <= 0) return pet;
   const gain = addXp(pet.level, pet.xp, amount, pet.unlocked);
   let unlocked = pet.unlocked;
+  let sparks = pet.sparks;
   for (const g of gain.gains) {
     events.push({
       type: "levelUp",
@@ -86,8 +131,11 @@ function grantXp(pet: Pet, amount: number, events: PetEvent[]): Pet {
       unlocked = [...unlocked, g.unlocked];
       events.push({ type: "unlock", key: g.unlocked, via: "level" });
     }
+    const prize = SPARKS.levelPerLevel * g.level;
+    events.push({ type: "sparks", amount: prize, source: "level" });
+    sparks = Math.min(MAX_SPARKS, sparks + prize);
   }
-  return { ...pet, level: gain.level, xp: gain.xp, unlocked };
+  return { ...pet, level: gain.level, xp: gain.xp, unlocked, sparks };
 }
 
 export function canCare(pet: Pet, now: number): boolean {
@@ -123,7 +171,10 @@ export function feed(pet: Pet, food: FoodId, now: number): Outcome {
       { type: "state", to: "relit" },
       { type: "care", action: "relight" }
     );
-    return { pet: grantXp(lit, 20, events), events };
+    return {
+      pet: grantXp(earn(lit, SPARKS.relight, "relight", events), 20, events),
+      events,
+    };
   }
   if (pet.fuel >= 100) {
     events.push({ type: "overfed" });
@@ -136,7 +187,10 @@ export function feed(pet: Pet, food: FoodId, now: number): Outcome {
     joy: clamp(pet.joy + info.joy),
   };
   events.push({ type: "care", action: "feed" });
-  if (earns) next = grantXp(next, 10, events);
+  if (earns) {
+    next = earn(next, SPARKS.feedHungry, "feed", events);
+    next = grantXp(next, 10, events);
+  }
   return { pet: next, events };
 }
 
@@ -144,7 +198,13 @@ export function feed(pet: Pet, food: FoodId, now: number): Outcome {
 export function clean(pet: Pet, now: number): Outcome {
   if (!canCare(pet, now) || pet.ash <= 0) return { pet, events: [] };
   const events: PetEvent[] = [{ type: "care", action: "clean" }];
-  return { pet: grantXp({ ...pet, ash: pet.ash - 1 }, 3, events), events };
+  const tidy = earn(
+    { ...pet, ash: pet.ash - 1 },
+    SPARKS.clean,
+    "clean",
+    events
+  );
+  return { pet: grantXp(tidy, 3, events), events };
 }
 
 /** Firefly Catch result: +2 joy per catch (cap 40), score/2 XP (cap 20). */
@@ -152,7 +212,13 @@ export function finishPlay(pet: Pet, score: number, now: number): Outcome {
   if (!canCare(pet, now)) return { pet, events: [] };
   const caught = Math.max(0, Math.min(99, Math.floor(score)));
   const events: PetEvent[] = [{ type: "care", action: "play" }];
-  const next = { ...pet, joy: clamp(pet.joy + Math.min(40, caught * 2)) };
+  const cheered = { ...pet, joy: clamp(pet.joy + Math.min(40, caught * 2)) };
+  const next = earn(
+    cheered,
+    Math.min(SPARKS.playCap, caught * SPARKS.perFirefly),
+    "play",
+    events
+  );
   return {
     pet: grantXp(next, Math.min(20, Math.floor(caught / 2)), events),
     events,
@@ -172,7 +238,7 @@ export function tapPet(pet: Pet, now: number): Outcome {
   return { pet: next, events };
 }
 
-/** Opens this window's present: a random locked item and 15 XP. */
+/** Opens this window's present: a random locked item, 15 XP and 10-25 sparks. */
 export function openGift(
   pet: Pet,
   now: number,
@@ -189,6 +255,13 @@ export function openGift(
   } else {
     events.push({ type: "bonusXp", amount: 15 });
   }
+  const span = SPARKS.giftMax - SPARKS.giftMin + 1;
+  next = earn(
+    next,
+    SPARKS.giftMin + Math.floor(random() * span),
+    "gift",
+    events
+  );
   return { pet: grantXp(next, 15, events), events };
 }
 
@@ -198,6 +271,39 @@ export type DressSlot = "hat" | "face" | "neck";
 export function dress(pet: Pet, slot: DressSlot, id: string | null): Pet {
   if (id !== null && !pet.unlocked.includes(unlockKey(slot, id))) return pet;
   return { ...pet, worn: { ...pet.worn, [slot]: id } as Worn };
+}
+
+/**
+ * Buys a shop item with the pet's sparks. A hat, face or neck item is put on
+ * and decor is put out. Ignored when it is not for sale, already owned or too
+ * dear (the screen shows how many sparks are missing).
+ */
+export function buy(pet: Pet, key: UnlockKey): Outcome {
+  const item = shopItem(key);
+  if (!item || !isShopKey(key) || pet.unlocked.includes(key)) {
+    return { pet, events: [] };
+  }
+  if (pet.sparks < item.price) return { pet, events: [] };
+  const bought: Pet = {
+    ...pet,
+    sparks: pet.sparks - item.price,
+    unlocked: [...pet.unlocked, key],
+  };
+  const placed =
+    item.tab === "decor"
+      ? { ...bought, decor: [...bought.decor, item.id as DecorId] }
+      : dress(bought, item.tab, item.id);
+  return {
+    pet: placed,
+    events: [{ type: "buy", key, price: item.price }],
+  };
+}
+
+/** Puts a decor item out in the glade or packs it away. Must be owned. */
+export function setDecor(pet: Pet, id: DecorId, on: boolean): Pet {
+  if (!pet.unlocked.includes(unlockKey("decor", id))) return pet;
+  const rest = pet.decor.filter((d) => d !== id);
+  return { ...pet, decor: on ? [...rest, id] : rest };
 }
 
 export function restyle(pet: Pet, look: Partial<Look>): Pet {

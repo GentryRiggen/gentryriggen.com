@@ -120,6 +120,25 @@ export const VOICES: Record<SoundName, Voice> = {
     });
     VOICES.sparkle(engine, t + 0.7);
   },
+  /** A bright two-note "ting" when a spark lands in the counter. */
+  coin(engine, t) {
+    tone(engine, {
+      type: "square",
+      start: t,
+      duration: 0.06,
+      freq: 1568,
+      gain: 0.04,
+      attack: 0.004,
+    });
+    tone(engine, {
+      type: "sine",
+      start: t + 0.06,
+      duration: 0.2,
+      freq: 2093,
+      gain: 0.07,
+      attack: 0.004,
+    });
+  },
   /** A sad little downward "fwoop": the flame has gone to an ember. */
   fwoop(engine, t) {
     tone(engine, {
@@ -139,6 +158,7 @@ const MIN_GAP: Partial<Record<SoundName, number>> = {
   chirp: 0.18,
   pip: 0.05,
   chomp: 0.3,
+  coin: 0.07,
 };
 
 const lastPlayed = new Map<SoundName, number>();

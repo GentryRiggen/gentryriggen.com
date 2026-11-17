@@ -43,8 +43,27 @@ export function trackEvents(events: readonly PetEvent[]): void {
         break;
       case "unlock": {
         const parsed = parseUnlockKey(event.key);
-        if (parsed) {
+        if (parsed && parsed.kind !== "decor") {
           trackGame("fl_unlock", { kind: parsed.kind, via: event.via });
+        }
+        break;
+      }
+      case "buy": {
+        const parsed = parseUnlockKey(event.key);
+        if (
+          parsed &&
+          (parsed.kind === "hat" ||
+            parsed.kind === "face" ||
+            parsed.kind === "neck" ||
+            parsed.kind === "decor")
+        ) {
+          trackGame("fl_buy", {
+            kind: parsed.kind,
+            price: Math.max(
+              0,
+              Math.min(1000, Math.floor(event.price / 10) * 10)
+            ),
+          });
         }
         break;
       }

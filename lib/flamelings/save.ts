@@ -1,5 +1,6 @@
 import {
   COLOURS,
+  DECOR,
   EYES,
   FACES,
   HATS,
@@ -7,9 +8,11 @@ import {
   NECKS,
   SHAPES,
   isUnlockKey,
+  unlockKey,
+  type DecorId,
   type UnlockKey,
 } from "./catalog";
-import { emptySave, MAX_PETS } from "./actions";
+import { emptySave, MAX_PETS, MAX_SPARKS } from "./actions";
 import type { Look, Memorial, Pet, SaveData, Worn } from "./types";
 
 export const SAVE_KEY = "flamelings:v1";
@@ -89,6 +92,19 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
   const unlocked = Array.isArray(v.unlocked)
     ? ([...new Set(v.unlocked.filter(isUnlockKey))] as UnlockKey[])
     : [];
+  // Decor needs an owner's key, so a stray id cannot appear in the glade.
+  const decor = Array.isArray(v.decor)
+    ? ([
+        ...new Set(
+          v.decor.filter(
+            (d): d is DecorId =>
+              typeof d === "string" &&
+              (DECOR as readonly string[]).includes(d) &&
+              unlocked.includes(unlockKey("decor", d))
+          )
+        ),
+      ] as DecorId[])
+    : [];
   const taps = isObj(v.petTaps) ? v.petTaps : {};
   return {
     id: v.id,
@@ -106,6 +122,8 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
     level: Math.floor(num(v.level, 1, 99, 1)),
     xp: num(v.xp, 0, 1e9, 0),
     unlocked,
+    sparks: Math.floor(num(v.sparks, 0, MAX_SPARKS, 0)),
+    decor,
     bornAt,
     tickedAt,
     giftWindow: typeof v.giftWindow === "string" ? v.giftWindow : null,

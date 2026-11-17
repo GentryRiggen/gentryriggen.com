@@ -8914,6 +8914,47 @@ html:has(.jim-app) body {
   }
 }
 
+/* ---- Flamelings sparks and shop ---- */
+.fl-spark-pop {
+  display: inline-grid;
+  animation: fl-spark-pop 0.38s cubic-bezier(0.2, 1.6, 0.4, 1);
+}
+@keyframes fl-spark-pop {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  45% {
+    transform: scale(1.5) rotate(18deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+.fl-shop-shake {
+  animation: fl-shop-shake 0.45s ease-in-out;
+}
+@keyframes fl-shop-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-7px);
+  }
+  45% {
+    transform: translateX(6px);
+  }
+  70% {
+    transform: translateX(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-spark-pop,
+  .fl-shop-shake {
+    animation: none !important;
+  }
+}
+
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
 @keyframes ms-bob {
   0%,

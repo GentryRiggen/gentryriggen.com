@@ -5,6 +5,22 @@ import type { FaceId, HatId, NeckId } from "@/lib/flamelings/catalog";
  * peak (around y 44), faces on the eyes (y 76), necks under the mouth.
  */
 
+/** Points along the neckline curve (quadratic from 44,92 via 60,112 to 76,92). */
+function neckPoints(count: number): [number, number][] {
+  return Array.from({ length: count }, (_, i) => {
+    const t = (i + 0.5) / count;
+    const u = 1 - t;
+    return [
+      u * u * 44 + 2 * u * t * 60 + t * t * 76,
+      u * u * 92 + 2 * u * t * 112 + t * t * 92,
+    ];
+  });
+}
+const BEADS = neckPoints(7);
+const BEAD_COLOURS = ["#ff7ab6", "#ffd84a", "#4ad0ff", "#a8f04a"];
+const LEI = neckPoints(6);
+const LEI_COLOURS = ["#ff7ab6", "#ff9b5a", "#ffd84a"];
+
 const HATS_SVG: Record<HatId, React.ReactNode> = {
   party: (
     <>
@@ -127,6 +143,242 @@ const HATS_SVG: Record<HatId, React.ReactNode> = {
       <circle cx="60" cy="32" r="4" fill="#ffd84a" />
     </>
   ),
+  pirate: (
+    <>
+      <path
+        d="M32 47 Q38 22 60 24 Q82 22 88 47 Q60 39 32 47 Z"
+        fill="#25252f"
+        stroke="#0f0f15"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M38 41 Q60 34 82 41"
+        stroke="#e0b03a"
+        strokeWidth="2.2"
+        fill="none"
+      />
+      <circle cx="60" cy="32" r="4.2" fill="#fff" />
+      <path
+        d="M56.5 38 L63.5 33 M63.5 38 L56.5 33"
+        stroke="#fff"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <circle cx="58.6" cy="31.4" r="0.9" fill="#25252f" />
+      <circle cx="61.4" cy="31.4" r="0.9" fill="#25252f" />
+    </>
+  ),
+  chef: (
+    <>
+      <circle
+        cx="47"
+        cy="28"
+        r="9"
+        fill="#fff"
+        stroke="#dfe3ea"
+        strokeWidth="1.2"
+      />
+      <circle
+        cx="73"
+        cy="28"
+        r="9"
+        fill="#fff"
+        stroke="#dfe3ea"
+        strokeWidth="1.2"
+      />
+      <circle
+        cx="60"
+        cy="22"
+        r="11"
+        fill="#fff"
+        stroke="#dfe3ea"
+        strokeWidth="1.2"
+      />
+      <rect
+        x="45"
+        y="30"
+        width="30"
+        height="16"
+        rx="3"
+        fill="#fff"
+        stroke="#dfe3ea"
+        strokeWidth="1.2"
+      />
+      <rect x="45" y="40" width="30" height="6" rx="2" fill="#eef1f6" />
+    </>
+  ),
+  bunny: (
+    <>
+      <g transform="rotate(-12 50 44)">
+        <ellipse
+          cx="50"
+          cy="24"
+          rx="6.5"
+          ry="19"
+          fill="#fff"
+          stroke="#e3e6ec"
+          strokeWidth="1.2"
+        />
+        <ellipse cx="50" cy="26" rx="3.2" ry="13" fill="#ffb3c8" />
+      </g>
+      <g transform="rotate(12 70 44)">
+        <ellipse
+          cx="70"
+          cy="24"
+          rx="6.5"
+          ry="19"
+          fill="#fff"
+          stroke="#e3e6ec"
+          strokeWidth="1.2"
+        />
+        <ellipse cx="70" cy="26" rx="3.2" ry="13" fill="#ffb3c8" />
+      </g>
+      <path
+        d="M44 47 Q60 38 76 47"
+        stroke="#ff8fb3"
+        strokeWidth="3.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  headphones: (
+    <>
+      <path
+        d="M38 64 Q38 28 60 28 Q82 28 82 64"
+        stroke="#2f2f3a"
+        strokeWidth="4.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <rect
+        x="31"
+        y="56"
+        width="12"
+        height="20"
+        rx="6"
+        fill="#ff5f7a"
+        stroke="#c42f50"
+        strokeWidth="1.4"
+      />
+      <rect
+        x="77"
+        y="56"
+        width="12"
+        height="20"
+        rx="6"
+        fill="#ff5f7a"
+        stroke="#c42f50"
+        strokeWidth="1.4"
+      />
+      <rect x="34" y="61" width="4" height="10" rx="2" fill="#ffb3c2" />
+      <rect x="82" y="61" width="4" height="10" rx="2" fill="#ffb3c2" />
+    </>
+  ),
+  astronaut: (
+    <>
+      <circle
+        cx="60"
+        cy="64"
+        r="38"
+        fill="#9fd0ff"
+        fillOpacity="0.3"
+        stroke="#c9d6e6"
+        strokeWidth="5"
+      />
+      <circle
+        cx="60"
+        cy="64"
+        r="38"
+        fill="none"
+        stroke="#8aa0bd"
+        strokeWidth="1"
+      />
+      <path
+        d="M36 52 Q42 36 58 31"
+        stroke="#fff"
+        strokeOpacity="0.9"
+        strokeWidth="3.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <rect
+        x="40"
+        y="96"
+        width="40"
+        height="9"
+        rx="4.5"
+        fill="#d3d9e2"
+        stroke="#8aa0bd"
+        strokeWidth="1.2"
+      />
+      <circle cx="60" cy="25" r="2.6" fill="#ff6a5f" />
+    </>
+  ),
+  flowerCrown: (
+    <>
+      <path
+        d="M38 48 Q60 32 82 48"
+        stroke="#3a9e4a"
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      {[
+        [43, 44, "#ff7ab6"],
+        [51, 38.5, "#ffd84a"],
+        [60, 36, "#fff"],
+        [69, 38.5, "#b58cff"],
+        [77, 44, "#ff9b5a"],
+      ].map(([x, y, c]) => (
+        <g key={String(x)}>
+          <circle
+            cx={x}
+            cy={y}
+            r="5"
+            fill={String(c)}
+            stroke="#0000001a"
+            strokeWidth="0.8"
+          />
+          <circle cx={x} cy={y} r="1.8" fill="#fff6a8" />
+        </g>
+      ))}
+    </>
+  ),
+  partyCrown: (
+    <>
+      <path
+        d="M41 47 L41 29 L50 38 L60 24 L70 38 L79 29 L79 47 Z"
+        fill="#ff7ac8"
+        stroke="#c43d93"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <circle cx="41" cy="28" r="3.2" fill="#ffd84a" />
+      <circle cx="60" cy="23" r="3.6" fill="#4ad0ff" />
+      <circle cx="79" cy="28" r="3.2" fill="#a8f04a" />
+      <circle cx="50" cy="43" r="1.8" fill="#fff" />
+      <circle cx="60" cy="41" r="1.8" fill="#fff" />
+      <circle cx="70" cy="43" r="1.8" fill="#fff" />
+    </>
+  ),
+  witch: (
+    <>
+      <ellipse cx="60" cy="46" rx="31" ry="6" fill="#2a1f3d" />
+      <path
+        d="M46 46 Q54 26 59 14 Q63 6 73 9 Q66 13 66 24 Q70 36 74 46 Z"
+        fill="#3b2a5a"
+      />
+      <path
+        d="M48 40 Q60 43 73 40"
+        stroke="#a24bd6"
+        strokeWidth="4.4"
+        fill="none"
+      />
+      <rect x="57" y="37.5" width="7" height="6" rx="1.4" fill="#ffd84a" />
+    </>
+  ),
 };
 
 const FACES_SVG: Record<FaceId, React.ReactNode> = {
@@ -216,6 +468,90 @@ const FACES_SVG: Record<FaceId, React.ReactNode> = {
       ))}
     </>
   ),
+  heartGlasses: (
+    <>
+      {[50, 70].map((x) => (
+        <g key={x} transform={`translate(${x} 74)`}>
+          <path
+            d="M0 -2 C-2 -8 -11 -6 -11 0 C-11 5 -3 8 0 12 C3 8 11 5 11 0 C11 -6 2 -8 0 -2 Z"
+            fill="#ff4f87"
+            fillOpacity="0.8"
+            stroke="#c21f5c"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M-6 -1 Q-6 -4 -3 -4"
+            stroke="#fff"
+            strokeOpacity="0.8"
+            strokeWidth="1.6"
+            fill="none"
+            strokeLinecap="round"
+          />
+        </g>
+      ))}
+      <path
+        d="M60 73 L60 73"
+        stroke="#c21f5c"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  eyepatch: (
+    <>
+      <path
+        d="M41 68 Q60 56 82 68"
+        stroke="#25252f"
+        strokeWidth="2"
+        fill="none"
+      />
+      <ellipse
+        cx="50"
+        cy="76"
+        rx="8.5"
+        ry="7.5"
+        fill="#25252f"
+        stroke="#0f0f15"
+        strokeWidth="1"
+      />
+      <path
+        d="M45 72 Q48 70 51 71"
+        stroke="#fff"
+        strokeOpacity="0.3"
+        strokeWidth="1.4"
+        fill="none"
+        strokeLinecap="round"
+      />
+    </>
+  ),
+  clownNose: (
+    <>
+      <circle
+        cx="60"
+        cy="82"
+        r="6"
+        fill="#ff3b4a"
+        stroke="#c4202f"
+        strokeWidth="1"
+      />
+      <circle cx="58" cy="80" r="1.8" fill="#fff" fillOpacity="0.8" />
+    </>
+  ),
+  freckles: (
+    <>
+      {[
+        [43, 83],
+        [47.5, 85.5],
+        [41, 87],
+        [77, 83],
+        [72.5, 85.5],
+        [79, 87],
+      ].map(([x, y]) => (
+        <circle key={`${x}-${y}`} cx={x} cy={y} r="1.3" fill="#a2542a" />
+      ))}
+    </>
+  ),
 };
 
 const NECKS_SVG: Record<NeckId, React.ReactNode> = {
@@ -260,12 +596,133 @@ const NECKS_SVG: Record<NeckId, React.ReactNode> = {
       />
     </>
   ),
+  necklace: (
+    <>
+      <path
+        d="M44 92 Q60 112 76 92"
+        stroke="#e8e8f0"
+        strokeWidth="1.6"
+        fill="none"
+      />
+      {BEADS.map(([x, y], i) => (
+        <circle
+          key={i}
+          cx={x}
+          cy={y}
+          r="2.2"
+          fill={BEAD_COLOURS[i % BEAD_COLOURS.length]}
+        />
+      ))}
+      <path
+        d="M60 108 C58 104 52 105 54 110 C55 113 59 114 60 117 C61 114 65 113 66 110 C68 105 62 104 60 108 Z"
+        fill="#ffc928"
+        stroke="#b57d00"
+        strokeWidth="1.2"
+      />
+    </>
+  ),
+  cape: (
+    <>
+      <path
+        d="M41 91 Q60 104 79 91 L81 98 Q60 111 39 98 Z"
+        fill="#d8334a"
+        stroke="#a8203a"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <circle
+        cx="44"
+        cy="97"
+        r="3.2"
+        fill="#ffc928"
+        stroke="#b57d00"
+        strokeWidth="1.2"
+      />
+      <circle
+        cx="76"
+        cy="97"
+        r="3.2"
+        fill="#ffc928"
+        stroke="#b57d00"
+        strokeWidth="1.2"
+      />
+    </>
+  ),
+  lei: (
+    <>
+      <path
+        d="M44 92 Q60 112 76 92"
+        stroke="#3a9e4a"
+        strokeWidth="2.4"
+        fill="none"
+      />
+      {LEI.map(([x, y], i) => (
+        <g key={i}>
+          <circle
+            cx={x}
+            cy={y}
+            r="4.2"
+            fill={LEI_COLOURS[i % LEI_COLOURS.length]}
+            stroke="#0000001a"
+            strokeWidth="0.8"
+          />
+          <circle cx={x} cy={y} r="1.4" fill="#fff6a8" />
+        </g>
+      ))}
+    </>
+  ),
+  bandana: (
+    <>
+      <path
+        d="M39 90 Q60 100 81 90 L60 116 Z"
+        fill="#1fb5a6"
+        stroke="#0f8478"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M40 92 Q60 101 80 92"
+        stroke="#0f8478"
+        strokeWidth="1.6"
+        fill="none"
+      />
+      <circle cx="54" cy="100" r="1.6" fill="#fff" />
+      <circle cx="66" cy="100" r="1.6" fill="#fff" />
+      <circle cx="60" cy="107" r="1.6" fill="#fff" />
+    </>
+  ),
 };
 
 interface AccessoriesProps {
   hat: HatId | null;
   face: FaceId | null;
   neck: NeckId | null;
+}
+
+/** Drawn behind the body: only the cape's back, for now. */
+const BACK_SVG: Partial<Record<NeckId, React.ReactNode>> = {
+  cape: (
+    <>
+      <path
+        d="M38 88 Q30 108 22 119 Q60 128 98 119 Q90 108 82 88 Z"
+        fill="#d8334a"
+        stroke="#a8203a"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M46 98 Q40 110 37 119 Q60 124 83 119 Q80 110 74 98 Z"
+        fill="#a8203a"
+      />
+    </>
+  ),
+};
+
+/** Worn items that sit behind the flameling (a cape's back). */
+export function AccessoriesBack({ neck }: { neck: NeckId | null }) {
+  return neck && BACK_SVG[neck] ? (
+    <g className="fl-back">{BACK_SVG[neck]}</g>
+  ) : null;
 }
 
 /** The worn items, to draw inside the blob's `fl-all` group. */
@@ -278,6 +735,15 @@ export default function Accessories({ hat, face, neck }: AccessoriesProps) {
     </>
   );
 }
+
+/** Items too tall or wide for their kind's usual picture box. */
+const BOX_OVERRIDE: Record<string, string> = {
+  headphones: "26 24 68 56",
+  astronaut: "20 24 80 86",
+  bunny: "30 0 60 52",
+  pirate: "28 14 64 36",
+  cape: "18 84 84 44",
+};
 
 /** One item alone, for the Wardrobe picker. */
 export function AccessoryIcon({
@@ -296,11 +762,12 @@ export function AccessoryIcon({
         ? FACES_SVG[id as FaceId]
         : NECKS_SVG[id as NeckId];
   const box =
-    kind === "hat"
+    BOX_OVERRIDE[id] ??
+    (kind === "hat"
       ? "26 0 68 52"
       : kind === "face"
         ? "34 62 52 32"
-        : "28 86 64 40";
+        : "28 86 64 40");
   return (
     <svg
       aria-hidden="true"
@@ -308,6 +775,7 @@ export function AccessoryIcon({
       className={className}
       focusable="false"
     >
+      {kind === "neck" && BACK_SVG[id as NeckId]}
       {art}
     </svg>
   );

@@ -157,6 +157,9 @@ describe("summarizeFlamelings", () => {
     fl("fl_unlock", { kind: "hat", via: "gift" }),
     fl("fl_unlock", { kind: "hat", via: "gift" }),
     fl("fl_unlock", { kind: "food", via: "level" }),
+    fl("fl_buy", { kind: "hat", price: 90 }),
+    fl("fl_buy", { kind: "decor", price: 400 }),
+    fl("fl_buy", { kind: "hat", price: 50 }),
   ];
   const summary = summarizeFlamelings(events);
 
@@ -177,8 +180,16 @@ describe("summarizeFlamelings", () => {
     expect(summary.unlocks[0]).toEqual({ key: "hat · gift", views: 2 });
   });
 
+  it("counts shop purchases, sparks spent and what was bought", () => {
+    expect(summary.purchases).toBe(3);
+    expect(summary.sparksSpent).toBe(540);
+    expect(summary.buys[0]).toEqual({ key: "hat", views: 2 });
+  });
+
   it("has empty answers with no events", () => {
     const empty = summarizeFlamelings([]);
+    expect(empty.purchases).toBe(0);
+    expect(empty.sparksSpent).toBe(0);
     expect(empty.averagePets).toBeNull();
     expect(empty.averageScore).toBeNull();
     expect(empty.highestLevel).toBe(0);

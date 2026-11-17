@@ -27,6 +27,13 @@ describe("soundsForEvents", () => {
       "fwoop",
     ]);
     expect(soundsForEvents([{ type: "overfed" }])).toEqual([]);
+    expect(
+      soundsForEvents([{ type: "buy", key: "hat:pirate", price: 90 }])
+    ).toEqual(["sparkle"]);
+    // The coin sound is played as sparks land, not when they are earned.
+    expect(
+      soundsForEvents([{ type: "sparks", amount: 3, source: "feed" }])
+    ).toEqual([]);
   });
 });
 

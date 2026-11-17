@@ -84,6 +84,80 @@ test("hatch, name, feed and dress a pet, and it survives a reload", async ({
   expect(errors).toEqual([]);
 });
 
+test("earn sparks, buy a hat and a decoration, and keep them after a reload", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page);
+  await hatch(page, "Pip");
+
+  // Feeding a hungry pet pays 3 sparks, which fly into the counter.
+  await page.evaluate(() => window.__flamelings!.patchPet(0, { fuel: 30 }));
+  await feedOnce(page, "Log");
+  await expect(page.getByTestId("sparks")).toHaveAttribute("data-value", "3");
+  await expect(page.getByTestId("sparks")).toHaveAccessibleName("3 sparks");
+
+  await page.evaluate(() => window.__flamelings!.patchPet(0, { sparks: 160 }));
+  await page.getByRole("button", { name: "Shop", exact: true }).click();
+  await page.getByRole("button", { name: /Buy Chef hat/ }).click();
+  await expect(page.getByRole("dialog", { name: "You got it!" })).toBeVisible();
+  await page.getByRole("button", { name: "Yay!" }).click();
+  await page.getByRole("tab", { name: "Glade" }).click();
+  await page.getByRole("button", { name: /Buy Potted plant/ }).click();
+  await page.getByRole("button", { name: "Yay!" }).click();
+
+  // Too dear: no purchase, and it says how many more sparks it needs.
+  await page.getByRole("button", { name: /Tent, 280 sparks/ }).click();
+  await expect(page.getByTestId("shop-short")).toContainText("230");
+
+  const bought = await page.evaluate(() => {
+    const pet = window.__flamelings!.state().save.pets[0];
+    return { sparks: pet.sparks, worn: pet.worn.hat, decor: pet.decor };
+  });
+  expect(bought).toEqual({ sparks: 50, worn: "chef", decor: ["plant"] });
+
+  // Owned decor can be put away and back out.
+  await page.getByRole("button", { name: "Potted plant, on" }).click();
+  await page.getByRole("button", { name: "Potted plant, off" }).click();
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByTestId("fl-decor-plant")).toBeAttached();
+
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__flamelings));
+  await page.getByTestId("pet-card").click();
+  await expect(page.getByTestId("sparks")).toHaveAttribute("data-value", "50");
+  await expect(page.getByTestId("fl-decor-plant")).toBeAttached();
+  const kept = await page.evaluate(() => {
+    const pet = window.__flamelings!.state().save.pets[0];
+    return { hat: pet.worn.hat, owned: pet.unlocked.includes("decor:plant") };
+  });
+  expect(kept).toEqual({ hat: "chef", owned: true });
+  expect(errors).toEqual([]);
+});
+
+test("the care bar and the shop fit the screen @smoke", async ({ page }) => {
+  await open(page);
+  await hatch(page, "Pip");
+  await page.evaluate(() => window.__flamelings!.patchPet(0, { sparks: 500 }));
+  const width = page.viewportSize()!.width;
+  for (const label of ["Feed", "Play", "Wardrobe", "Shop", "Emotes", "Shelf"]) {
+    const box = await page
+      .getByRole("button", { name: label, exact: true })
+      .boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+  }
+  await page.getByRole("button", { name: "Shop", exact: true }).click();
+  await page.getByRole("button", { name: /Buy Bunny ears/ }).click();
+  await expect(page.getByRole("dialog", { name: "You got it!" })).toBeVisible();
+  await page.getByRole("button", { name: "Yay!" }).click();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("a long gap makes an ember, and three feeds relight it", async ({
   page,
 }) => {
@@ -168,5 +242,5 @@ test("the home-screen files are served", async ({ page, request }) => {
     (await request.get("/flamelings-icons/apple-touch-icon-v1.png")).ok()
   ).toBe(true);
   const version = await request.get("/flamelings/version.json");
-  expect((await version.json()).version).toBe("1.0.0");
+  expect((await version.json()).version).toBe("1.1.0");
 });

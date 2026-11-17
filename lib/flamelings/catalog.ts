@@ -15,7 +15,7 @@ export const COLOURS = [
 ] as const;
 export const SHAPES = ["flame", "drop", "puff", "spark"] as const;
 export const EYES = ["round", "wide", "sharp", "sleepy", "dots"] as const;
-export const HATS = [
+const CORE_HATS = [
   "party",
   "crown",
   "wizard",
@@ -26,14 +26,50 @@ export const HATS = [
   "viking",
   "flower",
 ] as const;
-export const FACES = [
+const CORE_FACES = [
   "sunglasses",
   "glasses",
   "monocle",
   "mustache",
   "starCheeks",
 ] as const;
-export const NECKS = ["bowtie", "scarf", "medal"] as const;
+const CORE_NECKS = ["bowtie", "scarf", "medal"] as const;
+
+/** Shop-only items: bought with sparks, never handed out by a level or gift. */
+export const SHOP_HATS = [
+  "pirate",
+  "chef",
+  "bunny",
+  "headphones",
+  "astronaut",
+  "flowerCrown",
+  "partyCrown",
+  "witch",
+] as const;
+export const SHOP_FACES = [
+  "heartGlasses",
+  "eyepatch",
+  "clownNose",
+  "freckles",
+] as const;
+export const SHOP_NECKS = ["necklace", "cape", "lei", "bandana"] as const;
+export const DECOR = [
+  "rug",
+  "fairyLights",
+  "lanterns",
+  "plant",
+  "tent",
+  "toyBox",
+  "banner",
+  "crystals",
+  "bed",
+  "snowman",
+  "mushroomHouse",
+] as const;
+
+export const HATS = [...CORE_HATS, ...SHOP_HATS] as const;
+export const FACES = [...CORE_FACES, ...SHOP_FACES] as const;
+export const NECKS = [...CORE_NECKS, ...SHOP_NECKS] as const;
 export const EMOTES = [
   "love",
   "laugh",
@@ -58,11 +94,20 @@ export type EyesId = (typeof EYES)[number];
 export type HatId = (typeof HATS)[number];
 export type FaceId = (typeof FACES)[number];
 export type NeckId = (typeof NECKS)[number];
+export type DecorId = (typeof DECOR)[number];
 export type EmoteId = (typeof EMOTES)[number];
 export type FoodId = (typeof FOODS)[number];
 
 export type UnlockKind =
-  "colour" | "shape" | "eyes" | "hat" | "face" | "neck" | "emote" | "food";
+  | "colour"
+  | "shape"
+  | "eyes"
+  | "hat"
+  | "face"
+  | "neck"
+  | "emote"
+  | "food"
+  | "decor";
 
 export const UNLOCK_KINDS: readonly UnlockKind[] = [
   "colour",
@@ -73,6 +118,7 @@ export const UNLOCK_KINDS: readonly UnlockKind[] = [
   "neck",
   "emote",
   "food",
+  "decor",
 ];
 
 const IDS: Record<UnlockKind, readonly string[]> = {
@@ -84,6 +130,7 @@ const IDS: Record<UnlockKind, readonly string[]> = {
   neck: NECKS,
   emote: EMOTES,
   food: FOODS,
+  decor: DECOR,
 };
 
 /** An item as one string, e.g. `hat:crown`. Saved as-is. */
@@ -175,6 +222,24 @@ export const ALL_UNLOCKS: readonly UnlockKey[] = UNLOCK_KINDS.flatMap((kind) =>
   IDS[kind].map((id) => unlockKey(kind, id))
 );
 
+const SHOP_IDS: ReadonlySet<string> = new Set<string>([
+  ...SHOP_HATS,
+  ...SHOP_FACES,
+  ...SHOP_NECKS,
+  ...DECOR,
+]);
+
+/** True for an item only the shop sells. */
+export function isShopKey(key: UnlockKey): boolean {
+  const parsed = parseUnlockKey(key);
+  return parsed !== null && SHOP_IDS.has(parsed.id);
+}
+
+/** Everything a level or a gift can hand out (the shop's items are not here). */
+export const GIFTABLE_UNLOCKS: readonly UnlockKey[] = ALL_UNLOCKS.filter(
+  (key) => !isShopKey(key)
+);
+
 export const FOOD_INFO: Record<
   FoodId,
   { fuel: number; joy: number; label: string }
@@ -212,6 +277,33 @@ export const LABELS: Record<string, string> = {
   sleepy: "Sleepy",
   grumpy: "Grumpy",
   sparkle: "Sparkle",
+  pirate: "Pirate hat",
+  chef: "Chef hat",
+  bunny: "Bunny ears",
+  headphones: "Headphones",
+  astronaut: "Space helmet",
+  flowerCrown: "Flower crown",
+  partyCrown: "Party crown",
+  witch: "Witch hat",
+  heartGlasses: "Heart glasses",
+  eyepatch: "Eyepatch",
+  clownNose: "Clown nose",
+  freckles: "Freckles",
+  necklace: "Necklace",
+  cape: "Cape",
+  lei: "Flower lei",
+  bandana: "Bandana",
+  rug: "Cozy rug",
+  fairyLights: "Fairy lights",
+  lanterns: "Lanterns",
+  plant: "Potted plant",
+  tent: "Tent",
+  toyBox: "Toy box",
+  banner: "Pennants",
+  crystals: "Crystals",
+  bed: "Pet bed",
+  snowman: "Snowman",
+  mushroomHouse: "Mushroom house",
 };
 
 export const EMOTE_GLYPH: Record<EmoteId, string> = {
@@ -223,6 +315,21 @@ export const EMOTE_GLYPH: Record<EmoteId, string> = {
   sleepy: "😴",
   grumpy: "😠",
   sparkle: "✨",
+};
+
+/** Small pictures for decor in cards and the shop (the glade draws the art). */
+export const DECOR_GLYPH: Record<DecorId, string> = {
+  rug: "🟧",
+  fairyLights: "💡",
+  lanterns: "🏮",
+  plant: "🪴",
+  tent: "⛺",
+  toyBox: "🧸",
+  banner: "🎏",
+  crystals: "💎",
+  bed: "🛏️",
+  snowman: "⛄",
+  mushroomHouse: "🍄",
 };
 
 export const FOOD_GLYPH: Record<FoodId, string> = {

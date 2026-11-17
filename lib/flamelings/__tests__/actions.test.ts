@@ -1,4 +1,5 @@
 import {
+  buy,
   clean,
   createPet,
   dress,
@@ -9,7 +10,9 @@ import {
   MAX_PETS,
   openGift,
   restyle,
+  setDecor,
   settle,
+  SPARKS,
   tapPet,
 } from "../actions";
 import { UNLOCK_ORDER } from "../catalog";
@@ -71,8 +74,10 @@ describe("feed", () => {
     expect(out.pet.unlocked).toContain(UNLOCK_ORDER[0]);
     expect(out.events.map((e) => e.type)).toEqual([
       "care",
+      "sparks",
       "levelUp",
       "unlock",
+      "sparks",
     ]);
   });
 });
@@ -231,5 +236,126 @@ describe("shelf", () => {
     });
     // Their unlocks stay on the device.
     expect(out.save.collection).toContain("emote:love");
+  });
+});
+
+describe("sparks", () => {
+  it("pays 3 for feeding while hungry, nothing when nearly full", () => {
+    expect(feed(make({ fuel: 50 }), "log", noon).pet.sparks).toBe(3);
+    expect(feed(make({ fuel: 85 }), "twig", noon).pet.sparks).toBe(0);
+    expect(feed(make({ fuel: 100 }), "twig", noon).pet.sparks).toBe(0);
+  });
+
+  it("pays 2 for each ash pile and 1 per firefly (at most 12)", () => {
+    expect(clean(make({ ash: 2 }), noon).pet.sparks).toBe(2);
+    expect(finishPlay(make(), 7, noon).pet.sparks).toBe(7);
+    expect(finishPlay(make(), 90, noon).pet.sparks).toBe(SPARKS.playCap);
+    expect(finishPlay(make(), 0, noon).pet.sparks).toBe(0);
+  });
+
+  it("pays 10 to 25 for the check-in gift", () => {
+    expect(openGift(make(), noon, () => 0).pet.sparks).toBe(10);
+    expect(openGift(make(), noon, () => 0.999).pet.sparks).toBe(25);
+  });
+
+  it("pays 10 x level on each level-up, and 5 for a relight", () => {
+    const up = feed(make({ fuel: 10, xp: 35 }), "log", noon);
+    expect(up.pet.level).toBe(2);
+    expect(up.pet.sparks).toBe(3 + 20);
+    const ember = make({ state: "ember", relightFeeds: 2, emberAt: noon });
+    const lit = feed(ember, "twig", noon);
+    expect(lit.pet.sparks).toBeGreaterThanOrEqual(5);
+    expect(lit.events).toContainEqual({
+      type: "sparks",
+      amount: 5,
+      source: "relight",
+    });
+  });
+
+  it("stays between 40 and 80 a day for two normal visits", () => {
+    // Visits at 9:00 and 18:00: open the gift, feed whenever it is hungry
+    // enough to pay, clean every pile, play one round of 6 fireflies.
+    let pet = make({ bornAt: noon, tickedAt: noon });
+    const day0 = new Date(2026, 10, 16).getTime();
+    const DAYS = 28;
+    let total = 0;
+    let rolls = 0;
+    const random = () => [0.2, 0.7, 0.45, 0.9][rolls++ % 4];
+    for (let day = 0; day < DAYS; day++) {
+      for (const hour of [9, 18]) {
+        const at = day0 + day * DAY + hour * HOUR;
+        pet = advance(pet, pet.tickedAt, at);
+        const before = pet.sparks;
+        pet = openGift(pet, at, random).pet;
+        for (let i = 0; i < 4 && pet.fuel < 80; i++) {
+          pet = feed(pet, "log", at).pet;
+        }
+        while (pet.ash > 0) pet = clean(pet, at).pet;
+        pet = finishPlay(pet, 6, at).pet;
+        total += pet.sparks - before;
+      }
+    }
+    const perDay = total / DAYS;
+    expect(perDay).toBeGreaterThanOrEqual(40);
+    expect(perDay).toBeLessThanOrEqual(80);
+  });
+});
+
+describe("shop", () => {
+  const rich = (patch: Partial<Pet> = {}) => make({ sparks: 500, ...patch });
+
+  it("takes the price, adds the item to the collection and wears a hat", () => {
+    const out = buy(rich(), "hat:pirate");
+    expect(out.pet.sparks).toBe(500 - 90);
+    expect(out.pet.unlocked).toContain("hat:pirate");
+    expect(out.pet.worn.hat).toBe("pirate");
+    expect(out.events).toEqual([{ type: "buy", key: "hat:pirate", price: 90 }]);
+  });
+
+  it("puts new decor out in the glade", () => {
+    const out = buy(rich(), "decor:rug");
+    expect(out.pet.decor).toEqual(["rug"]);
+    expect(out.pet.sparks).toBe(440);
+  });
+
+  it("refuses when short of sparks, owned already or not for sale", () => {
+    expect(buy(make({ sparks: 89 }), "hat:pirate").events).toEqual([]);
+    const owned = buy(rich(), "hat:chef").pet;
+    expect(buy(owned, "hat:chef").events).toEqual([]);
+    expect(buy(rich(), "hat:party").events).toEqual([]);
+    expect(buy(rich(), "food:coal").events).toEqual([]);
+  });
+
+  it("shares bought items with newly hatched pets", () => {
+    const first = buy(rich(), "decor:tent").pet;
+    const save = hatch(
+      { ...emptySave(noon), pets: [first] },
+      { id: "b", name: "Bo", look, now: noon }
+    );
+    const second = save.pets[1];
+    expect(second.unlocked).toContain("decor:tent");
+    expect(second.sparks).toBe(0);
+    expect(second.decor).toEqual([]);
+  });
+
+  it("puts owned decor out and away, and ignores decor not owned", () => {
+    const pet = buy(rich(), "decor:plant").pet;
+    expect(setDecor(pet, "plant", false).decor).toEqual([]);
+    expect(
+      setDecor(setDecor(pet, "plant", false), "plant", true).decor
+    ).toEqual(["plant"]);
+    expect(setDecor(pet, "tent", true).decor).toEqual(["plant"]);
+  });
+
+  it("never gives shop items as level or gift rewards", () => {
+    const every = rich();
+    for (let i = 0; i < 80; i++) {
+      const out = openGift(every, noon + i * DAY, () => i / 80);
+      for (const e of out.events) {
+        if (e.type === "unlock") {
+          expect(e.key).not.toMatch(/pirate|rug|tent|cape|bunny/);
+        }
+      }
+    }
   });
 });

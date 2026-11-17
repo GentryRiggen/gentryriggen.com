@@ -17,6 +17,7 @@ const KIND_WORD: Record<string, string> = {
   neck: "neck item",
   emote: "emote",
   food: "food",
+  decor: "decoration",
 };
 
 async function burst(): Promise<void> {
@@ -51,7 +52,7 @@ export default function CelebrationCard({
   const itemKey =
     celebration.kind === "levelUp"
       ? celebration.unlocked
-      : celebration.kind === "gift"
+      : celebration.kind === "gift" || celebration.kind === "bought"
         ? celebration.key
         : null;
   const parsed = itemKey ? parseUnlockKey(itemKey) : null;
@@ -64,7 +65,9 @@ export default function CelebrationCard({
       ? `Level ${celebration.level}!`
       : celebration.kind === "gift"
         ? "A surprise!"
-        : `${pet.name} is glowing again!`;
+        : celebration.kind === "bought"
+          ? "You got it!"
+          : `${pet.name} is glowing again!`;
 
   return (
     <div
