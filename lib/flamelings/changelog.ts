@@ -15,6 +15,24 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.2.0",
+    date: "2026-11-17",
+    title: "Happenings",
+    highlights: [
+      "Something new can happen every time you visit! When a red ! shows on your flameling's card, tap it to see what is going on",
+      "A visitor can wander in: an owl, snail, frog, butterfly or hedgehog. Tap them and they leave you a present, then wave goodbye",
+      "Rain showers roll in. Tap the raindrops to pop them before they get your flameling wet. Do not worry, a little soggy is only a little sad",
+      "Spot the glowing X and tap it five times to dig up a treasure chest",
+      "At night a shooting star floats by while your flameling sleeps. Tap it to make a wish, and the sparks are waiting in the morning",
+      "Mushrooms pop up in a ring and light up one by one. Tap them in the same order to start a dance party",
+      "Snow in winter, falling leaves and pumpkins in autumn, and flowers in spring all drift through the glade, and the snowman is on sale all winter",
+      "Every 30 days, and on its birthday, your flameling has a Hatch Day with a cake: blow out the candles for confetti, sparks and a party hat",
+      "Fixed the cape so it flows out behind your flameling instead of looking like a bib",
+      "Moved the present so it no longer sits on top of the hanging lantern",
+      "Firefly Catch pays sparks for your first 3 rounds each morning and evening. You can still play more rounds to cheer up your flameling",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-11-16",
     title: "Sparks and shop",

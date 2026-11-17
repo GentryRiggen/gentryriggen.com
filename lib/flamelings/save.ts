@@ -13,6 +13,8 @@ import {
   type UnlockKey,
 } from "./catalog";
 import { emptySave, MAX_PETS, MAX_SPARKS } from "./actions";
+import { isHappeningKind, variantsOf, type Happening } from "./happenings";
+import { SAVE_SCHEMA } from "./types";
 import type { Look, Memorial, Pet, SaveData, Worn } from "./types";
 
 export const SAVE_KEY = "flamelings:v1";
@@ -73,6 +75,26 @@ function parseName(v: unknown): string {
   return name || DEFAULT_NAME;
 }
 
+/**
+ * A stored happening, or null. A kind this build does not know is dropped;
+ * a bad variant falls back to the kind's first.
+ */
+function parseHappening(v: unknown): Happening | null {
+  if (!isObj(v) || !isHappeningKind(v.kind)) return null;
+  if (typeof v.window !== "string" || v.window.length > 32) return null;
+  return {
+    window: v.window,
+    kind: v.kind,
+    variant: oneOf(
+      v.variant,
+      variantsOf(v.kind) as readonly string[],
+      variantsOf(v.kind)[0]
+    ),
+    done: v.done === true,
+    seen: v.seen === true,
+  };
+}
+
 /** A pet with every bad field defaulted, or null if it has no usable id. */
 function parsePet(v: unknown, fallbackTime: number): Pet | null {
   if (!isObj(v)) return null;
@@ -106,6 +128,7 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
       ] as DecorId[])
     : [];
   const taps = isObj(v.petTaps) ? v.petTaps : {};
+  const rounds = isObj(v.sparkRounds) ? v.sparkRounds : {};
   return {
     id: v.id,
     name: parseName(v.name),
@@ -131,6 +154,12 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
       day: typeof taps.day === "string" ? taps.day : "",
       count: Math.floor(num(taps.count, 0, 999, 0)),
     },
+    happening: parseHappening(v.happening),
+    wish: Math.floor(num(v.wish, 0, 100, 0)),
+    sparkRounds: {
+      window: typeof rounds.window === "string" ? rounds.window : "",
+      count: Math.floor(num(rounds.count, 0, 99, 0)),
+    },
   };
 }
 
@@ -153,6 +182,8 @@ export interface ParsedSave {
   save: SaveData;
   /** Entries that could not be salvaged (so the original should be backed up). */
   skipped: number;
+  /** Written by a newer build than this one: read it, never write over it. */
+  newer: boolean;
 }
 
 /**
@@ -164,6 +195,7 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
   if (!isObj(raw) || raw.v !== 1) return null;
   if (!Array.isArray(raw.pets)) return null;
   const updatedAt = num(raw.updatedAt, 0, 1e15, 0);
+  const schema = Math.floor(num(raw.schema, 1, 1e6, 1));
   let skipped = 0;
   const seen = new Set<string>();
   const pets: Pet[] = [];
@@ -188,12 +220,14 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
   return {
     save: {
       v: 1,
+      schema: Math.max(schema, SAVE_SCHEMA),
       pets,
       memorial,
       collection: collection as UnlockKey[],
       updatedAt,
     },
     skipped,
+    newer: schema > SAVE_SCHEMA,
   };
 }
 
@@ -253,6 +287,8 @@ export interface LoadResult {
    * before being replaced: the game then plays on but must not overwrite it.
    */
   writable: boolean;
+  /** The stored save is from a newer build: the page should offer the update. */
+  newer: boolean;
 }
 
 /**
@@ -265,25 +301,32 @@ export function loadSaveResult(
   now: number,
   storage: StorageLike | null = browserStorage()
 ): LoadResult {
-  if (!storage) return { save: emptySave(now), writable: false };
+  if (!storage) return { save: emptySave(now), writable: false, newer: false };
   let text: string | null;
   try {
     text = storage.getItem(SAVE_KEY);
   } catch {
-    return { save: emptySave(now), writable: false };
+    return { save: emptySave(now), writable: false, newer: false };
   }
-  if (text === null) return { save: emptySave(now), writable: true };
+  if (text === null)
+    return { save: emptySave(now), writable: true, newer: false };
   let parsed: ParsedSave | null = null;
   try {
     parsed = parseSaveSalvaging(JSON.parse(text));
   } catch {
     parsed = null;
   }
+  const newer = parsed?.newer ?? false;
   if (parsed && parsed.skipped === 0) {
-    return { save: parsed.save, writable: true };
+    // A newer build's save is played in memory and never overwritten.
+    return { save: parsed.save, writable: !newer, newer };
   }
   const saved = backUp(text, storage, now);
-  return { save: parsed?.save ?? emptySave(now), writable: saved };
+  return {
+    save: parsed?.save ?? emptySave(now),
+    writable: saved && !newer,
+    newer,
+  };
 }
 
 /** Like {@link loadSaveResult}, for callers that only need the save. */

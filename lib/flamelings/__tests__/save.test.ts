@@ -1,4 +1,5 @@
 import { createPet, hatch, emptySave } from "../actions";
+import { SAVE_SCHEMA } from "../types";
 import {
   BACKUPS_KEPT,
   CORRUPT_PREFIX,
@@ -284,5 +285,85 @@ describe("migrating a 1.0 save", () => {
       expect(save.pets[0].sparks).toBeGreaterThanOrEqual(0);
       expect(save.pets[0].sparks).toBeLessThanOrEqual(1_000_000);
     }
+  });
+});
+
+describe("save schema", () => {
+  it("loads a 1.1 save (no schema, no sparkRounds) and upgrades it", () => {
+    const storage = new MemoryStorage();
+    const old = hatch(emptySave(NOW), { id: "a", name: "Pip", look, now: NOW });
+    const { schema: _schema, ...rest } = old;
+    const { sparkRounds: _rounds, ...pet } = old.pets[0];
+    void _schema;
+    void _rounds;
+    storage.setItem(SAVE_KEY, JSON.stringify({ ...rest, pets: [pet] }));
+    const result = loadSaveResult(NOW, storage);
+    expect(result.writable).toBe(true);
+    expect(result.newer).toBe(false);
+    expect(result.save.schema).toBe(SAVE_SCHEMA);
+    expect(result.save.pets[0].sparkRounds).toEqual({ window: "", count: 0 });
+  });
+
+  it("plays a newer save in memory and never writes over it", () => {
+    const storage = new MemoryStorage();
+    const text = JSON.stringify({
+      ...hatch(emptySave(NOW), { id: "a", name: "Pip", look, now: NOW }),
+      schema: SAVE_SCHEMA + 1,
+      futureField: { keep: true },
+    });
+    storage.setItem(SAVE_KEY, text);
+    const result = loadSaveResult(NOW, storage);
+    expect(result.newer).toBe(true);
+    expect(result.writable).toBe(false);
+    expect(result.save.pets).toHaveLength(1);
+    expect(storage.getItem(SAVE_KEY)).toBe(text);
+    expect(storage.backups()).toEqual([]);
+  });
+});
+
+describe("happenings in a save", () => {
+  const base = () => {
+    const save = hatch(emptySave(NOW), {
+      id: "a",
+      name: "Pip",
+      look,
+      now: NOW,
+    });
+    return JSON.parse(JSON.stringify(save));
+  };
+
+  it("loads a 1.1 save with no happening fields", () => {
+    const raw = base();
+    delete raw.pets[0].happening;
+    delete raw.pets[0].wish;
+    const parsed = parseSave(raw);
+    expect(parsed?.pets[0].happening).toBeNull();
+    expect(parsed?.pets[0].wish).toBe(0);
+  });
+
+  it("keeps a good happening and drops an unknown kind", () => {
+    const raw = base();
+    raw.pets[0].happening = {
+      window: "2026-11-16:am",
+      kind: "visitor",
+      variant: "owl",
+      done: true,
+      seen: true,
+    };
+    expect(parseSave(raw)?.pets[0].happening).toEqual(raw.pets[0].happening);
+    raw.pets[0].happening.kind = "dragon";
+    expect(parseSave(raw)?.pets[0].happening).toBeNull();
+  });
+
+  it("defaults a bad variant instead of dropping the happening", () => {
+    const raw = base();
+    raw.pets[0].happening = {
+      window: "2026-11-16:am",
+      kind: "visitor",
+      variant: "dragon",
+      done: false,
+      seen: false,
+    };
+    expect(parseSave(raw)?.pets[0].happening?.variant).toBe("owl");
   });
 });

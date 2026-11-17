@@ -624,24 +624,16 @@ const NECKS_SVG: Record<NeckId, React.ReactNode> = {
   cape: (
     <>
       <path
-        d="M41 91 Q60 104 79 91 L81 98 Q60 111 39 98 Z"
+        d="M43 92 Q60 102 77 92 L78 97 Q60 107 42 97 Z"
         fill="#d8334a"
         stroke="#a8203a"
         strokeWidth="1.2"
         strokeLinejoin="round"
       />
       <circle
-        cx="44"
-        cy="97"
-        r="3.2"
-        fill="#ffc928"
-        stroke="#b57d00"
-        strokeWidth="1.2"
-      />
-      <circle
-        cx="76"
-        cy="97"
-        r="3.2"
+        cx="60"
+        cy="102"
+        r="3.4"
         fill="#ffc928"
         stroke="#b57d00"
         strokeWidth="1.2"
@@ -704,14 +696,14 @@ const BACK_SVG: Partial<Record<NeckId, React.ReactNode>> = {
   cape: (
     <>
       <path
-        d="M38 88 Q30 108 22 119 Q60 128 98 119 Q90 108 82 88 Z"
+        d="M42 84 Q18 90 10 117 Q60 126 110 117 Q102 90 78 84 Z"
         fill="#d8334a"
         stroke="#a8203a"
         strokeWidth="1.4"
         strokeLinejoin="round"
       />
       <path
-        d="M46 98 Q40 110 37 119 Q60 124 83 119 Q80 110 74 98 Z"
+        d="M30 96 Q16 104 14 116 Q36 121 44 118 Q40 106 36 96 Z M90 96 Q104 104 106 116 Q84 121 76 118 Q80 106 84 96 Z"
         fill="#a8203a"
       />
     </>
@@ -742,7 +734,7 @@ const BOX_OVERRIDE: Record<string, string> = {
   astronaut: "20 24 80 86",
   bunny: "30 0 60 52",
   pirate: "28 14 64 36",
-  cape: "18 84 84 44",
+  cape: "6 80 108 46",
 };
 
 /** One item alone, for the Wardrobe picker. */

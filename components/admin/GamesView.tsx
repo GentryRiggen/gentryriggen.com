@@ -217,7 +217,7 @@ export default function GamesView({ events }: GamesViewProps) {
       </Section>
 
       <Section title="Flamelings">
-        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-7">
           {[
             { id: "visits", label: "Visits", value: flame.visits },
             { id: "hatches", label: "Hatched", value: flame.hatches },
@@ -229,6 +229,11 @@ export default function GamesView({ events }: GamesViewProps) {
               value: flame.purchases,
             },
             { id: "spent", label: "Sparks spent", value: flame.sparksSpent },
+            {
+              id: "happenings",
+              label: "Happenings done",
+              value: flame.happeningsDone,
+            },
           ].map((tile) => (
             <div
               key={tile.id}
@@ -283,6 +288,11 @@ export default function GamesView({ events }: GamesViewProps) {
             title="Shop purchases"
             rows={flame.buys}
             unit="purchases"
+          />
+          <BreakdownList
+            title="Happenings"
+            rows={flame.happenings}
+            unit="events"
           />
         </div>
       </Section>

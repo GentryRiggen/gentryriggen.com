@@ -12,12 +12,16 @@ async function open(page: Page, hour = 12) {
   );
 }
 
-async function hatch(page: Page, name: string) {
+async function hatch(page: Page, name: string, quiet = true) {
   await page.getByTestId("hatch-new").click();
   for (let i = 0; i < 5; i++) await page.getByTestId("egg").click();
   await page.getByRole("button", { name: "Hello, little flame!" }).click();
   await page.getByLabel("Name your flameling").fill(name);
   await page.getByRole("button", { name: "Welcome home!" }).click();
+  // A happening may have been picked by chance; most tests are not about it.
+  if (quiet) {
+    await page.evaluate(() => window.__flamelings!.quietHappenings());
+  }
   await expect(
     page.getByRole("button", { name: `${name}, tap to say hi` })
   ).toBeVisible();
@@ -136,6 +140,138 @@ test("earn sparks, buy a hat and a decoration, and keep them after a reload", as
   expect(errors).toEqual([]);
 });
 
+/** Opens the game on the real clock (a reload keeps the same window). */
+async function openReal(page: Page) {
+  await page.goto("/flamelings");
+  await page.waitForFunction(() => Boolean(window.__flamelings));
+}
+
+type Happening = { kind: string; variant: string; done: boolean } | null;
+
+const happeningOf = (page: Page): Promise<Happening> =>
+  page.evaluate(() => {
+    const h = window.__flamelings!.state().save.pets[0].happening;
+    return h && { kind: h.kind, variant: h.variant, done: h.done };
+  });
+
+async function dismissCards(page: Page) {
+  const card = page.getByRole("button", { name: "Yay!" });
+  while (await card.isVisible()) await card.click();
+}
+
+test("a visitor brings a present and a reload does not reroll or repeat it", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await openReal(page);
+  await hatch(page, "Pip");
+  const owned = await page.evaluate(
+    () => window.__flamelings!.state().save.pets[0].unlocked.length
+  );
+
+  await page.evaluate(() =>
+    window.__flamelings!.forceHappening("visitor", 0, "owl")
+  );
+  await expect(page.getByTestId("happening-intro")).toBeVisible();
+  await page.getByTestId("happening-go").click();
+  const visitor = page.getByTestId("happening-visitor");
+  await expect(visitor).toBeVisible();
+
+  // The same visitor is still waiting after a reload.
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__flamelings));
+  await expect(page.getByTestId("happening-bubble")).toBeVisible();
+  await page.getByTestId("pet-card").click();
+  await expect(page.getByTestId("happening-intro")).toBeHidden();
+  await expect(visitor).toBeVisible();
+  expect(await happeningOf(page)).toEqual({
+    kind: "visitor",
+    variant: "owl",
+    done: false,
+  });
+
+  await visitor.click();
+  await dismissCards(page);
+  expect((await happeningOf(page))?.done).toBe(true);
+  const gifts = await page.evaluate(() => {
+    const pet = window.__flamelings!.state().save.pets[0];
+    return { sparks: pet.sparks, unlocked: pet.unlocked.length };
+  });
+  expect(gifts.sparks >= 10 || gifts.unlocked > owned).toBe(true);
+
+  // Once it is done it stays done.
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__flamelings));
+  await page.getByTestId("pet-card").click();
+  await expect(page.getByTestId("happening-visitor")).toBeHidden();
+  await expect(page.getByTestId("happening-bubble")).toBeHidden();
+  expect((await happeningOf(page))?.done).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("digging up treasure takes five taps and pays out", async ({ page }) => {
+  await openReal(page);
+  await hatch(page, "Pip");
+  const owned = await page.evaluate(
+    () => window.__flamelings!.state().save.pets[0].unlocked.length
+  );
+  await page.evaluate(() => window.__flamelings!.forceHappening("treasure", 0));
+  await page.getByTestId("happening-go").click();
+  const spot = page.getByTestId("happening-treasure");
+  for (let i = 1; i <= 4; i++) {
+    await spot.click();
+    await expect(spot).toHaveAttribute("data-taps", String(i));
+  }
+  expect((await happeningOf(page))?.done).toBe(false);
+  await spot.click();
+  await dismissCards(page);
+  expect((await happeningOf(page))?.done).toBe(true);
+  const rewarded = await page.evaluate((had) => {
+    const pet = window.__flamelings!.state().save.pets[0];
+    return pet.sparks >= 15 || pet.unlocked.length > had;
+  }, owned);
+  expect(rewarded).toBe(true);
+});
+
+test("the happening picked for a window is saved and survives a reload", async ({
+  page,
+}) => {
+  await openReal(page);
+  await hatch(page, "Pip", false);
+  const before = await page.evaluate(
+    () => window.__flamelings!.state().save.pets[0].happening
+  );
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__flamelings));
+  const after = await page.evaluate(
+    () => window.__flamelings!.state().save.pets[0].happening
+  );
+  expect(after).toEqual(before);
+});
+
+test("a happening fits the screen without scrolling sideways @smoke", async ({
+  page,
+}) => {
+  await openReal(page);
+  await hatch(page, "Pip");
+  await page.evaluate(() =>
+    window.__flamelings!.forceHappening("mushrooms", 0, "5")
+  );
+  await page.getByTestId("happening-go").click();
+  await expect(page.getByTestId("mushroom")).toHaveCount(5);
+  const width = page.viewportSize()!.width;
+  for (const box of await page.getByTestId("mushroom").all()) {
+    const rect = (await box.boundingBox())!;
+    expect(rect.x).toBeGreaterThanOrEqual(0);
+    expect(rect.x + rect.width).toBeLessThanOrEqual(width);
+  }
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("the care bar and the shop fit the screen @smoke", async ({ page }) => {
   await open(page);
   await hatch(page, "Pip");
@@ -242,5 +378,5 @@ test("the home-screen files are served", async ({ page, request }) => {
     (await request.get("/flamelings-icons/apple-touch-icon-v1.png")).ok()
   ).toBe(true);
   const version = await request.get("/flamelings/version.json");
-  expect((await version.json()).version).toBe("1.1.0");
+  expect((await version.json()).version).toBe("1.2.0");
 });

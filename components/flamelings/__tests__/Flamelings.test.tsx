@@ -3,6 +3,11 @@ import { setNow, resetClock } from "@/lib/flamelings/clock";
 import { SAVE_KEY } from "@/lib/flamelings/save";
 import { LOCK_KEY, readLock } from "@/lib/flamelings/tabLock";
 import { createPet } from "@/lib/flamelings/actions";
+import {
+  forcedHappening,
+  happeningWindowAt,
+} from "@/lib/flamelings/happenings";
+import { now } from "@/lib/flamelings/clock";
 import { useFlamelings } from "@/lib/flamelings/store";
 import Flamelings from "../Flamelings";
 import FireflyCatch from "../FireflyCatch";
@@ -36,6 +41,30 @@ function hatchThroughUi(name: string) {
     target: { value: name },
   });
   fireEvent.click(screen.getByRole("button", { name: "Welcome home!" }));
+  quietHappenings();
+}
+
+/** A new pet may have a happening (and its intro card) by chance: finish it. */
+function quietHappenings() {
+  act(() => {
+    const { save } = useFlamelings.getState();
+    const window = happeningWindowAt(now());
+    useFlamelings.setState({
+      save: {
+        ...save,
+        pets: save.pets.map((p) => ({
+          ...p,
+          happening: {
+            window,
+            kind: "visitor",
+            variant: "owl",
+            done: true,
+            seen: true,
+          },
+        })),
+      },
+    });
+  });
 }
 
 describe("Flamelings", () => {
@@ -143,6 +172,36 @@ describe("Flamelings", () => {
     fireEvent.click(screen.getByRole("button", { name: "Yay!" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.queryByTestId("gift")).toBeNull();
+  });
+
+  it("shows a happening as a ! on the shelf, an intro, then the visitor", () => {
+    render(<Flamelings />);
+    hatchThroughUi("Pip");
+    act(() => {
+      const { save } = useFlamelings.getState();
+      useFlamelings.setState({
+        save: {
+          ...save,
+          pets: save.pets.map((p) => ({
+            ...p,
+            happening: forcedHappening("visitor", now(), "frog"),
+          })),
+        },
+      });
+    });
+    const before = useFlamelings.getState().save.pets[0];
+    expect(screen.getByTestId("happening-intro")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("happening-go"));
+    expect(screen.queryByTestId("happening-intro")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /came to visit/ }));
+    expect(useFlamelings.getState().save.pets[0].happening?.done).toBe(true);
+    const pet = useFlamelings.getState().save.pets[0];
+    // The present is random: sparks or a still-locked item.
+    expect(
+      pet.sparks > before.sparks || pet.unlocked.length > before.unlocked.length
+    ).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Back to the shelf" }));
+    expect(screen.queryByTestId("happening-bubble")).toBeNull();
   });
 
   it("recovers from a corrupt save", () => {

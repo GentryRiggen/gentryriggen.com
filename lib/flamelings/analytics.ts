@@ -67,6 +67,12 @@ export function trackEvents(events: readonly PetEvent[]): void {
         }
         break;
       }
+      case "happening":
+        trackGame("fl_happening", {
+          kind: event.kind,
+          done: event.done ? 1 : 0,
+        });
+        break;
       default:
         break;
     }
