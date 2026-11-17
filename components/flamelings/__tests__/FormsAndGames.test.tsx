@@ -51,7 +51,7 @@ describe("form drawing", () => {
 
   it("draws nothing extra before the pet grows up", () => {
     const { container } = render(<Blob look={look} mood="happy" />);
-    expect(container.querySelector(".fl-fx")).toBeNull();
+    expect(container.querySelector(".fl-form")).toBeNull();
   });
 });
 

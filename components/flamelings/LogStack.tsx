@@ -260,7 +260,7 @@ export default function LogStack({ pet, onDone }: LogStackProps) {
       </div>
 
       <div
-        className={`pointer-events-none absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] right-[max(0.5rem,env(safe-area-inset-right))] z-0 ${
+        className={`pointer-events-none absolute bottom-[calc(max(0.5rem,env(safe-area-inset-bottom))+2.5rem)] right-[max(0.5rem,env(safe-area-inset-right))] z-0 ${
           cheering ? "fl-giggle" : ""
         }`}
       >
@@ -270,7 +270,7 @@ export default function LogStack({ pet, onDone }: LogStackProps) {
           form={pet.form}
           mood={cheering || won ? "excited" : "happy"}
           stage={stageFor(pet.level).id}
-          className="size-[min(26vw,22vh)] min-h-24 min-w-24"
+          className="size-[min(34vw,26vh)] min-h-28 min-w-28"
         />
       </div>
 

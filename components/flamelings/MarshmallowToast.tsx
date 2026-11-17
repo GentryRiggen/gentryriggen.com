@@ -232,13 +232,15 @@ export default function MarshmallowToast({
         <div
           data-testid="toast-marshmallow"
           data-stage={stage}
-          className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 transition-[top] duration-500 ${
-            toasting ? "top-[40%]" : "top-[30%]"
+          className={`pointer-events-none absolute left-1/2 z-10 -translate-x-1/2 transition-[bottom] duration-500 ${
+            toasting
+              ? "bottom-[calc(min(80vw,46vh)*0.58)]"
+              : "bottom-[calc(min(80vw,46vh)*0.58+9rem)]"
           }`}
         >
           <div className="absolute left-1/2 top-1/2 -z-10 h-2.5 w-[60vmin] origin-left -rotate-[28deg] rounded-full bg-amber-900" />
           <div
-            className={`h-20 w-24 rounded-[1.6rem] shadow-lg transition-colors duration-500 ${FILL[stage]} ${
+            className={`h-20 w-28 rounded-[1.8rem] shadow-[inset_0_-6px_0_rgba(0,0,0,0.12),inset_0_6px_0_rgba(255,255,255,0.35),0_6px_10px_rgba(0,0,0,0.35)] transition-colors duration-500 ${FILL[stage]} ${
               toasting ? "fl-mallow-wobble" : ""
             }`}
           />
@@ -266,7 +268,7 @@ export default function MarshmallowToast({
       {phase === "ready" && finished === 0 && (
         <p
           aria-hidden="true"
-          className="fl-bob pointer-events-none absolute left-1/2 top-[56%] z-20 -translate-x-1/2 text-6xl"
+          className="fl-bob pointer-events-none absolute left-1/2 top-[40%] z-20 -translate-x-1/2 text-6xl"
         >
           👇🔥
         </p>
@@ -283,7 +285,7 @@ export default function MarshmallowToast({
           form={pet.form}
           mood={giggling || toasting ? "excited" : "happy"}
           stage={stageFor(pet.level).id}
-          className="size-[min(62vw,36vh)]"
+          className="size-[min(80vw,46vh)]"
         />
       </div>
 

@@ -7966,13 +7966,13 @@ html:has(.jim-app) body {
 }
 
 /* ---------- Grown-up forms (Blaze and up; stronger at Bonfire) ---------- */
-.fl-fx .fl-more {
+.fl-form .fl-more {
   display: none;
 }
-.fl-pet[data-stage="bonfire"] .fl-fx .fl-more {
+.fl-pet[data-stage="bonfire"] .fl-form .fl-more {
   display: inline;
 }
-.fl-blob[data-mood="ember"] .fl-fx {
+.fl-blob[data-mood="ember"] .fl-form {
   display: none;
 }
 
@@ -7995,7 +7995,9 @@ html:has(.jim-app) body {
   opacity: 0.7;
 }
 .fl-heart {
-  fill: #ff5d7a;
+  fill: #ff3d6e;
+  stroke: #ffffff;
+  stroke-width: 0.8;
   animation: fl-heart-float 3.4s ease-out infinite;
 }
 .fl-heart-1 {
@@ -8036,14 +8038,14 @@ html:has(.jim-app) body {
 }
 @keyframes fl-heart-float {
   0% {
-    transform: translateY(6px) scale(0.5);
+    transform: translateY(8px) scale(0.8);
     opacity: 0;
   }
   25% {
-    opacity: 0.95;
+    opacity: 1;
   }
   100% {
-    transform: translateY(-20px) scale(1.15);
+    transform: translateY(-26px) scale(1.7);
     opacity: 0;
   }
 }
@@ -8087,8 +8089,8 @@ html:has(.jim-app) body {
 }
 .fl-zap {
   fill: none;
-  stroke: #ffe45c;
-  stroke-width: 1.8;
+  stroke: #ffb300;
+  stroke-width: 2.6;
   stroke-linecap: round;
   stroke-linejoin: round;
   animation: fl-zap-pop 1.1s ease-out infinite;
@@ -8103,7 +8105,7 @@ html:has(.jim-app) body {
   display: none;
   fill: none;
   stroke: var(--fl-face);
-  stroke-width: 3.8;
+  stroke-width: 3.4;
   stroke-linecap: round;
 }
 .fl-blob[data-form="wild"][data-mood="happy"] .fl-wild-brow,
@@ -8152,9 +8154,9 @@ html:has(.jim-app) body {
   animation-duration: 3.5s;
 }
 .fl-star {
-  fill: #fff6a8;
-  stroke: #ffffff;
-  stroke-width: 0.6;
+  fill: #ffe14d;
+  stroke: #ff9f1c;
+  stroke-width: 0.9;
   animation: fl-twinkle-star 1.8s ease-in-out infinite;
 }
 .fl-star-1 {
@@ -8167,7 +8169,8 @@ html:has(.jim-app) body {
   animation-delay: -1.4s;
 }
 .fl-pet[data-stage="bonfire"] .fl-star {
-  fill: #ffffff;
+  fill: #fff7b0;
+  stroke: #ff7ad9;
 }
 @keyframes fl-rainbow {
   0%,

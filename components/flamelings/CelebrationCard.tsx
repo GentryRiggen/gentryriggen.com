@@ -74,13 +74,13 @@ function EvolutionCard({
       aria-label={`${pet.name} grew up!`}
       data-testid="evolution"
       data-phase={phase}
-      className={`fixed inset-0 z-40 grid place-items-center overflow-hidden bg-black/75 p-5 ${SAFE_INSETS}`}
+      className={`fixed inset-0 z-40 grid place-items-center overflow-hidden bg-slate-950/95 p-5 ${SAFE_INSETS}`}
     >
       <div className="flex w-full max-w-md flex-col items-center gap-3 text-center text-amber-50">
         <p className="text-4xl font-black drop-shadow-lg">
           {revealed ? `${pet.name} grew up!` : "Something is happening..."}
         </p>
-        <div className="relative grid size-72 place-items-center sm:size-80">
+        <div className="relative grid size-80 place-items-center sm:size-96">
           <span
             aria-hidden="true"
             className={`fl-evo-glow pointer-events-none absolute inset-0 rounded-full ${
@@ -96,7 +96,7 @@ function EvolutionCard({
               form={revealed ? celebration.form : null}
               mood={revealed ? "excited" : "happy"}
               stage={stageFor(pet.level).id}
-              className="size-60 sm:size-64"
+              className="size-72 sm:size-80"
             />
           </div>
         </div>

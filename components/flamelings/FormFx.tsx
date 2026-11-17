@@ -10,7 +10,7 @@ import type { FormId } from "@/lib/flamelings/types";
 /** A heart, a four-point star and a crackle, each drawn around (0, 0). */
 const HEART = "M0 -1.5 C-2.5 -5 -7 -1 0 5 C7 -1 2.5 -5 0 -1.5Z";
 const STAR = "M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3Z";
-const ZAP = "M0 0 L3 -3 L1 -3 L4 -7";
+const ZAP = "M0 0 L5 -5 L2 -5 L7 -11";
 
 const HEARTS: [number, number, boolean][] = [
   [34, 50, false],
@@ -46,11 +46,11 @@ export function FormBack({
 }) {
   if (form !== "cozy") return null;
   return (
-    <g className="fl-fx fl-fx-cozy">
+    <g className="fl-form fl-form-cozy">
       <defs>
         <radialGradient id={gradientId}>
-          <stop offset="0" stopColor="#ffb457" stopOpacity="0.55" />
-          <stop offset="0.6" stopColor="#ff8a3a" stopOpacity="0.22" />
+          <stop offset="0.45" stopColor="#ffb040" stopOpacity="0.85" />
+          <stop offset="0.75" stopColor="#ff8a3a" stopOpacity="0.4" />
           <stop offset="1" stopColor="#ff8a3a" stopOpacity="0" />
         </radialGradient>
       </defs>
@@ -58,25 +58,40 @@ export function FormBack({
         className="fl-halo"
         cx="60"
         cy="78"
-        r="54"
+        r="62"
         fill={`url(#${gradientId})`}
       />
     </g>
   );
 }
 
-/** Inside the goo filter, so the spikes melt into the flame: the wild tips. */
+/**
+ * Inside the goo filter, so the tips melt into the flame: the wild tips. They
+ * are wide at the base on purpose (the filter drops thin shapes).
+ */
 export function FormTips({ form }: { form: FormId | null }) {
   if (form !== "wild") return null;
   return (
-    <g className="fl-fx fl-fx-wild-tips">
-      <path className="fl-spike fl-spike-1" d="M52 50 L60 10 L68 50Z" />
-      <path className="fl-spike fl-spike-2" d="M38 62 L33 28 L52 54Z" />
-      <path className="fl-spike fl-spike-3" d="M82 62 L87 28 L68 54Z" />
-      <path className="fl-spike fl-spike-4 fl-more" d="M26 74 L16 46 L40 66Z" />
+    <g className="fl-form fl-form-wild-tips">
+      <path
+        className="fl-spike fl-spike-1"
+        d="M42 62 Q50 34 60 2 Q70 34 78 62 Z"
+      />
+      <path
+        className="fl-spike fl-spike-2"
+        d="M28 70 Q26 40 22 12 Q44 36 54 62 Z"
+      />
+      <path
+        className="fl-spike fl-spike-3"
+        d="M92 70 Q94 40 98 12 Q76 36 66 62 Z"
+      />
+      <path
+        className="fl-spike fl-spike-4 fl-more"
+        d="M12 94 Q8 66 4 36 Q30 56 40 82 Z"
+      />
       <path
         className="fl-spike fl-spike-5 fl-more"
-        d="M94 74 L104 46 L80 66Z"
+        d="M108 94 Q112 66 116 36 Q90 56 80 82 Z"
       />
     </g>
   );
@@ -86,7 +101,7 @@ export function FormTips({ form }: { form: FormId | null }) {
 export function FormFront({ form }: { form: FormId | null }) {
   if (form === "cozy") {
     return (
-      <g className="fl-fx fl-fx-cozy">
+      <g className="fl-form fl-form-cozy">
         <ellipse className="fl-blush" cx="42" cy="84" rx="6" ry="3.4" />
         <ellipse className="fl-blush" cx="78" cy="84" rx="6" ry="3.4" />
         {HEARTS.map(([x, y, more], i) => (
@@ -102,7 +117,7 @@ export function FormFront({ form }: { form: FormId | null }) {
   }
   if (form === "wild") {
     return (
-      <g className="fl-fx fl-fx-wild">
+      <g className="fl-form fl-form-wild">
         <path className="fl-wild-brow" d="M40 64 L57 70" />
         <path className="fl-wild-brow" d="M80 64 L63 70" />
         {ZAPS.map(([x, y, more], i) => (
@@ -118,7 +133,7 @@ export function FormFront({ form }: { form: FormId | null }) {
   }
   if (form === "sparkly") {
     return (
-      <g className="fl-fx fl-fx-sparkly">
+      <g className="fl-form fl-form-sparkly">
         {STARS.map(([x, y, more], i) => (
           <g key={i} transform={`translate(${x} ${y})`}>
             <path

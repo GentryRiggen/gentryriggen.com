@@ -42,9 +42,9 @@ export default function PlayPicker({
       aria-modal="true"
       aria-label="Pick a game"
       data-testid="play-picker"
-      className={`fixed inset-0 z-20 grid place-items-center overflow-y-auto bg-indigo-950/90 p-4 backdrop-blur-sm ${SAFE_INSETS}`}
+      className={`fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-indigo-950/95 p-4 ${SAFE_INSETS}`}
     >
-      <div className="flex w-full max-w-3xl flex-col items-center gap-4">
+      <div className="flex w-full min-w-0 max-w-3xl flex-col items-center gap-4 px-4">
         <p
           role="img"
           className="rounded-full bg-black/40 px-5 py-2 text-2xl font-black text-white"
@@ -66,7 +66,7 @@ export default function PlayPicker({
               type="button"
               onClick={() => onPick(game.id)}
               data-testid={`play-${game.id}`}
-              className={`flex min-h-32 flex-row items-center justify-center gap-4 rounded-[2rem] bg-gradient-to-b p-5 text-xl font-black shadow-xl transition-transform active:scale-95 min-[560px]:min-h-56 min-[560px]:flex-col ${game.tone} ${FOCUS_RING}`}
+              className={`flex min-h-32 min-w-0 flex-row items-center justify-center gap-4 rounded-[2rem] bg-gradient-to-b p-5 text-xl font-black shadow-xl transition-transform active:scale-95 min-[560px]:min-h-56 min-[560px]:flex-col ${game.tone} ${FOCUS_RING}`}
             >
               <span
                 aria-hidden="true"
