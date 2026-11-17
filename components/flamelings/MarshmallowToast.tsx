@@ -110,7 +110,7 @@ export default function MarshmallowToast({
       window.setTimeout(() => {
         setLast(null);
         setStage("white");
-        go("ready");
+        go(finishedCount.current >= TOAST_MARSHMALLOWS ? "over" : "ready");
       }, RESULT_MS / playTuning.toast)
     );
   }, [go]);
