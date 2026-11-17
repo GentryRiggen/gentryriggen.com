@@ -4,6 +4,7 @@ import { STAGES } from "@/lib/flamelings/progress";
 import { labelOf } from "@/lib/flamelings/status";
 import { useFlamelings, type Celebration } from "@/lib/flamelings/store";
 import Blob from "./Blob";
+import { burstConfetti } from "./confetti";
 import ItemPreview from "./ItemPreview";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
 import { PRIMARY_BUTTON } from "./styles";
@@ -20,20 +21,6 @@ const KIND_WORD: Record<string, string> = {
   decor: "decoration",
 };
 
-async function burst(): Promise<void> {
-  try {
-    const confetti = (await import("canvas-confetti")).default;
-    void confetti({
-      particleCount: 90,
-      spread: 80,
-      origin: { y: 0.6 },
-      disableForReducedMotion: true,
-    });
-  } catch {
-    // Confetti is only decoration.
-  }
-}
-
 /** The "NEW!" level-up, present and relight cards. One shows at a time. */
 export default function CelebrationCard({
   celebration,
@@ -45,7 +32,7 @@ export default function CelebrationCard({
     s.save.pets.find((p) => p.id === celebration.petId)
   );
   useEffect(() => {
-    void burst();
+    void burstConfetti();
   }, [celebration]);
   if (!pet) return null;
 

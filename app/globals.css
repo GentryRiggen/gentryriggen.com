@@ -10256,3 +10256,262 @@ html:has(.jim-app) body {
     transform: translateX(300px);
   }
 }
+
+/* ---- Flamelings happenings (visitors, rain, treasure, stars, party) ---- */
+.fl-wander-in {
+  animation: fl-wander-in 1.6s cubic-bezier(0.3, 0.9, 0.4, 1) both;
+}
+@keyframes fl-wander-in {
+  0% {
+    transform: translateX(-140%) rotate(-6deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(6%) rotate(4deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) rotate(0);
+    opacity: 1;
+  }
+}
+.fl-bye {
+  animation: fl-bye 2.2s ease-in both;
+}
+@keyframes fl-bye {
+  0%,
+  45% {
+    transform: translateY(0) rotate(0);
+    opacity: 1;
+  }
+  15% {
+    transform: translateY(-14px) rotate(-8deg);
+  }
+  30% {
+    transform: translateY(0) rotate(8deg);
+  }
+  100% {
+    transform: translateX(-150%) rotate(-4deg);
+    opacity: 0;
+  }
+}
+.fl-bob {
+  animation: fl-bob 1.6s ease-in-out infinite;
+}
+@keyframes fl-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+.fl-flutter {
+  transform-origin: 50px 50px;
+  animation: fl-flutter 0.35s ease-in-out infinite alternate;
+}
+@keyframes fl-flutter {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0.55);
+  }
+}
+.fl-drop {
+  animation: fl-drop-fall 3.2s linear forwards;
+}
+@keyframes fl-drop-fall {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(54dvh);
+  }
+}
+.fl-cloud-in {
+  animation: fl-cloud-in 1.4s ease-out both;
+}
+@keyframes fl-cloud-in {
+  from {
+    transform: translateX(-60vw);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.fl-cloud-out {
+  animation: fl-cloud-out 1.6s ease-in both;
+}
+@keyframes fl-cloud-out {
+  to {
+    transform: translateX(70vw);
+    opacity: 0;
+  }
+}
+.fl-pop-burst {
+  animation: fl-pop-burst 0.45s ease-out both;
+}
+@keyframes fl-pop-burst {
+  from {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+.fl-mark-glow {
+  animation: fl-mark-glow 1.4s ease-in-out infinite;
+}
+@keyframes fl-mark-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 4px #fff6c8);
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 16px #ffe066);
+    transform: scale(1.08);
+  }
+}
+.fl-dig {
+  animation: fl-dig 0.3s ease-out;
+}
+@keyframes fl-dig {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0);
+  }
+  35% {
+    transform: translateY(5px) rotate(-6deg);
+  }
+  70% {
+    transform: translateY(-3px) rotate(5deg);
+  }
+}
+.fl-chest-pop {
+  animation: fl-chest-pop 0.6s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+@keyframes fl-chest-pop {
+  from {
+    transform: scale(0.4);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.fl-star-drift {
+  animation: fl-star-drift 7s ease-in-out infinite alternate;
+}
+@keyframes fl-star-drift {
+  from {
+    transform: translate(-30vw, 6px) rotate(-15deg);
+  }
+  to {
+    transform: translate(26vw, -14px) rotate(15deg);
+  }
+}
+.fl-star-wish {
+  animation: fl-star-wish 1.8s ease-in both;
+}
+@keyframes fl-star-wish {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1.7) rotate(20deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(40vw, -40dvh) scale(0.3);
+    opacity: 0;
+  }
+}
+.fl-mush-pop {
+  animation: fl-mush-pop 0.55s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@keyframes fl-mush-pop {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+.fl-mush-lit {
+  transform: scale(1.28);
+  filter: brightness(1.35) drop-shadow(0 0 14px #fff6a8);
+  transition:
+    transform 0.15s,
+    filter 0.15s;
+}
+.fl-mush-wrong {
+  animation: fl-dig 0.3s ease-out;
+}
+.fl-mush-dance {
+  animation: fl-bob 0.5s ease-in-out infinite;
+}
+.fl-candle {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: fl-candle 0.5s ease-in-out infinite alternate;
+}
+@keyframes fl-candle {
+  from {
+    transform: scale(1, 1) skewX(-4deg);
+  }
+  to {
+    transform: scale(0.9, 1.12) skewX(4deg);
+  }
+}
+.fl-flake {
+  position: absolute;
+  top: -8%;
+  left: var(--x);
+  font-size: var(--size);
+  animation: fl-flake var(--dur) linear var(--delay) infinite;
+  pointer-events: none;
+}
+@keyframes fl-flake {
+  from {
+    transform: translate(0, 0) rotate(0);
+  }
+  50% {
+    transform: translate(22px, 55dvh) rotate(180deg);
+  }
+  to {
+    transform: translate(-10px, 112dvh) rotate(360deg);
+  }
+}
+.fl-intro-pop {
+  animation: fl-card-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-wander-in,
+  .fl-bye,
+  .fl-bob,
+  .fl-flutter,
+  .fl-mark-glow,
+  .fl-star-drift,
+  .fl-flake,
+  .fl-cloud-in,
+  .fl-candle,
+  .fl-mush-dance,
+  .fl-intro-pop {
+    animation: none !important;
+  }
+  .fl-flake {
+    display: none;
+  }
+  .fl-bye,
+  .fl-star-wish {
+    opacity: 0;
+  }
+}

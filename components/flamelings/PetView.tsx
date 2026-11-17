@@ -19,6 +19,7 @@ import EmotePanel from "./EmotePanel";
 import FeedTray from "./FeedTray";
 import FireflyCatch from "./FireflyCatch";
 import Glade from "./Glade";
+import HappeningLayer from "./HappeningLayer";
 import Blob from "./Blob";
 import Meters from "./Meters";
 import Shop from "./Shop";
@@ -298,6 +299,13 @@ export default function PetView({ petId }: { petId: string }) {
           )}
         </div>
       </div>
+
+      <HappeningLayer
+        pet={pet}
+        clock={clock}
+        paused={panel === "wardrobe" || panel === "shop" || panel === "play"}
+        onCheer={(emote) => play(emote ?? "laugh")}
+      />
 
       {flying && (
         <span

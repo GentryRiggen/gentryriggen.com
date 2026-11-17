@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { MAX_PETS } from "@/lib/flamelings/actions";
 import { stageFor } from "@/lib/flamelings/progress";
-import { moodOf } from "@/lib/flamelings/sim";
+import { hasHappeningWaiting } from "@/lib/flamelings/happenings";
+import { isAwake, moodOf } from "@/lib/flamelings/sim";
 import { fadeLevel, stateGlyph } from "@/lib/flamelings/status";
 import { useFlamelings } from "@/lib/flamelings/store";
 import { FLAMELINGS_VERSION } from "@/lib/flamelings/version";
@@ -23,14 +24,24 @@ function PetCard({ pet, nowMs }: { pet: Pet; nowMs: number }) {
   const go = useFlamelings((s) => s.go);
   const glyph = stateGlyph(pet, nowMs);
   const stage = stageFor(pet.level);
+  const waiting = hasHappeningWaiting(pet, nowMs, isAwake(nowMs));
   return (
     <button
       type="button"
       onClick={() => go({ screen: "pet", petId: pet.id })}
-      aria-label={`${pet.name}, level ${pet.level} ${stage.name}${glyph ? `, ${glyph.label}` : ""}`}
+      aria-label={`${pet.name}, level ${pet.level} ${stage.name}${glyph ? `, ${glyph.label}` : ""}${waiting ? ", something is happening" : ""}`}
       data-testid="pet-card"
       className={`${CARD} relative flex flex-col items-center gap-1 p-4 pb-3 transition-transform active:scale-95 ${FOCUS_RING}`}
     >
+      {waiting && (
+        <span
+          aria-hidden="true"
+          data-testid="happening-bubble"
+          className="fl-bob absolute left-3 top-3 grid size-11 place-items-center rounded-full bg-red-500 text-2xl font-black text-white shadow"
+        >
+          !
+        </span>
+      )}
       {glyph && (
         <span
           aria-hidden="true"

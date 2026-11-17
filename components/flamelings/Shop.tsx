@@ -4,6 +4,8 @@ import type { DressSlot } from "@/lib/flamelings/actions";
 import {
   SHOP_ITEMS,
   SHOP_TABS,
+  priceOf,
+  shopItem,
   sparksShort,
   type ShopItem,
   type ShopTab,
@@ -72,6 +74,14 @@ function ItemCard({
       </div>
       <span aria-hidden="true" className="text-sm font-bold">
         {name}
+        {!owned && item.price < (shopItem(item.key)?.price ?? 0) && (
+          <span
+            data-testid="shop-sale"
+            className="ml-1 rounded-full bg-sky-500 px-2 py-0.5 text-xs font-black text-white"
+          >
+            ❄ SALE
+          </span>
+        )}
       </span>
       {owned ? (
         <button
@@ -218,19 +228,22 @@ export default function Shop({ pet, nowMs, onClose }: ShopProps) {
         aria-label={SHOP_TABS.find((t) => t.tab === tab)?.label}
         className={`grid flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden py-2 [grid-template-columns:repeat(auto-fill,minmax(8.5rem,1fr))] ${FOCUS_RING}`}
       >
-        {SHOP_ITEMS[tab].map((item) => (
-          <ItemCard
-            key={`${item.key}-${shake?.key === item.key ? shake.n : 0}`}
-            pet={pet}
-            item={item}
-            shaking={shake?.key === item.key}
-            short={
-              shortKey === item.key ? sparksShort(pet.sparks, item.price) : 0
-            }
-            onBuy={handleBuy}
-            onToggle={handleToggle}
-          />
-        ))}
+        {SHOP_ITEMS[tab].map((full) => {
+          const item = { ...full, price: priceOf(full, nowMs) };
+          return (
+            <ItemCard
+              key={`${item.key}-${shake?.key === item.key ? shake.n : 0}`}
+              pet={pet}
+              item={item}
+              shaking={shake?.key === item.key}
+              short={
+                shortKey === item.key ? sparksShort(pet.sparks, item.price) : 0
+              }
+              onBuy={handleBuy}
+              onToggle={handleToggle}
+            />
+          );
+        })}
       </div>
     </div>
   );
