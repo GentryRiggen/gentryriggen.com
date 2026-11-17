@@ -22,7 +22,7 @@ export const CHANGELOG: readonly Release[] = [
       "Flamelings now works with no internet! Open it once with the internet on, then it is saved on your device. Play on a car ride or a plane, even when the home-screen app has no signal. Feeding, playing and dressing up all work, and everything saves as usual",
       "Friends need the internet. Without it a little cloud with a line through it shows, and the rest of the game keeps going. When the internet comes back, tap the 🔄 button and your friends are there again",
       "New 📸 button in the Wardrobe! Tap it to take a picture of your flameling in its Ember Hollow frame, with its name, level, what it has grown into and how many days it has been alive",
-      "Tap Share to send the picture to family, or Save picture to keep it on your device (on some tablets it goes to your Downloads)",
+      "Tap Share to send the picture to family. If your tablet cannot share, Save picture tries to keep it, and a 👆🖼️💾 hint shows: press and hold the picture to save it to your photos",
       "A small spark on the Friends screen was floating in a big empty box. Young flamelings now fill their space, so you can see your new friend properly",
       "For parents: the picture is made right on your device and goes nowhere on its own. It only leaves if you choose where to share it, and it never includes anything but what you see. The game only counts anonymously whether a picture was shared or saved, never the picture or the name",
     ],

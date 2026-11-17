@@ -740,5 +740,5 @@ test("the picture button makes a 1080 x 1350 PNG and saves it when there is no s
   ]);
   expect(bytes.readUInt32BE(16)).toBe(1080);
   expect(bytes.readUInt32BE(20)).toBe(1350);
-  await expect(page.getByTestId("share-saved")).toBeVisible();
+  await expect(page.getByTestId("share-hold-hint")).toBeVisible();
 });

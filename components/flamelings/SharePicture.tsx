@@ -47,7 +47,7 @@ export default function SharePicture({
 }: SharePictureProps) {
   const source = useRef<HTMLDivElement>(null);
   const [picture, setPicture] = useState<Picture>({ kind: "making" });
-  const [saved, setSaved] = useState(false);
+  const [needsHold, setNeedsHold] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
   const stage = stageFor(pet.level).id;
   const title = stageTitle(pet.level, pet.form);
@@ -89,7 +89,9 @@ export default function SharePicture({
       const result = await shareOrDownload(picture.blob);
       if (result === "cancelled") return;
       trackShare(result);
-      setSaved(result === "download");
+      // A download may be dropped silently (a pinned iOS app), so never say
+      // "saved": point at the picture to press and hold instead.
+      setNeedsHold(result === "download");
     } finally {
       setIsBusy(false);
     }
@@ -141,7 +143,7 @@ export default function SharePicture({
             height={SHARE_HEIGHT}
             alt={`${pet.name}, ${title}, level ${pet.level}`}
             data-testid="share-image"
-            className="h-full max-h-full w-auto max-w-full rounded-3xl shadow-xl"
+            className="h-full max-h-full w-auto max-w-full select-auto rounded-3xl shadow-xl [-webkit-touch-callout:default]"
           />
         ) : picture.kind === "making" ? (
           <p
@@ -162,13 +164,14 @@ export default function SharePicture({
         )}
       </div>
 
-      {saved && (
+      {needsHold && (
         <p
           role="status"
-          data-testid="share-saved"
-          className="pb-1 text-center text-lg font-extrabold text-emerald-800 dark:text-emerald-300"
+          aria-label="Press and hold the picture to save it"
+          data-testid="share-hold-hint"
+          className="pb-1 text-center text-4xl"
         >
-          <span aria-hidden="true">✅ </span>Saved to this device
+          <span aria-hidden="true">👆🖼️💾</span>
         </p>
       )}
       <p className="mx-auto max-w-xl pb-2 text-center text-sm font-semibold leading-snug opacity-80">
