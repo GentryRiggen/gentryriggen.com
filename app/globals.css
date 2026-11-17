@@ -9927,6 +9927,46 @@ html:has(.jim-app) body {
   --fl-stage: 0.96;
 }
 
+/* ---- Flamelings glade decor on narrow screens ---- */
+/* The glade crops its sides on tall screens (an 800-wide scene, sliced to
+   fill the height), so the outer decor moves in and shrinks to stay in view.
+   A CSS transform replaces the piece's translate attribute. About 190-610 of
+   the scene shows on an iPad in portrait, about 228-572 on a phone. */
+@media (max-aspect-ratio: 6/5) {
+  .fl-decor-plant {
+    transform: translate(216px, 524px) scale(0.82);
+  }
+  .fl-decor-snowman {
+    transform: translate(258px, 512px) scale(0.82);
+  }
+  .fl-decor-bed {
+    transform: translate(252px, 596px) scale(0.82);
+  }
+  .fl-decor-toyBox {
+    transform: translate(566px, 520px) scale(0.82);
+  }
+  .fl-decor-crystals {
+    transform: translate(566px, 597px) scale(0.82);
+  }
+}
+@media (max-aspect-ratio: 11/20) {
+  .fl-decor-plant {
+    transform: translate(250px, 512px) scale(0.7);
+  }
+  .fl-decor-snowman {
+    transform: translate(288px, 506px) scale(0.7);
+  }
+  .fl-decor-bed {
+    transform: translate(262px, 597px) scale(0.7);
+  }
+  .fl-decor-toyBox {
+    transform: translate(528px, 510px) scale(0.7);
+  }
+  .fl-decor-crystals {
+    transform: translate(544px, 597px) scale(0.7);
+  }
+}
+
 /* ---- Flamelings shelf and hatch (transform and opacity only) ---- */
 /* The egg wobbles harder with every tap: 1 is idle, 5 is about to burst. */
 .fl-egg-wobble-1,

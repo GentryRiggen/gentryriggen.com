@@ -386,6 +386,7 @@ export default function Glade({ nowMs, decor = [] }: GladeProps) {
           <g
             key={id}
             data-testid={`fl-decor-${id}`}
+            className={`fl-decor-${id}`}
             transform={`translate(${x} ${y})`}
           >
             <DecorPiece id={id} glow={glow} />
