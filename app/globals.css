@@ -9338,6 +9338,115 @@ html:has(.jim-app) body {
   }
 }
 
+/* ---- Flamelings storybook motion (transform and opacity only) ---- */
+.fl-pop-in {
+  animation: fl-pop-in 260ms cubic-bezier(0.3, 0.9, 0.4, 1) both;
+}
+@keyframes fl-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.fl-sheet-up {
+  animation: fl-sheet-up 280ms ease-out both;
+}
+@keyframes fl-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fl-shimmer {
+  animation: fl-shimmer 2.4s ease-in-out infinite;
+}
+@keyframes fl-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+.fl-pulse-soft {
+  animation: fl-pulse-soft 1.4s ease-in-out infinite;
+}
+@keyframes fl-pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+.fl-purchase-pop {
+  animation: fl-purchase-pop 420ms cubic-bezier(0.3, 0.9, 0.4, 1) both;
+}
+@keyframes fl-purchase-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.fl-fade-in {
+  animation: fl-fade-in 300ms ease-out both;
+}
+@keyframes fl-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* The wish bubble: pops in, then bobs gently. */
+.fl-wish {
+  animation:
+    fl-pop-in 260ms cubic-bezier(0.3, 0.9, 0.4, 1) both,
+    fl-wish-bob 2.6s ease-in-out 260ms infinite;
+}
+@keyframes fl-wish-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-pop-in,
+  .fl-sheet-up,
+  .fl-shimmer,
+  .fl-pulse-soft,
+  .fl-purchase-pop,
+  .fl-fade-in,
+  .fl-wish {
+    animation: none !important;
+  }
+}
+
 /* ---- Flamelings happenings (visitors, rain, treasure, stars, party) ---- */
 .fl-wander-in {
   animation: fl-wander-in 1.6s cubic-bezier(0.3, 0.9, 0.4, 1) both;

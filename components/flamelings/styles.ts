@@ -3,16 +3,29 @@
 export const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-500 focus-visible:ring-offset-2";
 
-/** Big, round, friendly buttons: at least 64px on every side. */
-export const BIG_BUTTON = `min-h-16 min-w-16 rounded-3xl font-bold shadow-md active:scale-95 transition-transform disabled:opacity-40 disabled:active:scale-100 ${FOCUS_RING}`;
+/** The rounded storybook display font (Fredoka), set by the Flamelings shell. */
+export const DISPLAY = "font-[family-name:var(--font-fl-display)]";
 
-export const PRIMARY_BUTTON = `${BIG_BUTTON} bg-orange-500 px-8 py-4 text-xl text-white hover:bg-orange-600 dark:bg-orange-400 dark:text-stone-900 dark:hover:bg-orange-300`;
+/** Big, round, friendly buttons: at least 64px on every side. Callers add the colours. */
+export const BIG_BUTTON = `min-h-16 min-w-16 rounded-3xl font-semibold shadow-[0_4px_0_rgba(58,35,64,.28),0_8px_18px_rgba(30,10,40,.22)] transition-transform active:translate-y-[3px] active:shadow-[0_1px_0_rgba(58,35,64,.28)] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
 
-/** The page behind the Shelf, Hatch and Wardrobe screens. */
+/** A cream panel: the storybook card used in both themes. */
+export const STICKER =
+  "rounded-[28px] bg-[#fff6e6] text-[#3a2340] shadow-[0_5px_0_#e7c9a3,0_12px_28px_rgba(30,10,40,.30)]";
+
+/** A cream round button, 64px or more, that squishes when pressed. */
+export const STICKER_BUTTON = `grid min-h-16 min-w-16 place-items-center rounded-full bg-[#fff6e6] text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_8px_18px_rgba(30,10,40,.25)] transition-transform active:translate-y-[3px] active:shadow-[0_2px_0_#e7c9a3] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
+
+export const PRIMARY_BUTTON = `${DISPLAY} min-h-16 min-w-16 rounded-3xl bg-gradient-to-b from-[#ff8a3d] to-[#f2542d] px-8 py-4 text-xl font-semibold text-white shadow-[0_5px_0_#c2410c,0_10px_20px_rgba(30,10,40,.30)] transition-transform active:translate-y-[3px] active:shadow-[0_2px_0_#c2410c] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
+
+/** The gold pill that holds the spark count. */
+export const SPARK_PILL = `${DISPLAY} flex h-16 shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-b from-[#ffe58a] to-[#ffc53d] px-3 text-2xl font-bold text-[#7a3d00] shadow-[0_4px_0_#d9952a,0_8px_18px_rgba(30,10,40,.25)] sm:gap-2 sm:px-4`;
+
+/** The page behind every screen: dusk in the dark, peach and lavender in the light. */
 export const CHROME_BG =
-  "bg-gradient-to-b from-amber-100 to-orange-200 text-stone-900 dark:from-slate-900 dark:to-indigo-950 dark:text-amber-50";
+  "bg-[linear-gradient(180deg,#ffe3c4_0%,#f3c9d9_55%,#d9c6ef_100%)] text-[#3a2340] dark:bg-[radial-gradient(ellipse_at_50%_30%,#4b2f6b_0%,#2a1d47_55%,#1b1430_100%)] dark:text-[#fff6e6]";
 
 export const CARD =
-  "rounded-3xl bg-white/80 shadow-md dark:bg-slate-800/80 dark:shadow-black/30";
+  "rounded-3xl bg-[#fff6e6] text-[#3a2340] shadow-[0_5px_0_#e7c9a3,0_12px_28px_rgba(30,10,40,.30)]";
 
 export { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";

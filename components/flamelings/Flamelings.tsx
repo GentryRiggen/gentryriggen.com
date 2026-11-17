@@ -14,6 +14,7 @@ import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
 import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
 import { useFlamelingsSound } from "./audio/useFlamelingsSound";
+import { flDisplay } from "./fonts";
 import CelebrationCard from "./CelebrationCard";
 import FriendsScreen from "./friends/FriendsScreen";
 import Hatch from "./Hatch";
@@ -21,6 +22,7 @@ import MemoryGrove from "./MemoryGrove";
 import PetView from "./PetView";
 import Shelf from "./Shelf";
 import TabLocked from "./TabLocked";
+import { CHROME_BG } from "./styles";
 
 /** How often the game catches up with the clock while the page is open. */
 const TICK_MS = 15_000;
@@ -97,7 +99,7 @@ export default function Flamelings() {
 
   return (
     <GameShell
-      className="bg-amber-100 dark:bg-slate-900"
+      className={`${flDisplay.variable} ${CHROME_BG}`}
       testId="flamelings-root"
     >
       {!ready ? (
