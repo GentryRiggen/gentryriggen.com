@@ -1,3 +1,4 @@
+import type { Happening, HappeningKind } from "./happenings";
 import type {
   ColourId,
   DecorId,
@@ -58,6 +59,10 @@ export interface Pet {
   petTaps: { day: string; count: number };
   /** Firefly rounds that paid sparks in a check-in window (see MAX_SPARK_ROUNDS). */
   sparkRounds: { window: string; count: number };
+  /** This window's happening (null for a quiet one), with its done state. */
+  happening: Happening | null;
+  /** Sparks a shooting-star wish is holding for the morning (0 when none). */
+  wish: number;
 }
 
 export interface Memorial {
@@ -102,11 +107,12 @@ export type PetEvent =
   | { type: "overfed" }
   | { type: "bonusXp"; amount: number }
   | { type: "sparks"; amount: number; source: SparkSource }
-  | { type: "buy"; key: UnlockKey; price: number };
+  | { type: "buy"; key: UnlockKey; price: number }
+  | { type: "happening"; kind: HappeningKind; done: boolean };
 
 /** Where sparks came from: the screen flies them in from the matching spot. */
 export type SparkSource =
-  "feed" | "clean" | "play" | "gift" | "level" | "relight";
+  "feed" | "clean" | "play" | "gift" | "level" | "relight" | "happening";
 
 export type CareAction = "feed" | "play" | "clean" | "pet" | "gift" | "relight";
 

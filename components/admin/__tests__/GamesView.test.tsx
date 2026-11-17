@@ -96,6 +96,7 @@ it("shows the Flamelings section, with no pet names to show", () => {
         fl("fl_level", { level: 4, stage: "flicker" }),
         fl("fl_unlock", { kind: "hat", via: "gift" }),
         fl("fl_buy", { kind: "decor", price: 120 }),
+        fl("fl_happening", { kind: "treasure", done: 1 }),
       ]}
     />
   );
@@ -103,6 +104,8 @@ it("shows the Flamelings section, with no pet names to show", () => {
   expect(screen.getByTestId("flamelings-hatches")).toHaveTextContent("1");
   expect(screen.getByTestId("flamelings-purchases")).toHaveTextContent("1");
   expect(screen.getByTestId("flamelings-spent")).toHaveTextContent("120");
+  expect(screen.getByTestId("flamelings-happenings")).toHaveTextContent("1");
+  expect(screen.getByText("treasure · done")).toBeInTheDocument();
   expect(screen.getByTestId("flamelings-averages")).toHaveTextContent(
     "3.0 pets per visit · 12.0 fireflies per run · highest level 4"
   );

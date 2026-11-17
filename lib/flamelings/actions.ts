@@ -16,7 +16,8 @@ import {
   lockedItems,
   stageFor,
 } from "./progress";
-import { shopItem } from "./shop";
+import { activeHappening, ensureHappening } from "./happenings";
+import { priceOf, shopItem } from "./shop";
 import { RELIGHT_FEEDS, advance, isAwake, isOut } from "./sim";
 import { SAVE_SCHEMA } from "./types";
 import type {
@@ -69,6 +70,21 @@ export function sparkRoundsLeft(pet: Pet, nowMs: number): number {
       : 0;
   return Math.max(0, MAX_SPARK_ROUNDS - used);
 }
+
+/** What happenings pay, as inclusive [min, max] sparks. */
+export const HAPPENING_SPARKS = {
+  visitor: [10, 30],
+  treasure: [15, 35],
+  mushrooms: [12, 25],
+  rain: [8, 20],
+  season: [5, 15],
+  star: [10, 25],
+} as const;
+/** A soggy rain shower still pays this much. */
+export const RAIN_SOGGY_SPARKS = 3;
+export const HATCH_DAY_SPARKS = { monthly: 30, yearly: 100 } as const;
+/** Chance a visitor's or treasure's present is a locked item (if any are left). */
+const ITEM_CHANCE = { visitor: 0.35, treasure: 0.3 } as const;
 
 /** Shop pets and sparks stay small whole numbers. */
 export const MAX_SPARKS = 1_000_000;
@@ -133,6 +149,8 @@ export function createPet(params: {
     giftWindow: null,
     petTaps: { day: localDay(params.now), count: 0 },
     sparkRounds: { window: "", count: 0 },
+    happening: null,
+    wish: 0,
   };
 }
 
@@ -297,6 +315,135 @@ export function openGift(
   return { pet: grantXp(next, 15, events), events };
 }
 
+/** How a rain shower went: drops popped and drops that reached the pet. */
+export interface HappeningResult {
+  popped?: number;
+  missed?: number;
+}
+
+function between(range: readonly [number, number], random: () => number) {
+  return range[0] + Math.floor(random() * (range[1] - range[0] + 1));
+}
+
+/** Shows the icon intro for the active happening (and counts it as started). */
+export function markHappeningSeen(pet: Pet, now: number): Outcome {
+  const h = activeHappening(pet, now);
+  if (!h || h.seen) return { pet, events: [] };
+  return {
+    pet: { ...pet, happening: { ...h, seen: true } },
+    events: [{ type: "happening", kind: h.kind, done: false }],
+  };
+}
+
+/**
+ * Finishes the active happening and pays its reward. A visitor's present or a
+ * treasure may be a still-locked item instead of sparks; a shooting star's
+ * wish waits in the pet until morning; a soggy rain shower costs a little joy
+ * (never health). Ignored when nothing is active.
+ */
+export function completeHappening(
+  pet: Pet,
+  now: number,
+  random: () => number = Math.random,
+  result: HappeningResult = {}
+): Outcome {
+  const h = activeHappening(pet, now);
+  if (!h) return { pet, events: [] };
+  const events: PetEvent[] = [{ type: "happening", kind: h.kind, done: true }];
+  let next: Pet = { ...pet, happening: { ...h, done: true, seen: true } };
+  let xp = 10;
+
+  const present = (chance: number, range: readonly [number, number]) => {
+    const locked = lockedItems(next.unlocked);
+    if (locked.length > 0 && random() < chance) {
+      const key = locked[Math.floor(random() * locked.length)];
+      next = { ...next, unlocked: [...next.unlocked, key] };
+      events.push({ type: "unlock", key, via: "gift" });
+    } else {
+      next = earn(next, between(range, random), "happening", events);
+    }
+  };
+
+  switch (h.kind) {
+    case "visitor":
+      present(ITEM_CHANCE.visitor, HAPPENING_SPARKS.visitor);
+      break;
+    case "treasure":
+      present(ITEM_CHANCE.treasure, HAPPENING_SPARKS.treasure);
+      break;
+    case "mushrooms":
+      next = earn(
+        { ...next, joy: clamp(next.joy + 10) },
+        between(HAPPENING_SPARKS.mushrooms, random),
+        "happening",
+        events
+      );
+      break;
+    case "season":
+      next = earn(
+        next,
+        between(HAPPENING_SPARKS.season, random),
+        "happening",
+        events
+      );
+      break;
+    case "star":
+      next = { ...next, wish: between(HAPPENING_SPARKS.star, random) };
+      xp = 5;
+      break;
+    case "rain": {
+      const popped = Math.max(0, Math.floor(result.popped ?? 0));
+      const missed = Math.max(0, Math.floor(result.missed ?? 0));
+      if (missed > popped) {
+        // A little soggy: a small dip in joy, never in health.
+        next = earn(
+          { ...next, joy: clamp(next.joy - 8) },
+          RAIN_SOGGY_SPARKS,
+          "happening",
+          events
+        );
+        xp = 3;
+      } else {
+        next = earn(
+          { ...next, joy: clamp(next.joy + 15) },
+          between(HAPPENING_SPARKS.rain, random),
+          "happening",
+          events
+        );
+      }
+      break;
+    }
+    case "hatchday": {
+      const yearly = h.variant === "yearly";
+      next = earn(
+        next,
+        yearly ? HATCH_DAY_SPARKS.yearly : HATCH_DAY_SPARKS.monthly,
+        "happening",
+        events
+      );
+      const hat = unlockKey("hat", "party");
+      if (!next.unlocked.includes(hat)) {
+        next = { ...next, unlocked: [...next.unlocked, hat] };
+        events.push({ type: "unlock", key: hat, via: "gift" });
+      }
+      next = { ...next, joy: clamp(next.joy + 20) };
+      xp = 20;
+      break;
+    }
+  }
+  return { pet: grantXp(next, xp, events), events };
+}
+
+/** Collects the sparks a shooting-star wish held overnight. */
+export function collectWish(pet: Pet, now: number): Outcome {
+  if (pet.state !== "alive" || !isAwake(now) || pet.wish <= 0) {
+    return { pet, events: [] };
+  }
+  const events: PetEvent[] = [];
+  const next = earn({ ...pet, wish: 0 }, pet.wish, "happening", events);
+  return { pet: next, events };
+}
+
 export type DressSlot = "hat" | "face" | "neck";
 
 /** Wears (or, with null, removes) an item; a locked item is ignored. */
@@ -310,15 +457,16 @@ export function dress(pet: Pet, slot: DressSlot, id: string | null): Pet {
  * and decor is put out. Ignored when it is not for sale, already owned or too
  * dear (the screen shows how many sparks are missing).
  */
-export function buy(pet: Pet, key: UnlockKey): Outcome {
+export function buy(pet: Pet, key: UnlockKey, now?: number): Outcome {
   const item = shopItem(key);
   if (!item || !isShopKey(key) || pet.unlocked.includes(key)) {
     return { pet, events: [] };
   }
-  if (pet.sparks < item.price) return { pet, events: [] };
+  const price = priceOf(item, now);
+  if (pet.sparks < price) return { pet, events: [] };
   const bought: Pet = {
     ...pet,
-    sparks: pet.sparks - item.price,
+    sparks: pet.sparks - price,
     unlocked: [...pet.unlocked, key],
   };
   const placed =
@@ -327,7 +475,7 @@ export function buy(pet: Pet, key: UnlockKey): Outcome {
       : dress(bought, item.tab, item.id);
   return {
     pet: placed,
-    events: [{ type: "buy", key, price: item.price }],
+    events: [{ type: "buy", key, price }],
   };
 }
 
@@ -384,7 +532,7 @@ export function settle(
   const memorial: Memorial[] = [...save.memorial];
   for (const pet of save.pets) {
     const was = pet.state;
-    const next = advance(pet, pet.tickedAt, now);
+    const next = ensureHappening(advance(pet, pet.tickedAt, now), now);
     if (was === "alive" && next.state === "ember") {
       events.push({ petId: pet.id, event: { type: "state", to: "ember" } });
     }

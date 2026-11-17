@@ -400,6 +400,37 @@ describe("flamelings specifics", () => {
     );
   });
 
+  it("takes a happening as one of seven kinds and a started or done flag", async () => {
+    const happening = (kind: string, done: number) =>
+      docFor("fl_happening", { props: { kind, done } });
+    for (const kind of [
+      "visitor",
+      "rain",
+      "treasure",
+      "star",
+      "mushrooms",
+      "hatchday",
+      "season",
+    ]) {
+      await assertSucceeds(create(anon(), happening(kind, 0)));
+      await assertSucceeds(create(anon(), happening(kind, 1)));
+    }
+    await assertFails(create(anon(), happening("owl", 1)));
+    await assertFails(create(anon(), happening("visitor", 2)));
+    await assertFails(create(anon(), happening("visitor", -1)));
+    await assertFails(
+      create(anon(), docFor("fl_happening", { props: { kind: "visitor" } }))
+    );
+    await assertFails(
+      create(
+        anon(),
+        docFor("fl_happening", {
+          props: { kind: "visitor", done: 1, who: "owl" },
+        })
+      )
+    );
+  });
+
   it("never lets a typed name ride along", async () => {
     await assertFails(
       create(anon(), docFor("fl_hatch", { props: { name: "Sparky" } }))

@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import {
   buy as buyAction,
+  collectWish as collectWishAction,
+  completeHappening as completeHappeningAction,
+  markHappeningSeen as markSeenAction,
+  type HappeningResult,
   clean as cleanAction,
   dress as dressAction,
   feed as feedAction,
@@ -125,6 +129,12 @@ export interface FlamelingsStore {
   restyle(petId: string, look: Partial<Look>): void;
   /** Spends the pet's sparks on a shop item (events say if it worked). */
   buy(petId: string, key: UnlockKey): PetEvent[];
+  /** The icon intro of this pet's happening was shown. */
+  markHappeningSeen(petId: string): PetEvent[];
+  /** Finishes this pet's happening and pays it. */
+  completeHappening(petId: string, result?: HappeningResult): PetEvent[];
+  /** Collects the sparks a shooting-star wish held overnight. */
+  collectWish(petId: string): PetEvent[];
   /** Puts an owned decor item out in the glade, or away. */
   setDecor(petId: string, id: DecorId, on: boolean): void;
   dismissCelebration(): void;
@@ -315,7 +325,14 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
       const pet = petOf(petId);
       if (pet) commit(petId, { pet: dressAction(pet, slot, id), events: [] });
     },
-    buy: (petId, key) => act(petId, (pet) => buyAction(pet, key)),
+    buy: (petId, key) => act(petId, (pet, t) => buyAction(pet, key, t)),
+    markHappeningSeen: (petId) =>
+      act(petId, (pet, t) => markSeenAction(pet, t)),
+    completeHappening: (petId, result) =>
+      act(petId, (pet, t) =>
+        completeHappeningAction(pet, t, Math.random, result)
+      ),
+    collectWish: (petId) => act(petId, (pet, t) => collectWishAction(pet, t)),
     setDecor(petId, id, on) {
       const pet = petOf(petId);
       if (pet) commit(petId, { pet: setDecorAction(pet, id, on), events: [] });

@@ -9,7 +9,19 @@ export type SoundName =
   | "unwrap"
   | "relight"
   | "fwoop"
-  | "coin";
+  | "coin"
+  | "arrive"
+  | "pop"
+  | "drizzle"
+  | "dig"
+  | "chest"
+  | "wish"
+  | "blow"
+  | "mush0"
+  | "mush1"
+  | "mush2"
+  | "mush3"
+  | "mush4";
 
 export const SOUND_NAMES: readonly SoundName[] = [
   "chirp",
@@ -20,6 +32,18 @@ export const SOUND_NAMES: readonly SoundName[] = [
   "relight",
   "fwoop",
   "coin",
+  "arrive",
+  "pop",
+  "drizzle",
+  "dig",
+  "chest",
+  "wish",
+  "blow",
+  "mush0",
+  "mush1",
+  "mush2",
+  "mush3",
+  "mush4",
 ];
 
 type Sink = (name: SoundName) => void;

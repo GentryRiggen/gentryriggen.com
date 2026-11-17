@@ -320,3 +320,50 @@ describe("save schema", () => {
     expect(storage.backups()).toEqual([]);
   });
 });
+
+describe("happenings in a save", () => {
+  const base = () => {
+    const save = hatch(emptySave(NOW), {
+      id: "a",
+      name: "Pip",
+      look,
+      now: NOW,
+    });
+    return JSON.parse(JSON.stringify(save));
+  };
+
+  it("loads a 1.1 save with no happening fields", () => {
+    const raw = base();
+    delete raw.pets[0].happening;
+    delete raw.pets[0].wish;
+    const parsed = parseSave(raw);
+    expect(parsed?.pets[0].happening).toBeNull();
+    expect(parsed?.pets[0].wish).toBe(0);
+  });
+
+  it("keeps a good happening and drops an unknown kind", () => {
+    const raw = base();
+    raw.pets[0].happening = {
+      window: "2026-11-16:am",
+      kind: "visitor",
+      variant: "owl",
+      done: true,
+      seen: true,
+    };
+    expect(parseSave(raw)?.pets[0].happening).toEqual(raw.pets[0].happening);
+    raw.pets[0].happening.kind = "dragon";
+    expect(parseSave(raw)?.pets[0].happening).toBeNull();
+  });
+
+  it("defaults a bad variant instead of dropping the happening", () => {
+    const raw = base();
+    raw.pets[0].happening = {
+      window: "2026-11-16:am",
+      kind: "visitor",
+      variant: "dragon",
+      done: false,
+      seen: false,
+    };
+    expect(parseSave(raw)?.pets[0].happening?.variant).toBe("owl");
+  });
+});

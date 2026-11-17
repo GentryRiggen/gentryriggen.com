@@ -1,3 +1,4 @@
+import { seasonAt } from "./happenings";
 import {
   DECOR,
   SHOP_FACES,
@@ -93,6 +94,17 @@ const BY_KEY = new Map<UnlockKey, ShopItem>(
 
 export function shopItem(key: UnlockKey): ShopItem | null {
   return BY_KEY.get(key) ?? null;
+}
+
+/** The snowman is on sale all winter (December to February). */
+export const SNOWMAN_SALE_PRICE = 100;
+
+/** What an item costs on the day `nowMs` (the full price when no day is given). */
+export function priceOf(item: ShopItem, nowMs?: number): number {
+  if (item.key === "decor:snowman" && nowMs !== undefined) {
+    return seasonAt(nowMs) === "winter" ? SNOWMAN_SALE_PRICE : item.price;
+  }
+  return item.price;
 }
 
 /** Sparks still missing for an item (0 when the pet can pay). */

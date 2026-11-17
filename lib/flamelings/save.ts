@@ -13,6 +13,7 @@ import {
   type UnlockKey,
 } from "./catalog";
 import { emptySave, MAX_PETS, MAX_SPARKS } from "./actions";
+import { isHappeningKind, variantsOf, type Happening } from "./happenings";
 import { SAVE_SCHEMA } from "./types";
 import type { Look, Memorial, Pet, SaveData, Worn } from "./types";
 
@@ -74,6 +75,26 @@ function parseName(v: unknown): string {
   return name || DEFAULT_NAME;
 }
 
+/**
+ * A stored happening, or null. A kind this build does not know is dropped;
+ * a bad variant falls back to the kind's first.
+ */
+function parseHappening(v: unknown): Happening | null {
+  if (!isObj(v) || !isHappeningKind(v.kind)) return null;
+  if (typeof v.window !== "string" || v.window.length > 32) return null;
+  return {
+    window: v.window,
+    kind: v.kind,
+    variant: oneOf(
+      v.variant,
+      variantsOf(v.kind) as readonly string[],
+      variantsOf(v.kind)[0]
+    ),
+    done: v.done === true,
+    seen: v.seen === true,
+  };
+}
+
 /** A pet with every bad field defaulted, or null if it has no usable id. */
 function parsePet(v: unknown, fallbackTime: number): Pet | null {
   if (!isObj(v)) return null;
@@ -133,6 +154,8 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
       day: typeof taps.day === "string" ? taps.day : "",
       count: Math.floor(num(taps.count, 0, 999, 0)),
     },
+    happening: parseHappening(v.happening),
+    wish: Math.floor(num(v.wish, 0, 100, 0)),
     sparkRounds: {
       window: typeof rounds.window === "string" ? rounds.window : "",
       count: Math.floor(num(rounds.count, 0, 99, 0)),

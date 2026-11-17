@@ -2,6 +2,7 @@ import { resetClock, setNow, skip } from "./clock";
 import type { FlamelingsStore } from "./store";
 import type { Pet } from "./types";
 import { useFlamelings } from "./store";
+import { forcedHappening, type HappeningKind } from "./happenings";
 import { now } from "./clock";
 
 import { TEST_HOOKS_ENABLED, createTestHooks } from "@/lib/game-kit/testHooks";
@@ -19,6 +20,12 @@ declare global {
       state(): FlamelingsStore;
       /** Overwrites fields of the pet at `index` (for setting up a scene). */
       patchPet(index: number, patch: Partial<Pet>): void;
+      /** Puts a fresh happening of `kind` on the pet at `index` for this window. */
+      forceHappening(
+        kind: HappeningKind,
+        index?: number,
+        variant?: string
+      ): void;
     };
   }
 }
@@ -38,6 +45,20 @@ export function installTestHooks(): () => void {
       },
       now,
       state: () => useFlamelings.getState(),
+      forceHappening(kind, index = 0, variant) {
+        const { save } = useFlamelings.getState();
+        const happening = forcedHappening(kind, now(), variant);
+        useFlamelings.setState({
+          save: {
+            ...save,
+            pets: save.pets.map((p, i) =>
+              i === index ? { ...p, happening } : p
+            ),
+          },
+        });
+        // Settling saves it, so a reload shows the same happening.
+        useFlamelings.getState().tick();
+      },
       patchPet(index, patch) {
         const { save } = useFlamelings.getState();
         useFlamelings.setState({

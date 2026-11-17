@@ -160,6 +160,9 @@ describe("summarizeFlamelings", () => {
     fl("fl_buy", { kind: "hat", price: 90 }),
     fl("fl_buy", { kind: "decor", price: 400 }),
     fl("fl_buy", { kind: "hat", price: 50 }),
+    fl("fl_happening", { kind: "visitor", done: 0 }),
+    fl("fl_happening", { kind: "visitor", done: 1 }),
+    fl("fl_happening", { kind: "rain", done: 0 }),
   ];
   const summary = summarizeFlamelings(events);
 
@@ -184,6 +187,18 @@ describe("summarizeFlamelings", () => {
     expect(summary.purchases).toBe(3);
     expect(summary.sparksSpent).toBe(540);
     expect(summary.buys[0]).toEqual({ key: "hat", views: 2 });
+  });
+
+  it("counts happenings started and done", () => {
+    expect(summary.happeningsDone).toBe(1);
+    expect(summary.happenings).toContainEqual({
+      key: "visitor · done",
+      views: 1,
+    });
+    expect(summary.happenings).toContainEqual({
+      key: "rain · started",
+      views: 1,
+    });
   });
 
   it("has empty answers with no events", () => {

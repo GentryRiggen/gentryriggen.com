@@ -294,6 +294,26 @@ export const GAME_EVENTS = {
       price: { kind: "int", min: 0, max: 1000, step: 10 },
     },
   },
+  /** A happening's intro was shown (done 0) or it was finished (done 1). */
+  fl_happening: {
+    site: "flamelings",
+    sample: 1,
+    props: {
+      kind: {
+        kind: "enum",
+        values: [
+          "visitor",
+          "rain",
+          "treasure",
+          "star",
+          "mushrooms",
+          "hatchday",
+          "season",
+        ],
+      },
+      done: { kind: "int", min: 0, max: 1 },
+    },
+  },
 } as const satisfies Record<
   string,
   { site: GameSite; sample: number; props: Record<string, PropSpec> }
