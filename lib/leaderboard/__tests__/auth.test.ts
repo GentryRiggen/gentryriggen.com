@@ -34,6 +34,36 @@ const signUpReply = {
 
 beforeEach(() => resetAuthCache());
 
+describe("getIdToken with its own storage key", () => {
+  it("keeps a separate account and token per key", async () => {
+    const storage = makeStorage();
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(reply(200, signUpReply))
+      .mockResolvedValueOnce(
+        reply(200, { ...signUpReply, idToken: "id-2", localId: "uid-2" })
+      );
+    const base = { config, fetchImpl, storage, now: () => 1000 };
+
+    const plane = await getIdToken(base);
+    const flame = await getIdToken({ ...base, storageKey: "flamelings:auth" });
+    expect(plane?.uid).toBe("uid-1");
+    expect(flame?.uid).toBe("uid-2");
+    expect(JSON.parse(storage.data.get("flamelings:auth") ?? "").uid).toBe(
+      "uid-2"
+    );
+    expect(JSON.parse(storage.data.get(AUTH_STORAGE_KEY) ?? "").uid).toBe(
+      "uid-1"
+    );
+    // Each key's token is cached on its own.
+    expect((await getIdToken(base))?.uid).toBe("uid-1");
+    expect(
+      (await getIdToken({ ...base, storageKey: "flamelings:auth" }))?.uid
+    ).toBe("uid-2");
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("getIdToken", () => {
   it("signs up anonymously, stores the refresh token, then caches", async () => {
     const storage = makeStorage();

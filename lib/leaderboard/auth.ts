@@ -15,6 +15,11 @@ export interface AuthSession {
 type TokenStorage = Pick<Storage, "getItem" | "setItem">;
 
 export interface AuthDeps {
+  /**
+   * Where the refresh token lives. Each game that signs in keeps its own
+   * anonymous account (and in-memory token), so its uid is not shared.
+   */
+  storageKey?: string;
   config?: FirebaseWebConfig;
   fetchImpl?: typeof fetch;
   storage?: TokenStorage | null;
@@ -22,6 +27,7 @@ export interface AuthDeps {
 }
 
 interface ResolvedDeps {
+  storageKey: string;
   config: FirebaseWebConfig;
   fetchImpl: typeof fetch;
   storage: TokenStorage | null;
@@ -37,13 +43,13 @@ interface StoredAuth {
   refreshToken: string;
 }
 
-let cached: CachedToken | null = null;
-let inFlight: Promise<AuthSession | null> | null = null;
+const cachedByKey = new Map<string, CachedToken>();
+const inFlightByKey = new Map<string, Promise<AuthSession | null>>();
 
-/** Test hook: forget the in-memory token. */
+/** Test hook: forget the in-memory tokens. */
 export function resetAuthCache(): void {
-  cached = null;
-  inFlight = null;
+  cachedByKey.clear();
+  inFlightByKey.clear();
 }
 
 function defaultStorage(): TokenStorage | null {
@@ -54,9 +60,12 @@ function defaultStorage(): TokenStorage | null {
   }
 }
 
-function readStored(storage: TokenStorage | null): StoredAuth | null {
+function readStored(
+  storage: TokenStorage | null,
+  key: string
+): StoredAuth | null {
   try {
-    const raw = storage?.getItem(AUTH_STORAGE_KEY);
+    const raw = storage?.getItem(key);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
@@ -68,9 +77,13 @@ function readStored(storage: TokenStorage | null): StoredAuth | null {
   }
 }
 
-function writeStored(storage: TokenStorage | null, value: StoredAuth): void {
+function writeStored(
+  storage: TokenStorage | null,
+  key: string,
+  value: StoredAuth
+): void {
   try {
-    storage?.setItem(AUTH_STORAGE_KEY, JSON.stringify(value));
+    storage?.setItem(key, JSON.stringify(value));
   } catch {
     // Private mode or a full disk: the token just won't survive a reload.
   }
@@ -104,15 +117,16 @@ async function postJson(
 }
 
 function remember(
+  key: string,
   session: AuthSession,
   expiresInSeconds: unknown,
   now: number
 ): void {
   const seconds = Number(expiresInSeconds);
-  cached = {
+  cachedByKey.set(key, {
     ...session,
     expiresAt: now + (Number.isFinite(seconds) ? seconds : 0) * 1000,
-  };
+  });
 }
 
 async function signUp(deps: ResolvedDeps): Promise<AuthSession | null> {
@@ -131,9 +145,9 @@ async function signUp(deps: ResolvedDeps): Promise<AuthSession | null> {
   ) {
     return null;
   }
-  writeStored(deps.storage, { uid: localId, refreshToken });
+  writeStored(deps.storage, deps.storageKey, { uid: localId, refreshToken });
   const session = { uid: localId, idToken };
-  remember(session, expiresIn, deps.now());
+  remember(deps.storageKey, session, expiresIn, deps.now());
   return session;
 }
 
@@ -161,14 +175,14 @@ async function refresh(
   if (!res.ok || !isNonEmptyString(idToken) || !isNonEmptyString(userId)) {
     return null;
   }
-  writeStored(deps.storage, {
+  writeStored(deps.storage, deps.storageKey, {
     uid: userId,
     refreshToken: isNonEmptyString(refreshToken)
       ? refreshToken
       : stored.refreshToken,
   });
   const session = { uid: userId, idToken };
-  remember(session, expiresIn, deps.now());
+  remember(deps.storageKey, session, expiresIn, deps.now());
   return session;
 }
 
@@ -182,21 +196,25 @@ export async function getIdToken(
 ): Promise<AuthSession | null> {
   const config = deps.config ?? firebaseConfig;
   if (!isFirebaseConfigured(config)) return null;
+  const storageKey = deps.storageKey ?? AUTH_STORAGE_KEY;
   const resolved: ResolvedDeps = {
+    storageKey,
     config,
     fetchImpl: deps.fetchImpl ?? ((...args) => fetch(...args)),
     storage: deps.storage === undefined ? defaultStorage() : deps.storage,
     now: deps.now ?? Date.now,
   };
 
+  const cached = cachedByKey.get(storageKey);
   if (cached && cached.expiresAt - EXPIRY_MARGIN_MS > resolved.now()) {
     return { uid: cached.uid, idToken: cached.idToken };
   }
-  if (inFlight) return inFlight;
+  const pending = inFlightByKey.get(storageKey);
+  if (pending) return pending;
 
-  inFlight = (async () => {
+  const attempt = (async () => {
     try {
-      const stored = readStored(resolved.storage);
+      const stored = readStored(resolved.storage, storageKey);
       if (stored) {
         const result = await refresh(resolved, stored);
         if (result !== "expired") return result;
@@ -205,8 +223,9 @@ export async function getIdToken(
     } catch {
       return null;
     } finally {
-      inFlight = null;
+      inFlightByKey.delete(storageKey);
     }
   })();
-  return inFlight;
+  inFlightByKey.set(storageKey, attempt);
+  return attempt;
 }
