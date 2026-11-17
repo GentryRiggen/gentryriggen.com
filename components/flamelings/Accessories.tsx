@@ -282,15 +282,23 @@ const HATS_SVG: Record<HatId, React.ReactNode> = {
         cx="60"
         cy="64"
         r="38"
-        fill="#cfe9ff"
-        fillOpacity="0.22"
-        stroke="#eef3f8"
-        strokeWidth="4.5"
+        fill="#9fd0ff"
+        fillOpacity="0.3"
+        stroke="#c9d6e6"
+        strokeWidth="5"
+      />
+      <circle
+        cx="60"
+        cy="64"
+        r="38"
+        fill="none"
+        stroke="#8aa0bd"
+        strokeWidth="1"
       />
       <path
         d="M36 52 Q42 36 58 31"
         stroke="#fff"
-        strokeOpacity="0.8"
+        strokeOpacity="0.9"
         strokeWidth="3.4"
         fill="none"
         strokeLinecap="round"
@@ -302,7 +310,7 @@ const HATS_SVG: Record<HatId, React.ReactNode> = {
         height="9"
         rx="4.5"
         fill="#d3d9e2"
-        stroke="#aab3c0"
+        stroke="#8aa0bd"
         strokeWidth="1.2"
       />
       <circle cx="60" cy="25" r="2.6" fill="#ff6a5f" />

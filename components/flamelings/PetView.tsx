@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FOOD_GLYPH,
   type EmoteId,
@@ -12,6 +12,7 @@ import {
   emotesOf,
   fadeLevel,
 } from "@/lib/flamelings/status";
+import { playSound } from "@/lib/flamelings/sound";
 import { useFlamelings } from "@/lib/flamelings/store";
 import EmotePanel from "./EmotePanel";
 import FeedTray from "./FeedTray";
@@ -19,12 +20,15 @@ import FireflyCatch from "./FireflyCatch";
 import Glade from "./Glade";
 import Blob from "./Blob";
 import Meters from "./Meters";
+import Shop from "./Shop";
 import SoundToggle from "./SoundToggle";
+import SparkCounter from "./SparkCounter";
+import SparkFlights, { type Burst } from "./SparkFlights";
 import Wardrobe from "./Wardrobe";
 import { FOCUS_RING, SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "./styles";
 import { useEmote } from "./useEmote";
 
-type Panel = "feed" | "emotes" | "wardrobe" | "play" | null;
+type Panel = "feed" | "emotes" | "wardrobe" | "shop" | "play" | null;
 
 /** Where each uncleaned ash pile sits on the glade floor. */
 const ASH_SPOTS = [
@@ -42,6 +46,17 @@ const BUBBLE_TOP: Record<string, string> = {
   blaze: "top-[8%]",
   bonfire: "top-[1%]",
 };
+
+/** A tap this recent is where fresh sparks fly out from. */
+const RECENT_TAP_MS = 4000;
+
+function reducedMotion(): boolean {
+  try {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  } catch {
+    return false;
+  }
+}
 
 const EATING_MS = 1500;
 const FLY_MS = 600;
@@ -65,7 +80,7 @@ function BarButton({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`flex min-h-20 flex-col items-center justify-center rounded-3xl text-xs font-extrabold sm:text-base shadow-lg transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100 ${FOCUS_RING} ${
+      className={`flex min-h-20 min-w-0 flex-col items-center justify-center rounded-3xl px-0.5 text-[0.7rem] font-extrabold sm:text-base shadow-lg transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100 ${FOCUS_RING} ${
         active
           ? "bg-orange-500 text-white dark:bg-orange-300 dark:text-stone-900"
           : "bg-white/90 text-stone-900 dark:bg-slate-800/90 dark:text-amber-50"
@@ -95,6 +110,11 @@ export default function PetView({ petId }: { petId: string }) {
   const [shaking, setShaking] = useState(0);
   const { emote, emoteKey, play } = useEmote();
   const timers = useRef<number[]>([]);
+  const [bursts, setBursts] = useState<Burst[]>([]);
+  /** Sparks earned but still flying: the counter does not show them yet. */
+  const [inFlight, setInFlight] = useState(0);
+  const counterRef = useRef<HTMLDivElement>(null);
+  const lastTap = useRef<{ x: number; y: number; at: number } | null>(null);
 
   useEffect(() => {
     const pending = timers.current;
@@ -104,6 +124,41 @@ export default function PetView({ petId }: { petId: string }) {
   useEffect(() => {
     if (!pet) go({ screen: "shelf" });
   }, [pet, go]);
+
+  // Sparks earned by an action fly from where it was tapped to the counter.
+  useEffect(
+    () =>
+      useFlamelings.subscribe((state, previous) => {
+        const last = state.lastEvents;
+        if (!last || last === previous.lastEvents || last.petId !== petId) {
+          return;
+        }
+        const amount = last.events.reduce(
+          (sum, e) => (e.type === "sparks" ? sum + e.amount : sum),
+          0
+        );
+        if (amount <= 0 || reducedMotion()) return;
+        const tap = lastTap.current;
+        const from =
+          tap && Date.now() - tap.at < RECENT_TAP_MS
+            ? tap
+            : { x: window.innerWidth / 2, y: window.innerHeight * 0.55 };
+        setInFlight((n) => n + amount);
+        setBursts((list) => [
+          ...list,
+          { id: last.id, amount, x: from.x, y: from.y },
+        ]);
+      }),
+    [petId]
+  );
+
+  const handleLand = useCallback((sparks: number) => {
+    setInFlight((n) => Math.max(0, n - sparks));
+    playSound("coin");
+  }, []);
+  const handleFlightDone = useCallback((id: number) => {
+    setBursts((list) => list.filter((b) => b.id !== id));
+  }, []);
 
   if (!pet) return null;
 
@@ -159,8 +214,13 @@ export default function PetView({ petId }: { petId: string }) {
   const xpNeeded = xpToNext(pet.level);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-slate-900">
-      <Glade nowMs={clock} />
+    <div
+      className="relative h-full w-full overflow-hidden bg-slate-900"
+      onPointerDownCapture={(e) => {
+        lastTap.current = { x: e.clientX, y: e.clientY, at: Date.now() };
+      }}
+    >
+      <Glade nowMs={clock} decor={pet.decor} />
 
       {/* The pet sits on the hearth. */}
       <div className="absolute left-1/2 top-[80%] -translate-x-1/2 -translate-y-full">
@@ -238,10 +298,12 @@ export default function PetView({ petId }: { petId: string }) {
           >
             <span aria-hidden="true">🏠</span>
           </button>
-          <div className="min-w-0 flex-1 rounded-3xl bg-black/40 px-4 py-2 text-white backdrop-blur-sm">
-            <p className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-xl font-black">{pet.name}</span>
-              <span className="shrink-0 text-sm font-bold">
+          <div className="min-w-0 flex-1 rounded-3xl bg-black/40 px-3 py-1.5 text-white backdrop-blur-sm sm:px-4 sm:py-2">
+            <p className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between sm:gap-2">
+              <span className="truncate text-lg font-black leading-tight sm:text-xl">
+                {pet.name}
+              </span>
+              <span className="shrink-0 text-xs font-bold leading-tight sm:text-sm">
                 Lv {pet.level} · {stage.name}
               </span>
             </p>
@@ -252,6 +314,10 @@ export default function PetView({ petId }: { petId: string }) {
               className="mt-1 block h-3 w-full overflow-hidden rounded-full [&::-moz-progress-bar]:bg-amber-300 [&::-webkit-progress-bar]:bg-white/25 [&::-webkit-progress-value]:bg-amber-300"
             />
           </div>
+          <SparkCounter
+            ref={counterRef}
+            value={Math.max(0, pet.sparks - inFlight)}
+          />
           <SoundToggle />
         </div>
         {alive && <Meters pet={pet} />}
@@ -298,7 +364,7 @@ export default function PetView({ petId }: { petId: string }) {
           {panel === "feed" && <FeedTray pet={pet} onPick={pickFood} />}
           {panel === "emotes" && <EmotePanel pet={pet} onPick={pickEmote} />}
         </div>
-        <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1.5 sm:gap-2">
+        <div className="mx-auto grid max-w-3xl grid-cols-6 gap-1 sm:gap-2">
           <BarButton
             icon="🍖"
             label="Feed"
@@ -317,6 +383,7 @@ export default function PetView({ petId }: { petId: string }) {
             label="Wardrobe"
             onClick={() => setPanel("wardrobe")}
           />
+          <BarButton icon="🛒" label="Shop" onClick={() => setPanel("shop")} />
           <BarButton
             icon="💬"
             label="Emotes"
@@ -334,6 +401,15 @@ export default function PetView({ petId }: { petId: string }) {
       {panel === "wardrobe" && (
         <Wardrobe pet={pet} nowMs={clock} onClose={() => setPanel(null)} />
       )}
+      {panel === "shop" && (
+        <Shop pet={pet} nowMs={clock} onClose={() => setPanel(null)} />
+      )}
+      <SparkFlights
+        bursts={bursts}
+        target={counterRef}
+        onLand={handleLand}
+        onDone={handleFlightDone}
+      />
       {panel === "play" && (
         <FireflyCatch
           onDone={(score) => {

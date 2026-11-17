@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import {
+  buy as buyAction,
   clean as cleanAction,
   dress as dressAction,
   feed as feedAction,
@@ -8,11 +9,17 @@ import {
   MAX_PETS,
   openGift as openGiftAction,
   restyle as restyleAction,
+  setDecor as setDecorAction,
   settle,
   tapPet as tapAction,
   type DressSlot,
 } from "./actions";
-import { cleanName, type FoodId, type UnlockKey } from "./catalog";
+import {
+  cleanName,
+  type DecorId,
+  type FoodId,
+  type UnlockKey,
+} from "./catalog";
 import { now } from "./clock";
 import { playEventSounds } from "./sound";
 import { trackEvents, trackHatch, trackPlayEnd, trackVisit } from "./analytics";
@@ -32,6 +39,7 @@ export type Celebration =
       unlocked: UnlockKey | null;
     }
   | { kind: "gift"; petId: string; key: UnlockKey | null }
+  | { kind: "bought"; petId: string; key: UnlockKey }
   | { kind: "relit"; petId: string };
 
 export type View =
@@ -56,6 +64,8 @@ export function celebrationsFrom(
       });
     } else if (event.type === "unlock" && event.via === "gift") {
       cards.push({ kind: "gift", petId, key: event.key });
+    } else if (event.type === "buy") {
+      cards.push({ kind: "bought", petId, key: event.key });
     } else if (event.type === "state" && event.to === "relit") {
       cards.push({ kind: "relit", petId });
     }
@@ -111,6 +121,10 @@ export interface FlamelingsStore {
   openGift(petId: string): PetEvent[];
   dress(petId: string, slot: DressSlot, id: string | null): void;
   restyle(petId: string, look: Partial<Look>): void;
+  /** Spends the pet's sparks on a shop item (events say if it worked). */
+  buy(petId: string, key: UnlockKey): PetEvent[];
+  /** Puts an owned decor item out in the glade, or away. */
+  setDecor(petId: string, id: DecorId, on: boolean): void;
   dismissCelebration(): void;
 }
 
@@ -291,6 +305,11 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     dress(petId, slot, id) {
       const pet = petOf(petId);
       if (pet) commit(petId, { pet: dressAction(pet, slot, id), events: [] });
+    },
+    buy: (petId, key) => act(petId, (pet) => buyAction(pet, key)),
+    setDecor(petId, id, on) {
+      const pet = petOf(petId);
+      if (pet) commit(petId, { pet: setDecorAction(pet, id, on), events: [] });
     },
     restyle(petId, look) {
       const pet = petOf(petId);

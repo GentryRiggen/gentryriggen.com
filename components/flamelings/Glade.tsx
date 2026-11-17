@@ -1,8 +1,12 @@
+import type { DecorId } from "@/lib/flamelings/catalog";
 import { skyPhase, type SkyPhase } from "@/lib/flamelings/sky";
+import { DECOR_SPECS, DecorPiece, type DecorLayer } from "./DecorArt";
 
 interface GladeProps {
   /** The game clock (ms): the sky follows it. */
   nowMs: number;
+  /** The decor this pet has put out. */
+  decor?: readonly DecorId[];
 }
 
 const SKY: Record<SkyPhase, [string, string, string]> = {
@@ -94,12 +98,27 @@ function Fern({
  * Ember Hollow: a layered, cozy glade drawn in SVG. The sky, glow and stars
  * follow the clock. It fills its parent and crops (never stretches) to fit.
  */
-export default function Glade({ nowMs }: GladeProps) {
+export default function Glade({ nowMs, decor = [] }: GladeProps) {
   const phase = skyPhase(nowMs);
   const [top, mid, bottom] = SKY[phase];
   const tint = TINT[phase];
   const glow = GLOW[phase];
   const night = phase === "night" || phase === "evening";
+  const placed = (layer: DecorLayer) =>
+    decor
+      .filter((id) => DECOR_SPECS[id].layer === layer)
+      .map((id) => {
+        const { x, y } = DECOR_SPECS[id];
+        return (
+          <g
+            key={id}
+            data-testid={`fl-decor-${id}`}
+            transform={`translate(${x} ${y})`}
+          >
+            <DecorPiece id={id} glow={glow} />
+          </g>
+        );
+      });
   const sun = phase === "dawn" ? 270 : phase === "dusk" ? 250 : 110;
   return (
     <svg
@@ -244,6 +263,9 @@ export default function Glade({ nowMs }: GladeProps) {
         />
       </g>
 
+      {placed("rug")}
+      {placed("back")}
+
       {/* The hearth ring the pet sits on. */}
       <g data-testid="fl-hearth">
         <ellipse cx="400" cy="492" rx="170" ry="38" fill="#6b6f78" />
@@ -272,6 +294,8 @@ export default function Glade({ nowMs }: GladeProps) {
           );
         })}
       </g>
+
+      {placed("front")}
 
       <rect
         width="800"
@@ -311,6 +335,8 @@ export default function Glade({ nowMs }: GladeProps) {
         <rect x="226" y="196" width="48" height="8" rx="3" fill="#2c2c34" />
         <rect x="244" y="158" width="12" height="28" rx="6" fill="#fff3b8" />
       </g>
+
+      {placed("hang")}
 
       {FLIES.map((fly, i) => (
         <circle

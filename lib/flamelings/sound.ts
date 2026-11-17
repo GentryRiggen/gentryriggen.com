@@ -2,7 +2,14 @@ import type { PetEvent } from "./types";
 
 /** The sounds the game makes. Quiet, short and cute; all synthesized. */
 export type SoundName =
-  "chirp" | "chomp" | "sparkle" | "pip" | "unwrap" | "relight" | "fwoop";
+  | "chirp"
+  | "chomp"
+  | "sparkle"
+  | "pip"
+  | "unwrap"
+  | "relight"
+  | "fwoop"
+  | "coin";
 
 export const SOUND_NAMES: readonly SoundName[] = [
   "chirp",
@@ -12,6 +19,7 @@ export const SOUND_NAMES: readonly SoundName[] = [
   "unwrap",
   "relight",
   "fwoop",
+  "coin",
 ];
 
 type Sink = (name: SoundName) => void;
@@ -40,6 +48,8 @@ export function soundsForEvents(events: readonly PetEvent[]): SoundName[] {
       sounds.add("sparkle");
     } else if (event.type === "unlock") {
       sounds.add(event.via === "gift" ? "unwrap" : "sparkle");
+    } else if (event.type === "buy") {
+      sounds.add("sparkle");
     } else if (event.type === "state") {
       if (event.to === "relit") sounds.add("relight");
       if (event.to === "ember") sounds.add("fwoop");
