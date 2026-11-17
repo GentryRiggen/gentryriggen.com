@@ -46,6 +46,7 @@ export default function PlayPicker({
     >
       <div className="flex w-full max-w-3xl flex-col items-center gap-4">
         <p
+          role="img"
           className="rounded-full bg-black/40 px-5 py-2 text-2xl font-black text-white"
           aria-label={
             roundsLeft > 0

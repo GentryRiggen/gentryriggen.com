@@ -378,5 +378,191 @@ test("the home-screen files are served", async ({ page, request }) => {
     (await request.get("/flamelings-icons/apple-touch-icon-v1.png")).ok()
   ).toBe(true);
   const version = await request.get("/flamelings/version.json");
-  expect((await version.json()).version).toBe("1.2.0");
+  expect((await version.json()).version).toBe("1.3.0");
+});
+
+test("a level 9 pet grows up into the form its care earned", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page);
+  await hatch(page, "Pip");
+  // One tap short of level 10, with plenty of playing behind it.
+  await page.evaluate(() => {
+    const need = Math.round(40 * Math.pow(9, 1.4));
+    window.__flamelings!.patchPet(0, {
+      level: 9,
+      xp: need - 1,
+      care: { feeds: 4, cleans: 2, plays: 30, pets: 3, styles: 1 },
+    });
+  });
+  await page.getByTestId("pet").click();
+  await expect(page.getByRole("dialog", { name: "Level 10!" })).toBeVisible();
+  await page.getByRole("button", { name: "Yay!" }).click();
+
+  const moment = page.getByTestId("evolution");
+  await expect(moment).toBeVisible();
+  await expect(moment).toHaveAttribute("data-phase", "glow");
+  await expect(moment).toHaveAttribute("data-phase", "reveal", {
+    timeout: 6000,
+  });
+  await expect(page.getByTestId("evolution-name")).toContainText("Wild Blaze");
+  await page.getByRole("button", { name: "Yay!" }).click();
+  await expect(moment).toBeHidden();
+
+  const pet = await page.evaluate(() => {
+    const p = window.__flamelings!.state().save.pets[0];
+    return { form: p.form, level: p.level };
+  });
+  expect(pet).toEqual({ form: "wild", level: 10 });
+  await expect(page.getByTestId("pet").locator(".fl-pet")).toHaveAttribute(
+    "data-form",
+    "wild"
+  );
+
+  // The form is permanent and shows on the shelf after a reload.
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__flamelings));
+  await expect(page.getByTestId("pet-card")).toContainText(
+    "Lv 10 · Wild Blaze"
+  );
+  expect(errors).toEqual([]);
+});
+
+test("a pet already at Blaze gets its form when the game opens", async ({
+  page,
+}) => {
+  await open(page);
+  await hatch(page, "Pip");
+  await page.evaluate(() => {
+    window.__flamelings!.patchPet(0, { level: 12 });
+    window.__flamelings!.skip(1000);
+  });
+  await expect(page.getByTestId("evolution")).toBeVisible();
+  await expect(page.getByTestId("evolution-name")).toBeVisible({
+    timeout: 6000,
+  });
+  await page.getByRole("button", { name: "Yay!" }).click();
+  const form = await page.evaluate(
+    () => window.__flamelings!.state().save.pets[0].form
+  );
+  expect(["cozy", "wild", "sparkly"]).toContain(form);
+});
+
+async function openPlayPicker(page: Page) {
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await expect(page.getByTestId("play-picker")).toBeVisible();
+}
+
+const careOf = (page: Page) =>
+  page.evaluate(() => {
+    const p = window.__flamelings!.state().save.pets[0];
+    return {
+      plays: p.care.plays,
+      rounds: p.sparkRounds.count,
+      sparks: p.sparks,
+    };
+  });
+
+test("Marshmallow Toast: five marshmallows, then joy, XP and sparks", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page);
+  await hatch(page, "Pip");
+  await page.evaluate(() => window.__flamelings!.tunePlay({ toast: 8 }));
+  await openPlayPicker(page);
+  await page.getByTestId("play-marshmallow").click();
+  const hold = page.getByTestId("toast-hold");
+  await expect(hold).toBeVisible();
+  const box = (await hold.boundingBox())!;
+  for (let i = 0; i < 5; i++) {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(300);
+    await page.mouse.up();
+    await expect(page.getByTestId("toast-result")).toBeVisible();
+    if (i < 4) await expect(page.getByTestId("toast-result")).toBeHidden();
+  }
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByTestId("toast-hold")).toBeHidden();
+  const after = await careOf(page);
+  expect(after.plays).toBe(1);
+  expect(after.rounds).toBe(1);
+  expect(after.sparks).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
+
+test("Log Stack: tap to stack a full tower, and it shares the spark cap", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await open(page);
+  await hatch(page, "Pip");
+  // All three paying rounds of the other games are already used.
+  await page.evaluate(() => {
+    const window_ = "2026-11-17:am";
+    window.__flamelings!.patchPet(0, {
+      sparkRounds: { window: window_, count: 3 },
+    });
+  });
+  await page.evaluate(() => window.__flamelings!.tunePlay({ logs: 0.001 }));
+  await openPlayPicker(page);
+  await expect(page.getByTestId("play-rounds-left")).toHaveAccessibleName(
+    /No sparkly rounds left/
+  );
+  await page.getByTestId("play-logs").click();
+  for (let i = 0; i < 11; i++) {
+    await page.getByTestId("logs-drop").dispatchEvent("pointerdown");
+    await expect(page.getByTestId("logs-score")).toHaveText(String(i + 2));
+    await page.waitForTimeout(280);
+  }
+  await expect(page.getByText("Wow! A full tower!")).toBeVisible();
+  await page.getByRole("button", { name: "Done" }).click();
+  const after = await careOf(page);
+  // Joy and XP still count, sparks do not once the cap is used up.
+  expect(after.plays).toBe(1);
+  expect(after.rounds).toBe(3);
+  expect(after.sparks).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("the play picker and each game fit the screen @smoke", async ({
+  page,
+}) => {
+  await open(page);
+  await hatch(page, "Pip");
+  const overflow = () =>
+    page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth
+    );
+  await openPlayPicker(page);
+  for (const id of ["fireflies", "marshmallow", "logs"]) {
+    const box = (await page.getByTestId(`play-${id}`).boundingBox())!;
+    const { width, height } = page.viewportSize()!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.height).toBeGreaterThanOrEqual(64);
+    expect(box.y + box.height).toBeLessThanOrEqual(height + 400);
+  }
+  expect(await overflow()).toBeLessThanOrEqual(0);
+  await page.getByTestId("play-marshmallow").click();
+  await expect(page.getByTestId("toast-hold")).toBeVisible();
+  expect(await overflow()).toBeLessThanOrEqual(0);
+});
+
+test("Log Stack fits the screen @smoke", async ({ page }) => {
+  await open(page);
+  await hatch(page, "Pip");
+  await openPlayPicker(page);
+  await page.getByTestId("play-logs").click();
+  await expect(page.getByTestId("logs-drop")).toBeVisible();
+  await expect(page.getByTestId("log-moving")).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
