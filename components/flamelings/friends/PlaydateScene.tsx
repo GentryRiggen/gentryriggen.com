@@ -166,7 +166,7 @@ export default function PlaydateScene({
           {step === "highfive" && !fiveMine && (
             <span
               aria-hidden="true"
-              className="fl-hint-bob absolute -top-2 left-1/2 z-10 -translate-x-1/2 text-5xl"
+              className="fl-hint-bob absolute inset-x-0 -top-2 z-10 text-center text-5xl"
             >
               🖐️
             </span>
@@ -200,7 +200,7 @@ export default function PlaydateScene({
             {step === "highfive" && !fiveTheirs && (
               <span
                 aria-hidden="true"
-                className="fl-hint-bob absolute -top-2 left-1/2 z-10 -translate-x-1/2 text-5xl"
+                className="fl-hint-bob absolute inset-x-0 -top-2 z-10 text-center text-5xl"
               >
                 🖐️
               </span>
@@ -228,9 +228,11 @@ export default function PlaydateScene({
           onClick={share}
           aria-label="Share a marshmallow"
           data-testid="share-marshmallow"
-          className={`fl-hint-bob absolute left-1/2 top-[42%] grid size-28 -translate-x-1/2 place-items-center rounded-full bg-white/90 text-7xl shadow-2xl active:scale-90 ${FOCUS_RING}`}
+          className={`absolute left-1/2 top-[42%] grid size-28 -translate-x-1/2 place-items-center rounded-full bg-white/90 text-7xl shadow-2xl active:scale-90 ${FOCUS_RING}`}
         >
-          <span aria-hidden="true">🍡</span>
+          <span aria-hidden="true" className="fl-hint-bob">
+            🍡
+          </span>
         </button>
       )}
 

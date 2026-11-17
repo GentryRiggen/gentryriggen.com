@@ -138,94 +138,103 @@ function AddFriend({ petId, onClose }: { petId: string; onClose: () => void }) {
       data-testid="add-friend"
       className={`${CARD} flex flex-col items-center gap-4 p-4`}
     >
-      <CodeKeypad value={code} onChange={setCode} />
-      <div
-        aria-live="polite"
-        data-testid="lookup"
-        data-state={lookup.kind}
-        className="flex min-h-40 w-full flex-col items-center justify-center gap-3"
+      <CodeKeypad
+        value={code}
+        onChange={setCode}
+        hideKeys={lookup.kind === "found"}
       >
-        {lookup.kind === "looking" && (
-          <span role="img" aria-label="Looking" className="text-6xl">
-            🔎
-          </span>
-        )}
-        {lookup.kind === "missing" && (
-          <span
-            role="img"
-            aria-label="No pet has that code"
-            className="text-6xl"
-          >
-            🤷
-          </span>
-        )}
-        {lookup.kind === "error" && (
-          <span
-            role="img"
-            aria-label="Cannot reach friends right now"
-            className="text-6xl"
-          >
-            ☁️🚫
-          </span>
-        )}
-        {lookup.kind === "self" && (
-          <span
-            role="img"
-            aria-label="That is your own code"
-            className="text-6xl"
-          >
-            🪞
-          </span>
-        )}
-        {lookup.kind === "already" && (
-          <span
-            role="img"
-            aria-label="Already your friend"
-            className="text-6xl"
-          >
-            ✅
-          </span>
-        )}
-        {lookup.kind === "found" && (
-          <>
-            <div
-              className="flex items-center gap-3"
-              data-testid="friend-preview"
+        <div
+          aria-live="polite"
+          data-testid="lookup"
+          data-state={lookup.kind}
+          className={`flex w-full flex-col items-center justify-center gap-3 ${lookup.kind === "idle" ? "" : "min-h-24"}`}
+        >
+          {lookup.kind === "looking" && (
+            <span role="img" aria-label="Looking" className="text-6xl">
+              🔎
+            </span>
+          )}
+          {lookup.kind === "missing" && (
+            <span
+              role="img"
+              aria-label="No pet has that code"
+              className="text-6xl"
             >
-              <CardBlob card={lookup.card} mood="excited" className="size-32" />
-              <p className="text-left text-2xl font-black">
-                {onlineName(lookup.card.nameId)}
-                <span className="block text-base font-semibold opacity-75">
-                  Lv {lookup.card.level} ·{" "}
-                  {stageTitle(
-                    lookup.card.level,
-                    lookup.card.form === "none" ? null : lookup.card.form
-                  )}
-                </span>
-              </p>
-            </div>
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => confirm(lookup.card)}
-                aria-label="Add this friend"
-                data-testid="confirm-friend"
-                className={`${BIG_BUTTON} bg-emerald-600 px-8 text-4xl text-white`}
+              🤷
+            </span>
+          )}
+          {lookup.kind === "error" && (
+            <span
+              role="img"
+              aria-label="Cannot reach friends right now"
+              className="text-6xl"
+            >
+              ☁️🚫
+            </span>
+          )}
+          {lookup.kind === "self" && (
+            <span
+              role="img"
+              aria-label="That is your own code"
+              className="text-6xl"
+            >
+              🪞
+            </span>
+          )}
+          {lookup.kind === "already" && (
+            <span
+              role="img"
+              aria-label="Already your friend"
+              className="text-6xl"
+            >
+              ✅
+            </span>
+          )}
+          {lookup.kind === "found" && (
+            <>
+              <div
+                className="flex items-center gap-3"
+                data-testid="friend-preview"
               >
-                <span aria-hidden="true">✅</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCode("")}
-                aria-label="Not this one"
-                className={`${BIG_BUTTON} bg-stone-200 px-8 text-4xl dark:bg-slate-600`}
-              >
-                <span aria-hidden="true">❌</span>
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+                <CardBlob
+                  card={lookup.card}
+                  mood="excited"
+                  className="size-32"
+                />
+                <p className="text-left text-2xl font-black">
+                  {onlineName(lookup.card.nameId)}
+                  <span className="block text-base font-semibold opacity-75">
+                    Lv {lookup.card.level} ·{" "}
+                    {stageTitle(
+                      lookup.card.level,
+                      lookup.card.form === "none" ? null : lookup.card.form
+                    )}
+                  </span>
+                </p>
+              </div>
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => confirm(lookup.card)}
+                  aria-label="Add this friend"
+                  data-testid="confirm-friend"
+                  className={`${BIG_BUTTON} bg-emerald-600 px-8 text-4xl text-white`}
+                >
+                  <span aria-hidden="true">✅</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCode("")}
+                  aria-label="Not this one"
+                  className={`${BIG_BUTTON} bg-stone-200 px-8 text-4xl dark:bg-slate-600`}
+                >
+                  <span aria-hidden="true">❌</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </CodeKeypad>
       <button
         type="button"
         onClick={onClose}
@@ -394,52 +403,54 @@ export default function FriendsScreen({
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 py-3">
         {online === "offline" && <CloudOff onRetry={retry} />}
 
-        <section
-          aria-label="My code"
-          className={`${CARD} flex flex-col items-center gap-3 p-4`}
-        >
-          <div className="flex items-center gap-4">
-            <CardBlob card={card} className="size-28 sm:size-36" />
-            <div className="flex flex-col items-start gap-2">
-              <span data-testid="my-name" className="text-2xl font-black">
-                {onlineName(card.nameId)}
-              </span>
-              <button
-                type="button"
-                onClick={() => setNaming(true)}
-                aria-label="Change the name friends see"
-                data-testid="change-name"
-                className={`${BIG_BUTTON} bg-indigo-100 px-4 text-2xl dark:bg-indigo-900`}
-              >
-                <span aria-hidden="true">🏷️</span>
-              </button>
+        {!adding && (
+          <section
+            aria-label="My code"
+            className={`${CARD} flex flex-col items-center gap-3 p-4`}
+          >
+            <div className="flex items-center gap-4">
+              <CardBlob card={card} className="size-36 sm:size-44" />
+              <div className="flex flex-col items-start gap-2">
+                <span data-testid="my-name" className="text-2xl font-black">
+                  {onlineName(card.nameId)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setNaming(true)}
+                  aria-label="Change the name friends see"
+                  data-testid="change-name"
+                  className={`${BIG_BUTTON} bg-indigo-100 px-4 text-2xl dark:bg-indigo-900`}
+                >
+                  <span aria-hidden="true">🏷️</span>
+                </button>
+              </div>
             </div>
-          </div>
-          {code ? (
-            <>
-              <CodeBoxes code={code} />
-              <button
-                type="button"
-                onClick={() => void copy()}
-                aria-label={copied ? "Copied" : "Copy my code"}
-                data-testid="copy-code"
-                className={`${BIG_BUTTON} bg-sky-500 px-6 text-3xl text-white dark:bg-sky-300 dark:text-slate-900`}
-              >
-                <span aria-hidden="true">{copied ? "✅" : "📋"}</span>
-              </button>
-            </>
-          ) : (
-            online === "checking" && (
-              <span
-                role="img"
-                aria-label="Getting your code"
-                className="text-5xl"
-              >
-                ⏳
-              </span>
-            )
-          )}
-        </section>
+            {code ? (
+              <>
+                <CodeBoxes code={code} />
+                <button
+                  type="button"
+                  onClick={() => void copy()}
+                  aria-label={copied ? "Copied" : "Copy my code"}
+                  data-testid="copy-code"
+                  className={`${BIG_BUTTON} bg-sky-500 px-6 text-3xl text-white dark:bg-sky-300 dark:text-slate-900`}
+                >
+                  <span aria-hidden="true">{copied ? "✅" : "📋"}</span>
+                </button>
+              </>
+            ) : (
+              online === "checking" && (
+                <span
+                  role="img"
+                  aria-label="Getting your code"
+                  className="text-5xl"
+                >
+                  ⏳
+                </span>
+              )
+            )}
+          </section>
+        )}
 
         {adding ? (
           <AddFriend petId={petId} onClose={() => setAdding(false)} />

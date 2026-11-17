@@ -152,9 +152,9 @@ function VisitedCard({
       aria-modal="true"
       aria-label={`${name} visited ${petName}!`}
       data-testid="visited"
-      className={`fixed inset-0 z-40 grid place-items-center bg-black/60 p-5 ${SAFE_INSETS}`}
+      className={`fixed inset-0 z-40 grid place-items-center bg-black/60 ${SAFE_INSETS}`}
     >
-      <div className="fl-card-in flex w-full max-w-md flex-col items-center gap-3 rounded-[2rem] bg-gradient-to-b from-amber-100 to-orange-200 p-6 text-center text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50">
+      <div className="fl-card-in mx-4 flex w-[calc(100%-2rem)] max-w-md flex-col items-center gap-3 rounded-[2rem] bg-gradient-to-b from-amber-100 to-orange-200 p-6 text-center text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50">
         <p className="text-4xl font-black">
           <span aria-hidden="true">🎉 </span>
           {name} visited!

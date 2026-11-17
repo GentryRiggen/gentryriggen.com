@@ -1,16 +1,26 @@
+import type { ReactNode } from "react";
 import { CODE_ALPHABET, CODE_LENGTH } from "@/lib/flamelings/online/card";
 import { FOCUS_RING } from "../styles";
 
 interface CodeKeypadProps {
   value: string;
   onChange: (next: string) => void;
+  /** Shown between the typed letters and the keys (a preview or a hint). */
+  children?: ReactNode;
+  /** Hides the keys, for when the code is complete and being checked. */
+  hideKeys?: boolean;
 }
 
 /**
  * A big on-screen keypad with only the letters and digits a friend code can
  * hold (no system keyboard, no way to type anything else).
  */
-export default function CodeKeypad({ value, onChange }: CodeKeypadProps) {
+export default function CodeKeypad({
+  value,
+  onChange,
+  children,
+  hideKeys = false,
+}: CodeKeypadProps) {
   const full = value.length >= CODE_LENGTH;
   return (
     <div className="flex w-full max-w-xl flex-col items-center gap-3">
@@ -34,35 +44,38 @@ export default function CodeKeypad({ value, onChange }: CodeKeypadProps) {
           </span>
         ))}
       </p>
-      <div
-        role="group"
-        aria-label="Letters and numbers"
-        className="grid w-full grid-cols-6 gap-1.5 sm:grid-cols-8 sm:gap-2"
-      >
-        {[...CODE_ALPHABET].map((ch) => (
-          <button
-            key={ch}
-            type="button"
-            disabled={full}
-            onClick={() => onChange(value + ch)}
-            aria-label={ch}
-            data-testid={`key-${ch}`}
-            className={`min-h-14 rounded-2xl bg-white text-2xl font-black text-stone-900 shadow-md transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100 sm:min-h-16 dark:bg-slate-700 dark:text-amber-50 ${FOCUS_RING}`}
-          >
-            {ch}
-          </button>
-        ))}
-        <button
-          type="button"
-          disabled={value.length === 0}
-          onClick={() => onChange(value.slice(0, -1))}
-          aria-label="Delete the last letter"
-          data-testid="key-delete"
-          className={`min-h-14 rounded-2xl bg-orange-200 text-2xl font-black text-stone-900 shadow-md transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100 sm:min-h-16 dark:bg-orange-300 ${FOCUS_RING}`}
+      {children}
+      {!hideKeys && (
+        <div
+          role="group"
+          aria-label="Letters and numbers"
+          className="grid w-full grid-cols-6 gap-1.5 sm:grid-cols-8 sm:gap-2"
         >
-          <span aria-hidden="true">⌫</span>
-        </button>
-      </div>
+          {[...CODE_ALPHABET].map((ch) => (
+            <button
+              key={ch}
+              type="button"
+              disabled={full}
+              onClick={() => onChange(value + ch)}
+              aria-label={ch}
+              data-testid={`key-${ch}`}
+              className={`min-h-14 rounded-2xl bg-white text-2xl font-black text-stone-900 shadow-md transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100 sm:min-h-16 dark:bg-slate-700 dark:text-amber-50 ${FOCUS_RING}`}
+            >
+              {ch}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={value.length === 0}
+            onClick={() => onChange(value.slice(0, -1))}
+            aria-label="Delete the last letter"
+            data-testid="key-delete"
+            className={`min-h-14 rounded-2xl bg-orange-200 text-2xl font-black text-stone-900 shadow-md transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100 sm:min-h-16 dark:bg-orange-300 ${FOCUS_RING}`}
+          >
+            <span aria-hidden="true">⌫</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

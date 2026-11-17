@@ -385,7 +385,7 @@ test("the home-screen files are served", async ({ page, request }) => {
     (await request.get("/flamelings-icons/apple-touch-icon-v1.png")).ok()
   ).toBe(true);
   const version = await request.get("/flamelings/version.json");
-  expect((await version.json()).version).toBe("1.3.0");
+  expect((await version.json()).version).toBe("1.4.0");
 });
 
 test("a level 9 pet grows up into the form its care earned", async ({
@@ -572,4 +572,242 @@ test("Log Stack fits the screen @smoke", async ({ page }) => {
     () => document.documentElement.scrollWidth - window.innerWidth
   );
   expect(overflow).toBeLessThanOrEqual(0);
+});
+
+// ---- Friends (1.4): the network is mocked, rules are tested separately ----
+
+const CORS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "*",
+  "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+};
+
+const FRIEND_CODE = "GHJKMN";
+const FRIEND_DOC = {
+  uid: { stringValue: "friend-uid" },
+  look: {
+    mapValue: {
+      fields: {
+        colour: { stringValue: "violet" },
+        shape: { stringValue: "puff" },
+        eyes: { stringValue: "dots" },
+        hat: { stringValue: "crown" },
+        face: { stringValue: "none" },
+        neck: { stringValue: "none" },
+      },
+    },
+  },
+  level: { integerValue: "6" },
+  stage: { stringValue: "flame" },
+  form: { stringValue: "none" },
+  nameId: { integerValue: "12" },
+};
+
+/** Fakes sign-in and the friend cards and inboxes of Firestore for a page. */
+async function mockFriends(page: Page, opts: { offline?: boolean } = {}) {
+  const docs = new Map<string, Record<string, unknown>>();
+  docs.set(`flPets/${FRIEND_CODE}`, FRIEND_DOC);
+  await page.route("https://identitytoolkit.googleapis.com/**", (route) =>
+    opts.offline
+      ? route.abort()
+      : route.fulfill({
+          headers: CORS,
+          json: {
+            idToken: "id",
+            refreshToken: "refresh",
+            localId: "me-uid",
+            expiresIn: "3600",
+          },
+        })
+  );
+  await page.route("https://securetoken.googleapis.com/**", (route) =>
+    route.fulfill({
+      headers: CORS,
+      json: {
+        id_token: "id",
+        refresh_token: "refresh",
+        user_id: "me-uid",
+        expires_in: "3600",
+      },
+    })
+  );
+  await page.route("https://firestore.googleapis.com/**", async (route) => {
+    if (opts.offline) return route.abort();
+    const request = route.request();
+    const method = request.method();
+    if (method === "OPTIONS") return route.fulfill({ headers: CORS });
+    const json = (status: number, body: unknown = {}) =>
+      route.fulfill({ status, headers: CORS, json: body });
+    if (method === "POST") {
+      const write = request.postDataJSON().writes[0] as {
+        update: { name: string; fields: Record<string, unknown> };
+        currentDocument: { exists: boolean };
+      };
+      const path = write.update.name.split("/documents/")[1];
+      if (docs.has(path) !== write.currentDocument.exists) {
+        return json(409, { error: { status: "ALREADY_EXISTS" } });
+      }
+      docs.set(path, write.update.fields);
+      return json(200);
+    }
+    const path = decodeURIComponent(
+      new URL(request.url()).pathname.split("/documents/")[1]
+    );
+    if (method === "DELETE") {
+      docs.delete(path);
+      return json(200);
+    }
+    if (/^flPets\/[A-Z0-9]{6}\/visits$/.test(path)) {
+      const documents = [...docs.entries()]
+        .filter(([key]) => key.startsWith(`${path}/`))
+        .map(([key, fields]) => ({ name: `x/documents/${key}`, fields }));
+      return json(200, documents.length ? { documents } : {});
+    }
+    const found = docs.get(path);
+    return found ? json(200, { fields: found }) : json(404);
+  });
+  return {
+    docs,
+    myCode: () =>
+      [...docs.keys()]
+        .find(
+          (k) => /^flPets\/[A-Z0-9]{6}$/.test(k) && !k.endsWith(FRIEND_CODE)
+        )
+        ?.split("/")[1],
+    putVisit(to: string, from: string) {
+      const day = new Date().toISOString().slice(0, 10);
+      docs.set(`flPets/${to}/visits/${from}_${day}`, {
+        from: { stringValue: from },
+        day: { stringValue: day },
+      });
+    },
+  };
+}
+
+async function typeCode(page: Page, code: string) {
+  for (const ch of code) await page.getByTestId(`key-${ch}`).click();
+}
+
+test("add a friend by code, have a playdate, and get paid once", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  const backend = await mockFriends(page);
+  await open(page);
+  await hatch(page, "Pip");
+  await page.getByRole("button", { name: "Friends", exact: true }).click();
+  await expect(page.getByTestId("my-code")).toBeVisible();
+  const myCode = (await page.getByTestId("my-code").textContent()) ?? "";
+  expect(myCode).toMatch(/^[A-Z0-9]{6}$/);
+  expect(backend.myCode()).toBe(myCode);
+
+  await page.getByTestId("add-friend-button").click();
+  await typeCode(page, FRIEND_CODE);
+  await expect(page.getByTestId("friend-preview")).toBeVisible();
+  await page.getByTestId("confirm-friend").click();
+  await expect(page.getByTestId("friend-card")).toHaveCount(1);
+
+  const before = await page.evaluate(
+    () => window.__flamelings!.state().save.pets[0].sparks
+  );
+  await page.getByTestId("playdate-button").click();
+  await expect(page.getByTestId("playdate")).toHaveAttribute(
+    "data-step",
+    "highfive",
+    { timeout: 6000 }
+  );
+  await page.getByTestId("highfive-mine").click();
+  await page.getByTestId("highfive-friend").click();
+  await page.getByTestId("share-marshmallow").click();
+  await expect(page.getByTestId("playdate-done")).toBeVisible({
+    timeout: 6000,
+  });
+  await page.getByRole("button", { name: "Yay!" }).click();
+
+  const after = await page.evaluate(
+    () => window.__flamelings!.state().save.pets[0].sparks
+  );
+  expect(after).toBe(before + 10);
+  await expect(page.getByTestId("playdate-button")).toBeDisabled();
+  expect(
+    [...backend.docs.keys()].some((k) =>
+      k.startsWith(`flPets/${FRIEND_CODE}/visits/${myCode}_`)
+    )
+  ).toBe(true);
+  expect(errors).toEqual([]);
+
+  // The friend list and code survive a reload.
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__flamelings));
+  const saved = await page.evaluate(
+    () => window.__flamelings!.state().save.pets[0].online
+  );
+  expect(saved.code).toBe(myCode);
+  expect(saved.friends.map((f: { code: string }) => f.code)).toEqual([
+    FRIEND_CODE,
+  ]);
+});
+
+test("a friend's visit shows a card when the game opens, then is gone", async ({
+  page,
+}) => {
+  const backend = await mockFriends(page);
+  await open(page);
+  await hatch(page, "Pip");
+  await page.getByRole("button", { name: "Friends", exact: true }).click();
+  await expect(page.getByTestId("my-code")).toBeVisible();
+  const myCode = (await page.getByTestId("my-code").textContent()) ?? "";
+  await page.getByTestId("add-friend-button").click();
+  await typeCode(page, FRIEND_CODE);
+  await page.getByTestId("confirm-friend").click();
+  await expect(page.getByTestId("friend-card")).toHaveCount(1);
+
+  backend.putVisit(myCode, FRIEND_CODE);
+  backend.putVisit(myCode, "PQRSTU");
+  await page.reload();
+  await expect(page.getByTestId("visited")).toBeVisible();
+  await expect(page.getByTestId("visited")).toContainText("visited!");
+  await page.getByRole("button", { name: "Yay!" }).click();
+  await expect(page.getByTestId("visited")).toHaveCount(0);
+  expect(
+    [...backend.docs.keys()].filter((k) => k.includes("/visits/"))
+  ).toEqual([]);
+});
+
+test("offline shows a calm cloud, and the rest of the game works", async ({
+  page,
+}) => {
+  await mockFriends(page, { offline: true });
+  await open(page);
+  await hatch(page, "Pip");
+  await page.getByRole("button", { name: "Friends", exact: true }).click();
+  await expect(page.getByTestId("friends-offline")).toBeVisible();
+  await page.getByRole("button", { name: "Back" }).click();
+  await page.evaluate(() => window.__flamelings!.patchPet(0, { fuel: 30 }));
+  await feedOnce(page, "Log");
+});
+
+test("the Friends screen and keypad fit the screen @smoke", async ({
+  page,
+}) => {
+  await mockFriends(page);
+  await open(page);
+  await hatch(page, "Pip");
+  await page.getByRole("button", { name: "Friends", exact: true }).click();
+  await expect(page.getByTestId("my-code")).toBeVisible();
+  await page.getByTestId("add-friend-button").click();
+  await expect(page.getByTestId("key-A")).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  const { width } = page.viewportSize()!;
+  for (const key of ["key-A", "key-9", "key-delete"]) {
+    await page.getByTestId(key).scrollIntoViewIfNeeded();
+    const box = (await page.getByTestId(key).boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(width);
+    expect(box.height).toBeGreaterThanOrEqual(48);
+  }
 });

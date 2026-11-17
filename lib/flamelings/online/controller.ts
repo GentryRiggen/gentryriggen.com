@@ -112,6 +112,9 @@ export const COLLECT_EVERY_MS = 60_000;
  * it was deleted, so it cannot pay twice.
  */
 export async function collectVisits(force = false): Promise<void> {
+  const { locked, outdated } = useFlamelings.getState();
+  // A tab that cannot save would delete the visit and lose its reward.
+  if (locked || outdated) return;
   const at = Date.now();
   if (collecting || (!force && at - lastCollect < COLLECT_EVERY_MS)) return;
   collecting = true;

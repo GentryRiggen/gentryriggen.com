@@ -161,6 +161,17 @@ describe("a playdate and visits", () => {
     expect(useFlamelings.getState().celebrations).toEqual([]);
   });
 
+  it("leaves the inbox alone in a tab that cannot save", async () => {
+    const mine = pet().online.code as string;
+    backend.putVisit(mine, FRIEND);
+    useFlamelings.setState({ locked: true });
+    await collectVisits(true);
+    expect(backend.hasVisit(mine, FRIEND)).toBe(true);
+    useFlamelings.setState({ locked: false, outdated: true });
+    await collectVisits(true);
+    expect(backend.hasVisit(mine, FRIEND)).toBe(true);
+  });
+
   it("does nothing, quietly, when offline", async () => {
     backend.setOffline(true);
     await expect(collectVisits(true)).resolves.toBeUndefined();
