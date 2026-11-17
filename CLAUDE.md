@@ -72,6 +72,10 @@ npm run validate         # Full CI check (lint + format + types + tests + build)
 
 Prettier: double quotes, semicolons, trailing commas (es5), 80 char width, 2-space indent.
 
+### Game foundation
+
+Every game is built on the game kit: `lib/game-kit/` (`gameMetadata`, `SAFE_INSETS`, `hasOwn`/`at` compat helpers, `createTestHooks`, `versionRoute`), `components/game-kit/` (`GameShell`, `useGameUpdate`, `useVisibilityPause`, `usePrefersReducedMotion`) and `components/game-audio/` (`useResilientAudio`). **New games must use the game kit**; start with the `new-game` skill (`.claude/skills/new-game`). `docs/games/foundation.md` is the checklist of iOS home-screen, safe-area, touch, audio, update, compat, save and multi-tab rules, with the reasons; run the `game-release-review` skill (`.claude/skills/game-release-review`) before shipping any game change. ESLint bans APIs newer than Safari 15.0 (older iPads) in shipped code: use `lib/game-kit/compat.ts`. `lib/game-kit/__tests__/safeAreaGuard.test.ts` checks pinned overlays and bars pad by the safe area for every game listed in `GAME_DIRS`.
+
 ### Ship Builder releases
 
 Every Ship Builder change that ships to users (anything in `components/ship-builder`, `lib/ship-builder`, `app/ship-builder`, `public/ship-builder/models` or `public/ship-builder-sw.js`) is a release:
