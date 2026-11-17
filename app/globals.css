@@ -7748,6 +7748,1172 @@ html:has(.jim-app) body {
   }
 }
 
+/* ---------- Flamelings: the blob (ported from the knowling blob) ---------- */
+.fl-blob {
+  --fl-hot: #f9531c;
+  --fl-mid: #ff9a1f;
+  --fl-tip: #ffd84a;
+  --fl-core: #fff3c4;
+  --fl-face: #2a1206;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.fl-blob[data-colour="rose"] {
+  --fl-hot: #e8356d;
+  --fl-mid: #ff6f91;
+  --fl-tip: #ffb3a7;
+  --fl-core: #ffe6e0;
+  --fl-face: #33081a;
+}
+.fl-blob[data-colour="gold"] {
+  --fl-hot: #d98a00;
+  --fl-mid: #f7b500;
+  --fl-tip: #ffe36e;
+  --fl-core: #fff8d6;
+  --fl-face: #2e1d00;
+}
+.fl-blob[data-colour="lime"] {
+  --fl-hot: #2e9e3f;
+  --fl-mid: #6fcf3b;
+  --fl-tip: #d4f25a;
+  --fl-core: #f4ffd0;
+  --fl-face: #0c2a10;
+}
+.fl-blob[data-colour="aqua"] {
+  --fl-hot: #0b8f9e;
+  --fl-mid: #1fc4c0;
+  --fl-tip: #8ff0d8;
+  --fl-core: #e2fff7;
+  --fl-face: #032a2e;
+}
+.fl-blob[data-colour="sky"] {
+  --fl-hot: #2563eb;
+  --fl-mid: #4aa3ff;
+  --fl-tip: #a8e0ff;
+  --fl-core: #eaf7ff;
+  --fl-face: #06173a;
+}
+.fl-blob[data-colour="violet"] {
+  --fl-hot: #6d3bd6;
+  --fl-mid: #a56bff;
+  --fl-tip: #e0b3ff;
+  --fl-core: #f6eaff;
+  --fl-face: #1b0a3a;
+}
+.fl-blob[data-colour="ash"] {
+  --fl-hot: #5b6270;
+  --fl-mid: #9aa1ad;
+  --fl-tip: #dfe3ea;
+  --fl-core: #ffffff;
+  --fl-face: #14161a;
+}
+/* An ember is a tiny dim coal, whatever its colour. */
+.fl-blob[data-mood="ember"] {
+  --fl-hot: #2a2a33;
+  --fl-mid: #4a4452;
+  --fl-tip: #ff8a3a;
+  --fl-core: #ffb060;
+  --fl-face: #ffc27a;
+  filter: drop-shadow(0 0 10px rgb(255 120 40 / 0.7));
+}
+
+.fl-blob * {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.fl-hot {
+  stop-color: var(--fl-hot);
+}
+.fl-mid {
+  stop-color: var(--fl-mid);
+}
+.fl-tip {
+  stop-color: var(--fl-tip);
+}
+.fl-core {
+  fill: var(--fl-core);
+  opacity: 0.32;
+}
+.fl-eye {
+  fill: var(--fl-face);
+}
+.fl-mouth {
+  fill: none;
+  stroke: var(--fl-face);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  display: none;
+}
+.fl-shine {
+  fill: #fff;
+  opacity: 0.9;
+}
+
+.fl-pet {
+  --fl-stage: 1;
+  --fl-fade: 1;
+  transform-origin: 50% 100%;
+  transform: scale(calc(var(--fl-stage) * var(--fl-fade)));
+}
+.fl-pet[data-stage="spark"] {
+  --fl-stage: 0.6;
+}
+.fl-pet[data-stage="flicker"] {
+  --fl-stage: 0.7;
+}
+.fl-pet[data-stage="flame"] {
+  --fl-stage: 0.8;
+}
+.fl-pet[data-stage="blaze"] {
+  --fl-stage: 0.9;
+}
+.fl-pet[data-stage="bonfire"] {
+  --fl-stage: 1;
+}
+/* Fading: the pet shrinks as its glow (and needs) drop. */
+.fl-pet[data-fade="1"] {
+  --fl-fade: 0.95;
+}
+.fl-pet[data-fade="2"] {
+  --fl-fade: 0.9;
+}
+.fl-pet[data-fade="3"] {
+  --fl-fade: 0.82;
+}
+.fl-pet[data-fade="4"] {
+  --fl-fade: 0.75;
+}
+.fl-pet[data-mood="ember"] {
+  --fl-stage: 0.5;
+  --fl-fade: 1;
+}
+
+.fl-all {
+  transform-origin: 50% 100%;
+  animation: fl-breathe 3.2s ease-in-out infinite;
+}
+.fl-lick {
+  animation: fl-rise 1.9s ease-in infinite;
+}
+.fl-lick-2 {
+  animation-delay: -0.6s;
+  animation-duration: 2.3s;
+}
+.fl-lick-3 {
+  animation-delay: -1.2s;
+  animation-duration: 1.6s;
+}
+.fl-lick-4 {
+  animation-delay: -0.3s;
+  animation-duration: 2.6s;
+}
+.fl-side-l {
+  animation: fl-wobble-l 2.7s ease-in-out infinite;
+}
+.fl-side-r {
+  animation: fl-wobble-r 3.1s ease-in-out infinite;
+}
+.fl-eye {
+  animation: fl-blink 4.6s infinite;
+}
+
+@keyframes fl-breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.04, 0.97);
+  }
+}
+@keyframes fl-rise {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    transform: translateY(-38px) scale(0.15);
+  }
+}
+@keyframes fl-wobble-l {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-4px, 3px);
+  }
+}
+@keyframes fl-wobble-r {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(4px, -3px);
+  }
+}
+@keyframes fl-blink {
+  0%,
+  93%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
+  }
+}
+
+/* Mouths: one per mood. */
+.fl-blob:not([data-mood]) .fl-mouth-smile,
+.fl-blob[data-mood="happy"] .fl-mouth-smile {
+  display: inline;
+}
+.fl-blob[data-mood="excited"] .fl-mouth-open,
+.fl-blob[data-mood="eating"] .fl-mouth-open {
+  display: inline;
+  fill: var(--fl-face);
+  stroke: none;
+}
+.fl-blob[data-mood="hungry"] .fl-mouth-flat,
+.fl-blob[data-mood="asleep"] .fl-mouth-flat,
+.fl-blob[data-mood="ember"] .fl-mouth-flat {
+  display: inline;
+}
+.fl-blob[data-mood="sad"] .fl-mouth-sad {
+  display: inline;
+}
+
+/* Moods. */
+.fl-blob[data-mood="excited"] .fl-all {
+  animation: fl-dance 0.9s ease-in-out infinite;
+}
+.fl-blob[data-mood="excited"] .fl-lick {
+  animation-duration: 0.9s;
+}
+@keyframes fl-dance {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-7deg) scale(1.04, 0.96);
+  }
+  25% {
+    transform: translateY(-12px) rotate(0deg) scale(0.96, 1.06);
+  }
+  50% {
+    transform: translateY(0) rotate(7deg) scale(1.04, 0.96);
+  }
+  75% {
+    transform: translateY(-12px) rotate(0deg) scale(0.96, 1.06);
+  }
+}
+.fl-blob[data-mood="hungry"] .fl-all {
+  animation-duration: 5s;
+  transform: scale(1, 0.94);
+}
+.fl-blob[data-mood="hungry"] .fl-lick {
+  animation-duration: 3.4s;
+  opacity: 0.6;
+}
+.fl-blob[data-mood="sad"] {
+  filter: saturate(0.7) brightness(0.88);
+}
+.fl-blob[data-mood="sad"] .fl-all {
+  animation-duration: 6s;
+}
+.fl-blob[data-mood="sad"] .fl-lick {
+  animation-duration: 4.4s;
+  opacity: 0.45;
+}
+.fl-blob[data-mood="asleep"] .fl-all {
+  animation-duration: 5.5s;
+}
+.fl-blob[data-mood="asleep"] .fl-lick {
+  animation-duration: 4s;
+}
+.fl-blob[data-mood="asleep"] .fl-eye,
+.fl-blob[data-mood="ember"] .fl-eye {
+  animation: none;
+  transform: scaleY(0.18);
+}
+.fl-blob[data-mood="ember"] .fl-lick {
+  display: none;
+}
+.fl-blob[data-mood="ember"] .fl-all {
+  animation-duration: 6s;
+}
+.fl-blob[data-mood="ember"] .fl-core {
+  opacity: 0.7;
+  animation: fl-ember-glow 2.8s ease-in-out infinite;
+}
+@keyframes fl-ember-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+.fl-blob[data-mood="eating"] .fl-all {
+  animation: fl-chomp 0.45s ease-in-out 3;
+}
+.fl-blob[data-mood="eating"] .fl-lick {
+  animation-duration: 0.5s;
+}
+@keyframes fl-chomp {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(1.14, 0.88);
+  }
+  60% {
+    transform: scale(0.94, 1.12);
+  }
+}
+
+/* Fading: colour drains, licks get short and slow, the body slumps. */
+.fl-blob[data-fade="1"] .fl-droop {
+  filter: saturate(0.9) brightness(0.97);
+}
+.fl-blob[data-fade="2"] .fl-droop {
+  filter: saturate(0.72) brightness(0.9);
+}
+.fl-blob[data-fade="3"] .fl-droop {
+  filter: saturate(0.5) brightness(0.8);
+}
+.fl-blob[data-fade="4"] .fl-droop {
+  filter: saturate(0.3) brightness(0.68);
+}
+.fl-droop {
+  transform-origin: 50% 100%;
+}
+.fl-blob[data-fade="2"] .fl-droop {
+  transform: scale(1.03, 0.96);
+}
+.fl-blob[data-fade="3"] .fl-droop {
+  transform: scale(1.07, 0.9);
+}
+.fl-blob[data-fade="4"] .fl-droop,
+.fl-blob[data-mood="hungry"] .fl-droop,
+.fl-blob[data-mood="sad"] .fl-droop {
+  transform: scale(1.1, 0.86);
+}
+.fl-blob[data-fade="2"] .fl-lick,
+.fl-blob[data-fade="3"] .fl-lick {
+  animation-name: fl-rise-short;
+  animation-duration: 3.2s;
+}
+.fl-blob[data-fade="4"] .fl-lick {
+  animation-name: fl-rise-tiny;
+  animation-duration: 4.6s;
+  opacity: 0.55;
+}
+@keyframes fl-rise-short {
+  0% {
+    transform: translateY(0) scale(0.9);
+  }
+  100% {
+    transform: translateY(-20px) scale(0.15);
+  }
+}
+@keyframes fl-rise-tiny {
+  0% {
+    transform: translateY(0) scale(0.7);
+  }
+  100% {
+    transform: translateY(-9px) scale(0.15);
+  }
+}
+/* Worried eyebrows when hungry, sad or fading. */
+.fl-brow {
+  display: none;
+  fill: none;
+  stroke: var(--fl-face);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+.fl-blob[data-mood="hungry"] .fl-brow,
+.fl-blob[data-mood="sad"] .fl-brow,
+.fl-blob[data-fade="3"] .fl-brow,
+.fl-blob[data-fade="4"] .fl-brow {
+  display: inline;
+}
+.fl-blob[data-fade="3"] .fl-mouth-smile,
+.fl-blob[data-fade="4"] .fl-mouth-smile {
+  display: none;
+}
+.fl-blob[data-fade="3"] .fl-mouth-sad,
+.fl-blob[data-fade="4"] .fl-mouth-sad {
+  display: inline;
+}
+.fl-blob[data-mood="hungry"] .fl-mouth-flat {
+  display: none;
+}
+.fl-blob[data-mood="hungry"] .fl-mouth-sad {
+  display: inline;
+}
+
+/* Thought bubbles: icon-only, above the pet. */
+.fl-bubbles {
+  position: absolute;
+  display: flex;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+.fl-bubble {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 4.25rem;
+  height: 4.25rem;
+  font-size: 2.4rem;
+  line-height: 1;
+  background: #fff;
+  border-radius: 9999px;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 0.25);
+  animation: fl-bubble-bob 1.8s ease-in-out infinite;
+}
+.fl-bubble::after {
+  content: "";
+  position: absolute;
+  left: 14%;
+  bottom: -0.5rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  background: #fff;
+  border-radius: 9999px;
+}
+.fl-bubble + .fl-bubble {
+  animation-delay: -0.9s;
+}
+@keyframes fl-bubble-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* A candle's soft, uneven glow. */
+.fl-candle-glow {
+  animation: fl-candle 2.6s ease-in-out infinite;
+}
+@keyframes fl-candle {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  30% {
+    opacity: 0.9;
+    transform: scale(1.06);
+  }
+  55% {
+    opacity: 0.65;
+    transform: scale(0.97);
+  }
+  80% {
+    opacity: 0.85;
+    transform: scale(1.03);
+  }
+}
+
+/* Shapes move the same circles about. Default is flame. */
+.fl-blob[data-shape="drop"] .fl-side-l,
+.fl-blob[data-shape="drop"] .fl-side-r {
+  display: none;
+}
+.fl-blob[data-shape="drop"] .fl-lick-2,
+.fl-blob[data-shape="drop"] .fl-lick-3,
+.fl-blob[data-shape="drop"] .fl-lick-4 {
+  display: none;
+}
+.fl-blob[data-shape="drop"] .fl-peak {
+  transform: translateY(-10px) scale(0.8);
+}
+.fl-blob[data-shape="puff"] .fl-side-l {
+  transform: translate(-10px, 4px) scale(1.25);
+  animation: none;
+}
+.fl-blob[data-shape="puff"] .fl-side-r {
+  transform: translate(10px, 4px) scale(1.25);
+  animation: none;
+}
+.fl-blob[data-shape="puff"] .fl-peak {
+  display: none;
+}
+.fl-blob[data-shape="puff"] .fl-lick {
+  animation-name: fl-rise-low;
+}
+@keyframes fl-rise-low {
+  0% {
+    transform: translateY(0) scale(0.8);
+  }
+  100% {
+    transform: translateY(-20px) scale(0.1);
+  }
+}
+.fl-blob[data-shape="spark"] .fl-body {
+  transform: scale(0.84);
+}
+.fl-blob[data-shape="spark"] .fl-lick {
+  animation-duration: 0.8s;
+}
+.fl-blob[data-shape="spark"] .fl-lick-2 {
+  animation-duration: 1s;
+}
+.fl-blob[data-shape="spark"] .fl-lick-3 {
+  animation-duration: 0.7s;
+}
+/* Hats sit on the peak, which moves with the shape. */
+.fl-blob[data-shape="drop"] .fl-hat {
+  transform: translateY(-5px);
+}
+.fl-blob[data-shape="puff"] .fl-hat {
+  transform: translateY(8px);
+}
+
+/* Eyes. Default is round. */
+.fl-blob[data-eyes="wide"] .fl-eye {
+  transform: scale(1.35);
+  animation: none;
+}
+.fl-blob:not([data-eyes="wide"]) .fl-shine {
+  display: none;
+}
+.fl-blob[data-eyes="sharp"] .fl-eye-l {
+  transform: rotate(22deg) scaleY(0.7);
+  animation: none;
+}
+.fl-blob[data-eyes="sharp"] .fl-eye-r {
+  transform: rotate(-22deg) scaleY(0.7);
+  animation: none;
+}
+.fl-blob[data-eyes="sleepy"] .fl-eye {
+  transform: scaleY(0.4);
+  animation: none;
+}
+.fl-blob[data-eyes="dots"] .fl-eye {
+  transform: scale(0.6);
+}
+/* Mood eyes beat the look: asleep and ember keep them shut. */
+.fl-blob[data-mood="asleep"][data-eyes] .fl-eye,
+.fl-blob[data-mood="ember"][data-eyes] .fl-eye {
+  transform: scaleY(0.18);
+  animation: none;
+}
+
+/* Bonfire and blaze shed embers. */
+.fl-embers {
+  display: none;
+}
+.fl-pet[data-stage="bonfire"] .fl-embers,
+.fl-pet[data-stage="blaze"] .fl-embers {
+  display: inline;
+}
+.fl-embers circle {
+  fill: var(--fl-tip);
+  animation: fl-ember-rise 2.6s ease-out infinite;
+  opacity: 0;
+}
+.fl-embers circle:nth-child(2) {
+  animation-delay: -0.9s;
+}
+.fl-embers circle:nth-child(3) {
+  animation-delay: -1.8s;
+}
+@keyframes fl-ember-rise {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-34px) scale(0.2);
+    opacity: 0;
+  }
+}
+
+/* Emotes: ~1.5 s each, played on the wrapper's data-emote. */
+.fl-pet[data-emote="love"] .fl-all {
+  animation: fl-squish 0.75s ease-in-out 2;
+}
+.fl-pet[data-emote="laugh"] .fl-all {
+  animation: fl-bounce 0.5s ease-out 3;
+}
+.fl-pet[data-emote="laugh"] .fl-mouth-open {
+  display: inline;
+  fill: var(--fl-face);
+  stroke: none;
+}
+.fl-pet[data-emote="laugh"] .fl-mouth-smile {
+  display: none;
+}
+.fl-pet[data-emote="dance"] .fl-all {
+  animation: fl-dance 0.75s ease-in-out 2;
+}
+.fl-pet[data-emote="spin"] .fl-all {
+  animation: fl-spin 1.5s ease-in-out 1;
+}
+.fl-pet[data-emote="wow"] .fl-eye {
+  transform: scale(1.6);
+  animation: none;
+}
+.fl-pet[data-emote="wow"] .fl-all {
+  animation: fl-startle 1.5s ease-out 1;
+}
+.fl-pet[data-emote="wow"] .fl-mouth-open {
+  display: inline;
+  fill: var(--fl-face);
+  stroke: none;
+}
+.fl-pet[data-emote="wow"] .fl-mouth-smile {
+  display: none;
+}
+.fl-pet[data-emote="sleepy"] .fl-eye {
+  transform: scaleY(0.18);
+  animation: none;
+}
+.fl-pet[data-emote="sleepy"] .fl-all {
+  animation: fl-sway 1.5s ease-in-out 1;
+}
+.fl-pet[data-emote="grumpy"] .fl-all {
+  animation: fl-shake 0.15s linear 10;
+}
+.fl-pet[data-emote="grumpy"] .fl-mouth-smile {
+  display: none;
+}
+.fl-pet[data-emote="grumpy"] .fl-mouth-flat {
+  display: inline;
+}
+.fl-pet[data-emote="sparkle"] .fl-all {
+  animation: fl-bounce 0.75s ease-out 2;
+}
+@keyframes fl-squish {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.12, 0.9);
+  }
+}
+@keyframes fl-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+  50% {
+    transform: translateY(-16px) scale(0.95, 1.06);
+  }
+}
+@keyframes fl-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.9);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+@keyframes fl-startle {
+  0% {
+    transform: scale(1);
+  }
+  15% {
+    transform: translateY(-14px) scale(0.92, 1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes fl-sway {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-8deg) translateY(4px);
+  }
+}
+@keyframes fl-shake {
+  0%,
+  100% {
+    transform: translateX(-2px);
+  }
+  50% {
+    transform: translateX(2px);
+  }
+}
+
+/* Emote particles float over the pet. */
+.fl-fx {
+  position: absolute;
+  pointer-events: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  opacity: 0;
+  animation: fl-float 1.5s ease-out forwards;
+}
+.fl-fx[data-loop="true"] {
+  animation-iteration-count: infinite;
+  animation-duration: 3.2s;
+  animation-fill-mode: none;
+}
+.fl-fx[data-fx="bang"] {
+  font-weight: 900;
+  color: #ef4444;
+  font-size: 2.4rem;
+  left: 62%;
+  top: 4%;
+  animation-name: fl-pop;
+}
+.fl-fx:nth-child(1) {
+  left: 38%;
+  top: 22%;
+  animation-delay: 0s;
+}
+.fl-fx:nth-child(2) {
+  left: 56%;
+  top: 14%;
+  animation-delay: 0.18s;
+}
+.fl-fx:nth-child(3) {
+  left: 46%;
+  top: 8%;
+  animation-delay: 0.36s;
+}
+.fl-fx:nth-child(4) {
+  left: 66%;
+  top: 24%;
+  animation-delay: 0.54s;
+}
+.fl-fx:nth-child(5) {
+  left: 30%;
+  top: 12%;
+  animation-delay: 0.72s;
+}
+.fl-fx[data-fx="burst"]:nth-child(1) {
+  --dx: -40px;
+  --dy: -30px;
+}
+.fl-fx[data-fx="burst"]:nth-child(2) {
+  --dx: 42px;
+  --dy: -36px;
+}
+.fl-fx[data-fx="burst"]:nth-child(3) {
+  --dx: 0px;
+  --dy: -52px;
+}
+.fl-fx[data-fx="burst"]:nth-child(4) {
+  --dx: 52px;
+  --dy: 4px;
+}
+.fl-fx[data-fx="burst"]:nth-child(5) {
+  --dx: -52px;
+  --dy: 2px;
+}
+.fl-fx[data-fx="burst"] {
+  left: 48%;
+  top: 38%;
+  animation-name: fl-burst;
+  animation-delay: 0s !important;
+}
+@keyframes fl-float {
+  0% {
+    transform: translateY(8px) scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-48px) scale(1.1);
+    opacity: 0;
+  }
+}
+@keyframes fl-pop {
+  0% {
+    transform: scale(0) rotate(-20deg);
+    opacity: 0;
+  }
+  25% {
+    transform: scale(1.3) rotate(8deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0;
+  }
+}
+@keyframes fl-burst {
+  0% {
+    transform: translate(0, 0) scale(0.3);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.fl-prop {
+  animation: fl-propeller 0.12s linear infinite;
+}
+@keyframes fl-propeller {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.25);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-blob *,
+  .fl-all,
+  .fl-fx,
+  .fl-pet * {
+    animation: none !important;
+  }
+  .fl-fx {
+    opacity: 1;
+  }
+  .fl-fx[data-loop="true"] {
+    opacity: 0.8;
+  }
+}
+/* A choice in a picker holds still, so a row of them is not a row of dancers. */
+.fl-still,
+.fl-still * {
+  animation: none !important;
+}
+
+/* ---------- Flamelings: the glade and screens ---------- */
+.fl-twinkle {
+  animation: fl-twinkle 3s ease-in-out infinite;
+}
+@keyframes fl-twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.fl-fly {
+  filter: drop-shadow(0 0 5px #e8ff7a);
+  animation: fl-fly 9s ease-in-out infinite;
+}
+.fl-fly-2 {
+  animation-duration: 11s;
+  animation-delay: -3s;
+}
+.fl-fly-3 {
+  animation-duration: 8s;
+  animation-delay: -5s;
+}
+.fl-fly-4 {
+  animation-duration: 12s;
+  animation-delay: -1s;
+}
+.fl-fly-5 {
+  animation-duration: 10s;
+  animation-delay: -6s;
+}
+.fl-fly-6 {
+  animation-duration: 13s;
+  animation-delay: -8s;
+}
+@keyframes fl-fly {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(24px, -22px);
+  }
+  50% {
+    transform: translate(-10px, -40px);
+  }
+  75% {
+    transform: translate(-30px, -12px);
+  }
+}
+
+.fl-egg-wobble {
+  animation: fl-egg-wobble 1.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.fl-egg-hit {
+  animation: fl-egg-hit 0.35s ease-out;
+  transform-origin: 50% 100%;
+}
+@keyframes fl-egg-wobble {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes fl-egg-hit {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  30% {
+    transform: rotate(-9deg) scale(1.06, 0.94);
+  }
+  70% {
+    transform: rotate(7deg) scale(0.96, 1.05);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.fl-gift-bounce {
+  animation: fl-gift-bounce 1.2s ease-in-out infinite;
+}
+@keyframes fl-gift-bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(4deg);
+  }
+}
+
+.fl-card-in {
+  animation: fl-card-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes fl-card-in {
+  0% {
+    transform: scale(0.6) translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+.fl-shine-text {
+  animation: fl-new-pulse 1s ease-in-out infinite;
+}
+@keyframes fl-new-pulse {
+  0%,
+  100% {
+    transform: scale(1) rotate(-3deg);
+  }
+  50% {
+    transform: scale(1.12) rotate(3deg);
+  }
+}
+
+/* Food arcs from the basket tray into the pet's mouth. */
+.fl-food-arc {
+  animation: fl-food-arc 0.6s cubic-bezier(0.3, 0.1, 0.6, 1) both;
+}
+@keyframes fl-food-arc {
+  0% {
+    transform: translate(var(--fl-from-x, 0), 120px) scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(0, -90px) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, -40px) scale(0.2);
+    opacity: 0;
+  }
+}
+.fl-headshake {
+  animation: fl-headshake 0.5s ease-in-out;
+}
+@keyframes fl-headshake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-14px);
+  }
+  40% {
+    transform: translateX(12px);
+  }
+  60% {
+    transform: translateX(-9px);
+  }
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+/* Firefly Catch: each slot drifts along its own path. */
+.fl-catch {
+  animation: fl-catch-0 7s ease-in-out infinite;
+}
+.fl-catch[data-slot="1"] {
+  animation-name: fl-catch-1;
+  animation-duration: 6s;
+}
+.fl-catch[data-slot="2"] {
+  animation-name: fl-catch-2;
+  animation-duration: 8s;
+}
+.fl-catch[data-slot="3"] {
+  animation-name: fl-catch-3;
+  animation-duration: 5.5s;
+}
+.fl-catch[data-slot="4"] {
+  animation-name: fl-catch-1;
+  animation-duration: 9s;
+  animation-direction: reverse;
+}
+.fl-catch[data-slot="5"] {
+  animation-name: fl-catch-2;
+  animation-duration: 6.5s;
+  animation-direction: reverse;
+}
+.fl-catch[data-slot="6"] {
+  animation-name: fl-catch-3;
+  animation-duration: 7.5s;
+  animation-direction: reverse;
+}
+.fl-catch[data-slot="7"] {
+  animation-name: fl-catch-0;
+  animation-duration: 10s;
+  animation-direction: reverse;
+}
+@keyframes fl-catch-0 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(20vw, -12vh);
+  }
+  50% {
+    transform: translate(34vw, 6vh);
+  }
+  75% {
+    transform: translate(12vw, 14vh);
+  }
+}
+@keyframes fl-catch-1 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(-18vw, 10vh);
+  }
+  60% {
+    transform: translate(-30vw, -8vh);
+  }
+  80% {
+    transform: translate(-10vw, -14vh);
+  }
+}
+@keyframes fl-catch-2 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  35% {
+    transform: translate(14vw, 16vh);
+  }
+  70% {
+    transform: translate(-16vw, 8vh);
+  }
+}
+@keyframes fl-catch-3 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-12vw, -18vh);
+  }
+  55% {
+    transform: translate(18vw, -10vh);
+  }
+  85% {
+    transform: translate(6vw, 12vh);
+  }
+}
+.fl-caught {
+  animation: fl-caught 0.5s ease-out both;
+}
+@keyframes fl-caught {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.fl-confetti-dot {
+  animation: fl-confetti 1.8s ease-out infinite;
+}
+@keyframes fl-confetti {
+  0% {
+    transform: translateY(20px) scale(0.5);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-80px) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-bubble,
+  .fl-candle-glow {
+    animation: none !important;
+  }
+  .fl-twinkle,
+  .fl-fly,
+  .fl-egg-wobble,
+  .fl-egg-hit,
+  .fl-gift-bounce,
+  .fl-card-in,
+  .fl-shine-text,
+  .fl-food-arc,
+  .fl-headshake,
+  .fl-catch,
+  .fl-caught,
+  .fl-confetti-dot {
+    animation: none !important;
+  }
+  .fl-food-arc {
+    opacity: 0;
+  }
+}
+
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */
 @keyframes ms-bob {
   0%,

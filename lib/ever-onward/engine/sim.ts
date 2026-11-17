@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import {
   affordableUpgrades,
   buy,
@@ -445,7 +446,7 @@ export function simulate(def: UniverseDef, options: SimOptions): SimResult {
     samples.push({
       t: run.time,
       phase: run.phase,
-      sinceEntry: run.time - (run.transitions.at(-1)?.at ?? 0),
+      sinceEntry: run.time - (at(run.transitions, -1)?.at ?? 0),
       resources: Object.fromEntries(
         def.resources
           .filter((r) => !r.phases || r.phases.includes(phaseId))

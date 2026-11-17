@@ -1,0 +1,118 @@
+"use client";
+
+import { useCallback, useEffect, useRef } from "react";
+import { installTestHooks } from "@/lib/flamelings/testHooks";
+import { releaseLock, useFlamelings } from "@/lib/flamelings/store";
+import { HEARTBEAT_MS } from "@/lib/flamelings/tabLock";
+import GameShell from "@/components/game-kit/GameShell";
+import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
+import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
+import UpdatePill from "@/components/update/UpdatePill";
+import { useFlamelingsSound } from "./audio/useFlamelingsSound";
+import CelebrationCard from "./CelebrationCard";
+import Hatch from "./Hatch";
+import MemoryGrove from "./MemoryGrove";
+import PetView from "./PetView";
+import Shelf from "./Shelf";
+import TabLocked from "./TabLocked";
+
+/** How often the game catches up with the clock while the page is open. */
+const TICK_MS = 15_000;
+
+export default function Flamelings() {
+  const ready = useFlamelings((s) => s.ready);
+  const view = useFlamelings((s) => s.view);
+  const celebration = useFlamelings((s) => s.celebrations[0]);
+  const locked = useFlamelings((s) => s.locked);
+  const init = useFlamelings((s) => s.init);
+  const tick = useFlamelings((s) => s.tick);
+  const heartbeat = useFlamelings((s) => s.heartbeat);
+  const onStorage = useFlamelings((s) => s.onStorage);
+
+  useFlamelingsSound();
+
+  const timers = useRef<{ tick?: number; beat?: number }>({});
+
+  const startTimers = useCallback(() => {
+    window.clearInterval(timers.current.tick);
+    window.clearInterval(timers.current.beat);
+    timers.current.tick = window.setInterval(tick, TICK_MS);
+    timers.current.beat = window.setInterval(heartbeat, HEARTBEAT_MS);
+  }, [tick, heartbeat]);
+  const stopTimers = useCallback(() => {
+    window.clearInterval(timers.current.tick);
+    window.clearInterval(timers.current.beat);
+  }, []);
+
+  useEffect(() => {
+    const removeHooks = installTestHooks();
+    init();
+    startTimers();
+    const onPageHide = () => releaseLock();
+    const onStore = (event: StorageEvent) => onStorage(event.key);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("storage", onStore);
+    return () => {
+      removeHooks();
+      stopTimers();
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("storage", onStore);
+      releaseLock();
+    };
+  }, [init, startTimers, stopTimers, onStorage]);
+
+  // Hidden pages stop their timers and save; coming back catches up at once
+  // (an idle iPad fires no other event, so the version poll runs on its own).
+  useVisibilityPause({
+    onPersist: tick,
+    onHidden: stopTimers,
+    onVisible: () => {
+      heartbeat();
+      tick();
+      startTimers();
+    },
+  });
+
+  const { isUpdateReady, update } = useGameUpdate("flamelings", {
+    saveNow: tick,
+  });
+
+  return (
+    <GameShell
+      className="bg-amber-100 dark:bg-slate-900"
+      testId="flamelings-root"
+    >
+      {!ready ? (
+        <div
+          role="status"
+          className="grid h-full place-items-center text-4xl"
+          aria-label="Loading"
+        >
+          <span aria-hidden="true">🔥</span>
+        </div>
+      ) : locked ? (
+        <TabLocked />
+      ) : view.screen === "shelf" ? (
+        <Shelf />
+      ) : view.screen === "hatch" ? (
+        <Hatch />
+      ) : view.screen === "grove" ? (
+        <MemoryGrove />
+      ) : (
+        <PetView key={view.petId} petId={view.petId} />
+      )}
+      {isUpdateReady && !locked && (
+        <UpdatePill
+          onUpdate={update}
+          testId="flamelings-update"
+          label="Update ready ✨ — tap to update"
+          className="pointer-events-none fixed inset-x-0 bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4"
+          buttonClassName="pointer-events-auto min-h-16 touch-manipulation rounded-full border-4 border-orange-300 bg-orange-500 px-6 py-3 text-lg font-extrabold text-white shadow-xl active:scale-95"
+        />
+      )}
+      {ready && !locked && celebration && (
+        <CelebrationCard celebration={celebration} />
+      )}
+    </GameShell>
+  );
+}

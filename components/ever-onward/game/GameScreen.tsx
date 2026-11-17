@@ -1,5 +1,6 @@
 "use client";
 
+import { at } from "@/lib/game-kit/compat";
 import Link from "next/link";
 import {
   useCallback,
@@ -407,7 +408,7 @@ export default function GameScreen({
 
   // Every part's tap does something new: say what, for its first minutes
   // (the very first part, until the button is learned).
-  const phaseStart = run.transitions.at(-1)?.at ?? 0;
+  const phaseStart = at(run.transitions, -1)?.at ?? 0;
   const showsTapHint =
     !run.complete &&
     (run.phase === 0

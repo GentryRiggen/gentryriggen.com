@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import type { RunState, StoryMessage } from "../../../engine/types";
 import { paradesSoFar } from "../knowhow";
 import { PHASE_WORLD } from "../resources";
@@ -15,7 +16,7 @@ const owned = (run: RunState, id: string): number => run.owned[id] ?? 0;
 
 /** True once the world has been open this many minutes. */
 const after = (run: RunState, minutes: number): boolean =>
-  run.time - (run.transitions.at(-1)?.at ?? 0) >= minutes * 60;
+  run.time - (at(run.transitions, -1)?.at ?? 0) >= minutes * 60;
 
 export const world: StoryMessage[] = [
   {

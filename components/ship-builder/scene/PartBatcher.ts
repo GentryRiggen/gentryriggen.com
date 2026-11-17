@@ -205,10 +205,13 @@ export default class PartBatcher {
 
   /** True when the browser can spare the time for a merge. */
   private isIdle(): boolean {
+    // Safari has no requestIdleCallback: this guard keeps it working there.
+    // eslint-disable-next-line no-restricted-globals
     if (typeof requestIdleCallback === "undefined") return true;
     if (this.idleReady) return true;
     if (!this.idlePending) {
       this.idlePending = true;
+      // eslint-disable-next-line no-restricted-globals -- guarded above
       requestIdleCallback(
         () => {
           this.idlePending = false;

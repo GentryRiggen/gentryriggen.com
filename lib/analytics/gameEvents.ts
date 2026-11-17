@@ -9,7 +9,9 @@
  * value through the real rules) and the admin dashboard parses with it.
  */
 
-export type GameSite = "plane-builder" | "ship-builder";
+import { hasOwn } from "@/lib/game-kit/compat";
+
+export type GameSite = "plane-builder" | "ship-builder" | "flamelings";
 
 export type PropSpec =
   | { kind: "enum"; values: readonly string[] }
@@ -220,6 +222,69 @@ export const GAME_EVENTS = {
     props: { density: { kind: "enum", values: ["few", "some", "many"] } },
   },
   ship_shared: { site: "ship-builder", sample: 1, props: {} },
+  // ---- Flamelings (a pet game: never a name, never typed text) ------------
+  /** Opening the shelf, once per page load. */
+  fl_visit: {
+    site: "flamelings",
+    sample: 1,
+    props: {
+      window: { kind: "enum", values: ["morning", "evening", "night"] },
+      pets: { kind: "int", min: 0, max: 8 },
+    },
+  },
+  fl_hatch: { site: "flamelings", sample: 1, props: {} },
+  /** Fires on every feed, tap and clean, so only one in four is sent. */
+  fl_care: {
+    site: "flamelings",
+    sample: 0.25,
+    props: {
+      action: {
+        kind: "enum",
+        values: ["feed", "play", "clean", "pet", "gift", "relight"],
+      },
+    },
+  },
+  fl_play_end: {
+    site: "flamelings",
+    sample: 1,
+    props: { score: { kind: "int", min: 0, max: 99 } },
+  },
+  fl_level: {
+    site: "flamelings",
+    sample: 1,
+    props: {
+      level: { kind: "int", min: 2, max: 99 },
+      stage: {
+        kind: "enum",
+        values: ["spark", "flicker", "flame", "blaze", "bonfire"],
+      },
+    },
+  },
+  fl_state: {
+    site: "flamelings",
+    sample: 1,
+    props: { to: { kind: "enum", values: ["ember", "relit", "out"] } },
+  },
+  fl_unlock: {
+    site: "flamelings",
+    sample: 1,
+    props: {
+      kind: {
+        kind: "enum",
+        values: [
+          "colour",
+          "shape",
+          "eyes",
+          "hat",
+          "face",
+          "neck",
+          "emote",
+          "food",
+        ],
+      },
+      via: { kind: "enum", values: ["level", "gift"] },
+    },
+  },
 } as const satisfies Record<
   string,
   { site: GameSite; sample: number; props: Record<string, PropSpec> }
@@ -273,7 +338,7 @@ export function isValidGameProps(
   name: string,
   props: unknown
 ): props is Record<string, string | number> {
-  if (!Object.hasOwn(GAME_EVENTS, name)) return false;
+  if (!hasOwn(GAME_EVENTS, name)) return false;
   if (typeof props !== "object" || props === null) return false;
   const specs: Record<string, PropSpec> =
     GAME_EVENTS[name as GameEventName].props;
@@ -281,13 +346,13 @@ export function isValidGameProps(
   if (keys.length !== Object.keys(specs).length) return false;
   return keys.every(
     (key) =>
-      Object.hasOwn(specs, key) &&
+      hasOwn(specs, key) &&
       isValidProp(specs[key], (props as Record<string, unknown>)[key])
   );
 }
 
 export function isGameEventName(name: unknown): name is GameEventName {
-  return typeof name === "string" && Object.hasOwn(GAME_EVENTS, name);
+  return typeof name === "string" && hasOwn(GAME_EVENTS, name);
 }
 
 /** Builds the event for `name`, or null if the props break the schema. */

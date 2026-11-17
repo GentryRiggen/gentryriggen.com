@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import type { RunState } from "../../engine/types";
 import {
   LIGHT_COUNT,
@@ -163,7 +164,7 @@ export const letsLightsGo =
     if (how.onlyEvery && stretch % how.onlyEvery !== 0) return [];
     if (lockLeft(run) > 0) return [];
     let pick = -1;
-    const since = run.time - (run.transitions.at(-1)?.at ?? 0);
+    const since = run.time - (at(run.transitions, -1)?.at ?? 0);
     if (since >= (how.after ?? 0))
       pick = how.order ? pickByOrder(run, how.order) : readerPick(run, how);
     const id = letGoActionId(Math.max(0, pick));

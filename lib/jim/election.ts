@@ -6,6 +6,8 @@
  * `electionAt` carries each race and chamber forward from its last reading.
  */
 
+import { at } from "../game-kit/compat";
+
 export type Party = "D" | "R" | "I";
 export type RaceKind = "senate" | "house" | "governor" | "other";
 export type Side = "a" | "b";
@@ -206,7 +208,7 @@ export function electionAt(election: Election, index: number): ElectionAt {
   const races: RaceAt[] = [];
   for (const race of election.races) {
     const readings = seen.flatMap((u) => u.results[race.id] ?? []);
-    const now = readings.at(-1);
+    const now = at(readings, -1);
     if (!now) continue;
     const winner = now.called === "a" ? race.aParty : race.bParty;
     races.push({

@@ -15,6 +15,9 @@ describe("siteForPath", () => {
     ["/ever-onward", "ever-onward"],
     ["/ever-onward/", "ever-onward"],
     ["/ever-onward/versions", "ever-onward"],
+    ["/flamelings", "flamelings"],
+    ["/flamelings/", "flamelings"],
+    ["/flamelings/versions", "flamelings"],
     ["/admin", null],
     ["/nope", null],
     ["/ship-builders", null],
@@ -22,6 +25,7 @@ describe("siteForPath", () => {
     ["/planet-smasherx", null],
     ["/planet-smashers", null],
     ["/ever-onwards", null],
+    ["/flamelingsx", null],
     ["/ever-onward.html", null],
   ])("%s -> %s", (path, site) => {
     expect(siteForPath(path)).toBe(site);

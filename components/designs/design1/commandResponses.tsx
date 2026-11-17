@@ -175,6 +175,7 @@ const HELP_TEXT = `Available commands:
   planes           Play my plane-flying game
   onward           Play Ever Onward, my incremental game
   planets          Play my planet-smashing game
+  flamelings       Hatch a little flame pet
   hire me          Get in touch
   git status       Check repository status
   git blame        Find out who did it
@@ -372,6 +373,23 @@ function planetsOutput(): ReactNode {
   );
 }
 
+function flamelingsOutput(): ReactNode {
+  return (
+    <div className="space-y-1">
+      <p>A little flame pet I made for my boys 🔥</p>
+      <p>
+        Lighting the egg...{" "}
+        <a
+          href="/flamelings"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /flamelings
+        </a>
+      </p>
+    </div>
+  );
+}
+
 function everOnwardOutput(): ReactNode {
   return (
     <div className="space-y-1">
@@ -448,6 +466,15 @@ export function getCommandResponse(
       output: planetsOutput(),
       shouldClear: false,
       navigateTo: "/planet-smasher",
+    };
+  }
+
+  // --- flamelings ---
+  if (lower === "flamelings" || lower === "pets" || lower === "pet") {
+    return {
+      output: flamelingsOutput(),
+      shouldClear: false,
+      navigateTo: "/flamelings",
     };
   }
 

@@ -76,3 +76,32 @@ it("shows a star distribution for each challenge", () => {
     })
   ).toBeInTheDocument();
 });
+
+it("shows the Flamelings section, with no pet names to show", () => {
+  const fl = (
+    name: GameEvent["name"],
+    props: GameEvent["props"]
+  ): GameEvent => ({
+    site: "flamelings",
+    name,
+    props,
+    day: "2026-11-16",
+  });
+  render(
+    <GamesView
+      events={[
+        fl("fl_visit", { window: "morning", pets: 3 }),
+        fl("fl_hatch", {}),
+        fl("fl_play_end", { score: 12 }),
+        fl("fl_level", { level: 4, stage: "flicker" }),
+        fl("fl_unlock", { kind: "hat", via: "gift" }),
+      ]}
+    />
+  );
+  expect(screen.getByTestId("flamelings-visits")).toHaveTextContent("1");
+  expect(screen.getByTestId("flamelings-hatches")).toHaveTextContent("1");
+  expect(screen.getByTestId("flamelings-averages")).toHaveTextContent(
+    "3.0 pets per visit · 12.0 fireflies per run · highest level 4"
+  );
+  expect(screen.getByText("hat · gift")).toBeInTheDocument();
+});

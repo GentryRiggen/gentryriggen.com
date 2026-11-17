@@ -1,3 +1,4 @@
+import { hasOwn } from "@/lib/game-kit/compat";
 import raw from "./manifest.json";
 
 export interface ShipClipEntry {
@@ -12,5 +13,5 @@ const manifest: Record<string, ShipClipEntry> = raw;
 
 /** The recorded clip for a voice line id, if it has one. */
 export function getShipClip(id: string): ShipClipEntry | undefined {
-  return Object.hasOwn(manifest, id) ? manifest[id] : undefined;
+  return hasOwn(manifest, id) ? manifest[id] : undefined;
 }

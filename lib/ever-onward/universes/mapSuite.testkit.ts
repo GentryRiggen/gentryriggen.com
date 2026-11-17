@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import { playRoute } from "../engine/mapPacing";
 import type { Strategy } from "../engine/sim";
 import type { UniverseDef } from "../engine/types";
@@ -81,7 +82,7 @@ export function describeMap(
       });
 
       it("finds all 14 within 40 runs, and no run drops under 40%", () => {
-        expect(route.at(-1)!.found).toBe(14);
+        expect(at(route, -1)!.found).toBe(14);
         for (let i = 0; i < route.length; i += 1)
           expect(ratio(i)).toBeGreaterThanOrEqual(0.4);
       });

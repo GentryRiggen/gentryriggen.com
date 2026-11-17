@@ -304,8 +304,8 @@ jobs:
         include:
           # Chromium runs every test; WebKit, the iPad and the iPhone run the
           # @smoke ones (see playwright.config.ts). Firefox is left out.
-          - name: Site + Jim + Ever Onward + builder UI
-            files: e2e/home.spec.ts e2e/ship-builder.spec.ts e2e/admin.spec.ts e2e/app-check.spec.ts e2e/jim.spec.ts e2e/ever-onward.spec.ts
+          - name: Site + Jim + Ever Onward + Flamelings + builder UI
+            files: e2e/home.spec.ts e2e/ship-builder.spec.ts e2e/admin.spec.ts e2e/app-check.spec.ts e2e/jim.spec.ts e2e/ever-onward.spec.ts e2e/flamelings.spec.ts
             args: --project=chromium --project=webkit --project=ipad --project=iphone --grep-invert "renders the 3D scene"
             workers: 2
             browsers: chromium webkit

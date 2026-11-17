@@ -1,5 +1,6 @@
 "use client";
 
+import { at } from "@/lib/game-kit/compat";
 import {
   useEffect,
   useId,
@@ -143,7 +144,10 @@ function describeMoment(
   const clock = isBoom
     ? `${formatSeconds(time - (firstBomb ?? time))} after the first bomb`
     : `${formatStoryTime(story)} ${after}`;
-  const latest = marks.filter((mark) => mark.at <= time).at(-1);
+  const latest = at(
+    marks.filter((mark) => mark.at <= time),
+    -1
+  );
   return latest ? `${clock} · ${latest.label}` : clock;
 }
 
@@ -202,7 +206,10 @@ export default function TrialScrubber({
     const target =
       event.key === "PageUp"
         ? (marks.find((mark) => mark.at > time + 1e-6)?.at ?? end)
-        : (marks.filter((mark) => mark.at < time - 1e-6).at(-1)?.at ?? start);
+        : (at(
+            marks.filter((mark) => mark.at < time - 1e-6),
+            -1
+          )?.at ?? start);
     showMoment(target);
   }
 

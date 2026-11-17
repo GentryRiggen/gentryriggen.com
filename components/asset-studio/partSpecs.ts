@@ -1,3 +1,4 @@
+import { hasOwn } from "@/lib/game-kit/compat";
 import { PART_SPEC_LIST } from "@/assets/parts";
 
 export interface PartVariant {
@@ -48,7 +49,7 @@ export const PART_SPECS: Record<string, PartSpec> = Object.fromEntries(
 export function specForPart(
   partId: string
 ): { spec: PartSpec; variant: string } | null {
-  if (Object.hasOwn(PART_SPECS, partId)) {
+  if (hasOwn(PART_SPECS, partId)) {
     const spec = PART_SPECS[partId];
     return { spec, variant: spec.scoreVariant };
   }

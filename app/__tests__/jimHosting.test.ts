@@ -189,6 +189,32 @@ it("keeps /jim out of the sitemap and the pageview analytics", () => {
   expect(siteForPath("/jim/notes/people/sam-okafor")).toBeNull();
 });
 
+describe("Flamelings caching", () => {
+  it.each([
+    "/flamelings",
+    "/flamelings.html",
+    "/flamelings/versions",
+    "/flamelings/versions.html",
+    "/flamelings.webmanifest",
+    "/flamelings/version.json",
+    "/flamelings-icons/**",
+  ])("%s is revalidated, so deploys land", (source) => {
+    expect(headersFor(target("main"), source)).toContainEqual({
+      key: "Cache-Control",
+      value: "no-cache",
+    });
+  });
+});
+
+describe("Flamelings icon caching order", () => {
+  it("lists the icons rule after the year-long image rule so it wins", () => {
+    const sources = target("main").headers.map((h) => h.source);
+    expect(sources.indexOf("/flamelings-icons/**")).toBeGreaterThan(
+      sources.findIndex((s) => s.startsWith("**/*.@("))
+    );
+  });
+});
+
 describe("Planet Smasher caching", () => {
   it.each([
     "/planet-smasher",

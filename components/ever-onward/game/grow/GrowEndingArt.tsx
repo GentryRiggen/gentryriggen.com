@@ -97,6 +97,7 @@ export default function GrowEndingArt({ run }: { run: RunState }) {
           <Visitors />
         </g>
       </svg>
+      {/* safe-area-ok: a decorative gradient, nothing to tap */}
       <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black to-transparent" />
     </div>
   );

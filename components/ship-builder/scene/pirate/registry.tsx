@@ -1,3 +1,4 @@
+import { hasOwn } from "@/lib/game-kit/compat";
 import type { ReactNode } from "react";
 import { CANNON_MESHES } from "./cannons";
 import { CREW_DECOR, CREW_MESHES } from "./crew";
@@ -20,11 +21,11 @@ export const PIRATE_DECOR = {
 export type PirateDecorType = keyof typeof PIRATE_DECOR;
 
 export function isPirateFitting(type: string): type is PirateFittingType {
-  return Object.hasOwn(PIRATE_FITTINGS, type);
+  return hasOwn(PIRATE_FITTINGS, type);
 }
 
 export function isPirateDecor(type: string): type is PirateDecorType {
-  return Object.hasOwn(PIRATE_DECOR, type);
+  return hasOwn(PIRATE_DECOR, type);
 }
 
 export function renderPirateFitting(

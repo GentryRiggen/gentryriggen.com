@@ -1,11 +1,17 @@
 export type Site =
-  "home" | "ship-builder" | "plane-builder" | "planet-smasher" | "ever-onward";
+  | "home"
+  | "ship-builder"
+  | "plane-builder"
+  | "planet-smasher"
+  | "ever-onward"
+  | "flamelings";
 export const SITES: readonly Site[] = [
   "home",
   "ship-builder",
   "plane-builder",
   "planet-smasher",
   "ever-onward",
+  "flamelings",
 ];
 
 export type Device = "mobile" | "tablet" | "desktop";
