@@ -21,7 +21,13 @@ export type SoundName =
   | "mush1"
   | "mush2"
   | "mush3"
-  | "mush4";
+  | "mush4"
+  | "evolve"
+  | "sizzle"
+  | "giggle"
+  | "puff"
+  | "thud"
+  | "cheer";
 
 export const SOUND_NAMES: readonly SoundName[] = [
   "chirp",
@@ -44,6 +50,12 @@ export const SOUND_NAMES: readonly SoundName[] = [
   "mush2",
   "mush3",
   "mush4",
+  "evolve",
+  "sizzle",
+  "giggle",
+  "puff",
+  "thud",
+  "cheer",
 ];
 
 type Sink = (name: SoundName) => void;
@@ -68,6 +80,8 @@ export function soundsForEvents(events: readonly PetEvent[]): SoundName[] {
       if (event.action === "pet") sounds.add("chirp");
       if (event.action === "clean") sounds.add("pip");
       if (event.action === "gift") sounds.add("unwrap");
+    } else if (event.type === "evolve") {
+      sounds.add("evolve");
     } else if (event.type === "levelUp") {
       sounds.add("sparkle");
     } else if (event.type === "unlock") {

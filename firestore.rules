@@ -544,8 +544,12 @@ service cloud.firestore {
           && p.keys().hasOnly(['action']) && p.keys().hasAll(['action'])
           && p.action in ['feed', 'play', 'clean', 'pet', 'gift', 'relight'])
         || (name == 'fl_play_end'
-          && p.keys().hasOnly(['score']) && p.keys().hasAll(['score'])
+          && p.keys().hasOnly(['game', 'score']) && p.keys().hasAll(['game', 'score'])
+          && p.game in ['fireflies', 'marshmallow', 'logs']
           && p.score is int && p.score >= 0 && p.score <= 99)
+        || (name == 'fl_form'
+          && p.keys().hasOnly(['form']) && p.keys().hasAll(['form'])
+          && p.form in ['cozy', 'wild', 'sparkly'])
         || (name == 'fl_level'
           && p.keys().hasOnly(['level', 'stage']) && p.keys().hasAll(['level', 'stage'])
           && p.level is int && p.level >= 2 && p.level <= 99

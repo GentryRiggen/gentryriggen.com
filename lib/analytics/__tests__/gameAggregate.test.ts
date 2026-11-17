@@ -149,8 +149,11 @@ describe("summarizeFlamelings", () => {
     fl("fl_care", { action: "feed" }),
     fl("fl_care", { action: "feed" }),
     fl("fl_care", { action: "clean" }),
-    fl("fl_play_end", { score: 10 }),
-    fl("fl_play_end", { score: 20 }),
+    fl("fl_play_end", { game: "fireflies", score: 10 }),
+    fl("fl_form", { form: "cozy" }),
+    fl("fl_form", { form: "cozy" }),
+    fl("fl_form", { form: "wild" }),
+    fl("fl_play_end", { game: "logs", score: 20 }),
     fl("fl_level", { level: 2, stage: "spark" }),
     fl("fl_level", { level: 3, stage: "flicker" }),
     fl("fl_state", { to: "ember" }),
@@ -172,6 +175,14 @@ describe("summarizeFlamelings", () => {
     expect(summary.averagePets).toBe(2);
     expect(summary.averageScore).toBe(15);
     expect(summary.playRuns).toBe(2);
+    expect(summary.playGames).toEqual([
+      { key: "fireflies", views: 1 },
+      { key: "logs", views: 1 },
+    ]);
+    expect(summary.forms).toEqual([
+      { key: "cozy", views: 2 },
+      { key: "wild", views: 1 },
+    ]);
     expect(summary.visitWindows[0]).toEqual({ key: "morning", views: 2 });
   });
 

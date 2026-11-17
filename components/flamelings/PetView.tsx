@@ -463,7 +463,7 @@ export default function PetView({ petId }: { petId: string }) {
       {panel === "play" && (
         <FireflyCatch
           onDone={(score) => {
-            finishPlay(pet.id, score);
+            finishPlay(pet.id, "fireflies", score);
             setPanel(null);
             play("dance");
           }}

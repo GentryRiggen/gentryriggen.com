@@ -14,8 +14,9 @@ import {
 } from "./catalog";
 import { emptySave, MAX_PETS, MAX_SPARKS } from "./actions";
 import { isHappeningKind, variantsOf, type Happening } from "./happenings";
+import { isFormId, MAX_CARE_COUNT, NO_CARE } from "./forms";
 import { SAVE_SCHEMA } from "./types";
-import type { Look, Memorial, Pet, SaveData, Worn } from "./types";
+import type { CareStats, Look, Memorial, Pet, SaveData, Worn } from "./types";
 
 export const SAVE_KEY = "flamelings:v1";
 /** Prefix of the backups of saves that could not be read in full. */
@@ -67,6 +68,20 @@ function parseWorn(v: unknown): Worn {
     hat: slot(o.hat, HATS),
     face: slot(o.face, FACES),
     neck: slot(o.neck, NECKS),
+  };
+}
+
+/** Care counters: a missing or broken field starts at 0. */
+function parseCare(v: unknown): CareStats {
+  const o = isObj(v) ? v : {};
+  const count = (n: unknown) => Math.floor(num(n, 0, MAX_CARE_COUNT, 0));
+  return {
+    ...NO_CARE,
+    feeds: count(o.feeds),
+    cleans: count(o.cleans),
+    plays: count(o.plays),
+    pets: count(o.pets),
+    styles: count(o.styles),
   };
 }
 
@@ -156,6 +171,10 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
     },
     happening: parseHappening(v.happening),
     wish: Math.floor(num(v.wish, 0, 100, 0)),
+    care: parseCare(v.care),
+    // An unknown form (from a newer build) is dropped; a pet of level 10 or
+    // more with no form picks one when the game settles it.
+    form: isFormId(v.form) ? v.form : null,
     sparkRounds: {
       window: typeof rounds.window === "string" ? rounds.window : "",
       count: Math.floor(num(rounds.count, 0, 99, 0)),
@@ -172,6 +191,7 @@ function parseMemorial(v: unknown, fallbackTime: number): Memorial | null {
     look: parseLook(v.look),
     worn: parseWorn(v.worn),
     level: Math.floor(num(v.level, 1, 99, 1)),
+    form: isFormId(v.form) ? v.form : null,
     daysLived: Math.floor(num(v.daysLived, 0, 1e6, 0)),
     bornAt,
     outAt: num(v.outAt, 0, 1e15, bornAt),

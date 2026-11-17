@@ -7,6 +7,7 @@ import {
   type HappeningResult,
   clean as cleanAction,
   dress as dressAction,
+  emote as emoteAction,
   feed as feedAction,
   finishPlay,
   hatch as hatchAction,
@@ -32,7 +33,15 @@ import { emptySave } from "./actions";
 import { loadSaveResult, readRaw, writeSave } from "./save";
 import { acquire, heldByOther, readLock, release, LOCK_KEY } from "./tabLock";
 import { SAVE_KEY } from "./save";
-import type { Look, Outcome, Pet, PetEvent, SaveData } from "./types";
+import type {
+  FormId,
+  Look,
+  Outcome,
+  Pet,
+  PetEvent,
+  PlayGame,
+  SaveData,
+} from "./types";
 
 /** A card to show the player: a level-up, a new item or a relight. */
 export type Celebration =
@@ -45,7 +54,8 @@ export type Celebration =
     }
   | { kind: "gift"; petId: string; key: UnlockKey | null }
   | { kind: "bought"; petId: string; key: UnlockKey }
-  | { kind: "relit"; petId: string };
+  | { kind: "relit"; petId: string }
+  | { kind: "evolve"; petId: string; form: FormId };
 
 export type View =
   | { screen: "shelf" }
@@ -73,6 +83,8 @@ export function celebrationsFrom(
       cards.push({ kind: "bought", petId, key: event.key });
     } else if (event.type === "state" && event.to === "relit") {
       cards.push({ kind: "relit", petId });
+    } else if (event.type === "evolve") {
+      cards.push({ kind: "evolve", petId, form: event.form });
     }
   }
   return cards;
@@ -124,7 +136,9 @@ export interface FlamelingsStore {
   hatch(name: string, look: Look): string | null;
   feed(petId: string, food: FoodId): PetEvent[];
   clean(petId: string): PetEvent[];
-  finishPlay(petId: string, score: number): PetEvent[];
+  finishPlay(petId: string, game: PlayGame, score: number): PetEvent[];
+  /** An emote picked from the panel (counts towards a Sparkly form). */
+  emote(petId: string): void;
   tapPet(petId: string): PetEvent[];
   openGift(petId: string): PetEvent[];
   dress(petId: string, slot: DressSlot, id: string | null): void;
@@ -243,9 +257,17 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
       const loaded = loadSaveResult(t);
       canWrite = loaded.writable;
       lastRaw = readRaw();
-      const { save } = settle(loaded.save, t, get().holding);
+      const { save, events } = settle(loaded.save, t, get().holding);
       if (canWrite && writeSave(save)) lastRaw = readRaw();
+      // A pet from an older save that is already a Blaze grows up on load.
+      const cards = events.flatMap((e) =>
+        e.event.type === "evolve" ? celebrationsFrom(e.petId, [e.event]) : []
+      );
+      trackEvents(
+        events.map((e) => e.event).filter((e) => e.type === "evolve")
+      );
       set({
+        celebrations: cards,
         ready: true,
         locked: false,
         outdated: loaded.newer,
@@ -289,7 +311,15 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
       if (!persist(save)) return;
       trackEvents(events.map((e) => e.event));
       playEventSounds(events.map((e) => e.event));
-      set({ save, clock: t });
+      // A pet from an older save that is already a Blaze grows up on load.
+      const cards = events.flatMap((e) =>
+        e.event.type === "evolve" ? celebrationsFrom(e.petId, [e.event]) : []
+      );
+      set((s) => ({
+        save,
+        clock: t,
+        celebrations: [...s.celebrations, ...cards],
+      }));
       const { view } = get();
       if (
         view.screen === "pet" &&
@@ -323,9 +353,13 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
 
     feed: (petId, food) => act(petId, (pet, t) => feedAction(pet, food, t)),
     clean: (petId) => act(petId, (pet, t) => cleanAction(pet, t)),
-    finishPlay(petId, score) {
-      trackPlayEnd(score);
+    finishPlay(petId, game, score) {
+      trackPlayEnd(game, score);
       return act(petId, (pet, t) => finishPlay(pet, score, t));
+    },
+    emote(petId) {
+      const pet = petOf(petId);
+      if (pet) commit(petId, emoteAction(pet));
     },
     tapPet: (petId) => act(petId, (pet, t) => tapAction(pet, t)),
     openGift: (petId) => act(petId, (pet, t) => openGiftAction(pet, t)),

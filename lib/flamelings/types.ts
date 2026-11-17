@@ -12,6 +12,20 @@ import type {
 
 export type StageId = "spark" | "flicker" | "flame" | "blaze" | "bonfire";
 
+/** A grown-up form, picked at Blaze from how the pet was cared for. */
+export type FormId = "cozy" | "wild" | "sparkly";
+
+/** What the child has done with this pet, for picking its form (never sent anywhere). */
+export interface CareStats {
+  feeds: number;
+  cleans: number;
+  plays: number;
+  /** Pet taps and emotes. */
+  pets: number;
+  /** Dress-ups and purchases. */
+  styles: number;
+}
+
 export type PetState = "alive" | "ember";
 
 export interface Look {
@@ -63,6 +77,9 @@ export interface Pet {
   happening: Happening | null;
   /** Sparks a shooting-star wish is holding for the morning (0 when none). */
   wish: number;
+  care: CareStats;
+  /** The grown-up form picked at level 10; permanent (null before). */
+  form: FormId | null;
 }
 
 export interface Memorial {
@@ -71,6 +88,7 @@ export interface Memorial {
   look: Look;
   worn: Worn;
   level: number;
+  form: FormId | null;
   daysLived: number;
   bornAt: number;
   outAt: number;
@@ -78,9 +96,9 @@ export interface Memorial {
 
 /**
  * The shape of the saved data, bumped whenever a build adds fields (1.0 = 1,
- * 1.1 = 2, 1.2 = 3). A build never writes over a save from a newer schema.
+ * 1.1 = 2, 1.2 = 3, 1.3 = 4). A build never writes over a save from a newer schema.
  */
-export const SAVE_SCHEMA = 3;
+export const SAVE_SCHEMA = 4;
 
 export interface SaveData {
   v: 1;
@@ -108,11 +126,15 @@ export type PetEvent =
   | { type: "bonusXp"; amount: number }
   | { type: "sparks"; amount: number; source: SparkSource }
   | { type: "buy"; key: UnlockKey; price: number }
-  | { type: "happening"; kind: HappeningKind; done: boolean };
+  | { type: "happening"; kind: HappeningKind; done: boolean }
+  | { type: "evolve"; form: FormId };
 
 /** Where sparks came from: the screen flies them in from the matching spot. */
 export type SparkSource =
   "feed" | "clean" | "play" | "gift" | "level" | "relight" | "happening";
+
+/** The mini-games in the Play picker; all share one cap of paying rounds. */
+export type PlayGame = "fireflies" | "marshmallow" | "logs";
 
 export type CareAction = "feed" | "play" | "clean" | "pet" | "gift" | "relight";
 

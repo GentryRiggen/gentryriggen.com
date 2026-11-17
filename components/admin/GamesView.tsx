@@ -221,7 +221,7 @@ export default function GamesView({ events }: GamesViewProps) {
           {[
             { id: "visits", label: "Visits", value: flame.visits },
             { id: "hatches", label: "Hatched", value: flame.hatches },
-            { id: "plays", label: "Firefly Catch runs", value: flame.playRuns },
+            { id: "plays", label: "Mini-game rounds", value: flame.playRuns },
             { id: "levels", label: "Level-ups", value: flame.levelUps },
             {
               id: "purchases",
@@ -259,7 +259,7 @@ export default function GamesView({ events }: GamesViewProps) {
             ? "No visits yet"
             : `${flame.averagePets.toFixed(1)} pets per visit`}
           {flame.averageScore !== null &&
-            ` · ${flame.averageScore.toFixed(1)} fireflies per run`}
+            ` · ${flame.averageScore.toFixed(1)} points per round`}
           {flame.highestLevel > 0 && ` · highest level ${flame.highestLevel}`}
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -272,6 +272,16 @@ export default function GamesView({ events }: GamesViewProps) {
             title="Care (sampled)"
             rows={flame.care}
             unit="actions"
+          />
+          <BreakdownList
+            title="Mini-games"
+            rows={flame.playGames}
+            unit="rounds"
+          />
+          <BreakdownList
+            title="Grown-up forms"
+            rows={flame.forms}
+            unit="flamelings"
           />
           <BreakdownList
             title="Stages reached"

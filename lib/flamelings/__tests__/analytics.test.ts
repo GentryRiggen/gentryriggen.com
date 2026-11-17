@@ -22,9 +22,12 @@ describe("flamelings analytics", () => {
   });
 
   it("clamps numbers into the schema", () => {
-    trackPlayEnd(500);
+    trackPlayEnd("logs", 500);
     trackVisit(40, new Date(2026, 10, 16, 23).getTime());
-    expect(track).toHaveBeenCalledWith("fl_play_end", { score: 99 });
+    expect(track).toHaveBeenCalledWith("fl_play_end", {
+      game: "logs",
+      score: 99,
+    });
     expect(track).toHaveBeenCalledWith("fl_visit", {
       window: "night",
       pets: 8,
