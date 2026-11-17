@@ -14,6 +14,7 @@ import {
 } from "./actions";
 import { cleanName, type FoodId, type UnlockKey } from "./catalog";
 import { now } from "./clock";
+import { playEventSounds } from "./sound";
 import { trackEvents, trackHatch, trackPlayEnd, trackVisit } from "./analytics";
 import { emptySave } from "./actions";
 import { loadSaveResult, readRaw, writeSave } from "./save";
@@ -161,6 +162,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     const cards = celebrationsFrom(petId, outcome.events);
     if (!persist(next)) return [];
     trackEvents(outcome.events);
+    playEventSounds(outcome.events);
     set((s) => ({
       save: next,
       clock: t,
@@ -244,6 +246,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
       const { save, events } = settle(get().save, t);
       if (!persist(save)) return;
       trackEvents(events.map((e) => e.event));
+      playEventSounds(events.map((e) => e.event));
       set({ save, clock: t });
       const { view } = get();
       if (

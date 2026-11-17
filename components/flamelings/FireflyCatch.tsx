@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
+import { playSound } from "@/lib/flamelings/sound";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
 import { FOCUS_RING, PRIMARY_BUTTON } from "./styles";
 
@@ -63,6 +64,7 @@ export default function FireflyCatch({ onDone }: FireflyCatchProps) {
   const catchOne = useCallback(
     (slot: number) => {
       if (over) return;
+      playSound("pip");
       setScore((n) => Math.min(99, n + 1));
       const at = Date.now();
       setNowMs(at);

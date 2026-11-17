@@ -8,6 +8,7 @@ import { FLAMELINGS_VERSION } from "@/lib/flamelings/version";
 import type { Pet } from "@/lib/flamelings/types";
 import Blob from "./Blob";
 import EggArt from "./EggArt";
+import SoundToggle from "./SoundToggle";
 import {
   BIG_BUTTON,
   CARD,
@@ -70,15 +71,18 @@ export default function Shelf() {
         <h1 className="text-3xl font-black tracking-tight sm:text-4xl">
           <span aria-hidden="true">🔥 </span>Flamelings
         </h1>
-        {save.memorial.length > 0 && (
-          <button
-            type="button"
-            onClick={() => go({ screen: "grove" })}
-            className={`${BIG_BUTTON} bg-emerald-700 px-5 text-lg text-white dark:bg-emerald-300 dark:text-emerald-950`}
-          >
-            <span aria-hidden="true">🕯️ </span>Memory Grove
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {save.memorial.length > 0 && (
+            <button
+              type="button"
+              onClick={() => go({ screen: "grove" })}
+              className={`${BIG_BUTTON} bg-emerald-700 px-5 text-lg text-white dark:bg-emerald-300 dark:text-emerald-950`}
+            >
+              <span aria-hidden="true">🕯️ </span>Memory Grove
+            </button>
+          )}
+          <SoundToggle />
+        </div>
       </header>
       <main className="grid flex-1 content-start gap-4 py-3 [grid-template-columns:repeat(auto-fill,minmax(11rem,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(13rem,1fr))]">
         {save.pets.map((pet) => (

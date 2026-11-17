@@ -8,6 +8,7 @@ import GameShell from "@/components/game-kit/GameShell";
 import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
 import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
+import { useFlamelingsSound } from "./audio/useFlamelingsSound";
 import CelebrationCard from "./CelebrationCard";
 import Hatch from "./Hatch";
 import MemoryGrove from "./MemoryGrove";
@@ -27,6 +28,8 @@ export default function Flamelings() {
   const tick = useFlamelings((s) => s.tick);
   const heartbeat = useFlamelings((s) => s.heartbeat);
   const onStorage = useFlamelings((s) => s.onStorage);
+
+  useFlamelingsSound();
 
   const timers = useRef<{ tick?: number; beat?: number }>({});
 

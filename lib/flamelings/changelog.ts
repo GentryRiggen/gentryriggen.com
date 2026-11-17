@@ -27,6 +27,8 @@ export const CHANGELOG: readonly Release[] = [
       "Dress it up and make it laugh, dance, spin and more",
       "It sleeps at night, so nothing gets hungry while you are in bed",
       "If you forget it for a few days it turns into a sleepy ember. Feed it three times to light it back up!",
+      "Soft, cute sounds: chirps, chomps, sparkles and a little whoosh when an ember lights back up. Tap the speaker to turn them off",
+      "If a new version is ready, a button pops up so you can update with one tap",
       "Keep up to 8 flamelings on your shelf. Everything you unlock is shared with new hatchlings",
     ],
   },

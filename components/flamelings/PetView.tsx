@@ -19,6 +19,7 @@ import FireflyCatch from "./FireflyCatch";
 import Glade from "./Glade";
 import Blob from "./Blob";
 import Meters from "./Meters";
+import SoundToggle from "./SoundToggle";
 import Wardrobe from "./Wardrobe";
 import { FOCUS_RING, SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "./styles";
 import { useEmote } from "./useEmote";
@@ -251,6 +252,7 @@ export default function PetView({ petId }: { petId: string }) {
               className="mt-1 block h-3 w-full overflow-hidden rounded-full [&::-moz-progress-bar]:bg-amber-300 [&::-webkit-progress-bar]:bg-white/25 [&::-webkit-progress-value]:bg-amber-300"
             />
           </div>
+          <SoundToggle />
         </div>
         {alive && <Meters pet={pet} />}
         {!alive && (
