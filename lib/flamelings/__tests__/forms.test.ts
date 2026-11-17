@@ -10,6 +10,7 @@ import {
   settle,
   tapPet,
 } from "../actions";
+import { CARE_CREDIT_CAP } from "../actions";
 import { FORMS, pickForm } from "../forms";
 import { parseSaveSalvaging, parseSave } from "../save";
 import { stageFor } from "../progress";
@@ -71,8 +72,8 @@ describe("counting care", () => {
     pet = clean(pet, noon).pet;
     pet = finishPlay(pet, 5, noon).pet;
     pet = tapPet(pet, noon).pet;
-    pet = emote(pet).pet;
-    pet = dress(pet, "hat", "chef");
+    pet = emote(pet, noon).pet;
+    pet = dress(pet, "hat", "chef", noon);
     expect(pet.care).toEqual({
       feeds: 1,
       cleans: 1,
@@ -81,13 +82,37 @@ describe("counting care", () => {
       styles: 1,
     });
     // Putting on what is already on does not count again.
-    expect(dress(pet, "hat", "chef").care.styles).toBe(1);
+    expect(dress(pet, "hat", "chef", noon).care.styles).toBe(1);
   });
 
   it("counts a purchase as a dress-up", () => {
     const rich = make({ sparks: 500 });
     expect(buy(rich, "hat:chef", noon).pet.care.styles).toBe(1);
     expect(buy(rich, "decor:plant", noon).pet.care.styles).toBe(1);
+  });
+});
+
+describe("care credit cap", () => {
+  it("stops crediting emotes, taps and dress-ups after the daily cap", () => {
+    let pet = make();
+    for (let i = 0; i < CARE_CREDIT_CAP + 15; i++) {
+      pet = emote(pet, noon).pet;
+    }
+    expect(pet.care.pets).toBe(CARE_CREDIT_CAP);
+    pet = tapPet(pet, noon).pet;
+    expect(pet.care.pets).toBe(CARE_CREDIT_CAP);
+    const hats = make({
+      unlocked: [...make().unlocked, "hat:chef", "hat:pirate"],
+      careCredit: { day: "2026-11-16", count: CARE_CREDIT_CAP },
+    });
+    expect(dress(hats, "hat", "chef", noon).care.styles).toBe(0);
+  });
+
+  it("starts again the next day", () => {
+    let pet = make();
+    for (let i = 0; i < CARE_CREDIT_CAP + 1; i++) pet = emote(pet, noon).pet;
+    const tomorrow = noon + 24 * 3_600_000;
+    expect(emote(pet, tomorrow).pet.care.pets).toBe(CARE_CREDIT_CAP + 1);
   });
 });
 
@@ -134,15 +159,18 @@ describe("a 1.2 save in 1.3", () => {
     return raw;
   };
 
-  it("loads with counters at 0 and no form yet", () => {
+  it("loads with no form yet; a young pet is seeded, a grown one is at 0", () => {
     const parsed = parseSaveSalvaging(old());
     expect(parsed?.skipped).toBe(0);
     expect(parsed?.newer).toBe(false);
     expect(parsed?.save.schema).toBe(SAVE_SCHEMA);
-    for (const pet of parsed!.save.pets) {
-      expect(pet.care).toEqual(care());
-      expect(pet.form).toBeNull();
-    }
+    const [young, grown] = parsed!.save.pets;
+    expect(young.care).toEqual(
+      care({ feeds: 1, cleans: 1, plays: 1, pets: 1 })
+    );
+    expect(grown.care).toEqual(care());
+    expect(young.form).toBeNull();
+    expect(grown.form).toBeNull();
     expect(parseSave(old())).not.toBeNull();
   });
 

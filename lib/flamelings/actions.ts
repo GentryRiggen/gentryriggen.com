@@ -39,6 +39,28 @@ import type {
 
 export const MAX_PETS = 8;
 export const PET_TAP_XP_CAP = 10;
+/**
+ * Emotes, pet taps and dress-ups together earn at most this much care credit
+ * (towards a Sparkly form) per day, so spamming them cannot force a form.
+ */
+export const CARE_CREDIT_CAP = 20;
+
+/** Bumps `key` unless today's care credit for it is used up. */
+function creditCare(
+  pet: Pet,
+  key: "pets" | "styles",
+  now: number
+): Pick<Pet, "care" | "careCredit"> {
+  const day = localDay(now);
+  const used = pet.careCredit.day === day ? pet.careCredit.count : 0;
+  if (used >= CARE_CREDIT_CAP) {
+    return { care: pet.care, careCredit: { day, count: used } };
+  }
+  return {
+    care: bumpCare(pet.care, key),
+    careCredit: { day, count: used + 1 },
+  };
+}
 const DAY_MS = 86_400_000;
 
 /**
@@ -158,6 +180,7 @@ export function createPet(params: {
     happening: null,
     wish: 0,
     care: NO_CARE,
+    careCredit: { day: localDay(params.now), count: 0 },
     form: null,
   };
 }
@@ -312,9 +335,9 @@ export function finishPlay(pet: Pet, score: number, now: number): Outcome {
 }
 
 /** Using an emote from the panel: counts towards a Sparkly form, no XP. */
-export function emote(pet: Pet): Outcome {
+export function emote(pet: Pet, now: number): Outcome {
   if (pet.state !== "alive") return { pet, events: [] };
-  return { pet: { ...pet, care: bumpCare(pet.care, "pets") }, events: [] };
+  return { pet: { ...pet, ...creditCare(pet, "pets", now) }, events: [] };
 }
 
 /** Tapping the pet: +1 XP, at most 10 a day. */
@@ -326,7 +349,7 @@ export function tapPet(pet: Pet, now: number): Outcome {
   let next: Pet = {
     ...pet,
     petTaps: { day, count: taps },
-    care: bumpCare(pet.care, "pets"),
+    ...creditCare(pet, "pets", now),
   };
   if (isAwake(now) && taps < PET_TAP_XP_CAP) {
     next = grantXp({ ...next, petTaps: { day, count: taps + 1 } }, 1, events);
@@ -506,14 +529,21 @@ export function collectWish(pet: Pet, now: number): Outcome {
 export type DressSlot = "hat" | "face" | "neck";
 
 /** Wears (or, with null, removes) an item; a locked item is ignored. */
-export function dress(pet: Pet, slot: DressSlot, id: string | null): Pet {
+export function dress(
+  pet: Pet,
+  slot: DressSlot,
+  id: string | null,
+  /** Given for free changes (capped care credit); a purchase passes none. */
+  now?: number
+): Pet {
   if (id !== null && !pet.unlocked.includes(unlockKey(slot, id))) return pet;
   const changed = id !== null && pet.worn[slot] !== id;
-  return {
-    ...pet,
-    worn: { ...pet.worn, [slot]: id } as Worn,
-    care: changed ? bumpCare(pet.care, "styles") : pet.care,
-  };
+  const worn = { ...pet.worn, [slot]: id } as Worn;
+  if (!changed) return { ...pet, worn };
+  if (now === undefined) {
+    return { ...pet, worn, care: bumpCare(pet.care, "styles") };
+  }
+  return { ...pet, worn, ...creditCare(pet, "styles", now) };
 }
 
 /**

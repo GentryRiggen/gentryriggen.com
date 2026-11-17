@@ -1,4 +1,5 @@
 import { createPet, hatch, emptySave } from "../actions";
+import { formScores, pickForm } from "../forms";
 import { SAVE_SCHEMA } from "../types";
 import {
   BACKUPS_KEPT,
@@ -7,6 +8,7 @@ import {
   loadSave,
   loadSaveResult,
   parseSave,
+  parseSaveSalvaging,
   writeSave,
 } from "../save";
 
@@ -285,6 +287,35 @@ describe("migrating a 1.0 save", () => {
       expect(save.pets[0].sparks).toBeGreaterThanOrEqual(0);
       expect(save.pets[0].sparks).toBeLessThanOrEqual(1_000_000);
     }
+  });
+});
+
+describe("migrating care from a 1.2 save", () => {
+  const withoutCare = (level: number) => {
+    const old = hatch(emptySave(NOW), { id: "a", name: "Pip", look, now: NOW });
+    const { care: _care, ...pet } = old.pets[0];
+    void _care;
+    return { ...old, pets: [{ ...pet, level }] };
+  };
+
+  it("spreads a young pet's level evenly over the forms", () => {
+    const parsed = parseSaveSalvaging(withoutCare(6));
+    expect(formScores(parsed!.save.pets[0].care)).toEqual({
+      cozy: 6,
+      wild: 6,
+      sparkly: 6,
+    });
+  });
+
+  it("leaves a pet that already reached level 10 at zero", () => {
+    const parsed = parseSaveSalvaging(withoutCare(12));
+    expect(parsed!.save.pets[0].care.plays).toBe(0);
+  });
+
+  it("lets later care decide for a seeded pet", () => {
+    const pet = parseSaveSalvaging(withoutCare(6))!.save.pets[0];
+    const care = { ...pet.care, plays: pet.care.plays + 3 };
+    expect(pickForm(care, pet.id)).toBe("wild");
   });
 });
 

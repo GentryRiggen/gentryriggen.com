@@ -78,6 +78,8 @@ export interface Pet {
   /** Sparks a shooting-star wish is holding for the morning (0 when none). */
   wish: number;
   care: CareStats;
+  /** Care credit given today for emotes, taps and dress-ups (see CARE_CREDIT_CAP). */
+  careCredit: { day: string; count: number };
   /** The grown-up form picked at level 10; permanent (null before). */
   form: FormId | null;
 }
@@ -96,9 +98,9 @@ export interface Memorial {
 
 /**
  * The shape of the saved data, bumped whenever a build adds fields (1.0 = 1,
- * 1.1 = 2, 1.2 = 3, 1.3 = 4). A build never writes over a save from a newer schema.
+ * 1.1 = 2, 1.2 = 3, 1.3 = 4, 1.4 = 5). A build never writes over a save from a newer schema.
  */
-export const SAVE_SCHEMA = 4;
+export const SAVE_SCHEMA = 5;
 
 export interface SaveData {
   v: 1;

@@ -182,8 +182,21 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     const loaded = loadSaveResult(t);
     canWrite = loaded.writable;
     lastRaw = readRaw();
-    const { save } = settle(loaded.save, t, get().holding);
-    set({ save, clock: t, outdated: loaded.newer });
+    const { save, events } = settle(loaded.save, t, get().holding);
+    // A form picked while settling needs its card and its stat, as in init.
+    const grown = events
+      .filter((e) => e.event.type === "evolve")
+      .map((e) => e.event);
+    const cards = events.flatMap((e) =>
+      e.event.type === "evolve" ? celebrationsFrom(e.petId, [e.event]) : []
+    );
+    trackEvents(grown);
+    set((s) => ({
+      save,
+      clock: t,
+      outdated: loaded.newer,
+      celebrations: [...s.celebrations, ...cards],
+    }));
   }
 
   /**
@@ -359,14 +372,18 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     },
     emote(petId) {
       const pet = petOf(petId);
-      if (pet) commit(petId, emoteAction(pet));
+      if (pet) commit(petId, emoteAction(pet, now()));
     },
     tapPet: (petId) => act(petId, (pet, t) => tapAction(pet, t)),
     openGift: (petId) => act(petId, (pet, t) => openGiftAction(pet, t)),
 
     dress(petId, slot, id) {
       const pet = petOf(petId);
-      if (pet) commit(petId, { pet: dressAction(pet, slot, id), events: [] });
+      if (pet)
+        commit(petId, {
+          pet: dressAction(pet, slot, id, now()),
+          events: [],
+        });
     },
     buy: (petId, key) => act(petId, (pet, t) => buyAction(pet, key, t)),
     markHappeningSeen: (petId) =>

@@ -14,7 +14,7 @@ import {
 } from "./catalog";
 import { emptySave, MAX_PETS, MAX_SPARKS } from "./actions";
 import { isHappeningKind, variantsOf, type Happening } from "./happenings";
-import { isFormId, MAX_CARE_COUNT, NO_CARE } from "./forms";
+import { FORM_LEVEL, isFormId, MAX_CARE_COUNT, NO_CARE } from "./forms";
 import { SAVE_SCHEMA } from "./types";
 import type { CareStats, Look, Memorial, Pet, SaveData, Worn } from "./types";
 
@@ -85,6 +85,24 @@ function parseCare(v: unknown): CareStats {
   };
 }
 
+/**
+ * A save from before care was counted (1.2) has no `care`. A pet still below
+ * the grow-up level then starts with its level's worth of care spread evenly
+ * over the three forms, so what it does from now on decides; one that already
+ * reached the level keeps all zeros and gets the seeded pick.
+ */
+function parseCareOrSeed(v: unknown, level: number): CareStats {
+  if (isObj(v) || level >= FORM_LEVEL) return parseCare(v);
+  return {
+    ...NO_CARE,
+    feeds: level,
+    cleans: level,
+    plays: level,
+    pets: level,
+    styles: 0,
+  };
+}
+
 function parseName(v: unknown): string {
   const name = typeof v === "string" ? v.trim().slice(0, MAX_NAME_LENGTH) : "";
   return name || DEFAULT_NAME;
@@ -144,6 +162,7 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
     : [];
   const taps = isObj(v.petTaps) ? v.petTaps : {};
   const rounds = isObj(v.sparkRounds) ? v.sparkRounds : {};
+  const credit = isObj(v.careCredit) ? v.careCredit : {};
   return {
     id: v.id,
     name: parseName(v.name),
@@ -171,7 +190,11 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
     },
     happening: parseHappening(v.happening),
     wish: Math.floor(num(v.wish, 0, 100, 0)),
-    care: parseCare(v.care),
+    care: parseCareOrSeed(v.care, Math.floor(num(v.level, 1, 99, 1))),
+    careCredit: {
+      day: typeof credit.day === "string" ? credit.day : "",
+      count: Math.floor(num(credit.count, 0, 999, 0)),
+    },
     // An unknown form (from a newer build) is dropped; a pet of level 10 or
     // more with no form picks one when the game settles it.
     form: isFormId(v.form) ? v.form : null,
