@@ -195,6 +195,7 @@ describe("Flamelings caching", () => {
     "/flamelings.html",
     "/flamelings/versions",
     "/flamelings/versions.html",
+    "/flamelings-sw.js",
     "/flamelings.webmanifest",
     "/flamelings/version.json",
     "/flamelings-icons/**",
