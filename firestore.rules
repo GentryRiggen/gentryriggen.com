@@ -571,7 +571,10 @@ service cloud.firestore {
           && p.done is int && p.done >= 0 && p.done <= 1)
         || (name == 'fl_friend'
           && p.keys().hasOnly(['action']) && p.keys().hasAll(['action'])
-          && p.action in ['add', 'playdate', 'visited']);
+          && p.action in ['add', 'playdate', 'visited'])
+        || (name == 'fl_share'
+          && p.keys().hasOnly(['via']) && p.keys().hasAll(['via'])
+          && p.via in ['share', 'download']);
     }
 
     // The client sends its UTC day, which must be the server's UTC day.
