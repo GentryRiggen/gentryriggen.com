@@ -9737,3 +9737,311 @@ html:has(.jim-app) body {
 .fl-still * {
   animation: none !important;
 }
+
+/* ---------- Flamelings: the glade and screens ---------- */
+.fl-twinkle {
+  animation: fl-twinkle 3s ease-in-out infinite;
+}
+@keyframes fl-twinkle {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.fl-fly {
+  filter: drop-shadow(0 0 5px #e8ff7a);
+  animation: fl-fly 9s ease-in-out infinite;
+}
+.fl-fly-2 {
+  animation-duration: 11s;
+  animation-delay: -3s;
+}
+.fl-fly-3 {
+  animation-duration: 8s;
+  animation-delay: -5s;
+}
+.fl-fly-4 {
+  animation-duration: 12s;
+  animation-delay: -1s;
+}
+.fl-fly-5 {
+  animation-duration: 10s;
+  animation-delay: -6s;
+}
+.fl-fly-6 {
+  animation-duration: 13s;
+  animation-delay: -8s;
+}
+@keyframes fl-fly {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(24px, -22px);
+  }
+  50% {
+    transform: translate(-10px, -40px);
+  }
+  75% {
+    transform: translate(-30px, -12px);
+  }
+}
+
+.fl-egg-wobble {
+  animation: fl-egg-wobble 1.6s ease-in-out infinite;
+  transform-origin: 50% 100%;
+}
+.fl-egg-hit {
+  animation: fl-egg-hit 0.35s ease-out;
+  transform-origin: 50% 100%;
+}
+@keyframes fl-egg-wobble {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes fl-egg-hit {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  30% {
+    transform: rotate(-9deg) scale(1.06, 0.94);
+  }
+  70% {
+    transform: rotate(7deg) scale(0.96, 1.05);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.fl-gift-bounce {
+  animation: fl-gift-bounce 1.2s ease-in-out infinite;
+}
+@keyframes fl-gift-bounce {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(4deg);
+  }
+}
+
+.fl-card-in {
+  animation: fl-card-in 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+@keyframes fl-card-in {
+  0% {
+    transform: scale(0.6) translateY(30px);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+.fl-shine-text {
+  animation: fl-new-pulse 1s ease-in-out infinite;
+}
+@keyframes fl-new-pulse {
+  0%,
+  100% {
+    transform: scale(1) rotate(-3deg);
+  }
+  50% {
+    transform: scale(1.12) rotate(3deg);
+  }
+}
+
+/* Food arcs from the basket tray into the pet's mouth. */
+.fl-food-arc {
+  animation: fl-food-arc 0.6s cubic-bezier(0.3, 0.1, 0.6, 1) both;
+}
+@keyframes fl-food-arc {
+  0% {
+    transform: translate(var(--fl-from-x, 0), 120px) scale(1);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(0, -90px) scale(1.15);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, -40px) scale(0.2);
+    opacity: 0;
+  }
+}
+.fl-headshake {
+  animation: fl-headshake 0.5s ease-in-out;
+}
+@keyframes fl-headshake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-14px);
+  }
+  40% {
+    transform: translateX(12px);
+  }
+  60% {
+    transform: translateX(-9px);
+  }
+  80% {
+    transform: translateX(6px);
+  }
+}
+
+/* Firefly Catch: each slot drifts along its own path. */
+.fl-catch {
+  animation: fl-catch-0 7s ease-in-out infinite;
+}
+.fl-catch[data-slot="1"] {
+  animation-name: fl-catch-1;
+  animation-duration: 6s;
+}
+.fl-catch[data-slot="2"] {
+  animation-name: fl-catch-2;
+  animation-duration: 8s;
+}
+.fl-catch[data-slot="3"] {
+  animation-name: fl-catch-3;
+  animation-duration: 5.5s;
+}
+.fl-catch[data-slot="4"] {
+  animation-name: fl-catch-1;
+  animation-duration: 9s;
+  animation-direction: reverse;
+}
+.fl-catch[data-slot="5"] {
+  animation-name: fl-catch-2;
+  animation-duration: 6.5s;
+  animation-direction: reverse;
+}
+.fl-catch[data-slot="6"] {
+  animation-name: fl-catch-3;
+  animation-duration: 7.5s;
+  animation-direction: reverse;
+}
+.fl-catch[data-slot="7"] {
+  animation-name: fl-catch-0;
+  animation-duration: 10s;
+  animation-direction: reverse;
+}
+@keyframes fl-catch-0 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(20vw, -12vh);
+  }
+  50% {
+    transform: translate(34vw, 6vh);
+  }
+  75% {
+    transform: translate(12vw, 14vh);
+  }
+}
+@keyframes fl-catch-1 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30% {
+    transform: translate(-18vw, 10vh);
+  }
+  60% {
+    transform: translate(-30vw, -8vh);
+  }
+  80% {
+    transform: translate(-10vw, -14vh);
+  }
+}
+@keyframes fl-catch-2 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  35% {
+    transform: translate(14vw, 16vh);
+  }
+  70% {
+    transform: translate(-16vw, 8vh);
+  }
+}
+@keyframes fl-catch-3 {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-12vw, -18vh);
+  }
+  55% {
+    transform: translate(18vw, -10vh);
+  }
+  85% {
+    transform: translate(6vw, 12vh);
+  }
+}
+.fl-caught {
+  animation: fl-caught 0.5s ease-out both;
+}
+@keyframes fl-caught {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+.fl-confetti-dot {
+  animation: fl-confetti 1.8s ease-out infinite;
+}
+@keyframes fl-confetti {
+  0% {
+    transform: translateY(20px) scale(0.5);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-80px) scale(1.1);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-twinkle,
+  .fl-fly,
+  .fl-egg-wobble,
+  .fl-egg-hit,
+  .fl-gift-bounce,
+  .fl-card-in,
+  .fl-shine-text,
+  .fl-food-arc,
+  .fl-headshake,
+  .fl-catch,
+  .fl-caught,
+  .fl-confetti-dot {
+    animation: none !important;
+  }
+  .fl-food-arc {
+    opacity: 0;
+  }
+}

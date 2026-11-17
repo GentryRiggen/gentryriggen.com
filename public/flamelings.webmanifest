@@ -1,0 +1,32 @@
+{
+  "name": "Flamelings",
+  "short_name": "Flamelings",
+  "description": "Hatch, feed and dress up a little flame pet.",
+  "id": "/flamelings",
+  "start_url": "/flamelings",
+  "scope": "/flamelings",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#2a1a4a",
+  "background_color": "#2a1a4a",
+  "icons": [
+    {
+      "src": "/flamelings-icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/flamelings-icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/flamelings-icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
