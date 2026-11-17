@@ -117,7 +117,7 @@ const ITEM_CHANCE = { visitor: 0.35, treasure: 0.3 } as const;
 /** Shop pets and sparks stay small whole numbers. */
 export const MAX_SPARKS = 1_000_000;
 
-function earn(
+export function earn(
   pet: Pet,
   amount: number,
   source: SparkSource,
@@ -129,7 +129,7 @@ function earn(
   return { ...pet, sparks: Math.min(MAX_SPARKS, pet.sparks + gained) };
 }
 
-const clamp = (n: number) => Math.min(100, Math.max(0, n));
+export const clamp = (n: number) => Math.min(100, Math.max(0, n));
 
 export function emptySave(now: number): SaveData {
   return {

@@ -165,11 +165,22 @@ export type PetEvent =
   | { type: "sparks"; amount: number; source: SparkSource }
   | { type: "buy"; key: UnlockKey; price: number }
   | { type: "happening"; kind: HappeningKind; done: boolean }
-  | { type: "evolve"; form: FormId };
+  | { type: "evolve"; form: FormId }
+  | { type: "friend"; action: FriendAction };
+
+/** What the Friends screen counts: a friend added, a playdate played, a visit received. */
+export type FriendAction = "add" | "playdate" | "visited";
 
 /** Where sparks came from: the screen flies them in from the matching spot. */
 export type SparkSource =
-  "feed" | "clean" | "play" | "gift" | "level" | "relight" | "happening";
+  | "feed"
+  | "clean"
+  | "play"
+  | "gift"
+  | "level"
+  | "relight"
+  | "happening"
+  | "friend";
 
 /** The mini-games in the Play picker; all share one cap of paying rounds. */
 export type PlayGame = "fireflies" | "marshmallow" | "logs";

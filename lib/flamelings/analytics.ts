@@ -77,6 +77,9 @@ export function trackEvents(events: readonly PetEvent[]): void {
       case "evolve":
         trackGame("fl_form", { form: event.form });
         break;
+      case "friend":
+        trackGame("fl_friend", { action: event.action });
+        break;
       default:
         break;
     }
