@@ -1,4 +1,11 @@
-/** Shared Tailwind class strings for the Flamelings screens. */
+/**
+ * Shared Tailwind class strings for the Flamelings screens.
+ *
+ * A token owns the properties it sets. There is no tailwind-merge here, and
+ * whichever utility comes later in the built CSS wins, not the one written
+ * last, so a caller must not re-set a token's display, colour, padding or text
+ * size. Use a `_BASE` / `PILL` variant and set those yourself instead.
+ */
 
 export const FOCUS_RING =
   "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-sky-500 focus-visible:ring-offset-2";
@@ -14,11 +21,16 @@ export const STICKER =
   "rounded-[28px] bg-[#fff6e6] text-[#3a2340] shadow-[0_5px_0_#e7c9a3,0_12px_28px_rgba(30,10,40,.30)]";
 
 /** A cream round button, 64px or more, that squishes when pressed. */
-const ROUND_BUTTON = `grid min-h-16 min-w-16 place-items-center rounded-full text-[#3a2340] transition-transform active:translate-y-[3px] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
+const ROUND_CORE = `min-h-16 min-w-16 rounded-full transition-transform active:translate-y-[3px] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
+const ROUND_BUTTON = `grid place-items-center text-[#3a2340] ${ROUND_CORE}`;
 export const STICKER_BUTTON = `${ROUND_BUTTON} bg-[#fff6e6] shadow-[0_4px_0_#e7c9a3,0_8px_18px_rgba(30,10,40,.25)] active:shadow-[0_2px_0_#e7c9a3]`;
+/** The cream sticker with no display or text colour, for a pill that sets its own (flex, icon beside words). */
+export const STICKER_PILL = `${ROUND_CORE} bg-[#fff6e6] shadow-[0_4px_0_#e7c9a3,0_8px_18px_rgba(30,10,40,.25)] active:shadow-[0_2px_0_#e7c9a3]`;
 /** The sticker button in peach, for use on a cream card. */
 export const PEACH_BUTTON = `${ROUND_BUTTON} bg-[#ffd9b0] shadow-[0_4px_0_#e0a46a,0_8px_18px_rgba(30,10,40,.2)] active:shadow-[0_2px_0_#e0a46a]`;
 
+/** The orange button with no padding or text size, for a caller that sets its own. */
+export const PRIMARY_BUTTON_BASE = `${DISPLAY} min-h-16 min-w-16 rounded-3xl bg-gradient-to-b from-[#ff8a3d] to-[#f2542d] font-semibold text-white shadow-[0_5px_0_#c2410c,0_10px_20px_rgba(30,10,40,.30)] transition-transform active:translate-y-[3px] active:shadow-[0_2px_0_#c2410c] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
 export const PRIMARY_BUTTON = `${DISPLAY} min-h-16 min-w-16 rounded-3xl bg-gradient-to-b from-[#ff8a3d] to-[#f2542d] px-8 py-4 text-xl font-semibold text-white shadow-[0_5px_0_#c2410c,0_10px_20px_rgba(30,10,40,.30)] transition-transform active:translate-y-[3px] active:shadow-[0_2px_0_#c2410c] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
 
 /** The gold pill that holds the spark count. */
@@ -33,7 +45,7 @@ export const CHROME_BG =
  * pets on the shelf and friends; callers add size, layout and padding.
  */
 export const JAR_CARD =
-  "relative overflow-hidden rounded-[30px] border-2 border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.30))] text-[#3a2340] shadow-[inset_0_0_56px_rgba(255,140,60,.22),0_10px_24px_rgba(58,35,64,.14)] backdrop-blur-[2px] dark:border-[rgba(255,230,200,.22)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.04))] dark:text-[#ffe6c4] dark:shadow-[inset_0_0_60px_rgba(255,140,60,.16),0_10px_24px_rgba(0,0,0,.25)]";
+  "relative overflow-hidden rounded-[30px] border-2 border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,.62),rgba(255,255,255,.30))] text-[#3a2340] shadow-[inset_0_0_56px_rgba(255,140,60,.22),0_10px_24px_rgba(58,35,64,.14)] dark:border-[rgba(255,230,200,.22)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,.11),rgba(255,255,255,.04))] dark:text-[#ffe6c4] dark:shadow-[inset_0_0_60px_rgba(255,140,60,.16),0_10px_24px_rgba(0,0,0,.25)]";
 
 /** The dimmed dusk behind a dialog card. */
 export const DIALOG_BACKDROP = "bg-[#1b1430]/55";

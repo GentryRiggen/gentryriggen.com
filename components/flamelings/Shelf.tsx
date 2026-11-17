@@ -24,7 +24,7 @@ import {
   SAFE_BOTTOM,
   SAFE_SIDES,
   SAFE_TOP,
-  STICKER_BUTTON,
+  STICKER_PILL,
 } from "./styles";
 
 /** One word for how a pet feels, under its name on the shelf. */
@@ -214,7 +214,7 @@ export default function Shelf() {
             <button
               type="button"
               onClick={() => go({ screen: "grove" })}
-              className={`${STICKER_BUTTON} ${DISPLAY} flex gap-2 rounded-full px-5 text-lg font-semibold text-[#2f6b4f]`}
+              className={`${STICKER_PILL} ${DISPLAY} flex items-center gap-2 px-5 text-lg font-semibold text-[#2f6b4f]`}
             >
               <span aria-hidden="true">🕯️</span>
               <span>Memory Grove</span>

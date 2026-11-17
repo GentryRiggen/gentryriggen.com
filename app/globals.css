@@ -9833,15 +9833,24 @@ html:has(.jim-app) body {
   .fl-star-drift,
   .fl-flake,
   .fl-cloud-in,
+  .fl-cloud-out,
+  .fl-drop,
+  .fl-dig,
+  .fl-chest-pop,
+  .fl-mush-pop,
+  .fl-mush-wrong,
+  .fl-pop-burst,
   .fl-candle,
   .fl-mush-dance,
   .fl-intro-pop {
     animation: none !important;
   }
-  .fl-flake {
+  .fl-flake,
+  .fl-drop {
     display: none;
   }
   .fl-bye,
+  .fl-cloud-out,
   .fl-star-wish {
     opacity: 0;
   }

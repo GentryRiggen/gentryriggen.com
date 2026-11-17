@@ -22,6 +22,7 @@ import {
   FOCUS_RING,
   JAR_CARD,
   PRIMARY_BUTTON,
+  PRIMARY_BUTTON_BASE,
   SAFE_BOTTOM,
   SAFE_SIDES,
   SAFE_TOP,
@@ -289,25 +290,37 @@ function FriendCard({
       <span className="text-sm font-extrabold text-[#7a5a78] dark:text-[#c9a9d6]">
         Lv {friend.card.level}
       </span>
-      <button
-        type="button"
-        disabled={!canPlay}
-        onClick={onPlay}
-        aria-label={`Playdate with ${name}`}
-        data-testid="playdate-button"
-        className={`${PRIMARY_BUTTON} relative mt-1 w-full px-4 text-3xl`}
-      >
-        <span aria-hidden="true">🎈</span>
-        {!canPlay && (
-          <span
-            aria-hidden="true"
-            className="absolute -right-1 -top-2 grid size-8 place-items-center rounded-full bg-[#e0e7ff] text-base shadow"
+      <div className="mt-1 flex w-full gap-2">
+        <button
+          type="button"
+          disabled={!canPlay}
+          onClick={onPlay}
+          aria-label={`Playdate with ${name}`}
+          data-testid="playdate-button"
+          className={`${PRIMARY_BUTTON_BASE} relative grid flex-1 place-items-center px-4 py-4 text-3xl`}
+        >
+          <span aria-hidden="true">🎈</span>
+          {!canPlay && (
+            <span
+              aria-hidden="true"
+              className="absolute -right-1 -top-2 grid size-8 place-items-center rounded-full bg-[#e0e7ff] text-base shadow"
+            >
+              💤
+            </span>
+          )}
+        </button>
+        {!confirming && (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            aria-label={`Remove ${name} from my friends`}
+            className={`grid size-16 shrink-0 place-items-center rounded-full bg-[#fff6e6]/80 text-2xl shadow-[0_2px_0_#e7c9a3] ${FOCUS_RING}`}
           >
-            💤
-          </span>
+            <span aria-hidden="true">🗑️</span>
+          </button>
         )}
-      </button>
-      {confirming ? (
+      </div>
+      {confirming && (
         <div className="flex gap-2">
           <button
             type="button"
@@ -327,15 +340,6 @@ function FriendCard({
             <span aria-hidden="true">↩️</span>
           </button>
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          aria-label={`Remove ${name} from my friends`}
-          className={`absolute right-1.5 top-2.5 grid size-16 place-items-center rounded-full bg-[#fff6e6]/80 text-2xl shadow-[0_2px_0_#e7c9a3] ${FOCUS_RING}`}
-        >
-          <span aria-hidden="true">🗑️</span>
-        </button>
       )}
     </li>
   );

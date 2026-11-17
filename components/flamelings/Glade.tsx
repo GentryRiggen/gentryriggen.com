@@ -521,7 +521,7 @@ export default function Glade({ nowMs, decor = [] }: GladeProps) {
 
       <path d={GROUND} fill="url(#fl-ground)" />
       {/* The ground runs on under the dock. */}
-      <rect x="-800" y="599" width="2400" height="1400" fill={land.ground[1]} />
+      <rect y="599" width="800" height="1400" fill={land.ground[1]} />
       {[150, 262, 330, 470, 548, 660].map((gx, i) => {
         const gy = 470 + (i % 3) * 22;
         return (
@@ -581,9 +581,8 @@ export default function Glade({ nowMs, decor = [] }: GladeProps) {
       {placed("front")}
 
       <rect
-        x="-800"
         y="-600"
-        width="2400"
+        width="800"
         height="2600"
         fill={tint.colour}
         opacity={tint.opacity}

@@ -22,7 +22,7 @@ import PanelHeader from "./PanelHeader";
 import {
   CHROME_BG,
   DONE_BUTTON,
-  PRIMARY_BUTTON,
+  PRIMARY_BUTTON_BASE,
   SAFE_BOTTOM,
   SAFE_SIDES,
   SAFE_TOP,
@@ -186,7 +186,7 @@ export default function SharePicture({
         onClick={handleShare}
         disabled={picture.kind !== "ready" || isBusy}
         data-testid="share-button"
-        className={`${PRIMARY_BUTTON} mx-auto mb-1 flex w-full max-w-md items-center justify-center gap-2 text-2xl`}
+        className={`${PRIMARY_BUTTON_BASE} mx-auto mb-1 flex w-full max-w-md items-center justify-center gap-2 px-8 py-4 text-2xl`}
       >
         <span
           aria-hidden="true"
