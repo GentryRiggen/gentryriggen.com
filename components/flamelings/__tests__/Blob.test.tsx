@@ -21,6 +21,13 @@ describe("Blob", () => {
     );
   });
 
+  it("only fills its box as a preview when asked to", () => {
+    const { container, rerender } = render(<Blob look={look} mood="happy" />);
+    expect(container.querySelector(".fl-pet")).not.toHaveClass("fl-pet-fit");
+    rerender(<Blob look={look} mood="happy" fit />);
+    expect(container.querySelector(".fl-pet")).toHaveClass("fl-pet-fit");
+  });
+
   it("gives two blobs their own gradient ids", () => {
     const { container } = render(
       <>

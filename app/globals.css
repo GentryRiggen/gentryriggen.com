@@ -10997,3 +10997,17 @@ html:has(.jim-app) body {
 .fl-share-still .fl-zap {
   opacity: 0.85;
 }
+
+/* Previews (Friends): a young pet nearly fills its box instead of floating. */
+.fl-pet-fit[data-stage="spark"] {
+  --fl-stage: 0.88;
+}
+.fl-pet-fit[data-stage="flicker"] {
+  --fl-stage: 0.9;
+}
+.fl-pet-fit[data-stage="flame"] {
+  --fl-stage: 0.93;
+}
+.fl-pet-fit[data-stage="blaze"] {
+  --fl-stage: 0.96;
+}
