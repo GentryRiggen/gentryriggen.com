@@ -91,7 +91,7 @@ test("a long gap makes an ember, and three feeds relight it", async ({
   await hatch(page, "Sparky");
   await page.getByRole("button", { name: "Back to the shelf" }).click();
 
-  await page.evaluate((ms) => window.__flamelings!.skip(ms), 3 * DAY_MS);
+  await page.evaluate((ms) => window.__flamelings!.skip(ms), 4 * DAY_MS);
   await expect(page.getByTestId("pet-card")).toHaveAccessibleName(/Ember/);
   await page.getByTestId("pet-card").click();
   await expect(page.getByTestId("ember-hint")).toBeVisible();
