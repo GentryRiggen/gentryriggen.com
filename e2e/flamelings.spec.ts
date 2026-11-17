@@ -98,7 +98,7 @@ test("earn sparks, buy a hat and a decoration, and keep them after a reload", as
   await expect(page.getByTestId("sparks")).toHaveAttribute("data-value", "3");
   await expect(page.getByTestId("sparks")).toHaveAccessibleName("3 sparks");
 
-  await page.evaluate(() => window.__flamelings!.patchPet(0, { sparks: 100 }));
+  await page.evaluate(() => window.__flamelings!.patchPet(0, { sparks: 160 }));
   await page.getByRole("button", { name: "Shop", exact: true }).click();
   await page.getByRole("button", { name: /Buy Chef hat/ }).click();
   await expect(page.getByRole("dialog", { name: "You got it!" })).toBeVisible();
@@ -109,13 +109,13 @@ test("earn sparks, buy a hat and a decoration, and keep them after a reload", as
 
   // Too dear: no purchase, and it says how many more sparks it needs.
   await page.getByRole("button", { name: /Tent, 280 sparks/ }).click();
-  await expect(page.getByTestId("shop-short")).toContainText("240");
+  await expect(page.getByTestId("shop-short")).toContainText("230");
 
   const bought = await page.evaluate(() => {
     const pet = window.__flamelings!.state().save.pets[0];
     return { sparks: pet.sparks, worn: pet.worn.hat, decor: pet.decor };
   });
-  expect(bought).toEqual({ sparks: 40, worn: "chef", decor: ["plant"] });
+  expect(bought).toEqual({ sparks: 50, worn: "chef", decor: ["plant"] });
 
   // Owned decor can be put away and back out.
   await page.getByRole("button", { name: "Potted plant, on" }).click();
@@ -126,7 +126,7 @@ test("earn sparks, buy a hat and a decoration, and keep them after a reload", as
   await page.reload();
   await page.waitForFunction(() => Boolean(window.__flamelings));
   await page.getByTestId("pet-card").click();
-  await expect(page.getByTestId("sparks")).toHaveAttribute("data-value", "40");
+  await expect(page.getByTestId("sparks")).toHaveAttribute("data-value", "50");
   await expect(page.getByTestId("fl-decor-plant")).toBeAttached();
   const kept = await page.evaluate(() => {
     const pet = window.__flamelings!.state().save.pets[0];
@@ -149,9 +149,9 @@ test("the care bar and the shop fit the screen @smoke", async ({ page }) => {
     expect(box!.x + box!.width).toBeLessThanOrEqual(width);
   }
   await page.getByRole("button", { name: "Shop", exact: true }).click();
-  await page.getByRole("button", { name: /Buy Bunny ears/ }).tap();
+  await page.getByRole("button", { name: /Buy Bunny ears/ }).click();
   await expect(page.getByRole("dialog", { name: "You got it!" })).toBeVisible();
-  await page.getByRole("button", { name: "Yay!" }).tap();
+  await page.getByRole("button", { name: "Yay!" }).click();
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth
   );
