@@ -127,6 +127,10 @@ describe("relight recovery", () => {
     // Glow climbs while it is fed and happy.
     expect(advance(lit, noon, noon + 2 * HOUR).glow).toBeGreaterThan(40);
   });
+
+  it("hatches full and happy", () => {
+    expect(make()).toMatchObject({ fuel: 100, joy: 100, glow: 100 });
+  });
 });
 
 describe("other care", () => {

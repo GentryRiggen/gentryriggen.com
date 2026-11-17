@@ -51,6 +51,8 @@ test("hatch, name, feed and dress a pet, and it survives a reload", async ({
   await open(page);
   await hatch(page, "Pip");
 
+  // Pets hatch full, so let this one get peckish first.
+  await page.evaluate(() => window.__flamelings!.patchPet(0, { fuel: 30 }));
   const fuelBefore = await page.evaluate(
     () => window.__flamelings!.state().save.pets[0].fuel
   );
