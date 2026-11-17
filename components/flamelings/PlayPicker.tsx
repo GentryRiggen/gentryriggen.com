@@ -5,7 +5,7 @@ import {
   DIALOG_BACKDROP,
   DISPLAY,
   FOCUS_RING,
-  STICKER_BUTTON,
+  PEACH_BUTTON,
   TRAY,
 } from "./styles";
 
@@ -73,7 +73,7 @@ export default function PlayPicker({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className={`${STICKER_BUTTON} size-16 bg-[#ffe9cc]`}
+            className={`${PEACH_BUTTON} size-16`}
           >
             <FlIcon name="close" className="size-8" />
           </button>

@@ -14,7 +14,10 @@ export const STICKER =
   "rounded-[28px] bg-[#fff6e6] text-[#3a2340] shadow-[0_5px_0_#e7c9a3,0_12px_28px_rgba(30,10,40,.30)]";
 
 /** A cream round button, 64px or more, that squishes when pressed. */
-export const STICKER_BUTTON = `grid min-h-16 min-w-16 place-items-center rounded-full bg-[#fff6e6] text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_8px_18px_rgba(30,10,40,.25)] transition-transform active:translate-y-[3px] active:shadow-[0_2px_0_#e7c9a3] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
+const ROUND_BUTTON = `grid min-h-16 min-w-16 place-items-center rounded-full text-[#3a2340] transition-transform active:translate-y-[3px] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
+export const STICKER_BUTTON = `${ROUND_BUTTON} bg-[#fff6e6] shadow-[0_4px_0_#e7c9a3,0_8px_18px_rgba(30,10,40,.25)] active:shadow-[0_2px_0_#e7c9a3]`;
+/** The sticker button in peach, for use on a cream card. */
+export const PEACH_BUTTON = `${ROUND_BUTTON} bg-[#ffd9b0] shadow-[0_4px_0_#e0a46a,0_8px_18px_rgba(30,10,40,.2)] active:shadow-[0_2px_0_#e0a46a]`;
 
 export const PRIMARY_BUTTON = `${DISPLAY} min-h-16 min-w-16 rounded-3xl bg-gradient-to-b from-[#ff8a3d] to-[#f2542d] px-8 py-4 text-xl font-semibold text-white shadow-[0_5px_0_#c2410c,0_10px_20px_rgba(30,10,40,.30)] transition-transform active:translate-y-[3px] active:shadow-[0_2px_0_#c2410c] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
 
@@ -44,6 +47,9 @@ export const TAB_ICON_DISC =
   "-ml-2 grid size-11 shrink-0 place-items-center rounded-full bg-[#fff6e6] shadow-[inset_0_-3px_0_rgba(194,120,60,.18)]";
 export const TAB_OFF =
   "bg-[#fff6e6] text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_8px_16px_rgba(30,10,40,.18)]";
+/** An unselected chip on a cream card. */
+export const TAB_OFF_ON_CREAM =
+  "bg-[#ffe9cc] text-[#3a2340] shadow-[0_4px_0_#e7c9a3]";
 
 /** The cream tray that slides up above the dock (food, emotes). */
 export const TRAY =
@@ -58,6 +64,12 @@ export const SPOTLIGHT =
 
 /** The Done button at the top right of a full-screen panel (narrower on phones). */
 export const DONE_BUTTON = `${PRIMARY_BUTTON} max-sm:px-5`;
+
+/** A mini-game's score: the gold spark pill. */
+export const SCORE_CHIP = `${DISPLAY} flex h-16 shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-b from-[#ffe58a] to-[#ffc53d] px-4 text-2xl font-bold text-[#7a3d00] shadow-[0_4px_0_#d9952a,0_8px_18px_rgba(30,10,40,.25)] sm:px-5`;
+
+/** A mini-game's timer or count: a cream chip beside the score. */
+export const TIMER_CHIP = `${DISPLAY} flex h-16 shrink-0 items-center gap-1.5 rounded-full bg-[#fff6e6] px-4 text-2xl font-bold tabular-nums text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_8px_18px_rgba(30,10,40,.25)] sm:px-5`;
 
 export const CARD =
   "rounded-3xl bg-[#fff6e6] text-[#3a2340] shadow-[0_5px_0_#e7c9a3,0_12px_28px_rgba(30,10,40,.30)]";

@@ -201,9 +201,7 @@ export default function Wardrobe({ pet, nowMs, onClose }: WardrobeProps) {
                     ? labelOf(key)
                     : `${labelOf(key)}, locked, ${lockText(key)}`
                 }
-                className={`${TILE} ${selected ? TILE_ON : ""} ${
-                  owned ? "" : "bg-[#f6ead8]"
-                }`}
+                className={`${TILE} ${selected ? TILE_ON : ""}`}
               >
                 <span
                   className={`grid size-20 place-items-center rounded-full ${owned ? SPOTLIGHT : ""}`}

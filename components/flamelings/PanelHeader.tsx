@@ -9,6 +9,8 @@ interface PanelHeaderProps {
   title: string;
   /** The heading level: h1 for a whole screen, h2 for a panel over one. */
   level?: 1 | 2;
+  /** What sits on the left, before the title (a back button). */
+  lead?: ReactNode;
   /** What sits on the right: the spark pill, buttons, Done. */
   children?: ReactNode;
 }
@@ -19,11 +21,13 @@ export default function PanelHeader({
   iconClass = "bg-[#fff6e6]",
   title,
   level = 2,
+  lead,
   children,
 }: PanelHeaderProps) {
   const Heading = level === 1 ? "h1" : "h2";
   return (
     <header className="flex items-center gap-2 py-2 sm:gap-3">
+      {lead}
       <Heading
         className={`${DISPLAY} flex min-w-0 flex-1 items-center gap-2 text-2xl font-bold tracking-tight text-[#7a3d2c] min-[400px]:text-3xl sm:gap-3 sm:text-4xl dark:text-[#ffe6c4] dark:[text-shadow:0_0_20px_rgba(255,150,60,.45)]`}
       >

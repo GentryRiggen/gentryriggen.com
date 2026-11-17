@@ -12,7 +12,15 @@ import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
 import Blob from "../Blob";
 import { burstConfetti } from "../confetti";
 import Glade from "../Glade";
-import { FOCUS_RING, PRIMARY_BUTTON } from "../styles";
+import FlIcon from "../FlIcon";
+import {
+  DIALOG_BACKDROP,
+  DISPLAY,
+  FOCUS_RING,
+  PRIMARY_BUTTON,
+  STICKER,
+  STICKER_BUTTON,
+} from "../styles";
 import { useLater } from "../useLater";
 import CardBlob from "./CardBlob";
 
@@ -114,14 +122,16 @@ export default function PlaydateScene({
       data-step={step}
       className={`fixed inset-0 z-30 overflow-hidden bg-slate-900 ${SAFE_INSETS}`}
     >
-      <div className="absolute inset-0">
+      {/* fl-playdate: the scene fills the whole screen here, so the decor
+          tiers for narrow screens are tuned for it (see globals.css). */}
+      <div className="fl-playdate absolute inset-0">
         <Glade nowMs={clock} decor={pet.decor} />
       </div>
 
       <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
         <ol
           aria-label="Playdate steps"
-          className="flex gap-2 rounded-full bg-black/45 px-3 py-2"
+          className="flex gap-1.5 rounded-full bg-[#fff6e6] p-1.5 shadow-[0_4px_0_#e7c9a3,0_8px_18px_rgba(30,10,40,.25)] sm:gap-2 sm:p-2"
         >
           {STEPS.map((s) => {
             const here = s.id === step || (s.id === "share" && step === "eat");
@@ -129,8 +139,10 @@ export default function PlaydateScene({
               <li
                 key={s.id}
                 aria-current={here ? "step" : undefined}
-                className={`grid size-11 place-items-center rounded-full text-2xl ${
-                  here ? "bg-orange-400" : "bg-white/20 opacity-70"
+                className={`grid size-12 place-items-center rounded-full text-2xl transition-transform ${
+                  here
+                    ? "scale-110 bg-gradient-to-b from-[#ff8a3d] to-[#f2542d] shadow-[0_3px_0_#c2410c]"
+                    : "bg-[#ffe9cc] opacity-60"
                 }`}
               >
                 <span aria-hidden="true">{s.icon}</span>
@@ -143,9 +155,9 @@ export default function PlaydateScene({
             type="button"
             onClick={onClose}
             aria-label="Stop the playdate"
-            className={`grid size-16 place-items-center rounded-3xl bg-white/90 text-3xl shadow-lg active:scale-95 ${FOCUS_RING}`}
+            className={`${STICKER_BUTTON} size-16`}
           >
-            <span aria-hidden="true">✖️</span>
+            <FlIcon name="close" className="size-8" />
           </button>
         )}
       </div>
@@ -216,7 +228,7 @@ export default function PlaydateScene({
         </div>
         <p
           data-testid="friend-name"
-          className="mx-auto mt-1 w-fit rounded-full bg-black/50 px-4 py-1 text-xl font-black text-white"
+          className={`${DISPLAY} mx-auto mt-1 w-fit rounded-full bg-[#fff6e6] px-4 py-1 text-xl font-semibold text-[#3a2340] shadow-[0_3px_0_#e7c9a3]`}
         >
           {friendName}
         </p>
@@ -228,7 +240,7 @@ export default function PlaydateScene({
           onClick={share}
           aria-label="Share a marshmallow"
           data-testid="share-marshmallow"
-          className={`absolute left-1/2 top-[42%] grid size-28 -translate-x-1/2 place-items-center rounded-full bg-white/90 text-7xl shadow-2xl active:scale-90 ${FOCUS_RING}`}
+          className={`absolute left-1/2 top-[42%] grid size-28 -translate-x-1/2 place-items-center rounded-full border-4 border-white/80 bg-[#fff6e6] text-7xl shadow-[0_6px_0_#e7c9a3,0_14px_30px_rgba(30,10,40,.35)] active:translate-y-[3px] ${FOCUS_RING}`}
         >
           <span aria-hidden="true" className="fl-hint-bob">
             🍡
@@ -248,22 +260,35 @@ export default function PlaydateScene({
       )}
 
       {step === "done" && (
-        <div className="absolute inset-0 z-10 grid place-items-center bg-black/50 p-5">
+        <div
+          className={`absolute inset-0 z-10 grid place-items-center p-5 ${DIALOG_BACKDROP}`}
+        >
           <div
             data-testid="playdate-done"
-            className="fl-card-in flex w-full max-w-sm flex-col items-center gap-3 rounded-[2rem] bg-gradient-to-b from-amber-100 to-orange-200 p-6 text-center text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50"
+            className={`${STICKER} fl-pop-in flex w-full max-w-sm flex-col items-center gap-3 p-6 text-center`}
           >
-            <p className="text-4xl font-black">
+            <p className={`${DISPLAY} text-4xl font-bold text-[#7a3d2c]`}>
               <span aria-hidden="true">🎉 </span>Playdate!
             </p>
             {paid ? (
               <p
                 role="img"
                 aria-label={`${PLAYDATE_REWARD.joy} joy and ${PLAYDATE_REWARD.sparks} sparks`}
-                className="flex gap-3 text-3xl font-black"
+                className={`${DISPLAY} flex gap-3 text-3xl font-bold`}
               >
-                <span aria-hidden="true">😊 +{PLAYDATE_REWARD.joy}</span>
-                <span aria-hidden="true">✨ +{PLAYDATE_REWARD.sparks}</span>
+                <span
+                  aria-hidden="true"
+                  className="flex items-center gap-1 rounded-full bg-[#ffe1e6] px-4 py-1 text-[#be123c] shadow-[0_3px_0_#f5b5c0]"
+                >
+                  <FlIcon name="joy" className="size-7" />+{PLAYDATE_REWARD.joy}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="flex items-center gap-1 rounded-full bg-gradient-to-b from-[#ffe58a] to-[#ffc53d] px-4 py-1 text-[#7a3d00] shadow-[0_3px_0_#d9952a]"
+                >
+                  <FlIcon name="spark" className="size-7" />+
+                  {PLAYDATE_REWARD.sparks}
+                </span>
               </p>
             ) : (
               <p className="text-5xl" aria-hidden="true">

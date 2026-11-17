@@ -13,16 +13,20 @@ import { stageTitle } from "@/lib/flamelings/status";
 import { useFlamelings } from "@/lib/flamelings/store";
 import type { Friend, PetCard } from "@/lib/flamelings/types";
 import { MAX_FRIENDS } from "@/lib/flamelings/types";
+import FlIcon from "../FlIcon";
+import PanelHeader from "../PanelHeader";
 import SoundToggle from "../SoundToggle";
 import {
-  BIG_BUTTON,
-  CARD,
   CHROME_BG,
+  DISPLAY,
   FOCUS_RING,
+  JAR_CARD,
   PRIMARY_BUTTON,
   SAFE_BOTTOM,
   SAFE_SIDES,
   SAFE_TOP,
+  STICKER,
+  STICKER_BUTTON,
 } from "../styles";
 import CardBlob from "./CardBlob";
 import CodeKeypad from "./CodeKeypad";
@@ -40,7 +44,11 @@ type Lookup =
   | { kind: "self" }
   | { kind: "already" };
 
-const CODE_FONT = "font-mono";
+/** A round blue action button (copy, retry), like the shelf's friends button. */
+const BLUE_BUTTON = `grid size-16 shrink-0 place-items-center rounded-full border-4 border-[#fff6e6] bg-[#7cc4ff] text-3xl shadow-[inset_0_-4px_0_rgba(0,0,0,.15),0_4px_10px_rgba(30,10,40,.25)] transition-transform active:translate-y-[2px] ${FOCUS_RING}`;
+
+/** A green "yes" button. */
+const YES_BUTTON = `grid min-h-16 min-w-24 place-items-center rounded-3xl bg-gradient-to-b from-[#6ee7a0] to-[#22b864] px-6 shadow-[0_5px_0_#15803d,0_10px_20px_rgba(30,10,40,.25)] transition-transform active:translate-y-[3px] ${FOCUS_RING}`;
 
 /** The big code, one box per letter. */
 function CodeBoxes({ code }: { code: string }) {
@@ -55,7 +63,7 @@ function CodeBoxes({ code }: { code: string }) {
         <span
           key={i}
           aria-hidden="true"
-          className={`${CODE_FONT} grid size-12 place-items-center rounded-2xl bg-white text-3xl font-black text-stone-900 shadow-md sm:size-16 sm:text-5xl dark:bg-slate-700 dark:text-amber-50`}
+          className={`${DISPLAY} grid h-14 w-12 place-items-center rounded-2xl bg-[#fff6e6] text-4xl font-bold text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_8px_16px_rgba(30,10,40,.18)] sm:h-20 sm:w-16 sm:text-5xl`}
         >
           {ch}
         </span>
@@ -68,7 +76,7 @@ function CloudOff({ onRetry }: { onRetry: () => void }) {
   return (
     <div
       data-testid="friends-offline"
-      className={`${CARD} flex flex-col items-center gap-3 p-6 text-center`}
+      className={`${STICKER} fl-pop-in flex flex-col items-center gap-3 p-6 text-center`}
     >
       <span
         role="img"
@@ -81,7 +89,7 @@ function CloudOff({ onRetry }: { onRetry: () => void }) {
         type="button"
         onClick={onRetry}
         aria-label="Try again"
-        className={`${BIG_BUTTON} bg-sky-500 px-6 text-3xl text-white dark:bg-sky-300 dark:text-slate-900`}
+        className={BLUE_BUTTON}
       >
         <span aria-hidden="true">🔄</span>
       </button>
@@ -136,7 +144,7 @@ function AddFriend({ petId, onClose }: { petId: string; onClose: () => void }) {
       role="group"
       aria-label="Add a friend"
       data-testid="add-friend"
-      className={`${CARD} flex flex-col items-center gap-4 p-4`}
+      className={`${JAR_CARD} fl-sheet-up flex flex-col items-center gap-4 px-2 py-4 sm:p-5`}
     >
       <CodeKeypad
         value={code}
@@ -201,9 +209,9 @@ function AddFriend({ petId, onClose }: { petId: string; onClose: () => void }) {
                   mood="excited"
                   className="size-40"
                 />
-                <p className="text-left text-2xl font-black">
+                <p className={`${DISPLAY} text-left text-3xl font-bold`}>
                   {onlineName(lookup.card.nameId)}
-                  <span className="block text-base font-semibold opacity-75">
+                  <span className="block font-sans text-base font-extrabold text-[#7a5a78] dark:text-[#c9a9d6]">
                     Lv {lookup.card.level} ·{" "}
                     {stageTitle(
                       lookup.card.level,
@@ -218,17 +226,22 @@ function AddFriend({ petId, onClose }: { petId: string; onClose: () => void }) {
                   onClick={() => confirm(lookup.card)}
                   aria-label="Add this friend"
                   data-testid="confirm-friend"
-                  className={`${BIG_BUTTON} bg-emerald-600 px-8 text-4xl text-white`}
+                  className={YES_BUTTON}
                 >
-                  <span aria-hidden="true">✅</span>
+                  <span
+                    aria-hidden="true"
+                    className="grid size-11 place-items-center rounded-full bg-[#fff6e6]"
+                  >
+                    <FlIcon name="check" className="size-8" />
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCode("")}
                   aria-label="Not this one"
-                  className={`${BIG_BUTTON} bg-stone-200 px-8 text-4xl dark:bg-slate-600`}
+                  className={`${STICKER_BUTTON} size-16`}
                 >
-                  <span aria-hidden="true">❌</span>
+                  <FlIcon name="close" className="size-8" />
                 </button>
               </div>
             </>
@@ -238,9 +251,10 @@ function AddFriend({ petId, onClose }: { petId: string; onClose: () => void }) {
       <button
         type="button"
         onClick={onClose}
-        className={`${BIG_BUTTON} bg-stone-200 px-6 text-xl dark:bg-slate-600`}
+        className={`${DISPLAY} flex min-h-16 items-center gap-1 rounded-full bg-[#fff6e6] pl-4 pr-6 text-xl font-semibold text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_8px_18px_rgba(30,10,40,.25)] transition-transform active:translate-y-[3px] ${FOCUS_RING}`}
       >
-        <span aria-hidden="true">⬅️ </span>Back
+        <FlIcon name="back" className="size-7" />
+        Back
       </button>
     </div>
   );
@@ -262,11 +276,17 @@ function FriendCard({
   return (
     <li
       data-testid="friend-card"
-      className={`${CARD} relative flex flex-col items-center gap-1 p-3`}
+      className={`${JAR_CARD} fl-pop-in flex flex-col items-center gap-1 px-3 pb-3 pt-5`}
     >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute left-1/2 top-0 h-3 w-2/5 -translate-x-1/2 rounded-b-xl bg-gradient-to-b from-[#c98a55] to-[#8a5230]"
+      />
       <CardBlob card={friend.card} className="size-32" />
-      <span className="text-xl font-extrabold">{name}</span>
-      <span className="text-sm font-semibold text-stone-600 dark:text-amber-200/80">
+      <span className={`${DISPLAY} max-w-full truncate text-2xl font-bold`}>
+        {name}
+      </span>
+      <span className="text-sm font-extrabold text-[#7a5a78] dark:text-[#c9a9d6]">
         Lv {friend.card.level}
       </span>
       <button
@@ -275,11 +295,14 @@ function FriendCard({
         onClick={onPlay}
         aria-label={`Playdate with ${name}`}
         data-testid="playdate-button"
-        className={`${BIG_BUTTON} relative mt-1 w-full bg-orange-500 px-4 text-3xl text-white dark:bg-orange-400 dark:text-stone-900`}
+        className={`${PRIMARY_BUTTON} relative mt-1 w-full px-4 text-3xl`}
       >
         <span aria-hidden="true">🎈</span>
         {!canPlay && (
-          <span aria-hidden="true" className="absolute right-2 top-1 text-base">
+          <span
+            aria-hidden="true"
+            className="absolute -right-1 -top-2 grid size-8 place-items-center rounded-full bg-[#e0e7ff] text-base shadow"
+          >
             💤
           </span>
         )}
@@ -291,7 +314,7 @@ function FriendCard({
             onClick={onRemove}
             aria-label={`Yes, remove ${name}`}
             data-testid="remove-yes"
-            className={`${BIG_BUTTON} bg-red-600 px-4 text-2xl text-white`}
+            className={`grid size-16 place-items-center rounded-full bg-gradient-to-b from-[#ff6b5a] to-[#e0352b] text-2xl shadow-[0_4px_0_#a8231b] transition-transform active:translate-y-[3px] ${FOCUS_RING}`}
           >
             <span aria-hidden="true">🗑️</span>
           </button>
@@ -299,7 +322,7 @@ function FriendCard({
             type="button"
             onClick={() => setConfirming(false)}
             aria-label="Keep this friend"
-            className={`${BIG_BUTTON} bg-stone-200 px-4 text-2xl dark:bg-slate-600`}
+            className={`${STICKER_BUTTON} size-16 text-2xl`}
           >
             <span aria-hidden="true">↩️</span>
           </button>
@@ -309,7 +332,7 @@ function FriendCard({
           type="button"
           onClick={() => setConfirming(true)}
           aria-label={`Remove ${name} from my friends`}
-          className={`absolute right-1 top-1 grid size-12 place-items-center rounded-full text-xl opacity-70 ${FOCUS_RING}`}
+          className={`absolute right-2 top-3 grid size-12 place-items-center rounded-full bg-[#fff6e6]/80 text-xl shadow-[0_2px_0_#e7c9a3] ${FOCUS_RING}`}
         >
           <span aria-hidden="true">🗑️</span>
         </button>
@@ -385,32 +408,47 @@ export default function FriendsScreen({
       className={`flex h-full flex-col overflow-y-auto overflow-x-hidden ${CHROME_BG} ${SAFE_TOP} ${SAFE_BOTTOM} ${SAFE_SIDES}`}
       data-testid="friends-screen"
     >
-      <header className="flex items-center justify-between gap-3 py-2">
-        <button
-          type="button"
-          onClick={back}
-          aria-label="Back"
-          className={`${BIG_BUTTON} bg-white/90 px-5 text-3xl dark:bg-slate-800/90`}
+      <div className="mx-auto w-full max-w-3xl">
+        <PanelHeader
+          icon="friends"
+          iconClass="bg-[#7cc4ff]"
+          title="Friends"
+          level={1}
+          lead={
+            <button
+              type="button"
+              onClick={back}
+              aria-label="Back"
+              className={`${STICKER_BUTTON} size-16 shrink-0`}
+            >
+              <FlIcon name="back" className="size-8" />
+            </button>
+          }
         >
-          <span aria-hidden="true">⬅️</span>
-        </button>
-        <h1 className="text-3xl font-black tracking-tight">
-          <span aria-hidden="true">👫 </span>Friends
-        </h1>
-        <SoundToggle />
-      </header>
+          <SoundToggle />
+        </PanelHeader>
+      </div>
 
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 py-3">
+      {/* The slide-up sits on the content, not the screen: a transform would
+          trap the fixed playdate and name picker inside this scroll box. */}
+      <main className="fl-sheet-up mx-auto flex w-full max-w-3xl flex-1 flex-col gap-4 py-3">
         {online === "offline" && <CloudOff onRetry={retry} />}
 
         {!adding && (
           <section
             aria-label="My code"
-            className={`${CARD} flex flex-col items-center gap-3 p-4`}
+            className={`${JAR_CARD} flex flex-col items-center gap-3 px-3 pb-6 pt-5 sm:px-6`}
           >
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-0 h-3 w-1/3 -translate-x-1/2 rounded-b-xl bg-gradient-to-b from-[#c98a55] to-[#8a5230]"
+            />
             <CardBlob card={card} className="size-52 sm:size-64" />
             <div className="flex items-center gap-3">
-              <span data-testid="my-name" className="text-3xl font-black">
+              <span
+                data-testid="my-name"
+                className={`${DISPLAY} text-3xl font-bold sm:text-4xl`}
+              >
                 {onlineName(card.nameId)}
               </span>
               <button
@@ -418,7 +456,7 @@ export default function FriendsScreen({
                 onClick={() => setNaming(true)}
                 aria-label="Change the name friends see"
                 data-testid="change-name"
-                className={`${BIG_BUTTON} bg-indigo-100 px-4 text-2xl dark:bg-indigo-900`}
+                className={`${STICKER_BUTTON} size-16 text-2xl`}
               >
                 <span aria-hidden="true">🏷️</span>
               </button>
@@ -431,9 +469,18 @@ export default function FriendsScreen({
                   onClick={() => void copy()}
                   aria-label={copied ? "Copied" : "Copy my code"}
                   data-testid="copy-code"
-                  className={`${BIG_BUTTON} bg-sky-500 px-6 text-3xl text-white dark:bg-sky-300 dark:text-slate-900`}
+                  className={BLUE_BUTTON}
                 >
-                  <span aria-hidden="true">{copied ? "✅" : "📋"}</span>
+                  {copied ? (
+                    <span
+                      aria-hidden="true"
+                      className="grid size-10 place-items-center rounded-full bg-[#fff6e6]"
+                    >
+                      <FlIcon name="check" className="size-7" />
+                    </span>
+                  ) : (
+                    <span aria-hidden="true">📋</span>
+                  )}
                 </button>
               </>
             ) : (
@@ -459,16 +506,17 @@ export default function FriendsScreen({
             disabled={friends.length >= MAX_FRIENDS}
             aria-label="Add a friend"
             data-testid="add-friend-button"
-            className={`${PRIMARY_BUTTON} self-center`}
+            className={`${PRIMARY_BUTTON} flex items-center gap-2 self-center`}
           >
-            <span aria-hidden="true">➕ 👫</span>
+            <FlIcon name="plus" className="size-8" />
+            <FlIcon name="friends" className="size-9" />
           </button>
         )}
 
         {!adding && friends.length > 0 && (
           <ul
             aria-label="My friends"
-            className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr))]"
+            className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(10.5rem,1fr))]"
           >
             {friends.map((friend) => (
               <FriendCard
@@ -485,7 +533,7 @@ export default function FriendsScreen({
           <p
             role="img"
             aria-label="No friends yet. Add a friend with their code."
-            className="py-4 text-center text-6xl"
+            className="mx-auto rounded-full bg-white/40 px-8 py-4 text-center text-6xl dark:bg-white/[.06]"
           >
             👫❓
           </p>

@@ -10000,6 +10000,45 @@ html:has(.jim-app) body {
   }
 }
 
+/* The playdate's glade fills the whole screen (no dock), so on a phone less
+   of the scene's width shows than in the pet's glade: about 261-539 at
+   390x844 and 265-535 at 360x800, about 231-569 on a 375x667 phone and
+   175-625 on an iPad in portrait. The decor moves in further there. */
+@media (max-aspect-ratio: 3/4) {
+  .fl-playdate .fl-decor-plant {
+    transform: translate(268px, 516px) scale(0.7);
+  }
+  .fl-playdate .fl-decor-snowman {
+    transform: translate(306px, 510px) scale(0.7);
+  }
+  .fl-playdate .fl-decor-bed {
+    transform: translate(276px, 596px) scale(0.7);
+  }
+  .fl-playdate .fl-decor-toyBox {
+    transform: translate(530px, 514px) scale(0.7);
+  }
+  .fl-playdate .fl-decor-crystals {
+    transform: translate(528px, 596px) scale(0.7);
+  }
+}
+@media (max-aspect-ratio: 11/20) {
+  .fl-playdate .fl-decor-plant {
+    transform: translate(290px, 514px) scale(0.6);
+  }
+  .fl-playdate .fl-decor-snowman {
+    transform: translate(323px, 510px) scale(0.6);
+  }
+  .fl-playdate .fl-decor-bed {
+    transform: translate(300px, 596px) scale(0.6);
+  }
+  .fl-playdate .fl-decor-toyBox {
+    transform: translate(500px, 514px) scale(0.6);
+  }
+  .fl-playdate .fl-decor-crystals {
+    transform: translate(507px, 596px) scale(0.6);
+  }
+}
+
 /* ---- Flamelings shelf and hatch (transform and opacity only) ---- */
 /* The egg wobbles harder with every tap: 1 is idle, 5 is about to burst. */
 .fl-egg-wobble-1,
