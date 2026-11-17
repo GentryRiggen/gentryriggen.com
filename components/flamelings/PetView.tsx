@@ -59,6 +59,7 @@ const ASH_SPOTS = [
  * one from `sm`). The ground runs on under the dock.
  */
 const STAGE =
+  // safe-area-ok: the full-bleed scene behind the HUD; the HUD pads itself
   "fl-stage absolute inset-x-0 top-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))_+_10.25rem)] sm:bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))_+_6.25rem)]";
 
 /** Where the wish bubble sits above the pet, by stage (the pet shrinks towards its feet). */

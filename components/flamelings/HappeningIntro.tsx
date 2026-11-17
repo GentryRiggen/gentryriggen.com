@@ -18,7 +18,7 @@ import {
   StarArt,
   VisitorArt,
 } from "./HappeningArt";
-import { PRIMARY_BUTTON } from "./styles";
+import { DIALOG_BACKDROP, PRIMARY_BUTTON, SPOTLIGHT, STICKER } from "./styles";
 
 function Picture({ happening }: { happening: Happening }) {
   const big = "size-32 sm:size-40";
@@ -84,16 +84,22 @@ export default function HappeningIntro({
       aria-modal="true"
       aria-label="Something is happening!"
       data-testid="happening-intro"
-      className={`fixed inset-0 z-30 grid place-items-center bg-black/50 p-5 ${SAFE_INSETS}`}
+      className={`fixed inset-0 z-30 grid place-items-center p-5 ${DIALOG_BACKDROP} ${SAFE_INSETS}`}
     >
-      <div className="fl-intro-pop relative flex w-full max-w-sm flex-col items-center gap-4 rounded-[2rem] bg-gradient-to-b from-amber-100 to-orange-200 px-6 pb-6 pt-8 text-center text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50">
+      <div
+        className={`${STICKER} fl-pop-in relative flex w-[calc(100%-2rem)] max-w-sm flex-col items-center gap-4 px-6 pb-6 pt-9 text-center`}
+      >
         <span
           aria-hidden="true"
-          className="fl-bob absolute -top-7 grid size-14 place-items-center rounded-full bg-red-500 text-4xl font-black text-white shadow-lg"
+          className="fl-bob absolute -top-7 grid size-14 place-items-center rounded-full border-4 border-[#fff6e6] bg-gradient-to-b from-[#ff6b5a] to-[#e0352b] text-4xl font-black text-white shadow-[0_4px_0_#a8231b]"
         >
           !
         </span>
-        <Picture happening={happening} />
+        <div
+          className={`grid min-h-40 w-full place-items-center rounded-[24px] ${SPOTLIGHT}`}
+        >
+          <Picture happening={happening} />
+        </div>
         <button
           type="button"
           autoFocus

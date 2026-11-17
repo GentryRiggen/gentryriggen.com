@@ -132,9 +132,9 @@ function PetCard({ pet, nowMs }: { pet: Pet; nowMs: number }) {
           }
           aria-label={`Friends of ${pet.name}`}
           data-testid="pet-friends"
-          className={`absolute left-3 top-4 grid size-14 place-items-center rounded-full border-4 border-[#fff6e6] bg-[#7cc4ff] shadow-[inset_0_-4px_0_rgba(0,0,0,.15),0_4px_10px_rgba(30,10,40,.25)] transition-transform active:translate-y-[2px] ${FOCUS_RING}`}
+          className={`absolute left-2 top-3 grid size-16 place-items-center rounded-full border-4 border-[#fff6e6] bg-[#7cc4ff] shadow-[inset_0_-4px_0_rgba(0,0,0,.15),0_4px_10px_rgba(30,10,40,.25)] transition-transform active:translate-y-[2px] ${FOCUS_RING}`}
         >
-          <FlIcon name="friends" className="size-8" />
+          <FlIcon name="friends" className="size-9" />
         </button>
       </div>
       <Plank />
@@ -246,10 +246,10 @@ export default function Shelf() {
           </div>
         )}
       </main>
-      <footer className="relative flex justify-center py-3">
+      <footer className="relative flex shrink-0 justify-center pb-4 pt-3">
         <Link
           href="/flamelings/versions"
-          className={`${DISPLAY} rounded-full bg-white/40 px-5 py-2 text-base font-medium text-[#7a5a78] dark:bg-white/[.06] dark:text-[#c9a9d6] ${FOCUS_RING}`}
+          className={`${DISPLAY} flex min-h-16 items-center gap-1.5 rounded-full bg-white/40 px-6 text-lg font-medium text-[#7a5a78] dark:bg-white/[.06] dark:text-[#c9a9d6] ${FOCUS_RING}`}
         >
           What&apos;s new ·{" "}
           <b className="font-semibold">v{FLAMELINGS_VERSION}</b>

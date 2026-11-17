@@ -32,7 +32,8 @@ export default function ItemPreview({
 }: ItemPreviewProps) {
   const parsed = parseUnlockKey(itemKey);
   if (!parsed) return null;
-  const tone = silhouette ? "brightness-0 opacity-30 dark:invert" : "";
+  // Items always sit on a cream card, so the silhouette is a soft plum in both themes.
+  const tone = silhouette ? "brightness-0 opacity-25" : "";
   switch (parsed.kind) {
     case "hat":
     case "face":

@@ -7,7 +7,8 @@ import {
 } from "@/lib/flamelings/catalog";
 import { lockText } from "@/lib/flamelings/status";
 import type { Pet } from "@/lib/flamelings/types";
-import { FOCUS_RING } from "./styles";
+import FlIcon from "./FlIcon";
+import { DISPLAY, TRAY, TRAY_TILE } from "./styles";
 
 interface FeedTrayProps {
   pet: Pet;
@@ -20,7 +21,7 @@ export default function FeedTray({ pet, onPick }: FeedTrayProps) {
     <div
       role="group"
       aria-label="Food"
-      className="flex justify-center gap-3 rounded-t-3xl bg-amber-900/85 p-3 backdrop-blur"
+      className={`${TRAY} flex max-w-full flex-wrap justify-center gap-2 sm:gap-3`}
     >
       {FOODS.map((food) => {
         const key = unlockKey("food", food);
@@ -36,20 +37,21 @@ export default function FeedTray({ pet, onPick }: FeedTrayProps) {
                 ? FOOD_INFO[food].label
                 : `${FOOD_INFO[food].label}, locked, ${lockText(key)}`
             }
-            className={`relative grid size-20 place-items-center rounded-2xl bg-amber-100 shadow active:scale-95 disabled:bg-amber-100/30 sm:size-24 ${FOCUS_RING}`}
+            className={TRAY_TILE}
           >
             <span
               aria-hidden="true"
-              className={`text-5xl ${owned ? "" : "opacity-30 grayscale"}`}
+              className={`text-5xl ${owned ? "" : "opacity-25 grayscale"}`}
             >
               {FOOD_GLYPH[food]}
             </span>
             {!owned && (
               <span
                 aria-hidden="true"
-                className="absolute inset-x-0 bottom-1 text-center text-xs font-bold text-amber-950"
+                className={`${DISPLAY} absolute inset-x-0 bottom-1 flex items-center justify-center gap-0.5 text-xs font-semibold text-[#7a5a78]`}
               >
-                🔒 {lockText(key)}
+                <FlIcon name="lock" className="size-3.5" />
+                {lockText(key)}
               </span>
             )}
           </button>

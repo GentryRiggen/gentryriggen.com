@@ -12,7 +12,17 @@ import { onlineName } from "@/lib/flamelings/online/names";
 import { burstConfetti } from "./confetti";
 import ItemPreview from "./ItemPreview";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
-import { PRIMARY_BUTTON } from "./styles";
+import FlIcon from "./FlIcon";
+import {
+  DIALOG_BACKDROP,
+  DISPLAY,
+  PRIMARY_BUTTON,
+  SPOTLIGHT,
+  STICKER,
+} from "./styles";
+
+/** The cream dialog card every celebration uses. */
+const CARD = `${STICKER} fl-pop-in flex w-[calc(100%-2rem)] max-w-md flex-col items-center gap-3 p-6 text-center`;
 
 const KIND_WORD: Record<string, string> = {
   colour: "colour",
@@ -77,10 +87,12 @@ function EvolutionCard({
       aria-label={`${pet.name} grew up!`}
       data-testid="evolution"
       data-phase={phase}
-      className={`fixed inset-0 z-40 grid place-items-center overflow-hidden bg-slate-950/95 p-5 ${SAFE_INSETS}`}
+      className={`fixed inset-0 z-40 grid place-items-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_45%,#4b2f6b_0%,#2a1d47_55%,#1b1430_100%)] p-5 ${SAFE_INSETS}`}
     >
-      <div className="flex w-full max-w-md flex-col items-center gap-3 text-center text-amber-50">
-        <p className="text-4xl font-black drop-shadow-lg">
+      <div className="flex w-[calc(100%-2rem)] max-w-md flex-col items-center gap-3 text-center text-[#fff6e6]">
+        <p
+          className={`${DISPLAY} text-4xl font-bold [text-shadow:0_0_24px_rgba(255,150,60,.6)]`}
+        >
           {revealed ? `${pet.name} grew up!` : "Something is happening..."}
         </p>
         <div className="relative grid size-80 place-items-center sm:size-96">
@@ -106,13 +118,17 @@ function EvolutionCard({
         {revealed && (
           <div
             data-testid="evolution-name"
-            className="fl-card-in flex flex-col items-center gap-1 rounded-3xl bg-gradient-to-b from-amber-100 to-orange-200 px-8 py-4 text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50"
+            className={`${STICKER} fl-pop-in flex flex-col items-center gap-1 px-8 py-4`}
           >
             <span aria-hidden="true" className="text-6xl">
               {info.glyph}
             </span>
-            <span className="text-3xl font-black">{info.name} Blaze</span>
-            <span className="text-base font-bold opacity-80">{info.blurb}</span>
+            <span className={`${DISPLAY} text-3xl font-bold`}>
+              {info.name} Blaze
+            </span>
+            <span className="text-base font-bold text-[#7a5a78]">
+              {info.blurb}
+            </span>
           </div>
         )}
         {revealed && (
@@ -152,25 +168,37 @@ function VisitedCard({
       aria-modal="true"
       aria-label={`${name} visited ${petName}!`}
       data-testid="visited"
-      className={`fixed inset-0 z-40 grid place-items-center bg-black/60 ${SAFE_INSETS}`}
+      className={`fixed inset-0 z-40 grid place-items-center p-5 ${DIALOG_BACKDROP} ${SAFE_INSETS}`}
     >
-      <div className="fl-card-in mx-4 flex w-[calc(100%-2rem)] max-w-md flex-col items-center gap-3 rounded-[2rem] bg-gradient-to-b from-amber-100 to-orange-200 p-6 text-center text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50">
-        <p className="text-4xl font-black">
+      <div className={CARD}>
+        <p className={`${DISPLAY} text-4xl font-bold text-[#7a3d2c]`}>
           <span aria-hidden="true">🎉 </span>
           {name} visited!
         </p>
-        <CardBlob
-          card={celebration.friend.card}
-          mood="excited"
-          className="size-44"
-        />
+        <div className={`rounded-full ${SPOTLIGHT}`}>
+          <CardBlob
+            card={celebration.friend.card}
+            mood="excited"
+            className="size-44"
+          />
+        </div>
         <p
           role="img"
           aria-label={`${VISITED_REWARD.sparks} sparks and ${VISITED_REWARD.joy} joy`}
-          className="flex gap-3 text-3xl font-black"
+          className={`${DISPLAY} flex gap-3 text-3xl font-bold`}
         >
-          <span aria-hidden="true">✨ +{VISITED_REWARD.sparks}</span>
-          <span aria-hidden="true">😊 +{VISITED_REWARD.joy}</span>
+          <span
+            aria-hidden="true"
+            className="flex items-center gap-1 rounded-full bg-gradient-to-b from-[#ffe58a] to-[#ffc53d] px-4 py-1 text-[#7a3d00] shadow-[0_3px_0_#d9952a]"
+          >
+            <FlIcon name="spark" className="size-7" />+{VISITED_REWARD.sparks}
+          </span>
+          <span
+            aria-hidden="true"
+            className="flex items-center gap-1 rounded-full bg-[#ffe1e6] px-4 py-1 text-[#be123c] shadow-[0_3px_0_#f5b5c0]"
+          >
+            <FlIcon name="joy" className="size-7" />+{VISITED_REWARD.joy}
+          </span>
         </p>
         <button
           type="button"
@@ -239,30 +267,36 @@ function PlainCard({
       role="dialog"
       aria-modal="true"
       aria-label={title}
-      className={`fixed inset-0 z-40 grid place-items-center bg-black/60 p-5 ${SAFE_INSETS}`}
+      className={`fixed inset-0 z-40 grid place-items-center p-5 ${DIALOG_BACKDROP} ${SAFE_INSETS}`}
     >
-      <div className="fl-card-in flex w-full max-w-md flex-col items-center gap-3 rounded-[2rem] bg-gradient-to-b from-amber-100 to-orange-200 p-6 text-center text-stone-900 shadow-2xl dark:from-slate-800 dark:to-indigo-950 dark:text-amber-50">
-        <p className="text-4xl font-black">{title}</p>
+      <div className={CARD}>
+        <p className={`${DISPLAY} text-4xl font-bold text-[#7a3d2c]`}>
+          {title}
+        </p>
         {celebration.kind === "levelUp" && stage && (
-          <p className="text-lg font-bold">
+          <p className="text-lg font-bold text-[#7a5a78]">
             {pet.name} is a {stage.name} now
           </p>
         )}
         {celebration.kind === "relit" && (
-          <p className="text-lg font-bold">
+          <p className="text-lg font-bold text-[#7a5a78]">
             You brought {pet.name} back to life!
           </p>
         )}
-        <Blob
-          look={pet.look}
-          worn={pet.worn}
-          mood="excited"
-          stage="bonfire"
-          className="size-40"
-        />
+        <div className={`rounded-full px-4 ${SPOTLIGHT}`}>
+          <Blob
+            look={pet.look}
+            worn={pet.worn}
+            mood="excited"
+            stage="bonfire"
+            className="size-40"
+          />
+        </div>
         {itemKey && parsed ? (
-          <div className="flex items-center gap-4 rounded-3xl bg-white/80 px-5 py-3 dark:bg-slate-900/70">
-            <span className="fl-shine-text rounded-full bg-red-500 px-3 py-1 text-lg font-black text-white">
+          <div className="flex items-center gap-4 rounded-3xl bg-[#ffe9cc] px-5 py-3 shadow-[inset_0_-4px_0_rgba(194,120,60,.18)]">
+            <span
+              className={`${DISPLAY} fl-shine-text rounded-full bg-[#ef4444] px-3 py-1 text-lg font-bold text-white shadow-[0_3px_0_#b91c1c]`}
+            >
               NEW!
             </span>
             <ItemPreview
@@ -270,9 +304,9 @@ function PlainCard({
               look={pet.look}
               className="size-20"
             />
-            <span className="text-left text-xl font-extrabold">
+            <span className={`${DISPLAY} text-left text-xl font-semibold`}>
               {labelOf(itemKey)}
-              <span className="block text-sm font-semibold opacity-70">
+              <span className="block font-sans text-sm font-bold text-[#7a5a78]">
                 a new {KIND_WORD[parsed.kind]}
               </span>
             </span>

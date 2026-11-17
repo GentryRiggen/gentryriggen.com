@@ -9528,6 +9528,34 @@ html:has(.jim-app) body {
     opacity: 1;
   }
 }
+/* A new screen (shelf, glade, friends) fades in quickly. */
+.fl-screen-in {
+  animation: fl-fade-in 180ms ease-out both;
+}
+/* A sparkle flying out of a shop card just bought (--fl-dx/--fl-dy set the way). */
+.fl-buy-spark {
+  opacity: 0;
+  animation: fl-buy-spark 650ms ease-out both;
+}
+@keyframes fl-buy-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(
+        calc(-50% + var(--fl-dx) * 0.5),
+        calc(-50% + var(--fl-dy) * 0.5)
+      )
+      scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--fl-dx)), calc(-50% + var(--fl-dy)))
+      scale(0.6) rotate(45deg);
+  }
+}
 /* The wish bubble: pops in, then bobs gently. */
 .fl-wish {
   animation:
@@ -9550,8 +9578,13 @@ html:has(.jim-app) body {
   .fl-pulse-soft,
   .fl-purchase-pop,
   .fl-fade-in,
+  .fl-screen-in,
   .fl-wish {
     animation: none !important;
+  }
+  .fl-buy-spark {
+    animation: none !important;
+    opacity: 0;
   }
 }
 

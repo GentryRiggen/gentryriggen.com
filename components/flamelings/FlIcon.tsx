@@ -27,6 +27,9 @@ export const FL_ICON_NAMES = [
   "plus",
   "dice",
   "camera",
+  "colour",
+  "shape",
+  "eyes",
 ] as const;
 
 export type FlIconName = (typeof FL_ICON_NAMES)[number];
@@ -307,6 +310,56 @@ const ART: Record<FlIconName, ReactNode> = {
       <rect x="2.5" y="6" width="19" height="14" rx="3.5" fill="#7a5a78" />
       <circle cx="12" cy="13" r="4.6" fill="#fff6e6" />
       <circle cx="12" cy="13" r="2.6" fill="#7cc4ff" />
+    </>
+  ),
+  colour: (
+    <>
+      <path
+        d="M12 3 C 6 3, 2 7, 2 12 c0 5 4 9 9 9 c1.6 0 2 -1.2 1.4 -2.4 c-.7 -1.4 .2 -2.6 1.6 -2.6 H17 a5 5 0 0 0 5 -5 C 22 6.5, 17.5 3, 12 3z"
+        fill="#ffd9a8"
+      />
+      <circle cx="7" cy="11" r="1.9" fill="#f2542d" />
+      <circle cx="10" cy="7" r="1.9" fill="#ffc53d" />
+      <circle cx="15" cy="7" r="1.9" fill="#4aa3ff" />
+      <circle cx="18" cy="11" r="1.9" fill="#6fcf3b" />
+    </>
+  ),
+  shape: (
+    <>
+      <path
+        d="M12 2 C 15 7, 20 9, 20 15 a8 8 0 0 1 -16 0 c0 -4 3 -6 4 -9 c1.5 2 2.5 2.5 4 -4z"
+        fill="#ff9a1f"
+      />
+      <path
+        d="M12 11 c1.5 3 4.5 4 4.5 7 a4.5 4.5 0 0 1 -9 0 c0 -3 3 -4 4.5 -7z"
+        fill="#ffd84a"
+      />
+    </>
+  ),
+  eyes: (
+    <>
+      <ellipse
+        cx="7.5"
+        cy="12"
+        rx="4.5"
+        ry="6"
+        fill="#fff"
+        stroke="#7a5a78"
+        strokeWidth="1.6"
+      />
+      <ellipse
+        cx="16.5"
+        cy="12"
+        rx="4.5"
+        ry="6"
+        fill="#fff"
+        stroke="#7a5a78"
+        strokeWidth="1.6"
+      />
+      <circle cx="8.5" cy="13" r="2.4" fill="#3a2340" />
+      <circle cx="17.5" cy="13" r="2.4" fill="#3a2340" />
+      <circle cx="9.3" cy="12" r=".9" fill="#fff" />
+      <circle cx="18.3" cy="12" r=".9" fill="#fff" />
     </>
   ),
 };
