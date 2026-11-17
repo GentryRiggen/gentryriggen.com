@@ -263,6 +263,8 @@ function backUp(text: string, storage: StorageLike, nowMs: number): boolean {
     } catch {
       index = [];
     }
+    // The same text is already safe: do not rotate real backups out for it.
+    if (index.some((k) => storage.getItem(k) === text)) return true;
     let key = `${CORRUPT_PREFIX}:${nowMs}`;
     for (let n = 1; index.includes(key); n++) {
       key = `${CORRUPT_PREFIX}:${nowMs}-${n}`;
@@ -321,7 +323,9 @@ export function loadSaveResult(
     // A newer build's save is played in memory and never overwritten.
     return { save: parsed.save, writable: !newer, newer };
   }
-  const saved = backUp(text, storage, now);
+  // A newer build's save is never written over, so it needs no backup (and
+  // must not push real backups out on every load).
+  const saved = newer || backUp(text, storage, now);
   return {
     save: parsed?.save ?? emptySave(now),
     writable: saved && !newer,
