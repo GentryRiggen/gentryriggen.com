@@ -556,7 +556,11 @@ service cloud.firestore {
         || (name == 'fl_unlock'
           && p.keys().hasOnly(['kind', 'via']) && p.keys().hasAll(['kind', 'via'])
           && p.kind in ['colour', 'shape', 'eyes', 'hat', 'face', 'neck', 'emote', 'food']
-          && p.via in ['level', 'gift']);
+          && p.via in ['level', 'gift'])
+        || (name == 'fl_buy'
+          && p.keys().hasOnly(['kind', 'price']) && p.keys().hasAll(['kind', 'price'])
+          && p.kind in ['hat', 'face', 'neck', 'decor']
+          && p.price is int && p.price >= 0 && p.price <= 1000 && p.price % 10 == 0);
     }
 
     // The client sends its UTC day, which must be the server's UTC day.

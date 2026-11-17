@@ -378,6 +378,28 @@ describe("flamelings specifics", () => {
     await assertFails(create(anon(), level(5, "Rex the Flame")));
   });
 
+  it("takes a shop purchase as a kind and a price in tens up to 1000", async () => {
+    const buy = (kind: string, price: number) =>
+      docFor("fl_buy", { props: { kind, price } });
+    await assertSucceeds(create(anon(), buy("hat", 30)));
+    await assertSucceeds(create(anon(), buy("decor", 400)));
+    await assertSucceeds(create(anon(), buy("neck", 1000)));
+    await assertFails(create(anon(), buy("hat", 35)));
+    await assertFails(create(anon(), buy("hat", 1010)));
+    await assertFails(create(anon(), buy("hat", -10)));
+    await assertFails(create(anon(), buy("emote", 30)));
+    await assertFails(create(anon(), buy("pirate", 30)));
+    await assertFails(
+      create(anon(), docFor("fl_buy", { props: { kind: "hat" } }))
+    );
+    await assertFails(
+      create(
+        anon(),
+        docFor("fl_buy", { props: { kind: "hat", price: 30, item: "pirate" } })
+      )
+    );
+  });
+
   it("never lets a typed name ride along", async () => {
     await assertFails(
       create(anon(), docFor("fl_hatch", { props: { name: "Sparky" } }))

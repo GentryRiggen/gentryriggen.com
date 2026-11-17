@@ -285,6 +285,15 @@ export const GAME_EVENTS = {
       via: { kind: "enum", values: ["level", "gift"] },
     },
   },
+  /** A shop purchase: what kind of item and its price (a multiple of 10). */
+  fl_buy: {
+    site: "flamelings",
+    sample: 1,
+    props: {
+      kind: { kind: "enum", values: ["hat", "face", "neck", "decor"] },
+      price: { kind: "int", min: 0, max: 1000, step: 10 },
+    },
+  },
 } as const satisfies Record<
   string,
   { site: GameSite; sample: number; props: Record<string, PropSpec> }

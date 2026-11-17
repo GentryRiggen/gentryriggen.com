@@ -204,3 +204,85 @@ describe("save", () => {
     expect(trimmed?.pets[0].name.length).toBe(12);
   });
 });
+
+describe("migrating a 1.0 save", () => {
+  /** A pet exactly as 1.0 wrote it: no sparks and no decor. */
+  function oldPet(id: string) {
+    const {
+      sparks: _s,
+      decor: _d,
+      ...old
+    } = createPet({
+      id,
+      name: "Pip",
+      look,
+      now: NOW,
+    });
+    void _s;
+    void _d;
+    return old;
+  }
+
+  function store(pets: unknown[]) {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        v: 1,
+        pets,
+        memorial: [],
+        collection: ["hat:crown"],
+        updatedAt: 5,
+      })
+    );
+    return storage;
+  }
+
+  it("loads cleanly with no sparks, no decor and no backup", () => {
+    const storage = store([oldPet("a")]);
+    const result = loadSaveResult(NOW, storage);
+    expect(result.writable).toBe(true);
+    expect(storage.backups()).toEqual([]);
+    expect(result.save.pets[0].sparks).toBe(0);
+    expect(result.save.pets[0].decor).toEqual([]);
+    expect(result.save.collection).toEqual(["hat:crown"]);
+  });
+
+  it("drops unknown shop and decor ids one by one", () => {
+    const base = oldPet("a");
+    const storage = store([
+      {
+        ...base,
+        sparks: 42.9,
+        worn: { hat: "pirate", face: "monocle-xl", neck: "cape" },
+        decor: ["rug", "castle", "tent", 7, "rug"],
+        unlocked: [
+          ...base.unlocked,
+          "hat:pirate",
+          "neck:cape",
+          "decor:rug",
+          "decor:castle",
+        ],
+      },
+    ]);
+    const { save } = loadSaveResult(NOW, storage);
+    const pet = save.pets[0];
+    expect(pet.sparks).toBe(42);
+    expect(pet.worn).toEqual({ hat: "pirate", face: null, neck: "cape" });
+    expect(pet.unlocked).toEqual(
+      expect.arrayContaining(["hat:pirate", "neck:cape", "decor:rug"])
+    );
+    expect(pet.unlocked).not.toContain("decor:castle");
+    // "tent" is known but not owned, so it cannot be out in the glade.
+    expect(pet.decor).toEqual(["rug"]);
+  });
+
+  it("repairs broken sparks without losing the pet", () => {
+    for (const sparks of [-5, "lots", null, 1e12]) {
+      const { save } = loadSaveResult(NOW, store([{ ...oldPet("a"), sparks }]));
+      expect(save.pets).toHaveLength(1);
+      expect(save.pets[0].sparks).toBeGreaterThanOrEqual(0);
+      expect(save.pets[0].sparks).toBeLessThanOrEqual(1_000_000);
+    }
+  });
+});

@@ -1,5 +1,6 @@
 import type {
   ColourId,
+  DecorId,
   EyesId,
   FaceId,
   HatId,
@@ -44,6 +45,10 @@ export interface Pet {
   level: number;
   xp: number;
   unlocked: UnlockKey[];
+  /** The shop currency this pet has earned and not spent yet. */
+  sparks: number;
+  /** The decor shown in this pet's glade (each must be in `unlocked`). */
+  decor: DecorId[];
   /** Wall-clock ms the pet was hatched, and the last moment simulated. */
   bornAt: number;
   tickedAt: number;
@@ -85,7 +90,13 @@ export type PetEvent =
   | { type: "state"; to: "ember" | "relit" | "out" }
   | { type: "care"; action: CareAction }
   | { type: "overfed" }
-  | { type: "bonusXp"; amount: number };
+  | { type: "bonusXp"; amount: number }
+  | { type: "sparks"; amount: number; source: SparkSource }
+  | { type: "buy"; key: UnlockKey; price: number };
+
+/** Where sparks came from: the screen flies them in from the matching spot. */
+export type SparkSource =
+  "feed" | "clean" | "play" | "gift" | "level" | "relight";
 
 export type CareAction = "feed" | "play" | "clean" | "pet" | "gift" | "relight";
 

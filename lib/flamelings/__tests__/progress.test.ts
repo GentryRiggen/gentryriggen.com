@@ -1,5 +1,5 @@
 import {
-  ALL_UNLOCKS,
+  GIFTABLE_UNLOCKS,
   STARTING_UNLOCKS,
   UNLOCK_ORDER,
   levelFor,
@@ -55,7 +55,9 @@ describe("xp and stages", () => {
   it("gives coal at level 4 and lists every item once", () => {
     expect(levelFor("food:coal")).toBe(4);
     expect(new Set(UNLOCK_ORDER).size).toBe(UNLOCK_ORDER.length);
-    const locked = ALL_UNLOCKS.filter((k) => !STARTING_UNLOCKS.includes(k));
+    const locked = GIFTABLE_UNLOCKS.filter(
+      (k) => !STARTING_UNLOCKS.includes(k)
+    );
     expect([...UNLOCK_ORDER].sort()).toEqual([...locked].sort());
   });
 });

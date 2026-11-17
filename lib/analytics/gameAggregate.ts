@@ -75,6 +75,11 @@ export interface FlamelingsSummary {
   states: Count[];
   /** Unlocks as "kind · via", e.g. "hat · gift". */
   unlocks: Count[];
+  /** Shop purchases and the sparks spent on them. */
+  purchases: number;
+  sparksSpent: number;
+  /** Purchases by kind (hat, face, neck, decor). */
+  buys: Count[];
 }
 
 function average(values: number[]): number | null {
@@ -201,6 +206,7 @@ export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
   const visits = ofName(events, "fl_visit");
   const plays = ofName(events, "fl_play_end");
   const levels = ofName(events, "fl_level");
+  const buys = ofName(events, "fl_buy");
   return {
     visits: visits.length,
     visitWindows: tally(visits.map((e) => str(e, "window"))),
@@ -218,5 +224,8 @@ export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
         (e) => `${str(e, "kind")} · ${str(e, "via")}`
       )
     ),
+    purchases: buys.length,
+    sparksSpent: buys.reduce((sum, e) => sum + num(e, "price"), 0),
+    buys: tally(buys.map((e) => str(e, "kind"))),
   };
 }
