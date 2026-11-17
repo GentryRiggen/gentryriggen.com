@@ -22,6 +22,11 @@ export interface BlobProps {
   emoteKey?: number;
   /** Tailwind size classes, e.g. `size-48`. */
   className?: string;
+  /**
+   * Fill the box: young pets are shown nearly as big as grown ones, for
+   * previews where a tiny spark would float in an empty card.
+   */
+  fit?: boolean;
 }
 
 const NO_WORN: Worn = { hat: null, face: null, neck: null };
@@ -41,6 +46,7 @@ export default function Blob({
   emote = null,
   emoteKey = 0,
   className = "size-48",
+  fit = false,
 }: BlobProps) {
   // Two blobs on one page must not share an id.
   const id = useId().replace(/:/g, "");
@@ -49,7 +55,7 @@ export default function Blob({
   const halo = `fl-halo-${id}`;
   return (
     <div
-      className={`fl-pet relative ${className}`}
+      className={`fl-pet relative ${fit ? "fl-pet-fit " : ""}${className}`}
       data-stage={stage}
       data-form={form ?? undefined}
       data-mood={mood}

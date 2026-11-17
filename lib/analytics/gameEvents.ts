@@ -332,6 +332,14 @@ export const GAME_EVENTS = {
       action: { kind: "enum", values: ["add", "playdate", "visited"] },
     },
   },
+  /** A pet's picture was shared, or saved to the device. */
+  fl_share: {
+    site: "flamelings",
+    sample: 1,
+    props: {
+      via: { kind: "enum", values: ["share", "download"] },
+    },
+  },
 } as const satisfies Record<
   string,
   { site: GameSite; sample: number; props: Record<string, PropSpec> }

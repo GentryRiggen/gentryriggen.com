@@ -32,6 +32,23 @@ Commit references are `git show <sha>`.
       script (`scripts/<slug>-icons.mjs`).
 - [ ] No service worker unless the game needs offline play. Without one, updates
       come from version polling (below).
+- [ ] **A game that plays offline uses the kit's worker, never a hand-written
+      one.** Add the game to `GENERATED_GAME_WORKERS`
+      (`lib/game-kit/serviceWorker/generate.ts`: slug, title, non-hashed asset
+      folders and files such as `/<slug>-icons/` and `/<slug>.webmanifest`), run
+      `npx tsx scripts/generate-game-sw.ts` to write `public/<slug>-sw.js` from
+      `lib/game-kit/serviceWorker/template.sw.txt` (edit the template, never the
+      output; a drift test fails if they differ), call `useGameServiceWorker(slug)`
+      in the root and pass `serviceWorker: true` to `useGameUpdate` so "update
+      ready" still works. Policy: navigations network-first with a 3 s timeout then
+      cache; `/_next/static/` cache-first; only ok, same-origin, non-redirected
+      responses cached; `version.json` never cached; old caches pruned;
+      `CACHE_URLS` and `SKIP_WAITING` messages. The hook registers in production
+      only and skips the e2e build unless the page has `?offline`.
+- [ ] Offline e2e like `e2e/flamelings-offline.spec.ts`: load online, go offline,
+      reload, play, and check the save persists. Network-only features show a
+      calm offline state and recover on retry.
+- [ ] `firebase.json` also needs `no-cache` for `/<slug>-sw.js`.
 
 ## Safe areas (notch, home bar)
 
@@ -173,5 +190,12 @@ Commit references are `git show <sha>`.
 - Replace the per-game test-hook gates (`TEST_HOOKS_ENABLED`) with
   `createTestHooks`.
 - Version the other games' icons (`iconVersion`).
+- Move Ship Builder, Plane Builder and Planet Smasher onto the generated
+  service worker (`GENERATED_GAME_WORKERS`) and `useGameServiceWorker`. Their
+  hand-written workers differ (Plane Builder has the lie-fi timeout and pruning,
+  Ship Builder lacks them and adds `voice/`, Planet Smasher lacks `SKIP_WAITING`
+  and the version.json guard), so the generator does not reproduce them byte for
+  byte; move each with its own behaviour test and the offline e2e, then delete
+  `serviceWorkerDrift.test.ts`.
 - Fold the per-path theme-colour checks in `lib/theme/themeScript.ts` into one
   game registry.

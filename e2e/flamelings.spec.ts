@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { FRIEND_CODE, mockFriends } from "./support/friendsMock";
+import { FLAMELINGS_VERSION } from "../lib/flamelings/version";
 
 const DAY_MS = 24 * 3_600_000;
 
@@ -385,7 +387,7 @@ test("the home-screen files are served", async ({ page, request }) => {
     (await request.get("/flamelings-icons/apple-touch-icon-v1.png")).ok()
   ).toBe(true);
   const version = await request.get("/flamelings/version.json");
-  expect((await version.json()).version).toBe("1.4.0");
+  expect((await version.json()).version).toBe(FLAMELINGS_VERSION);
 });
 
 test("a level 9 pet grows up into the form its care earned", async ({
@@ -576,132 +578,6 @@ test("Log Stack fits the screen @smoke", async ({ page }) => {
 
 // ---- Friends (1.4): the network is mocked, rules are tested separately ----
 
-const CORS = {
-  "access-control-allow-origin": "*",
-  "access-control-allow-headers": "*",
-  "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
-};
-
-const FRIEND_CODE = "GHJKMN";
-const FRIEND_DOC = {
-  uid: { stringValue: "friend-uid" },
-  look: {
-    mapValue: {
-      fields: {
-        colour: { stringValue: "violet" },
-        shape: { stringValue: "puff" },
-        eyes: { stringValue: "dots" },
-        hat: { stringValue: "crown" },
-        face: { stringValue: "none" },
-        neck: { stringValue: "none" },
-      },
-    },
-  },
-  level: { integerValue: "6" },
-  stage: { stringValue: "flame" },
-  form: { stringValue: "none" },
-  nameId: { integerValue: "12" },
-};
-
-/** Fakes sign-in and the friend cards and inboxes of Firestore for a page. */
-async function mockFriends(page: Page, opts: { offline?: boolean } = {}) {
-  const docs = new Map<string, Record<string, unknown>>();
-  docs.set(`flPets/${FRIEND_CODE}`, FRIEND_DOC);
-  await page.route("https://identitytoolkit.googleapis.com/**", (route) =>
-    opts.offline
-      ? route.abort()
-      : route.fulfill({
-          headers: CORS,
-          json: {
-            idToken: "id",
-            refreshToken: "refresh",
-            localId: "me-uid",
-            expiresIn: "3600",
-          },
-        })
-  );
-  await page.route("https://securetoken.googleapis.com/**", (route) =>
-    route.fulfill({
-      headers: CORS,
-      json: {
-        id_token: "id",
-        refresh_token: "refresh",
-        user_id: "me-uid",
-        expires_in: "3600",
-      },
-    })
-  );
-  await page.route("https://firestore.googleapis.com/**", async (route) => {
-    if (opts.offline) return route.abort();
-    const request = route.request();
-    const method = request.method();
-    if (method === "OPTIONS") return route.fulfill({ headers: CORS });
-    const json = (status: number, body: unknown = {}) =>
-      route.fulfill({ status, headers: CORS, json: body });
-    if (method === "POST" && request.url().includes(":runQuery")) {
-      const parent = decodeURIComponent(
-        new URL(request.url()).pathname
-          .split("/documents/")[1]
-          .replace(":runQuery", "")
-      );
-      const rows = [...docs.entries()]
-        .filter(([key]) => key.startsWith(`${parent}/visits/`))
-        .map(([key, fields]) => ({
-          document: { name: `x/documents/${key}`, fields },
-        }));
-      return json(200, rows.length ? rows : [{}]);
-    }
-    if (method === "POST") {
-      const write = request.postDataJSON().writes[0] as {
-        update: { name: string; fields: Record<string, unknown> };
-        updateMask?: unknown;
-        updateTransforms?: { fieldPath: string }[];
-        currentDocument: { exists: boolean };
-      };
-      const path = write.update.name.split("/documents/")[1];
-      if (docs.has(path) !== write.currentDocument.exists) {
-        return json(409, { error: { status: "ALREADY_EXISTS" } });
-      }
-      const stamped: Record<string, unknown> = {};
-      for (const t of write.updateTransforms ?? []) {
-        stamped[t.fieldPath] = { timestampValue: new Date().toISOString() };
-      }
-      docs.set(path, {
-        ...(write.updateMask ? docs.get(path) : {}),
-        ...write.update.fields,
-        ...stamped,
-      });
-      return json(200);
-    }
-    const path = decodeURIComponent(
-      new URL(request.url()).pathname.split("/documents/")[1]
-    );
-    if (method === "DELETE") {
-      docs.delete(path);
-      return json(200);
-    }
-    const found = docs.get(path);
-    return found ? json(200, { fields: found }) : json(404);
-  });
-  return {
-    docs,
-    myCode: () =>
-      [...docs.keys()]
-        .find(
-          (k) => /^flPets\/[A-Z0-9]{6}$/.test(k) && !k.endsWith(FRIEND_CODE)
-        )
-        ?.split("/")[1],
-    putVisit(to: string, from: string) {
-      const day = new Date().toISOString().slice(0, 10);
-      docs.set(`flPets/${to}/visits/${from}_${day}`, {
-        from: { stringValue: from },
-        day: { stringValue: day },
-        createdAt: { timestampValue: new Date().toISOString() },
-      });
-    },
-  };
-}
-
 async function typeCode(page: Page, code: string) {
   for (const ch of code) await page.getByTestId(`key-${ch}`).click();
 }
@@ -828,4 +704,41 @@ test("the Friends screen and keypad fit the screen @smoke", async ({
     expect(box.x + box.width).toBeLessThanOrEqual(width);
     expect(box.height).toBeGreaterThanOrEqual(48);
   }
+});
+
+test("the picture button makes a 1080 x 1350 PNG and saves it when there is no share sheet", async ({
+  page,
+}) => {
+  // Desktop browsers may have a share sheet; the download path is under test.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { value: undefined });
+  });
+  await open(page);
+  await hatch(page, "Pip");
+  await page.evaluate(() =>
+    window.__flamelings!.patchPet(0, {
+      level: 12,
+      form: "cozy",
+      worn: { hat: "wizard", face: "sunglasses", neck: "scarf" },
+      look: { colour: "violet", shape: "puff", eyes: "sharp" },
+    })
+  );
+  await page.getByRole("button", { name: "Wardrobe" }).click();
+  await page.getByTestId("share-open").click();
+  await expect(page.getByTestId("share-image")).toBeVisible();
+  await expect(page.getByTestId("share-picture")).toContainText("For parents");
+
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("share-button").click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("my-flameling.png");
+  const path = await download.path();
+  const { readFileSync } = await import("node:fs");
+  const bytes = readFileSync(path);
+  expect([...bytes.subarray(0, 8)]).toEqual([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ]);
+  expect(bytes.readUInt32BE(16)).toBe(1080);
+  expect(bytes.readUInt32BE(20)).toBe(1350);
+  await expect(page.getByTestId("share-hold-hint")).toBeVisible();
 });

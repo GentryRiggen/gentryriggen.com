@@ -17,6 +17,7 @@ import { useFlamelings } from "@/lib/flamelings/store";
 import type { Pet } from "@/lib/flamelings/types";
 import Blob from "./Blob";
 import ItemPreview from "./ItemPreview";
+import SharePicture from "./SharePicture";
 import {
   BIG_BUTTON,
   CHROME_BG,
@@ -64,6 +65,7 @@ export default function Wardrobe({ pet, nowMs, onClose }: WardrobeProps) {
   const dress = useFlamelings((s) => s.dress);
   const restyle = useFlamelings((s) => s.restyle);
   const [kind, setKind] = useState<TabKind>("colour");
+  const [isSharing, setIsSharing] = useState(false);
   const tab = TABS.find((t) => t.kind === kind) ?? TABS[0];
   const isSlot = kind === "hat" || kind === "face" || kind === "neck";
 
@@ -83,9 +85,20 @@ export default function Wardrobe({ pet, nowMs, onClose }: WardrobeProps) {
         <h2 className="text-2xl font-black">
           <span aria-hidden="true">👒 </span>Wardrobe
         </h2>
-        <button type="button" onClick={onClose} className={PRIMARY_BUTTON}>
-          Done
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsSharing(true)}
+            aria-label="Take a picture"
+            data-testid="share-open"
+            className={`${BIG_BUTTON} grid size-16 place-items-center bg-white/90 text-3xl dark:bg-slate-800/90`}
+          >
+            <span aria-hidden="true">📸</span>
+          </button>
+          <button type="button" onClick={onClose} className={PRIMARY_BUTTON}>
+            Done
+          </button>
+        </div>
       </div>
       <div className="flex justify-center py-1">
         <Blob
@@ -184,6 +197,13 @@ export default function Wardrobe({ pet, nowMs, onClose }: WardrobeProps) {
           );
         })}
       </div>
+      {isSharing && (
+        <SharePicture
+          pet={pet}
+          nowMs={nowMs}
+          onClose={() => setIsSharing(false)}
+        />
+      )}
     </div>
   );
 }

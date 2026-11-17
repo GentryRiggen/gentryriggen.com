@@ -33,6 +33,7 @@ export default function CardBlob({
       mood={mood}
       emote={emote}
       emoteKey={emoteKey}
+      fit
       className={className}
     />
   );

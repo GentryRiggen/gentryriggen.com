@@ -88,6 +88,8 @@ export interface FlamelingsSummary {
   happeningsDone: number;
   happenings: Count[];
   friends: Count[];
+  /** Pictures shared or saved, by how. */
+  shares: Count[];
 }
 
 function average(values: number[]): number | null {
@@ -239,6 +241,7 @@ export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
     sparksSpent: buys.reduce((sum, e) => sum + num(e, "price"), 0),
     buys: tally(buys.map((e) => str(e, "kind"))),
     friends: tally(ofName(events, "fl_friend").map((e) => str(e, "action"))),
+    shares: tally(ofName(events, "fl_share").map((e) => str(e, "via"))),
     happeningsDone: happenings.filter((e) => num(e, "done") === 1).length,
     happenings: tally(
       happenings.map(

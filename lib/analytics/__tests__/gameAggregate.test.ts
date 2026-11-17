@@ -169,6 +169,9 @@ describe("summarizeFlamelings", () => {
     fl("fl_friend", { action: "add" }),
     fl("fl_friend", { action: "add" }),
     fl("fl_friend", { action: "playdate" }),
+    fl("fl_share", { via: "download" }),
+    fl("fl_share", { via: "download" }),
+    fl("fl_share", { via: "share" }),
   ];
   const summary = summarizeFlamelings(events);
 
@@ -219,6 +222,13 @@ describe("summarizeFlamelings", () => {
     expect(summary.friends).toEqual([
       { key: "add", views: 2 },
       { key: "playdate", views: 1 },
+    ]);
+  });
+
+  it("counts shared and saved pictures", () => {
+    expect(summary.shares).toEqual([
+      { key: "download", views: 2 },
+      { key: "share", views: 1 },
     ]);
   });
 

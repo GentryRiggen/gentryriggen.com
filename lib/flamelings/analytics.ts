@@ -19,6 +19,11 @@ export function trackHatch(): void {
   trackGame("fl_hatch", {});
 }
 
+/** A pet's picture left the device (the share sheet) or was saved to it. */
+export function trackShare(via: "share" | "download"): void {
+  trackGame("fl_share", { via });
+}
+
 export function trackPlayEnd(game: PlayGame, score: number): void {
   trackGame("fl_play_end", {
     game,

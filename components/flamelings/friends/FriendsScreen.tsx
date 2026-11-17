@@ -199,7 +199,7 @@ function AddFriend({ petId, onClose }: { petId: string; onClose: () => void }) {
                 <CardBlob
                   card={lookup.card}
                   mood="excited"
-                  className="size-32"
+                  className="size-40"
                 />
                 <p className="text-left text-2xl font-black">
                   {onlineName(lookup.card.nameId)}

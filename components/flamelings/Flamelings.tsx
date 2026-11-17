@@ -9,6 +9,7 @@ import {
 } from "@/lib/flamelings/online/controller";
 import { HEARTBEAT_MS } from "@/lib/flamelings/tabLock";
 import GameShell from "@/components/game-kit/GameShell";
+import { useGameServiceWorker } from "@/components/game-kit/useGameServiceWorker";
 import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
 import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
@@ -88,8 +89,10 @@ export default function Flamelings() {
     },
   });
 
+  useGameServiceWorker("flamelings");
   const { isUpdateReady, update } = useGameUpdate("flamelings", {
     saveNow: tick,
+    serviceWorker: true,
   });
 
   return (

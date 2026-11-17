@@ -465,6 +465,24 @@ describe("flamelings specifics", () => {
     );
   });
 
+  it("takes only the two ways a picture leaves, never a name or a file", async () => {
+    for (const via of ["share", "download"]) {
+      await assertSucceeds(
+        create(anon(), docFor("fl_share", { props: { via } }))
+      );
+    }
+    await assertFails(
+      create(anon(), docFor("fl_share", { props: { via: "x" } }))
+    );
+    await assertFails(create(anon(), docFor("fl_share", { props: {} })));
+    await assertFails(
+      create(
+        anon(),
+        docFor("fl_share", { props: { via: "share", name: "Sparky" } })
+      )
+    );
+  });
+
   it("never lets a typed name ride along", async () => {
     await assertFails(
       create(anon(), docFor("fl_hatch", { props: { name: "Sparky" } }))
