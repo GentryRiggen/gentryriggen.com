@@ -16,7 +16,12 @@ import {
   lockedItems,
   stageFor,
 } from "./progress";
-import { activeHappening, ensureHappening } from "./happenings";
+import {
+  activeHappening,
+  ensureHappening,
+  type Happening,
+  type HappeningKind,
+} from "./happenings";
 import { priceOf, shopItem } from "./shop";
 import { RELIGHT_FEEDS, advance, isAwake, isOut } from "./sim";
 import { SAVE_SCHEMA } from "./types";
@@ -321,6 +326,16 @@ export interface HappeningResult {
   missed?: number;
 }
 
+/** The stored happening if it is the expected one and still undone. */
+function heldHappening(
+  pet: Pet,
+  expect: { window: string; kind: HappeningKind }
+): Happening | null {
+  const h = pet.happening;
+  if (!h || h.done || pet.state !== "alive") return null;
+  return h.window === expect.window && h.kind === expect.kind ? h : null;
+}
+
 function between(range: readonly [number, number], random: () => number) {
   return range[0] + Math.floor(random() * (range[1] - range[0] + 1));
 }
@@ -345,9 +360,12 @@ export function completeHappening(
   pet: Pet,
   now: number,
   random: () => number = Math.random,
-  result: HappeningResult = {}
+  result: HappeningResult = {},
+  expect?: { window: string; kind: HappeningKind }
 ): Outcome {
-  const h = activeHappening(pet, now);
+  // With `expect` (what the screen was playing), only that happening pays: a
+  // window rollover mid-play must not hand out the next one's reward.
+  const h = expect ? heldHappening(pet, expect) : activeHappening(pet, now);
   if (!h) return { pet, events: [] };
   const events: PetEvent[] = [{ type: "happening", kind: h.kind, done: true }];
   let next: Pet = { ...pet, happening: { ...h, done: true, seen: true } };
@@ -525,14 +543,20 @@ export function hatch(
  */
 export function settle(
   save: SaveData,
-  now: number
+  now: number,
+  /** Per pet id, the window of a happening on screen (kept until it ends). */
+  hold: { petId: string; window: string } | null = null
 ): { save: SaveData; events: { petId: string; event: PetEvent }[] } {
   const events: { petId: string; event: PetEvent }[] = [];
   const pets: Pet[] = [];
   const memorial: Memorial[] = [...save.memorial];
   for (const pet of save.pets) {
     const was = pet.state;
-    const next = ensureHappening(advance(pet, pet.tickedAt, now), now);
+    const next = ensureHappening(
+      advance(pet, pet.tickedAt, now),
+      now,
+      hold && hold.petId === pet.id ? hold.window : null
+    );
     if (was === "alive" && next.state === "ember") {
       events.push({ petId: pet.id, event: { type: "state", to: "ember" } });
     }

@@ -25,6 +25,7 @@ import {
   type UnlockKey,
 } from "./catalog";
 import { now } from "./clock";
+import type { HappeningKind } from "./happenings";
 import { playEventSounds } from "./sound";
 import { trackEvents, trackHatch, trackPlayEnd, trackVisit } from "./analytics";
 import { emptySave } from "./actions";
@@ -107,6 +108,7 @@ export interface FlamelingsStore {
   clock: number;
   view: View;
   celebrations: Celebration[];
+  holding: { petId: string; window: string } | null;
   /** Events of the last action, for the screen to react to (id bumps each). */
   lastEvents: { id: number; petId: string; events: PetEvent[] } | null;
 
@@ -132,7 +134,13 @@ export interface FlamelingsStore {
   /** The icon intro of this pet's happening was shown. */
   markHappeningSeen(petId: string): PetEvent[];
   /** Finishes this pet's happening and pays it. */
-  completeHappening(petId: string, result?: HappeningResult): PetEvent[];
+  completeHappening(
+    petId: string,
+    happening: { window: string; kind: HappeningKind },
+    result?: HappeningResult
+  ): PetEvent[];
+  /** The happening on screen (never swapped for the next window's), or null. */
+  hold(holding: { petId: string; window: string } | null): void;
   /** Collects the sparks a shooting-star wish held overnight. */
   collectWish(petId: string): PetEvent[];
   /** Puts an owned decor item out in the glade, or away. */
@@ -160,7 +168,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     const loaded = loadSaveResult(t);
     canWrite = loaded.writable;
     lastRaw = readRaw();
-    const { save } = settle(loaded.save, t);
+    const { save } = settle(loaded.save, t, get().holding);
     set({ save, clock: t, outdated: loaded.newer });
   }
 
@@ -221,6 +229,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     clock: 0,
     view: { screen: "shelf" },
     celebrations: [],
+    holding: null,
     lastEvents: null,
 
     init() {
@@ -234,7 +243,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
       const loaded = loadSaveResult(t);
       canWrite = loaded.writable;
       lastRaw = readRaw();
-      const { save } = settle(loaded.save, t);
+      const { save } = settle(loaded.save, t, get().holding);
       if (canWrite && writeSave(save)) lastRaw = readRaw();
       set({
         ready: true,
@@ -276,7 +285,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     tick() {
       if (get().locked) return;
       const t = now();
-      const { save, events } = settle(get().save, t);
+      const { save, events } = settle(get().save, t, get().holding);
       if (!persist(save)) return;
       trackEvents(events.map((e) => e.event));
       playEventSounds(events.map((e) => e.event));
@@ -328,10 +337,11 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     buy: (petId, key) => act(petId, (pet, t) => buyAction(pet, key, t)),
     markHappeningSeen: (petId) =>
       act(petId, (pet, t) => markSeenAction(pet, t)),
-    completeHappening: (petId, result) =>
+    completeHappening: (petId, happening, result) =>
       act(petId, (pet, t) =>
-        completeHappeningAction(pet, t, Math.random, result)
+        completeHappeningAction(pet, t, Math.random, result, happening)
       ),
+    hold: (holding) => set({ holding }),
     collectWish: (petId) => act(petId, (pet, t) => collectWishAction(pet, t)),
     setDecor(petId, id, on) {
       const pet = petOf(petId);

@@ -56,7 +56,7 @@ export default function SeasonHappening({
     if (phase !== "treat") return;
     setPhase("caught");
     playSound("sparkle");
-    complete(petId);
+    complete(petId, happening);
     onCheer("sparkle");
     later(() => setPhase("gone"), 3500);
   }

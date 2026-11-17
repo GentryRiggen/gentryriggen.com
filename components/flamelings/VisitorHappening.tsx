@@ -36,7 +36,7 @@ export default function VisitorHappening({
   function give() {
     if (phase !== "waiting") return;
     setPhase("waving");
-    complete(petId);
+    complete(petId, happening);
     onCheer("love");
     later(() => setPhase("gone"), 2200);
   }

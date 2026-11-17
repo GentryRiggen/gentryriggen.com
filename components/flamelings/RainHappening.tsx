@@ -63,7 +63,7 @@ export default function RainHappening({
         c.drops = [];
         setDrops([]);
         setPhase("clearing");
-        complete(petId, { popped: c.popped, missed: c.missed });
+        complete(petId, happening, { popped: c.popped, missed: c.missed });
         playSound("sparkle");
         later(() => setPhase("gone"), 1700);
         return;

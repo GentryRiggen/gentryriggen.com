@@ -1,11 +1,10 @@
+import { useEffect } from "react";
 import type { EmoteId } from "@/lib/flamelings/catalog";
 import {
-  happeningWindowAt,
-  isNightWindow,
+  currentHappening,
   wishWaiting,
   type Happening,
 } from "@/lib/flamelings/happenings";
-import { localDay } from "@/lib/flamelings/progress";
 import { isAwake } from "@/lib/flamelings/sim";
 import { useFlamelings } from "@/lib/flamelings/store";
 import type { Pet } from "@/lib/flamelings/types";
@@ -18,19 +17,6 @@ import StarHappening from "./StarHappening";
 import TreasureHappening from "./TreasureHappening";
 import VisitorHappening from "./VisitorHappening";
 import WishCollect from "./WishCollect";
-
-/** The happening that belongs on screen now, finished or not (it plays out). */
-function shownHappening(pet: Pet, clock: number): Happening | null {
-  const h = pet.happening;
-  if (!h || pet.state !== "alive") return null;
-  const window = happeningWindowAt(clock);
-  if (h.window === window) return h;
-  const carried =
-    h.kind === "hatchday" &&
-    h.window.slice(0, 10) === localDay(clock) &&
-    !isNightWindow(window);
-  return carried ? h : null;
-}
 
 interface HappeningLayerProps {
   pet: Pet;
@@ -48,7 +34,26 @@ export default function HappeningLayer({
   onCheer,
 }: HappeningLayerProps) {
   const markSeen = useFlamelings((s) => s.markHappeningSeen);
-  const happening = shownHappening(pet, clock);
+  const hold = useFlamelings((s) => s.hold);
+  const holding = useFlamelings((s) => s.holding);
+  const stored = pet.happening;
+  const heldOnScreen =
+    holding && holding.petId === pet.id && stored?.window === holding.window
+      ? stored
+      : null;
+  const happening: Happening | null =
+    currentHappening(pet, clock) ?? heldOnScreen;
+  const petId = pet.id;
+  const playing = happening !== null && happening.seen && !happening.done;
+  const playingWindow = happening?.window ?? "";
+
+  // A happening being played is not swapped out when a new window starts; it
+  // is let go when it finishes or this screen closes.
+  useEffect(() => {
+    if (!playing) return;
+    hold({ petId, window: playingWindow });
+    return () => hold(null);
+  }, [playing, petId, playingWindow, hold]);
   const props = { petId: pet.id, onCheer };
 
   return (
