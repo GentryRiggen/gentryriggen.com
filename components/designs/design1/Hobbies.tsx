@@ -67,6 +67,20 @@ export default function Hobbies() {
         </span>
         ).
       </p>
+      <p className="leading-relaxed">
+        🔥 And a little flame pet you hatch, feed and dress up:{" "}
+        <a
+          href="/flamelings"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /flamelings
+        </a>{" "}
+        (or type{" "}
+        <span className="text-green-600 dark:text-green-300">
+          &apos;flamelings&apos;
+        </span>
+        ).
+      </p>
     </div>
   );
 }

@@ -189,6 +189,21 @@ it("keeps /jim out of the sitemap and the pageview analytics", () => {
   expect(siteForPath("/jim/notes/people/sam-okafor")).toBeNull();
 });
 
+describe("Flamelings caching", () => {
+  it.each([
+    "/flamelings",
+    "/flamelings.html",
+    "/flamelings/versions",
+    "/flamelings/versions.html",
+    "/flamelings.webmanifest",
+  ])("%s is revalidated, so deploys land", (source) => {
+    expect(headersFor(target("main"), source)).toContainEqual({
+      key: "Cache-Control",
+      value: "no-cache",
+    });
+  });
+});
+
 describe("Planet Smasher caching", () => {
   it.each([
     "/planet-smasher",

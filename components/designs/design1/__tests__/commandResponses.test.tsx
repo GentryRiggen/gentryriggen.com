@@ -55,6 +55,29 @@ describe("planets command", () => {
   });
 });
 
+describe("flamelings command", () => {
+  it.each(["flamelings", "pets", "FLAMELINGS"])(
+    "responds to %s with a blurb, a link, and a navigation target",
+    (input) => {
+      const result = getCommandResponse(input, []);
+      render(<>{result.output}</>);
+
+      expect(
+        screen.getByText(/A little flame pet I made for my boys/)
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /\/flamelings/ })
+      ).toHaveAttribute("href", "/flamelings");
+      expect(result.navigateTo).toBe("/flamelings");
+    }
+  );
+
+  it("is listed in help", () => {
+    const result = getCommandResponse("help", []);
+    expect(result.output).toEqual(expect.stringMatching(/^\s+flamelings\s/m));
+  });
+});
+
 describe("ever onward command", () => {
   it.each([
     "onward",
