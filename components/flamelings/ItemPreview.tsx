@@ -1,7 +1,9 @@
 import {
+  DECOR_GLYPH,
   EMOTE_GLYPH,
   FOOD_GLYPH,
   parseUnlockKey,
+  type DecorId,
   type EmoteId,
   type FoodId,
   type UnlockKey,
@@ -41,6 +43,15 @@ export default function ItemPreview({
           id={parsed.id}
           className={`${className} ${tone}`}
         />
+      );
+    case "decor":
+      return (
+        <span
+          aria-hidden="true"
+          className={`grid place-items-center text-4xl ${className} ${tone}`}
+        >
+          {DECOR_GLYPH[parsed.id as DecorId]}
+        </span>
       );
     case "emote":
       return (

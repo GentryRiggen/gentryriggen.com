@@ -3,7 +3,7 @@ import type { EmoteId } from "@/lib/flamelings/catalog";
 import type { StageId } from "@/lib/flamelings/types";
 import type { Mood } from "@/lib/flamelings/sim";
 import type { Look, Worn } from "@/lib/flamelings/types";
-import Accessories from "./Accessories";
+import Accessories, { AccessoriesBack } from "./Accessories";
 import EmoteFx from "./EmoteFx";
 
 export interface BlobProps {
@@ -88,6 +88,7 @@ export default function Blob({
         </defs>
         <g className="fl-all">
           <g className="fl-droop">
+            <AccessoriesBack neck={worn.neck} />
             <g filter={`url(#${goo})`} fill={`url(#${fill})`}>
               <circle className="fl-body" cx="60" cy="78" r="30" />
               <circle className="fl-side-l" cx="42" cy="70" r="16" />

@@ -17,6 +17,7 @@ const KIND_WORD: Record<string, string> = {
   neck: "neck item",
   emote: "emote",
   food: "food",
+  decor: "decoration",
 };
 
 async function burst(): Promise<void> {
