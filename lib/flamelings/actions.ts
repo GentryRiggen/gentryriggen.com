@@ -182,6 +182,7 @@ export function createPet(params: {
     care: NO_CARE,
     careCredit: { day: localDay(params.now), count: 0 },
     form: null,
+    online: { code: null, nameId: null, friends: [], played: {} },
   };
 }
 

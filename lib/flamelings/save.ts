@@ -15,8 +15,19 @@ import {
 import { emptySave, MAX_PETS, MAX_SPARKS } from "./actions";
 import { isHappeningKind, variantsOf, type Happening } from "./happenings";
 import { FORM_LEVEL, isFormId, MAX_CARE_COUNT, NO_CARE } from "./forms";
-import { SAVE_SCHEMA } from "./types";
-import type { CareStats, Look, Memorial, Pet, SaveData, Worn } from "./types";
+import { isCode, parseFriend } from "./online/card";
+import { isNameId } from "./online/names";
+import { MAX_FRIENDS, SAVE_SCHEMA } from "./types";
+import type {
+  CareStats,
+  Friend,
+  Look,
+  Memorial,
+  Pet,
+  PetOnline,
+  SaveData,
+  Worn,
+} from "./types";
 
 export const SAVE_KEY = "flamelings:v1";
 /** Prefix of the backups of saves that could not be read in full. */
@@ -100,6 +111,41 @@ function parseCareOrSeed(v: unknown, level: number): CareStats {
     plays: level,
     pets: level,
     styles: 0,
+  };
+}
+
+/** A pet's online side: unknown or invalid codes and cards are dropped. */
+function parseOnline(v: unknown): PetOnline {
+  const o = isObj(v) ? v : {};
+  const code = isCode(o.code) ? o.code : null;
+  const friends: Friend[] = [];
+  for (const entry of Array.isArray(o.friends) ? o.friends : []) {
+    const friend = parseFriend(entry);
+    if (
+      friend &&
+      friend.code !== code &&
+      friends.length < MAX_FRIENDS &&
+      !friends.some((f) => f.code === friend.code)
+    ) {
+      friends.push(friend);
+    }
+  }
+  const played: Record<string, string> = {};
+  const marks = isObj(o.played) ? o.played : {};
+  for (const [friendCode, window] of Object.entries(marks)) {
+    if (
+      friends.some((f) => f.code === friendCode) &&
+      typeof window === "string" &&
+      window.length <= 32
+    ) {
+      played[friendCode] = window;
+    }
+  }
+  return {
+    code,
+    nameId: isNameId(o.nameId) ? o.nameId : null,
+    friends,
+    played,
   };
 }
 
@@ -190,6 +236,7 @@ function parsePet(v: unknown, fallbackTime: number): Pet | null {
     },
     happening: parseHappening(v.happening),
     wish: Math.floor(num(v.wish, 0, 100, 0)),
+    online: parseOnline(v.online),
     care: parseCareOrSeed(v.care, Math.floor(num(v.level, 1, 99, 1))),
     careCredit: {
       day: typeof credit.day === "string" ? credit.day : "",
