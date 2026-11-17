@@ -24,6 +24,7 @@ export default function Flamelings() {
   const view = useFlamelings((s) => s.view);
   const celebration = useFlamelings((s) => s.celebrations[0]);
   const locked = useFlamelings((s) => s.locked);
+  const outdated = useFlamelings((s) => s.outdated);
   const init = useFlamelings((s) => s.init);
   const tick = useFlamelings((s) => s.tick);
   const heartbeat = useFlamelings((s) => s.heartbeat);
@@ -101,7 +102,7 @@ export default function Flamelings() {
       ) : (
         <PetView key={view.petId} petId={view.petId} />
       )}
-      {isUpdateReady && !locked && (
+      {(isUpdateReady || outdated) && !locked && (
         <UpdatePill
           onUpdate={update}
           testId="flamelings-update"

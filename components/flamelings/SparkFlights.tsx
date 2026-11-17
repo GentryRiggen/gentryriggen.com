@@ -12,6 +12,8 @@ export interface Burst {
 const MAX_PARTICLES = 8;
 const FLIGHT_MS = 650;
 const STAGGER_MS = 55;
+/** The longest a burst can take to land; a safety net waits a bit longer. */
+export const FLIGHT_TOTAL_MS = FLIGHT_MS + MAX_PARTICLES * STAGGER_MS;
 
 /** How many particles carry `amount` sparks, and how many sparks each lands. */
 export function sharesOf(amount: number): number[] {
@@ -25,7 +27,7 @@ export function sharesOf(amount: number): number[] {
 interface FlightProps {
   burst: Burst;
   target: RefObject<HTMLElement | null>;
-  onLand: (sparks: number) => void;
+  onLand: (sparks: number, id: number) => void;
   onDone: (id: number) => void;
 }
 
@@ -42,7 +44,7 @@ function Flight({ burst, target, onLand, onDone }: FlightProps) {
     const toY = rect ? rect.top + rect.height / 2 : burst.y - 200;
     let left = shares.length;
     const finish = (share: number) => {
-      onLand(share);
+      onLand(share, burst.id);
       left -= 1;
       if (left === 0) onDone(burst.id);
     };
@@ -107,7 +109,7 @@ function Flight({ burst, target, onLand, onDone }: FlightProps) {
 interface SparkFlightsProps {
   bursts: readonly Burst[];
   target: RefObject<HTMLElement | null>;
-  onLand: (sparks: number) => void;
+  onLand: (sparks: number, id: number) => void;
   onDone: (id: number) => void;
 }
 

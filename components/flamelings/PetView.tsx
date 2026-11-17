@@ -4,6 +4,7 @@ import {
   type EmoteId,
   type FoodId,
 } from "@/lib/flamelings/catalog";
+import { sparkRoundsLeft } from "@/lib/flamelings/actions";
 import { hasGiftWaiting, stageFor, xpToNext } from "@/lib/flamelings/progress";
 import { isAwake, moodOf, RELIGHT_FEEDS } from "@/lib/flamelings/sim";
 import {
@@ -23,7 +24,7 @@ import Meters from "./Meters";
 import Shop from "./Shop";
 import SoundToggle from "./SoundToggle";
 import SparkCounter from "./SparkCounter";
-import SparkFlights, { type Burst } from "./SparkFlights";
+import SparkFlights, { FLIGHT_TOTAL_MS, type Burst } from "./SparkFlights";
 import Wardrobe from "./Wardrobe";
 import { FOCUS_RING, SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "./styles";
 import { useEmote } from "./useEmote";
@@ -66,12 +67,15 @@ function BarButton({
   label,
   active,
   disabled,
+  badge,
   onClick,
 }: {
   icon: string;
   label: string;
   active?: boolean;
   disabled?: boolean;
+  /** A tiny icon in the corner (decoration; the label stays the name). */
+  badge?: { glyph: string; testId: string };
   onClick: () => void;
 }) {
   return (
@@ -80,7 +84,7 @@ function BarButton({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`flex min-h-20 min-w-0 flex-col items-center justify-center rounded-3xl px-0.5 text-[0.7rem] font-extrabold sm:text-base shadow-lg transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100 ${FOCUS_RING} ${
+      className={`relative flex min-h-20 min-w-0 flex-col items-center justify-center rounded-3xl px-0.5 text-[0.7rem] font-extrabold sm:text-base shadow-lg transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100 ${FOCUS_RING} ${
         active
           ? "bg-orange-500 text-white dark:bg-orange-300 dark:text-stone-900"
           : "bg-white/90 text-stone-900 dark:bg-slate-800/90 dark:text-amber-50"
@@ -90,6 +94,15 @@ function BarButton({
         {icon}
       </span>
       {label}
+      {badge && (
+        <span
+          aria-hidden="true"
+          data-testid={badge.testId}
+          className="absolute right-1 top-1 grid size-6 place-items-center rounded-full bg-indigo-100 text-xs shadow dark:bg-indigo-900"
+        >
+          {badge.glyph}
+        </span>
+      )}
     </button>
   );
 }
@@ -111,8 +124,11 @@ export default function PetView({ petId }: { petId: string }) {
   const { emote, emoteKey, play } = useEmote();
   const timers = useRef<number[]>([]);
   const [bursts, setBursts] = useState<Burst[]>([]);
+  const [burstPet, setBurstPet] = useState(petId);
   /** Sparks earned but still flying: the counter does not show them yet. */
   const [inFlight, setInFlight] = useState(0);
+  /** Sparks of each burst that have not landed yet, by burst id. */
+  const unlanded = useRef(new Map<number, number>());
   const counterRef = useRef<HTMLDivElement>(null);
   const lastTap = useRef<{ x: number; y: number; at: number } | null>(null);
 
@@ -143,22 +159,43 @@ export default function PetView({ petId }: { petId: string }) {
           tap && Date.now() - tap.at < RECENT_TAP_MS
             ? tap
             : { x: window.innerWidth / 2, y: window.innerHeight * 0.55 };
+        const id = last.id;
+        unlanded.current.set(id, amount);
         setInFlight((n) => n + amount);
-        setBursts((list) => [
-          ...list,
-          { id: last.id, amount, x: from.x, y: from.y },
-        ]);
+        setBursts((list) => [...list, { id, amount, x: from.x, y: from.y }]);
+        // If the animation never reports back (a hidden page, a browser
+        // without it), settle the burst anyway so the counter catches up.
+        timers.current.push(
+          window.setTimeout(() => {
+            const rest = unlanded.current.get(id);
+            if (rest === undefined) return;
+            unlanded.current.delete(id);
+            setInFlight((n) => Math.max(0, n - rest));
+            setBursts((list) => list.filter((b) => b.id !== id));
+          }, FLIGHT_TOTAL_MS + 500)
+        );
       }),
     [petId]
   );
 
-  const handleLand = useCallback((sparks: number) => {
+  const handleLand = useCallback((sparks: number, id: number) => {
+    const rest = unlanded.current.get(id);
+    if (rest === undefined) return;
+    unlanded.current.set(id, rest - sparks);
     setInFlight((n) => Math.max(0, n - sparks));
     playSound("coin");
   }, []);
   const handleFlightDone = useCallback((id: number) => {
+    unlanded.current.delete(id);
     setBursts((list) => list.filter((b) => b.id !== id));
   }, []);
+
+  // A different pet starts with nothing in flight (reset while rendering).
+  if (burstPet !== petId) {
+    setBurstPet(petId);
+    setInFlight(0);
+    setBursts([]);
+  }
 
   if (!pet) return null;
 
@@ -376,6 +413,11 @@ export default function PetView({ petId }: { petId: string }) {
             icon="🦋"
             label="Play"
             disabled={!canCare}
+            badge={
+              canCare && sparkRoundsLeft(pet, clock) === 0
+                ? { glyph: "💤", testId: "sparks-resting" }
+                : undefined
+            }
             onClick={() => setPanel("play")}
           />
           <BarButton

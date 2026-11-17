@@ -6,6 +6,7 @@ import {
   emptySave,
   feed,
   finishPlay,
+  sparkRoundsLeft,
   hatch,
   MAX_PETS,
   openGift,
@@ -251,6 +252,26 @@ describe("sparks", () => {
     expect(finishPlay(make(), 7, noon).pet.sparks).toBe(7);
     expect(finishPlay(make(), 90, noon).pet.sparks).toBe(SPARKS.playCap);
     expect(finishPlay(make(), 0, noon).pet.sparks).toBe(0);
+  });
+
+  it("pays sparks for only 3 firefly rounds per window, then only joy and XP", () => {
+    let pet = make({ joy: 0 });
+    const paid: number[] = [];
+    for (let i = 0; i < 6; i++) {
+      const before = pet.sparks;
+      pet = finishPlay(pet, 8, noon).pet;
+      paid.push(pet.sparks - before);
+    }
+    expect(paid).toEqual([8, 8, 8, 0, 0, 0]);
+    expect(sparkRoundsLeft(pet, noon)).toBe(0);
+    // The evening window pays again.
+    const evening = new Date(2026, 10, 16, 18).getTime();
+    expect(sparkRoundsLeft(pet, evening)).toBe(3);
+    expect(finishPlay(pet, 8, evening).pet.sparks).toBe(pet.sparks + 8);
+    // A spent round still cheers and gives XP.
+    const spent = finishPlay(make({ joy: 0 }), 8, noon);
+    expect(spent.pet.joy).toBe(16);
+    expect(spent.pet.xp).toBe(4);
   });
 
   it("pays 10 to 25 for the check-in gift", () => {

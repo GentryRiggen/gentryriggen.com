@@ -96,6 +96,8 @@ export interface FlamelingsStore {
   ready: boolean;
   /** Another tab is playing: this one shows a screen and never saves. */
   locked: boolean;
+  /** The stored save is from a newer build: play in memory, offer the update. */
+  outdated: boolean;
   save: SaveData;
   /** The game clock as of the last tick or action. */
   clock: number;
@@ -149,7 +151,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     canWrite = loaded.writable;
     lastRaw = readRaw();
     const { save } = settle(loaded.save, t);
-    set({ save, clock: t });
+    set({ save, clock: t, outdated: loaded.newer });
   }
 
   /**
@@ -204,6 +206,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
   return {
     ready: false,
     locked: false,
+    outdated: false,
     save: emptySave(0),
     clock: 0,
     view: { screen: "shelf" },
@@ -223,7 +226,13 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
       lastRaw = readRaw();
       const { save } = settle(loaded.save, t);
       if (canWrite && writeSave(save)) lastRaw = readRaw();
-      set({ ready: true, locked: false, save, clock: t });
+      set({
+        ready: true,
+        locked: false,
+        outdated: loaded.newer,
+        save,
+        clock: t,
+      });
       if (!visited) {
         visited = true;
         trackVisit(save.pets.length, t);

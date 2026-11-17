@@ -18,6 +18,7 @@ import {
 } from "./progress";
 import { shopItem } from "./shop";
 import { RELIGHT_FEEDS, advance, isAwake, isOut } from "./sim";
+import { SAVE_SCHEMA } from "./types";
 import type {
   Look,
   Memorial,
@@ -56,6 +57,19 @@ export const SPARKS = {
   levelPerLevel: 10,
 } as const;
 
+/** Firefly rounds that pay sparks per pet per check-in window. */
+export const MAX_SPARK_ROUNDS = 3;
+
+/** Paying rounds left for this pet in the current check-in window. */
+export function sparkRoundsLeft(pet: Pet, nowMs: number): number {
+  const window = giftWindowAt(nowMs);
+  const used =
+    window !== null && pet.sparkRounds.window === window
+      ? pet.sparkRounds.count
+      : 0;
+  return Math.max(0, MAX_SPARK_ROUNDS - used);
+}
+
 /** Shop pets and sparks stay small whole numbers. */
 export const MAX_SPARKS = 1_000_000;
 
@@ -74,7 +88,14 @@ function earn(
 const clamp = (n: number) => Math.min(100, Math.max(0, n));
 
 export function emptySave(now: number): SaveData {
-  return { v: 1, pets: [], memorial: [], collection: [], updatedAt: now };
+  return {
+    v: 1,
+    schema: SAVE_SCHEMA,
+    pets: [],
+    memorial: [],
+    collection: [],
+    updatedAt: now,
+  };
 }
 
 export function createPet(params: {
@@ -111,6 +132,7 @@ export function createPet(params: {
     tickedAt: params.now,
     giftWindow: null,
     petTaps: { day: localDay(params.now), count: 0 },
+    sparkRounds: { window: "", count: 0 },
   };
 }
 
@@ -213,12 +235,22 @@ export function finishPlay(pet: Pet, score: number, now: number): Outcome {
   const caught = Math.max(0, Math.min(99, Math.floor(score)));
   const events: PetEvent[] = [{ type: "care", action: "play" }];
   const cheered = { ...pet, joy: clamp(pet.joy + Math.min(40, caught * 2)) };
-  const next = earn(
-    cheered,
-    Math.min(SPARKS.playCap, caught * SPARKS.perFirefly),
-    "play",
-    events
-  );
+  // Only the first few rounds in a window pay sparks; the rest still cheer
+  // the pet up and give XP, so replaying is fine but cannot farm the shop.
+  const pays = sparkRoundsLeft(pet, now) > 0;
+  const window = giftWindowAt(now) ?? "";
+  const used = pet.sparkRounds.window === window ? pet.sparkRounds.count : 0;
+  const counted: Pet = pays
+    ? { ...cheered, sparkRounds: { window, count: used + 1 } }
+    : cheered;
+  const next = pays
+    ? earn(
+        counted,
+        Math.min(SPARKS.playCap, caught * SPARKS.perFirefly),
+        "play",
+        events
+      )
+    : counted;
   return {
     pet: grantXp(next, Math.min(20, Math.floor(caught / 2)), events),
     events,
