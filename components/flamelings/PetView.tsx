@@ -387,7 +387,7 @@ export default function PetView({ petId }: { petId: string }) {
           onClick={() => openGift(pet.id)}
           aria-label="Open the present"
           data-testid="gift"
-          className={`fl-gift-bounce absolute right-[max(1rem,env(safe-area-inset-right))] top-[34%] grid size-24 place-items-center rounded-full bg-white/80 text-6xl shadow-xl dark:bg-slate-800/80 ${FOCUS_RING}`}
+          className={`fl-gift-bounce absolute right-[max(1rem,env(safe-area-inset-right))] top-[47%] grid size-24 place-items-center rounded-full bg-white/80 text-6xl shadow-xl dark:bg-slate-800/80 ${FOCUS_RING}`}
         >
           <span aria-hidden="true">🎁</span>
         </button>
