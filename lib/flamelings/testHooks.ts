@@ -26,6 +26,8 @@ declare global {
         index?: number,
         variant?: string
       ): void;
+      /** Marks every pet's happening for this window as done (no intro cards). */
+      quietHappenings(): void;
     };
   }
 }
@@ -45,6 +47,21 @@ export function installTestHooks(): () => void {
       },
       now,
       state: () => useFlamelings.getState(),
+      quietHappenings() {
+        const { save } = useFlamelings.getState();
+        const done = {
+          ...forcedHappening("visitor", now()),
+          done: true,
+          seen: true,
+        };
+        useFlamelings.setState({
+          save: {
+            ...save,
+            pets: save.pets.map((p) => ({ ...p, happening: done })),
+          },
+        });
+        useFlamelings.getState().tick();
+      },
       forceHappening(kind, index = 0, variant) {
         const { save } = useFlamelings.getState();
         const happening = forcedHappening(kind, now(), variant);

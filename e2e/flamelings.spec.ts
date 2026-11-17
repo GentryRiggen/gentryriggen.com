@@ -12,12 +12,16 @@ async function open(page: Page, hour = 12) {
   );
 }
 
-async function hatch(page: Page, name: string) {
+async function hatch(page: Page, name: string, quiet = true) {
   await page.getByTestId("hatch-new").click();
   for (let i = 0; i < 5; i++) await page.getByTestId("egg").click();
   await page.getByRole("button", { name: "Hello, little flame!" }).click();
   await page.getByLabel("Name your flameling").fill(name);
   await page.getByRole("button", { name: "Welcome home!" }).click();
+  // A happening may have been picked by chance; most tests are not about it.
+  if (quiet) {
+    await page.evaluate(() => window.__flamelings!.quietHappenings());
+  }
   await expect(
     page.getByRole("button", { name: `${name}, tap to say hi` })
   ).toBeVisible();
@@ -234,7 +238,7 @@ test("the happening picked for a window is saved and survives a reload", async (
   page,
 }) => {
   await openReal(page);
-  await hatch(page, "Pip");
+  await hatch(page, "Pip", false);
   const before = await page.evaluate(
     () => window.__flamelings!.state().save.pets[0].happening
   );

@@ -9025,7 +9025,7 @@ html:has(.jim-app) body {
     transform: translateY(0);
   }
   to {
-    transform: translateY(54dvh);
+    transform: translateY(54vh);
   }
 }
 .fl-cloud-in {
@@ -9127,7 +9127,7 @@ html:has(.jim-app) body {
     opacity: 1;
   }
   100% {
-    transform: translate(40vw, -40dvh) scale(0.3);
+    transform: translate(40vw, -40vh) scale(0.3);
     opacity: 0;
   }
 }
@@ -9181,10 +9181,10 @@ html:has(.jim-app) body {
     transform: translate(0, 0) rotate(0);
   }
   50% {
-    transform: translate(22px, 55dvh) rotate(180deg);
+    transform: translate(22px, 55vh) rotate(180deg);
   }
   to {
-    transform: translate(-10px, 112dvh) rotate(360deg);
+    transform: translate(-10px, 112vh) rotate(360deg);
   }
 }
 .fl-intro-pop {

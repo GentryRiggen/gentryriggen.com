@@ -510,7 +510,7 @@ export function hatch(
 ): SaveData {
   if (save.pets.length >= MAX_PETS) return save;
   const collection = collectionOf(save);
-  const pet = createPet({ ...params, collection });
+  const pet = ensureHappening(createPet({ ...params, collection }), params.now);
   return {
     ...save,
     pets: [...save.pets, pet],
