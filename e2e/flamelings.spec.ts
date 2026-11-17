@@ -277,7 +277,14 @@ test("the care bar and the shop fit the screen @smoke", async ({ page }) => {
   await hatch(page, "Pip");
   await page.evaluate(() => window.__flamelings!.patchPet(0, { sparks: 500 }));
   const width = page.viewportSize()!.width;
-  for (const label of ["Feed", "Play", "Wardrobe", "Shop", "Emotes", "Shelf"]) {
+  for (const label of [
+    "Feed",
+    "Play",
+    "Wardrobe",
+    "Shop",
+    "Emotes",
+    "Friends",
+  ]) {
     const box = await page
       .getByRole("button", { name: label, exact: true })
       .boundingBox();
