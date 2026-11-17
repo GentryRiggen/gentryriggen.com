@@ -22,6 +22,18 @@ const pet = (patch: Partial<Pet> = {}): Pet => ({
   ...patch,
 });
 
+// jsdom has no PointerEvent, so give pointer events their id for these tests.
+if (typeof window.PointerEvent === "undefined") {
+  class TestPointerEvent extends MouseEvent {
+    pointerId: number;
+    constructor(type: string, init: PointerEventInit = {}) {
+      super(type, init);
+      this.pointerId = init.pointerId ?? 0;
+    }
+  }
+  Object.defineProperty(window, "PointerEvent", { value: TestPointerEvent });
+}
+
 beforeEach(() => {
   jest.useFakeTimers({ now: NOON, advanceTimers: true });
   window.localStorage.clear();
@@ -159,6 +171,26 @@ describe("Marshmallow Toast", () => {
     const score = onDone.mock.calls[0][0] as number;
     expect(score).toBeGreaterThanOrEqual(5);
     expect(score).toBeLessThanOrEqual(15);
+  });
+
+  it("ignores a pointer that did not start the hold", () => {
+    render(<MarshmallowToast pet={pet()} onDone={jest.fn()} />);
+    const hold = screen.getByTestId("toast-hold");
+    fireEvent.pointerDown(hold, { pointerId: 1 });
+    act(() => jest.advanceTimersByTime(300));
+    fireEvent.pointerUp(hold, { pointerId: 2 });
+    expect(screen.queryByTestId("toast-result")).not.toBeInTheDocument();
+    fireEvent.pointerUp(hold, { pointerId: 1 });
+    expect(screen.getByTestId("toast-result")).toBeInTheDocument();
+  });
+
+  it("lets go when the pointer capture is lost", () => {
+    render(<MarshmallowToast pet={pet()} onDone={jest.fn()} />);
+    const hold = screen.getByTestId("toast-hold");
+    fireEvent.pointerDown(hold, { pointerId: 4 });
+    act(() => jest.advanceTimersByTime(300));
+    fireEvent.lostPointerCapture(hold, { pointerId: 4 });
+    expect(screen.getByTestId("toast-result")).toBeInTheDocument();
   });
 
   it("burns a marshmallow that is held too long, and still scores it", () => {
