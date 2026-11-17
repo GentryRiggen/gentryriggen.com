@@ -20,12 +20,12 @@ export const CHANGELOG: readonly Release[] = [
     title: "Friends and playdates",
     highlights: [
       "Every flameling can have friends! Tap the 👫 button on a flameling's card or in its glade to open the Friends screen",
-      "Each flameling gets its own secret friend code, six letters and numbers. Show your code to a friend, or read it out, and they type it on a big keypad to add you. You add each other by typing each other's code, so friends can sit side by side and do it together",
+      "Each flameling gets its own friend code, six letters and numbers. Show your code to a friend, or read it out, and they type it on a big keypad to add you. You add each other by typing each other's code, so friends can sit side by side and do it together",
       "Before you add someone you see their flameling, so you know you have the right friend. Your friends' flamelings show how they look right now",
       "Tap the 🎈 playdate button and your friend's flameling walks into your glade. They dance, you tap both of them to high-five, and then you share a marshmallow. Your flameling gets happier and earns 10 sparks. You can have one playdate with each friend in each morning or evening",
       "Your friend gets a card the next time they open the game that says their friend visited, with 5 sparks and a happy boost",
       "Friends see a name from a list of friendly names, never what you typed. Tap the 🏷️ button to pick a different one. A flameling's real name stays on your device",
-      "For parents: nothing is typed or sent except the code. There is no chat, no search and no list of other players, so the only way to see a flameling is to have its code. Your child's flameling shares only how it looks, its level and a name from our list, plus a random code. You can remove a friend any time with the 🗑️ button. If the internet is away, a little cloud with a line through it shows and the rest of the game works as usual",
+      "For parents: a flameling that uses Friends shares only these things online: its friend code, how it looks (colours, hat and so on), its level, stage and grown-up form, a name picked from our built-in list of friendly names, and an anonymous account id that is not linked to a name or an email. Nothing your child types is ever sent, including the flameling's real name. There is no chat, no search and no list of other players. Codes are random and hard to guess, but treat one like a phone number and share it only with people you want as friends. Remove a friend any time with the 🗑️ button. If the internet is away, a little cloud with a line through it shows and the rest of the game works as usual",
     ],
   },
   {
