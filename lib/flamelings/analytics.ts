@@ -1,7 +1,7 @@
 import { trackGame } from "@/lib/analytics/trackGame";
 import { parseUnlockKey } from "./catalog";
 import { visitWindow } from "./progress";
-import type { PetEvent } from "./types";
+import type { PetEvent, PlayGame } from "./types";
 
 /**
  * Anonymous stats for the dashboard. Only closed enums and small whole
@@ -19,8 +19,9 @@ export function trackHatch(): void {
   trackGame("fl_hatch", {});
 }
 
-export function trackPlayEnd(score: number): void {
+export function trackPlayEnd(game: PlayGame, score: number): void {
   trackGame("fl_play_end", {
+    game,
     score: Math.max(0, Math.min(99, Math.floor(score))),
   });
 }
@@ -72,6 +73,9 @@ export function trackEvents(events: readonly PetEvent[]): void {
           kind: event.kind,
           done: event.done ? 1 : 0,
         });
+        break;
+      case "evolve":
+        trackGame("fl_form", { form: event.form });
         break;
       default:
         break;

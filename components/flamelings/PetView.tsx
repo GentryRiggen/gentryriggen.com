@@ -12,12 +12,16 @@ import {
   bubblesFor,
   emotesOf,
   fadeLevel,
+  levelLabel,
 } from "@/lib/flamelings/status";
 import { playSound } from "@/lib/flamelings/sound";
 import { useFlamelings } from "@/lib/flamelings/store";
 import EmotePanel from "./EmotePanel";
 import FeedTray from "./FeedTray";
 import FireflyCatch from "./FireflyCatch";
+import LogStack from "./LogStack";
+import MarshmallowToast from "./MarshmallowToast";
+import PlayPicker from "./PlayPicker";
 import Glade from "./Glade";
 import HappeningLayer from "./HappeningLayer";
 import Blob from "./Blob";
@@ -28,6 +32,7 @@ import SparkCounter from "./SparkCounter";
 import SparkFlights, { FLIGHT_TOTAL_MS, type Burst } from "./SparkFlights";
 import Wardrobe from "./Wardrobe";
 import { FOCUS_RING, SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "./styles";
+import type { Pet, PlayGame } from "@/lib/flamelings/types";
 import { useEmote } from "./useEmote";
 
 type Panel = "feed" | "emotes" | "wardrobe" | "shop" | "play" | null;
@@ -108,6 +113,21 @@ function BarButton({
   );
 }
 
+function PlayGameScreen({
+  game,
+  pet,
+  onDone,
+}: {
+  game: PlayGame;
+  pet: Pet;
+  onDone: (score: number) => void;
+}) {
+  if (game === "marshmallow")
+    return <MarshmallowToast pet={pet} onDone={onDone} />;
+  if (game === "logs") return <LogStack pet={pet} onDone={onDone} />;
+  return <FireflyCatch onDone={onDone} />;
+}
+
 /** One pet in the glade: needs, care buttons, ash, gift, emotes. */
 export default function PetView({ petId }: { petId: string }) {
   const pet = useFlamelings((s) => s.save.pets.find((p) => p.id === petId));
@@ -118,7 +138,9 @@ export default function PetView({ petId }: { petId: string }) {
   const tapPet = useFlamelings((s) => s.tapPet);
   const openGift = useFlamelings((s) => s.openGift);
   const finishPlay = useFlamelings((s) => s.finishPlay);
+  const countEmote = useFlamelings((s) => s.emote);
   const [panel, setPanel] = useState<Panel>(null);
+  const [game, setGame] = useState<PlayGame | null>(null);
   const [flying, setFlying] = useState<FoodId | null>(null);
   const [eating, setEating] = useState(false);
   const [shaking, setShaking] = useState(0);
@@ -241,6 +263,7 @@ export default function PetView({ petId }: { petId: string }) {
   }
 
   function pickEmote(choice: EmoteId) {
+    if (pet) countEmote(pet.id);
     play(choice);
     setPanel(null);
   }
@@ -277,6 +300,7 @@ export default function PetView({ petId }: { petId: string }) {
             <Blob
               look={pet.look}
               worn={pet.worn}
+              form={pet.form}
               fade={fadeLevel(pet)}
               mood={mood}
               stage={stage.id}
@@ -349,7 +373,7 @@ export default function PetView({ petId }: { petId: string }) {
                 {pet.name}
               </span>
               <span className="shrink-0 text-xs font-bold leading-tight sm:text-sm">
-                Lv {pet.level} · {stage.name}
+                {levelLabel(pet.level, pet.form)}
               </span>
             </p>
             <progress
@@ -460,10 +484,20 @@ export default function PetView({ petId }: { petId: string }) {
         onLand={handleLand}
         onDone={handleFlightDone}
       />
-      {panel === "play" && (
-        <FireflyCatch
+      {panel === "play" && !game && (
+        <PlayPicker
+          roundsLeft={sparkRoundsLeft(pet, clock)}
+          onPick={setGame}
+          onClose={() => setPanel(null)}
+        />
+      )}
+      {panel === "play" && game && (
+        <PlayGameScreen
+          game={game}
+          pet={pet}
           onDone={(score) => {
-            finishPlay(pet.id, score);
+            finishPlay(pet.id, game, score);
+            setGame(null);
             setPanel(null);
             play("dance");
           }}

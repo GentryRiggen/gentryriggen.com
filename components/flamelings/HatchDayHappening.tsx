@@ -24,7 +24,7 @@ export default function HatchDayHappening({
     setPhase("out");
     playSound("blow");
     void burstConfetti({ particleCount: 140, originY: 0.55 });
-    complete(petId);
+    complete(petId, happening);
     onCheer("dance");
     later(() => setPhase("gone"), 2800);
   }

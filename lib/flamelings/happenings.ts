@@ -213,21 +213,50 @@ export function pickHappening(
   return { ...base, kind, variant };
 }
 
+/** The local day after `day` (`yyyy-mm-dd`). */
+function nextDay(day: string): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return localDay(new Date(y, m - 1, d + 1, 12).getTime());
+}
+
+/**
+ * An undone Hatch Day party stays claimable through its own day, the night
+ * and the next morning window (and no longer), so a child who is asleep at
+ * 21:00 still finds the cake in the morning.
+ */
+export function partyCarries(h: Happening, window: string): boolean {
+  if (h.kind !== "hatchday" || h.done) return false;
+  const day = h.window.slice(0, 10);
+  return (
+    window === `${day}:am` ||
+    window === `${day}:pm` ||
+    window === `${day}:night` ||
+    window === `${nextDay(day)}:am`
+  );
+}
+
 /**
  * Makes sure the pet has this window's pick stored: a stored one for the
  * current window is kept as it is (that is what stops a reload rerolling),
- * and an undone Hatch Day party stays for the rest of its day. Embers get
- * nothing.
+ * and an undone Hatch Day party stays until the next morning window ends.
+ * `holdWindow` is the window of a happening on screen right now: it is never
+ * replaced until it is finished or the screen closes. Embers get nothing.
  */
-export function ensureHappening(pet: Pet, ms: number): Pet {
+export function ensureHappening(
+  pet: Pet,
+  ms: number,
+  holdWindow: string | null = null
+): Pet {
   if (pet.state !== "alive") return pet;
   const window = happeningWindowAt(ms);
   const current = pet.happening;
   if (current && current.window === window) return pet;
+  if (current && !current.done && current.window === holdWindow) return pet;
+  const carries = current ? partyCarries(current, window) : false;
+  if (carries) return pet;
   const partyToday =
     current?.kind === "hatchday" &&
     current.window.slice(0, 10) === localDay(ms);
-  if (partyToday && !current.done && !isNightWindow(window)) return pet;
   const next = pickHappening(pet.id, pet.bornAt, ms, {
     skipHatchDay: partyToday,
   });
@@ -235,17 +264,19 @@ export function ensureHappening(pet: Pet, ms: number): Pet {
   return { ...pet, happening: next };
 }
 
-/** The happening the pet can do right now (none for an ember or when done). */
-export function activeHappening(pet: Pet, ms: number): Happening | null {
+/** The happening for the current moment, finished or not (it plays out). */
+export function currentHappening(pet: Pet, ms: number): Happening | null {
   const h = pet.happening;
-  if (!h || h.done || pet.state !== "alive") return null;
+  if (!h || pet.state !== "alive") return null;
   const window = happeningWindowAt(ms);
   if (h.window === window) return h;
-  const carried =
-    h.kind === "hatchday" &&
-    h.window.slice(0, 10) === localDay(ms) &&
-    !isNightWindow(window);
-  return carried ? h : null;
+  return partyCarries(h, window) ? h : null;
+}
+
+/** The happening the pet can do right now (none for an ember or when done). */
+export function activeHappening(pet: Pet, ms: number): Happening | null {
+  const h = currentHappening(pet, ms);
+  return h && !h.done ? h : null;
 }
 
 /** Sparks from a star wish are waiting once the pet is up. */

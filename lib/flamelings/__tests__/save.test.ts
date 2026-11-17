@@ -367,3 +367,43 @@ describe("happenings in a save", () => {
     expect(parseSave(raw)?.pets[0].happening?.variant).toBe("owl");
   });
 });
+
+describe("review fixes: backups", () => {
+  it("does not back up a newer save with a broken entry on every load", () => {
+    const storage = new MemoryStorage();
+    const good = hatch(emptySave(NOW), {
+      id: "a",
+      name: "Pip",
+      look,
+      now: NOW,
+    });
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        ...good,
+        schema: SAVE_SCHEMA + 1,
+        pets: [...good.pets, { nope: true }],
+      })
+    );
+    for (let i = 0; i < 5; i++) loadSaveResult(NOW + i, storage);
+    expect(storage.backups()).toEqual([]);
+  });
+
+  it("backs up identical broken text only once", () => {
+    const storage = new MemoryStorage();
+    const good = hatch(emptySave(NOW), {
+      id: "a",
+      name: "Pip",
+      look,
+      now: NOW,
+    });
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({ ...good, pets: [...good.pets, { nope: true }] })
+    );
+    const first = loadSaveResult(NOW, storage);
+    for (let i = 1; i < 5; i++) loadSaveResult(NOW + i, storage);
+    expect(first.writable).toBe(true);
+    expect(storage.backups()).toHaveLength(1);
+  });
+});

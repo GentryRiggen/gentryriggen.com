@@ -431,6 +431,40 @@ describe("flamelings specifics", () => {
     );
   });
 
+  it("takes a mini-game round as one of three games and a score up to 99", async () => {
+    const round = (game: string, score: number) =>
+      docFor("fl_play_end", { props: { game, score } });
+    for (const game of ["fireflies", "marshmallow", "logs"]) {
+      await assertSucceeds(create(anon(), round(game, 0)));
+      await assertSucceeds(create(anon(), round(game, 99)));
+    }
+    await assertFails(create(anon(), round("chess", 5)));
+    await assertFails(create(anon(), round("logs", 100)));
+    await assertFails(create(anon(), round("logs", -1)));
+    // The old shape (a score alone) is no longer valid.
+    await assertFails(
+      create(anon(), docFor("fl_play_end", { props: { score: 5 } }))
+    );
+  });
+
+  it("takes a grown-up form as one of three names and nothing else", async () => {
+    for (const form of ["cozy", "wild", "sparkly"]) {
+      await assertSucceeds(
+        create(anon(), docFor("fl_form", { props: { form } }))
+      );
+    }
+    await assertFails(
+      create(anon(), docFor("fl_form", { props: { form: "Rex" } }))
+    );
+    await assertFails(create(anon(), docFor("fl_form", { props: {} })));
+    await assertFails(
+      create(
+        anon(),
+        docFor("fl_form", { props: { form: "cozy", name: "Sparky" } })
+      )
+    );
+  });
+
   it("never lets a typed name ride along", async () => {
     await assertFails(
       create(anon(), docFor("fl_hatch", { props: { name: "Sparky" } }))

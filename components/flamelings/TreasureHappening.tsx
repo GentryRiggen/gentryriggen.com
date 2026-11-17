@@ -35,7 +35,7 @@ export default function TreasureHappening({
       return;
     }
     playSound("chest");
-    complete(petId);
+    complete(petId, happening);
     onCheer("wow");
     later(() => setGone(true), 2600);
   }

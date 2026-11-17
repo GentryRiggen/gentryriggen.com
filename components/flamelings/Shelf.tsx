@@ -3,7 +3,12 @@ import { MAX_PETS } from "@/lib/flamelings/actions";
 import { stageFor } from "@/lib/flamelings/progress";
 import { hasHappeningWaiting } from "@/lib/flamelings/happenings";
 import { isAwake, moodOf } from "@/lib/flamelings/sim";
-import { fadeLevel, stateGlyph } from "@/lib/flamelings/status";
+import {
+  fadeLevel,
+  levelLabel,
+  stageTitle,
+  stateGlyph,
+} from "@/lib/flamelings/status";
 import { useFlamelings } from "@/lib/flamelings/store";
 import { FLAMELINGS_VERSION } from "@/lib/flamelings/version";
 import type { Pet } from "@/lib/flamelings/types";
@@ -29,7 +34,7 @@ function PetCard({ pet, nowMs }: { pet: Pet; nowMs: number }) {
     <button
       type="button"
       onClick={() => go({ screen: "pet", petId: pet.id })}
-      aria-label={`${pet.name}, level ${pet.level} ${stage.name}${glyph ? `, ${glyph.label}` : ""}${waiting ? ", something is happening" : ""}`}
+      aria-label={`${pet.name}, level ${pet.level} ${stageTitle(pet.level, pet.form)}${glyph ? `, ${glyph.label}` : ""}${waiting ? ", something is happening" : ""}`}
       data-testid="pet-card"
       className={`${CARD} relative flex flex-col items-center gap-1 p-4 pb-3 transition-transform active:scale-95 ${FOCUS_RING}`}
     >
@@ -53,6 +58,7 @@ function PetCard({ pet, nowMs }: { pet: Pet; nowMs: number }) {
       <Blob
         look={pet.look}
         worn={pet.worn}
+        form={pet.form}
         fade={fadeLevel(pet)}
         mood={moodOf(pet, nowMs)}
         stage={stage.id}
@@ -62,7 +68,7 @@ function PetCard({ pet, nowMs }: { pet: Pet; nowMs: number }) {
         {pet.name}
       </span>
       <span className="text-sm font-semibold text-stone-600 dark:text-amber-200/80">
-        Lv {pet.level} · {stage.name}
+        {levelLabel(pet.level, pet.form)}
       </span>
     </button>
   );

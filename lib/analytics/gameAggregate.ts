@@ -66,6 +66,10 @@ export interface FlamelingsSummary {
   /** Sampled (about 1 in 4), so only the proportions mean anything. */
   care: Count[];
   playRuns: number;
+  /** Rounds per mini-game (fireflies, marshmallow, logs). */
+  playGames: Count[];
+  /** Grown-up forms picked at level 10. */
+  forms: Count[];
   averageScore: number | null;
   levelUps: number;
   highestLevel: number;
@@ -218,6 +222,8 @@ export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
     hatches: ofName(events, "fl_hatch").length,
     care: tally(ofName(events, "fl_care").map((e) => str(e, "action"))),
     playRuns: plays.length,
+    playGames: tally(plays.map((e) => str(e, "game"))),
+    forms: tally(ofName(events, "fl_form").map((e) => str(e, "form"))),
     averageScore: average(plays.map((e) => num(e, "score"))),
     levelUps: levels.length,
     highestLevel: Math.max(0, ...levels.map((e) => num(e, "level"))),

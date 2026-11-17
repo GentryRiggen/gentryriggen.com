@@ -244,10 +244,20 @@ export const GAME_EVENTS = {
       },
     },
   },
+  /** A mini-game round ended: which game and its score (0 to 99). */
   fl_play_end: {
     site: "flamelings",
     sample: 1,
-    props: { score: { kind: "int", min: 0, max: 99 } },
+    props: {
+      game: { kind: "enum", values: ["fireflies", "marshmallow", "logs"] },
+      score: { kind: "int", min: 0, max: 99 },
+    },
+  },
+  /** A pet grew up into its form at level 10. */
+  fl_form: {
+    site: "flamelings",
+    sample: 1,
+    props: { form: { kind: "enum", values: ["cozy", "wild", "sparkly"] } },
   },
   fl_level: {
     site: "flamelings",

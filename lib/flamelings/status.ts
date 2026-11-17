@@ -7,9 +7,10 @@ import {
   type EmoteId,
   type UnlockKey,
 } from "./catalog";
-import { hasGiftWaiting } from "./progress";
+import { FORM_INFO } from "./forms";
+import { hasGiftWaiting, stageFor } from "./progress";
 import { isAwake } from "./sim";
-import type { Pet } from "./types";
+import type { FormId, Pet } from "./types";
 
 export interface StateGlyph {
   glyph: string;
@@ -83,3 +84,14 @@ export function bubblesFor(pet: Pet, nowMs: number): Bubble[] {
 }
 
 export const BUBBLE_GLYPH: Record<Bubble, string> = { food: "🍽", play: "😢" };
+
+/** The stage with its form in front, e.g. "Cozy Blaze" (just "Blaze" before it grows up). */
+export function stageTitle(level: number, form: FormId | null): string {
+  const stage = stageFor(level).name;
+  return form ? `${FORM_INFO[form].name} ${stage}` : stage;
+}
+
+/** What the level bar and shelf card say: "Lv 12 · Cozy Blaze". */
+export function levelLabel(level: number, form: FormId | null): string {
+  return `Lv ${level} · ${stageTitle(level, form)}`;
+}

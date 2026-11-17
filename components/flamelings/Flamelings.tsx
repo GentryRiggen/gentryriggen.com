@@ -102,7 +102,31 @@ export default function Flamelings() {
       ) : (
         <PetView key={view.petId} petId={view.petId} />
       )}
-      {(isUpdateReady || outdated) && !locked && (
+      {outdated && !locked && (
+        <div
+          role="alert"
+          data-testid="flamelings-unsaved"
+          className="fixed inset-x-0 top-0 z-50 flex justify-center px-4 pt-[max(0.75rem,env(safe-area-inset-top))]"
+        >
+          <button
+            type="button"
+            onClick={update}
+            className="flex min-h-16 touch-manipulation items-center gap-3 rounded-3xl border-4 border-red-300 bg-red-600 px-5 py-2 text-left text-lg font-extrabold text-white shadow-xl active:scale-95"
+          >
+            <span aria-hidden="true" className="text-3xl">
+              💾🚫
+            </span>
+            <span>
+              Not saving yet!
+              <span className="block text-sm font-bold">
+                Tap to update <span aria-hidden="true">✨</span>, then your
+                progress saves again
+              </span>
+            </span>
+          </button>
+        </div>
+      )}
+      {isUpdateReady && !outdated && !locked && (
         <UpdatePill
           onUpdate={update}
           testId="flamelings-update"

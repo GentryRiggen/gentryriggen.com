@@ -20,7 +20,7 @@ export default function StarHappening({ petId, happening }: HappeningProps) {
     if (phase !== "drifting") return;
     setPhase("wished");
     playSound("wish");
-    complete(petId);
+    complete(petId, happening);
     later(() => setPhase("gone"), 1900);
   }
 

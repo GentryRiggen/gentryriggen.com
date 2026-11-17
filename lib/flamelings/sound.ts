@@ -21,7 +21,13 @@ export type SoundName =
   | "mush1"
   | "mush2"
   | "mush3"
-  | "mush4";
+  | "mush4"
+  | "evolve"
+  | "sizzle"
+  | "giggle"
+  | "puff"
+  | "thud"
+  | "cheer";
 
 export const SOUND_NAMES: readonly SoundName[] = [
   "chirp",
@@ -44,6 +50,12 @@ export const SOUND_NAMES: readonly SoundName[] = [
   "mush2",
   "mush3",
   "mush4",
+  "evolve",
+  "sizzle",
+  "giggle",
+  "puff",
+  "thud",
+  "cheer",
 ];
 
 type Sink = (name: SoundName) => void;

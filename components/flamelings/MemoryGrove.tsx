@@ -1,4 +1,6 @@
 import { useFlamelings } from "@/lib/flamelings/store";
+import { FORM_INFO } from "@/lib/flamelings/forms";
+import { stageTitle } from "@/lib/flamelings/status";
 import Blob from "./Blob";
 import { BIG_BUTTON, SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "./styles";
 
@@ -43,6 +45,7 @@ export default function MemoryGrove() {
             <Blob
               look={m.look}
               worn={m.worn}
+              form={m.form}
               mood="ember"
               className="size-40"
             />
@@ -53,6 +56,15 @@ export default function MemoryGrove() {
               Level {m.level} · {m.daysLived}{" "}
               {m.daysLived === 1 ? "day" : "days"}
             </span>
+            {m.form && (
+              <span
+                data-testid="grave-form"
+                className="relative rounded-full bg-amber-100/15 px-3 py-0.5 text-sm font-bold text-amber-100"
+              >
+                <span aria-hidden="true">{FORM_INFO[m.form].glyph} </span>
+                {stageTitle(m.level, m.form)}
+              </span>
+            )}
           </li>
         ))}
       </ul>

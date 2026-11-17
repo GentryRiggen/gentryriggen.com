@@ -81,7 +81,7 @@ export default function MushroomHappening({
     setProgress(next);
     if (next < sequence.length) return;
     setPhase("win");
-    complete(petId);
+    complete(petId, happening);
     onCheer("dance");
     later(() => setPhase("gone"), 2600);
   }

@@ -16,7 +16,13 @@ import {
   lockedItems,
   stageFor,
 } from "./progress";
-import { activeHappening, ensureHappening } from "./happenings";
+import { bumpCare, FORM_LEVEL, NO_CARE, pickForm } from "./forms";
+import {
+  activeHappening,
+  ensureHappening,
+  type Happening,
+  type HappeningKind,
+} from "./happenings";
 import { priceOf, shopItem } from "./shop";
 import { RELIGHT_FEEDS, advance, isAwake, isOut } from "./sim";
 import { SAVE_SCHEMA } from "./types";
@@ -151,6 +157,8 @@ export function createPet(params: {
     sparkRounds: { window: "", count: 0 },
     happening: null,
     wish: 0,
+    care: NO_CARE,
+    form: null,
   };
 }
 
@@ -175,7 +183,25 @@ function grantXp(pet: Pet, amount: number, events: PetEvent[]): Pet {
     events.push({ type: "sparks", amount: prize, source: "level" });
     sparks = Math.min(MAX_SPARKS, sparks + prize);
   }
-  return { ...pet, level: gain.level, xp: gain.xp, unlocked, sparks };
+  const grown: Pet = {
+    ...pet,
+    level: gain.level,
+    xp: gain.xp,
+    unlocked,
+    sparks,
+  };
+  return evolve(grown, events);
+}
+
+/**
+ * A pet that is level 10 or more and has no form yet picks it from its care
+ * (once: the form is permanent). Also how a pet from an older save grows up.
+ */
+function evolve(pet: Pet, events: PetEvent[]): Pet {
+  if (pet.form !== null || pet.level < FORM_LEVEL) return pet;
+  const form = pickForm(pet.care, pet.id);
+  events.push({ type: "evolve", form });
+  return { ...pet, form };
 }
 
 export function canCare(pet: Pet, now: number): boolean {
@@ -225,6 +251,7 @@ export function feed(pet: Pet, food: FoodId, now: number): Outcome {
     ...pet,
     fuel: clamp(pet.fuel + info.fuel),
     joy: clamp(pet.joy + info.joy),
+    care: bumpCare(pet.care, "feeds"),
   };
   events.push({ type: "care", action: "feed" });
   if (earns) {
@@ -239,7 +266,7 @@ export function clean(pet: Pet, now: number): Outcome {
   if (!canCare(pet, now) || pet.ash <= 0) return { pet, events: [] };
   const events: PetEvent[] = [{ type: "care", action: "clean" }];
   const tidy = earn(
-    { ...pet, ash: pet.ash - 1 },
+    { ...pet, ash: pet.ash - 1, care: bumpCare(pet.care, "cleans") },
     SPARKS.clean,
     "clean",
     events
@@ -247,12 +274,21 @@ export function clean(pet: Pet, now: number): Outcome {
   return { pet: grantXp(tidy, 3, events), events };
 }
 
-/** Firefly Catch result: +2 joy per catch (cap 40), score/2 XP (cap 20). */
+/**
+ * A mini-game result (`score` is about 0 to 15 for every game): +2 joy per
+ * point (cap 40), score/2 XP (cap 20), and sparks while the shared window cap
+ * of paying rounds lasts (Firefly Catch, Marshmallow Toast and Log Stack all
+ * draw from the same count).
+ */
 export function finishPlay(pet: Pet, score: number, now: number): Outcome {
   if (!canCare(pet, now)) return { pet, events: [] };
   const caught = Math.max(0, Math.min(99, Math.floor(score)));
   const events: PetEvent[] = [{ type: "care", action: "play" }];
-  const cheered = { ...pet, joy: clamp(pet.joy + Math.min(40, caught * 2)) };
+  const cheered = {
+    ...pet,
+    joy: clamp(pet.joy + Math.min(40, caught * 2)),
+    care: bumpCare(pet.care, "plays"),
+  };
   // Only the first few rounds in a window pay sparks; the rest still cheer
   // the pet up and give XP, so replaying is fine but cannot farm the shop.
   const pays = sparkRoundsLeft(pet, now) > 0;
@@ -275,13 +311,23 @@ export function finishPlay(pet: Pet, score: number, now: number): Outcome {
   };
 }
 
+/** Using an emote from the panel: counts towards a Sparkly form, no XP. */
+export function emote(pet: Pet): Outcome {
+  if (pet.state !== "alive") return { pet, events: [] };
+  return { pet: { ...pet, care: bumpCare(pet.care, "pets") }, events: [] };
+}
+
 /** Tapping the pet: +1 XP, at most 10 a day. */
 export function tapPet(pet: Pet, now: number): Outcome {
   if (pet.state !== "alive") return { pet, events: [] };
   const day = localDay(now);
   const taps = pet.petTaps.day === day ? pet.petTaps.count : 0;
   const events: PetEvent[] = [{ type: "care", action: "pet" }];
-  let next: Pet = { ...pet, petTaps: { day, count: taps } };
+  let next: Pet = {
+    ...pet,
+    petTaps: { day, count: taps },
+    care: bumpCare(pet.care, "pets"),
+  };
   if (isAwake(now) && taps < PET_TAP_XP_CAP) {
     next = grantXp({ ...next, petTaps: { day, count: taps + 1 } }, 1, events);
   }
@@ -321,6 +367,16 @@ export interface HappeningResult {
   missed?: number;
 }
 
+/** The stored happening if it is the expected one and still undone. */
+function heldHappening(
+  pet: Pet,
+  expect: { window: string; kind: HappeningKind }
+): Happening | null {
+  const h = pet.happening;
+  if (!h || h.done || pet.state !== "alive") return null;
+  return h.window === expect.window && h.kind === expect.kind ? h : null;
+}
+
 function between(range: readonly [number, number], random: () => number) {
   return range[0] + Math.floor(random() * (range[1] - range[0] + 1));
 }
@@ -345,9 +401,12 @@ export function completeHappening(
   pet: Pet,
   now: number,
   random: () => number = Math.random,
-  result: HappeningResult = {}
+  result: HappeningResult = {},
+  expect?: { window: string; kind: HappeningKind }
 ): Outcome {
-  const h = activeHappening(pet, now);
+  // With `expect` (what the screen was playing), only that happening pays: a
+  // window rollover mid-play must not hand out the next one's reward.
+  const h = expect ? heldHappening(pet, expect) : activeHappening(pet, now);
   if (!h) return { pet, events: [] };
   const events: PetEvent[] = [{ type: "happening", kind: h.kind, done: true }];
   let next: Pet = { ...pet, happening: { ...h, done: true, seen: true } };
@@ -449,7 +508,12 @@ export type DressSlot = "hat" | "face" | "neck";
 /** Wears (or, with null, removes) an item; a locked item is ignored. */
 export function dress(pet: Pet, slot: DressSlot, id: string | null): Pet {
   if (id !== null && !pet.unlocked.includes(unlockKey(slot, id))) return pet;
-  return { ...pet, worn: { ...pet.worn, [slot]: id } as Worn };
+  const changed = id !== null && pet.worn[slot] !== id;
+  return {
+    ...pet,
+    worn: { ...pet.worn, [slot]: id } as Worn,
+    care: changed ? bumpCare(pet.care, "styles") : pet.care,
+  };
 }
 
 /**
@@ -471,7 +535,11 @@ export function buy(pet: Pet, key: UnlockKey, now?: number): Outcome {
   };
   const placed =
     item.tab === "decor"
-      ? { ...bought, decor: [...bought.decor, item.id as DecorId] }
+      ? {
+          ...bought,
+          decor: [...bought.decor, item.id as DecorId],
+          care: bumpCare(bought.care, "styles"),
+        }
       : dress(bought, item.tab, item.id);
   return {
     pet: placed,
@@ -525,14 +593,24 @@ export function hatch(
  */
 export function settle(
   save: SaveData,
-  now: number
+  now: number,
+  /** Per pet id, the window of a happening on screen (kept until it ends). */
+  hold: { petId: string; window: string } | null = null
 ): { save: SaveData; events: { petId: string; event: PetEvent }[] } {
   const events: { petId: string; event: PetEvent }[] = [];
   const pets: Pet[] = [];
   const memorial: Memorial[] = [...save.memorial];
   for (const pet of save.pets) {
     const was = pet.state;
-    const next = ensureHappening(advance(pet, pet.tickedAt, now), now);
+    let next = ensureHappening(
+      advance(pet, pet.tickedAt, now),
+      now,
+      hold && hold.petId === pet.id ? hold.window : null
+    );
+    // A pet at level 10 or more with no form (saved before 1.3) grows up now.
+    const grownEvents: PetEvent[] = [];
+    next = evolve(next, grownEvents);
+    for (const event of grownEvents) events.push({ petId: pet.id, event });
     if (was === "alive" && next.state === "ember") {
       events.push({ petId: pet.id, event: { type: "state", to: "ember" } });
     }
@@ -544,6 +622,7 @@ export function settle(
         look: next.look,
         worn: next.worn,
         level: next.level,
+        form: next.form,
         daysLived: Math.max(0, Math.floor((outAt - next.bornAt) / DAY_MS)),
         bornAt: next.bornAt,
         outAt,

@@ -7965,6 +7965,278 @@ html:has(.jim-app) body {
   }
 }
 
+/* ---------- Grown-up forms (Blaze and up; stronger at Bonfire) ---------- */
+.fl-form .fl-more {
+  display: none;
+}
+.fl-pet[data-stage="bonfire"] .fl-form .fl-more {
+  display: inline;
+}
+.fl-blob[data-mood="ember"] .fl-form {
+  display: none;
+}
+
+/* Cozy: a warm round glow, slow soft licks, floating hearts, a blush. */
+.fl-halo {
+  opacity: 0.85;
+  transform-origin: 50% 50%;
+  animation: fl-halo-pulse 4.2s ease-in-out infinite;
+}
+.fl-pet[data-stage="bonfire"] .fl-halo {
+  opacity: 1;
+  transform: scale(1.12);
+  animation-name: fl-halo-pulse-big;
+}
+.fl-blush {
+  fill: #ff6a4a;
+  opacity: 0.5;
+}
+.fl-pet[data-stage="bonfire"] .fl-blush {
+  opacity: 0.7;
+}
+.fl-heart {
+  fill: #ff3d6e;
+  stroke: #ffffff;
+  stroke-width: 0.8;
+  animation: fl-heart-float 3.4s ease-out infinite;
+}
+.fl-heart-1 {
+  animation-delay: -1.1s;
+}
+.fl-heart-2 {
+  animation-delay: -2.2s;
+}
+.fl-blob[data-form="cozy"] .fl-lick-1 {
+  animation-duration: 3.2s;
+}
+.fl-blob[data-form="cozy"] .fl-lick-2 {
+  animation-duration: 3.8s;
+}
+.fl-blob[data-form="cozy"] .fl-lick-3 {
+  animation-duration: 3s;
+}
+.fl-blob[data-form="cozy"] .fl-lick-4 {
+  animation-duration: 4.2s;
+}
+@keyframes fl-halo-pulse {
+  0%,
+  100% {
+    transform: scale(0.96);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+@keyframes fl-halo-pulse-big {
+  0%,
+  100% {
+    transform: scale(1.06);
+  }
+  50% {
+    transform: scale(1.18);
+  }
+}
+@keyframes fl-heart-float {
+  0% {
+    transform: translateY(8px) scale(0.8);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-26px) scale(1.7);
+    opacity: 0;
+  }
+}
+
+/* Wild: taller jagged licks, a fast flicker, crackles and bold brows. */
+.fl-spike {
+  transform-origin: 50% 100%;
+  animation: fl-spike-flick 0.55s ease-in-out infinite alternate;
+  --fl-spike-lo: 0.82;
+  --fl-spike-hi: 1.1;
+}
+.fl-pet[data-stage="bonfire"] .fl-spike {
+  --fl-spike-lo: 0.95;
+  --fl-spike-hi: 1.3;
+}
+.fl-spike-2 {
+  animation-delay: -0.2s;
+  animation-duration: 0.45s;
+}
+.fl-spike-3 {
+  animation-delay: -0.35s;
+  animation-duration: 0.6s;
+}
+.fl-spike-4 {
+  animation-delay: -0.1s;
+}
+.fl-spike-5 {
+  animation-delay: -0.3s;
+}
+.fl-blob[data-form="wild"] .fl-lick-1 {
+  animation-duration: 1s;
+}
+.fl-blob[data-form="wild"] .fl-lick-2 {
+  animation-duration: 1.2s;
+}
+.fl-blob[data-form="wild"] .fl-lick-3 {
+  animation-duration: 0.9s;
+}
+.fl-blob[data-form="wild"] .fl-lick-4 {
+  animation-duration: 1.3s;
+}
+.fl-zap {
+  fill: none;
+  stroke: #ffb300;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: fl-zap-pop 1.1s ease-out infinite;
+}
+.fl-zap-1 {
+  animation-delay: -0.4s;
+}
+.fl-zap-2 {
+  animation-delay: -0.8s;
+}
+.fl-wild-brow {
+  display: none;
+  fill: none;
+  stroke: var(--fl-face);
+  stroke-width: 3.4;
+  stroke-linecap: round;
+}
+.fl-blob[data-form="wild"][data-mood="happy"] .fl-wild-brow,
+.fl-blob[data-form="wild"][data-mood="excited"] .fl-wild-brow,
+.fl-blob[data-form="wild"][data-mood="eating"] .fl-wild-brow,
+.fl-blob[data-form="wild"]:not([data-mood]) .fl-wild-brow {
+  display: inline;
+}
+.fl-blob[data-mood="asleep"] .fl-zap,
+.fl-blob[data-mood="asleep"] .fl-spike {
+  display: none;
+}
+@keyframes fl-spike-flick {
+  0% {
+    transform: scaleY(var(--fl-spike-lo)) skewX(-3deg);
+  }
+  100% {
+    transform: scaleY(var(--fl-spike-hi)) skewX(3deg);
+  }
+}
+@keyframes fl-zap-pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  45%,
+  100% {
+    transform: scale(1.3);
+    opacity: 0;
+  }
+}
+
+/* Sparkly: a rainbow shimmer in the tip and twinkling stars. */
+.fl-blob[data-form="sparkly"] .fl-tip {
+  animation: fl-rainbow 6s linear infinite;
+}
+.fl-blob[data-form="sparkly"] .fl-mid {
+  animation: fl-rainbow-mid 6s linear infinite;
+}
+.fl-pet[data-stage="bonfire"] .fl-blob[data-form="sparkly"] .fl-tip,
+.fl-pet[data-stage="bonfire"] .fl-blob[data-form="sparkly"] .fl-mid {
+  animation-duration: 3.5s;
+}
+.fl-star {
+  fill: #ffe14d;
+  stroke: #ff9f1c;
+  stroke-width: 0.9;
+  animation: fl-twinkle-star 1.8s ease-in-out infinite;
+}
+.fl-star-1 {
+  animation-delay: -0.5s;
+}
+.fl-star-2 {
+  animation-delay: -1s;
+}
+.fl-star-3 {
+  animation-delay: -1.4s;
+}
+.fl-pet[data-stage="bonfire"] .fl-star {
+  fill: #fff7b0;
+  stroke: #ff7ad9;
+}
+@keyframes fl-rainbow {
+  0%,
+  100% {
+    stop-color: #ff7a7a;
+  }
+  17% {
+    stop-color: #ffd84a;
+  }
+  34% {
+    stop-color: #8cf06b;
+  }
+  51% {
+    stop-color: #5fdcff;
+  }
+  68% {
+    stop-color: #b393ff;
+  }
+  85% {
+    stop-color: #ff8ade;
+  }
+}
+@keyframes fl-rainbow-mid {
+  0%,
+  100% {
+    stop-color: #ff9a1f;
+  }
+  25% {
+    stop-color: #ff6fa8;
+  }
+  50% {
+    stop-color: #b57bff;
+  }
+  75% {
+    stop-color: #ffb31f;
+  }
+}
+@keyframes fl-twinkle-star {
+  0%,
+  100% {
+    transform: scale(0.35) rotate(0deg);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.15) rotate(45deg);
+    opacity: 1;
+  }
+}
+
+/* The form moves less (and stays drawn) for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .fl-halo,
+  .fl-heart,
+  .fl-spike,
+  .fl-zap,
+  .fl-star,
+  .fl-blob[data-form="sparkly"] .fl-tip,
+  .fl-blob[data-form="sparkly"] .fl-mid {
+    animation: none !important;
+  }
+  .fl-heart,
+  .fl-zap {
+    opacity: 0.85;
+  }
+}
+
 /* Mouths: one per mood. */
 .fl-blob:not([data-mood]) .fl-mouth-smile,
 .fl-blob[data-mood="happy"] .fl-mouth-smile {
@@ -8726,6 +8998,69 @@ html:has(.jim-app) body {
   }
 }
 
+/* The grown-up moment: glow out, spin, reveal. */
+.fl-evo-glow {
+  background: radial-gradient(
+    circle,
+    rgba(255, 244, 190, 0.95),
+    rgba(255, 170, 60, 0.55) 45%,
+    rgba(255, 140, 40, 0) 70%
+  );
+  opacity: 0;
+  transform: scale(0.4);
+}
+.fl-evo-glow-out {
+  animation: fl-evo-glow-out 1.3s ease-in forwards;
+}
+.fl-evo-glow-full {
+  opacity: 1;
+  transform: scale(1.5);
+}
+.fl-evo-flash {
+  animation: fl-evo-flash 1s ease-out forwards;
+}
+.fl-evo-spin {
+  animation: fl-evo-spin 1.2s ease-in-out forwards;
+}
+@keyframes fl-evo-glow-out {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+}
+@keyframes fl-evo-spin {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  60% {
+    transform: rotate(540deg) scale(0.75);
+  }
+  100% {
+    transform: rotate(720deg) scale(0.9);
+  }
+}
+@keyframes fl-evo-flash {
+  0% {
+    opacity: 1;
+    transform: scale(1.6);
+  }
+  100% {
+    opacity: 0.35;
+    transform: scale(1.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-evo-glow-out,
+  .fl-evo-spin,
+  .fl-evo-flash {
+    animation: none !important;
+  }
+}
+
 /* Food arcs from the basket tray into the pet's mouth. */
 .fl-food-arc {
   animation: fl-food-arc 0.6s cubic-bezier(0.3, 0.1, 0.6, 1) both;
@@ -9210,6 +9545,94 @@ html:has(.jim-app) body {
   }
   .fl-bye,
   .fl-star-wish {
+    opacity: 0;
+  }
+}
+
+/* ---------- Flamelings: Marshmallow Toast and Log Stack ---------- */
+.fl-mallow-wobble {
+  animation: fl-mallow-wobble 0.4s ease-in-out infinite;
+}
+@keyframes fl-mallow-wobble {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg) scale(1.03);
+  }
+}
+.fl-smoke {
+  animation: fl-smoke 1.1s ease-out infinite;
+}
+@keyframes fl-smoke {
+  0% {
+    transform: translate(-50%, 10px) scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50px) scale(1.5);
+    opacity: 0;
+  }
+}
+.fl-giggle {
+  animation: fl-giggle 0.5s ease-in-out 2;
+}
+@keyframes fl-giggle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-10px) rotate(-3deg);
+  }
+  75% {
+    transform: translateY(-10px) rotate(3deg);
+  }
+}
+.fl-log {
+  border-radius: 9999px;
+  background: linear-gradient(#b4742f, #7a4519 70%, #5a3011);
+  box-shadow:
+    inset 0 -3px 0 rgba(0, 0, 0, 0.25),
+    inset 6px 0 0 #d9a15a,
+    inset -6px 0 0 #d9a15a,
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  will-change: transform;
+}
+.fl-log-drop {
+  animation: fl-log-drop 0.22s ease-in both;
+}
+@keyframes fl-log-drop {
+  0% {
+    transform: translateY(calc(var(--fl-drop, 1) * -100%));
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+.fl-log-fall {
+  animation: fl-log-fall 0.8s ease-in forwards;
+}
+@keyframes fl-log-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(70vh) rotate(40deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-mallow-wobble,
+  .fl-smoke,
+  .fl-giggle,
+  .fl-log-drop,
+  .fl-log-fall {
+    animation: none !important;
+  }
+  .fl-log-fall {
     opacity: 0;
   }
 }

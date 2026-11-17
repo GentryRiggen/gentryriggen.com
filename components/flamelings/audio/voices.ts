@@ -269,6 +269,103 @@ export const VOICES: Record<SoundName, Voice> = {
   mush2: (engine, t) => mushNote(engine, t, 659),
   mush3: (engine, t) => mushNote(engine, t, 784),
   mush4: (engine, t) => mushNote(engine, t, 880),
+  /** Growing up: a rising bell run that ends in a bright chord. */
+  evolve(engine, t) {
+    [523, 659, 784, 1047, 1319].forEach((freq, i) => {
+      tone(engine, {
+        type: "triangle",
+        start: t + i * 0.11,
+        duration: 0.3,
+        freq,
+        gain: 0.1,
+        attack: 0.01,
+      });
+    });
+    [1047, 1319, 1568].forEach((freq) => {
+      tone(engine, {
+        type: "sine",
+        start: t + 0.6,
+        duration: 0.7,
+        freq,
+        gain: 0.06,
+        attack: 0.02,
+      });
+    });
+    VOICES.sparkle(engine, t + 0.9);
+  },
+  /** A marshmallow sizzling over the flame (a quiet crackle). */
+  sizzle(engine, t) {
+    noise(engine, {
+      buffer: engine.white,
+      start: t,
+      duration: 0.4,
+      filter: "highpass",
+      freq: 3000,
+      gain: 0.04,
+      attack: 0.03,
+      chop: 0.03,
+    });
+  },
+  /** A tiny rising giggle: three quick blips. */
+  giggle(engine, t) {
+    [740, 880, 784].forEach((freq, i) => {
+      tone(engine, {
+        type: "sine",
+        start: t + i * 0.09,
+        duration: 0.08,
+        freq,
+        freqEnd: freq * 1.25,
+        gain: 0.08,
+        attack: 0.01,
+      });
+    });
+  },
+  /** A puff of smoke from a burnt marshmallow. */
+  puff(engine, t) {
+    noise(engine, {
+      buffer: engine.white,
+      start: t,
+      duration: 0.3,
+      filter: "lowpass",
+      freq: 1400,
+      freqEnd: 300,
+      gain: 0.09,
+      attack: 0.01,
+    });
+  },
+  /** A log landing: a soft wooden thud. */
+  thud(engine, t) {
+    tone(engine, {
+      type: "sine",
+      start: t,
+      duration: 0.14,
+      freq: 170,
+      freqEnd: 70,
+      gain: 0.14,
+      attack: 0.005,
+    });
+    noise(engine, {
+      buffer: engine.white,
+      start: t,
+      duration: 0.06,
+      filter: "lowpass",
+      freq: 900,
+      gain: 0.05,
+    });
+  },
+  /** The pet cheers: a short happy rise. */
+  cheer(engine, t) {
+    [659, 784, 988].forEach((freq, i) => {
+      tone(engine, {
+        type: "triangle",
+        start: t + i * 0.08,
+        duration: 0.16,
+        freq,
+        gain: 0.09,
+        attack: 0.01,
+      });
+    });
+  },
   /** A sad little downward "fwoop": the flame has gone to an ember. */
   fwoop(engine, t) {
     tone(engine, {
@@ -291,6 +388,9 @@ const MIN_GAP: Partial<Record<SoundName, number>> = {
   coin: 0.07,
   drizzle: 0.4,
   dig: 0.12,
+  thud: 0.08,
+  sizzle: 0.3,
+  giggle: 0.4,
 };
 
 const lastPlayed = new Map<SoundName, number>();

@@ -54,6 +54,25 @@ describe("the game shell", () => {
     expect(reloadPage).toHaveBeenCalled();
   });
 
+  it("says plainly that nothing is saving when the save is from a newer build", () => {
+    window.localStorage.setItem(
+      "flamelings:v1",
+      JSON.stringify({
+        v: 1,
+        schema: 999,
+        pets: [],
+        memorial: [],
+        collection: [],
+        updatedAt: NOON,
+      })
+    );
+    render(<Flamelings />);
+    const banner = screen.getByTestId("flamelings-unsaved");
+    expect(banner).toHaveTextContent(/not saving/i);
+    fireEvent.click(banner.querySelector("button")!);
+    expect(reloadPage).toHaveBeenCalled();
+  });
+
   it("shows no update pill when the build is current", () => {
     render(<Flamelings />);
     expect(screen.queryByTestId("flamelings-update")).toBeNull();

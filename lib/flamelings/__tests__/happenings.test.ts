@@ -358,3 +358,98 @@ describe("rewards", () => {
     expect(HAPPENING_KINDS).toHaveLength(7);
   });
 });
+
+describe("review fixes: parties and window rollover", () => {
+  const born = at(10, 1);
+  const party = () =>
+    ensureHappening(
+      make({ id: "x", bornAt: born, tickedAt: at(10, 31, 9) }, born),
+      at(10, 31, 9)
+    );
+
+  it("keeps an undone party through the night and the next morning", () => {
+    const pet = party();
+    expect(pet.happening?.kind).toBe("hatchday");
+    const night = at(10, 31, 21, 30);
+    expect(ensureHappening(pet, night)).toBe(pet);
+    expect(activeHappening(pet, night)?.kind).toBe("hatchday");
+    const morning = at(11, 1, 8);
+    expect(ensureHappening(pet, morning)).toBe(pet);
+    expect(activeHappening(pet, morning)?.kind).toBe("hatchday");
+  });
+
+  it("lets the party go once the next morning window is over", () => {
+    const pet = party();
+    const later = ensureHappening(pet, at(11, 1, 15));
+    expect(later.happening?.kind).not.toBe("hatchday");
+    expect(activeHappening(pet, at(11, 1, 15))).toBeNull();
+  });
+
+  it("does not replace a happening that is on screen at a rollover", () => {
+    const pet = ensureHappening(
+      withHappening("rain", { tickedAt: noon }, at(11, 17, 13, 50)),
+      at(11, 17, 13, 50)
+    );
+    const window = pet.happening!.window;
+    const after = at(11, 17, 14, 5);
+    expect(ensureHappening(pet, after, window)).toBe(pet);
+    // Not held: the new window's pick replaces it as before.
+    expect(ensureHappening(pet, after).happening?.window).not.toBe(window);
+  });
+
+  it("pays only the happening the screen was playing, across the boundary", () => {
+    const am = at(11, 17, 13, 50);
+    const pet = withHappening("rain", {}, am);
+    const expect_ = { window: pet.happening!.window, kind: "rain" } as const;
+    const crossed = at(11, 17, 14, 5);
+    // The held rain still pays after 14:00.
+    const paid = completeHappening(
+      pet,
+      crossed,
+      () => 0.5,
+      { popped: 5 },
+      expect_
+    );
+    expect(paid.events[0]).toMatchObject({ type: "happening", kind: "rain" });
+    // A different happening now active is not paid for the old one.
+    const swapped = withHappening("visitor", {}, crossed);
+    expect(
+      completeHappening(swapped, crossed, () => 0.5, {}, expect_).events
+    ).toEqual([]);
+    // And an already finished one pays nothing twice.
+    expect(
+      completeHappening(paid.pet, crossed, () => 0.5, {}, expect_).events
+    ).toEqual([]);
+  });
+
+  it("settle keeps a held happening and swaps it once released", () => {
+    const pet = withHappening("rain", { tickedAt: at(11, 17, 13, 50) });
+    const am = withHappening(
+      "rain",
+      { tickedAt: at(11, 17, 13, 50) },
+      at(11, 17, 13, 50)
+    );
+    void pet;
+    const save = { ...emptyForTest(), pets: [am] };
+    const crossed = at(11, 17, 14, 5);
+    const held = settle(save, crossed, {
+      petId: am.id,
+      window: am.happening!.window,
+    });
+    expect(held.save.pets[0].happening?.kind).toBe("rain");
+    expect(held.save.pets[0].happening?.window).toBe(am.happening!.window);
+    const free = settle(save, crossed);
+    expect(free.save.pets[0].happening?.window).not.toBe(am.happening!.window);
+  });
+});
+
+function emptyForTest(): SaveData {
+  return {
+    v: 1,
+    schema: 3,
+    pets: [],
+    memorial: [],
+    collection: [],
+    updatedAt: 0,
+  };
+}
