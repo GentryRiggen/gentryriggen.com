@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { setNow, resetClock } from "@/lib/flamelings/clock";
 import { SAVE_KEY } from "@/lib/flamelings/save";
+import { LOCK_KEY, readLock } from "@/lib/flamelings/tabLock";
+import { createPet } from "@/lib/flamelings/actions";
 import { useFlamelings } from "@/lib/flamelings/store";
 import Flamelings from "../Flamelings";
 import FireflyCatch from "../FireflyCatch";
@@ -147,7 +149,108 @@ describe("Flamelings", () => {
     window.localStorage.setItem(SAVE_KEY, "{oops");
     render(<Flamelings />);
     expect(screen.getByTestId("hatch-new")).toBeInTheDocument();
-    expect(window.localStorage.getItem("flamelings:v1:corrupt")).toBe("{oops");
+    const backups = Object.keys(window.localStorage).filter(
+      (k) => k.startsWith("flamelings:v1:corrupt:") && !k.endsWith(":index")
+    );
+    expect(backups).toHaveLength(1);
+    expect(window.localStorage.getItem(backups[0])).toBe("{oops");
+  });
+});
+
+const look = { colour: "ember", shape: "flame", eyes: "round" } as const;
+
+function otherTabHoldsLock() {
+  window.localStorage.setItem(
+    LOCK_KEY,
+    JSON.stringify({ id: "other-tab", at: Date.now() })
+  );
+}
+
+describe("two tabs", () => {
+  it("shows a friendly screen instead of saving over the other tab", () => {
+    const stored = JSON.stringify({
+      v: 1,
+      pets: [createPet({ id: "x", name: "Other", look, now: NOON })],
+      memorial: [],
+      collection: [],
+      updatedAt: 1,
+    });
+    window.localStorage.setItem(SAVE_KEY, stored);
+    otherTabHoldsLock();
+    render(<Flamelings />);
+    expect(screen.getByTestId("tab-locked")).toHaveTextContent(
+      "Flamelings is open in another tab"
+    );
+    expect(screen.queryByTestId("hatch-new")).toBeNull();
+    act(() => {
+      useFlamelings.getState().tick();
+    });
+    expect(window.localStorage.getItem(SAVE_KEY)).toBe(stored);
+  });
+
+  it("takes over with Play here and then owns the lock", () => {
+    otherTabHoldsLock();
+    render(<Flamelings />);
+    fireEvent.click(screen.getByRole("button", { name: "Play here" }));
+    expect(screen.getByTestId("hatch-new")).toBeInTheDocument();
+    expect(readLock(window.localStorage)?.id).not.toBe("other-tab");
+  });
+
+  it("locks itself when another tab takes over mid-game", () => {
+    render(<Flamelings />);
+    expect(screen.getByTestId("hatch-new")).toBeInTheDocument();
+    otherTabHoldsLock();
+    act(() => {
+      useFlamelings.getState().heartbeat();
+    });
+    expect(screen.getByTestId("tab-locked")).toBeInTheDocument();
+  });
+
+  it("adopts the other tab's save instead of overwriting it", () => {
+    render(<Flamelings />);
+    hatchThroughUi("Mine");
+    const theirs = {
+      v: 1,
+      pets: [
+        ...useFlamelings.getState().save.pets,
+        createPet({ id: "x", name: "Theirs", look, now: NOON }),
+      ],
+      memorial: [],
+      collection: [],
+      updatedAt: NOON + 1,
+    };
+    const raw = JSON.stringify(theirs);
+    window.localStorage.setItem(SAVE_KEY, raw);
+    act(() => {
+      useFlamelings.getState().tick();
+    });
+    expect(useFlamelings.getState().save.pets.map((p) => p.name)).toEqual([
+      "Mine",
+      "Theirs",
+    ]);
+    expect(
+      JSON.parse(window.localStorage.getItem(SAVE_KEY) ?? "{}").pets
+    ).toHaveLength(2);
+  });
+
+  it("adopts a save announced by a storage event", () => {
+    render(<Flamelings />);
+    window.localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        v: 1,
+        pets: [createPet({ id: "x", name: "Remote", look, now: NOON })],
+        memorial: [],
+        collection: [],
+        updatedAt: 5,
+      })
+    );
+    act(() => {
+      window.dispatchEvent(new StorageEvent("storage", { key: SAVE_KEY }));
+    });
+    expect(
+      screen.getByRole("button", { name: /Remote, level 1/ })
+    ).toBeInTheDocument();
   });
 });
 

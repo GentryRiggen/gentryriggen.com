@@ -16,7 +16,9 @@ import { cleanName, type FoodId, type UnlockKey } from "./catalog";
 import { now } from "./clock";
 import { trackEvents, trackHatch, trackPlayEnd, trackVisit } from "./analytics";
 import { emptySave } from "./actions";
-import { loadSave, writeSave } from "./save";
+import { loadSaveResult, readRaw, writeSave } from "./save";
+import { acquire, heldByOther, readLock, release, LOCK_KEY } from "./tabLock";
+import { SAVE_KEY } from "./save";
 import type { Look, Outcome, Pet, PetEvent, SaveData } from "./types";
 
 /** A card to show the player: a level-up, a new item or a relight. */
@@ -68,8 +70,21 @@ function newId(): string {
   }
 }
 
+/** This tab's id for the single-writer lock. */
+const TAB_ID = newId();
+
+function storage(): Storage | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
 export interface FlamelingsStore {
   ready: boolean;
+  /** Another tab is playing: this one shows a screen and never saves. */
+  locked: boolean;
   save: SaveData;
   /** The game clock as of the last tick or action. */
   clock: number;
@@ -80,6 +95,12 @@ export interface FlamelingsStore {
 
   init(): void;
   tick(): void;
+  /** Renews the lock; becomes locked if another tab has taken over. */
+  heartbeat(): void;
+  /** The "Play here" button: takes the lock and loads the latest save. */
+  takeOver(): void;
+  /** A `storage` event from another tab. */
+  onStorage(key: string | null): void;
   go(view: View): void;
   hatch(name: string, look: Look): string | null;
   feed(petId: string, food: FoodId): PetEvent[];
@@ -94,8 +115,43 @@ export interface FlamelingsStore {
 
 let eventId = 0;
 let visited = false;
+/** What storage held when this tab last read or wrote it. */
+let lastRaw: string | null = null;
+/** False after a failed read or backup: never overwrite what we could not read. */
+let canWrite = true;
+
+/** Gives the lock back (page hiding) so the next page load can take it. */
+export function releaseLock(): void {
+  const store = storage();
+  if (store) release(store, TAB_ID);
+}
 
 export const useFlamelings = create<FlamelingsStore>((set, get) => {
+  /** Loads the latest stored save (another tab may have changed it). */
+  function adoptStored(): void {
+    const t = now();
+    const loaded = loadSaveResult(t);
+    canWrite = loaded.writable;
+    lastRaw = readRaw();
+    const { save } = settle(loaded.save, t);
+    set({ save, clock: t });
+  }
+
+  /**
+   * Saves, unless another tab wrote since we last looked (then its copy wins,
+   * is adopted and false is returned). A tab that could not read the save
+   * plays on in memory without writing.
+   */
+  function persist(save: SaveData): boolean {
+    if (!canWrite || get().locked) return true;
+    if (readRaw() !== lastRaw) {
+      adoptStored();
+      return false;
+    }
+    if (writeSave(save)) lastRaw = readRaw();
+    return true;
+  }
+
   /** Applies a pet change, saves, queues cards and reports analytics. */
   function commit(petId: string, outcome: Outcome): PetEvent[] {
     const t = now();
@@ -103,7 +159,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     const pets = save.pets.map((p) => (p.id === petId ? outcome.pet : p));
     const next: SaveData = { ...save, pets, updatedAt: t };
     const cards = celebrationsFrom(petId, outcome.events);
-    writeSave(next);
+    if (!persist(next)) return [];
     trackEvents(outcome.events);
     set((s) => ({
       save: next,
@@ -131,6 +187,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
 
   return {
     ready: false,
+    locked: false,
     save: emptySave(0),
     clock: 0,
     view: { screen: "shelf" },
@@ -139,20 +196,53 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
 
     init() {
       const t = now();
-      const loaded = loadSave(t);
-      const { save } = settle(loaded, t);
-      writeSave(save);
-      set({ ready: true, save, clock: t });
+      const store = storage();
+      if (store && heldByOther(store, TAB_ID, Date.now())) {
+        set({ ready: true, locked: true });
+        return;
+      }
+      if (store) acquire(store, TAB_ID, Date.now());
+      const loaded = loadSaveResult(t);
+      canWrite = loaded.writable;
+      lastRaw = readRaw();
+      const { save } = settle(loaded.save, t);
+      if (canWrite && writeSave(save)) lastRaw = readRaw();
+      set({ ready: true, locked: false, save, clock: t });
       if (!visited) {
         visited = true;
         trackVisit(save.pets.length, t);
       }
     },
 
+    heartbeat() {
+      const store = storage();
+      if (!store || get().locked) return;
+      if (!acquire(store, TAB_ID, Date.now())) set({ locked: true });
+    },
+
+    takeOver() {
+      const store = storage();
+      if (store) acquire(store, TAB_ID, Date.now(), true);
+      set({ locked: false });
+      adoptStored();
+    },
+
+    onStorage(key) {
+      const store = storage();
+      if (!store || !get().ready) return;
+      if (key === LOCK_KEY) {
+        const lock = readLock(store);
+        if (!get().locked && lock && lock.id !== TAB_ID) set({ locked: true });
+      } else if (key === SAVE_KEY && !get().locked) {
+        adoptStored();
+      }
+    },
+
     tick() {
+      if (get().locked) return;
       const t = now();
       const { save, events } = settle(get().save, t);
-      writeSave(save);
+      if (!persist(save)) return;
       trackEvents(events.map((e) => e.event));
       set({ save, clock: t });
       const { view } = get();
@@ -171,7 +261,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
     hatch(name, look) {
       get().tick();
       const { save } = get();
-      if (save.pets.length >= MAX_PETS) return null;
+      if (get().locked || save.pets.length >= MAX_PETS) return null;
       const id = newId();
       const t = now();
       const next = hatchAction(save, {
@@ -180,7 +270,7 @@ export const useFlamelings = create<FlamelingsStore>((set, get) => {
         look,
         now: t,
       });
-      writeSave(next);
+      if (!persist(next)) return null;
       trackHatch();
       set({ save: next, clock: t });
       return id;
