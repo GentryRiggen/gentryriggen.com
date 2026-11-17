@@ -20,17 +20,17 @@ interface DecorSpec {
 const FLOOR = 524;
 
 export const DECOR_SPECS: Record<DecorId, DecorSpec> = {
-  rug: { layer: "rug", x: 400, y: 500, box: "-200 -46 400 92" },
+  rug: { layer: "rug", x: 400, y: 528, box: "-200 -46 400 92" },
   tent: { layer: "back", x: 262, y: 462, box: "-56 -92 112 96" },
   mushroomHouse: { layer: "back", x: 548, y: 456, box: "-54 -112 108 116" },
   banner: { layer: "back", x: 0, y: 0, box: "200 316 400 74" },
-  plant: { layer: "front", x: 238, y: FLOOR, box: "-30 -78 60 82" },
-  snowman: { layer: "front", x: 284, y: FLOOR, box: "-22 -72 44 76" },
-  bed: { layer: "front", x: 336, y: FLOOR + 6, box: "-42 -30 84 40" },
-  toyBox: { layer: "front", x: 470, y: FLOOR, box: "-30 -56 60 60" },
-  crystals: { layer: "front", x: 540, y: FLOOR, box: "-38 -64 76 68" },
+  plant: { layer: "front", x: 84, y: FLOOR, box: "-30 -78 60 82" },
+  snowman: { layer: "front", x: 144, y: FLOOR, box: "-22 -72 44 76" },
+  bed: { layer: "front", x: 212, y: FLOOR + 6, box: "-42 -30 84 40" },
+  toyBox: { layer: "front", x: 592, y: FLOOR, box: "-30 -56 60 60" },
+  crystals: { layer: "front", x: 664, y: FLOOR, box: "-38 -64 76 68" },
   fairyLights: { layer: "hang", x: 0, y: 0, box: "250 195 300 90" },
-  lanterns: { layer: "hang", x: 0, y: 0, box: "520 134 150 130" },
+  lanterns: { layer: "hang", x: 0, y: 0, box: "262 262 276 124" },
 };
 
 const BULB_COLOURS = ["#ff7ab6", "#ffd84a", "#4ad0ff", "#a8f04a", "#ff9b5a"];
@@ -389,17 +389,17 @@ export function DecorPiece({ id, glow }: { id: DecorId; glow: number }) {
         </g>
       );
     case "lanterns":
+      // Two paper lanterns on the glade's own string, inside every crop.
       return (
         <g>
           <path
-            d="M810 150 Q690 126 520 162"
-            stroke="#4a2f1c"
-            strokeWidth="12"
+            d="M188 252 Q400 352 612 252"
+            stroke="#3a2a22"
+            strokeWidth="2"
             fill="none"
-            strokeLinecap="round"
           />
-          <Lantern x={566} y={184} glow={0.25 + glow * 0.75} />
-          <Lantern x={654} y={172} glow={0.25 + glow * 0.75} />
+          <Lantern x={307} y={342} glow={0.25 + glow * 0.75} />
+          <Lantern x={493} y={342} glow={0.25 + glow * 0.75} />
         </g>
       );
   }

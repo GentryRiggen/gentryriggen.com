@@ -18,14 +18,23 @@ import type { Pet } from "@/lib/flamelings/types";
 import Blob from "./Blob";
 import ItemPreview from "./ItemPreview";
 import SharePicture from "./SharePicture";
+import FlIcon, { type FlIconName } from "./FlIcon";
+import PanelHeader from "./PanelHeader";
 import {
-  BIG_BUTTON,
   CHROME_BG,
+  DISPLAY,
   FOCUS_RING,
-  PRIMARY_BUTTON,
+  DONE_BUTTON,
   SAFE_BOTTOM,
   SAFE_SIDES,
   SAFE_TOP,
+  SPOTLIGHT,
+  STICKER,
+  STICKER_BUTTON,
+  TAB_CHIP,
+  TAB_ICON_DISC,
+  TAB_OFF,
+  TAB_ON,
 } from "./styles";
 
 type TabKind = Extract<
@@ -36,16 +45,31 @@ type TabKind = Extract<
 const TABS: {
   kind: TabKind;
   label: string;
-  icon: string;
+  icon: FlIconName;
   ids: readonly string[];
 }[] = [
-  { kind: "colour", label: "Colour", icon: "🎨", ids: COLOURS },
-  { kind: "shape", label: "Shape", icon: "🫧", ids: SHAPES },
-  { kind: "eyes", label: "Eyes", icon: "👀", ids: EYES },
-  { kind: "hat", label: "Hat", icon: "🎩", ids: HATS },
-  { kind: "face", label: "Face", icon: "🕶️", ids: FACES },
-  { kind: "neck", label: "Neck", icon: "🎀", ids: NECKS },
+  { kind: "colour", label: "Colour", icon: "colour", ids: COLOURS },
+  { kind: "shape", label: "Shape", icon: "shape", ids: SHAPES },
+  { kind: "eyes", label: "Eyes", icon: "eyes", ids: EYES },
+  { kind: "hat", label: "Hat", icon: "hat", ids: HATS },
+  { kind: "face", label: "Face", icon: "face", ids: FACES },
+  { kind: "neck", label: "Neck", icon: "neck", ids: NECKS },
 ];
+
+/** A wardrobe tile: a cream sticker; the one worn gets an orange ring. */
+const TILE = `${STICKER} relative flex min-h-32 flex-col items-center justify-center gap-1 p-2 transition-transform active:translate-y-[2px] disabled:active:translate-y-0 ${FOCUS_RING}`;
+const TILE_ON = "ring-4 ring-[#f2542d] ring-offset-2 ring-offset-transparent";
+
+function WornBadge() {
+  return (
+    <span
+      aria-hidden="true"
+      className="absolute -right-1.5 -top-1.5 grid size-8 place-items-center rounded-full border-[3px] border-[#fff6e6] bg-[#4ade80] shadow-[0_2px_6px_rgba(30,10,40,.25)]"
+    >
+      <FlIcon name="check" className="size-5" />
+    </span>
+  );
+}
 
 function isSelected(pet: Pet, kind: TabKind, id: string): boolean {
   if (kind === "colour" || kind === "shape" || kind === "eyes") {
@@ -74,128 +98,141 @@ export default function Wardrobe({ pet, nowMs, onClose }: WardrobeProps) {
     else if (id) restyle(pet.id, { [kind]: id });
   }
 
+  const mood = moodOf(pet, nowMs);
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Wardrobe"
-      className={`fixed inset-0 z-30 flex flex-col overflow-hidden ${CHROME_BG} ${SAFE_TOP} ${SAFE_BOTTOM} ${SAFE_SIDES}`}
+      className={`fl-sheet-up fixed inset-0 z-30 flex flex-col overflow-hidden ${CHROME_BG} ${SAFE_TOP} ${SAFE_BOTTOM} ${SAFE_SIDES}`}
     >
-      <div className="flex items-center justify-between gap-3 py-2">
-        <h2 className="text-2xl font-black">
-          <span aria-hidden="true">👒 </span>Wardrobe
-        </h2>
-        <div className="flex items-center gap-2">
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col">
+        <PanelHeader icon="dress" iconClass="bg-[#ff8fb1]" title="Wardrobe">
           <button
             type="button"
             onClick={() => setIsSharing(true)}
             aria-label="Take a picture"
             data-testid="share-open"
-            className={`${BIG_BUTTON} grid size-16 place-items-center bg-white/90 text-3xl dark:bg-slate-800/90`}
+            className={`${STICKER_BUTTON} size-16`}
           >
-            <span aria-hidden="true">📸</span>
+            <FlIcon name="camera" className="size-9" />
           </button>
-          <button type="button" onClick={onClose} className={PRIMARY_BUTTON}>
+          <button type="button" onClick={onClose} className={DONE_BUTTON}>
             Done
           </button>
+        </PanelHeader>
+        <div className="relative flex justify-center py-1">
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 size-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,226,176,.9)_0%,rgba(255,226,176,0)_68%)] sm:size-80 dark:bg-[radial-gradient(circle,rgba(255,160,80,.38)_0%,rgba(255,160,80,0)_68%)]"
+          />
+          <Blob
+            look={pet.look}
+            worn={pet.worn}
+            mood={mood === "asleep" ? "happy" : mood}
+            stage={stageFor(pet.level).id}
+            className="relative size-52 sm:size-64"
+          />
         </div>
-      </div>
-      <div className="flex justify-center py-1">
-        <Blob
-          look={pet.look}
-          worn={pet.worn}
-          mood={moodOf(pet, nowMs) === "asleep" ? "happy" : moodOf(pet, nowMs)}
-          stage={stageFor(pet.level).id}
-          className="size-56 sm:size-72"
-        />
-      </div>
-      <div
-        role="tablist"
-        aria-label="What to change"
-        className="flex gap-2 overflow-x-auto py-2"
-      >
-        {TABS.map((t) => (
-          <button
-            key={t.kind}
-            type="button"
-            role="tab"
-            aria-selected={t.kind === kind}
-            onClick={() => setKind(t.kind)}
-            className={`${BIG_BUTTON} flex shrink-0 flex-col items-center justify-center px-4 py-2 text-base ${
-              t.kind === kind
-                ? "bg-orange-500 text-white dark:bg-orange-400 dark:text-stone-900"
-                : "bg-white/80 dark:bg-slate-800/80"
-            }`}
-          >
-            <span aria-hidden="true" className="text-2xl">
-              {t.icon}
-            </span>
-            {t.label}
-          </button>
-        ))}
-      </div>
-      <div
-        role="tabpanel"
-        aria-label={tab.label}
-        className="grid flex-1 content-start gap-3 overflow-y-auto overflow-x-hidden py-2 [grid-template-columns:repeat(auto-fill,minmax(6.5rem,1fr))]"
-      >
-        {isSlot && (
-          <button
-            type="button"
-            onClick={() => pick(null)}
-            aria-pressed={pet.worn[kind as DressSlot] === null}
-            aria-label={`No ${tab.label.toLowerCase()} item`}
-            className={`grid min-h-28 place-items-center rounded-3xl border-4 bg-white/70 text-4xl dark:bg-slate-800/70 ${FOCUS_RING} ${
-              pet.worn[kind as DressSlot] === null
-                ? "border-orange-500 dark:border-orange-300"
-                : "border-transparent"
-            }`}
-          >
-            <span aria-hidden="true">🚫</span>
-          </button>
-        )}
-        {tab.ids.map((id) => {
-          const key = unlockKey(kind, id);
-          const owned = pet.unlocked.includes(key);
-          const selected = owned && isSelected(pet, kind, id);
-          return (
+        <div
+          role="tablist"
+          aria-label="What to change"
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-3 pt-1"
+        >
+          {TABS.map((t) => (
             <button
-              key={id}
+              key={t.kind}
               type="button"
-              disabled={!owned}
-              onClick={() => pick(id)}
-              aria-pressed={owned ? selected : undefined}
-              aria-label={
-                owned
-                  ? labelOf(key)
-                  : `${labelOf(key)}, locked, ${lockText(key)}`
-              }
-              className={`relative flex min-h-28 flex-col items-center justify-center gap-1 rounded-3xl border-4 bg-white/70 p-2 dark:bg-slate-800/70 ${FOCUS_RING} ${
-                selected
-                  ? "border-orange-500 dark:border-orange-300"
-                  : "border-transparent"
+              role="tab"
+              aria-selected={t.kind === kind}
+              onClick={() => setKind(t.kind)}
+              className={`${TAB_CHIP} ${t.kind === kind ? TAB_ON : TAB_OFF}`}
+            >
+              <span className={TAB_ICON_DISC}>
+                <FlIcon name={t.icon} className="size-7" />
+              </span>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div
+          role="tabpanel"
+          aria-label={tab.label}
+          className="grid flex-1 content-start gap-4 overflow-y-auto overflow-x-hidden px-2 pb-2 pt-2 [grid-template-columns:repeat(auto-fill,minmax(6.5rem,1fr))]"
+        >
+          {isSlot && (
+            <button
+              type="button"
+              onClick={() => pick(null)}
+              aria-pressed={pet.worn[kind as DressSlot] === null}
+              aria-label={`No ${tab.label.toLowerCase()} item`}
+              className={`${TILE} ${
+                pet.worn[kind as DressSlot] === null ? TILE_ON : ""
               }`}
             >
-              <ItemPreview
-                itemKey={key}
-                look={pet.look}
-                silhouette={!owned}
-                className="size-16"
-              />
-              <span aria-hidden="true" className="text-sm font-bold">
-                {owned ? labelOf(key) : `🔒 ${lockText(key)}`}
+              <span
+                aria-hidden="true"
+                className="grid size-16 place-items-center rounded-full border-4 border-dashed border-[#d9b98f]"
+              >
+                <FlIcon name="close" className="size-8" />
               </span>
-              {!owned && lockText(key) === "Gift" && (
+              <span
+                aria-hidden="true"
+                className={`${DISPLAY} text-sm font-semibold`}
+              >
+                None
+              </span>
+              {pet.worn[kind as DressSlot] === null && <WornBadge />}
+            </button>
+          )}
+          {tab.ids.map((id) => {
+            const key = unlockKey(kind, id);
+            const owned = pet.unlocked.includes(key);
+            const selected = owned && isSelected(pet, kind, id);
+            return (
+              <button
+                key={id}
+                type="button"
+                disabled={!owned}
+                onClick={() => pick(id)}
+                aria-pressed={owned ? selected : undefined}
+                aria-label={
+                  owned
+                    ? labelOf(key)
+                    : `${labelOf(key)}, locked, ${lockText(key)}`
+                }
+                className={`${TILE} ${selected ? TILE_ON : ""}`}
+              >
+                <span
+                  className={`grid size-20 place-items-center rounded-full ${owned ? SPOTLIGHT : ""}`}
+                >
+                  <ItemPreview
+                    itemKey={key}
+                    look={pet.look}
+                    silhouette={!owned}
+                    className="size-16"
+                  />
+                </span>
                 <span
                   aria-hidden="true"
-                  className="absolute right-2 top-2 text-xl"
+                  className={`${DISPLAY} flex items-center gap-1 text-center text-sm font-semibold leading-tight ${
+                    owned ? "" : "text-[#9a7f8f]"
+                  }`}
                 >
-                  🎁
+                  {!owned && <FlIcon name="lock" className="size-4 shrink-0" />}
+                  {owned ? labelOf(key) : lockText(key)}
                 </span>
-              )}
-            </button>
-          );
-        })}
+                {selected && <WornBadge />}
+                {!owned && lockText(key) === "Gift" && (
+                  <FlIcon
+                    name="gift"
+                    className="absolute right-2 top-2 size-7"
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
       {isSharing && (
         <SharePicture

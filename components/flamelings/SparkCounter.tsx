@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef, useState } from "react";
-import SparkIcon from "./SparkIcon";
+import FlIcon from "./FlIcon";
+import { SPARK_PILL } from "./styles";
 
 const COUNT_MS = 420;
 
@@ -61,14 +62,22 @@ const SparkCounter = forwardRef<HTMLDivElement, SparkCounterProps>(
         aria-label={`${value} sparks`}
         data-testid="sparks"
         data-value={value}
-        className={`flex h-16 shrink-0 items-center gap-1 rounded-3xl bg-amber-100/95 px-2 sm:gap-1.5 sm:px-3 text-stone-900 shadow-lg dark:bg-amber-200/95 ${className}`}
+        className={`${SPARK_PILL} ${className}`}
       >
-        <span key={pops} className={pops > 0 ? "fl-spark-pop" : undefined}>
-          <SparkIcon className="size-7 sm:size-8" />
+        <span
+          key={pops}
+          className={`relative inline-grid ${pops > 0 ? "fl-spark-pop" : ""}`}
+        >
+          <FlIcon name="spark" className="size-6 sm:size-8" />
+          {/* A glint that twinkles on the spark. */}
+          <span
+            aria-hidden="true"
+            className="fl-shimmer absolute -right-0.5 -top-0.5 size-2 rounded-full bg-white shadow-[0_0_6px_2px_rgba(255,255,255,.8)] sm:size-2.5"
+          />
         </span>
         <span
           aria-hidden="true"
-          className="min-w-[2ch] text-right text-xl font-black sm:text-2xl tabular-nums"
+          className="min-w-[2ch] text-right tabular-nums"
         >
           {display}
         </span>

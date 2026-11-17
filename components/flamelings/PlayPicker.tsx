@@ -1,25 +1,32 @@
 import type { PlayGame } from "@/lib/flamelings/types";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
-import { BIG_BUTTON, FOCUS_RING } from "./styles";
+import FlIcon from "./FlIcon";
+import {
+  DIALOG_BACKDROP,
+  DISPLAY,
+  FOCUS_RING,
+  PEACH_BUTTON,
+  TRAY,
+} from "./styles";
 
 const GAMES: { id: PlayGame; icon: string; label: string; tone: string }[] = [
   {
     id: "fireflies",
     icon: "🦋",
     label: "Firefly Catch",
-    tone: "from-lime-200 to-emerald-300 text-emerald-950",
+    tone: "from-[#e4f9c8] to-[#a8e6b4] text-[#1f5a3a] shadow-[0_5px_0_#6fbf86,0_10px_20px_rgba(30,10,40,.18)]",
   },
   {
     id: "marshmallow",
     icon: "🍡",
     label: "Marshmallow Toast",
-    tone: "from-pink-100 to-orange-200 text-orange-950",
+    tone: "from-[#ffe4ec] to-[#ffc9a8] text-[#7a2d1c] shadow-[0_5px_0_#e79a7a,0_10px_20px_rgba(30,10,40,.18)]",
   },
   {
     id: "logs",
     icon: "🪵",
     label: "Log Stack",
-    tone: "from-amber-200 to-amber-400 text-amber-950",
+    tone: "from-[#ffeab0] to-[#ffc76b] text-[#6b3a10] shadow-[0_5px_0_#d9952a,0_10px_20px_rgba(30,10,40,.18)]",
   },
 ];
 
@@ -42,23 +49,35 @@ export default function PlayPicker({
       aria-modal="true"
       aria-label="Pick a game"
       data-testid="play-picker"
-      className={`fixed inset-0 z-20 flex items-center justify-center overflow-y-auto bg-indigo-950/95 p-4 ${SAFE_INSETS}`}
+      className={`fl-fade-in fixed inset-0 z-20 flex items-end justify-center overflow-y-auto p-3 sm:items-center ${DIALOG_BACKDROP} ${SAFE_INSETS}`}
     >
-      <div className="flex w-full min-w-0 max-w-3xl flex-col items-center gap-4 px-4">
-        <p
-          role="img"
-          className="rounded-full bg-black/40 px-5 py-2 text-2xl font-black text-white"
-          aria-label={
-            roundsLeft > 0
-              ? `${roundsLeft} sparkly rounds left`
-              : "No sparkly rounds left, but playing still cheers up your flameling"
-          }
-          data-testid="play-rounds-left"
-        >
-          <span aria-hidden="true">
-            {roundsLeft > 0 ? "✨".repeat(roundsLeft) : "💤"}
-          </span>
-        </p>
+      <div
+        className={`${TRAY} mb-1 flex w-full min-w-0 max-w-3xl flex-col items-center gap-4 p-4 sm:p-5`}
+      >
+        <div className="flex w-full items-center justify-between gap-3">
+          <p
+            role="img"
+            className={`${DISPLAY} flex min-h-12 items-center rounded-full bg-[#2a1d47] px-5 text-2xl font-bold text-[#ffe58a] shadow-[inset_0_-3px_0_rgba(0,0,0,.25)]`}
+            aria-label={
+              roundsLeft > 0
+                ? `${roundsLeft} sparkly rounds left`
+                : "No sparkly rounds left, but playing still cheers up your flameling"
+            }
+            data-testid="play-rounds-left"
+          >
+            <span aria-hidden="true">
+              {roundsLeft > 0 ? "✨".repeat(roundsLeft) : "💤"}
+            </span>
+          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className={`${PEACH_BUTTON} size-16`}
+          >
+            <FlIcon name="close" className="size-8" />
+          </button>
+        </div>
         <div className="grid w-full grid-cols-1 gap-4 min-[560px]:grid-cols-3">
           {GAMES.map((game) => (
             <button
@@ -66,11 +85,11 @@ export default function PlayPicker({
               type="button"
               onClick={() => onPick(game.id)}
               data-testid={`play-${game.id}`}
-              className={`flex min-h-32 min-w-0 flex-row items-center justify-center gap-4 rounded-[2rem] bg-gradient-to-b p-5 text-xl font-black shadow-xl transition-transform active:scale-95 min-[560px]:min-h-56 min-[560px]:flex-col ${game.tone} ${FOCUS_RING}`}
+              className={`${DISPLAY} flex min-h-28 min-w-0 flex-row items-center justify-center gap-4 rounded-[28px] bg-gradient-to-b p-4 text-2xl font-semibold transition-transform active:translate-y-[3px] min-[560px]:min-h-52 min-[560px]:flex-col ${game.tone} ${FOCUS_RING}`}
             >
               <span
                 aria-hidden="true"
-                className="text-7xl leading-none min-[560px]:text-8xl"
+                className="text-6xl leading-none min-[560px]:text-8xl"
               >
                 {game.icon}
               </span>
@@ -78,14 +97,6 @@ export default function PlayPicker({
             </button>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className={`${BIG_BUTTON} bg-white/90 px-8 text-3xl text-stone-900`}
-        >
-          <span aria-hidden="true">✖️</span>
-        </button>
       </div>
     </div>
   );

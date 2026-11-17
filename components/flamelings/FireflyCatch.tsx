@@ -2,7 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import { playSound } from "@/lib/flamelings/sound";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
-import { FOCUS_RING, PRIMARY_BUTTON } from "./styles";
+import FlIcon from "./FlIcon";
+import GameResult from "./GameResult";
+import { FOCUS_RING, SCORE_CHIP, TIMER_CHIP } from "./styles";
 
 export const CATCH_SECONDS = 20;
 const SLOTS = [
@@ -81,17 +83,24 @@ export default function FireflyCatch({ onDone }: FireflyCatchProps) {
       className={`fixed inset-0 z-20 overflow-hidden bg-indigo-950/90 backdrop-blur-sm ${SAFE_INSETS}`}
     >
       <div className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <p className="rounded-2xl bg-black/50 px-4 py-2 text-2xl font-black text-white">
-          <span aria-hidden="true">✨ </span>
-          <span data-testid="catch-score">{score}</span>
+        <p className={SCORE_CHIP}>
+          <FlIcon name="spark" className="size-7 sm:size-8" />
+          <span data-testid="catch-score" className="tabular-nums">
+            {score}
+          </span>
         </p>
         <p
-          className="rounded-2xl bg-black/50 px-4 py-2 text-2xl font-black text-white"
+          className={`${TIMER_CHIP} ${left <= 5 && left > 0 ? "fl-pulse-soft" : ""}`}
           role="timer"
           aria-label={`${left} seconds left`}
         >
-          <span aria-hidden="true">⏱ </span>
-          {left}
+          <span aria-hidden="true">⏱</span>
+          {/* Its own colour, so the red never loses to the chip's text colour. */}
+          <span
+            className={left <= 5 && left > 0 ? "text-[#c0264b]" : undefined}
+          >
+            {left}
+          </span>
         </p>
       </div>
       {!over &&
@@ -117,23 +126,11 @@ export default function FireflyCatch({ onDone }: FireflyCatchProps) {
           );
         })}
       {over && (
-        <div className="absolute inset-0 grid place-items-center p-6">
-          <div className="fl-card-in flex flex-col items-center gap-4 rounded-3xl bg-white p-8 text-center text-stone-900 shadow-xl dark:bg-slate-800 dark:text-amber-50">
-            <p className="text-3xl font-black">
-              You caught {score} firefl{score === 1 ? "y" : "ies"}!
-            </p>
-            <p aria-hidden="true" className="text-5xl">
-              ✨🎉✨
-            </p>
-            <button
-              type="button"
-              onClick={() => onDone(score)}
-              className={PRIMARY_BUTTON}
-            >
-              Done
-            </button>
-          </div>
-        </div>
+        <GameResult
+          title={`You caught ${score} firefl${score === 1 ? "y" : "ies"}!`}
+          art="✨🎉✨"
+          onDone={() => onDone(score)}
+        />
       )}
     </div>
   );

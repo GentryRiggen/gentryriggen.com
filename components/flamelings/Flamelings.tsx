@@ -14,6 +14,7 @@ import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
 import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
 import { useFlamelingsSound } from "./audio/useFlamelingsSound";
+import { flDisplay } from "./fonts";
 import CelebrationCard from "./CelebrationCard";
 import FriendsScreen from "./friends/FriendsScreen";
 import Hatch from "./Hatch";
@@ -21,6 +22,7 @@ import MemoryGrove from "./MemoryGrove";
 import PetView from "./PetView";
 import Shelf from "./Shelf";
 import TabLocked from "./TabLocked";
+import { CHROME_BG, DISPLAY, FOCUS_RING } from "./styles";
 
 /** How often the game catches up with the clock while the page is open. */
 const TICK_MS = 15_000;
@@ -97,7 +99,7 @@ export default function Flamelings() {
 
   return (
     <GameShell
-      className="bg-amber-100 dark:bg-slate-900"
+      className={`${flDisplay.variable} ${CHROME_BG}`}
       testId="flamelings-root"
     >
       {!ready ? (
@@ -110,16 +112,30 @@ export default function Flamelings() {
         </div>
       ) : locked ? (
         <TabLocked />
-      ) : view.screen === "shelf" ? (
-        <Shelf />
-      ) : view.screen === "hatch" ? (
-        <Hatch />
-      ) : view.screen === "grove" ? (
-        <MemoryGrove />
-      ) : view.screen === "friends" ? (
-        <FriendsScreen key={view.petId} petId={view.petId} from={view.from} />
       ) : (
-        <PetView key={view.petId} petId={view.petId} />
+        <div
+          key={
+            view.screen === "shelf" ||
+            view.screen === "hatch" ||
+            view.screen === "grove"
+              ? view.screen
+              : `${view.screen}-${view.petId}`
+          }
+          data-testid="flamelings-screen"
+          className="fl-screen-in h-full"
+        >
+          {view.screen === "shelf" ? (
+            <Shelf />
+          ) : view.screen === "hatch" ? (
+            <Hatch />
+          ) : view.screen === "grove" ? (
+            <MemoryGrove />
+          ) : view.screen === "friends" ? (
+            <FriendsScreen petId={view.petId} from={view.from} />
+          ) : (
+            <PetView petId={view.petId} />
+          )}
+        </div>
       )}
       {outdated && !locked && (
         <div
@@ -130,14 +146,14 @@ export default function Flamelings() {
           <button
             type="button"
             onClick={update}
-            className="flex min-h-16 touch-manipulation items-center gap-3 rounded-3xl border-4 border-red-300 bg-red-600 px-5 py-2 text-left text-lg font-extrabold text-white shadow-xl active:scale-95"
+            className={`${DISPLAY} flex min-h-16 touch-manipulation items-center gap-3 rounded-3xl bg-gradient-to-b from-[#ff6b5a] to-[#e0352b] px-5 py-2 text-left text-xl font-semibold text-white shadow-[0_5px_0_#a8231b,0_10px_20px_rgba(30,10,40,.3)] transition-transform active:translate-y-[3px] ${FOCUS_RING}`}
           >
             <span aria-hidden="true" className="text-3xl">
               💾🚫
             </span>
             <span>
               Not saving yet!
-              <span className="block text-sm font-bold">
+              <span className="block font-sans text-sm font-bold text-white/90">
                 Tap to update <span aria-hidden="true">✨</span>, then your
                 progress saves again
               </span>
@@ -151,7 +167,7 @@ export default function Flamelings() {
           testId="flamelings-update"
           label="Update ready ✨ — tap to update"
           className="pointer-events-none fixed inset-x-0 bottom-[calc(7.5rem+env(safe-area-inset-bottom))] z-50 flex justify-center px-4"
-          buttonClassName="pointer-events-auto min-h-16 touch-manipulation rounded-full border-4 border-orange-300 bg-orange-500 px-6 py-3 text-lg font-extrabold text-white shadow-xl active:scale-95"
+          buttonClassName={`${DISPLAY} pointer-events-auto min-h-16 touch-manipulation rounded-full bg-gradient-to-b from-[#ff8a3d] to-[#f2542d] px-6 py-3 text-xl font-semibold text-white shadow-[0_5px_0_#c2410c,0_10px_20px_rgba(30,10,40,.3)] transition-transform active:translate-y-[3px] ${FOCUS_RING}`}
         />
       )}
       {ready && !locked && celebration && (

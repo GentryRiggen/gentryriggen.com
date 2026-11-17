@@ -14,7 +14,9 @@ import {
 import type { Pet } from "@/lib/flamelings/types";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
 import Blob from "./Blob";
-import { PRIMARY_BUTTON } from "./styles";
+import FlIcon from "./FlIcon";
+import GameResult from "./GameResult";
+import { DISPLAY, SCORE_CHIP, STICKER, TIMER_CHIP } from "./styles";
 
 const TICK_MS = 60;
 /** The longest step one tick may add, so a stalled page cannot burn a marshmallow. */
@@ -207,12 +209,14 @@ export default function MarshmallowToast({
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <p className="rounded-2xl bg-black/50 px-4 py-2 text-2xl font-black text-white">
-          <span aria-hidden="true">✨ </span>
-          <span data-testid="toast-score">{score}</span>
+        <p className={SCORE_CHIP}>
+          <FlIcon name="spark" className="size-7 sm:size-8" />
+          <span data-testid="toast-score" className="tabular-nums">
+            {score}
+          </span>
         </p>
         <p
-          className="rounded-2xl bg-black/50 px-4 py-2 text-2xl font-black text-white"
+          className={TIMER_CHIP}
           aria-label={`${Math.max(0, left)} marshmallows left`}
           data-testid="toast-left"
         >
@@ -226,7 +230,7 @@ export default function MarshmallowToast({
       {phase !== "over" && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-[14%] z-20 flex -translate-x-1/2 items-end gap-3 rounded-3xl bg-black/40 px-4 py-2"
+          className="pointer-events-none absolute left-1/2 top-[14%] z-20 flex -translate-x-1/2 items-end gap-3 rounded-full bg-[#fff6e6]/85 px-5 py-2 shadow-[0_4px_0_rgba(231,201,163,.85),0_8px_18px_rgba(30,10,40,.25)]"
         >
           {STAGES.map((s) => (
             <span
@@ -278,7 +282,7 @@ export default function MarshmallowToast({
       {last && (
         <p
           data-testid="toast-result"
-          className="fl-card-in pointer-events-none absolute left-1/2 top-[22%] z-20 -translate-x-1/2 rounded-full bg-white px-6 py-2 text-4xl font-black text-stone-900 shadow-xl"
+          className={`${STICKER} ${DISPLAY} fl-pop-in pointer-events-none absolute left-1/2 top-[22%] z-20 -translate-x-1/2 rounded-full px-6 py-2 text-4xl font-bold`}
         >
           <span aria-hidden="true">{RESULT_ICON[last.stage]} </span>+
           {last.points}
@@ -310,21 +314,12 @@ export default function MarshmallowToast({
       </div>
 
       {phase === "over" && (
-        <div className="absolute inset-0 z-30 grid place-items-center p-6">
-          <div className="fl-card-in flex flex-col items-center gap-4 rounded-3xl bg-white p-8 text-center text-stone-900 shadow-xl dark:bg-slate-800 dark:text-amber-50">
-            <p className="text-3xl font-black">Yum! {score} points!</p>
-            <p aria-hidden="true" className="text-5xl">
-              🍡🌟🍡
-            </p>
-            <button
-              type="button"
-              onClick={() => onDone(score)}
-              className={PRIMARY_BUTTON}
-            >
-              Done
-            </button>
-          </div>
-        </div>
+        <GameResult
+          title={`Yum! ${score} points!`}
+          art="🍡🌟🍡"
+          onDone={() => onDone(score)}
+          className="z-30"
+        />
       )}
     </div>
   );

@@ -71,6 +71,16 @@ describe("Shop", () => {
     });
   });
 
+  it("marks the item just bought", () => {
+    const { utils, view } = renderShop(100);
+    fireEvent.click(screen.getByRole("button", { name: /Buy Pirate hat/ }));
+    utils.rerender(view());
+    expect(screen.getByTestId("shop-item-pirate")).toHaveAttribute(
+      "data-just-bought",
+      "true"
+    );
+  });
+
   it("offers the glade decor on its own tab and puts it out when bought", () => {
     renderShop(100);
     fireEvent.click(screen.getByRole("tab", { name: "Glade" }));

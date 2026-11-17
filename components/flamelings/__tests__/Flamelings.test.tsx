@@ -134,6 +134,19 @@ describe("Flamelings", () => {
     expect(screen.getByTestId("pet")).toHaveAttribute("data-mood", "eating");
   });
 
+  it("wish bubble names the lowest need", () => {
+    render(<Flamelings />);
+    hatchThroughUi("Pip");
+    expect(screen.queryByTestId("wish-bubble")).toBeNull();
+    act(() => {
+      const { save } = useFlamelings.getState();
+      useFlamelings.setState({
+        save: { ...save, pets: [{ ...save.pets[0], fuel: 10 }] },
+      });
+    });
+    expect(screen.getByText("Snack time?")).toBeInTheDocument();
+  });
+
   it("disables feeding and playing at night", () => {
     render(<Flamelings />);
     hatchThroughUi("Pip");

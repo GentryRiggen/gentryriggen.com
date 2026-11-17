@@ -14,7 +14,8 @@ import { playSound } from "@/lib/flamelings/sound";
 import type { Pet } from "@/lib/flamelings/types";
 import { SAFE_INSETS } from "@/lib/game-kit/safeArea";
 import Blob from "./Blob";
-import { PRIMARY_BUTTON } from "./styles";
+import GameResult from "./GameResult";
+import { SCORE_CHIP } from "./styles";
 
 /** One log is this tall, in percent of the stacking field. */
 const LOG_H = 6.2;
@@ -194,10 +195,12 @@ export default function LogStack({ pet, onDone }: LogStackProps) {
       )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 px-[max(1rem,env(safe-area-inset-left))] pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <p className="rounded-2xl bg-black/50 px-4 py-2 text-2xl font-black text-white">
-          <span aria-hidden="true">🪵 </span>
-          <span data-testid="logs-score">{score}</span>
-          <span className="text-base opacity-70"> / {MAX_LOGS}</span>
+        <p className={SCORE_CHIP}>
+          <span aria-hidden="true">🪵</span>
+          <span data-testid="logs-score" className="tabular-nums">
+            {score}
+          </span>
+          <span className="text-base text-[#9a5a10]"> / {MAX_LOGS}</span>
         </p>
       </div>
 
@@ -275,25 +278,16 @@ export default function LogStack({ pet, onDone }: LogStackProps) {
       </div>
 
       {over && (
-        <div className="absolute inset-0 z-30 grid place-items-center p-6">
-          <div className="fl-card-in flex flex-col items-center gap-4 rounded-3xl bg-white p-8 text-center text-stone-900 shadow-xl dark:bg-slate-800 dark:text-amber-50">
-            <p className="text-3xl font-black">
-              {won
-                ? "Wow! A full tower!"
-                : `You stacked ${score} log${score === 1 ? "" : "s"}!`}
-            </p>
-            <p aria-hidden="true" className="text-5xl">
-              {won ? "🪵🌟🪵" : "🪵🎉🪵"}
-            </p>
-            <button
-              type="button"
-              onClick={() => onDone(score)}
-              className={PRIMARY_BUTTON}
-            >
-              Done
-            </button>
-          </div>
-        </div>
+        <GameResult
+          title={
+            won
+              ? "Wow! A full tower!"
+              : `You stacked ${score} log${score === 1 ? "" : "s"}!`
+          }
+          art={won ? "🪵🌟🪵" : "🪵🎉🪵"}
+          onDone={() => onDone(score)}
+          className="z-30"
+        />
       )}
     </div>
   );

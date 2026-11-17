@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CODE_ALPHABET, CODE_LENGTH } from "@/lib/flamelings/online/card";
-import { FOCUS_RING } from "../styles";
+import { DISPLAY, PEACH_BUTTON, STICKER_BUTTON } from "../styles";
 
 interface CodeKeypadProps {
   value: string;
@@ -34,10 +34,12 @@ export default function CodeKeypad({
           <span
             key={i}
             aria-hidden="true"
-            className={`grid size-12 place-items-center rounded-2xl border-4 text-3xl font-black sm:size-16 sm:text-4xl ${
+            className={`${DISPLAY} grid h-14 w-12 place-items-center rounded-2xl bg-[#fff6e6] text-4xl font-bold text-[#3a2340] shadow-[0_4px_0_#e7c9a3] sm:h-20 sm:w-16 sm:text-5xl ${
               i === value.length
-                ? "border-orange-500 bg-white dark:border-orange-300 dark:bg-slate-700"
-                : "border-stone-300 bg-white dark:border-slate-600 dark:bg-slate-800"
+                ? "ring-4 ring-[#f2542d]"
+                : value[i]
+                  ? ""
+                  : "opacity-70"
             }`}
           >
             {value[i] ?? ""}
@@ -49,7 +51,7 @@ export default function CodeKeypad({
         <div
           role="group"
           aria-label="Letters and numbers"
-          className="grid w-full grid-cols-6 gap-1.5 sm:grid-cols-8 sm:gap-2"
+          className="grid w-full justify-items-center gap-x-1 gap-y-2.5 [grid-template-columns:repeat(auto-fill,minmax(4rem,1fr))] sm:gap-x-2 sm:gap-y-3"
         >
           {[...CODE_ALPHABET].map((ch) => (
             <button
@@ -59,7 +61,7 @@ export default function CodeKeypad({
               onClick={() => onChange(value + ch)}
               aria-label={ch}
               data-testid={`key-${ch}`}
-              className={`min-h-14 rounded-2xl bg-white text-2xl font-black text-stone-900 shadow-md transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100 sm:min-h-16 dark:bg-slate-700 dark:text-amber-50 ${FOCUS_RING}`}
+              className={`${STICKER_BUTTON} ${DISPLAY} size-16 text-3xl font-semibold`}
             >
               {ch}
             </button>
@@ -70,9 +72,11 @@ export default function CodeKeypad({
             onClick={() => onChange(value.slice(0, -1))}
             aria-label="Delete the last letter"
             data-testid="key-delete"
-            className={`min-h-14 rounded-2xl bg-orange-200 text-2xl font-black text-stone-900 shadow-md transition-transform active:scale-90 disabled:opacity-40 disabled:active:scale-100 sm:min-h-16 dark:bg-orange-300 ${FOCUS_RING}`}
+            className={`${PEACH_BUTTON} size-16`}
           >
-            <span aria-hidden="true">⌫</span>
+            <span aria-hidden="true" className="text-3xl text-[#9a4a10]">
+              ⌫
+            </span>
           </button>
         </div>
       )}

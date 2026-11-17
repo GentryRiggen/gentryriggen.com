@@ -7753,7 +7753,7 @@ html:has(.jim-app) body {
   --fl-hot: #f9531c;
   --fl-mid: #ff9a1f;
   --fl-tip: #ffd84a;
-  --fl-core: #fff3c4;
+  --fl-core: #fff6c2;
   --fl-face: #2a1206;
   display: block;
   width: 100%;
@@ -7832,9 +7832,16 @@ html:has(.jim-app) body {
 .fl-tip {
   stop-color: var(--fl-tip);
 }
+/* The core: a bright radial glow low in the belly (its fill is a gradient). */
 .fl-core {
-  fill: var(--fl-core);
-  opacity: 0.32;
+  opacity: 0.85;
+}
+.fl-core-stop {
+  stop-color: var(--fl-core);
+}
+.fl-cheek {
+  fill: #ff6b6b;
+  opacity: 0.5;
 }
 .fl-eye {
   fill: var(--fl-face);
@@ -7848,7 +7855,8 @@ html:has(.jim-app) body {
 }
 .fl-shine {
   fill: #fff;
-  opacity: 0.9;
+  opacity: 0.95;
+  animation: fl-blink 4.6s infinite;
 }
 
 .fl-pet {
@@ -7892,7 +7900,12 @@ html:has(.jim-app) body {
 
 .fl-all {
   transform-origin: 50% 100%;
-  animation: fl-breathe 3.2s ease-in-out infinite;
+  animation: fl-idle-squash 2.6s ease-in-out infinite;
+}
+/* The tips flicker like a real flame. */
+.fl-licks {
+  transform-origin: 50% 100%;
+  animation: fl-tip-flicker 1.1s ease-in-out infinite;
 }
 .fl-lick {
   animation: fl-rise 1.9s ease-in infinite;
@@ -7919,13 +7932,63 @@ html:has(.jim-app) body {
   animation: fl-blink 4.6s infinite;
 }
 
-@keyframes fl-breathe {
+@keyframes fl-idle-squash {
   0%,
   100% {
     transform: scale(1, 1);
   }
   50% {
-    transform: scale(1.04, 0.97);
+    transform: scale(0.97, 1.04);
+  }
+}
+@keyframes fl-tip-flicker {
+  0%,
+  100% {
+    transform: skewX(0deg);
+  }
+  30% {
+    transform: skewX(4deg);
+  }
+  70% {
+    transform: skewX(-4deg);
+  }
+}
+/* A tap squishes the pet (PetView flips data-squish between a and b, so
+   every tap replays it). */
+[data-squish="a"] .fl-blob {
+  transform-origin: 50% 90%;
+  animation: fl-tap-squish-a 380ms ease-out;
+}
+[data-squish="b"] .fl-blob {
+  transform-origin: 50% 90%;
+  animation: fl-tap-squish-b 380ms ease-out;
+}
+@keyframes fl-tap-squish-a {
+  0% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(1.08, 0.88);
+  }
+  65% {
+    transform: scale(0.96, 1.08);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+@keyframes fl-tap-squish-b {
+  0% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(1.08, 0.88);
+  }
+  65% {
+    transform: scale(0.96, 1.08);
+  }
+  100% {
+    transform: scale(1, 1);
   }
 }
 @keyframes fl-rise {
@@ -8428,49 +8491,6 @@ html:has(.jim-app) body {
   display: inline;
 }
 
-/* Thought bubbles: icon-only, above the pet. */
-.fl-bubbles {
-  position: absolute;
-  display: flex;
-  gap: 0.4rem;
-  pointer-events: none;
-}
-.fl-bubble {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 4.25rem;
-  height: 4.25rem;
-  font-size: 2.4rem;
-  line-height: 1;
-  background: #fff;
-  border-radius: 9999px;
-  box-shadow: 0 4px 10px rgb(0 0 0 / 0.25);
-  animation: fl-bubble-bob 1.8s ease-in-out infinite;
-}
-.fl-bubble::after {
-  content: "";
-  position: absolute;
-  left: 14%;
-  bottom: -0.5rem;
-  width: 0.9rem;
-  height: 0.9rem;
-  background: #fff;
-  border-radius: 9999px;
-}
-.fl-bubble + .fl-bubble {
-  animation-delay: -0.9s;
-}
-@keyframes fl-bubble-bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
 /* A candle's soft, uneven glow. */
 .fl-candle-glow {
   animation: fl-candle 2.6s ease-in-out infinite;
@@ -8555,8 +8575,27 @@ html:has(.jim-app) body {
   transform: scale(1.35);
   animation: none;
 }
-.fl-blob:not([data-eyes="wide"]) .fl-shine {
+/* Round and wide eyes sparkle; the others (and shut eyes) do not. */
+.fl-blob[data-eyes="sharp"] .fl-shine,
+.fl-blob[data-eyes="sleepy"] .fl-shine,
+.fl-blob[data-eyes="dots"] .fl-shine,
+.fl-blob[data-mood="asleep"] .fl-shine,
+.fl-blob[data-mood="ember"] .fl-shine,
+.fl-pet[data-emote="sleepy"] .fl-shine {
   display: none;
+}
+.fl-blob[data-eyes="wide"] .fl-shine {
+  animation: none;
+}
+/* Cozy has its own blush; an ember is too dim for cheeks. */
+.fl-blob[data-form="cozy"] .fl-cheek,
+.fl-blob[data-mood="ember"] .fl-cheek {
+  display: none;
+}
+/* Sleeping and ember flames hold their tips still. */
+.fl-blob[data-mood="asleep"] .fl-licks,
+.fl-blob[data-mood="ember"] .fl-licks {
+  animation: none;
 }
 .fl-blob[data-eyes="sharp"] .fl-eye-l {
   transform: rotate(22deg) scaleY(0.7);
@@ -8858,7 +8897,8 @@ html:has(.jim-app) body {
   .fl-blob *,
   .fl-all,
   .fl-fx,
-  .fl-pet * {
+  .fl-pet *,
+  [data-squish] .fl-blob {
     animation: none !important;
   }
   .fl-fx {
@@ -8927,35 +8967,100 @@ html:has(.jim-app) body {
   }
 }
 
-.fl-egg-wobble {
-  animation: fl-egg-wobble 1.6s ease-in-out infinite;
-  transform-origin: 50% 100%;
+/* The glade stage: the scene box above the dock. The scene's scale (the
+   SVG slices its 800x600 box) is --fl-s, so the pet can stand in the
+   campfire's logs (HEARTH in Glade.tsx, 82 units above the bottom) and grow
+   with it on every screen. */
+.fl-stage {
+  container-type: size;
+  --fl-s: max(100cqw / 800, 100cqh / 600);
 }
-.fl-egg-hit {
-  animation: fl-egg-hit 0.35s ease-out;
-  transform-origin: 50% 100%;
+.fl-hearth-anchor {
+  top: calc(100% - 82 * var(--fl-s));
+  /* The feet are 90% of the way down the pet's box. */
+  transform: translate(-50%, -90%);
 }
-@keyframes fl-egg-wobble {
+.fl-hearth-pet {
+  width: min(30rem, 58cqh, 280 * var(--fl-s));
+  height: min(30rem, 58cqh, 280 * var(--fl-s));
+}
+/* The lantern string's bulbs swing from where they hang. */
+.fl-lantern-sway {
+  transform-box: fill-box;
+  transform-origin: 50% 0;
+  animation: fl-lantern-sway 3.4s ease-in-out infinite;
+}
+.fl-bulb-2 {
+  animation-delay: -1.1s;
+  animation-duration: 3.9s;
+}
+.fl-bulb-3 {
+  animation-delay: -2.2s;
+  animation-duration: 3.1s;
+}
+.fl-bulb-4 {
+  animation-delay: -0.6s;
+  animation-duration: 3.6s;
+}
+@keyframes fl-lantern-sway {
   0%,
   100% {
-    transform: rotate(-3deg);
+    transform: rotate(-5deg);
   }
   50% {
-    transform: rotate(3deg);
+    transform: rotate(5deg);
   }
 }
-@keyframes fl-egg-hit {
+/* The campfire's light pool breathes. */
+.fl-pool-glow {
+  animation: fl-pool-glow 3.6s ease-in-out infinite;
+}
+@keyframes fl-pool-glow {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+/* Embers drift up out of the fire. (fl-ember-rise is the pet's own.) */
+.fl-hearth-ember {
+  animation: fl-hearth-ember 4.2s ease-out infinite;
+}
+.fl-hearth-ember-1 {
+  --fl-dx: -34px;
+}
+.fl-hearth-ember-2 {
+  --fl-dx: 40px;
+  animation-delay: -1.1s;
+}
+.fl-hearth-ember-3 {
+  --fl-dx: -8px;
+  animation-delay: -2.3s;
+  animation-duration: 3.6s;
+}
+.fl-hearth-ember-4 {
+  --fl-dx: 58px;
+  animation-delay: -3s;
+  animation-duration: 4.8s;
+}
+.fl-hearth-ember-5 {
+  --fl-dx: -52px;
+  animation-delay: -1.7s;
+  animation-duration: 5.2s;
+}
+@keyframes fl-hearth-ember {
   0% {
-    transform: rotate(0deg) scale(1);
+    transform: translate(0, 0) scale(1);
+    opacity: 0;
   }
-  30% {
-    transform: rotate(-9deg) scale(1.06, 0.94);
-  }
-  70% {
-    transform: rotate(7deg) scale(0.96, 1.05);
+  12% {
+    opacity: 1;
   }
   100% {
-    transform: rotate(0deg) scale(1);
+    transform: translate(var(--fl-dx, 0), -230px) scale(0.3);
+    opacity: 0;
   }
 }
 
@@ -9226,14 +9331,13 @@ html:has(.jim-app) body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fl-bubble,
   .fl-candle-glow {
     animation: none !important;
   }
   .fl-twinkle,
   .fl-fly,
-  .fl-egg-wobble,
-  .fl-egg-hit,
+  .fl-lantern-sway,
+  .fl-pool-glow,
   .fl-gift-bounce,
   .fl-card-in,
   .fl-shine-text,
@@ -9245,6 +9349,10 @@ html:has(.jim-app) body {
     animation: none !important;
   }
   .fl-food-arc {
+    opacity: 0;
+  }
+  .fl-hearth-ember {
+    animation: none !important;
     opacity: 0;
   }
 }
@@ -9335,6 +9443,148 @@ html:has(.jim-app) body {
   .fl-spark-pop,
   .fl-shop-shake {
     animation: none !important;
+  }
+}
+
+/* ---- Flamelings storybook motion (transform and opacity only) ---- */
+.fl-pop-in {
+  animation: fl-pop-in 260ms cubic-bezier(0.3, 0.9, 0.4, 1) both;
+}
+@keyframes fl-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.fl-sheet-up {
+  animation: fl-sheet-up 280ms ease-out both;
+}
+@keyframes fl-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fl-shimmer {
+  animation: fl-shimmer 2.4s ease-in-out infinite;
+}
+@keyframes fl-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+.fl-pulse-soft {
+  animation: fl-pulse-soft 1.4s ease-in-out infinite;
+}
+@keyframes fl-pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+.fl-purchase-pop {
+  animation: fl-purchase-pop 420ms cubic-bezier(0.3, 0.9, 0.4, 1) both;
+}
+@keyframes fl-purchase-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.fl-fade-in {
+  animation: fl-fade-in 300ms ease-out both;
+}
+@keyframes fl-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* A new screen (shelf, glade, friends) fades in quickly. */
+.fl-screen-in {
+  animation: fl-fade-in 180ms ease-out both;
+}
+/* A sparkle flying out of a shop card just bought (--fl-dx/--fl-dy set the way). */
+.fl-buy-spark {
+  opacity: 0;
+  animation: fl-buy-spark 650ms ease-out both;
+}
+@keyframes fl-buy-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(
+        calc(-50% + var(--fl-dx) * 0.5),
+        calc(-50% + var(--fl-dy) * 0.5)
+      )
+      scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--fl-dx)), calc(-50% + var(--fl-dy)))
+      scale(0.6) rotate(45deg);
+  }
+}
+/* The wish bubble: pops in, then bobs gently. */
+.fl-wish {
+  animation:
+    fl-pop-in 260ms cubic-bezier(0.3, 0.9, 0.4, 1) both,
+    fl-wish-bob 2.6s ease-in-out 260ms infinite;
+}
+@keyframes fl-wish-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-pop-in,
+  .fl-sheet-up,
+  .fl-shimmer,
+  .fl-pulse-soft,
+  .fl-purchase-pop,
+  .fl-fade-in,
+  .fl-screen-in,
+  .fl-wish {
+    animation: none !important;
+  }
+  .fl-buy-spark {
+    animation: none !important;
+    opacity: 0;
   }
 }
 
@@ -9583,15 +9833,24 @@ html:has(.jim-app) body {
   .fl-star-drift,
   .fl-flake,
   .fl-cloud-in,
+  .fl-cloud-out,
+  .fl-drop,
+  .fl-dig,
+  .fl-chest-pop,
+  .fl-mush-pop,
+  .fl-mush-wrong,
+  .fl-pop-burst,
   .fl-candle,
   .fl-mush-dance,
   .fl-intro-pop {
     animation: none !important;
   }
-  .fl-flake {
+  .fl-flake,
+  .fl-drop {
     display: none;
   }
   .fl-bye,
+  .fl-cloud-out,
   .fl-star-wish {
     opacity: 0;
   }
@@ -9708,6 +9967,351 @@ html:has(.jim-app) body {
 }
 .fl-pet-fit[data-stage="blaze"] {
   --fl-stage: 0.96;
+}
+
+/* ---- Flamelings glade decor on narrow screens ---- */
+/* The glade crops its sides on tall screens (an 800-wide scene, sliced to
+   fill the height), so the outer decor moves in and shrinks to stay in view.
+   A CSS transform replaces the piece's translate attribute. About 190-610 of
+   the scene shows on an iPad in portrait, about 228-572 on a phone. */
+@media (max-aspect-ratio: 6/5) {
+  .fl-decor-plant {
+    transform: translate(216px, 524px) scale(0.82);
+  }
+  .fl-decor-snowman {
+    transform: translate(258px, 512px) scale(0.82);
+  }
+  .fl-decor-bed {
+    transform: translate(252px, 596px) scale(0.82);
+  }
+  .fl-decor-toyBox {
+    transform: translate(566px, 520px) scale(0.82);
+  }
+  .fl-decor-crystals {
+    transform: translate(566px, 597px) scale(0.82);
+  }
+}
+@media (max-aspect-ratio: 11/20) {
+  .fl-decor-plant {
+    transform: translate(250px, 512px) scale(0.7);
+  }
+  .fl-decor-snowman {
+    transform: translate(288px, 506px) scale(0.7);
+  }
+  .fl-decor-bed {
+    transform: translate(262px, 597px) scale(0.7);
+  }
+  .fl-decor-toyBox {
+    transform: translate(528px, 510px) scale(0.7);
+  }
+  .fl-decor-crystals {
+    transform: translate(544px, 597px) scale(0.7);
+  }
+}
+
+/* The playdate's glade fills the whole screen (no dock), so on a phone less
+   of the scene's width shows than in the pet's glade: about 261-539 at
+   390x844 and 265-535 at 360x800, about 231-569 on a 375x667 phone and
+   175-625 on an iPad in portrait. The decor moves in further there. */
+@media (max-aspect-ratio: 3/4) {
+  .fl-playdate .fl-decor-plant {
+    transform: translate(268px, 516px) scale(0.7);
+  }
+  .fl-playdate .fl-decor-snowman {
+    transform: translate(306px, 510px) scale(0.7);
+  }
+  .fl-playdate .fl-decor-bed {
+    transform: translate(276px, 596px) scale(0.7);
+  }
+  .fl-playdate .fl-decor-toyBox {
+    transform: translate(530px, 514px) scale(0.7);
+  }
+  .fl-playdate .fl-decor-crystals {
+    transform: translate(528px, 596px) scale(0.7);
+  }
+}
+@media (max-aspect-ratio: 11/20) {
+  .fl-playdate .fl-decor-plant {
+    transform: translate(290px, 514px) scale(0.6);
+  }
+  .fl-playdate .fl-decor-snowman {
+    transform: translate(323px, 510px) scale(0.6);
+  }
+  .fl-playdate .fl-decor-bed {
+    transform: translate(300px, 596px) scale(0.6);
+  }
+  .fl-playdate .fl-decor-toyBox {
+    transform: translate(500px, 514px) scale(0.6);
+  }
+  .fl-playdate .fl-decor-crystals {
+    transform: translate(507px, 596px) scale(0.6);
+  }
+}
+
+/* ---- Flamelings shelf and hatch (transform and opacity only) ---- */
+/* The egg wobbles harder with every tap: 1 is idle, 5 is about to burst. */
+.fl-egg-wobble-1,
+.fl-egg-wobble-2,
+.fl-egg-wobble-3,
+.fl-egg-wobble-4,
+.fl-egg-wobble-5 {
+  transform-origin: 50% 96%;
+}
+.fl-egg-wobble-1 {
+  animation: fl-egg-wobble-1 2.2s ease-in-out infinite;
+}
+.fl-egg-wobble-2 {
+  animation: fl-egg-wobble-2 1.5s ease-in-out infinite;
+}
+.fl-egg-wobble-3 {
+  animation: fl-egg-wobble-3 1s ease-in-out infinite;
+}
+.fl-egg-wobble-4 {
+  animation: fl-egg-wobble-4 0.7s ease-in-out infinite;
+}
+.fl-egg-wobble-5 {
+  animation: fl-egg-wobble-5 0.42s linear infinite;
+}
+@keyframes fl-egg-wobble-1 {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+@keyframes fl-egg-wobble-2 {
+  0%,
+  100% {
+    transform: rotate(-4deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+@keyframes fl-egg-wobble-3 {
+  0%,
+  100% {
+    transform: rotate(-6deg) translateY(0);
+  }
+  25% {
+    transform: rotate(0deg) translateY(-4px);
+  }
+  50% {
+    transform: rotate(6deg) translateY(0);
+  }
+  75% {
+    transform: rotate(0deg) translateY(-4px);
+  }
+}
+@keyframes fl-egg-wobble-4 {
+  0%,
+  100% {
+    transform: rotate(-8deg) translate(-2px, 0);
+  }
+  25% {
+    transform: rotate(0deg) translate(0, -7px) scale(1.02, 0.98);
+  }
+  50% {
+    transform: rotate(8deg) translate(2px, 0);
+  }
+  75% {
+    transform: rotate(0deg) translate(0, -7px) scale(1.02, 0.98);
+  }
+}
+@keyframes fl-egg-wobble-5 {
+  0%,
+  100% {
+    transform: rotate(-10deg) translate(-3px, 0);
+  }
+  20% {
+    transform: rotate(6deg) translate(2px, -6px) scale(1.04, 0.97);
+  }
+  45% {
+    transform: rotate(-4deg) translate(-1px, -2px);
+  }
+  70% {
+    transform: rotate(11deg) translate(3px, -8px) scale(0.97, 1.04);
+  }
+}
+/* One squish per tap; two names so the next tap restarts it. */
+.fl-egg-hit,
+.fl-egg-hit-b {
+  transform-origin: 50% 96%;
+}
+.fl-egg-hit {
+  animation: fl-egg-hit 0.35s ease-out;
+}
+.fl-egg-hit-b {
+  animation: fl-egg-hit-b 0.35s ease-out;
+}
+@keyframes fl-egg-hit {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  30% {
+    transform: rotate(-9deg) scale(1.08, 0.92);
+  }
+  70% {
+    transform: rotate(7deg) scale(0.95, 1.06);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+@keyframes fl-egg-hit-b {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  30% {
+    transform: rotate(9deg) scale(1.08, 0.92);
+  }
+  70% {
+    transform: rotate(-7deg) scale(0.95, 1.06);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+/* A new crack snaps open from where it starts. */
+.fl-crack {
+  animation: fl-crack 320ms cubic-bezier(0.3, 0.9, 0.4, 1) both;
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+}
+@keyframes fl-crack {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* Light inside the egg pulses through the cracks. */
+.fl-crack-glow {
+  animation: fl-crack-glow 1.2s ease-in-out infinite;
+}
+@keyframes fl-crack-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+/* Sparkles flick off the egg on each tap. */
+.fl-egg-spark {
+  animation: fl-egg-spark 620ms ease-out both;
+}
+@keyframes fl-egg-spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.4) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fl-dx, 0), var(--fl-dy, -30px)) scale(1.1)
+      rotate(90deg);
+  }
+}
+/* The hatch: a flash of light, rays, and the shell flying apart. */
+.fl-hatch-burst {
+  animation: fl-hatch-burst 900ms ease-out both;
+}
+@keyframes fl-hatch-burst {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  15% {
+    opacity: 1;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+.fl-hatch-rays {
+  animation: fl-hatch-rays 2.6s ease-out both;
+}
+@keyframes fl-hatch-rays {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(0deg);
+  }
+  20% {
+    opacity: 0.9;
+    transform: scale(1) rotate(20deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25) rotate(90deg);
+  }
+}
+.fl-shell-left {
+  animation: fl-shell-left 900ms cubic-bezier(0.2, 0.7, 0.4, 1) both;
+  transform-origin: 50% 90%;
+}
+.fl-shell-right {
+  animation: fl-shell-right 900ms cubic-bezier(0.2, 0.7, 0.4, 1) both;
+  transform-origin: 50% 90%;
+}
+@keyframes fl-shell-left {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-60%, 18%) rotate(-55deg);
+  }
+}
+@keyframes fl-shell-right {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(60%, 18%) rotate(55deg);
+  }
+}
+/* The new pet pops out just after the flash. */
+.fl-hatch-pop {
+  animation: fl-pop-in 520ms cubic-bezier(0.3, 1.4, 0.5, 1) 180ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fl-egg-wobble-1,
+  .fl-egg-wobble-2,
+  .fl-egg-wobble-3,
+  .fl-egg-wobble-4,
+  .fl-egg-wobble-5,
+  .fl-egg-hit,
+  .fl-egg-hit-b,
+  .fl-crack,
+  .fl-crack-glow,
+  .fl-hatch-pop {
+    animation: none !important;
+  }
+  .fl-egg-spark,
+  .fl-hatch-burst,
+  .fl-hatch-rays,
+  .fl-shell-left,
+  .fl-shell-right {
+    animation: none !important;
+    opacity: 0;
+  }
 }
 
 /* ---- Make Everyone Smile (ever onward universe 4): ms- prefix ---- */

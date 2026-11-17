@@ -17,9 +17,12 @@ import {
 import { stageTitle } from "@/lib/flamelings/status";
 import type { Pet } from "@/lib/flamelings/types";
 import Blob from "./Blob";
+import FlIcon from "./FlIcon";
+import PanelHeader from "./PanelHeader";
 import {
   CHROME_BG,
-  PRIMARY_BUTTON,
+  DONE_BUTTON,
+  PRIMARY_BUTTON_BASE,
   SAFE_BOTTOM,
   SAFE_SIDES,
   SAFE_TOP,
@@ -107,16 +110,13 @@ export default function SharePicture({
       aria-modal="true"
       aria-label="Picture of your flameling"
       data-testid="share-picture"
-      className={`fixed inset-0 z-30 flex flex-col overflow-hidden ${CHROME_BG} ${SAFE_TOP} ${SAFE_BOTTOM} ${SAFE_SIDES}`}
+      className={`fl-sheet-up fixed inset-0 z-30 flex flex-col overflow-hidden ${CHROME_BG} ${SAFE_TOP} ${SAFE_BOTTOM} ${SAFE_SIDES}`}
     >
-      <div className="flex items-center justify-between gap-3 py-2">
-        <h2 className="text-2xl font-black">
-          <span aria-hidden="true">📸 </span>Picture
-        </h2>
-        <button type="button" onClick={onClose} className={PRIMARY_BUTTON}>
+      <PanelHeader icon="camera" title="Picture">
+        <button type="button" onClick={onClose} className={DONE_BUTTON}>
           Done
         </button>
-      </div>
+      </PanelHeader>
 
       {/* A still copy of the pet to read the styles from; never on screen. */}
       <div
@@ -143,19 +143,22 @@ export default function SharePicture({
             height={SHARE_HEIGHT}
             alt={`${pet.name}, ${title}, level ${pet.level}`}
             data-testid="share-image"
-            className="h-full max-h-full w-auto max-w-full select-auto rounded-3xl shadow-xl [-webkit-touch-callout:default]"
+            className="fl-pop-in h-full max-h-full w-auto max-w-full select-auto rounded-[28px] border-[6px] border-[#fff6e6] shadow-[0_6px_0_#e7c9a3,0_14px_30px_rgba(30,10,40,.3)] [-webkit-touch-callout:default]"
           />
         ) : picture.kind === "making" ? (
           <p
             role="status"
             aria-label="Making the picture"
-            className="text-6xl"
+            className="fl-pulse-soft grid size-28 place-items-center rounded-full bg-[#fff6e6] shadow-[0_5px_0_#e7c9a3]"
             data-testid="share-making"
           >
-            <span aria-hidden="true">📸</span>
+            <FlIcon name="camera" className="size-16" />
           </p>
         ) : (
-          <p role="alert" className="text-center text-xl font-extrabold">
+          <p
+            role="alert"
+            className="rounded-[28px] bg-[#fff6e6] p-6 text-center text-xl font-extrabold text-[#3a2340] shadow-[0_5px_0_#e7c9a3]"
+          >
             <span aria-hidden="true" className="block text-6xl">
               😢
             </span>
@@ -183,9 +186,14 @@ export default function SharePicture({
         onClick={handleShare}
         disabled={picture.kind !== "ready" || isBusy}
         data-testid="share-button"
-        className={`${PRIMARY_BUTTON} mx-auto mb-1 w-full max-w-md text-2xl`}
+        className={`${PRIMARY_BUTTON_BASE} mx-auto mb-1 flex w-full max-w-md items-center justify-center gap-2 px-8 py-4 text-2xl`}
       >
-        <span aria-hidden="true">{canShare ? "📤 " : "💾 "}</span>
+        <span
+          aria-hidden="true"
+          className="grid size-10 place-items-center rounded-full bg-[#fff6e6]"
+        >
+          <FlIcon name="share" className="size-7" />
+        </span>
         {canShare ? "Share" : "Save picture"}
       </button>
     </div>

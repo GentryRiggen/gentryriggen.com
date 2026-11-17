@@ -21,6 +21,12 @@ describe("Blob", () => {
     );
   });
 
+  it("draws cheeks and two shines per eye", () => {
+    const { container } = render(<Blob look={look} mood="happy" />);
+    expect(container.querySelectorAll(".fl-cheek")).toHaveLength(2);
+    expect(container.querySelectorAll(".fl-shine")).toHaveLength(4);
+  });
+
   it("only fills its box as a preview when asked to", () => {
     const { container, rerender } = render(<Blob look={look} mood="happy" />);
     expect(container.querySelector(".fl-pet")).not.toHaveClass("fl-pet-fit");
