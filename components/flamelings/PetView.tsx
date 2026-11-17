@@ -50,13 +50,13 @@ function BarButton({
       onClick={onClick}
       disabled={disabled}
       aria-pressed={active}
-      className={`flex min-h-20 flex-col items-center justify-center rounded-3xl text-base font-extrabold shadow-lg transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100 ${FOCUS_RING} ${
+      className={`flex min-h-20 flex-col items-center justify-center rounded-3xl text-xs font-extrabold sm:text-base shadow-lg transition-transform active:scale-95 disabled:opacity-40 disabled:active:scale-100 ${FOCUS_RING} ${
         active
           ? "bg-orange-500 text-white dark:bg-orange-300 dark:text-stone-900"
           : "bg-white/90 text-stone-900 dark:bg-slate-800/90 dark:text-amber-50"
       }`}
     >
-      <span aria-hidden="true" className="text-3xl leading-none">
+      <span aria-hidden="true" className="text-2xl leading-none sm:text-3xl">
         {icon}
       </span>
       {label}
@@ -179,7 +179,7 @@ export default function PetView({ petId }: { petId: string }) {
         </span>
       )}
 
-      {Array.from({ length: pet.ash }, (_, i) => (
+      {Array.from({ length: alive ? pet.ash : 0 }, (_, i) => (
         <button
           key={i}
           type="button"
@@ -265,7 +265,7 @@ export default function PetView({ petId }: { petId: string }) {
           {panel === "feed" && <FeedTray pet={pet} onPick={pickFood} />}
           {panel === "emotes" && <EmotePanel pet={pet} onPick={pickEmote} />}
         </div>
-        <div className="mx-auto grid max-w-2xl grid-cols-5 gap-2">
+        <div className="mx-auto grid max-w-2xl grid-cols-5 gap-1.5 sm:gap-2">
           <BarButton
             icon="🍖"
             label="Feed"

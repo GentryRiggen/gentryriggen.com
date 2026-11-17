@@ -148,13 +148,13 @@ export default function Glade({ nowMs }: GladeProps) {
 
       {night ? (
         <g data-testid="fl-moon">
-          <circle cx="620" cy="120" r="60" fill="#fff6c8" opacity="0.12" />
-          <circle cx="620" cy="120" r="34" fill="#fbf3cf" />
-          <circle cx="634" cy="110" r="30" fill={top} />
+          <circle cx="500" cy="130" r="60" fill="#fff6c8" opacity="0.12" />
+          <circle cx="500" cy="130" r="34" fill="#fbf3cf" />
+          <circle cx="514" cy="120" r="30" fill={top} />
         </g>
       ) : (
         <g data-testid="fl-sun">
-          <circle cx="600" cy={sun} r="70" fill="#fff2b0" opacity="0.25" />
+          <circle cx="500" cy={sun} r="70" fill="#fff2b0" opacity="0.25" />
           <circle
             cx="600"
             cy={sun}
@@ -281,7 +281,7 @@ export default function Glade({ nowMs }: GladeProps) {
       />
 
       {/* The lantern, hanging from a branch. */}
-      <g data-testid="fl-lantern">
+      <g data-testid="fl-lantern" transform="translate(40 0)">
         <path
           d="M-10 70 Q120 40 270 70"
           stroke="#4a2f1c"

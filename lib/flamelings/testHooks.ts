@@ -1,5 +1,6 @@
 import { resetClock, setNow, skip } from "./clock";
 import type { FlamelingsStore } from "./store";
+import type { Pet } from "./types";
 import { useFlamelings } from "./store";
 import { now } from "./clock";
 
@@ -19,6 +20,8 @@ declare global {
       skip(ms: number): void;
       now(): number;
       state(): FlamelingsStore;
+      /** Overwrites fields of the pet at `index` (for setting up a scene). */
+      patchPet(index: number, patch: Partial<Pet>): void;
     };
   }
 }
@@ -37,6 +40,15 @@ export function installTestHooks(): () => void {
     },
     now,
     state: () => useFlamelings.getState(),
+    patchPet(index, patch) {
+      const { save } = useFlamelings.getState();
+      useFlamelings.setState({
+        save: {
+          ...save,
+          pets: save.pets.map((p, i) => (i === index ? { ...p, ...patch } : p)),
+        },
+      });
+    },
   };
   return () => {
     delete window.__flamelings;

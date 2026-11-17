@@ -7811,12 +7811,12 @@ html:has(.jim-app) body {
 }
 /* An ember is a tiny dim coal, whatever its colour. */
 .fl-blob[data-mood="ember"] {
-  --fl-hot: #4a3b36;
-  --fl-mid: #8a4a2a;
-  --fl-tip: #d9772b;
-  --fl-core: #ff9a4a;
-  --fl-face: #1c1210;
-  filter: drop-shadow(0 0 6px rgb(255 120 40 / 0.45));
+  --fl-hot: #2a2a33;
+  --fl-mid: #4a4452;
+  --fl-tip: #ff8a3a;
+  --fl-core: #ffb060;
+  --fl-face: #ffc27a;
+  filter: drop-shadow(0 0 10px rgb(255 120 40 / 0.7));
 }
 
 .fl-blob * {
