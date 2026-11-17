@@ -1,13 +1,6 @@
 import { useFlamelings } from "@/lib/flamelings/store";
 import Blob from "./Blob";
-import {
-  BIG_BUTTON,
-  CARD,
-  FOCUS_RING,
-  SAFE_BOTTOM,
-  SAFE_SIDES,
-  SAFE_TOP,
-} from "./styles";
+import { BIG_BUTTON, SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "./styles";
 
 /** Where flamelings that went out for good are remembered. */
 export default function MemoryGrove() {
@@ -37,19 +30,26 @@ export default function MemoryGrove() {
         {memorial.map((m) => (
           <li
             key={m.id}
-            className={`${CARD} flex flex-col items-center gap-1 bg-emerald-900/50 p-4 text-emerald-50 dark:bg-emerald-900/50 ${FOCUS_RING}`}
+            data-testid="grave"
+            className="relative flex flex-col items-center gap-1 overflow-hidden rounded-3xl border border-amber-700/50 bg-stone-900 p-4 text-amber-50 shadow-lg shadow-black/40"
           >
-            <span aria-hidden="true" className="text-3xl">
+            <span
+              aria-hidden="true"
+              className="fl-candle-glow pointer-events-none absolute -top-8 left-1/2 size-44 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(255,190,90,0.55),rgba(255,150,40,0)_70%)]"
+            />
+            <span aria-hidden="true" className="relative text-3xl">
               🕯️
             </span>
             <Blob
               look={m.look}
               worn={m.worn}
               mood="ember"
-              className="size-28"
+              className="size-40"
             />
-            <span className="text-xl font-extrabold">{m.name}</span>
-            <span className="text-sm font-semibold opacity-80">
+            <span className="relative text-xl font-extrabold text-amber-50">
+              {m.name}
+            </span>
+            <span className="relative text-sm font-semibold text-amber-200">
               Level {m.level} · {m.daysLived}{" "}
               {m.daysLived === 1 ? "day" : "days"}
             </span>
