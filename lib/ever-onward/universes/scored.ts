@@ -1,3 +1,4 @@
+import { hasOwn } from "@/lib/game-kit/compat";
 import type { BotSet } from "../engine/bots";
 import type { UniverseDef } from "../engine/types";
 import { lightUniverse } from "./light";
@@ -25,7 +26,7 @@ export function parseScoreArgs(argv: readonly string[]): {
 } {
   const isJson = argv.includes("--json");
   const universeId = argv.find((a) => !a.startsWith("--")) ?? "light";
-  if (!Object.hasOwn(SCORED_UNIVERSES, universeId))
+  if (!hasOwn(SCORED_UNIVERSES, universeId))
     throw new Error(
       `Unknown universe ${universeId}. Known: ${Object.keys(SCORED_UNIVERSES).join(", ")}`
     );

@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import type { RunState } from "../../engine/types";
 import { TUNING } from "./tuning";
 
@@ -21,7 +22,7 @@ const STREAM_INDEX: Record<SeasonStream, number> = {
 
 /** Seconds since the current phase began (seasons follow the phase clock). */
 export const phaseTime = (run: RunState): number =>
-  Math.max(0, run.time - (run.transitions.at(-1)?.at ?? 0));
+  Math.max(0, run.time - (at(run.transitions, -1)?.at ?? 0));
 
 const yearSeconds = (): number => TUNING.seasons.seconds * SEASONS.length;
 

@@ -7,6 +7,7 @@
  * reads as the wait it is. Read from the player who taps when it helps, the
  * scorecard's most human bot.
  */
+import { at as atIndex } from "@/lib/game-kit/compat";
 import type { SimResult } from "./sim";
 import type { UniverseDef } from "./types";
 
@@ -84,9 +85,12 @@ export function decisionGaps(
     // The stretch running into the scored part counts from the last decision
     // before it (or the scored start, whichever is later): a gap that began
     // in the opening is still a gap once the opening is over.
-    const before = all.filter((t) => t < scoredFrom).at(-1);
+    const before = atIndex(
+      all.filter((t) => t < scoredFrom),
+      -1
+    );
     const marks = [Math.max(scoredFrom, before ?? scoredFrom), ...scored];
-    if (marks.at(-1)! < span.end) marks.push(span.end);
+    if (atIndex(marks, -1)! < span.end) marks.push(span.end);
     const gaps: DecisionGap[] = marks.slice(1).map((t, i) => ({
       from: marks[i] - span.start,
       seconds: t - marks[i],
@@ -99,7 +103,11 @@ export function decisionGaps(
     const sinceLast: number[] = [];
     for (let m = 1; span.start + (m - 1) * MIN < span.end; m += 1) {
       const at = Math.min(span.end, span.start + m * MIN);
-      const last = all.filter((t) => t <= at).at(-1) ?? span.start;
+      const last =
+        atIndex(
+          all.filter((t) => t <= at),
+          -1
+        ) ?? span.start;
       sinceLast.push(at - last);
     }
     return {

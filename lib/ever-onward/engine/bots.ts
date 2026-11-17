@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import { tapAndAuto, type Strategy } from "./sim";
 import type { RunState, UniverseDef } from "./types";
 
@@ -74,7 +75,7 @@ const HELPS_LOOK_EVERY = 5;
 
 /** Seconds since the current phase began. */
 export const phaseClock = (run: RunState): number =>
-  run.time - (run.transitions.at(-1)?.at ?? 0);
+  run.time - (at(run.transitions, -1)?.at ?? 0);
 
 /** 3 taps a second for `HANDS_ON_MINUTES`, easing to `late` by `EASED_BY_MINUTE`. */
 export function phaseShapedTaps(run: RunState, late: number): number {

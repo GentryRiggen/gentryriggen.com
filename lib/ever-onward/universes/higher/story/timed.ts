@@ -1,9 +1,10 @@
+import { at } from "@/lib/game-kit/compat";
 import type { RunState, StoryMessage } from "../../../engine/types";
 import { PHASE_PLAYROOM, PHASE_SKY, PHASE_TOP, PHASE_TOWN } from "../resources";
 
 /** Minutes spent in the current part (the run clock minus when it began). */
 const minutesIn = (run: RunState): number =>
-  (run.time - (run.transitions.at(-1)?.at ?? 0)) / 60;
+  (run.time - (at(run.transitions, -1)?.at ?? 0)) / 60;
 
 const after = (minutes: number) => (run: RunState) => minutesIn(run) >= minutes;
 

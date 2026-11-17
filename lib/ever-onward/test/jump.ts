@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import type { BotSet } from "../engine/bots";
 import { cloneRun, newRun } from "../engine/engine";
 import { simulate } from "../engine/sim";
@@ -64,11 +65,11 @@ export function jumpRun(
   // Play on in chunks and keep the snapshots, then step back from the end.
   const snapshots: RunState[] = [run];
   for (let t = 0; t < MAX_SECONDS; t += CHUNK_SECONDS) {
-    const next = play(def, bots, snapshots.at(-1)!, CHUNK_SECONDS, leaves);
+    const next = play(def, bots, at(snapshots, -1)!, CHUNK_SECONDS, leaves);
     if (leaves(next)) break;
     snapshots.push(next);
   }
-  const end = snapshots.at(-1)!.time + CHUNK_SECONDS;
+  const end = at(snapshots, -1)!.time + CHUNK_SECONDS;
   return (
     [...snapshots].reverse().find((s) => end - s.time >= LATE_LEAD_SECONDS) ??
     snapshots[0]

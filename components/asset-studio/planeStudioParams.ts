@@ -1,3 +1,4 @@
+import { hasOwn } from "@/lib/game-kit/compat";
 import { PLANE_UNITS } from "@/components/plane-builder/scene/planeGlbRegistry";
 import { OBSTACLE_VARIANTS } from "@/components/plane-builder/scene/obstacleModels";
 import type { ObstacleKind } from "@/lib/plane-builder/levels/types";
@@ -25,7 +26,7 @@ export function parsePlaneStudioParams(
   const query = new URLSearchParams(search);
   const part = query.get("part") ?? "";
   const obstacle = part.replace(/^obstacle-/, "");
-  if (Object.hasOwn(OBSTACLE_VARIANTS, obstacle)) {
+  if (hasOwn(OBSTACLE_VARIANTS, obstacle)) {
     return parseObstacleParams(query, obstacle as ObstacleKind);
   }
   const asUnit = PLANE_UNITS[part];

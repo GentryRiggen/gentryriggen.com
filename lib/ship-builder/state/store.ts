@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import { create } from "zustand";
 import { analyzeShip } from "../model/analysis";
 import { getPartDef } from "../model/catalog";
@@ -844,7 +845,7 @@ export const useShipBuilderStore = create<ShipBuilderState>()((set, get) => {
     undo() {
       if (isTrialActive()) return;
       const { ship, savedId, past, future } = get();
-      const previous = past.at(-1);
+      const previous = at(past, -1);
       if (!previous) return;
       set({
         ship: { ...previous.ship, name: ship.name },

@@ -1,3 +1,4 @@
+import { at } from "@/lib/game-kit/compat";
 import type { GameStore } from "./store";
 import { useGameStore } from "./store";
 import { fxClock } from "./fxClock";
@@ -56,7 +57,7 @@ export function installTestHooks(
       const { progress } = useGameStore.getState();
       const next = {
         ...progress,
-        points: Math.max(progress.points, UNLOCK_PATH.at(-1)?.at ?? 0),
+        points: Math.max(progress.points, at(UNLOCK_PATH, -1)?.at ?? 0),
         owned: [
           ...new Set([
             ...(progress.owned ?? []),

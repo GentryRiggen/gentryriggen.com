@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.41.1",
+    date: "2026-11-16",
+    title: "Works on older iPads",
+    highlights: [
+      "Works on older iPads: a few things that needed a very new iPad or iPhone now work on older ones too",
+    ],
+  },
+  {
     version: "2.41.0",
     date: "2026-11-13",
     title: "Boom!",
