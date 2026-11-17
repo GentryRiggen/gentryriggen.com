@@ -274,6 +274,30 @@ test("a happening fits the screen without scrolling sideways @smoke", async ({
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
+test("the dock is a thumb-sized grid on a phone @smoke", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await hatch(page, "Pip");
+  for (const label of [
+    "Feed",
+    "Play",
+    "Wardrobe",
+    "Shop",
+    "Emotes",
+    "Friends",
+  ]) {
+    const button = page.getByRole("button", { name: label, exact: true });
+    await expect(button).toBeVisible();
+    const box = await button.boundingBox();
+    expect(box!.width).toBeGreaterThanOrEqual(64);
+    expect(box!.height).toBeGreaterThanOrEqual(64);
+  }
+  const scrollWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth
+  );
+  expect(scrollWidth).toBeLessThanOrEqual(390);
+});
+
 test("the care bar and the shop fit the screen @smoke", async ({ page }) => {
   await open(page);
   await hatch(page, "Pip");

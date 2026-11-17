@@ -1,5 +1,6 @@
 import { flamelingsChannels } from "./audio/sound";
-import { FOCUS_RING } from "./styles";
+import FlIcon from "./FlIcon";
+import { STICKER_BUTTON } from "./styles";
 
 /** A big icon button: sound on or off. */
 export default function SoundToggle({
@@ -15,9 +16,9 @@ export default function SoundToggle({
       aria-label={isOn ? "Sound on" : "Sound off"}
       data-testid="sound-toggle"
       onClick={() => flamelingsChannels.effects.set(!isOn)}
-      className={`grid size-16 shrink-0 place-items-center rounded-3xl bg-white/90 text-3xl shadow-lg active:scale-95 dark:bg-slate-800/90 ${FOCUS_RING} ${className}`}
+      className={`${STICKER_BUTTON} size-16 shrink-0 ${className}`}
     >
-      <span aria-hidden="true">{isOn ? "🔊" : "🔇"}</span>
+      <FlIcon name={isOn ? "sound-on" : "sound-off"} className="size-8" />
     </button>
   );
 }

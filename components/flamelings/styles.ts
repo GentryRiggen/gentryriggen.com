@@ -19,7 +19,7 @@ export const STICKER_BUTTON = `grid min-h-16 min-w-16 place-items-center rounded
 export const PRIMARY_BUTTON = `${DISPLAY} min-h-16 min-w-16 rounded-3xl bg-gradient-to-b from-[#ff8a3d] to-[#f2542d] px-8 py-4 text-xl font-semibold text-white shadow-[0_5px_0_#c2410c,0_10px_20px_rgba(30,10,40,.30)] transition-transform active:translate-y-[3px] active:shadow-[0_2px_0_#c2410c] disabled:opacity-40 disabled:active:translate-y-0 ${FOCUS_RING}`;
 
 /** The gold pill that holds the spark count. */
-export const SPARK_PILL = `${DISPLAY} flex h-16 shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-b from-[#ffe58a] to-[#ffc53d] px-3 text-2xl font-bold text-[#7a3d00] shadow-[0_4px_0_#d9952a,0_8px_18px_rgba(30,10,40,.25)] sm:gap-2 sm:px-4`;
+export const SPARK_PILL = `${DISPLAY} flex h-16 shrink-0 items-center gap-1 rounded-full bg-gradient-to-b from-[#ffe58a] to-[#ffc53d] px-2.5 text-xl font-bold text-[#7a3d00] shadow-[0_4px_0_#d9952a,0_8px_18px_rgba(30,10,40,.25)] sm:gap-2 sm:px-4 sm:text-2xl`;
 
 /** The page behind every screen: dusk in the dark, peach and lavender in the light. */
 export const CHROME_BG =
