@@ -64,8 +64,16 @@ const SparkCounter = forwardRef<HTMLDivElement, SparkCounterProps>(
         data-value={value}
         className={`${SPARK_PILL} ${className}`}
       >
-        <span key={pops} className={pops > 0 ? "fl-spark-pop" : undefined}>
+        <span
+          key={pops}
+          className={`relative inline-grid ${pops > 0 ? "fl-spark-pop" : ""}`}
+        >
           <FlIcon name="spark" className="size-6 sm:size-8" />
+          {/* A glint that twinkles on the spark. */}
+          <span
+            aria-hidden="true"
+            className="fl-shimmer absolute -right-0.5 -top-0.5 size-2 rounded-full bg-white shadow-[0_0_6px_2px_rgba(255,255,255,.8)] sm:size-2.5"
+          />
         </span>
         <span
           aria-hidden="true"

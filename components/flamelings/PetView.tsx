@@ -9,8 +9,6 @@ import { currentHappening } from "@/lib/flamelings/happenings";
 import { hasGiftWaiting, stageFor, xpToNext } from "@/lib/flamelings/progress";
 import { isAwake, moodOf, RELIGHT_FEEDS } from "@/lib/flamelings/sim";
 import {
-  BUBBLE_GLYPH,
-  bubblesFor,
   emotesOf,
   fadeLevel,
   stageTitle,
@@ -48,15 +46,22 @@ import { useEmote } from "./useEmote";
 
 type Panel = "feed" | "emotes" | "wardrobe" | "shop" | "play" | null;
 
-/** Where each uncleaned ash pile sits on the glade floor. */
+/** Where each uncleaned ash pile sits on the glade floor (centred, in the stage). */
 const ASH_SPOTS = [
-  "left-[16%] top-[74%]",
-  "right-[16%] top-[75%]",
-  "left-[30%] top-[82%]",
-  "right-[30%] top-[83%]",
+  "left-[12%] top-[78%]",
+  "left-[88%] top-[80%]",
+  "left-[25%] top-[89%]",
+  "left-[75%] top-[90%]",
 ];
 
-/** Where the thought bubbles sit above the pet, by stage (the pet shrinks towards its feet). */
+/**
+ * The glade's box: everything above the dock (two rows of tiles on phones,
+ * one from `sm`). The ground runs on under the dock.
+ */
+const STAGE =
+  "fl-stage absolute inset-x-0 top-0 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))_+_10.25rem)] sm:bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))_+_6.25rem)]";
+
+/** Where the wish bubble sits above the pet, by stage (the pet shrinks towards its feet). */
 const BUBBLE_TOP: Record<string, string> = {
   spark: "top-[30%]",
   flicker: "top-[22%]",
@@ -137,15 +142,15 @@ function BarButton({
       disabled={disabled}
       aria-pressed={active}
       aria-label={label}
-      className={`${DISPLAY} relative flex min-h-[5.25rem] min-w-16 flex-col items-center justify-center gap-1 rounded-3xl px-0.5 text-base font-semibold text-[#3a2340] transition-transform active:translate-y-[2px] disabled:opacity-40 disabled:active:translate-y-0 sm:text-lg ${FOCUS_RING} ${
+      className={`${DISPLAY} relative flex min-h-[4.5rem] min-w-16 flex-col items-center justify-center gap-0.5 rounded-3xl sm:min-h-[5.25rem] sm:gap-1 px-0.5 text-base font-semibold text-[#3a2340] transition-transform active:translate-y-[2px] disabled:opacity-40 disabled:active:translate-y-0 sm:text-lg ${FOCUS_RING} ${
         active ? "bg-[#ffd9b0]" : hot ? "bg-[#ffe9cc]" : ""
       }`}
     >
       <span
         aria-hidden="true"
-        className={`grid size-[50px] place-items-center rounded-2xl shadow-[inset_0_-4px_0_rgba(0,0,0,.15)] ${iconClass}`}
+        className={`grid size-11 place-items-center rounded-2xl sm:size-[50px] shadow-[inset_0_-4px_0_rgba(0,0,0,.15)] ${iconClass}`}
       >
-        <FlIcon name={icon} className="size-8" />
+        <FlIcon name={icon} className="size-7 sm:size-8" />
       </span>
       <span aria-hidden="true">{text ?? label}</span>
       {hot && !badge && (
@@ -286,7 +291,6 @@ export default function PetView({ petId }: { petId: string }) {
   const baseMood = moodOf(pet, clock);
   const mood = eating && alive ? "eating" : baseMood;
   const gift = hasGiftWaiting(pet, clock) && awake;
-  const bubbles = bubblesFor(pet, clock);
 
   function later(fn: () => void, ms: number) {
     timers.current.push(window.setTimeout(fn, ms));
@@ -345,55 +349,45 @@ export default function PetView({ petId }: { petId: string }) {
         lastTap.current = { x: e.clientX, y: e.clientY, at: Date.now() };
       }}
     >
-      <Glade nowMs={clock} decor={pet.decor} />
+      <div className={STAGE}>
+        <Glade nowMs={clock} decor={pet.decor} />
 
-      {/* The pet sits on the hearth. */}
-      <div className="absolute left-1/2 top-[72%] -translate-x-1/2 sm:top-[80%] -translate-y-full">
-        <div
-          key={shaking}
-          className={`relative ${shaking > 0 ? "fl-headshake" : ""}`}
-        >
-          <button
-            type="button"
-            onClick={pokePet}
-            aria-label={`${pet.name}, tap to say hi`}
-            data-testid="pet"
-            data-mood={mood}
-            className={`block size-[min(80vw,46vh)] max-h-[30rem] max-w-[30rem] rounded-full ${FOCUS_RING}`}
+        {/* The pet is the campfire: its feet rest in the logs. */}
+        <div className="fl-hearth-anchor absolute left-1/2">
+          <div
+            key={shaking}
+            className={`relative ${shaking > 0 ? "fl-headshake" : ""}`}
           >
-            <Blob
-              look={pet.look}
-              worn={pet.worn}
-              form={pet.form}
-              fade={fadeLevel(pet)}
-              mood={mood}
-              stage={stage.id}
-              emote={emote}
-              emoteKey={emoteKey}
-              className="size-full"
-            />
-          </button>
-          {showWish && need && (
-            <div
-              aria-hidden="true"
-              data-testid="wish-bubble"
-              className={`fl-wish absolute left-[-6%] ${BUBBLE_TOP[stage.id]} whitespace-nowrap rounded-[20px] bg-white px-4 py-2 text-lg font-semibold text-[#3a2340] shadow-[0_8px_20px_rgba(30,10,40,.3)] after:absolute after:-bottom-2.5 after:left-[18px] after:border-x-[10px] after:border-t-[10px] after:border-x-transparent after:border-t-white after:content-[''] ${DISPLAY}`}
+            <button
+              type="button"
+              onClick={pokePet}
+              aria-label={`${pet.name}, tap to say hi`}
+              data-testid="pet"
+              data-mood={mood}
+              className={`fl-hearth-pet block rounded-full ${FOCUS_RING}`}
             >
-              {WISH_TEXT[need]}
-            </div>
-          )}
-          {bubbles.length > 0 && !eating && (
-            <div
-              data-testid="bubbles"
-              className={`fl-bubbles right-[2%] ${BUBBLE_TOP[stage.id]}`}
-            >
-              {bubbles.map((b) => (
-                <span key={b} className="fl-bubble" aria-hidden="true">
-                  {BUBBLE_GLYPH[b]}
-                </span>
-              ))}
-            </div>
-          )}
+              <Blob
+                look={pet.look}
+                worn={pet.worn}
+                form={pet.form}
+                fade={fadeLevel(pet)}
+                mood={mood}
+                stage={stage.id}
+                emote={emote}
+                emoteKey={emoteKey}
+                className="size-full"
+              />
+            </button>
+            {showWish && need && (
+              <div
+                aria-hidden="true"
+                data-testid="wish-bubble"
+                className={`fl-wish absolute left-[-6%] ${BUBBLE_TOP[stage.id]} whitespace-nowrap rounded-[20px] bg-white px-4 py-2 text-lg font-semibold text-[#3a2340] shadow-[0_8px_20px_rgba(30,10,40,.3)] after:absolute after:-bottom-2.5 after:left-[18px] after:border-x-[10px] after:border-t-[10px] after:border-x-transparent after:border-t-white after:content-[''] ${DISPLAY}`}
+              >
+                {WISH_TEXT[need]}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -404,28 +398,29 @@ export default function PetView({ petId }: { petId: string }) {
         onCheer={(emote) => play(emote ?? "laugh")}
       />
 
-      {flying && (
-        <span
-          aria-hidden="true"
-          className="fl-food-arc pointer-events-none absolute left-1/2 top-[72%] -ml-8 text-6xl"
-        >
-          {FOOD_GLYPH[flying]}
-        </span>
-      )}
+      <div className={`${STAGE} pointer-events-none`}>
+        {flying && (
+          <div className="fl-hearth-anchor absolute left-1/2">
+            <span aria-hidden="true" className="fl-food-arc block text-6xl">
+              {FOOD_GLYPH[flying]}
+            </span>
+          </div>
+        )}
 
-      {Array.from({ length: alive ? pet.ash : 0 }, (_, i) => (
-        <button
-          key={i}
-          type="button"
-          disabled={!canCare}
-          onClick={() => clean(pet.id)}
-          aria-label="Clean up the ash"
-          data-testid="ash"
-          className={`absolute grid size-20 place-items-center rounded-full text-5xl active:scale-90 disabled:opacity-70 ${ASH_SPOTS[i]} ${FOCUS_RING}`}
-        >
-          <span aria-hidden="true">💨</span>
-        </button>
-      ))}
+        {Array.from({ length: alive ? pet.ash : 0 }, (_, i) => (
+          <button
+            key={i}
+            type="button"
+            disabled={!canCare}
+            onClick={() => clean(pet.id)}
+            aria-label="Clean up the ash"
+            data-testid="ash"
+            className={`pointer-events-auto absolute grid size-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-5xl active:scale-90 disabled:opacity-70 ${ASH_SPOTS[i]} ${FOCUS_RING}`}
+          >
+            <span aria-hidden="true">💨</span>
+          </button>
+        ))}
+      </div>
 
       {/* Top: back, name, level, needs. */}
       <div
@@ -535,7 +530,7 @@ export default function PetView({ petId }: { petId: string }) {
           onClick={() => openGift(pet.id)}
           aria-label="Open the present"
           data-testid="gift"
-          className={`fl-gift-bounce absolute right-[max(1rem,env(safe-area-inset-right))] top-[47%] grid size-24 place-items-center rounded-full bg-white/80 text-6xl shadow-xl dark:bg-slate-800/80 ${FOCUS_RING}`}
+          className={`fl-gift-bounce absolute right-[max(1rem,env(safe-area-inset-right))] top-[25%] grid size-20 place-items-center rounded-full bg-white/80 text-5xl sm:top-[47%] sm:size-24 sm:text-6xl shadow-xl dark:bg-slate-800/80 ${FOCUS_RING}`}
         >
           <span aria-hidden="true">🎁</span>
         </button>

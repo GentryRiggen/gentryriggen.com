@@ -20,15 +20,15 @@ interface DecorSpec {
 const FLOOR = 524;
 
 export const DECOR_SPECS: Record<DecorId, DecorSpec> = {
-  rug: { layer: "rug", x: 400, y: 500, box: "-200 -46 400 92" },
+  rug: { layer: "rug", x: 400, y: 528, box: "-200 -46 400 92" },
   tent: { layer: "back", x: 262, y: 462, box: "-56 -92 112 96" },
   mushroomHouse: { layer: "back", x: 548, y: 456, box: "-54 -112 108 116" },
   banner: { layer: "back", x: 0, y: 0, box: "200 316 400 74" },
-  plant: { layer: "front", x: 238, y: FLOOR, box: "-30 -78 60 82" },
-  snowman: { layer: "front", x: 284, y: FLOOR, box: "-22 -72 44 76" },
-  bed: { layer: "front", x: 336, y: FLOOR + 6, box: "-42 -30 84 40" },
-  toyBox: { layer: "front", x: 470, y: FLOOR, box: "-30 -56 60 60" },
-  crystals: { layer: "front", x: 540, y: FLOOR, box: "-38 -64 76 68" },
+  plant: { layer: "front", x: 84, y: FLOOR, box: "-30 -78 60 82" },
+  snowman: { layer: "front", x: 144, y: FLOOR, box: "-22 -72 44 76" },
+  bed: { layer: "front", x: 212, y: FLOOR + 6, box: "-42 -30 84 40" },
+  toyBox: { layer: "front", x: 592, y: FLOOR, box: "-30 -56 60 60" },
+  crystals: { layer: "front", x: 664, y: FLOOR, box: "-38 -64 76 68" },
   fairyLights: { layer: "hang", x: 0, y: 0, box: "250 195 300 90" },
   lanterns: { layer: "hang", x: 0, y: 0, box: "520 134 150 130" },
 };
