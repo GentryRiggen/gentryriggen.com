@@ -113,6 +113,10 @@ export function feed(pet: Pet, food: FoodId, now: number): Outcome {
       relightFeeds: 0,
       glow: 40,
       fuel: 50,
+      // Happy and tidy again, so glow can recover instead of slipping back.
+      joy: 60,
+      ash: 0,
+      ashHours: 0,
       tickedAt: now,
     };
     events.push(

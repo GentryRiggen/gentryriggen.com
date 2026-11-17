@@ -108,6 +108,27 @@ describe("relight", () => {
   });
 });
 
+describe("relight recovery", () => {
+  it("starts a pet that is happy and tidy, so it does not slip back within a day", () => {
+    const ember = make({
+      state: "ember",
+      emberAt: noon,
+      fuel: 0,
+      glow: 0,
+      joy: 0,
+      ash: 4,
+      relightFeeds: 2,
+    });
+    const lit = feed(ember, "log", noon).pet;
+    expect(lit).toMatchObject({ joy: 60, ash: 0, glow: 40, fuel: 50 });
+    const nextDay = advance(lit, noon, noon + 24 * HOUR);
+    expect(nextDay.state).toBe("alive");
+    expect(nextDay.glow).toBeGreaterThan(0);
+    // Glow climbs while it is fed and happy.
+    expect(advance(lit, noon, noon + 2 * HOUR).glow).toBeGreaterThan(40);
+  });
+});
+
 describe("other care", () => {
   it("cleans one pile for 3 XP", () => {
     const out = clean(make({ ash: 2 }), noon);
