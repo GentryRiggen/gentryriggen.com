@@ -704,3 +704,40 @@ test("the Friends screen and keypad fit the screen @smoke", async ({
     expect(box.height).toBeGreaterThanOrEqual(48);
   }
 });
+
+test("the picture button makes a 1080 x 1350 PNG and saves it when there is no share sheet", async ({
+  page,
+}) => {
+  // Desktop browsers may have a share sheet; the download path is under test.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "share", { value: undefined });
+  });
+  await open(page);
+  await hatch(page, "Pip");
+  await page.evaluate(() =>
+    window.__flamelings!.patchPet(0, {
+      level: 12,
+      form: "cozy",
+      worn: { hat: "wizard", face: "sunglasses", neck: "scarf" },
+      look: { colour: "violet", shape: "puff", eyes: "sharp" },
+    })
+  );
+  await page.getByRole("button", { name: "Wardrobe" }).click();
+  await page.getByTestId("share-open").click();
+  await expect(page.getByTestId("share-image")).toBeVisible();
+  await expect(page.getByTestId("share-picture")).toContainText("For parents");
+
+  const downloading = page.waitForEvent("download");
+  await page.getByTestId("share-button").click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe("my-flameling.png");
+  const path = await download.path();
+  const { readFileSync } = await import("node:fs");
+  const bytes = readFileSync(path);
+  expect([...bytes.subarray(0, 8)]).toEqual([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+  ]);
+  expect(bytes.readUInt32BE(16)).toBe(1080);
+  expect(bytes.readUInt32BE(20)).toBe(1350);
+  await expect(page.getByTestId("share-saved")).toBeVisible();
+});

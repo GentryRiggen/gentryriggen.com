@@ -10986,3 +10986,14 @@ html:has(.jim-app) body {
     transform: translateX(300px);
   }
 }
+
+/* The share picture reads the pet's styles from a still copy of it. */
+.fl-share-still,
+.fl-share-still * {
+  animation: none !important;
+  transition: none !important;
+}
+.fl-share-still .fl-heart,
+.fl-share-still .fl-zap {
+  opacity: 0.85;
+}
