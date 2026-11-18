@@ -125,17 +125,24 @@ describe("the Friends screen", () => {
 describe("adding a friend", () => {
   beforeEach(() => backend.putCard(FRIEND, FRIEND_CARD));
 
-  it("only offers the code alphabet on the keypad", async () => {
+  it("shows a whole keyboard, but look-alike keys do not type", async () => {
     open();
     await openFriends();
     fireEvent.click(screen.getByTestId("add-friend-button"));
     const keys = screen
       .getAllByTestId(/^key-/)
       .map((k) => k.getAttribute("data-testid")?.slice(4));
-    expect(keys).toHaveLength(32);
+    expect(keys).toHaveLength(37);
     for (const bad of ["0", "O", "1", "I", "L"]) {
-      expect(keys).not.toContain(bad);
+      fireEvent.click(screen.getByTestId(`key-${bad}`));
+      expect(screen.getByTestId("keypad-nope")).toHaveTextContent(
+        `never use ${bad}`
+      );
     }
+    expect(screen.getByTestId("keypad-slots")).toHaveAttribute(
+      "aria-label",
+      "Code typed so far: nothing"
+    );
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 

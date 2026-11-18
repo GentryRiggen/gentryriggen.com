@@ -15,6 +15,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.1.1",
+    date: "2026-11-21",
+    title: "The whole keyboard",
+    highlights: [
+      "The friend code keyboard has every letter and number again. Friend codes still never use O, I, L, 0 or 1 because they look too much alike, so those keys give a little wiggle and tell you to look again",
+    ],
+  },
+  {
     version: "2.1.0",
     date: "2026-11-21",
     title: "What does this do?",

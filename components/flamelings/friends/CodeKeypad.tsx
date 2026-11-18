@@ -1,12 +1,12 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CODE_ALPHABET, CODE_LENGTH } from "@/lib/flamelings/online/card";
 import { DISPLAY, FOCUS_RING } from "../styles";
 
 /**
  * A QWERTY layout with the number row on top, on a 20-column grid so each
  * key spans two columns and the lower rows can sit half a key in. Keys a
- * code never uses (look-alikes) leave a gap, so every key stays where it is
- * on a real keyboard on every screen.
+ * code never uses (look-alikes O, I, L, 0, 1) are still there, so the
+ * keyboard looks whole, but tapping one wiggles it and says so.
  */
 const KEY_ROWS = ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
 
@@ -60,6 +60,9 @@ const ROW_START_CLASS: string[][] = [
 
 const KEY = `${DISPLAY} grid h-14 min-w-0 place-items-center rounded-2xl text-2xl font-semibold transition-transform active:translate-y-[3px] disabled:opacity-40 disabled:active:translate-y-0 sm:h-20 sm:text-4xl ${FOCUS_RING}`;
 
+/** How long the "codes never use O" note stays up. */
+const NOPE_MS = 3500;
+
 interface CodeKeypadProps {
   value: string;
   onChange: (next: string) => void;
@@ -70,9 +73,8 @@ interface CodeKeypadProps {
 }
 
 /**
- * A big on-screen keyboard (QWERTY, numbers on top) with only the letters
- * and digits a friend code can hold (no system keyboard, no way to type
- * anything else).
+ * A big on-screen keyboard (QWERTY, numbers on top) that only types the
+ * letters and digits a friend code can hold (no system keyboard).
  */
 export default function CodeKeypad({
   value,
@@ -81,6 +83,14 @@ export default function CodeKeypad({
   hideKeys = false,
 }: CodeKeypadProps) {
   const full = value.length >= CODE_LENGTH;
+  // A look-alike key (O, I, L, 0, 1) was tapped: it wiggles and a note says
+  // codes never use it. `n` restarts the wiggle on every tap.
+  const [nope, setNope] = useState<{ ch: string; n: number } | null>(null);
+  useEffect(() => {
+    if (!nope) return;
+    const id = window.setTimeout(() => setNope(null), NOPE_MS);
+    return () => window.clearTimeout(id);
+  }, [nope]);
   return (
     <div className="flex w-full max-w-3xl flex-col items-center gap-3">
       <p
@@ -106,6 +116,15 @@ export default function CodeKeypad({
         ))}
       </p>
       {children}
+      <p
+        role="status"
+        data-testid="keypad-nope"
+        className={`min-h-7 text-center text-lg font-extrabold leading-tight text-[#7a3d2c] dark:text-[#ffe6c4] ${
+          nope ? "" : "invisible"
+        }`}
+      >
+        {nope && `Friend codes never use ${nope.ch}. Look again!`}
+      </p>
       {!hideKeys && (
         <div
           role="group"
@@ -115,26 +134,23 @@ export default function CodeKeypad({
         >
           {KEY_ROWS.map((row, r) =>
             [...row].map((ch, i) => {
-              if (!CODE_ALPHABET.includes(ch)) {
-                // A gap where a look-alike key would be (O/0, I/L/1).
-                return (
-                  <span
-                    key={ch}
-                    aria-hidden="true"
-                    data-testid="keypad-gap"
-                    className={`col-span-2 ${ROW_START_CLASS[r][i]}`}
-                  />
-                );
-              }
+              const usable = CODE_ALPHABET.includes(ch);
+              const shaking = !usable && nope?.ch === ch;
               return (
                 <button
-                  key={ch}
+                  key={shaking ? `${ch}-${nope.n}` : ch}
                   type="button"
                   disabled={full}
-                  onClick={() => onChange(value + ch)}
+                  onClick={() =>
+                    usable
+                      ? onChange(value + ch)
+                      : setNope((was) => ({ ch, n: (was?.n ?? 0) + 1 }))
+                  }
                   aria-label={ch}
                   data-testid={`key-${ch}`}
-                  className={`${KEY} ${ROW_START_CLASS[r][i]} col-span-2 bg-[#fff6e6] text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_6px_14px_rgba(30,10,40,.22)] active:shadow-[0_1px_0_#e7c9a3]`}
+                  className={`${KEY} ${ROW_START_CLASS[r][i]} col-span-2 bg-[#fff6e6] text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_6px_14px_rgba(30,10,40,.22)] active:shadow-[0_1px_0_#e7c9a3] ${
+                    shaking ? "fl-headshake" : ""
+                  }`}
                 >
                   {ch}
                 </button>
