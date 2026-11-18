@@ -716,6 +716,19 @@ test("the Friends screen and keypad fit the screen @smoke", async ({
   await expect(page.getByTestId("my-code")).toBeVisible();
   await page.getByTestId("add-friend-button").click();
   await expect(page.getByTestId("key-A")).toBeVisible();
+  if (process.env.HELP_SHOTS) {
+    await page.waitForTimeout(800);
+    await page.screenshot({
+      path: `${process.env.HELP_SHOTS}/keypad-${page.viewportSize()!.width}.png`,
+    });
+  }
+  // QWERTY: Q sits left of W on the same row, and A is under Q.
+  const q = (await page.getByTestId("key-Q").boundingBox())!;
+  const w = (await page.getByTestId("key-W").boundingBox())!;
+  const a = (await page.getByTestId("key-A").boundingBox())!;
+  expect(w.x).toBeGreaterThan(q.x);
+  expect(Math.abs(w.y - q.y)).toBeLessThan(2);
+  expect(a.y).toBeGreaterThan(q.y);
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - window.innerWidth
   );
@@ -765,4 +778,52 @@ test("the picture button makes a 1080 x 1350 PNG and saves it when there is no s
   expect(bytes.readUInt32BE(16)).toBe(1080);
   expect(bytes.readUInt32BE(20)).toBe(1350);
   await expect(page.getByTestId("share-hold-hint")).toBeVisible();
+});
+
+test("tapping a gauge, the level or sparks explains it @smoke", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await hatch(page, "Pip");
+  await page.evaluate(() =>
+    window.__flamelings!.patchPet(0, { ash: 2, fuel: 20, sparks: 57 })
+  );
+
+  await page.getByRole("button", { name: "What is tidy?" }).click();
+  const card = page.getByRole("dialog", { name: "Tidy" });
+  await expect(card).toBeVisible();
+  await expect(card.getByTestId("help-now")).toContainText("2 ash puffs");
+  if (process.env.HELP_SHOTS) {
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${process.env.HELP_SHOTS}/tidy.png` });
+  }
+  await card.getByRole("button", { name: "Got it" }).click();
+  await expect(card).toBeHidden();
+
+  await page.getByRole("button", { name: "What is fuel?" }).click();
+  await expect(page.getByTestId("help-now")).toContainText("hungry");
+  await page.getByTestId("help-action").click();
+  await expect(page.getByRole("group", { name: "Food" })).toBeVisible();
+
+  await page.getByRole("button", { name: /how levels work/ }).click();
+  await expect(page.getByRole("dialog", { name: "Level 1" })).toBeVisible();
+  if (process.env.HELP_SHOTS) {
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${process.env.HELP_SHOTS}/level.png` });
+  }
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: /open the Shop/ }).click();
+  await expect(page.getByRole("dialog", { name: "Shop" })).toBeVisible();
+  await page.getByRole("button", { name: "How do I get sparks?" }).click();
+  await expect(page.getByRole("dialog", { name: "Sparks" })).toBeVisible();
+  if (process.env.HELP_SHOTS) {
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: `${process.env.HELP_SHOTS}/sparks.png` });
+  }
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
