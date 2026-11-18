@@ -15,6 +15,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "2.1.0",
+    date: "2026-11-21",
+    title: "What does this do?",
+    highlights: [
+      "Tap the food, fun or tidy circle at the top to see what it means and how to fill it up. Food and fun have a button that takes you straight to feeding or playing",
+      "Tap your flameling's name and level to learn how it grows, and when it grows up into a Cozy, Wild or Sparkly flameling",
+      "Tap your sparks to go straight to the Shop. In the Shop, tap your sparks again to see all the ways to get more",
+      "Pick a game now says whether games still win sparks, or whether they are used up for now",
+      "The friend code keyboard looks like a real keyboard now, with numbers on top and the letters where you expect them. O, I, L, 0 and 1 are left out on purpose, because they look too much alike, so friend codes never use them",
+    ],
+  },
+  {
     version: "2.0.0",
     date: "2026-11-21",
     title: "The storybook glow-up",
