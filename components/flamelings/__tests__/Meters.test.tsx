@@ -39,3 +39,12 @@ describe("Meters", () => {
     );
   });
 });
+
+describe("Meters help", () => {
+  it("asks about the need that was tapped", () => {
+    const onOpen = jest.fn();
+    render(<Meters pet={petWith({})} onOpen={onOpen} />);
+    screen.getByRole("button", { name: "What is tidy?" }).click();
+    expect(onOpen).toHaveBeenCalledWith("tidy");
+  });
+});

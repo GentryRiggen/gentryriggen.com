@@ -16,7 +16,9 @@ import {
 } from "@/lib/flamelings/status";
 import { playSound } from "@/lib/flamelings/sound";
 import { useFlamelings } from "@/lib/flamelings/store";
+import { helpFor, type HelpTopic } from "@/lib/flamelings/help";
 import EmotePanel from "./EmotePanel";
+import HelpCard, { HelpTap, PRESSABLE } from "./HelpCard";
 import FlIcon, { type FlIconName } from "./FlIcon";
 import FeedTray from "./FeedTray";
 import FireflyCatch from "./FireflyCatch";
@@ -26,7 +28,7 @@ import PlayPicker from "./PlayPicker";
 import Glade from "./Glade";
 import HappeningLayer from "./HappeningLayer";
 import Blob from "./Blob";
-import Meters from "./Meters";
+import Meters, { NEED_COLOUR } from "./Meters";
 import Shop from "./Shop";
 import SoundToggle from "./SoundToggle";
 import SparkCounter from "./SparkCounter";
@@ -44,7 +46,16 @@ import {
 import type { Pet, PlayGame } from "@/lib/flamelings/types";
 import { useEmote } from "./useEmote";
 
-type Panel = "feed" | "emotes" | "wardrobe" | "shop" | "play" | null;
+type Panel =
+  "feed" | "emotes" | "wardrobe" | "shop" | "play" | { help: HelpTopic } | null;
+
+const HELP_ICON: Record<HelpTopic, FlIconName> = {
+  fuel: "fuel",
+  joy: "joy",
+  tidy: "tidy",
+  level: "glade",
+  sparks: "spark",
+};
 
 /** Where each uncleaned ash pile sits on the glade floor (centred, in the stage). */
 const ASH_SPOTS = [
@@ -333,7 +344,18 @@ export default function PetView({ petId }: { petId: string }) {
     setPanel(null);
   }
 
-  function toggle(next: Exclude<Panel, null>) {
+  /** The button on a help card that does the thing it explains. */
+  function helpAction(topic: HelpTopic) {
+    if (topic === "fuel" && awake) {
+      return { label: "Feed", onClick: () => setPanel("feed") };
+    }
+    if (topic === "joy" && canCare) {
+      return { label: "Play", onClick: () => setPanel("play") };
+    }
+    return undefined;
+  }
+
+  function toggle(next: "feed" | "emotes") {
     setPanel((current) => (current === next ? null : next));
   }
 
@@ -401,7 +423,12 @@ export default function PetView({ petId }: { petId: string }) {
       <HappeningLayer
         pet={pet}
         clock={clock}
-        paused={panel === "wardrobe" || panel === "shop" || panel === "play"}
+        paused={
+          panel === "wardrobe" ||
+          panel === "shop" ||
+          panel === "play" ||
+          typeof panel === "object"
+        }
         onCheer={(emote) => play(emote ?? "laugh")}
       />
 
@@ -443,7 +470,7 @@ export default function PetView({ petId }: { petId: string }) {
             <FlIcon name="home" className="size-8" />
           </button>
           <div
-            className={`${DISPLAY} flex min-w-0 flex-1 items-center gap-1.5 rounded-full bg-[#fff6e6] p-1 pr-2 text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_10px_24px_rgba(30,10,40,.35)] sm:flex-none sm:gap-3 sm:p-1.5 sm:pr-5`}
+            className={`${DISPLAY} ${PRESSABLE} flex min-w-0 flex-1 items-center gap-1.5 rounded-full bg-[#fff6e6] p-1 pr-2 text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_10px_24px_rgba(30,10,40,.35)] sm:flex-none sm:gap-3 sm:p-1.5 sm:pr-5`}
           >
             <div
               role="progressbar"
@@ -494,18 +521,27 @@ export default function PetView({ petId }: { petId: string }) {
                 {stageTitle(pet.level, pet.form)} · {xpLeft} to grow
               </p>
             </div>
+            <HelpTap
+              label={`${pet.name}, level ${pet.level}: how levels work`}
+              onOpen={() => setPanel({ help: "level" })}
+            />
           </div>
           {alive && (
             <div className="order-last basis-full sm:order-none sm:basis-auto">
-              <Meters pet={pet} />
+              <Meters pet={pet} onOpen={(help) => setPanel({ help })} />
             </div>
           )}
           <div className="hidden flex-1 sm:block" />
-          <SparkCounter
-            ref={counterRef}
-            className="max-sm:ml-auto"
-            value={Math.max(0, pet.sparks - inFlight)}
-          />
+          <div className={`${PRESSABLE} shrink-0 max-sm:ml-auto`}>
+            <SparkCounter
+              ref={counterRef}
+              value={Math.max(0, pet.sparks - inFlight)}
+            />
+            <HelpTap
+              label={`${pet.sparks} sparks: open the Shop`}
+              onOpen={() => setPanel("shop")}
+            />
+          </div>
           <SoundToggle />
         </div>
         {!alive && (
@@ -605,6 +641,19 @@ export default function PetView({ petId }: { petId: string }) {
         </div>
       </div>
 
+      {panel !== null && typeof panel === "object" && (
+        <HelpCard
+          help={helpFor(panel.help, pet, sparkRoundsLeft(pet, clock))}
+          icon={HELP_ICON[panel.help]}
+          colour={
+            panel.help in NEED_COLOUR
+              ? NEED_COLOUR[panel.help as keyof typeof NEED_COLOUR]
+              : undefined
+          }
+          action={helpAction(panel.help)}
+          onClose={() => setPanel(null)}
+        />
+      )}
       {panel === "wardrobe" && (
         <Wardrobe pet={pet} nowMs={clock} onClose={() => setPanel(null)} />
       )}

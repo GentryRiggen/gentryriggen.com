@@ -69,6 +69,15 @@ export default function PlayPicker({
               {roundsLeft > 0 ? "✨".repeat(roundsLeft) : "💤"}
             </span>
           </p>
+          <p
+            aria-hidden="true"
+            data-testid="play-rounds-hint"
+            className="min-w-0 flex-1 text-base font-bold leading-snug text-[#7a5a78] sm:text-lg"
+          >
+            {roundsLeft > 0
+              ? `Each ✨ is a game that wins sparks.`
+              : "No more sparks from games for now. Playing still makes your flameling happy!"}
+          </p>
           <button
             type="button"
             onClick={onClose}

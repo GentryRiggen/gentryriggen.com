@@ -20,6 +20,9 @@ import { DecorIcon } from "./DecorArt";
 import SparkCounter from "./SparkCounter";
 import FlIcon, { type FlIconName } from "./FlIcon";
 import PanelHeader from "./PanelHeader";
+import HelpCard, { HelpTap, PRESSABLE } from "./HelpCard";
+import { helpFor } from "@/lib/flamelings/help";
+import { sparkRoundsLeft } from "@/lib/flamelings/actions";
 import {
   CHROME_BG,
   DISPLAY,
@@ -201,6 +204,7 @@ interface ShopProps {
 /** The shop: spend sparks on hats, face and neck items, and glade decor. */
 export default function Shop({ pet, nowMs, onClose }: ShopProps) {
   const buy = useFlamelings((s) => s.buy);
+  const [sparkHelp, setSparkHelp] = useState(false);
   const dress = useFlamelings((s) => s.dress);
   const setDecor = useFlamelings((s) => s.setDecor);
   const [tab, setTab] = useState<ShopTab>("hat");
@@ -257,7 +261,13 @@ export default function Shop({ pet, nowMs, onClose }: ShopProps) {
     >
       <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col">
         <PanelHeader icon="shop" iconClass="bg-[#ffd166]" title="Shop">
-          <SparkCounter value={pet.sparks} />
+          <div className={`${PRESSABLE} shrink-0`}>
+            <SparkCounter value={pet.sparks} />
+            <HelpTap
+              label="How do I get sparks?"
+              onOpen={() => setSparkHelp(true)}
+            />
+          </div>
           <button type="button" onClick={onClose} className={DONE_BUTTON}>
             Done
           </button>
@@ -322,6 +332,13 @@ export default function Shop({ pet, nowMs, onClose }: ShopProps) {
           })}
         </div>
       </div>
+      {sparkHelp && (
+        <HelpCard
+          help={helpFor("sparks", pet, sparkRoundsLeft(pet, nowMs))}
+          icon="spark"
+          onClose={() => setSparkHelp(false)}
+        />
+      )}
     </div>
   );
 }
