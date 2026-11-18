@@ -1,6 +1,64 @@
 import type { ReactNode } from "react";
 import { CODE_ALPHABET, CODE_LENGTH } from "@/lib/flamelings/online/card";
-import { DISPLAY, PEACH_BUTTON, STICKER_BUTTON } from "../styles";
+import { DISPLAY, FOCUS_RING } from "../styles";
+
+/**
+ * A QWERTY layout with the number row on top, on a 20-column grid so each
+ * key spans two columns and the lower rows can sit half a key in. Keys a
+ * code never uses (look-alikes) leave a gap, so every key stays where it is
+ * on a real keyboard on every screen.
+ */
+const KEY_ROWS = ["1234567890", "QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+
+/** Literal classes (Tailwind cannot see built ones): row r, key i. */
+const ROW_START_CLASS: string[][] = [
+  [
+    "col-start-1",
+    "col-start-3",
+    "col-start-5",
+    "col-start-7",
+    "col-start-9",
+    "col-start-11",
+    "col-start-13",
+    "col-start-15",
+    "col-start-17",
+    "col-start-19",
+  ],
+  [
+    "col-start-1",
+    "col-start-3",
+    "col-start-5",
+    "col-start-7",
+    "col-start-9",
+    "col-start-11",
+    "col-start-13",
+    "col-start-15",
+    "col-start-17",
+    "col-start-19",
+  ],
+  [
+    "col-start-2",
+    "col-start-4",
+    "col-start-6",
+    "col-start-8",
+    "col-start-10",
+    "col-start-12",
+    "col-start-14",
+    "col-start-16",
+    "col-start-18",
+  ],
+  [
+    "col-start-3",
+    "col-start-5",
+    "col-start-7",
+    "col-start-9",
+    "col-start-11",
+    "col-start-13",
+    "col-start-15",
+  ],
+];
+
+const KEY = `${DISPLAY} grid h-14 min-w-0 place-items-center rounded-2xl text-2xl font-semibold transition-transform active:translate-y-[3px] disabled:opacity-40 disabled:active:translate-y-0 sm:h-20 sm:text-4xl ${FOCUS_RING}`;
 
 interface CodeKeypadProps {
   value: string;
@@ -12,8 +70,9 @@ interface CodeKeypadProps {
 }
 
 /**
- * A big on-screen keypad with only the letters and digits a friend code can
- * hold (no system keyboard, no way to type anything else).
+ * A big on-screen keyboard (QWERTY, numbers on top) with only the letters
+ * and digits a friend code can hold (no system keyboard, no way to type
+ * anything else).
  */
 export default function CodeKeypad({
   value,
@@ -23,7 +82,7 @@ export default function CodeKeypad({
 }: CodeKeypadProps) {
   const full = value.length >= CODE_LENGTH;
   return (
-    <div className="flex w-full max-w-xl flex-col items-center gap-3">
+    <div className="flex w-full max-w-3xl flex-col items-center gap-3">
       <p
         data-testid="keypad-slots"
         aria-label={`Code typed so far: ${value || "nothing"}`}
@@ -51,30 +110,46 @@ export default function CodeKeypad({
         <div
           role="group"
           aria-label="Letters and numbers"
-          className="grid w-full justify-items-center gap-x-1 gap-y-2.5 [grid-template-columns:repeat(auto-fill,minmax(4rem,1fr))] sm:gap-x-2 sm:gap-y-3"
+          data-testid="keypad-keys"
+          className="grid w-full grid-cols-20 gap-x-1 gap-y-2 sm:gap-x-1.5 sm:gap-y-3"
         >
-          {[...CODE_ALPHABET].map((ch) => (
-            <button
-              key={ch}
-              type="button"
-              disabled={full}
-              onClick={() => onChange(value + ch)}
-              aria-label={ch}
-              data-testid={`key-${ch}`}
-              className={`${STICKER_BUTTON} ${DISPLAY} size-16 text-3xl font-semibold`}
-            >
-              {ch}
-            </button>
-          ))}
+          {KEY_ROWS.map((row, r) =>
+            [...row].map((ch, i) => {
+              if (!CODE_ALPHABET.includes(ch)) {
+                // A gap where a look-alike key would be (O/0, I/L/1).
+                return (
+                  <span
+                    key={ch}
+                    aria-hidden="true"
+                    data-testid="keypad-gap"
+                    className={`col-span-2 ${ROW_START_CLASS[r][i]}`}
+                  />
+                );
+              }
+              return (
+                <button
+                  key={ch}
+                  type="button"
+                  disabled={full}
+                  onClick={() => onChange(value + ch)}
+                  aria-label={ch}
+                  data-testid={`key-${ch}`}
+                  className={`${KEY} ${ROW_START_CLASS[r][i]} col-span-2 bg-[#fff6e6] text-[#3a2340] shadow-[0_4px_0_#e7c9a3,0_6px_14px_rgba(30,10,40,.22)] active:shadow-[0_1px_0_#e7c9a3]`}
+                >
+                  {ch}
+                </button>
+              );
+            })
+          )}
           <button
             type="button"
             disabled={value.length === 0}
             onClick={() => onChange(value.slice(0, -1))}
             aria-label="Delete the last letter"
             data-testid="key-delete"
-            className={`${PEACH_BUTTON} size-16`}
+            className={`${KEY} col-span-3 col-start-18 bg-[#ffd9b0] shadow-[0_4px_0_#e0a46a,0_6px_14px_rgba(30,10,40,.2)] active:shadow-[0_1px_0_#e0a46a]`}
           >
-            <span aria-hidden="true" className="text-3xl text-[#9a4a10]">
+            <span aria-hidden="true" className="text-[#9a4a10]">
               ⌫
             </span>
           </button>
