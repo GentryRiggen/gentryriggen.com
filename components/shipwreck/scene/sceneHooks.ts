@@ -56,5 +56,8 @@ export function sceneHooks(store: PlaybackStore): ShipwreckSceneHooks {
         ? { calls: r.calls, triangles: r.triangles, camera: r.camera }
         : null;
     },
+    isShown: (name) =>
+      typeof window !== "undefined" &&
+      (window.__shipwreckRenderInfo?.isShown(name) ?? false),
   };
 }

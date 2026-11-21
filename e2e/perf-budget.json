@@ -66,5 +66,9 @@
   "shipwreck-lusitania-grounded": {
     "calls": 65,
     "triangles": 296955
+  },
+  "shipwreck-lusitania-wreck": {
+    "calls": 42,
+    "triangles": 148321
   }
 }

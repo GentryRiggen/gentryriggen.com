@@ -148,6 +148,7 @@ const SCENES = [
   "shipwreck-lusitania-hit",
   "shipwreck-lusitania-list",
   "shipwreck-lusitania-grounded",
+  "shipwreck-lusitania-wreck",
 ] as const;
 
 test.afterAll(() => {
@@ -543,7 +544,7 @@ test.describe("Shipwreck budget", () => {
 test.describe("Shipwreck budget: the Lusitania", () => {
   test.setTimeout(420_000);
 
-  test("her afternoon at the top tier: the hit, the list, the bow on the floor", async ({
+  test("her afternoon at the top tier: the hit, the list, the bow on the floor, the wreck", async ({
     page,
   }) => {
     await page.goto("/shipwreck?scene&ship=lusitania&quality=high");
@@ -581,6 +582,15 @@ test.describe("Shipwreck budget: the Lusitania", () => {
         const e = h.getEvents!().find((x) => x.kind === "bow-lands")!;
         h.seek!(e.t + 10); // the bow on the floor, the stern in the air
         h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-lusitania-wreck",
+      await at(() => {
+        const h = window.__shipwreck!;
+        const e = h.getEvents!().find((x) => x.kind === "stern-under")!;
+        h.seek!(e.t + 90); // on her starboard side, 93 m down
+        h.setCamera!("underwater");
       })
     );
     for (const scene of SCENES.filter((s) =>

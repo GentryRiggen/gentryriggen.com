@@ -10,7 +10,7 @@ import {
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Color, type WebGLRenderer } from "three";
+import { Color, type Object3D, type WebGLRenderer } from "three";
 import { useStore } from "zustand";
 import {
   QUALITY_TIERS,
@@ -56,6 +56,8 @@ export interface RenderInfo {
   camera: [number, number, number];
   quality: QualityTier;
   dpr: number;
+  /** Whether a named object (and every parent) is visible, for tests. */
+  isShown: (name: string) => boolean;
 }
 
 declare global {
@@ -222,6 +224,17 @@ function Driver({ store }: { store: PlaybackStore }) {
   return null;
 }
 
+/** Whether the named object and every parent of it are visible. */
+function shownIn(root: Object3D, name: string): boolean {
+  const o = root.getObjectByName(name);
+  if (!o) return false;
+  let visible = true;
+  o.traverseAncestors((a) => {
+    if (!a.visible) visible = false;
+  });
+  return visible && o.visible;
+}
+
 /**
  * Draw calls and triangles of the last whole frame (every pass: the sea's
  * reflection, bloom), on `window.__shipwreckRenderInfo` (dev and e2e).
@@ -235,6 +248,9 @@ function RenderInfoProbe({
 }) {
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
+  const scene = useThree((s) => s.scene);
+  // Looked up only when a test asks, never per frame.
+  const isShown = useCallback((name: string) => shownIn(scene, name), [scene]);
   useEffect(() => {
     gl.info.autoReset = false;
     return () => {
@@ -249,6 +265,7 @@ function RenderInfoProbe({
       camera: [camera.position.x, camera.position.y, camera.position.z],
       quality,
       dpr,
+      isShown,
     };
     gl.info.reset();
   }, -10);

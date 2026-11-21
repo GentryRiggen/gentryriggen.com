@@ -92,6 +92,8 @@ export interface ShipwreckSceneHooks {
     triangles: number;
     camera: [number, number, number];
   } | null;
+  /** Whether a named scene object ("iceberg", "coast") is on screen. */
+  isShown(name: string): boolean;
 }
 
 /** The game's own hooks: start a run, read where it is and how it ended. */

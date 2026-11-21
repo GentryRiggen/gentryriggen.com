@@ -351,3 +351,113 @@ test("the night scene plays the real night to the break and the wreck", async ({
   expect(state.phase).toBe("wreck");
   expect(errors).toEqual([]);
 });
+
+test("the Lusitania's real afternoon reaches the end card at ×100, then the Titanic's iceberg is back @smoke", async ({
+  page,
+}) => {
+  test.setTimeout(420_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-lusitania").click();
+  await expect(page.getByTestId("shipwreck-ship-lusitania")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await expect(page.getByTestId("shipwreck-parent-line")).toContainText(
+    "1,190"
+  );
+  expect(await page.evaluate(() => window.__shipwreck!.ship!())).toBe(
+    "lusitania"
+  );
+  await expect(page.getByTestId("shipwreck-real-night")).toHaveText(
+    /The real afternoon/
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "lusitania"
+  );
+  await expect(page.getByTestId("shipwreck-clock")).toContainText("PM");
+  // Her afternoon: the Irish coast, no iceberg.
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("coast")))
+    .toBe(true);
+  expect(
+    await page.evaluate(() => window.__shipwreck!.isShown!("iceberg"))
+  ).toBe(false);
+
+  // Played (not seeked) to the end at ×100.
+  await page.getByTestId("shipwreck-speed-100").click();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().speed)).toBe(
+    100
+  );
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toBeVisible({ timeout: 360_000 });
+  await expect(end).toHaveAttribute("data-outcome", "sank");
+  await expect(end).toContainText(/Lusitania sank at 2:\d\d PM/);
+  await expect(end).toContainText("18 minutes after the torpedo");
+  expect(await page.evaluate(() => window.__shipwreck!.getScreen())).toBe(
+    "end"
+  );
+
+  // Back to the title, the Titanic again: her iceberg, and no coast.
+  await page.getByTestId("shipwreck-look").click();
+  await page.getByTestId("shipwreck-back").click();
+  await expect(page.getByTestId("shipwreck-title")).toBeVisible();
+  await page.getByTestId("shipwreck-ship-titanic").click();
+  await expect(page.getByTestId("shipwreck-real-night")).toHaveText(
+    /The real night/
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await expect(page.getByTestId("shipwreck-caption")).toContainText("11:40 PM");
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "titanic"
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("iceberg")))
+    .toBe(true);
+  expect(await page.evaluate(() => window.__shipwreck!.isShown!("coast"))).toBe(
+    false
+  );
+  expect(errors).toEqual([]);
+});
+
+test("What if? on the Lusitania with her portholes shut runs to an end", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-lusitania").click();
+  await page.getByTestId("shipwreck-what-if").click();
+  const editor = page.getByTestId("shipwreck-editor");
+  await expect(editor).toHaveAttribute("data-ship", "lusitania");
+  await page.getByTestId("shipwreck-preset-real").click();
+  const portholes = page.getByTestId("shipwreck-portholes");
+  await expect(portholes).toHaveAttribute("aria-pressed", "true");
+  await portholes.click();
+  await expect(portholes).toHaveAttribute("aria-pressed", "false");
+  await expect(portholes).toHaveText(/Portholes shut/);
+  await page.getByTestId("shipwreck-go").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await waitDone(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT);
+  });
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toHaveAttribute("data-outcome", "floated");
+  await expect(end).toContainText("With her portholes shut");
+  expect(await page.evaluate(() => window.__shipwreck!.getOutcome!())).toBe(
+    "floated"
+  );
+  // The choice is remembered for next time.
+  await page.getByTestId("shipwreck-try-what-if").click();
+  await expect(page.getByTestId("shipwreck-portholes")).toHaveAttribute(
+    "aria-pressed",
+    "false"
+  );
+});
