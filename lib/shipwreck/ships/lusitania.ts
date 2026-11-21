@@ -688,6 +688,8 @@ export const lusitania: ShipSpec = {
   // 18 knots, the engines unable to stop as steam failed; she carried her
   // way about 2 nautical miles (README).
   headway: { startMs: 18 * 0.514444, halfLifeS: 300 },
+  // The torpedo's run from about 700 m at about 35 knots (U-20's diary).
+  preRollS: 40,
   // Her wreck lies on its starboard side in 93 m (Ballard). She comes down
   // listed to starboard (18–67° over the calibration sweep: the physics of
   // her last minute is touchy); the survey, not the sim, lays her over.

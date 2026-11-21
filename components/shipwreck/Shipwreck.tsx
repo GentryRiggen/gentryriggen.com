@@ -247,7 +247,8 @@ export default function Shipwreck() {
           s.t >= s.track.sankAtT
             ? "sank"
             : "floated";
-        trackEnd(run.mode, outcome, s.realT / 60, run.ship);
+        // Minutes from the hit (a pre-roll counts as none).
+        trackEnd(run.mode, outcome, Math.max(0, s.realT) / 60, run.ship);
       }
       recorded.current = run.id;
     }

@@ -93,11 +93,20 @@ describe("Shipwreck: choosing the Lusitania", () => {
     expect(playback.getState().ship).toBe("lusitania");
     expect(window.__shipwreck?.ship?.()).toBe("lusitania");
     fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    // Her run starts 40 s before the hit: the torpedo's run-in.
+    expect(playback.getState().t).toBe(-(lusitania.preRollS ?? 0));
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("2:09 PM");
+    expect(screen.getByText("Just before the torpedo")).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /2:09 PM — A torpedo is coming/
+    );
+    // Then the hit, at 2:10 PM.
+    act(() => {
+      playback.getState().pump(1000);
+      playback.getState().seek(30);
+    });
     expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("2:10 PM");
     expect(screen.getByText("Just hit by the torpedo")).toBeInTheDocument();
-    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
-      /2:10 PM — A torpedo hits the starboard side/
-    );
     expect(playback.getState().openings).toEqual(lusitania.realNight);
     // Her places.
     fireEvent.click(screen.getByTestId("shipwreck-places-button"));

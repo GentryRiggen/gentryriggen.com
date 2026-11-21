@@ -24,6 +24,10 @@ const [
 
 // Times are shown seconds after 2:10 PM, or after one of the sim's events.
 const SHOTS = [
+  // The torpedo's run-in (the pre-roll): 30, 15 and 3 s before the hit.
+  { id: "1a-approach-30s", t: -30, camera: "cinematic", wait: 3500 },
+  { id: "1b-approach-15s", t: -15, camera: "cinematic", wait: 3500 },
+  { id: "1c-approach-3s", t: -3, camera: "cinematic", wait: 3500 },
   { id: "1-torpedo-track", t: 0.4, camera: "cinematic", wait: 3000 },
   { id: "2-hit", t: 1.6, camera: "cinematic", wait: 3000 },
   { id: "3-second-explosion", t: 11, camera: "cinematic", wait: 3000 },

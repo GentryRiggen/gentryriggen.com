@@ -15,6 +15,7 @@ import {
   MARK_PRIORITY,
   markRows,
   outcomeOf,
+  runInCaption,
   sinceText,
   storyEndT,
   timelineMarks,
@@ -143,6 +144,13 @@ describe("the Lusitania's words", () => {
     expect(clockText(18 * 60, lusitania.clockStartS)).toBe("2:28 PM");
     expect(sinceText(720, lusitania)).toBe("12 min after the torpedo");
     expect(sinceText(20, lusitania)).toBe("Just hit by the torpedo");
+    // Her run-in before the hit (the pre-roll).
+    expect(sinceText(-30, lusitania)).toBe("Just before the torpedo");
+    expect(sinceText(-60, lusitania)).toBe("Just before the torpedo");
+    expect(sinceText(-1, lusitania)).toBe("Just before the torpedo");
+    expect(clockText(-30, lusitania.clockStartS)).toBe("2:09 PM");
+    expect(runInCaption(lusitania)).toMatch(/torpedo/i);
+    expect(runInCaption(titanic)).toBeNull();
     expect(
       captionFor({ kind: "collision", t: 0, realT: 0 }, lusitania)
     ).toMatch(/^2:10 PM — A torpedo hits the starboard side/);

@@ -143,6 +143,42 @@ describe("playback store", () => {
     expect(store.getState().camera).toBe("orbit");
   });
 
+  it("starts a torpedo ship's run before the hit (the pre-roll); the Titanic at the collision", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(1000, 1000),
+    });
+    const pre = lusitania.preRollS ?? 0;
+    expect(pre).toBeGreaterThanOrEqual(30);
+    store.getState().start(lusitania, lusitania.realNight);
+    expect(store.getState().t).toBe(-pre);
+    expect(store.getState().minT).toBe(-pre);
+    // Before the hit the real clock runs with it (no sim frames yet).
+    expect(store.getState().realT).toBe(-pre);
+    store.getState().pump();
+    store.getState().setSpeed(10, 0);
+    store.getState().play();
+    store.getState().tick(1, 100);
+    expect(store.getState().t).toBe(-pre + 10);
+    expect(store.getState().realT).toBe(-pre + 10);
+    // Seeks reach back to the pre-roll, no further.
+    store.getState().seek(-1000);
+    expect(store.getState().t).toBe(-pre);
+    // Playing again from the end starts at the pre-roll.
+    store.getState().seek(1000);
+    store.getState().play();
+    expect(store.getState().t).toBe(-pre);
+    // The title's calm ship (no hole) and the Titanic have none.
+    store.getState().start(lusitania, []);
+    expect(store.getState().t).toBe(0);
+    expect(store.getState().minT).toBe(0);
+    store.getState().start(titanic, titanic.realNight);
+    expect(store.getState().t).toBe(0);
+    expect(store.getState().minT).toBe(0);
+    store.getState().pump();
+    store.getState().seek(-50);
+    expect(store.getState().t).toBe(0);
+  });
+
   it("plays from the start again after the end", () => {
     const store = started(1000, 1000);
     store.getState().pump();
@@ -169,7 +205,7 @@ describe("slow-mo", () => {
     expect(effectiveSpeed({ ...base, t: 7000 }, 1000)).toBe(100);
   });
 
-  it("holds ×1 through a torpedo's hit and the second explosion", () => {
+  it("holds ×1 through a torpedo's run-in, its hit and the second explosion", () => {
     const hitTrack = fakeTrack(1000, {
       events: [
         { kind: "collision", t: 0, realT: 0 },
@@ -185,6 +221,8 @@ describe("slow-mo", () => {
       side: "starboard" as const,
     };
     const run = { ...base, track: hitTrack, openings: [hole] };
+    expect(effectiveSpeed({ ...run, t: -35 }, 1000)).toBe(100);
+    expect(effectiveSpeed({ ...run, t: -15 }, 1000)).toBe(1);
     expect(effectiveSpeed({ ...run, t: 0 }, 1000)).toBe(1);
     expect(effectiveSpeed({ ...run, t: 15 }, 1000)).toBe(1);
     expect(effectiveSpeed({ ...run, t: 40 }, 1000)).toBe(100);

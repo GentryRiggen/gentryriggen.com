@@ -95,6 +95,12 @@ export interface ShipSpec {
   /** What opened the hull: drives words, scene and What-if. */
   cause: "iceberg" | "torpedo";
   portholes?: readonly PortholeRow[];
+  /**
+   * Seconds shown before the first event in a run with holes (a torpedo's
+   * run-in: its wake streaks in before the hit). Default 0 (the Titanic).
+   * Shown time is negative then; the sim starts at the hit.
+   */
+  preRollS?: number;
   /** Forward speed at the first event and its decay (no propulsion model). */
   headway?: { startMs: number; halfLifeS: number };
   /**

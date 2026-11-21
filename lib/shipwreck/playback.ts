@@ -25,6 +25,8 @@ export const SLOWMO_PLUNGE = { before: 45, after: 15 } as const;
  * seconds at ×1 on the cinematic camera, through the second explosion.
  */
 export const SLOWMO_HIT_S = 20;
+/** And the last seconds of its run-in before the hit. */
+export const SLOWMO_HIT_BEFORE_S = 20;
 /** A speed the player touched this recently (s) overrides the slow-mo. */
 export const SPEED_TOUCH_HOLD_S = 10;
 /** The runner's wall-time budget per frame (ms; the sim may run ~0.5 ms over). */
@@ -56,8 +58,13 @@ export interface PlaybackState {
   done: boolean;
   /** 0..1, how far the runner has got. */
   progress: number;
-  /** Shown seconds after the collision. */
+  /** Shown seconds after the collision (negative in a pre-roll). */
   t: number;
+  /**
+   * Where this run's time starts: 0, or minus the ship's pre-roll for a
+   * run with holes (a torpedo's run-in before the hit).
+   */
+  minT: number;
   /**
    * Real seconds after the collision at `t` (the sim's frame time). Equal to
    * `t` until both parts are under; the way down plays faster than real time.
@@ -107,7 +114,7 @@ export interface PlaybackActions {
   play(): void;
   pause(): void;
   setSpeed(speed: Speed, nowS?: number): void;
-  /** Jumps to `t`, clamped to [0, computedT]. */
+  /** Jumps to `t`, clamped to [minT, computedT]. */
   seek(t: number): void;
   setCamera(camera: CameraId): void;
   /** Switches to the free camera from the current view, without a snap. */
@@ -135,6 +142,7 @@ const INITIAL: PlaybackState = {
   progress: 0,
   t: 0,
   realT: 0,
+  minT: 0,
   playing: false,
   speed: 10,
   slowMo: false,
@@ -171,6 +179,7 @@ export function inHitWindow(
     track !== null &&
     (openings?.length ?? 0) > 0 &&
     t <= SLOWMO_HIT_S &&
+    t >= -SLOWMO_HIT_BEFORE_S &&
     track.events.some((e) => e.kind === "explosion")
   );
 }
@@ -192,7 +201,8 @@ export function effectiveSpeed(
 
 /** The real time at shown time `t` (the sim's frames carry both). */
 export function realTimeAt(track: SimTrack | null, t: number): number {
-  if (!track || track.frames.length === 0) return t;
+  // Before the first event (a pre-roll) the clock simply runs.
+  if (t < 0 || !track || track.frames.length === 0) return t;
   return sampleTrack(track, t).realT;
 }
 
@@ -223,6 +233,8 @@ export function createPlaybackStore(
     ...INITIAL,
     start(spec, openings, options = {}) {
       runner = makeRunner(spec, openings, options);
+      const pre = openings.length > 0 ? (spec.preRollS ?? 0) : 0;
+      const minT = pre > 0 ? -pre : 0;
       set({
         ship: spec.id,
         track: null,
@@ -230,8 +242,9 @@ export function createPlaybackStore(
         computedT: 0,
         done: false,
         progress: 0,
-        t: 0,
-        realT: 0,
+        t: minT,
+        realT: minT,
+        minT,
         slowMo: false,
         place: null,
         snapId: get().snapId + 1,
@@ -249,6 +262,7 @@ export function createPlaybackStore(
         progress: 0,
         t: 0,
         realT: 0,
+        minT: 0,
         playing: false,
         slowMo: false,
         place: null,
@@ -289,7 +303,7 @@ export function createPlaybackStore(
       const s = get();
       // Playing from the end starts the night again.
       if (s.done && s.t >= s.computedT)
-        set({ t: 0, realT: 0, snapId: s.snapId + 1 });
+        set({ t: s.minT, realT: s.minT, snapId: s.snapId + 1 });
       set({ playing: true });
     },
     pause() {
@@ -300,7 +314,7 @@ export function createPlaybackStore(
     },
     seek(t) {
       const s = get();
-      const clamped = Math.max(0, Math.min(s.computedT, t));
+      const clamped = Math.max(s.minT, Math.min(s.computedT, t));
       set({
         t: clamped,
         realT: realTimeAt(s.track, clamped),

@@ -46,15 +46,21 @@ interface TimelineProps {
  */
 export default function Timeline({ store }: TimelineProps) {
   const end = useTimelineEnd(store);
+  // A torpedo's run-in starts before the hit (negative time): the bar runs
+  // from there.
+  const start = useStore(store, (s) => s.minT);
+  const span = Math.max(1, end - start);
   const ship = getShip(useStore(store, (s) => s.ship));
   // The runner stores a new track object every frame while it computes:
   // follow only the number of events (and a new run), not the object.
   const events = useStore(store, (s) => s.track?.events.length ?? -1);
   const runStart = useStore(store, (s) => s.track?.frames[0] ?? null);
   // Re-render on about a pixel of movement, not every frame.
-  const tPermille = useStore(store, (s) => Math.round((s.t / end) * 1000));
+  const tPermille = useStore(store, (s) =>
+    Math.round(((s.t - s.minT) / Math.max(1, end - s.minT)) * 1000)
+  );
   const computedPermille = useThrottledStore(store, (s) =>
-    Math.round((s.computedT / end) * 1000)
+    Math.round(((s.computedT - s.minT) / Math.max(1, end - s.minT)) * 1000)
   );
   const realMinute = useStore(store, (s) => Math.floor(s.realT / 60));
   const barRef = useRef<HTMLDivElement>(null);
@@ -75,7 +81,9 @@ export default function Timeline({ store }: TimelineProps) {
   // Only what happens within the story (a ship that floats still has
   // boats and rockets after her story ends): none pile up at the right end.
   const shown = marks.filter((m) => m.t <= end + 1);
-  const fractions = shown.map((m) => Math.min(1, m.t / end));
+  const fractions = shown.map((m) =>
+    Math.min(1, Math.max(0, (m.t - start) / span))
+  );
   const rows = markRows(
     fractions,
     MARK_SPAN_PX / Math.max(1, barPx),
@@ -87,7 +95,7 @@ export default function Timeline({ store }: TimelineProps) {
     if (!bar) return;
     const r = bar.getBoundingClientRect();
     const f = Math.max(0, Math.min(1, (clientX - r.left) / r.width));
-    store.getState().seek(f * end);
+    store.getState().seek(start + f * span);
   };
   const onDown = (e: PointerEvent<HTMLDivElement>) => {
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -141,9 +149,9 @@ export default function Timeline({ store }: TimelineProps) {
         role="slider"
         tabIndex={0}
         aria-label={`Time in the ${storyOf(ship).period}`}
-        aria-valuemin={0}
+        aria-valuemin={Math.round(start)}
         aria-valuemax={Math.round(end)}
-        aria-valuenow={Math.round((tPermille / 1000) * end)}
+        aria-valuenow={Math.round(start + (tPermille / 1000) * span)}
         aria-valuetext={clockText(realMinute * 60, ship.clockStartS)}
         data-testid="shipwreck-timeline"
         onPointerDown={onDown}

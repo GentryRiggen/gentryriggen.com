@@ -206,6 +206,7 @@ export type ShotId =
   | "wreck"
   // The Lusitania's afternoon.
   | "afternoon"
+  | "run-in"
   | "hit"
   | "list"
   | "boats"
@@ -231,6 +232,8 @@ export interface ShotContext {
   ship?: ShipId;
   /** Ship-frame x where the torpedo struck (her shots aim there). */
   hitX?: number;
+  /** Where it struck on the sea (three.js), fixed where it happened. */
+  hitAt?: V3;
 }
 
 function body(
@@ -330,6 +333,7 @@ export function shotView(shot: ShotId, ctx: ShotContext): View {
   const s = sternBody(ctx);
   switch (shot) {
     case "afternoon":
+    case "run-in":
     case "hit":
     case "list":
     case "boats":
@@ -403,6 +407,7 @@ function lusitaniaShot(
   };
   const sternUnder = firstOf("stern-under") ?? track.sankAtT;
   const landed = firstOf("bow-lands");
+  if (t < 0) return "run-in";
   if (sternUnder !== null && t >= sternUnder + 6) return "on-floor";
   if (landed !== null && t >= landed - 4) {
     // Her bow on the floor while her stern is still up: above, then below.
@@ -436,10 +441,21 @@ function lusitaniaView(shot: ShotId, ctx: ShotContext): View {
         target: shipToThree(b, [5, 0, 18]),
       };
     }
+    case "run-in": {
+      // Before the hit: standing off her starboard bow, ahead of where the
+      // torpedo will strike. She steams in from the left, the white track
+      // streaks in from the right, and they meet at the hit.
+      const h = ctx.hitAt ?? shipToThree(b, [hitX, -13.4, 9]);
+      const drift = Math.sin(ctx.wall * 0.05) * 6;
+      return {
+        pos: [h[0] + 230 + drift, 34, h[2] + 310],
+        target: [h[0] - 110, 4, h[2] + 70],
+      };
+    }
     case "hit": {
       // Low off her starboard bow, looking aft at the hit: the track runs
       // in from the right, the column goes up; slowly pulling back.
-      const k = 1 + Math.min(ctx.t, 40) / 60;
+      const k = 1 + Math.min(Math.max(0, ctx.t), 40) / 60;
       return {
         pos: levelToThree(b, [hitX + 120 * k, -150 * k, 12 + 6 * k]),
         target: shipToThree(b, [hitX - 25, -8, 16]),

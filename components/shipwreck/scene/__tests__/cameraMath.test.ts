@@ -183,6 +183,9 @@ describe("the Lusitania's camera", () => {
 
   it("follows her afternoon: the hit, the list, the boats, the bow on the floor, the wreck", () => {
     const at = (t: number) => cinematicShot(track, t, "lusitania");
+    // The torpedo's run-in (the pre-roll), then the hit at 0.
+    expect(at(-40)).toBe("run-in");
+    expect(at(-0.5)).toBe("run-in");
     expect(at(0)).toBe("hit");
     expect(at(20)).toBe("hit");
     expect(at(120)).toBe("list");
@@ -200,10 +203,30 @@ describe("the Lusitania's camera", () => {
     expect(cinematicShot(track, 100)).toBe("establishing");
   });
 
+  it("frames the run-in: the hit ahead, the wake coming in from starboard", () => {
+    const ctx: ShotContext = {
+      t: -30,
+      wall: 0,
+      bodies: [pose({ x: -278, z: -9.35 })],
+      breakX: null,
+      seaDepthM: SEA,
+      ship: "lusitania",
+      hitX: 63.7,
+      hitAt: [63.7, 0, 13.4],
+    };
+    const v = shotView("run-in", ctx);
+    // On her starboard side (+z), ahead of her, looking back toward the hit.
+    expect(v.pos[2]).toBeGreaterThan(100);
+    expect(v.pos[0]).toBeGreaterThan(63.7);
+    expect(v.pos[1]).toBeGreaterThan(5);
+  });
+
   it("frames every shot above her floor and outside her hull", () => {
     const deg = Math.PI / 180;
     const cases: [ShotId, BodyPose][] = [
       ["afternoon", pose({ z: -9.35 })],
+      ["run-in", pose({ x: -370, z: -9.35 })],
+      ["run-in", pose({ x: -20, z: -9.35 })],
       ["hit", pose({ x: 40, z: -9.4, roll: 2 * deg })],
       ["list", pose({ x: 900, z: -10.4, roll: 18 * deg, pitch: 1.5 * deg })],
       ["boats", pose({ x: 2700, z: -12.2, roll: 24 * deg, pitch: 3 * deg })],
@@ -229,6 +252,7 @@ describe("the Lusitania's camera", () => {
           seaDepthM: SEA,
           ship: "lusitania",
           hitX: 63.7,
+          hitAt: [63.7, 0, 13.4],
         };
         const v = shotView(shot, ctx);
         expect(v.pos[1]).toBeGreaterThanOrEqual(-SEA + 2);

@@ -31,6 +31,8 @@ export interface ShipStory {
   cause: string;
   /** "Just hit the iceberg" / "Just hit by the torpedo". */
   justHit: string;
+  /** Before the first event (a torpedo's run-in): "Just before the torpedo". */
+  justBefore: string;
   /** "night" / "afternoon": the story's time of day. */
   period: string;
   /** The title screen's first button: "The real night". */
@@ -42,15 +44,27 @@ export function storyOf(ship: Pick<ShipSpec, "cause">): ShipStory {
     ? {
         cause: "the torpedo",
         justHit: "Just hit by the torpedo",
+        justBefore: "Just before the torpedo",
         period: "afternoon",
         realLabel: "The real afternoon",
       }
     : {
         cause: "the iceberg",
         justHit: "Just hit the iceberg",
+        justBefore: "Just before the iceberg",
         period: "night",
         realLabel: "The real night",
       };
+}
+
+/**
+ * The caption for a torpedo's run-in before the hit (the pre-roll), or
+ * null for a ship without one.
+ */
+export function runInCaption(ship: Pick<ShipSpec, "cause">): string | null {
+  return ship.cause === "torpedo"
+    ? "A torpedo is coming! Its white trail of bubbles streaks toward her starboard side."
+    : null;
 }
 
 /** "2 h 07 min after the iceberg" (or "Just hit the iceberg"). */
@@ -59,6 +73,7 @@ export function sinceText(
   ship: Pick<ShipSpec, "cause"> = titanic
 ): string {
   const story = storyOf(ship);
+  if (secondsAfter < 0) return story.justBefore;
   const total = Math.max(0, Math.floor(secondsAfter / 60));
   if (total < 1) return story.justHit;
   const h = Math.floor(total / 60);

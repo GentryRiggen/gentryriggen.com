@@ -140,7 +140,25 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     const s = store.getState();
     const track = s.track;
     if (!track || track.frames.length === 0) return;
-    const frame = sampleTrack(track, s.t);
+    let frame = sampleTrack(track, s.t);
+    // Before the hit (a torpedo's run-in) she steams on at her speed: the
+    // first frame, run back along her heading.
+    if (s.t < 0 && spec.headway) {
+      const b0 = frame.bodies[0];
+      const d = spec.headway.startMs * s.t;
+      frame = {
+        ...frame,
+        t: s.t,
+        realT: s.t,
+        bodies: [
+          {
+            ...b0,
+            x: b0.x + Math.cos(b0.yaw) * d,
+            y: b0.y + Math.sin(b0.yaw) * d,
+          },
+        ],
+      };
+    }
     runtime.frame = frame;
     const two = frame.bodies.some((b) => b.part !== "whole");
     const whole = runtime.whole;
@@ -222,6 +240,8 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
         dt > 0.2
           ? Math.hypot(now.x - before.x, now.y - before.y) / dt
           : spec.headway.startMs;
+      // Before the hit she has been steaming all along.
+      const steaming = s.openings.length === 0 || s.t < 0;
       const stern = shipToThree(now, [sternX, 0, 0]);
       const fwd = shipToThree(now, [sternX + 10, 0, 0]);
       const len = Math.hypot(fwd[0] - stern[0], fwd[2] - stern[2]) || 1;
@@ -230,12 +250,11 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
       wake.dx = (fwd[0] - stern[0]) / len;
       wake.dz = (fwd[2] - stern[2]) / len;
       // The title's calm ship (no hole) steams on at full speed.
-      wake.amount =
-        s.openings.length === 0
-          ? 1
-          : Math.min(1, speed / spec.headway.startMs) * (stern[1] > -4 ? 1 : 0);
+      wake.amount = steaming
+        ? 1
+        : Math.min(1, speed / spec.headway.startMs) * (stern[1] > -4 ? 1 : 0);
       wake.length = Math.max(
-        s.openings.length === 0 ? 900 : 0,
+        steaming ? 900 : 0,
         Math.min(900, Math.hypot(now.x - start.x, now.y - start.y))
       );
     } else wake.amount = 0;

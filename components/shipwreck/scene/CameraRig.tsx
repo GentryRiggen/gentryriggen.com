@@ -360,6 +360,7 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       controls.enabled = true;
       controls.update();
     } else {
+      const hole = torpedoHole(p.openings);
       const ctx: ShotContext = {
         t: p.t,
         wall: state.clock.elapsedTime,
@@ -367,7 +368,12 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
         breakX: p.track?.breakX ?? null,
         seaDepthM: SEA_DEPTH,
         ship: spec.id,
-        hitX: torpedoHole(p.openings)?.x,
+        hitX: hole?.x,
+        // Where it struck: her first frame (no allocation).
+        hitAt:
+          hole && p.track && p.track.frames.length > 0
+            ? shipThree(p.track.frames[0].bodies[0], [hole.x, -13.4, 9])
+            : undefined,
       };
       let view: View;
       let cut = false;
