@@ -258,6 +258,79 @@ const VOICES: Record<Cue, Voice> = {
       attack: 1,
     });
   },
+  // Heard from the water around her: a low, muffled thud, no crack.
+  torpedo(e, t, l) {
+    tone(e, {
+      type: "sine",
+      start: t,
+      duration: 1.1,
+      freq: 58,
+      freqEnd: 28,
+      gain: 0.1 * l,
+      attack: 0.03,
+    });
+    noise(e, {
+      buffer: e.brown,
+      start: t,
+      duration: 1.6,
+      filter: "lowpass",
+      freq: 90,
+      gain: 0.09 * l,
+      attack: 0.02,
+    });
+  },
+  // The second explosion: deeper and longer, then a settling rumble.
+  boom(e, t, l) {
+    tone(e, {
+      type: "sine",
+      start: t,
+      duration: 2.6,
+      freq: 44,
+      freqEnd: 22,
+      gain: 0.1 * l,
+      attack: 0.05,
+    });
+    noise(e, {
+      buffer: e.brown,
+      start: t,
+      duration: 4.5,
+      filter: "lowpass",
+      freq: 100,
+      freqEnd: 60,
+      gain: 0.1 * l,
+      attack: 0.06,
+    });
+    noise(e, {
+      buffer: e.white,
+      start: t + 0.1,
+      duration: 3,
+      filter: "lowpass",
+      freq: 260,
+      freqEnd: 120,
+      gain: 0.05 * l,
+      attack: 0.2,
+      chop: 0.06,
+    });
+  },
+  // A gull, far off: a thin whistle that rises, falls and fades. A bird
+  // on the wind, not a voice.
+  gull(e, t, l) {
+    for (const [k, f] of [
+      [0, 1500],
+      [0.45, 1750],
+    ] as const) {
+      tone(e, {
+        type: "sine",
+        start: t + k,
+        duration: 0.5,
+        freq: f,
+        freqEnd: f * 0.75,
+        gain: 0.012 * l,
+        attack: 0.12,
+        filter: { type: "bandpass", freq: 1700, q: 3 },
+      });
+    }
+  },
   thud(e, t, l) {
     tone(e, {
       type: "sine",

@@ -3,6 +3,8 @@ import type { SimFrame } from "@/lib/shipwreck/sim/track";
 import {
   CUE_GAP_S,
   EVENT_CUES,
+  LUSITANIA_EVENT_CUES,
+  eventCuesFor,
   createCueScheduler,
   frameNear,
   type Cue,
@@ -225,5 +227,77 @@ describe("frameNear", () => {
     expect(frameNear(frames, 12)?.t).toBe(20);
     expect(frameNear(frames, -5)?.t).toBe(0);
     expect(frameNear([], 1)).toBeNull();
+  });
+});
+
+describe("the afternoon (Lusitania)", () => {
+  it("leaves the Titanic's mapping exactly as it was", () => {
+    expect(eventCuesFor("titanic")).toBe(EVENT_CUES);
+    expect(EVENT_CUES).toEqual({
+      collision: "scrape",
+      rocket: "rocket",
+      "boat-lowered": "davit",
+      "last-boat": "davit",
+      "forecastle-under": "rush",
+      "bridge-under": "rush",
+      "funnel-falls": "funnel",
+      "lights-out": "powerDown",
+      breakup: "breakup",
+      "bow-under": "plunge",
+      "stern-under": "plunge",
+      "bow-lands": "thud",
+      "stern-lands": "thud",
+    });
+  });
+
+  it("gives her a muffled torpedo thud, a deeper second explosion, no rocket", () => {
+    const m = eventCuesFor("lusitania");
+    expect(m).toBe(LUSITANIA_EVENT_CUES);
+    expect(m.collision).toBe("torpedo");
+    expect(m.explosion).toBe("boom");
+    expect(m.rocket).toBeUndefined();
+    expect(Object.values(m)).not.toContain("scrape");
+    expect(m["funnel-falls"]).toBe("funnel");
+    expect(m["boat-lowered"]).toBe("davit");
+    expect(m["stern-under"]).toBe("plunge");
+    expect(m["lights-out"]).toBe("powerDown");
+  });
+
+  it("sounds the torpedo, then the second explosion, for her", () => {
+    const played: Cue[] = [];
+    const s = createCueScheduler((c) => played.push(c));
+    const evs = [ev(0, "collision"), ev(8, "explosion"), ev(9, "rocket")];
+    const fr = [frame(0, 0)];
+    const at = (t: number, now: number) =>
+      s.update(evs, fr, input({ t, now, ship: "lusitania" }));
+    at(0, 100);
+    at(0.5, 100.5);
+    at(8.5, 110);
+    at(9.5, 111);
+    expect(played.filter((c) => c !== "gull")).toEqual(["torpedo", "boom"]);
+  });
+
+  it("has distant gulls above water, sparse, never under water", () => {
+    const count = (underwater: boolean, ship: "titanic" | "lusitania") => {
+      const played: Cue[] = [];
+      const s = createCueScheduler((c) => played.push(c));
+      const none: SimEvent[] = [];
+      for (let now = 100; now < 200; now += 0.5)
+        s.update(none, [frame(0, 0)], input({ now, underwater, ship }));
+      return played.filter((c) => c === "gull").length;
+    };
+    const n = count(false, "lusitania");
+    expect(n).toBeGreaterThan(3);
+    expect(n).toBeLessThan(15);
+    expect(count(true, "lusitania")).toBe(0);
+    expect(count(false, "titanic")).toBe(0);
+  });
+
+  it("exposes the ship on the held state", () => {
+    const s = createCueScheduler(() => {});
+    s.update([], [frame(0, 0)], input({ ship: "lusitania" }));
+    expect(s.bed.ship).toBe("lusitania");
+    s.update([], [frame(0, 0)], input({}));
+    expect(s.bed.ship).toBe("titanic");
   });
 });
