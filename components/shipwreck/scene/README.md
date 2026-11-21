@@ -1,30 +1,35 @@
 # Shipwreck scene
 
-The night of 14–15 April 1912 in three.js: a moonless sky, a glassy sea,
-the Titanic posed from the sim's track every frame, the effects of the
-night, the cameras, the X-ray cutaway and the place pins. Everything moves
+Each ship's last hours in three.js: the Titanic's night of 14–15 April 1912
+(a moonless sky, a glassy sea) and the Lusitania's afternoon of 7 May 1915
+(sun, haze, the Cork coast, 93 m of green water), the ship posed from the
+sim's track every frame, the effects, the cameras, the X-ray cutaway and
+the place pins. `settings.ts` picks the scene per ship. Everything moves
 from one **playback store** (`lib/shipwreck/playback.ts`); the DOM UI
 (Task 5) reads and drives the same store.
 
 ## Files
 
-| File              | What                                                                                                                                      |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `NightScene.tsx`  | The `<Canvas>`: renderer, quality tiers (PerformanceMonitor), bloom + ACES tone mapping, the frame driver, `RenderInfoProbe`.             |
-| `ShipRig.tsx`     | Samples the track at `t`, poses the model; builds the whole ship and the two halves up front, warms the halves, swaps them at the break.  |
-| `Sky.tsx`         | Star dome (6,000 stars, twinkle, Milky Way, horizon glow). Follows the camera.                                                            |
-| `Sea.tsx`         | One quad: procedural ripples, Fresnel, planar reflection at the high tier (mirrored camera, half-res target, mip blur), seen from below.  |
-| `Environment.tsx` | Starlight (hemisphere, rocket flash), night fog, under-water fog by depth, the mud floor, the submersible lamp.                           |
-| `Effects.tsx`     | Lifeboats (swing out, lower, row away, lanterns), steam/smoke, rockets, funnels falling, break sparks, white water. One `Points` draw.    |
-| `XRay.tsx`        | Ghost hull, compartment water cut at the sim's level, bulkheads, red openings, place blockouts and the pins.                              |
-| `PlacePins.tsx`   | The place pins: DOM buttons over the canvas, shown in X-ray or at a place (XRay moves them each frame and writes the live water depth).   |
-| `Iceberg.tsx`     | The procedural iceberg, off the starboard bow at the collision, drifting astern.                                                          |
-| `xrayGeometry.ts` | The water lofts, bulkhead lines, opening quads and the four places' blockouts.                                                            |
-| `CameraRig.tsx`   | The free camera (OrbitControls, double-tap fly-to, rides with the ship, bounds) and the presets/cinematic shots.                          |
-| `cameraMath.ts`   | Pure camera maths: `shipToThree`, `dampSpring`, `pushOutOfHull`, `clampAboveFloor`, `nearFor`, `cinematicShot`, `shotView`, preset views. |
-| `runtime.ts`      | The per-frame values the scene's parts share (sampled frame, visible parts, flash).                                                       |
-| `sceneHooks.ts`   | The `window.__shipwreck` test hooks for a store.                                                                                          |
-| `SceneCheck.tsx`  | `/shipwreck?scene` (dev and e2e builds only): the real night with no UI. `&quality=high\|medium\|low` pins a tier.                        |
+| File              | What                                                                                                                                                                                                                                                                                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `settings.ts`     | `SCENE_SETTINGS` per ship (time of day, sun, fog, under-water colour, coast, iceberg; the Titanic's are 1.0's constants), `sunPosition` (NOAA), `sunDirection`, `LUSITANIA_HIT` (place, time, heading).                                                                                                                                                               |
+| `Coast.tsx`       | The south Cork coast from Galley Head to Ballycotton from real coordinates, the Old Head and its lighthouse (heights ×2.5). One draw.                                                                                                                                                                                                                                 |
+| `Torpedo.tsx`     | The torpedo's bubble track (square to her course, from 700 m out, bubbles 1.6 s behind the torpedo, fading over 150 s). One draw.                                                                                                                                                                                                                                     |
+| `NightScene.tsx`  | The `<Canvas>`: renderer, quality tiers (PerformanceMonitor), bloom + ACES tone mapping, the frame driver, `RenderInfoProbe`.                                                                                                                                                                                                                                         |
+| `ShipRig.tsx`     | Samples the track at `t`, poses the model; builds the whole ship and the two halves up front, warms the halves, swaps them at the break.                                                                                                                                                                                                                              |
+| `Sky.tsx`         | Star dome (6,000 stars, twinkle, Milky Way, horizon glow); `DaySky`: blue to haze, the sun's glow and disc. Follows the camera.                                                                                                                                                                                                                                       |
+| `Sea.tsx`         | One quad: procedural ripples, Fresnel, planar reflection at the high tier (mirrored camera, half-res target, mip blur), seen from below. By day (`DAY` define): sun glitter, lit water, Snell's window, her wake (centre and Kelvin arms, from `runtime.wake`).                                                                                                       |
+| `Environment.tsx` | Night: starlight, night fog, under-water fog by depth, the mud floor, the lamp. Afternoon: the sun (directional) and sky light, haze, green water dimming with depth, light shafts, sand and shingle with caustics.                                                                                                                                                   |
+| `Effects.tsx`     | Lifeboats (swing out, lower, row away, lanterns), steam/smoke, rockets, funnels falling, break sparks, white water. One `Points` draw. By day a second, blended `Points`: smoke from four funnels (thinning with her steam), steam, the hit's water column and the second explosion; boats hang plumb from their falls (starboard far out, port in against her side). |
+| `XRay.tsx`        | Ghost hull, compartment water cut at the sim's level, bulkheads, red openings, place blockouts and the pins.                                                                                                                                                                                                                                                          |
+| `PlacePins.tsx`   | The place pins: DOM buttons over the canvas, shown in X-ray or at a place (XRay moves them each frame and writes the live water depth).                                                                                                                                                                                                                               |
+| `Iceberg.tsx`     | The procedural iceberg, off the starboard bow at the collision, drifting astern.                                                                                                                                                                                                                                                                                      |
+| `xrayGeometry.ts` | The water lofts, bulkhead lines, opening quads and the four places' blockouts.                                                                                                                                                                                                                                                                                        |
+| `CameraRig.tsx`   | The free camera (OrbitControls, double-tap fly-to, rides with the ship, bounds) and the presets/cinematic shots.                                                                                                                                                                                                                                                      |
+| `cameraMath.ts`   | Pure camera maths: `shipToThree`, `dampSpring`, `pushOutOfHull`, `clampAboveFloor`, `nearFor`, `cinematicShot`, `shotView`, preset views.                                                                                                                                                                                                                             |
+| `runtime.ts`      | The per-frame values the scene's parts share (sampled frame, visible parts, flash).                                                                                                                                                                                                                                                                                   |
+| `sceneHooks.ts`   | The `window.__shipwreck` test hooks for a store.                                                                                                                                                                                                                                                                                                                      |
+| `SceneCheck.tsx`  | `/shipwreck?scene` (dev and e2e builds only): the real night with no UI. `&quality=high\|medium\|low` pins a tier.                                                                                                                                                                                                                                                    |
 
 Frame loop order (R3F priorities): driver −3 (pump the runner, advance `t`),
 ship rig −2, effects −1.5, X-ray −0.9, environment −0.8, sky −0.7, camera −1
@@ -118,6 +123,20 @@ shot framed for landscape still fits the ship.
   establishing, along the hull, the lifeboat view from the first rocket,
   wide starboard after the last boat, the break, the plunge from the boats,
   follow the bow, the wreck. Critically damped between shots.
+  The Lusitania's (`cinematicShot(track, t, "lusitania", hit)`): `afternoon`
+  (no hole: the title), `hit` (0–40 s, low off the starboard bow), `list`,
+  `boats` / `port-boats`, `bow-down`, `grounded` then `grounded-below` (bow
+  on the floor, stern up), `on-floor`. Her shots stand at `levelToThree`
+  points (her heading, not her list), so a list never tips them under.
+  The cinematic camera plays her hit at ×1 for its first 20 s
+  (`inHitWindow`). Her boat camera is off the starboard quarter (her boats
+  got away from that side); bridge and stern views are hers.
+- **Bounds per ship**: `hullBoxesFor(ship)`; `keepClear` pushes the free
+  camera out of the boxes through a face that leaves it above the floor (a
+  wreck on her side has a face on the floor).
+- **Her wreck** is drawn seated on the floor (`seatOnFloor`, display only):
+  the sim's rest rule turns her over about her keel at the landing depth,
+  which leaves her side about 20 m into the floor.
 
 ## Performance (see the task 4 report for numbers)
 
@@ -129,3 +148,7 @@ shot framed for landscape still fits the ship.
 - Hidden models (whole after the break, halves before it) cost no draws.
 - X-ray adds about 5–10 draws (water, lines, gashes, blockouts).
 - DPR: high 2, medium 1.5, low 1 (capped by the device).
+- The afternoon adds about 3–5 draws (day sky instead of stars, coast,
+  torpedo track, day particles; shafts and floor only under water). No
+  shadow maps (they would pass the ship again). Bloom threshold 1.6 by day
+  so sunlit paint does not glow. Her lights and lamps run at 2.5 %.

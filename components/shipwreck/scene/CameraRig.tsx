@@ -399,7 +399,11 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       // for landscape still fits the ship across.
       // (Across only: the height is the shot's, so a camera on the water
       // stays on the water.)
-      const back = portraitPullBack(cam.aspect);
+      // (Not so far in her green water, where 200 m is lost in the murk.)
+      const back =
+        spec.id === "lusitania" && s.pos[1] < 0
+          ? Math.min(1.2, portraitPullBack(cam.aspect))
+          : portraitPullBack(cam.aspect);
       camera.position.set(
         s.tgt[0] + (s.pos[0] - s.tgt[0]) * back,
         s.pos[1],

@@ -54,5 +54,17 @@
   "shipwreck-underwater": {
     "calls": 39,
     "triangles": 91564
+  },
+  "shipwreck-lusitania-hit": {
+    "calls": 78,
+    "triangles": 300919
+  },
+  "shipwreck-lusitania-list": {
+    "calls": 72,
+    "triangles": 299411
+  },
+  "shipwreck-lusitania-grounded": {
+    "calls": 65,
+    "triangles": 297915
   }
 }

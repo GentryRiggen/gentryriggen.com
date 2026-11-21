@@ -496,9 +496,9 @@ function lusitaniaUnderwater(ctx: ShotContext): View {
   const floor = -ctx.seaDepthM;
   const tgt = shipToThree(b, [10, 4, 12]);
   tgt[1] = Math.min(-6, Math.max(tgt[1], floor + 6));
-  // Swinging slowly to and fro off her port side, which (on her
-  // starboard side on the floor) shows her decks.
-  const a = -Math.PI / 2 - 0.35 + Math.sin(ctx.wall * 0.03) * 0.6;
+  // Swinging slowly to and fro off her starboard side, where her decks
+  // face once she lies on that side (a starboard list turns them so).
+  const a = Math.PI / 2 + 0.35 + Math.sin(ctx.wall * 0.03) * 0.6;
   const r = 115;
   return {
     pos: [
