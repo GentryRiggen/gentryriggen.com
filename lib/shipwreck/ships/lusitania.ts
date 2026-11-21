@@ -406,8 +406,9 @@ const COMPARTMENTS: Compartment[] = [
 ];
 
 /**
- * The navigating bridge, 190 ft from the bow: the forward end of the long
- * house under the boat deck.
+ * The navigating bridge, 190 ft from the forward perpendicular: the forward
+ * end of the long house under the boat deck. An assumption read off her
+ * profile (no source found gives it; README).
  */
 const BRIDGE_X = round(HALF_LBP - 190 * FT, 0.1);
 /** The second explosion, a few seconds after the hit (shown seconds). */

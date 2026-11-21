@@ -12,7 +12,15 @@ export {
 } from "./lusitania";
 
 /** Every ship the game knows, in the order the title screen lists them. */
-export const SHIP_IDS = ["titanic", "lusitania"] as const;
+export const SHIP_IDS = [
+  "titanic",
+  "lusitania",
+] as const satisfies readonly ShipId[];
+/** Every ShipId is in SHIP_IDS: this fails to compile if one is missing. */
+const ALL_SHIP_IDS: [Exclude<ShipId, (typeof SHIP_IDS)[number]>] extends [never]
+  ? true
+  : never = true;
+void ALL_SHIP_IDS;
 
 /** Every ship the game knows, by id. */
 export const SHIPS: Record<ShipId, ShipSpec> = { titanic, lusitania };

@@ -133,10 +133,13 @@ export function whatIfOpenings(
  * real hit is read relative to its own compartment (the one beside the
  * first side bunker it opened): each opening keeps its area, heights and
  * time and goes as many compartments forward or aft of the chosen one as
- * it was of the real one, into that compartment's starboard side bunker if
- * it was in a bunker and there is one there, else into the compartment
- * itself. So the real compartment gives the real afternoon, and a hit in a
- * boiler room always opens its starboard bunker and the room behind it.
+ * it was of the real one. There it goes into the starboard side bunker, if
+ * that compartment has one and the opening was in a bunker or is the
+ * torpedo's own hole in the side shell (t = 0: it cannot reach a room
+ * behind a bunker without opening the bunker); else into the compartment
+ * itself (the second explosion, inside). So the real compartment gives the
+ * real afternoon, and a hit in a boiler room always opens its starboard
+ * bunker and the room behind it.
  */
 function torpedoOpenings(
   spec: ShipSpec,
@@ -186,7 +189,8 @@ function torpedoOpenings(
       if (k < 0 || k >= spots.length) continue;
       const main = byId.get(spots[k]) as Compartment;
       const inWing = byId.get(o.compartmentId)?.span?.side === "starboard";
-      const into = (inWing && wingOf(main)) || main;
+      const shell = (o.t ?? 0) <= 0;
+      const into = ((inWing || shell) && wingOf(main)) || main;
       const x = min(into.toX - 0.5, max(into.fromX + 0.5, o.x + shift));
       out.push({ ...o, compartmentId: into.id, x, side: "starboard" });
     }

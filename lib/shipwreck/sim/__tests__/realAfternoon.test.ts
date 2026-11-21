@@ -136,6 +136,30 @@ describe("What if? the torpedo elsewhere, portholes open or shut", () => {
     expect(whatIfOpenings(lusitania, ["br1"])).toEqual(lusitania.realNight);
   });
 
+  it("the torpedo's own hole never skips a side bunker", () => {
+    // At t = 0 the hole is in the side shell: where the space it lands in
+    // has a starboard bunker, the hole is in the bunker, not the room.
+    const comps = lusitania.compartments;
+    for (const id of whatIfSpots(lusitania))
+      for (const o of whatIfOpenings(lusitania, [id])) {
+        if ((o.t ?? 0) > 0) continue;
+        const c = comps.find((k) => k.id === o.compartmentId)!;
+        const bunker = comps.find(
+          (k) =>
+            k.span?.side === "starboard" &&
+            k.fromX < c.toX - 1e-6 &&
+            k.toX > c.fromX + 1e-6
+        );
+        if (bunker) expect(o.compartmentId).toBe(bunker.id);
+      }
+    // A hit at No. 2: the hole that was the transverse bunker's is now in
+    // No. 1's starboard bunker (the space forward of No. 2).
+    const br2 = whatIfOpenings(lusitania, ["br2"]);
+    expect(
+      br2.filter((o) => (o.t ?? 0) === 0).map((o) => o.compartmentId)
+    ).toEqual(["br1-stbd", "br2-stbd"]);
+  });
+
   it("a hit at a boiler room opens its starboard bunker and the room", () => {
     for (const n of [1, 2, 3, 4]) {
       const ids = whatIfOpenings(lusitania, [`br${n}`]).map(
@@ -154,7 +178,7 @@ describe("What if? the torpedo elsewhere, portholes open or shut", () => {
   });
 
   it.each(whatIfSpots(lusitania))(
-    "torpedo at %s: finite, and the run ends by 6:00 AM",
+    "torpedo at %s: finite, and the run ends by END_T (8:30 PM)",
     (id) => {
       const openings = whatIfOpenings(lusitania, [id]);
       expect(openings.length).toBeGreaterThan(0);

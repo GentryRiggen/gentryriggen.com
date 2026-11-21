@@ -201,7 +201,8 @@ landing turns her no further in roll. No angle is scripted: the list is
 whatever the physics brought her down with. The Titanic has no flag, so
 her rests are 1.0's. Terminal speeds come out about
 13 m/s (bow) and 10 m/s (stern). The run ends when every part rests, or at
-6:00 AM (`t = 22800`) if any part still floats. Each floating body freezes
+`END_T` (`t = 22800`, 6 h 20 min after the first event: 6:00 AM for the
+Titanic, 8:30 PM for the Lusitania) if any part still floats. Each floating body freezes
 once it has stopped moving and taking water for 5 minutes (after a break,
 each half on its own; for a torpedo ship the water also counts as still
 when its net flow averaged over about `STEADY_AVG_S`, 2 minutes, is under
@@ -210,7 +211,7 @@ in a slow cycle of tiny steps around her level, which never lets the
 instant value settle. An iceberg ship keeps the 1.0 test exactly: on it,
 boiler room 5's What-if never settles because of its pump, and 1.0 holds
 it that way); when every part is frozen or on the floor the run
-logs `floating-steady` and holds its pose to 6:00 AM at one frame a
+logs `floating-steady` and holds its pose to `END_T` at one frame a
 second.
 
 **Events.** `forecastle-under`: the deck of the foremost superstructure box
@@ -282,9 +283,12 @@ collision. Scripted events fire only while she is afloat and whole;
   bunkers). `whatIfOpenings` for a torpedo ship moves the real hit: each
   real opening keeps its area, heights and time and goes as many spaces
   forward or aft of the chosen one as it was of the real one (No. 1 boiler
-  room, the room beside the first bunker it opened), into that space's
-  starboard bunker if it was in a bunker and there is one, else into the
-  space; openings that would fall off either end are dropped. So
+  room, the room beside the first bunker it opened). There it goes into the
+  space's starboard bunker, if it has one and the opening was in a bunker
+  or is the torpedo's own hole in the shell (t = 0: it cannot reach the
+  room behind a bunker without opening it); else into the space (the
+  second explosion, inside). Openings that would fall off either end are
+  dropped. So
   `whatIfOpenings(lusitania, ["br1"])` is her real afternoon, and a hit at
   any boiler room opens its starboard bunker and the room (ruling R1). An
   iceberg ship's What-if is exactly 1.0's.
@@ -395,7 +399,10 @@ depth 3 m). Where they disagree:
   estimate).
 - **Superstructure.** Coarse boxes: the poop and after house, the long
   house under the boat deck from x −62 m to the bridge (190 ft from the
-  bow, x 57.9 m), and the forecastle (95 ft); the forward well open between
+  forward perpendicular, x 57.9 m: an assumption read off her profile, no
+  source found gives it; the forward end of the house and the bridge front
+  in photographs, just ahead of the first funnel), and the forecastle
+  (95 ft, also from the profile); the forward well open between
   them. Funnels over the four boiler rooms, 23.5 m from their bases on the
   boat-deck casings to the top (estimated from her profile), all working.
 - **The real afternoon.** The torpedo (one hole across bulkhead D, into
@@ -468,17 +475,17 @@ the boats. Tuned against the history (list about 15° within minutes, up to
 about 25°; down by the head; the bow on the floor with the stern up; gone
 in 18 minutes; at rest on her starboard side), all other things fixed:
 
-| Parameter                | Value                                  | Why                                                                                                                                                                                                                             |
-| ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hit and second explosion | 8 + 6 m² at t = 0, 6 + 4 m² at t = 8 s | 24 m² in all, inside 10–30 m². With only No. 1's bunker and room open (12 + 6 m²) she lists at most 4.2° and floats: the list needs more than one starboard bunker ("three bunkers on one side").                               |
-| Coal doors               | 0.1 m² per side bunker                 | Jammed open with coal. At 1 m² (doors wide open) the port bunkers fill through the rooms: 11° at 2:15 and at most 16°, under the survivors' 15° within minutes.                                                                 |
-| Side bunker permeability | 0.9                                    | Nearly empty bunkers (Ballard). The transverse bunker 0.6.                                                                                                                                                                      |
-| KG (GM)                  | 9.45 m (1.09 m)                        | GM 0.6 m: 22° at once and 36° at the plunge (over the 25° of history); 1.24 m: 15° and 25° but over the 1.2 m that three flooded bunkers allow. 1.09 m: 16° at one minute, 18° at 2:15, at most 27°.                            |
-| Porthole open area       | 0.027 m²/m                             | Sets the time (after the hit): 0.008 → 38:18, 0.016 → 24:01, 0.020 → 20:59, 0.025 → 18:35, 0.027 → 17:52, 0.030 → 17:00 (rest 72–76° in every case). Shut, she floats at a 16° list: here the open ports sank her.              |
-| Girder                   | hog 5.0, sag 4.6 GN·m                  | At 4.0/3.7 GN·m she broke at 2:27:52 with the bow on the floor (peak 0.998); she did not break.                                                                                                                                 |
-| Headway half-life        | 300 s                                  | 18 knots carried about 2 nautical miles (3,680 m to 18 minutes).                                                                                                                                                                |
-| Rest                     | `wreckKeepsList`                       | Not tuned: no angle. She rolls onto her side as she goes under (67°–76° over this sweep) and keeps it. A first version held her with a sideways floor friction and laid her over to 75° by rule; both are gone (Task 1 review). |
-| Steady average           | 2 minutes                              | Not tuned to her timing, torpedo ships only: lets a big hole's slow exchange with the sea count as still (without it the What-ifs that float, such as hold 1, never log `floating-steady` and run to 6:00 AM).                  |
+| Parameter                | Value                                  | Why                                                                                                                                                                                                                                  |
+| ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Hit and second explosion | 8 + 6 m² at t = 0, 6 + 4 m² at t = 8 s | 24 m² in all, inside 10–30 m². With only No. 1's bunker and room open (12 + 6 m²) she lists at most 4.2° and floats: the list needs more than one starboard bunker ("three bunkers on one side").                                    |
+| Coal doors               | 0.1 m² per side bunker                 | Jammed open with coal. At 1 m² (doors wide open) the port bunkers fill through the rooms: 11° at 2:15 and at most 16°, under the survivors' 15° within minutes.                                                                      |
+| Side bunker permeability | 0.9                                    | Nearly empty bunkers (Ballard). The transverse bunker 0.6.                                                                                                                                                                           |
+| KG (GM)                  | 9.45 m (1.09 m)                        | GM 0.6 m: 22° at once and 36° at the plunge (over the 25° of history); 1.24 m: 15° and 25° but over the 1.2 m that three flooded bunkers allow. 1.09 m: 16° at one minute, 18° at 2:15, at most 27°.                                 |
+| Porthole open area       | 0.027 m²/m                             | Sets the time (after the hit): 0.008 → 38:18, 0.016 → 24:01, 0.020 → 20:59, 0.025 → 18:35, 0.027 → 17:52, 0.030 → 17:00 (rest 72–76° in every case). Shut, she floats at a 16° list: here the open ports sank her.                   |
+| Girder                   | hog 5.0, sag 4.6 GN·m                  | At 4.0/3.7 GN·m she broke at 2:27:52 with the bow on the floor (peak 0.998); she did not break.                                                                                                                                      |
+| Headway half-life        | 300 s                                  | 18 knots carried about 2 nautical miles (3,680 m to 18 minutes).                                                                                                                                                                     |
+| Rest                     | `wreckKeepsList`                       | Not tuned: no angle. She rolls onto her side as she goes under (67°–76° over this sweep) and keeps it. A first version held her with a sideways floor friction and laid her over to 75° by rule; both are gone (Task 1 review).      |
+| Steady average           | 2 minutes                              | Not tuned to her timing, torpedo ships only: lets a big hole's slow exchange with the sea count as still (without it the What-ifs that float, such as hold 1, never log `floating-steady` and run to `END_T`, 8:30 PM on her clock). |
 
 ## Pass criteria (enforced by `__tests__/`)
 
@@ -524,7 +531,7 @@ in 18 minutes; at rest on her starboard side), all other things fixed:
 - A hull held still on the floor while partly under can keep exchanging
   water between deeply submerged, nearly full cells (a 1.0 flooding
   behaviour: one fills to the brim, spills, refills). It then never logs
-  `floating-steady` and runs fast steps to 6:00 AM (about 25 s of compute
+  `floating-steady` and runs fast steps to `END_T` (about 25 s of compute
   for a 200 m box). A sinking hull is not affected, and no Lusitania
   What-if does it (each one floats steady or sinks).
 - The Lusitania's forecastle goes under at 2:21 PM; some accounts have it
@@ -533,6 +540,10 @@ in 18 minutes; at rest on her starboard side), all other things fixed:
   knots, the bow down and the holes forward) would have driven water in
   faster than the still-water orifice law, and the sim has no ram
   pressure.
+- The Lusitania's lights go out at 2:18 PM (4 m of water in her aftmost
+  engine space, the 1.0 dynamo rule); the power failed at about 2:14 PM.
+  Her steam and power failed as No. 1 boiler room flooded and steam
+  pressure fell, which the sim does not model.
 - The Lusitania's lower spaces under the bulkhead deck are whole
   compartments: water through an E-deck porthole goes straight into the
   compartment (or side bunker) under it, not onto E deck first.
