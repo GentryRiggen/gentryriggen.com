@@ -38,9 +38,10 @@ dive in, so the calls below are ours; he may revisit any of them.
 a source disagrees.)
 
 - Cunard, built by John Brown, Clydebank; maiden voyage 1907. LOA 787 ft
-  (239.9 m), LBP 760 ft (231.6 m), beam 87 ft 8 in (26.7 m), draught about
-  33–34 ft at sea. Four funnels, all working: Cunard red with black tops and
-  thin black bands. Black hull, white superstructure, red below the
+  (239.9 m), LBP 760 ft (231.6 m), beam 87 ft 8 in (26.7 m). Load draught about 33–34 ft; on the last
+  voyage, with much of her coal burnt, about 30 ft 8 in (9.35 m, 35,650 t:
+  derived in the sim README). Four funnels, all working (peacetime paint:
+  Cunard red with black tops and thin black bands). Black hull, white superstructure, red below the
   waterline. Four propellers, one rudder.
 - Subdivision: transverse watertight bulkheads plus **longitudinal coal
   bunkers along both sides of the boiler rooms** (built for Admiralty
