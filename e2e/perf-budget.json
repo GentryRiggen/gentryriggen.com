@@ -57,14 +57,14 @@
   },
   "shipwreck-lusitania-hit": {
     "calls": 78,
-    "triangles": 300919
+    "triangles": 299959
   },
   "shipwreck-lusitania-list": {
     "calls": 72,
-    "triangles": 299411
+    "triangles": 298451
   },
   "shipwreck-lusitania-grounded": {
     "calls": 65,
-    "triangles": 297915
+    "triangles": 296955
   }
 }
