@@ -18,6 +18,7 @@ import {
   ROLL_ZETA,
   VERTICAL_GYRATION,
 } from "./constants";
+import { STEADY_AVG_S } from "./events";
 import {
   type Cell,
   capSeaFlow,
@@ -131,6 +132,8 @@ export interface Body {
   /** Sea inflow, m³/s, and the net change of water aboard (after the pumps). */
   inflow: number;
   netFlow: number;
+  /** netFlow averaged over the last STEADY_AVG_S or so (Infinity: none yet). */
+  flowAvg: number;
   mode: BodyMode;
   /** Highest / lowest earth z of the body (hull and boxes). */
   top: number;
@@ -423,6 +426,9 @@ export function stepFloat(
   }
   b.inflow = inflow;
   b.netFlow = (after - before) / dt;
+  b.flowAvg = Number.isFinite(b.flowAvg)
+    ? b.flowAvg + (b.netFlow - b.flowAvg) * min(1, dt / STEADY_AVG_S)
+    : b.netFlow;
 
   // Forces and moments about G.
   const c = cos(b.pitch);
@@ -524,6 +530,7 @@ let fD = new Float64Array(64);
 let fK = new Float64Array(64);
 let fC = new Float64Array(64);
 let fCf = new Float64Array(64);
+let fCy = new Float64Array(64);
 let fR = new Float64Array(64 * 3);
 const fA = new Float64Array(16);
 const fRhs = new Float64Array(4);
@@ -537,6 +544,7 @@ function growFloor(n: number): void {
   fK = new Float64Array(m);
   fC = new Float64Array(m);
   fCf = new Float64Array(m);
+  fCy = new Float64Array(m);
   fR = new Float64Array(m * 3);
 }
 
@@ -642,6 +650,9 @@ function floorContact(
     const ux = q0[0] + rz * q0[2] + sp * ry * q0[3];
     const f0 = max(0, fK[i] * fD[i] - fC[i] * uz);
     fCf[i] = (FLOOR_FRICTION * f0) / max(FLOOR_SLIP_MS, abs(ux));
+    // Sideways: rolling drags the contact across the mud (earth y).
+    const uy = -(spp * rx + cpp * rz) * q0[3];
+    fCy[i] = (FLOOR_FRICTION * f0) / max(FLOOR_SLIP_MS, abs(uy));
   }
   const active = new Uint8Array(n).fill(1);
   for (let pass = 0; pass < 4; pass += 1) {
@@ -684,6 +695,9 @@ function floorContact(
       const jx = [1, 0, rz, sp * ry];
       for (let r = 0; r < 4; r += 1)
         for (let c = 0; c < 4; c += 1) fA[r * 4 + c] += kx * jx[r] * jx[c];
+      // Jy = (0, 0, 0, -(sin θ·rx + cos θ·rz)): roll only (no sway).
+      const jy = -(spp * rx + cpp * rz);
+      fA[15] += dt * fCy[i] * jy * jy;
     }
     if (!solve4(fA, fRhs, fQ)) return false;
     let dropped = false;

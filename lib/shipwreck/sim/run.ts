@@ -90,11 +90,25 @@ export interface SimOptions {
 const DEG = Math.PI / 180;
 const SETTLE_S = 300;
 
+/**
+ * The compartments a What-if offers: every one for an iceberg ship; for a
+ * torpedo ship the main spaces along her length (a hit at a boiler room
+ * also opens its starboard side bunker), aft to forward.
+ */
+export function whatIfSpots(spec: ShipSpec): string[] {
+  return spec.compartments
+    .filter(
+      (c) => spec.cause !== "torpedo" || !c.span || c.span.side === "centre"
+    )
+    .map((c) => c.id);
+}
+
 /** The openings of a What-if run: the real damage where there was some. */
 export function whatIfOpenings(
   spec: ShipSpec,
   compartmentIds: readonly string[]
 ): Opening[] {
+  if (spec.cause === "torpedo") return torpedoOpenings(spec, compartmentIds);
   const out: Opening[] = [];
   for (const id of compartmentIds) {
     const comp = spec.compartments.find((c) => c.id === id);
@@ -110,6 +124,72 @@ export function whatIfOpenings(
         x: (comp.fromX + comp.toX) / 2,
         side: "starboard",
       });
+  }
+  return out;
+}
+
+/**
+ * A torpedo What-if: the real hit moved to each chosen compartment. The
+ * real hit is read relative to its own compartment (the one beside the
+ * first side bunker it opened): each opening keeps its area, heights and
+ * time and goes as many compartments forward or aft of the chosen one as
+ * it was of the real one, into that compartment's starboard side bunker if
+ * it was in a bunker and there is one there, else into the compartment
+ * itself. So the real compartment gives the real afternoon, and a hit in a
+ * boiler room always opens its starboard bunker and the room behind it.
+ */
+function torpedoOpenings(
+  spec: ShipSpec,
+  compartmentIds: readonly string[]
+): Opening[] {
+  const comps = spec.compartments;
+  const spots = whatIfSpots(spec);
+  const byId = new Map(comps.map((c) => [c.id, c]));
+  const wingOf = (main: Compartment) =>
+    comps.find(
+      (c) =>
+        c.span?.side === "starboard" &&
+        c.fromX < main.toX - X_EPS &&
+        c.toX > main.fromX + X_EPS
+    );
+  /** The main compartment a compartment is part of (a bunker's room). */
+  const spotOf = (id: string): number => {
+    const c = byId.get(id);
+    if (!c) return -1;
+    if (!c.span || c.span.side === "centre") return spots.indexOf(id);
+    return spots.findIndex((m) => {
+      const k = byId.get(m) as Compartment;
+      return k.fromX < c.toX - X_EPS && k.toX > c.fromX + X_EPS;
+    });
+  };
+  const real = spec.realNight;
+  const firstWing =
+    real.find(
+      (o) =>
+        (o.t ?? 0) <= 0 && byId.get(o.compartmentId)?.span?.side === "starboard"
+    ) ?? real[0];
+  if (!firstWing) return [];
+  const anchor = spotOf(firstWing.compartmentId);
+  const anchorComp = byId.get(spots[anchor]) as Compartment;
+  const out: Opening[] = [];
+  for (const id of compartmentIds) {
+    const at = spots.indexOf(id);
+    if (at < 0) continue;
+    const shift =
+      ((byId.get(id) as Compartment).fromX +
+        (byId.get(id) as Compartment).toX -
+        anchorComp.fromX -
+        anchorComp.toX) /
+      2;
+    for (const o of real) {
+      const k = at + spotOf(o.compartmentId) - anchor;
+      if (k < 0 || k >= spots.length) continue;
+      const main = byId.get(spots[k]) as Compartment;
+      const inWing = byId.get(o.compartmentId)?.span?.side === "starboard";
+      const into = (inWing && wingOf(main)) || main;
+      const x = min(into.toX - 0.5, max(into.fromX + 0.5, o.x + shift));
+      out.push({ ...o, compartmentId: into.id, x, side: "starboard" });
+    }
   }
   return out;
 }
@@ -408,6 +488,7 @@ function makeBody(
     alpha: 0,
     inflow: 0,
     netFlow: 0,
+    flowAvg: Infinity,
     mode: "float",
     top: 0,
     bottom: 0,
@@ -1041,8 +1122,11 @@ function step(w: World): void {
   if (!w.steady && w.t > 1800) {
     for (const b of w.bodies) {
       if (b.mode !== "float" || b.frozen) continue;
+      // A big hole can trade water with the sea in a slow cycle of tiny
+      // steps around her level: the average then shows she is steady.
       const still =
-        abs(b.netFlow) < STEADY_INFLOW_M3S &&
+        (abs(b.netFlow) < STEADY_INFLOW_M3S ||
+          abs(b.flowAvg) < STEADY_INFLOW_M3S) &&
         abs(b.wp) < 1e-5 &&
         abs(b.wr) < 1e-5 &&
         abs(b.vz) < 1e-3;
