@@ -14,7 +14,9 @@ import {
   portraitPullBack,
   pushOutOfHull,
   shipToThree,
+  shipToThreeInto,
   shotView,
+  trackSpeedAt,
   underwaterView,
   type ShotContext,
   type ShotId,
@@ -296,3 +298,22 @@ function inShipFrame(
   const l = g.worldToLocal(new Vector3(w[0], w[1], w[2]));
   return [l.x, -l.z, l.y];
 }
+
+describe("no-allocation helpers", () => {
+  it("shipToThreeInto writes what shipToThree returns", () => {
+    const p = pose({ x: 5, pitch: 0.1, roll: 0.3, yaw: 0.2 });
+    const out: [number, number, number] = [0, 0, 0];
+    expect(shipToThreeInto(p, [40, -6, 18], out)).toBe(out);
+    expect(out).toEqual(shipToThree(p, [40, -6, 18]));
+  });
+
+  it("reads her speed off the frames", () => {
+    const frames = [0, 1, 2, 3, 4].map((t) => ({
+      t,
+      bodies: [pose({ x: t * 9 })],
+    }));
+    expect(trackSpeedAt(frames, 4, 2)).toBeCloseTo(9, 6);
+    expect(trackSpeedAt(frames, 0, 2)).toBe(0);
+    expect(trackSpeedAt([], 3)).toBe(0);
+  });
+});

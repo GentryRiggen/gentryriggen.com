@@ -22,7 +22,11 @@ import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
 import { shipToThree } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
 import type { SceneSettings } from "./settings";
-import { AfternoonEffects, type AfternoonFrame } from "./afternoonEffects";
+import {
+  AfternoonEffects,
+  DAY_PARTICLES,
+  type AfternoonFrame,
+} from "./afternoonEffects";
 
 /**
  * The night's events, all worked out from the shown time `t` (so seeking
@@ -74,17 +78,18 @@ const fragment = /* glsl */ `
  * Daylight particles (the afternoon): smoke, steam, spray, blended over
  * the scene (additive light cannot make dark coal smoke). One more draw.
  */
-const DAY_POOL = 1800;
+const DAY_POOL = DAY_PARTICLES.high.pool;
 const dayVertex = /* glsl */ `
   attribute vec4 aColor;
   attribute float aSize;
   uniform float uScale;
+  uniform float uMaxPx;
   varying vec4 vColor;
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
     vColor = aColor;
-    gl_PointSize = clamp(aSize * uScale / max(1.0, -mv.z), 1.5, 160.0);
+    gl_PointSize = clamp(aSize * uScale / max(1.0, -mv.z), 1.5, uMaxPx);
   }
 `;
 const dayFragment = /* glsl */ `
@@ -161,7 +166,10 @@ export default function Effects({
       transparent: true,
       depthWrite: false,
       blending: NormalBlending,
-      uniforms: { uScale: { value: 600 } },
+      uniforms: {
+        uScale: { value: 600 },
+        uMaxPx: { value: DAY_PARTICLES.high.maxPx },
+      },
     });
     const points = new Points(g, mat);
     points.frustumCulled = false;
@@ -364,6 +372,9 @@ export default function Effects({
       f.wakeDx = runtime.wake.dx;
       f.wakeDz = runtime.wake.dz;
       f.wakeAmount = runtime.wake.amount;
+      f.quality = s.quality;
+      // Point size capped per tier (framebuffer pixels, as the night's 96).
+      dayPts.mat.uniforms.uMaxPx.value = DAY_PARTICLES[s.quality].maxPx;
       dn = afternoon.update(f);
     }
     lastSnap.current = s.snapId;

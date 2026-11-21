@@ -1,6 +1,7 @@
 import { Matrix4, Quaternion, Vector3, type Group } from "three";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import { swungOutY } from "@/components/shipwreck/model/titanicRecipe";
+import type { QualityTier } from "@/lib/shipwreck/playback";
 import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { SimEvent } from "@/lib/shipwreck/sim/events";
 import { hullHalfBreadth, type HullModel } from "@/lib/shipwreck/sim/geometry";
@@ -37,6 +38,23 @@ const EXPLOSION_S = 40;
 /** Smoke eases to its new strength at this rate (1/s). */
 const SMOKE_RATE = 3;
 
+/**
+ * The afternoon's particles per quality tier: how many (a share of each
+ * effect's count, and a hard pool), and how big one may be on screen
+ * (framebuffer px, like the night's 96).
+ * Overlapping soft smoke is fill-rate bound, so the tiers an iPad runs at
+ * (touch iPads start at medium) draw fewer, smaller ones; the high tier
+ * keeps the full look.
+ */
+export const DAY_PARTICLES: Record<
+  QualityTier,
+  { share: number; pool: number; maxPx: number }
+> = {
+  high: { share: 1, pool: 1800, maxPx: 160 },
+  medium: { share: 0.55, pool: 1000, maxPx: 96 },
+  low: { share: 0.35, pool: 640, maxPx: 64 },
+};
+
 function hash(a: number, b = 0): number {
   const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
   return s - Math.floor(s);
@@ -61,6 +79,8 @@ export interface AfternoonFrame {
   wakeDx: number;
   wakeDz: number;
   wakeAmount: number;
+  /** The render tier (how many particles, see DAY_PARTICLES). */
+  quality: QualityTier;
 }
 
 interface HitPlace {
@@ -72,6 +92,9 @@ interface HitPlace {
 export class AfternoonEffects {
   /** Particles written this frame. */
   n = 0;
+  /** This frame's share of each effect's particles, and the pool. */
+  private share = 1;
+  private pool = 0;
   private readonly smoke = [1, 1, 1, 1];
   private readonly launchAt = new Map<number, Vector3>();
   private launchTrack: SimTrack | null = null;
@@ -110,6 +133,9 @@ export class AfternoonEffects {
   /** Draws this frame's afternoon; returns the particle count. */
   update(f: AfternoonFrame): number {
     this.n = 0;
+    const tier = DAY_PARTICLES[f.quality] ?? DAY_PARTICLES.high;
+    this.share = tier.share;
+    this.pool = Math.min(tier.pool, this.size.length);
     if (this.launchTrack !== f.track) {
       this.launchTrack = f.track;
       this.launchAt.clear();
@@ -132,7 +158,7 @@ export class AfternoonEffects {
     size: number
   ) {
     const n = this.n;
-    if (n * 4 >= this.col.length || a <= 0.004) return;
+    if (n >= this.pool || a <= 0.004) return;
     this.pos[n * 3] = x;
     this.pos[n * 3 + 1] = y;
     this.pos[n * 3 + 2] = z;
@@ -297,7 +323,7 @@ export class AfternoonEffects {
       const data = this.spec.funnels[i];
       if (!fg || !data) continue;
       const fallen = f.fell.has(i) && t >= (f.fell.get(i) ?? 0);
-      fg.updateMatrixWorld();
+      // (Its matrix is current: hangBoats updated the model this frame.)
       const top = this.v.set(-0.6, data.topZ - data.baseZ - 0.3, 0);
       fg.localToWorld(top);
       const alive = !fallen && top.y > 0.5 && !data.dummy;
@@ -306,7 +332,8 @@ export class AfternoonEffects {
       const strength = this.smoke[i];
       if (strength < 0.01) continue;
       const LIFE = 22;
-      for (let k = 0; k < 70; k += 1) {
+      const smokeN = Math.round(70 * this.share);
+      for (let k = 0; k < smokeN; k += 1) {
         const a = (((wall / LIFE + hash(k, i + 40)) % 1) + 1) % 1;
         const age = a * LIFE;
         const spread = 1.2 + age * 0.9;
@@ -329,7 +356,8 @@ export class AfternoonEffects {
       // Steam blowing off (after the second explosion), white.
       if (!hit || ex === undefined || t < ex || !alive) continue;
       const steam = Math.exp(-(t - ex) / 200);
-      for (let k = 0; k < 24 && steam > 0.02; k += 1) {
+      const steamN = Math.round(24 * this.share);
+      for (let k = 0; k < steamN && steam > 0.02; k += 1) {
         const a = (((wall / 6 + hash(k, i + 70)) % 1) + 1) % 1;
         const age = a * 6;
         this.emit(
@@ -406,7 +434,8 @@ export class AfternoonEffects {
     this.burst(at, age, 300, 9, 12, 4, 7, 0.3, 1.4);
     // Coal dust and steam boiling up out of her forward decks.
     const p = at.deck;
-    for (let k = 0; k < 190; k += 1) {
+    const cloudN = Math.round(190 * this.share);
+    for (let k = 0; k < cloudN; k += 1) {
       const a2 = age - hash(k, 81) * 3;
       if (a2 < 0) continue;
       const life = 22 + hash(k, 82) * 14;
@@ -459,7 +488,8 @@ export class AfternoonEffects {
   ) {
     if (age < 0 || age > COLUMN_S) return;
     const { h, ox, oz } = at;
-    for (let k = 0; k < count; k += 1) {
+    const sprayN = Math.round(count * this.share);
+    for (let k = 0; k < sprayN; k += 1) {
       const a = age - hash(k, 11) * 0.35;
       if (a < 0) continue;
       const vy = up0 + upVar * hash(k, 12);
@@ -482,7 +512,8 @@ export class AfternoonEffects {
       );
     }
     // The spray hanging and drifting after the column falls.
-    for (let k = 0; k < 110; k += 1) {
+    const mistN = Math.round(110 * this.share);
+    for (let k = 0; k < mistN; k += 1) {
       const a = age - 0.8 - hash(k, 17) * 1.5;
       if (a < 0) continue;
       const u = a / 18;

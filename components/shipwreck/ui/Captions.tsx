@@ -42,6 +42,13 @@ export default function Captions({ store }: CaptionsProps) {
 
   useEffect(() => {
     return store.subscribe((s, prev) => {
+      // Back before the hit (a new run, a replay, a scrub): the run-in.
+      if (s.t < 0 && !(prev.t < 0)) {
+        const ship = getShip(s.ship);
+        const run = runInCaption(ship);
+        if (run) setText(`${clockText(s.t, ship.clockStartS)} — ${run}`);
+        return;
+      }
       if (!s.track || !(s.t > prev.t)) return;
       const evs = eventsBetween(s.track, prev.t, s.t);
       for (let i = evs.length - 1; i >= 0; i -= 1) {

@@ -11,9 +11,18 @@ import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
-import { sampleTrack } from "@/lib/shipwreck/sim/track";
+import {
+  sampleTrack,
+  type BodyPose,
+  type SimFrame,
+} from "@/lib/shipwreck/sim/track";
 import { earthZ } from "@/lib/shipwreck/xray";
-import { shipToThree } from "./cameraMath";
+import {
+  shipToThree,
+  shipToThreeInto,
+  trackSpeedAt,
+  type V3,
+} from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
 import { SCENE_SETTINGS } from "./settings";
 
@@ -29,10 +38,13 @@ import { SCENE_SETTINGS } from "./settings";
 /** Warm-up frames for the split model (drawn under the whole ship). */
 const WARM_FRAMES = 3;
 /**
- * Real deck lights near the decks (≤ 4 lights in the scene): fore and aft,
- * a little over the boat deck (the Titanic's at 31 m).
+ * Real deck lights near the decks, fore and aft, a little over the boat
+ * deck (the Titanic's at 31 m): with the starlight and the submersible lamp,
+ * 4 lights at night. By day there are none (the sun outshines them), so the
+ * afternoon has 3: the sun, the sky light and the submersible lamp.
  */
 function lampsOf(spec: ShipSpec): [number, number, number][] {
+  if (SCENE_SETTINGS[spec.id].timeOfDay === "afternoon") return [];
   const boat = spec.decks.find((d) => d.name === "Boat")?.z ?? spec.depth;
   const z = Math.round((boat + 2.81) * 100) / 100;
   // The Lusitania's boat deck runs from 72 m forward to -63 m aft.
@@ -45,7 +57,7 @@ function lampsOf(spec: ShipSpec): [number, number, number][] {
 
 /**
  * By day her lights barely show (the sun outshines them; her portholes
- * read as dark glass): the panes and deck lamps run at this share.
+ * read as dark glass): the panes run at this share.
  */
 const DAY_LIGHTS = 0.025;
 
@@ -81,6 +93,19 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
   const lampPositions = useMemo(() => lampsOf(spec), [spec]);
   const lightShare =
     SCENE_SETTINGS[spec.id].timeOfDay === "afternoon" ? DAY_LIGHTS : 1;
+  // Scratch for her run-in frame and her wake (no allocation per frame).
+  const scratch = useMemo(
+    () => ({
+      frame: null as SimFrame | null,
+      body: null as BodyPose | null,
+      bodies: [] as BodyPose[],
+      stern: [0, 0, 0] as V3,
+      fwd: [0, 0, 0] as V3,
+      sternP: [0, 0, 0] as [number, number, number],
+      fwdP: [0, 0, 0] as [number, number, number],
+    }),
+    []
+  );
   const sternX = useMemo(
     () => Math.min(...spec.stations.map((st) => st.x)),
     [spec]
@@ -142,22 +167,22 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     if (!track || track.frames.length === 0) return;
     let frame = sampleTrack(track, s.t);
     // Before the hit (a torpedo's run-in) she steams on at her speed: the
-    // first frame, run back along her heading.
+    // first frame, run back along her heading (into scratch objects).
     if (s.t < 0 && spec.headway) {
       const b0 = frame.bodies[0];
       const d = spec.headway.startMs * s.t;
-      frame = {
-        ...frame,
-        t: s.t,
-        realT: s.t,
-        bodies: [
-          {
-            ...b0,
-            x: b0.x + Math.cos(b0.yaw) * d,
-            y: b0.y + Math.sin(b0.yaw) * d,
-          },
-        ],
-      };
+      const body = Object.assign(scratch.body ?? { ...b0 }, b0);
+      body.x = b0.x + Math.cos(b0.yaw) * d;
+      body.y = b0.y + Math.sin(b0.yaw) * d;
+      scratch.body = body;
+      scratch.bodies.length = 0;
+      scratch.bodies.push(body);
+      const f = Object.assign(scratch.frame ?? { ...frame }, frame);
+      f.t = s.t;
+      f.realT = s.t;
+      f.bodies = scratch.bodies;
+      scratch.frame = f;
+      frame = f;
     }
     runtime.frame = frame;
     const two = frame.bodies.some((b) => b.part !== "whole");
@@ -233,17 +258,16 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     const wake = runtime.wake;
     if (spec.headway && !runtime.broken) {
       const now = frame.bodies[0];
-      const before = sampleTrack(track, Math.max(0, s.t - 2)).bodies[0];
       const start = track.frames[0].bodies[0];
-      const dt = Math.min(2, s.t);
+      // Her speed off the track's own frames over the last 2 s.
       const speed =
-        dt > 0.2
-          ? Math.hypot(now.x - before.x, now.y - before.y) / dt
-          : spec.headway.startMs;
+        s.t > 2.2 ? trackSpeedAt(track.frames, s.t, 2) : spec.headway.startMs;
       // Before the hit she has been steaming all along.
       const steaming = s.openings.length === 0 || s.t < 0;
-      const stern = shipToThree(now, [sternX, 0, 0]);
-      const fwd = shipToThree(now, [sternX + 10, 0, 0]);
+      scratch.sternP[0] = sternX;
+      scratch.fwdP[0] = sternX + 10;
+      const stern = shipToThreeInto(now, scratch.sternP, scratch.stern);
+      const fwd = shipToThreeInto(now, scratch.fwdP, scratch.fwd);
       const len = Math.hypot(fwd[0] - stern[0], fwd[2] - stern[2]) || 1;
       wake.x = stern[0];
       wake.z = stern[2];

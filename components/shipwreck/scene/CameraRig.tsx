@@ -28,6 +28,7 @@ import {
   lifeboatView,
   nearFor,
   shipToThree as shipThree,
+  shipToThreeInto,
   portraitPullBack,
   shotView,
   underwaterView,
@@ -114,6 +115,13 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       typeof window !== "undefined" &&
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    []
+  );
+  const hitScratch = useMemo(
+    () => ({
+      p: [0, -13.4, 9] as [number, number, number],
+      out: [0, 0, 0] as V3,
+    }),
     []
   );
   const tmp = useMemo(
@@ -369,10 +377,14 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
         seaDepthM: SEA_DEPTH,
         ship: spec.id,
         hitX: hole?.x,
-        // Where it struck: her first frame (no allocation).
+        // Where it struck: her first frame, into scratch arrays.
         hitAt:
           hole && p.track && p.track.frames.length > 0
-            ? shipThree(p.track.frames[0].bodies[0], [hole.x, -13.4, 9])
+            ? shipToThreeInto(
+                p.track.frames[0].bodies[0],
+                setHole(hitScratch.p, hole.x),
+                hitScratch.out
+              )
             : undefined,
       };
       let view: View;
@@ -493,4 +505,13 @@ function sternView(ctx: ShotContext): View {
     pos: shipThree(b, [-130, 0, 26]),
     target: shipThree(b, [10, 0, 26]),
   };
+}
+
+/** A hole's ship-frame point (its x at her side, under the waterline). */
+function setHole(
+  p: [number, number, number],
+  x: number
+): [number, number, number] {
+  p[0] = x;
+  return p;
 }

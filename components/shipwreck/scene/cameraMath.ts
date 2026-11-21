@@ -12,6 +12,15 @@ export type V3 = [number, number, number];
 
 /** A ship-frame point under a sim pose, in three.js axes. */
 export function shipToThree(pose: BodyPose, p: readonly number[]): V3 {
+  return shipToThreeInto(pose, p, [0, 0, 0]);
+}
+
+/** As `shipToThree`, written into `out` (no allocation). */
+export function shipToThreeInto(
+  pose: BodyPose,
+  p: readonly number[],
+  out: V3
+): V3 {
   const [x, y, z] = p;
   const cy = Math.cos(pose.yaw);
   const sy = Math.sin(pose.yaw);
@@ -28,10 +37,45 @@ export function shipToThree(pose: BodyPose, p: readonly number[]): V3 {
   // Rz(yaw)
   const x3 = cy * x2 - sy * y1;
   const y3 = sy * x2 + cy * y1;
-  const ex = pose.x + x3;
-  const ey = pose.y + y3;
-  const ez = pose.z + z2;
-  return [ex, ez, -ey];
+  out[0] = pose.x + x3;
+  out[1] = pose.z + z2;
+  out[2] = -(pose.y + y3);
+  return out;
+}
+
+/**
+ * The first body's speed over the sea (m/s) between `t - span` and `t`,
+ * read off the track's frames (their last at or before each time), with
+ * no allocation. 0 when they are the same frame.
+ */
+export function trackSpeedAt(
+  frames: readonly { t: number; bodies: readonly BodyPose[] }[],
+  t: number,
+  span = 2
+): number {
+  const at = (time: number): number => {
+    let lo = 0;
+    let hi = frames.length - 1;
+    if (hi < 0 || time <= frames[0].t) return 0;
+    if (time >= frames[hi].t) return hi;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (frames[mid].t <= time) lo = mid;
+      else hi = mid;
+    }
+    return lo;
+  };
+  const i = at(t);
+  const j = at(t - span);
+  if (i === j) return 0;
+  const a = frames[i];
+  const b = frames[j];
+  const dt = a.t - b.t;
+  if (!(dt > 0)) return 0;
+  return (
+    Math.hypot(a.bodies[0].x - b.bodies[0].x, a.bodies[0].y - b.bodies[0].y) /
+    dt
+  );
 }
 
 /**
