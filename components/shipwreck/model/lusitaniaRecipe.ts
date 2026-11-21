@@ -37,8 +37,11 @@ import {
  * top of the hull), D (Upper), E (Main), F (Lower).
  *
  * Funnels and boats stand where the ship data puts them (`spec.funnels`,
- * `LUSITANIA_BOATS`); the bridge and the boat deck are laid out from the
- * first funnel, as on her plans, so they move with the data.
+ * `LUSITANIA_BOATS`) and every tier's ends are the data's superstructure
+ * boxes, so the model moves with the data. The few positions the data has
+ * no field for (the foremast, the mainmast's gap, the foredeck's
+ * fittings) are measured off her 1907 profile and plans from the stem or
+ * the forward perpendicular.
  */
 
 /**
@@ -53,15 +56,27 @@ const FT = 0.3048;
 /** Paint (sRGB), as `COLORS` in buildShip.ts (kept free of three.js here). */
 const WHITE = 0xe8e4d8;
 const ROOF = 0xb4b2aa;
-const MAST = 0x8f5f38;
+/**
+ * Her masts and derricks: buff (period practice for Cunard's masts; no
+ * source gives the shade: an assumption, README).
+ */
+const MAST = 0xa9835a;
+/**
+ * The cowls' mouths: dark red-brown lining (period practice was red lead
+ * or red inside cowls; no source for hers: an assumption, README).
+ */
+const VENT_LINING = 0x5a241c;
 const TO_RAD = Math.PI / 180;
 
 /** 7 May 1915 (README: "Her paint in May 1915"). */
 const WAR_PAINT: ShipPaint = {
   funnel: 0x2e2f32,
-  funnelTop: 0x161719,
+  // Painted over: the top and bands barely differ from the rest.
+  funnelTop: 0x2c2d30,
   sheerLine: 0xb8913f,
   name: "LUSITANIA",
+  mast: MAST,
+  ventLining: VENT_LINING,
 };
 /** 1907–1914: Cunard red, black tops and bands. */
 const CUNARD_PAINT: ShipPaint = {
@@ -69,13 +84,19 @@ const CUNARD_PAINT: ShipPaint = {
   funnelTop: 0x141416,
   sheerLine: null,
   name: "LUSITANIA",
+  mast: MAST,
+  ventLining: VENT_LINING,
 };
 
-/** The bridge front stands this far ahead of the first funnel (her plans). */
-const BRIDGE_AHEAD_OF_FUNNEL_1 = 24;
-/** The 2nd class house aft: from here to the gap with the mainmast. */
-const AFT_HOUSE_FROM = -104;
-const AFT_HOUSE_TO = -66.5;
+/**
+ * The gap between the boat deck and the 2nd class house, the mainmast in
+ * it (her boat deck plan). The data's boxes run the two together.
+ */
+const MAST_GAP = 1.2;
+/** The foremast's foot, 100 ft abaft the forward perpendicular (profile). */
+const FOREMAST_FROM_FP = 100 * FT;
+/** Its crow's nest, 42 ft over the foredeck (profile). */
+const CROWS_NEST_UP = 42 * FT;
 const HOUSE_INSET = 3.6;
 const HOUSE_H = 2.6;
 
@@ -108,13 +129,24 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
   const sides: (1 | -1)[] = [1, -1];
 
   const fx = spec.funnels.map((f) => f.x);
+  // The data's boxes: [0] the 2nd class house, [2] the long house under
+  // the boat deck (its front is the bridge's).
+  const [aftBox, , longBox] = spec.superstructure;
   /** The bridge front (the rounded front of the boat deck). */
-  const F = fx[0] + BRIDGE_AHEAD_OF_FUNNEL_1;
-  /** The boat deck's after end (the ship data's). */
-  const A = spec.superstructure[2]?.fromX ?? -62;
-  const X0 = AFT_HOUSE_FROM;
-  const X1 = AFT_HOUSE_TO;
+  const F = longBox.toX;
+  /** The boat deck's after end. */
+  const A = longBox.fromX;
+  /** The 2nd class house, its forward end short of the mainmast's gap. */
+  const X0 = aftBox.fromX;
+  const X1 = Math.min(aftBox.toX, A) - MAST_GAP;
   const mainX = (A + X1) / 2;
+  /** The stem head and the forward perpendicular. */
+  const stem = hull.xMax;
+  const FP = spec.lbp / 2;
+  const foreX = FP - FOREMAST_FROM_FP;
+  /** The hawse pipes 28 ft, the name's middle 73 ft, from the stem. */
+  const anchorX = stem - 28 * FT;
+  const nameX = stem - 73 * FT;
 
   const layout: ShipLayout = {
     sternX: hull.xMin,
@@ -406,19 +438,20 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
   }));
 
   // -------------------------------------------------------------------------
-  // Masts: the foremast on the foredeck (crow's nest halfway up), the
-  // mainmast in the gap between the boat deck and the 2nd class house;
-  // aerials 165 ft over the water (her plans), raked like the funnels.
+  // Masts: the foremast on the foredeck 100 ft abaft the forward
+  // perpendicular, its crow's nest 42 ft up (her profile); the mainmast in
+  // the gap between the boat deck and the 2nd class house; aerials 165 ft
+  // over the water (her plans), raked like the funnels.
   const masts: MastRecipe[] = [
     {
       id: "fore",
-      x: 83,
-      baseZ: B(83),
+      x: foreX,
+      baseZ: B(foreX),
       topZ: 60,
       r0: 0.55,
       r1: 0.17,
       rake: 7.5 * TO_RAD,
-      crowsNest: { z: 38, r: 0.95, h: 1.6 },
+      crowsNest: { z: B(foreX) + CROWS_NEST_UP, r: 0.95, h: 1.6 },
     },
     {
       id: "main",
@@ -442,7 +475,7 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
   // collapsibles on the after house's deck, two rows a side.
   const W = { length: 30 * FT, beam: 9 * FT, depth: 4 * FT };
   const K = { length: 27 * FT, beam: 8 * FT, depth: 2.5 * FT };
-  const KAft = { length: 25 * FT, beam: 8 * FT, depth: 2.5 * FT };
+  const KAft = { length: 23 * FT, beam: 8 * FT, depth: 2.5 * FT };
   const chock = 0.25;
   const boats: BoatRecipe[] = LUSITANIA_BOATS.map((b) => {
     const s = b.side === "port" ? 1 : -1;
@@ -623,7 +656,7 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
   // (spec.portholes), following the sheer from each row's middle.
   for (const s of sides)
     row(-118, 112, 1.45, 0.12, s > 0 ? 1 : 2, (x) => {
-      if (x > 104.5 && x < 111.5) return; // the anchors
+      if (Math.abs(x - anchorX) < 3.5) return; // the anchors
       hullPort(x, deckZ("D", x) + 1.3, s, dD);
     });
   (spec.portholes ?? []).forEach((r, ri) => {
@@ -639,8 +672,8 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
   // decks, clear of the name and the anchors.
   for (const s of sides)
     row(F + 1.2, 110, 1.5, 0.15, 20 + (s > 0 ? 0 : 1), (x) => {
-      if (x > 88.5 && x < 99.5) return;
-      if (x > 104.5) return;
+      if (Math.abs(x - nameX) < 5.5) return;
+      if (x > anchorX - 3.5) return;
       edgeLight("porthole", x, C(x) + 1.35, s, 0, 0.42, 0.42, dC);
     });
 
@@ -747,32 +780,48 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
   // drum-shaped ones beside the casings, more on the foredeck and aft.
   const vents: Placement[] = [];
   const drums: Placement[] = [];
-  const vent = (x: number, y: number, z: number, scale: number, aft = false) =>
-    vents.push({ p: [x, y, z], yaw: aft ? Math.PI : 0, scale });
-  fx.forEach((x) => {
+  /**
+   * A cowl, its mouth turned `turn` (0 forward, 1 aft, 0.5 outboard, 0.25
+   * forward and outboard…) on side `s`: trimmed to the wind, as in her
+   * photographs, not all square fore and aft.
+   */
+  const vent = (
+    x: number,
+    y: number,
+    z: number,
+    scale: number,
+    turn: number,
+    s: 1 | -1
+  ) => vents.push({ p: [x, y, z], yaw: s * turn * Math.PI, scale });
+  fx.forEach((x, i) => {
+    const odd = i % 2;
     for (const s of sides) {
-      vent(x + 6.4, s * 2.9, roofZ(x + 6.4), 1.6);
-      vent(x - 6.4, s * 2.9, roofZ(x - 6.4), 1.55, true);
-      vent(x + 1.6, s * 6.3, roofZ(x + 1.6), 1.3);
-      vent(x - 3.4, s * 7.2, roofZ(x - 3.4), 1.15, true);
+      vent(x + 6.4, s * 2.9, roofZ(x + 6.4), 1.6, 0, s);
+      vent(x - 6.4, s * 2.9, roofZ(x - 6.4), 1.55, 1, s);
+      vent(x + 1.6, s * 6.3, roofZ(x + 1.6), 1.3, odd ? 0.5 : 0.25, s);
+      vent(x - 3.4, s * 7.2, roofZ(x - 3.4), 1.15, odd ? 0.75 : 0.5, s);
       drums.push({ p: [x + 4.6, s * 7.3, roofZ(x + 4.6)], yaw: 0, scale: 1 });
     }
   });
   for (const s of sides) {
-    vent(F - 18, s * 7.4, roofZ(F - 18), 1.2);
-    vent(A + 4.2, s * 3.6, roofZ(A + 4.2), 1.3, true);
-    vent(F + 5.5, s * 5.2, B(F + 5.5), 1.25, true);
-    vent(F + 16, s * 3.4, B(F + 16), 1.0);
-    vent(X1 - 3, s * 7.8, Boat(X1 - 3), 1.2);
-    vent(X0 + 6, s * 4.4, Boat(X0 + 6), 1.1, true);
-    vent(-110, s * 4.2, C(-110), 0.95, true);
-    drums.push({ p: [-99, s * 7.4, Boat(-99)], yaw: 0, scale: 0.8 });
+    vent(F - 18, s * 7.4, roofZ(F - 18), 1.2, 0.25, s);
+    vent(A + 4.2, s * 3.6, roofZ(A + 4.2), 1.3, 1, s);
+    vent(F + 3, s * 6.0, B(F + 3), 1.25, 0.75, s);
+    vent(stem - 60 * FT, s * 3.4, B(stem - 60 * FT), 1.0, 0, s);
+    vent(X1 - 3, s * 7.8, Boat(X1 - 3), 1.2, 0.5, s);
+    vent(X0 + 6, s * 4.4, Boat(X0 + 6), 1.1, 1, s);
+    vent(X0 - 6, s * 4.2, C(X0 - 6), 0.95, 0.75, s);
+    drums.push({
+      p: [X0 + 5, s * 7.4, Boat(X0 + 5)],
+      yaw: 0,
+      scale: 0.8,
+    });
   }
 
   // Benches on the 2nd class boat deck aft.
   const benches: Placement[] = [];
   for (const s of sides)
-    for (const x of [-101, -98.6])
+    for (const x of [X0 + 3.3, X0 + 5.7])
       benches.push({
         p: [x, s * 6.6, Boat(x)],
         yaw: s > 0 ? Math.PI : 0,
@@ -781,27 +830,41 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
 
   const bollards: Placement[] = [];
   for (const s of sides) {
-    for (const x of [86, 97, 106])
-      bollards.push({ p: [x, s * (edge(x) - 1.0), B(x)], yaw: 0, scale: 1 });
-    for (const x of [-108, -114, -119])
+    for (const ft of [100, 64, 34])
+      bollards.push({
+        p: [
+          stem - ft * FT,
+          s * (edge(stem - ft * FT) - 1.0),
+          B(stem - ft * FT),
+        ],
+        yaw: 0,
+        scale: 1,
+      });
+    for (const x of [X0 - 4, X0 - 10, X0 - 15])
       bollards.push({ p: [x, s * (edge(x) - 1.0), C(x)], yaw: 0, scale: 1 });
   }
-  // Capstans and the two windlasses on the foredeck (her Promenade deck
-  // plan), the stern capstans.
+  // Capstans and the two windlasses on the foredeck, the hatch and the
+  // anchor crane (her Promenade deck plan, feet from the stem); the stern
+  // capstans and hatch.
+  const fwd = (ft: number) => stem - ft * FT;
   const capstans: Placement[] = [];
   for (const s of sides) {
-    capstans.push({ p: [87.5, s * 4.4, B(87.5)], yaw: 0, scale: 0.85 });
-    capstans.push({ p: [100.5, s * 3.0, B(100.5)], yaw: 0, scale: 0.85 });
-    capstans.push({ p: [93, s * 1.6, B(93)], yaw: 0, scale: 1.15 });
-    capstans.push({ p: [-116.5, s * 2.6, C(-116.5)], yaw: 0, scale: 0.85 });
+    capstans.push({ p: [fwd(108), s * 4.4, B(fwd(108))], yaw: 0, scale: 0.85 });
+    capstans.push({ p: [fwd(80), s * 3.4, B(fwd(80))], yaw: 0, scale: 0.85 });
+    capstans.push({ p: [fwd(94), s * 1.6, B(fwd(94))], yaw: 0, scale: 1.15 });
+    capstans.push({
+      p: [X0 - 12.2, s * 2.6, C(X0 - 12.2)],
+      yaw: 0,
+      scale: 0.85,
+    });
   }
   // The anchor crane at the stem, its jib laid aft along the deck.
   const cranes: Placement[] = [
-    { p: [111.6, 0, B(111.6)], yaw: Math.PI, scale: 0.7 },
+    { p: [fwd(16), 0, B(fwd(16))], yaw: Math.PI, scale: 0.7 },
   ];
   const hatches: Hatch[] = [
-    { x0: 95.2, x1: 98.4, hw: 1.8, z: B(96.8), h: 0.7 },
-    { x0: -113, x1: -110.4, hw: 1.6, z: C(-111.7), h: 0.6 },
+    { x0: fwd(69), x1: fwd(59), hw: 1.8, z: B(fwd(64)), h: 0.7 },
+    { x0: X0 - 8.7, x1: X0 - 6.1, hw: 1.6, z: C(X0 - 7.4), h: 0.6 },
   ];
 
   // -------------------------------------------------------------------------
@@ -871,9 +934,9 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
     }
   }
   {
-    // The foredeck's V breakwater, ahead of the bridge.
-    const apex = F + 12.5;
-    const back = F + 9.5;
+    // The foredeck's V breakwater, ahead of the bridge, abaft the mast.
+    const apex = F + 8;
+    const back = F + 5;
     const hw = edge(back) - 1.2;
     const len = Math.hypot(apex - back, hw);
     for (const s of sides)
@@ -900,8 +963,8 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
   }
   for (const s of sides) {
     // Derricks: heel at the foremast, head forward in a crutch.
-    const heel: V3 = [83.6, s * 0.5, B(83.6) + 1.6];
-    const head: V3 = [94.2, s * 2.3, B(94.2) + 2.9];
+    const heel: V3 = [foreX + 0.6, s * 0.5, B(foreX + 0.6) + 1.6];
+    const head: V3 = [foreX + 11.2, s * 2.3, B(foreX + 11.2) + 2.9];
     const dx = head[0] - heel[0];
     const dy = head[1] - heel[1];
     const dz = head[2] - heel[2];
@@ -918,7 +981,7 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
       pitch: Math.atan2(dz, Math.hypot(dx, dy)),
     });
     boxes.push({
-      c: [94.4, s * 2.3, B(94.4) + 1.35],
+      c: [foreX + 11.4, s * 2.3, B(foreX + 11.4) + 1.35],
       size: [0.2, 0.2, 2.7],
       color: MAST,
     });
@@ -994,7 +1057,7 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
         b: [x, s * (edge(x) - 0.15), Boat(x) + 0.9],
         kind: "rig",
       });
-    for (const x of [-110, -116])
+    for (const x of [X0 - 6, X0 - 12])
       wires.push({
         a: mastAt(main, main.topZ - 4),
         b: [x, s * (edge(x) - 0.15), C(x) + 0.9],
@@ -1054,52 +1117,70 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
   // Under water: four four-bladed propellers (four-bladed from 1909), the
   // inner pair just forward of the rudder, the outer pair further forward
   // on long bossings; the rudder under the counter, aft of the sternpost.
+  // From the after perpendicular (the sternpost).
+  const AP = -spec.lbp / 2;
   const propellers: Propeller[] = [
-    { hub: [-110, 3.6, 4.2], radius: 2.35, blades: 4, phase: 0.3 },
-    { hub: [-110, -3.6, 4.2], radius: 2.35, blades: 4, phase: 1.0 },
-    { hub: [-96, 7.4, 4.6], radius: 2.35, blades: 4, phase: 0.6 },
-    { hub: [-96, -7.4, 4.6], radius: 2.35, blades: 4, phase: 1.3 },
+    { hub: [AP + 5.8, 3.6, 4.2], radius: 2.35, blades: 4, phase: 0.3 },
+    { hub: [AP + 5.8, -3.6, 4.2], radius: 2.35, blades: 4, phase: 1.0 },
+    { hub: [AP + 19.8, 7.4, 4.6], radius: 2.35, blades: 4, phase: 0.6 },
+    { hub: [AP + 19.8, -7.4, 4.6], radius: 2.35, blades: 4, phase: 1.3 },
   ];
+  // Bossings along each shaft's line: long cones whose fat roots start
+  // where the whole root lies inside the hull, so each swells gently out
+  // of the run as it narrows (faired, not a tube laid against it).
+  function bossing(y: number, z: number, toX: number, r0: number, r1: number) {
+    const inside = (x: number) =>
+      [0, 0.7, -0.7].every(
+        (k) =>
+          hull.halfBreadth(x, z + k * r0) >=
+          Math.abs(y) + r0 * Math.sqrt(1 - k * k) + 0.2
+      );
+    let x = toX;
+    while (!inside(x) && x < 0) x += 0.5;
+    return { from: [x, y, z] as V3, to: [toX, y, z] as V3, r0, r1 };
+  }
   const bossings = [1, -1].flatMap((s) => [
-    {
-      from: [-92, s * 2.4, 4.2] as V3,
-      to: [-109.3, s * 3.6, 4.2] as V3,
-      r0: 1.1,
-      r1: 0.55,
-    },
-    {
-      from: [-74, s * 5.2, 4.6] as V3,
-      to: [-95.3, s * 7.4, 4.6] as V3,
-      r0: 1.3,
-      r1: 0.6,
-    },
+    bossing(s * 3.6, 4.2, AP + 6.5, 1.6, 0.55),
+    bossing(s * 7.4, 4.6, AP + 20.5, 2.0, 0.6),
   ]);
+  // The rudder: a round stock on the sternpost, the blade tapering from
+  // it to a thin trailing edge, its after corners rounded.
+  const lead = AP - 0.25;
+  const chord = 4.6;
+  const corner = (
+    cx: number,
+    cz: number,
+    r: number,
+    a0: number,
+    a1: number
+  ): [number, number][] =>
+    [0, 0.25, 0.5, 0.75, 1].map((t) => {
+      const a = a0 + (a1 - a0) * t;
+      return [cx + r * Math.cos(a), cz + r * Math.sin(a)];
+    });
+  const trail = lead - chord;
   const rudder: ShipRecipe["rudder"] = {
     outline: [
-      [-116.05, 0.8],
-      [-119.4, 0.8],
-      [-120.3, 1.5],
-      [-120.6, 3.4],
-      [-120.6, 7.0],
-      [-120.2, 8.2],
-      [-119.3, 8.7],
-      [-116.05, 8.7],
+      [lead, 0.8],
+      ...corner(trail + 1.2, 2.0, 1.2, -Math.PI / 2, -Math.PI),
+      ...corner(trail + 1.4, 7.3, 1.4, Math.PI, Math.PI / 2),
+      [lead, 8.7],
     ],
     thickness: 0.55,
-    centre: [-118.3, 0, 4.7],
-    posts: [{ c: [-116.05, 0, 4.9], size: [0.5, 0.58, 8.6] }],
+    taper: { lead: 0.55, trail: 0.15 },
+    centre: [lead - chord / 2, 0, 4.7],
+    stock: { x: lead, z0: 0.6, z1: 9.6, r: 0.3 },
   };
 
   const anchors = (["port", "starboard"] as const).map((side) => {
     const s = side === "port" ? 1 : -1;
-    const x = 108;
+    const x = anchorX;
     const z = spec.sheerZ(x) - 1.8;
     return { p: [x, s * hull.halfBreadth(x, z), z] as V3, side };
   });
 
   // Her name on the foredeck's plating (gilt letters, visible from U-20)
   // and on the counter with her port.
-  const nameX = 94;
   const names: NameBoard[] = [
     ...(["port", "starboard"] as const).map((side) => ({
       where: "bow" as const,
@@ -1160,6 +1241,9 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
     boxes,
     drums,
     ledgeDecks: ["C", "D", "E", "F", "Orlop"],
+    // The gilt band runs round the base of the superstructure: it stops at
+    // the house front, where the black plating rises to the foredeck.
+    sheerLineZ: (x) => (x > F ? 1000 : spec.sheerZ(x)),
     staffs,
   };
 }

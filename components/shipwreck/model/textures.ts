@@ -288,9 +288,9 @@ export function acquireShipTextures(name = "TITANIC"): ShipTextures {
   return {
     ...shared,
     names: board,
+    // Shared: only frees them when no one else holds them.
     dispose() {
-      shared.dispose();
-      board.dispose();
+      releaseShipTextures(name);
     },
   };
 }

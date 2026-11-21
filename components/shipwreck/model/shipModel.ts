@@ -242,8 +242,8 @@ export function createTitanicModel(
 
   // Shared fitting geometry.
   const shared = {
-    vent: own(ventGeometry(q)),
-    drum: own(drumVentGeometry(q)),
+    vent: own(ventGeometry(q, recipe.paint?.ventLining)),
+    drum: own(drumVentGeometry(q, recipe.paint?.ventLining)),
     bench: own(benchGeometry()),
     bollard: own(bollardGeometry(q)),
     post: own(postGeometry()),

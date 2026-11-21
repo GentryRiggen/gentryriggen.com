@@ -350,7 +350,7 @@ function buildHull(ctx: Ctx): void {
       p,
       uv: g.map((v) => [x / PLATE_TILE_X, v / PLATE_TILE_Y]),
       uv1: g.map((v) => [(x - hull.xMin) / span, v / 40]),
-      extra: repeat(sheer, p.length),
+      extra: repeat(r.sheerLineZ?.(x) ?? sheer, p.length),
     };
   };
   const res = grid(ctx, ctx.d.hull, hull.xMin, hull.xMax, column);
@@ -795,7 +795,7 @@ function platingBlock(
       p,
       uv: g.map((v) => [x / PLATE_TILE_X, v / PLATE_TILE_Y]),
       uv1: g.map((v) => [(x - r.hull.xMin) / span, v / 40]),
-      extra: repeat(sheer, p.length),
+      extra: repeat(r.sheerLineZ?.(x) ?? sheer, p.length),
     };
   };
   const port = grid(ctx, ctx.d.hull, b.x0, b.x1, (x) => wall(x, 1));
@@ -856,7 +856,7 @@ function buildFittings(ctx: Ctx): void {
     if (!inPart(ctx, base)) continue;
     const lean = Math.tan(m.rake);
     const at = (z: number): V3 => [m.x - lean * (z - m.baseZ), 0, z];
-    const color = rgb(COLORS.mast);
+    const color = rgb(r.paint?.mast ?? COLORS.mast);
     cylinder(paint, at(m.baseZ - 0.2), at(m.topZ), m.r0, m.r1, seg, color);
     cylinder(
       paint,
@@ -1048,10 +1048,19 @@ function buildUnderwater(ctx: Ctx): void {
     hullBuf.vertex(p, undefined, [0, 0], [0, 0], sheer(p[0]));
   const rudderCentre: V3 = r.rudder.centre ?? [-134, 0, 6];
   if (inPart(ctx, rudderCentre)) {
-    const t = r.rudder.thickness / 2;
     const out = r.rudder.outline;
-    const facePort = out.map(([x, z]): V3 => [x, t, z]);
-    const faceStbd = out.map(([x, z]): V3 => [x, -t, z]);
+    // Half-thickness at x: even, or tapering from the stock aft.
+    const xs = out.map(([x]) => x);
+    const xLead = Math.max(...xs);
+    const xTrail = Math.min(...xs);
+    const taper = r.rudder.taper;
+    const t = (x: number): number => {
+      if (!taper) return r.rudder.thickness / 2;
+      const k = (xLead - x) / Math.max(1e-6, xLead - xTrail);
+      return (taper.lead + (taper.trail - taper.lead) * k) / 2;
+    };
+    const facePort = out.map(([x, z]): V3 => [x, t(x), z]);
+    const faceStbd = out.map(([x, z]): V3 => [x, -t(x), z]);
     const flat = (pts: V3[], want: V3) => {
       // Fan from the centroid with the hull's attributes.
       const c = pts.reduce((acc, p) => add(acc, scale(p, 1 / pts.length)), [
@@ -1090,9 +1099,19 @@ function buildUnderwater(ctx: Ctx): void {
     }
     // Rudder post and the sole piece under the propeller aperture.
     const post = new GeoBuffer({ uv: true, uv1: true, extra: "aSheer" });
+    const stock = r.rudder.stock;
+    if (stock)
+      cylinder(
+        post,
+        [stock.x, 0, stock.z0],
+        [stock.x, 0, stock.z1],
+        stock.r,
+        stock.r,
+        q.cylSeg + 4
+      );
     if (r.rudder.posts) {
       for (const p of r.rudder.posts) box(post, p.c, p.size);
-    } else {
+    } else if (!stock) {
       box(post, [-131.9, 0, 6.6], [0.55, 0.62, 12.2]);
       box(post, [-130.9, 0, 0.35], [2.6, 0.62, 0.7]);
     }
@@ -1270,11 +1289,15 @@ function buildNames(ctx: Ctx): void {
   }
 }
 
-/** The counter's surface x at (y, z), by bisection near the stern. */
-function counterX(r: ShipRecipe, y: number, z: number): number {
+/**
+ * The counter's surface x at (y, z), by bisection near the stern. On the
+ * centre line it is where the hull starts at that height (any breadth at
+ * all), not the counter's tip below or above it.
+ */
+export function counterX(r: ShipRecipe, y: number, z: number): number {
   let lo = r.hull.xMin;
   let hi = r.hull.xMin + 30;
-  const target = Math.abs(y);
+  const target = Math.max(Math.abs(y), 0.05);
   for (let i = 0; i < 30; i += 1) {
     const mid = (lo + hi) / 2;
     if (r.hull.halfBreadth(mid, z) >= target) hi = mid;

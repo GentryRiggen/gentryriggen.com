@@ -31,6 +31,7 @@ const SHOTS = [
   { id: "boat-deck-day", view: { camera: "boat-deck" } },
   { id: "bow-close-day", view: { camera: "bow-close" } },
   { id: "stern-close-day", view: { camera: "stern-close" } },
+  { id: "astern-day", view: { camera: "astern" } },
   { id: "broken-day", view: { camera: "break", breakX: BREAK_X } },
   {
     id: "broken-close-day",

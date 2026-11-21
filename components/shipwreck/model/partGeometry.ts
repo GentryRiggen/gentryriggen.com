@@ -223,8 +223,14 @@ export function boatGeometry(
   return buf.toGeometry();
 }
 
-/** A cowl ventilator, about 3 m tall at scale 1, mouth facing +x. */
-export function ventGeometry(q: QualitySettings): BufferGeometry {
+/**
+ * A cowl ventilator, about 3 m tall at scale 1, mouth facing +x; its
+ * mouth lined `lining` (default near black, the Titanic's).
+ */
+export function ventGeometry(
+  q: QualitySettings,
+  lining = 0x2a1a14
+): BufferGeometry {
   const buf = new GeoBuffer({ color: true });
   const white = rgb(COLORS.white);
   const seg = Math.max(8, q.cylSeg);
@@ -245,16 +251,10 @@ export function ventGeometry(q: QualitySettings): BufferGeometry {
     end: false,
   });
   // The mouth's dark inside.
-  cylinder(
-    buf,
-    [0.8, 0, 2.74],
-    [0.84, 0, 2.75],
-    0.66,
-    0.68,
-    seg,
-    rgb(0x2a1a14),
-    { start: false, end: true }
-  );
+  cylinder(buf, [0.8, 0, 2.74], [0.84, 0, 2.75], 0.66, 0.68, seg, rgb(lining), {
+    start: false,
+    end: true,
+  });
   return buf.toGeometry();
 }
 
@@ -262,7 +262,10 @@ export function ventGeometry(q: QualitySettings): BufferGeometry {
  * A drum ("oil-drum") ventilator, about 2.7 m tall at scale 1: a fat
  * cylinder under a flat cap, the air drawn in through the dark gap.
  */
-export function drumVentGeometry(q: QualitySettings): BufferGeometry {
+export function drumVentGeometry(
+  q: QualitySettings,
+  lining = 0x2a1a14
+): BufferGeometry {
   const buf = new GeoBuffer({ color: true });
   const white = rgb(COLORS.white);
   const seg = Math.max(10, q.cylSeg + 2);
@@ -274,7 +277,7 @@ export function drumVentGeometry(q: QualitySettings): BufferGeometry {
     start: false,
     end: false,
   });
-  cylinder(buf, [0, 0, 2.2], [0, 0, 2.45], 0.7, 0.7, seg, rgb(0x2a1a14), {
+  cylinder(buf, [0, 0, 2.2], [0, 0, 2.45], 0.7, 0.7, seg, rgb(lining), {
     start: false,
     end: false,
   });

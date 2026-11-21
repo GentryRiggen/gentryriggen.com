@@ -205,6 +205,10 @@ export interface ShipPaint {
   sheerLine: number | null;
   /** The name on the bows and the counter (with "LIVERPOOL" there). */
   name: string;
+  /** Masts and derricks (default the Titanic's varnished brown). */
+  mast?: number;
+  /** The inside of the cowl ventilators' mouths (default near black). */
+  ventLining?: number;
 }
 
 /**
@@ -278,6 +282,10 @@ export interface ShipRecipe {
     centre?: V3;
     /** Stock and heel boxes (default the Titanic's post and sole piece). */
     posts?: { c: V3; size: V3 }[];
+    /** Thickness at the leading and trailing edges (default `thickness`). */
+    taper?: { lead: number; trail: number };
+    /** A round stock up the leading edge, faired into the blade. */
+    stock?: { x: number; z0: number; z1: number; r: number };
   };
   /** Shaft bossings: from inside the hull aft to the wing propellers. */
   bossings: { from: V3; to: V3; r0: number; r1: number }[];
@@ -294,6 +302,11 @@ export interface ShipRecipe {
   ledgeDecks?: string[];
   /** Jack and ensign staffs (default on B deck at the stem and stern). */
   staffs?: { foot: V3; top: V3 }[];
+  /**
+   * Height the line under the sheer is painted from at x (default the
+   * sheer); far above the hull where the line stops.
+   */
+  sheerLineZ?: (x: number) => number;
 }
 
 const TO_RAD = Math.PI / 180;

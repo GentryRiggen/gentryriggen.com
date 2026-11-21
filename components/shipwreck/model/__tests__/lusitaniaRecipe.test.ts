@@ -28,20 +28,38 @@ describe("Lusitania recipe", () => {
   it("is painted as on 7 May 1915 unless the switch says peacetime", () => {
     expect(PEACETIME_PAINT).toBe(false);
     const p = r.paint!;
-    // Funnels painted out dark, the gilt band round the superstructure.
+    // Funnels painted out dark, tops and bands painted over (each channel
+    // within 5%), the gilt band round the superstructure.
     expect(p.funnel).toBeLessThan(0x404040);
+    for (const shift of [0, 8, 16]) {
+      const a = (p.funnel >> shift) & 0xff;
+      const b = (p.funnelTop >> shift) & 0xff;
+      expect(Math.abs(a - b)).toBeLessThanOrEqual(0.05 * a);
+    }
     expect(p.sheerLine).not.toBeNull();
+    // The gilt band stops at the house front (not across the foredeck's
+    // black plating under her name).
+    const front = L.boatDeckTo;
+    expect(r.sheerLineZ!(front - 1)).toBe(lusitania.sheerZ(front - 1));
+    expect(r.sheerLineZ!(front + 1)).toBeGreaterThan(100);
   });
 
   it("spans her hull, stem to counter", () => {
     expect(L.sternX).toBe(lusitania.stations[0].x);
     expect(L.stemX).toBe(lusitania.stations[lusitania.stations.length - 1].x);
+    // Every tier's ends are the data's boxes: the long house (its front
+    // the bridge's) and the 2nd class house aft.
+    const [aftBox, foreBox, longBox] = lusitania.superstructure;
+    expect(L.boatDeckFrom).toBe(longBox.fromX);
+    expect(L.boatDeckTo).toBe(longBox.toX);
+    expect(L.poopTo).toBe(aftBox.fromX);
+    const block = (id: string) => r.blocks!.find((b) => b.id === id)!;
+    expect(block("foredeck").x0).toBe(foreBox.fromX);
+    expect(block("boat-deck").x1).toBe(longBox.toX);
+    expect(block("aft-c").x0).toBe(aftBox.fromX);
+    expect(block("aft-c").x1).toBeLessThan(longBox.fromX);
     expect(L.boatDeckFrom).toBeLessThan(lusitania.funnels[3].x);
     expect(L.boatDeckTo).toBeGreaterThan(lusitania.funnels[0].x);
-    // The bridge leads the first funnel by about 70–80 ft, as on her plans.
-    const lead = L.boatDeckTo - lusitania.funnels[0].x;
-    expect(lead).toBeGreaterThan(20);
-    expect(lead).toBeLessThan(26);
   });
 
   it("has four working funnels, raked aft, on the boat deck", () => {
@@ -126,6 +144,18 @@ describe("Lusitania recipe", () => {
     expect(Math.min(...xs)).toBeGreaterThan(L.sternX);
     expect(Math.min(...zs)).toBeGreaterThan(0);
     expect(Math.max(...zs)).toBeLessThan(lusitania.draught);
+    // A faired blade: a stock at its leading edge, tapering aft, its
+    // after corners rounded.
+    expect(r.rudder.taper!.lead).toBeGreaterThan(0.45);
+    expect(r.rudder.taper!.trail).toBeLessThan(0.25);
+    expect(r.rudder.stock!.x).toBeCloseTo(Math.max(...xs), 6);
+    expect(r.rudder.outline.length).toBeGreaterThanOrEqual(12);
+    // Each bossing's root lies inside the hull (faired, never an open end).
+    expect(r.bossings).toHaveLength(4);
+    for (const b of r.bossings)
+      expect(hull.halfBreadth(b.from[0], b.from[2])).toBeGreaterThanOrEqual(
+        Math.abs(b.from[1]) + b.r0
+      );
     // The propellers turn clear forward of the rudder's leading edge.
     for (const p of r.propellers)
       expect(p.hub[0] - 1).toBeGreaterThan(Math.max(...xs));
@@ -136,14 +166,16 @@ describe("Lusitania recipe", () => {
     for (const row of lusitania.portholes ?? []) {
       const s = row.side === "port" ? 1 : -1;
       const mid = (row.fromX + row.toX) / 2;
+      const rowZ = (x: number) =>
+        row.followsSheer
+          ? row.z + lusitania.sheerZ(x) - lusitania.sheerZ(mid)
+          : row.z;
       const onRow = portholes.filter(
         (l) =>
           Math.sign(l.p[1]) === s &&
           l.p[0] >= row.fromX - 0.1 &&
           l.p[0] <= row.toX + 0.1 &&
-          Math.abs(
-            l.p[2] - (row.z + lusitania.sheerZ(l.p[0]) - lusitania.sheerZ(mid))
-          ) < 0.05
+          Math.abs(l.p[2] - rowZ(l.p[0])) < 0.05
       );
       // No gap along the row longer than a few scuttles.
       const xs = onRow.map((l) => l.p[0]).sort((a, b) => a - b);
@@ -219,6 +251,10 @@ describe("Lusitania recipe", () => {
 
   it("stands the foremast on the foredeck and the mainmast abaft the boats", () => {
     const [fore, main] = r.masts;
+    // 100 ft abaft the forward perpendicular, crow's nest 42 ft up (her
+    // profile).
+    expect(fore.x).toBeCloseTo(lusitania.lbp / 2 - 100 * 0.3048, 6);
+    expect(fore.crowsNest!.z - fore.baseZ).toBeCloseTo(42 * 0.3048, 6);
     expect(fore.x).toBeGreaterThan(L.boatDeckTo);
     expect(main.x).toBeLessThan(L.boatDeckFrom);
     expect(fore.crowsNest).toBeDefined();

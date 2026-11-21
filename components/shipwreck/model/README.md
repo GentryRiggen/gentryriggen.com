@@ -127,13 +127,24 @@ Titanic exactly as before.
 
 | Tier   | Draws (whole) | Draws (broken) | Triangles (whole) |
 | ------ | ------------- | -------------- | ----------------- |
-| high   | 25            | 38             | about 145k        |
-| medium | 17            |                | about 95k         |
-| low    | 15            |                | about 72k         |
+| high   | 25            | 38             | about 147k        |
+| medium | 17            |                | about 97k         |
+| low    | 15            |                | about 73k         |
 
 Build times (`handles.stats.buildMs`, same laptop and script as the
-Titanic's): 59 ms the first time (Titanic 64), 18 ms after (Titanic 21),
-24 ms broken (Titanic 27).
+Titanic's): 61 ms the first time (Titanic 68), 20 ms after (Titanic 24),
+23 ms broken (Titanic 30).
+
+**She follows her data.** Funnels and boats stand where `lusitania.ts`
+puts them; every tier's ends are its superstructure boxes (`[2]` the long
+house, its front the bridge's; `[1]` the foredeck plated to B; `[0]` the
+2nd class house); porthole rows follow `spec.portholes` (level, or along
+the sheer from the row's middle when `followsSheer`). What the data has no
+field for is measured off her 1907 profile and plans from the stem, the
+forward or the after perpendicular: the foremast (100 ft abaft the FP, its
+crow's nest 42 ft up), the mainmast's 1.2 m gap, the foredeck's capstans,
+windlasses, hatch and anchor crane, the name (73 ft from the stem) and the
+hawse pipes (28 ft), the propellers and rudder (from the AP).
 
 ### Her paint in May 1915
 
@@ -224,25 +235,33 @@ rmslusitania.info (Mauretania "Design and construction"), linerdesigns.com
   exactly at the row's height at its middle and following the sheer from
   there (the sim's row is level; the drawn row keeps to its deck).
 
-### Departures from the ship data
+### Assumptions and departures
 
-- **The bridge and funnels sit further aft in `lusitania.ts` than on her
-  plans.** Measured off the 1907 profile, the deck plans and the 1907
-  broadside: bridge front about x 73–76 m (about 140 ft from the stem),
-  funnels at about 48–52, 23–24, −1 to −4 and −26 to −30 m; the data has
-  the bridge at 57.9 m (190 ft from the forward perpendicular, flagged
-  there as an assumption) and the funnels at 41.2, 17.6, −8.3, −34.2 m.
-  The model keeps the data's funnels and boats (the sim and the scene read
-  them) and puts the bridge 24 m ahead of the first funnel (x 65.2), as on
-  her plans, so the bridge-to-funnel look is right. Moving the funnels and
-  the bridge forward in the data would carry the model with it.
-- **No forward well deck**: the data's superstructure boxes have a 95 ft
-  forecastle and an open well between it and the bridge; her plans have
-  the Promenade deck running from the stem to the bridge. The drawn
-  foredeck is at Promenade level; the sim's volumes are unchanged.
-- **The after house** is drawn from x −104 to −66.5 (her plans), the open
-  stern deck at Shelter level abaft it; the data's boxes raise the poop to
-  B + 0.6 m.
+- **Masts** buff (`0xa9835a`): the period's practice for Cunard's masts;
+  no source gives her shade.
+- **Cowl linings** dark red-brown (`0x5a241c`): red lead or red paint
+  inside cowls was common practice; no source gives hers (an Encyclopedia
+  Titanica thread asks the same and has no answer). The cowls are turned
+  as in her photographs, some forward, some aft, some outboard.
+- **The gilt band** runs along the Shelter deck edge, round the base of
+  the superstructure, and stops at the house front (the foredeck's black
+  plating has none): `sheerLineZ`.
+- **Bossings** are long cones whose roots lie wholly inside the hull, so
+  they swell out of the narrowing run; the rudder has a round stock on the
+  sternpost and tapers from 0.55 m to 0.15 m at its trailing edge.
+- The data runs the boat deck and the 2nd class house together; the model
+  leaves the 1.2 m gap of her plans for the mainmast.
 - The drawn counter is rounder in plan above 10.5 m than the offsets (an
   ellipse from x −85 m, as for the Titanic), and the stern decks' rails
   follow it.
+- Estimates: funnel section 25 × 21 ft, three thin bands in peacetime,
+  boats 30, 27 and 23 ft, propellers 4.7 m across.
+
+### The name on the counter
+
+`counterX` (`buildShip.ts`) finds the counter's surface at (y, z) for the
+name's letters. On the centre line it looked for any half-breadth ≥ 0,
+which is everywhere, and put the middle of the name at the hull's very
+end, metres aft: a spike that garbled both ships' names seen from the
+quarter ("TITA NIC", "LIVE POOL"). It now looks for the first real
+breadth (`__tests__/names.test.ts`).

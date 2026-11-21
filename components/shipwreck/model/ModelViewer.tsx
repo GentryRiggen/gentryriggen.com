@@ -65,7 +65,14 @@ const CAMERAS: Record<
   "boat-deck": { pos: [52, 40, 52], target: [18, 26, 6] },
 };
 
-const STERN_CAMERAS: Required3["camera"][] = ["stern", "stern-close", "astern"];
+/** Presets reframed for a ship whose stern is not the Titanic's. */
+const SHIP_CAMERAS: Partial<Record<ShipSpec["id"], Partial<typeof CAMERAS>>> = {
+  lusitania: {
+    stern: { pos: [-205, 2, 120], target: [-62, 13, 0] },
+    "stern-close": { pos: [-168, 20, 56], target: [-104, 12, 0] },
+    astern: { pos: [-160, 17, 0], target: [-118, 15.5, 0] },
+  },
+};
 
 /** The ship named by `?ship=` (the Titanic by default). */
 function shipFromUrl(): ShipSpec {
@@ -153,15 +160,12 @@ function Stage({ view, spec, onInfo }: StageProps) {
 
   useEffect(() => {
     const { camera } = get();
-    const c = CAMERAS[view.camera];
-    // The presets frame the Titanic; slide the stern ones to this ship's.
-    const dx = STERN_CAMERAS.includes(view.camera)
-      ? spec.stations[0].x - titanic.stations[0].x
-      : 0;
-    camera.position.set(c.pos[0] + dx, c.pos[1], c.pos[2]);
-    controls.current?.target.set(c.target[0] + dx, c.target[1], c.target[2]);
+    // The presets frame the Titanic; some are reframed for other ships.
+    const c = SHIP_CAMERAS[spec.id]?.[view.camera] ?? CAMERAS[view.camera];
+    camera.position.set(c.pos[0], c.pos[1], c.pos[2]);
+    controls.current?.target.set(c.target[0], c.target[1], c.target[2]);
     controls.current?.update();
-    camera.lookAt(new Vector3(c.target[0] + dx, c.target[1], c.target[2]));
+    camera.lookAt(new Vector3(c.target[0], c.target[1], c.target[2]));
   }, [get, view.camera, spec]);
 
   const apply = useCallback(
@@ -239,6 +243,7 @@ function Stage({ view, spec, onInfo }: StageProps) {
           onInfo({
             modelTriangles: modelTriangles(h),
             buildMs: Math.round(h.stats.buildMs),
+            ship: h.recipe.spec.id,
           });
           onReady(h);
         }}

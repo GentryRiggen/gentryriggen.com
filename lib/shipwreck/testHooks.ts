@@ -38,6 +38,8 @@ export interface ModelInfo {
   modelTriangles: number;
   /** How long the last model build took, ms. */
   buildMs: number;
+  /** Which ship is on the stage (`spec.id`). */
+  ship?: string;
 }
 
 export interface ShipwreckModelHooks {

@@ -221,46 +221,54 @@ test("the HUD's X-ray, place, camera and help buttons work", async ({
   );
 });
 
-test("the model viewer draws the Titanic within its budget", async ({
-  page,
-}) => {
-  test.setTimeout(240_000);
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  page.on("console", (m) => {
-    if (m.type() === "error") errors.push(m.text());
-  });
-  await page.setViewportSize({ width: 1133, height: 744 });
-  await page.goto("/shipwreck?model");
-  const ready = () =>
-    page.waitForFunction(
-      () => window.__shipwreck?.getModelInfo?.()?.ready === true,
-      null,
-      { timeout: 180_000 }
-    );
-  await ready();
-  expect(await page.evaluate(() => window.__shipwreck!.getScreen())).toBe(
-    "model"
-  );
-  // Whole, then broken in two: draw calls and triangles at the top tier.
-  for (const breakX of [null, -27.1]) {
-    await page.evaluate(
-      (b) =>
-        window.__shipwreck!.setModelView!({
-          breakX: b,
-          camera: "side",
-          quality: "high",
-        }),
-      breakX
-    );
+for (const ship of [
+  { id: "titanic", name: "Titanic", query: "", breakX: -27.1 },
+  { id: "lusitania", name: "Lusitania", query: "&ship=lusitania", breakX: 4 },
+]) {
+  test(`the model viewer draws the ${ship.name} within its budget`, async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("console", (m) => {
+      if (m.type() === "error") errors.push(m.text());
+    });
+    await page.setViewportSize({ width: 1133, height: 744 });
+    await page.goto(`/shipwreck?model${ship.query}`);
+    const ready = () =>
+      page.waitForFunction(
+        () => window.__shipwreck?.getModelInfo?.()?.ready === true,
+        null,
+        { timeout: 180_000 }
+      );
     await ready();
-    const info = await page.evaluate(() => window.__shipwreck!.getModelInfo!());
-    expect(info!.calls).toBeGreaterThan(10);
-    expect(info!.calls).toBeLessThanOrEqual(90);
-    expect(info!.modelTriangles).toBeLessThanOrEqual(300_000);
-  }
-  expect(errors).toEqual([]);
-});
+    expect(await page.evaluate(() => window.__shipwreck!.getScreen())).toBe(
+      "model"
+    );
+    // Whole, then broken in two: draw calls and triangles at the top tier.
+    for (const breakX of [null, ship.breakX]) {
+      await page.evaluate(
+        (b) =>
+          window.__shipwreck!.setModelView!({
+            breakX: b,
+            camera: "side",
+            quality: "high",
+          }),
+        breakX
+      );
+      await ready();
+      const info = await page.evaluate(() =>
+        window.__shipwreck!.getModelInfo!()
+      );
+      expect(info!.calls).toBeGreaterThan(10);
+      expect(info!.calls).toBeLessThanOrEqual(90);
+      expect(info!.modelTriangles).toBeLessThanOrEqual(300_000);
+      expect(info!.ship).toBe(ship.id);
+    }
+    expect(errors).toEqual([]);
+  });
+}
 
 test("the night scene plays the real night to the break and the wreck", async ({
   page,
