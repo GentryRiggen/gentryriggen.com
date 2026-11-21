@@ -14,7 +14,7 @@ import { LUSITANIA_HIT } from "./settings";
  * The south coast of County Cork on the northern horizon, as it lay from
  * where the torpedo struck (about 11 nautical miles south of the Old Head
  * of Kinsale): low green farmland over grey cliffs from Galley Head in the
- * west to Roche's Point in the east, the long narrow Old Head standing out
+ * west to Robert's Head in the east (sinking into the haze beyond), the long narrow Old Head standing out
  * toward her, with its lighthouse (black with two white bands) at the tip.
  * Real places (latitude and longitude, below), heights shown 2.5× (at 20–45 km
  * a 70 m cliff is a few pixels; drawn true it would not read as land). One
@@ -26,7 +26,6 @@ export const COAST_HEIGHT_SCALE = 2.5;
 
 /** The coast, west to east: [lat, lon, cliff m, hills inland m]. */
 const COASTLINE: readonly [number, number, number, number][] = [
-  [51.54, -9.12, 40, 160], // toward Glandore
   [51.532, -8.952, 45, 120], // Galley Head
   [51.57, -8.9, 30, 110],
   [51.605, -8.86, 15, 120], // Clonakilty Bay
@@ -41,10 +40,7 @@ const COASTLINE: readonly [number, number, number, number][] = [
   [51.68, -8.45, 40, 160],
   [51.695, -8.4, 45, 170], // Frower Point
   [51.728, -8.33, 50, 160], // Robert's Head
-  [51.77, -8.29, 35, 140],
-  [51.792, -8.255, 30, 120], // Roche's Point
-  [51.795, -8.17, 40, 110], // Power Head
-  [51.83, -8.0, 30, 120], // Ballycotton
+  [51.75, -8.3, 35, 140], // toward Cork Harbour, under the horizon
 ];
 
 /** The Old Head: from its neck to the tip with the lighthouse. */
@@ -56,6 +52,22 @@ const OLD_HEAD = {
 };
 
 const LAT_M = 111200;
+/**
+ * The land sinks into the sea between these distances from her (m), so it
+ * never reaches the camera's far plane (42 km) and its ends fade into the
+ * haze instead of stopping (the earth's curve hides it about so).
+ */
+export const COAST_FADE_FROM_M = 31000;
+export const COAST_FADE_TO_M = 38000;
+
+function sinkWithDistance(x: number, y: number, z: number): number {
+  const d = Math.hypot(x, z);
+  const f = Math.min(
+    1,
+    Math.max(0, (COAST_FADE_TO_M - d) / (COAST_FADE_TO_M - COAST_FADE_FROM_M))
+  );
+  return y * f - 12 * (1 - f);
+}
 
 /** Earth (lat, lon) to the scene's axes at the hit (x her heading, z starboard). */
 export function coastToScene(lat: number, lon: number): [number, number] {
@@ -89,7 +101,7 @@ export function buildCoastGeometry(): BufferGeometry {
   const idx: number[] = [];
   const S = COAST_HEIGHT_SCALE;
   const vert = (x: number, y: number, z: number, c: Color) => {
-    pos.push(x, y, z);
+    pos.push(x, sinkWithDistance(x, y, z), z);
     col.push(c.r, c.g, c.b);
     return pos.length / 3 - 1;
   };
@@ -126,7 +138,7 @@ export function buildCoastGeometry(): BufferGeometry {
     { d: 160, h: (p: (typeof line)[0]) => p.cliff * 1.1, c: FIELD },
     { d: 1500, h: (p: (typeof line)[0]) => p.hill * 0.6, c: FIELD_DARK },
     { d: 4000, h: (p: (typeof line)[0]) => p.hill, c: FIELD },
-    { d: 9000, h: (p: (typeof line)[0]) => p.hill * 0.7, c: FIELD_DARK },
+    { d: 7000, h: (p: (typeof line)[0]) => p.hill * 0.7, c: FIELD_DARK },
   ];
   const width = rows.length;
   line.forEach((p, i) => {

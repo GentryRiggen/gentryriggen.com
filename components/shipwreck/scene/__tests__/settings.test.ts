@@ -1,5 +1,6 @@
 import { Color, LinearSRGBColorSpace } from "three";
 import { SHIP_IDS } from "@/lib/shipwreck/ships";
+import { buildCoastGeometry, coastToScene, COAST_FADE_TO_M } from "../Coast";
 import {
   NIGHT_FOG,
   NIGHT_SEA_FOG,
@@ -86,5 +87,26 @@ describe("sunDirection", () => {
     expect(d[0]).toBeLessThan(0);
     expect(d[2]).toBeGreaterThan(0);
     expect(Math.hypot(d[0], d[1], d[2])).toBeCloseTo(1, 6);
+  });
+});
+
+describe("the coast", () => {
+  it("stays inside the camera's far plane (42 km), its ends under the sea", () => {
+    const g = buildCoastGeometry();
+    const p = g.getAttribute("position");
+    for (let i = 0; i < p.count; i += 1) {
+      const d = Math.hypot(p.getX(i), p.getZ(i));
+      if (d > 40000) expect(p.getY(i)).toBeLessThan(0);
+      if (d > COAST_FADE_TO_M) expect(p.getY(i)).toBeLessThan(0);
+    }
+    // The Old Head bears north by east (about 13° true) from where she was
+    // hit, about 21 km off (scene -z is 3° west of north at heading 93°).
+    const [x, z] = coastToScene(51.6036, -8.5322);
+    expect(Math.hypot(x, z)).toBeGreaterThan(19000);
+    expect(Math.hypot(x, z)).toBeLessThan(23000);
+    const trueBearing = (Math.atan2(x, -z) * 180) / Math.PI + 3;
+    expect(trueBearing).toBeGreaterThan(8);
+    expect(trueBearing).toBeLessThan(18);
+    g.dispose();
   });
 });

@@ -509,22 +509,3 @@ function lusitaniaUnderwater(ctx: ShotContext): View {
     target: tgt,
   };
 }
-
-/**
- * A grounded body raised, if need be, so no hull point (`points`, ship
- * frame) is more than `embedM` into the sea floor. Display only: the sim's
- * rest rule for a wreck on her side (`ShipSpec.wreck`) turns her over about
- * her keel without re-seating her, which leaves her side far into the
- * floor. Never lowers a body.
- */
-export function seatOnFloor(
-  pose: BodyPose,
-  points: readonly (readonly number[])[],
-  seaDepthM: number,
-  embedM = 1.5
-): BodyPose {
-  let low = Infinity;
-  for (const p of points) low = Math.min(low, shipToThree(pose, p)[1]);
-  const floor = -seaDepthM - embedM;
-  return low < floor ? { ...pose, z: pose.z + (floor - low) } : pose;
-}

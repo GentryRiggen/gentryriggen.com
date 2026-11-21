@@ -46,14 +46,17 @@ export const NIGHT_DEEP_FOG = new Color(0x020a14);
 
 /**
  * Where and when the torpedo struck: about 11 nautical miles south of the
- * Old Head of Kinsale (her wreck lies at 51°25′ N, 8°33′ W), 2:10 PM. The
- * ship's clocks are taken as GMT (the brief's call; Irish time in 1915 was
- * Dublin Mean Time, 25 minutes behind, which would put the sun 6° further
- * west and 1° higher).
+ * Old Head of Kinsale, 2:10 PM. The scene's origin is her position at the
+ * hit, not her wreck (51°25′ N, 8°33′ W): she ran on about 3.8 km to the
+ * east before she went down, so the hit lies about 0.055° of longitude
+ * west of it. Her 2:10 PM is GMT: U-20's log gives the hit at 15:10
+ * Central European Time, which is 14:10 GMT. (Had her clocks kept Dublin
+ * Mean Time, 25 minutes behind, 2:10 PM would be 14:35 GMT and the sun
+ * about 47.4° up at 226.8°.)
  */
 export const LUSITANIA_HIT = {
-  latDeg: 51.417,
-  lonDeg: -8.55,
+  latDeg: 51.419,
+  lonDeg: -8.603,
   utcMs: Date.UTC(1915, 4, 7, 14, 10),
   /**
    * S 87° E: the course she had come back to after taking her bearing on

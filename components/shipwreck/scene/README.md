@@ -134,9 +134,6 @@ shot framed for landscape still fits the ship.
 - **Bounds per ship**: `hullBoxesFor(ship)`; `keepClear` pushes the free
   camera out of the boxes through a face that leaves it above the floor (a
   wreck on her side has a face on the floor).
-- **Her wreck** is drawn seated on the floor (`seatOnFloor`, display only):
-  the sim's rest rule turns her over about her keel at the landing depth,
-  which leaves her side about 20 m into the floor.
 
 ## Performance (see the task 4 report for numbers)
 

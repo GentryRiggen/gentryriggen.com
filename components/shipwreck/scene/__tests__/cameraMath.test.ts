@@ -13,7 +13,6 @@ import {
   nearFor,
   portraitPullBack,
   pushOutOfHull,
-  seatOnFloor,
   shipToThree,
   shotView,
   underwaterView,
@@ -166,32 +165,6 @@ describe("the Lusitania's camera", () => {
     expect(shipToThree(wreck, out)[1]).toBeGreaterThanOrEqual(-SEA + 2);
     // Outside her already: unchanged.
     expect(keepClear([0, 60, 10], wreck, SEA, boxes)).toEqual([0, 60, 10]);
-  });
-
-  it("seats her wreck on the floor instead of 20 m into it (display only)", () => {
-    // The sim's rest: turned 75° about her keel at the depth she landed.
-    const rest = pose({
-      x: 3794,
-      y: 30,
-      z: -102.2,
-      roll: 75 * (Math.PI / 180),
-      pitch: 3 * (Math.PI / 180),
-    });
-    const pts = lusitania.stations.flatMap((st) =>
-      st.offsets.flatMap(([z, hb]) => [
-        [st.x, hb, z],
-        [st.x, -hb, z],
-      ])
-    );
-    const lowest = (p: BodyPose) =>
-      Math.min(...pts.map((q) => shipToThree(p, q)[1]));
-    expect(lowest(rest)).toBeLessThan(-SEA - 10);
-    const seated = seatOnFloor(rest, pts, SEA);
-    expect(lowest(seated)).toBeCloseTo(-SEA - 1.5, 6);
-    expect(seated.roll).toBe(rest.roll);
-    // Afloat, or already on it: unchanged.
-    const afloat = pose({ z: -9.35 });
-    expect(seatOnFloor(afloat, pts, SEA)).toBe(afloat);
   });
 
   const track = {
