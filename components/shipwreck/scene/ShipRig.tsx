@@ -69,18 +69,18 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
   const warm = useRef(0);
   const { gl, scene, camera } = useThree();
 
-  const LAMPS = useMemo(() => lampsOf(spec), [spec]);
+  const lampPositions = useMemo(() => lampsOf(spec), [spec]);
   // The decks lit by deck (the top eight), with the sheer measured from the
   // C deck as the model does.
   const decks = useMemo(() => spec.decks.slice(0, 8), [spec]);
   const sheerRef = spec.decks.find((d) => d.name === "C")?.z ?? spec.depth;
   const lamps = useMemo(
     () =>
-      LAMPS.map(() => {
+      lampPositions.map(() => {
         const l = new PointLight(0xffd6a0, 0, 160, 1.6);
         return l;
       }),
-    [LAMPS]
+    [lampPositions]
   );
 
   // Another ship (or the game leaving): forget this rig's models, which
@@ -185,7 +185,7 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     }
 
     // Two warm lamps over the decks, fading with the power.
-    LAMPS.forEach((p, i) => {
+    lampPositions.forEach((p, i) => {
       const body = runtime.broken
         ? (frame.bodies.find(
             (b) => b.part === (p[0] > (breakX ?? 0) ? "bow" : "stern")

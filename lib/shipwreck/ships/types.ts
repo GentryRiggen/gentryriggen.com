@@ -106,4 +106,10 @@ export interface ShipSpec {
    * eases a landed body upright (the Titanic's halves).
    */
   wreck?: { restDeg: number; minListDeg: number };
+  /**
+   * Her funnels' paint (sRGB): the body and the top band. The model and
+   * the hull diagram both read it. Missing: the Titanic's buff with black
+   * tops (the 1.0 look).
+   */
+  funnelPaint?: { funnel: number; top: number };
 }

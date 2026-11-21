@@ -156,12 +156,21 @@ describe("Shipwreck: choosing the Lusitania", () => {
     expect(screen.getByTestId("shipwreck-preset-clear")).toBeInTheDocument();
   });
 
-  it("starts on the ship the save chose", () => {
+  it("starts on the ship the save chose, never the Titanic first", () => {
     window.localStorage.setItem(
       SAVE_KEY,
       JSON.stringify({ v: 1, ship: "lusitania", lastWhatIf: ["br6"] })
     );
+    playback.getState().reset();
+    // Every run start and camera snap, with the ship on the stage then.
+    const staged: string[] = [];
+    const off = playback.subscribe((s, prev) => {
+      if (s.snapId !== prev.snapId) staged.push(s.ship);
+    });
     render(<Shipwreck />);
+    off();
+    expect(staged.length).toBeGreaterThan(0);
+    expect(staged.every((id) => id === "lusitania")).toBe(true);
     expect(
       screen.getByRole("radio", { name: /Ship: Lusitania/ })
     ).toHaveAttribute("aria-checked", "true");

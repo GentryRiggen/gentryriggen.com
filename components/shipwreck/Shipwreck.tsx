@@ -34,7 +34,10 @@ import {
   type ShipwreckScreen,
 } from "@/lib/shipwreck/testHooks";
 import type { Speed } from "@/lib/shipwreck/types";
-import { useShipwreckSave } from "@/lib/shipwreck/useSave";
+import {
+  currentShipwreckSave,
+  useShipwreckSave,
+} from "@/lib/shipwreck/useSave";
 import { useShipwreckSound } from "./audio/useShipwreckSound";
 import { sceneHooks } from "./scene/sceneHooks";
 import EndCard from "./ui/EndCard";
@@ -132,16 +135,16 @@ export default function Shipwreck() {
 
   // Behind the title and the editor: the chosen ship, lit, before the
   // first event, slowly circled by the movie camera.
+  // The ship is read from the save as it is now, not from this render: on
+  // the first commit the save hook has just loaded it (its effect runs
+  // first) but `ship` is still the server snapshot's Titanic, which would
+  // build the Titanic once before a saved Lusitania.
   useEffect(() => {
     if (!isGame || screen === "night") return;
     const s = playback.getState();
-    if (
-      s.ship !== ship ||
-      s.track === null ||
-      s.openings.length > 0 ||
-      s.t > 0
-    ) {
-      s.start(getShip(ship), []);
+    const id = shipOf(currentShipwreckSave());
+    if (s.ship !== id || s.track === null || s.openings.length > 0 || s.t > 0) {
+      s.start(getShip(id), []);
       s.setXray(false);
       s.flyToPlace(null, false);
     }

@@ -1,4 +1,8 @@
-import { LUSITANIA_BOATS } from "@/lib/shipwreck/ships/lusitania";
+import {
+  LUSITANIA_BOATS,
+  LUSITANIA_FUNNEL_PAINT,
+  LUSITANIA_PEACETIME_PAINT,
+} from "@/lib/shipwreck/ships/lusitania";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { createHullSurface } from "./hullSurface";
 import {
@@ -45,12 +49,14 @@ import {
  */
 
 /**
- * The paint switch. false: as she was on 7 May 1915 (funnels painted out
+ * The paint switch, kept with her data (`LUSITANIA_PEACETIME_PAINT` in
+ * lib/shipwreck/ships/lusitania.ts, which also holds the funnel colours the
+ * hull diagram reads). false: as she was on 7 May 1915 (funnels painted out
  * dark, the gilt band round the base of the superstructure, her name in
  * gilt letters). true: her peacetime Cunard colours (red funnels with
  * black tops and three thin black bands, no gilt band).
  */
-export const PEACETIME_PAINT = false;
+export const PEACETIME_PAINT = LUSITANIA_PEACETIME_PAINT;
 
 const FT = 0.3048;
 /** Paint (sRGB), as `COLORS` in buildShip.ts (kept free of three.js here). */
@@ -70,9 +76,8 @@ const TO_RAD = Math.PI / 180;
 
 /** 7 May 1915 (README: "Her paint in May 1915"). */
 const WAR_PAINT: ShipPaint = {
-  funnel: 0x2e2f32,
-  // Painted over: the top and bands barely differ from the rest.
-  funnelTop: 0x2c2d30,
+  funnel: LUSITANIA_FUNNEL_PAINT.war.funnel,
+  funnelTop: LUSITANIA_FUNNEL_PAINT.war.top,
   sheerLine: 0xb8913f,
   name: "LUSITANIA",
   mast: MAST,
@@ -80,8 +85,8 @@ const WAR_PAINT: ShipPaint = {
 };
 /** 1907–1914: Cunard red, black tops and bands. */
 const CUNARD_PAINT: ShipPaint = {
-  funnel: 0xb5461f,
-  funnelTop: 0x141416,
+  funnel: LUSITANIA_FUNNEL_PAINT.cunard.funnel,
+  funnelTop: LUSITANIA_FUNNEL_PAINT.cunard.top,
   sheerLine: null,
   name: "LUSITANIA",
   mast: MAST,

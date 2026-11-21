@@ -157,20 +157,47 @@ export default function HullDiagram({
           opacity={0.6}
         />
       )}
-      {spec.funnels.map((f, i) => (
-        <rect
-          key={`f${i}`}
-          x={X(f.x - 3.5)}
-          y={Z(f.topZ)}
-          width={7 * S}
-          height={(f.topZ - (house?.topZ ?? f.baseZ)) * S}
-          fill={f.dummy ? "#c9a06a" : "#d9a35a"}
-          stroke="#111827"
-          strokeWidth={0.8}
-          transform="skewX(8)"
-          style={{ transformOrigin: `${X(f.x)}px ${Z(f.baseZ)}px` }}
-        />
-      ))}
+      {spec.funnels.map((f, i) => {
+        const paint = spec.funnelPaint;
+        const h = (f.topZ - (house?.topZ ?? f.baseZ)) * S;
+        const shape = {
+          x: X(f.x - 3.5),
+          width: 7 * S,
+          transform: "skewX(8)",
+          style: { transformOrigin: `${X(f.x)}px ${Z(f.baseZ)}px` },
+        };
+        if (!paint)
+          return (
+            <rect
+              key={`f${i}`}
+              {...shape}
+              y={Z(f.topZ)}
+              height={h}
+              fill={f.dummy ? "#c9a06a" : "#d9a35a"}
+              stroke="#111827"
+              strokeWidth={0.8}
+            />
+          );
+        // Her own paint, edged light so a dark funnel reads on the panel.
+        return (
+          <g key={`f${i}`} data-funnel={i}>
+            <rect
+              {...shape}
+              y={Z(f.topZ)}
+              height={h}
+              fill={hex(paint.funnel)}
+              stroke="#94a3b8"
+              strokeWidth={0.8}
+            />
+            <rect
+              {...shape}
+              y={Z(f.topZ)}
+              height={h / 6}
+              fill={hex(paint.top)}
+            />
+          </g>
+        );
+      })}
       {/* The hull. */}
       <path d={hullPath} fill="#111827" stroke="#cbd5e1" strokeWidth={1.2} />
       <g clipPath={`url(#${uid}-hull)`}>
@@ -384,6 +411,11 @@ export default function HullDiagram({
         })}
     </svg>
   );
+}
+
+/** "#2e2f32" for 0x2e2f32. */
+function hex(c: number): string {
+  return `#${c.toString(16).padStart(6, "0")}`;
 }
 
 /** A cell's y range in the plan (y to port), out to `halfB`. */

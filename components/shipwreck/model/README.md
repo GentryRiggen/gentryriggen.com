@@ -148,8 +148,11 @@ hawse pipes (28 ft), the propellers and rudder (from the AP).
 
 ### Her paint in May 1915
 
-`PEACETIME_PAINT` (one constant at the top of the recipe) switches to her
-1907–1914 colours. Off, she is painted as on the day:
+`LUSITANIA_PEACETIME_PAINT` (one constant in her data,
+`lib/shipwreck/ships/lusitania.ts`, re-exported by the recipe as
+`PEACETIME_PAINT`) switches to her 1907–1914 colours. Her funnel colours
+live there too (`LUSITANIA_FUNNEL_PAINT`, `spec.funnelPaint`), so the hull
+diagram and the model paint them alike. Off, she is painted as on the day:
 
 - **Funnels painted out dark.** Schwieger's war diary (U-20, 7 May): "The
   funnels were painted black, no flag was set astern." Wikipedia's

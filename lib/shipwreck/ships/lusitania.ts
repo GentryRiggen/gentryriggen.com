@@ -598,6 +598,21 @@ function scripted(): ShipSpec["scripted"] {
  */
 const FUNNEL_X = [51.2, 25.3, -0.6, -26.4];
 
+/**
+ * The paint switch. false: as she was on 7 May 1915 (funnels painted out
+ * dark; the model also adds the gilt band round the base of the
+ * superstructure). true: her peacetime Cunard colours (red funnels with
+ * black tops). The model's README ("Her paint in May 1915") cites both.
+ */
+export const LUSITANIA_PEACETIME_PAINT = false;
+
+/** Her funnels' paint, either way (sRGB; plain numbers, no three.js). */
+export const LUSITANIA_FUNNEL_PAINT = {
+  // Painted over: the top and bands barely differ from the rest.
+  war: { funnel: 0x2e2f32, top: 0x2c2d30 },
+  cunard: { funnel: 0xb5461f, top: 0x141416 },
+} as const;
+
 export const lusitania: ShipSpec = {
   id: "lusitania",
   name: "Lusitania",
@@ -668,4 +683,7 @@ export const lusitania: ShipSpec = {
   // listed to starboard (18–67° over the calibration sweep: the physics of
   // her last minute is touchy); the survey, not the sim, lays her over.
   wreck: { restDeg: 75, minListDeg: 10 },
+  funnelPaint: LUSITANIA_PEACETIME_PAINT
+    ? LUSITANIA_FUNNEL_PAINT.cunard
+    : LUSITANIA_FUNNEL_PAINT.war,
 };
