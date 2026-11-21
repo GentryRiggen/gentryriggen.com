@@ -18,8 +18,11 @@ test("the title screen loads with no console errors", async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test("the versions page lists the first release", async ({ page }) => {
+test("the versions page lists the releases", async ({ page }) => {
   await page.goto("/shipwreck/versions");
+  await expect(
+    page.getByRole("heading", { name: "The Lusitania" })
+  ).toBeVisible();
   await expect(page.getByText("The Titanic's last night")).toBeVisible();
 });
 
