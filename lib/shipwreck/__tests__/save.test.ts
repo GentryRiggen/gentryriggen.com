@@ -63,7 +63,7 @@ describe("save", () => {
     });
     expect(parsed?.save).toEqual({
       v: 1,
-      settings: { sound: true, speed: 1, camera: "orbit" },
+      settings: { sound: true, speed: 30, camera: "orbit" },
       seen: { realNight: true, endings: ["sank"] },
       lastWhatIf: ["a", "b"],
     });

@@ -1,0 +1,460 @@
+"use client";
+
+import { useFrame, useThree } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
+import {
+  Box3,
+  Matrix4,
+  MOUSE,
+  Ray,
+  PerspectiveCamera,
+  Raycaster,
+  TOUCH,
+  Vector2,
+  Vector3,
+  type Group,
+} from "three";
+import { OrbitControls } from "three-stdlib";
+import { PLACES } from "@/lib/shipwreck/places";
+import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import { titanic } from "@/lib/shipwreck/ships/titanic";
+import { partAt } from "@/lib/shipwreck/xray";
+import {
+  cinematicShot,
+  clampAboveFloor,
+  dampSpring,
+  HULL_BOXES,
+  lifeboatView,
+  nearFor,
+  pushOutOfHull,
+  shipToThree as shipThree,
+  portraitPullBack,
+  shotView,
+  underwaterView,
+  type ShotContext,
+  type V3,
+  type View,
+} from "./cameraMath";
+import type { SceneRuntime } from "./runtime";
+
+/**
+ * Every camera. `orbit` is the free camera: one finger orbits, pinch or the
+ * wheel zooms (3 m to 3 km), two fingers (or right/shift drag) pan,
+ * double-tap a spot on the ship to fly there. It rides with the part of the
+ * ship it looks at, never goes under the sea floor or into the hull (X-ray
+ * excepted). The presets ease (critically damped) toward their shot; touching
+ * the scene on a preset hands the current view to the free camera.
+ */
+
+type PartName = "whole" | "bow" | "stern";
+
+interface Fly {
+  part: PartName | null;
+  target: Vector3;
+  cam: Vector3;
+}
+
+const SEA_DEPTH = titanic.seaDepthM;
+const FLY_DISTANCE = 26;
+const DOUBLE_TAP_MS = 320;
+const DOUBLE_TAP_PX = 28;
+
+interface CameraRigProps {
+  store: PlaybackStore;
+  runtime: SceneRuntime;
+}
+
+/** A place's camera stays at least this far above the sea (m). */
+const PIN_SEA_CLEARANCE_M = 2.5;
+
+export default function CameraRig({ store, runtime }: CameraRigProps) {
+  const { camera, gl } = useThree();
+  const controls = useMemo(() => {
+    const c = new OrbitControls(camera, gl.domElement);
+    c.enableDamping = true;
+    c.dampingFactor = 0.09;
+    c.minDistance = 3;
+    c.maxDistance = 3000;
+    c.screenSpacePanning = true;
+    c.zoomSpeed = 1.2;
+    c.rotateSpeed = 0.6;
+    c.panSpeed = 1;
+    c.touches = { ONE: TOUCH.ROTATE, TWO: TOUCH.DOLLY_PAN };
+    c.mouseButtons = {
+      LEFT: MOUSE.ROTATE,
+      MIDDLE: MOUSE.DOLLY,
+      RIGHT: MOUSE.PAN,
+    };
+    c.target.set(0, 12, 0);
+    return c;
+  }, [camera, gl]);
+  useEffect(() => () => controls.dispose(), [controls]);
+
+  const st = useRef({
+    anchor: "whole" as PartName | null,
+    local: new Vector3(0, 12, 0),
+    fly: null as Fly | null,
+    flySnap: false,
+    pos: [0, 0, 0] as number[],
+    posV: [0, 0, 0] as number[],
+    tgt: [0, 0, 0] as number[],
+    tgtV: [0, 0, 0] as number[],
+    snapId: -1,
+    flyId: 0,
+    lastTap: { at: -1e9, x: 0, y: 0 },
+    shot: "" as string,
+    down: { x: 0, y: 0, at: 0 },
+  });
+  const reducedMotion = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    []
+  );
+  const tmp = useMemo(
+    () => ({
+      a: new Vector3(),
+      b: new Vector3(),
+      ray: new Raycaster(),
+      ndc: new Vector2(),
+      inv: new Matrix4(),
+      localRay: new Ray(),
+      box: new Box3(),
+    }),
+    []
+  );
+
+  // Touching the scene on a preset hands the view to the free camera.
+  useEffect(() => {
+    const onStart = () => {
+      const s = st.current;
+      s.fly = null;
+      if (store.getState().camera !== "orbit") {
+        store.getState().takeControl();
+        reanchor();
+      }
+    };
+    controls.addEventListener("start", onStart);
+    return () => controls.removeEventListener("start", onStart);
+    // reanchor reads refs only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controls, store]);
+
+  function partGroup(name: PartName | null): Group | null {
+    return name ? runtime.part(name) : null;
+  }
+
+  /** Re-anchors the target to the part nearest it (or the world). */
+  function reanchor() {
+    const s = st.current;
+    const names: PartName[] = runtime.broken ? ["bow", "stern"] : ["whole"];
+    let best: PartName | null = null;
+    let bestD = 400;
+    for (const n of names) {
+      const g = partGroup(n);
+      if (!g) continue;
+      g.updateMatrixWorld();
+      const local = g.worldToLocal(tmp.a.copy(controls.target));
+      const dx = Math.max(
+        0,
+        Math.abs(local.x - (n === "bow" ? 60 : n === "stern" ? -80 : 0)) - 140
+      );
+      const d = Math.hypot(dx, local.z, Math.max(0, local.y - 40));
+      if (d < bestD) {
+        bestD = d;
+        best = n;
+      }
+    }
+    s.anchor = best;
+    const g = partGroup(best);
+    if (g) s.local.copy(g.worldToLocal(tmp.a.copy(controls.target)));
+  }
+
+  // Double-tap (or double-click) on the ship flies the camera there.
+  useEffect(() => {
+    const el = gl.domElement;
+    const onDown = (e: PointerEvent) => {
+      st.current.down = { x: e.clientX, y: e.clientY, at: e.timeStamp };
+    };
+    const onUp = (e: PointerEvent) => {
+      const s = st.current;
+      const moved = Math.hypot(e.clientX - s.down.x, e.clientY - s.down.y);
+      if (moved > 10 || e.timeStamp - s.down.at > 350) return;
+      const last = s.lastTap;
+      const isDouble =
+        e.timeStamp - last.at < DOUBLE_TAP_MS &&
+        Math.hypot(e.clientX - last.x, e.clientY - last.y) < DOUBLE_TAP_PX;
+      s.lastTap = {
+        at: isDouble ? -1e9 : e.timeStamp,
+        x: e.clientX,
+        y: e.clientY,
+      };
+      if (isDouble) flyToPoint(e.clientX, e.clientY);
+    };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointerup", onUp);
+    return () => {
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointerup", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gl]);
+
+  function flyToPoint(clientX: number, clientY: number) {
+    const rect = gl.domElement.getBoundingClientRect();
+    tmp.ndc.set(
+      ((clientX - rect.left) / rect.width) * 2 - 1,
+      -((clientY - rect.top) / rect.height) * 2 + 1
+    );
+    tmp.ray.setFromCamera(tmp.ndc, camera);
+    // Cheap proxies, not the ship's meshes (150k triangles and thousands of
+    // instances): the hull boxes in each part's own frame, clipped to it.
+    const breakX = runtime.split?.breakX ?? null;
+    let part: PartName | null = null;
+    let bestD = Infinity;
+    const point = new Vector3();
+    for (const n of ["whole", "bow", "stern"] as PartName[]) {
+      const g = runtime.part(n);
+      if (!g) continue;
+      g.updateMatrixWorld();
+      tmp.inv.copy(g.matrixWorld).invert();
+      tmp.localRay.copy(tmp.ray.ray).applyMatrix4(tmp.inv);
+      for (const b of HULL_BOXES) {
+        let x0 = b.x[0];
+        let x1 = b.x[1];
+        if (n === "bow" && breakX !== null) x0 = Math.max(x0, breakX);
+        if (n === "stern" && breakX !== null) x1 = Math.min(x1, breakX);
+        if (x1 <= x0) continue;
+        // Ship frame (x fwd, y port, z up) to the part's three.js axes.
+        tmp.box.min.set(x0, b.z[0], -b.y[1]);
+        tmp.box.max.set(x1, b.z[1], -b.y[0]);
+        if (!tmp.localRay.intersectBox(tmp.box, tmp.a)) continue;
+        tmp.a.applyMatrix4(g.matrixWorld);
+        const d = tmp.a.distanceTo(tmp.ray.ray.origin);
+        if (d < bestD) {
+          bestD = d;
+          part = n;
+          point.copy(tmp.a);
+        }
+      }
+    }
+    if (!part) return;
+    const hit = { point };
+    const g = partGroup(part);
+    if (!g) return;
+    const dir = tmp.b.copy(camera.position).sub(hit.point).normalize();
+    const camW = hit.point.clone().addScaledVector(dir, FLY_DISTANCE);
+    store.getState().takeControl();
+    st.current.fly = {
+      part,
+      target: g.worldToLocal(hit.point.clone()),
+      cam: g.worldToLocal(camW),
+    };
+  }
+
+  function flyToPlace() {
+    const s = store.getState();
+    const id = s.place;
+    if (!id && s.flyView) {
+      const v = s.flyView;
+      const part = partAt(
+        runtime.split?.breakX ?? null,
+        runtime.broken,
+        v.target[0]
+      );
+      st.current.fly = {
+        part,
+        target: new Vector3(v.target[0], v.target[2], -v.target[1]),
+        cam: new Vector3(v.cam[0], v.cam[2], -v.cam[1]),
+      };
+      st.current.flySnap = v.snap === true;
+      return;
+    }
+    if (!id) return;
+    const place = PLACES[id];
+    const part = partAt(
+      runtime.split?.breakX ?? null,
+      runtime.broken,
+      place.at[0]
+    );
+    const [x, y, z] = place.at;
+    const [dx, dy, dz] = place.view;
+    // Keep the camera above the sea (and so above the water inside): from
+    // inside the flooded volume the whole view is a flat blue wash.
+    let camZ = z + dz;
+    const pose =
+      runtime.frame?.bodies.find((b) => b.part === part) ??
+      runtime.frame?.bodies[0];
+    if (pose) {
+      const seaZ = shipThree(pose, [x + dx, y + dy, camZ])[1];
+      if (seaZ < PIN_SEA_CLEARANCE_M) {
+        const up = Math.max(0.3, Math.cos(pose.pitch) * Math.cos(pose.roll));
+        camZ += (PIN_SEA_CLEARANCE_M - seaZ) / up;
+      }
+    }
+    st.current.fly = {
+      part,
+      target: new Vector3(x, z, -y),
+      cam: new Vector3(x + dx, camZ, -(y + dy)),
+    };
+  }
+
+  useFrame((state, dt) => {
+    const s = st.current;
+    const p = store.getState();
+    const cam = camera as PerspectiveCamera;
+    const frame = runtime.frame;
+    const snap = p.snapId !== s.snapId;
+    s.snapId = p.snapId;
+    if (p.flyId !== s.flyId) {
+      s.flyId = p.flyId;
+      flyToPlace();
+    }
+    const d = Math.min(0.1, dt);
+
+    if (p.camera === "orbit" || !frame) {
+      // Ride with the anchored part.
+      if (s.anchor && !runtime.part(s.anchor)) {
+        // The break: hand the anchor to the half under the target.
+        const half = partAt(
+          runtime.split?.breakX ?? null,
+          runtime.broken,
+          s.local.x
+        );
+        s.anchor = runtime.part(half) ? half : null;
+      }
+      const g = partGroup(s.anchor);
+      if (g) {
+        g.updateMatrixWorld();
+        const w = g.localToWorld(tmp.a.copy(s.local));
+        const delta = tmp.b.copy(w).sub(controls.target);
+        camera.position.add(delta);
+        controls.target.copy(w);
+      }
+      if (s.fly) {
+        const fg = partGroup(s.fly.part);
+        if (fg) fg.updateMatrixWorld();
+        const tw = fg
+          ? fg.localToWorld(tmp.a.copy(s.fly.target))
+          : tmp.a.copy(s.fly.target);
+        const cw = fg
+          ? fg.localToWorld(tmp.b.copy(s.fly.cam))
+          : tmp.b.copy(s.fly.cam);
+        const k = s.flySnap || reducedMotion ? 1 : 1 - Math.exp(-d * 3.2);
+        s.flySnap = false;
+        controls.target.lerp(tw, k);
+        camera.position.lerp(cw, k);
+        if (
+          controls.target.distanceTo(tw) < 0.05 &&
+          camera.position.distanceTo(cw) < 0.05
+        ) {
+          s.fly = null;
+        }
+        if (s.fly && fg) s.anchor = s.fly.part;
+      }
+      controls.enabled = true;
+      controls.update();
+    } else {
+      const ctx: ShotContext = {
+        t: p.t,
+        wall: state.clock.elapsedTime,
+        bodies: frame.bodies,
+        breakX: p.track?.breakX ?? null,
+        seaDepthM: SEA_DEPTH,
+      };
+      let view: View;
+      let cut = false;
+      if (p.camera === "lifeboat") view = lifeboatView(ctx);
+      else if (p.camera === "underwater") view = underwaterView(ctx);
+      else if (p.camera === "bridge") view = bridgeView(ctx);
+      else if (p.camera === "stern") view = sternView(ctx);
+      else {
+        const shot = p.track ? cinematicShot(p.track, p.t) : "establishing";
+        // Reduced motion: cut between the shots instead of flying.
+        if (reducedMotion && shot !== s.shot) cut = true;
+        s.shot = shot;
+        view = shotView(shot, ctx);
+      }
+      if (snap || cut) {
+        s.pos = [...view.pos];
+        s.tgt = [...view.target];
+        s.posV = [0, 0, 0];
+        s.tgtV = [0, 0, 0];
+      } else {
+        dampSpring(s.tgt, s.tgtV, view.target, 3.5, d);
+        dampSpring(s.pos, s.posV, view.pos, 1.6, d);
+      }
+      // Portrait screens are narrow: stand further back so a shot framed
+      // for landscape still fits the ship across.
+      // (Across only: the height is the shot's, so a camera on the water
+      // stays on the water.)
+      const back = portraitPullBack(cam.aspect);
+      camera.position.set(
+        s.tgt[0] + (s.pos[0] - s.tgt[0]) * back,
+        s.pos[1],
+        s.tgt[2] + (s.pos[2] - s.tgt[2]) * back
+      );
+      controls.target.set(s.tgt[0], s.tgt[1], s.tgt[2]);
+      camera.lookAt(controls.target);
+      reanchor();
+    }
+
+    // Never under the floor; never inside the hull (except in X-ray).
+    const c = clampAboveFloor(
+      [camera.position.x, camera.position.y, camera.position.z],
+      SEA_DEPTH,
+      3
+    );
+    camera.position.set(c[0], c[1], c[2]);
+    const t2 = clampAboveFloor(
+      [controls.target.x, controls.target.y, controls.target.z],
+      SEA_DEPTH,
+      1
+    );
+    controls.target.set(t2[0], t2[1], t2[2]);
+    if (!p.xray && frame && p.camera === "orbit") {
+      for (const n of ["whole", "bow", "stern"] as PartName[]) {
+        const g = runtime.part(n);
+        if (!g) continue;
+        const l = g.worldToLocal(tmp.a.copy(camera.position));
+        // Local three axes to ship frame and back.
+        const ship: V3 = [l.x, -l.z, l.y];
+        const out = pushOutOfHull(ship);
+        if (out[0] !== ship[0] || out[1] !== ship[1] || out[2] !== ship[2]) {
+          g.localToWorld(tmp.a.set(out[0], out[2], -out[1]));
+          camera.position.copy(tmp.a);
+        }
+      }
+    }
+    if (s.anchor) {
+      const g = partGroup(s.anchor);
+      if (g) s.local.copy(g.worldToLocal(tmp.a.copy(controls.target)));
+    }
+    camera.lookAt(controls.target);
+    const near = nearFor(camera.position.distanceTo(controls.target));
+    if (Math.abs(cam.near - near) > near * 0.1) {
+      cam.near = near;
+      cam.updateProjectionMatrix();
+    }
+    runtime.underwater = camera.position.y < 0;
+  }, -1);
+
+  return null;
+}
+
+function bridgeView(ctx: ShotContext): View {
+  const b = ctx.bodies.find((x) => x.part === "bow") ?? ctx.bodies[0];
+  return {
+    pos: shipThree(b, [74, -15.5, 31.5]),
+    target: shipThree(b, [-30, -10, 29]),
+  };
+}
+
+function sternView(ctx: ShotContext): View {
+  const b = ctx.bodies.find((x) => x.part === "stern") ?? ctx.bodies[0];
+  return {
+    pos: shipThree(b, [-130, 0, 26]),
+    target: shipThree(b, [10, 0, 26]),
+  };
+}

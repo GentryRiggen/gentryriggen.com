@@ -1,5 +1,5 @@
 import { trackGame } from "@/lib/analytics/trackGame";
-import type { CameraId } from "./types";
+import type { CameraId, OutcomeId } from "./types";
 
 /**
  * Anonymous stats for the dashboard. Only closed enums and small whole
@@ -18,16 +18,17 @@ export function trackStart(mode: RunMode, opened: number): void {
 
 /**
  * A run ended. `minutes` counts from the collision to when she sank, or to
- * when the player left or 6:00 AM came if she floated.
+ * when the player left or 6:00 AM came if she floated. Breaking in two is
+ * sinking, as far as the stats go.
  */
 export function trackEnd(
   mode: RunMode,
-  outcome: "sank" | "floated",
+  outcome: OutcomeId,
   minutes: number
 ): void {
   trackGame("shipwreck_end", {
     mode,
-    outcome,
+    outcome: outcome === "floated" ? "floated" : "sank",
     minutes: clamp(minutes, 0, 600),
   });
 }

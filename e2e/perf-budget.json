@@ -38,5 +38,21 @@
   "planet-earth-shatter": {
     "calls": 11,
     "triangles": 154434
+  },
+  "shipwreck-1145pm-cinematic": {
+    "calls": 74,
+    "triangles": 296091
+  },
+  "shipwreck-breakup-cinematic": {
+    "calls": 93,
+    "triangles": 296191
+  },
+  "shipwreck-xray-staircase": {
+    "calls": 49,
+    "triangles": 86244
+  },
+  "shipwreck-underwater": {
+    "calls": 39,
+    "triangles": 91564
   }
 }

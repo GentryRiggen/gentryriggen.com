@@ -2,20 +2,131 @@ import { TEST_HOOKS_ENABLED, createTestHooks } from "@/lib/game-kit/testHooks";
 
 export { TEST_HOOKS_ENABLED };
 
-export type ShipwreckScreen = "title";
+export type ShipwreckScreen =
+  "title" | "editor" | "night" | "end" | "model" | "scene";
+
+/** What the dev/e2e model viewer (`/shipwreck?model`) shows. */
+export interface ModelViewOptions {
+  /** Null: whole; a ship-frame x: broken there, the halves drawn apart. */
+  breakX?: number | null;
+  /** 0..1, the lights. */
+  power?: number;
+  flicker?: number;
+  quality?: "high" | "medium" | "low";
+  camera?:
+    | "bow"
+    | "stern"
+    | "side"
+    | "top"
+    | "break"
+    | "bridge"
+    | "bow-close"
+    | "stern-close"
+    | "astern"
+    | "break-close";
+  stage?: "day" | "night";
+}
+
+export interface ModelInfo {
+  /** True once the model is built and a frame has been drawn. */
+  ready: boolean;
+  /** Last frame's draw calls and triangles (all passes). */
+  calls: number;
+  triangles: number;
+  /** Triangles in the model itself (instances counted). */
+  modelTriangles: number;
+  /** How long the last model build took, ms. */
+  buildMs: number;
+}
+
+export interface ShipwreckModelHooks {
+  setModelView(view: ModelViewOptions): void;
+  getModelInfo(): ModelInfo;
+}
+
+/** What `getState()` reports about the night's playback. */
+export interface ScenePlaybackInfo {
+  t: number;
+  realT: number;
+  phase: string;
+  eventsSeen: string[];
+  quality: "high" | "medium" | "low";
+  camera: string;
+  xray: boolean;
+  place: string | null;
+  playing: boolean;
+  speed: number;
+  slowMo: boolean;
+  done: boolean;
+  computedT: number;
+  progress: number;
+}
+
+/** The scene's hooks (`?scene`, and later the game itself). */
+export interface ShipwreckSceneHooks {
+  seek(t: number): void;
+  play(): void;
+  pause(): void;
+  setSpeed(speed: 1 | 10 | 30 | 100): void;
+  setCamera(camera: string): void;
+  setXray(on: boolean): void;
+  flyToPlace(place: string | null): void;
+  setQuality(quality: "high" | "medium" | "low"): void;
+  /** Free camera to a ship-frame view (target and camera, x fwd, y port, z up). */
+  flyToView(
+    target: [number, number, number],
+    cam: [number, number, number],
+    snap?: boolean
+  ): void;
+  /** The track's events so far (kind, t, realT, index). */
+  getEvents(): { kind: string; t: number; realT: number; index?: number }[];
+  getState(): ScenePlaybackInfo;
+  /** Last frame's draw calls and triangles (every pass) and the camera. */
+  getRenderInfo(): {
+    calls: number;
+    triangles: number;
+    camera: [number, number, number];
+  } | null;
+}
+
+/** The game's own hooks: start a run, read where it is and how it ended. */
+export interface ShipwreckGameHooks {
+  startReal(): void;
+  /** Starts a What if with these compartment ids open. */
+  startWhatIf(ids: string[]): void;
+  /** "sank" | "floated" | "broke-in-two" once the run is done, else null. */
+  getOutcome(): string | null;
+}
 
 declare global {
   interface Window {
     __shipwreck?: {
       /** The screen the game is showing. Later tasks add more. */
       getScreen(): ShipwreckScreen;
-    };
+      /** Model viewer only (`?model`, dev and e2e builds). */
+      setModelView?(view: ModelViewOptions): void;
+      getModelInfo?(): ModelInfo | null;
+    } & Partial<ShipwreckSceneHooks> &
+      Partial<ShipwreckGameHooks>;
   }
 }
 
 /** Puts the hooks on `window` when enabled. Returns a cleanup function. */
-export function installTestHooks(getScreen: () => ShipwreckScreen): () => void {
+export function installTestHooks(
+  getScreen: () => ShipwreckScreen,
+  model?: () => ShipwreckModelHooks | null,
+  scene?: ShipwreckSceneHooks,
+  game?: ShipwreckGameHooks
+): () => void {
   return createTestHooks<NonNullable<Window["__shipwreck"]>>("__shipwreck", {
     getScreen,
+    ...(scene ?? {}),
+    ...(game ?? {}),
+    ...(model
+      ? {
+          setModelView: (view: ModelViewOptions) => model()?.setModelView(view),
+          getModelInfo: () => model()?.getModelInfo() ?? null,
+        }
+      : {}),
   });
 }
