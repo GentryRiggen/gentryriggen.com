@@ -511,7 +511,12 @@ function makeBody(
     grounded: false,
     touchBow: false,
     touchStern: false,
-    keepsList: w.spec.wreckKeepsList ?? false,
+    wreck: w.spec.wreck
+      ? {
+          rest: w.spec.wreck.restDeg * DEG,
+          min: w.spec.wreck.minListDeg * DEG,
+        }
+      : null,
     floorN: 0,
     floorX: new Float64Array(0),
     floorF: new Float64Array(0),
@@ -567,13 +572,16 @@ function portholeOpenings(
             best = ci;
         });
         if (best < 0) continue;
+        const z = row.followsSheer
+          ? row.z + spec.sheerZ(x) - spec.sheerZ((row.fromX + row.toX) / 2)
+          : row.z;
         out.push({
           i: best,
           o: {
             x,
-            y: sign * hullHalfBreadth(hull, x, row.z),
-            zLow: row.z - PORTHOLE_HEIGHT_M / 2,
-            zHigh: row.z + PORTHOLE_HEIGHT_M / 2,
+            y: sign * hullHalfBreadth(hull, x, z),
+            zLow: z - PORTHOLE_HEIGHT_M / 2,
+            zHigh: z + PORTHOLE_HEIGHT_M / 2,
             area: (row.openM2PerM * len) / parts,
           },
         });

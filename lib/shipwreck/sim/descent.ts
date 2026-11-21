@@ -144,9 +144,14 @@ function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
   b.contactD0 = onFloor ? max(0, floorZ - e[2]) : 0;
   b.contactT = 0;
   b.contactPitch = b.pitch;
-  // A ship whose wreck lies as she came down (spec.wreckKeepsList) keeps
-  // the list she lands with; else she rights (the 1.0 rest).
-  b.restRoll = b.keepsList ? b.roll : b.part === "stern" ? 0.05 : 0;
+  // The rest (a rule): a ship with a surveyed wreck (spec.wreck) lies over
+  // to it if she lands listed toward it, else keeps her list; any other
+  // ship rights (the 1.0 rest).
+  const w = b.wreck;
+  if (!w) b.restRoll = b.part === "stern" ? 0.05 : 0;
+  else if (b.roll * w.rest > 0 && abs(b.roll) >= w.min)
+    b.restRoll = (w.rest > 0 ? 1 : -1) * max(abs(b.roll), abs(w.rest));
+  else b.restRoll = b.roll;
   if (b.part === "stern") b.restPitch = -0.02;
   else {
     // Nose deep in the mud, the after end bedded: a slight bow-down rest.

@@ -117,22 +117,29 @@ describe("the sea floor under a ship afloat", () => {
     expect(lowest).toBeGreaterThanOrEqual(-SEA - BOW_PLOUGH_M - 0.5);
   });
 
-  it("keeps the list she lands with only if her wreck does", () => {
+  it("rests as her wreck does only if the ship says so (spec.wreck)", () => {
     // Deep enough that she sinks before she touches, and lands listed.
     const listed = (extra?: Partial<ShipSpec>) =>
       simulate(
         longShip({ seaDepthM: 300, depth: 16, tcg: -0.3, extra }),
         bowHoles
       );
-    const onSide = listed({ wreckKeepsList: true });
+    const onSide = listed({ wreck: { restDeg: 60, minListDeg: 10 } });
     const landsT = eventT(onSide, "bow-lands")!;
     const atLanding = onSide.frames.filter((f) => f.t <= landsT).pop()!;
     expect(atLanding.listDeg).toBeGreaterThan(10);
     const rest = onSide.frames[onSide.frames.length - 1];
     expect(onSide.outcome).toBe("sank");
     expect(rest.bodies[0].roll).toBeGreaterThan(0);
-    // (the last frame before the landing step, so within a step's turn)
-    expect(Math.abs(rest.listDeg - atLanding.listDeg)).toBeLessThan(2);
+    expect(Math.abs(rest.listDeg - 60)).toBeLessThan(0.5);
+    // Listed less than her wreck but more than that: she keeps her list.
+    const keeps = listed({ wreck: { restDeg: 30, minListDeg: 10 } });
+    const kept = keeps.frames[keeps.frames.length - 1];
+    expect(Math.abs(kept.listDeg - atLanding.listDeg)).toBeLessThan(2);
+    // Listed the other way from her wreck: she keeps her list too.
+    const other = listed({ wreck: { restDeg: -60, minListDeg: 10 } });
+    const end2 = other.frames[other.frames.length - 1];
+    expect(Math.abs(end2.listDeg - atLanding.listDeg)).toBeLessThan(2);
     // Without the rule: the same fall, the 1.0 rest (upright).
     const upright = listed();
     expect(upright.events).toEqual(onSide.events);

@@ -52,6 +52,12 @@ export interface PortholeRow {
   side: "port" | "starboard";
   /** Open area per metre of row when the portholes are open (m²/m). */
   openM2PerM: number;
+  /**
+   * The row follows the sheer, as a deck does: `z` is its height at the
+   * row's middle, and at x it is z + sheerZ(x) − sheerZ(middle). Default
+   * false (a level row at `z`).
+   */
+  followsSheer?: boolean;
 }
 
 export interface ScriptedEvent {
@@ -92,10 +98,12 @@ export interface ShipSpec {
   /** Forward speed at the first event and its decay (no propulsion model). */
   headway?: { startMs: number; halfLifeS: number };
   /**
-   * On the floor she keeps the list she lands with (the Lusitania, on her
-   * starboard side). Missing or false: the 1.0 rest, which eases a landed
-   * body upright (a hull on the floor of the deep sea, as the Titanic's
-   * halves lie).
+   * Her wreck as surveyed, for the rest on the floor: a rule, not physics.
+   * A body that lands listed at least `minListDeg` toward the side her
+   * wreck lies on (`restDeg`, + to starboard as `roll`) eases over to
+   * `restDeg`, or keeps its list if that is more; one that lands any
+   * other way keeps the list it landed with. Missing: the 1.0 rest, which
+   * eases a landed body upright (the Titanic's halves).
    */
-  wreckKeepsList?: boolean;
+  wreck?: { restDeg: number; minListDeg: number };
 }

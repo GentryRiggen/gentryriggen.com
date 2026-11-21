@@ -135,8 +135,8 @@ export interface Body {
   /** Highest / lowest earth z of the body (hull and boxes). */
   top: number;
   bottom: number;
-  /** Rest as she lands, keeping her list (`spec.wreckKeepsList`). */
-  keepsList: boolean;
+  /** Her wreck's rest rule in radians (`spec.wreck`), or null (1.0). */
+  wreck: { rest: number; min: number } | null;
   /** Afloat and still for this long (s); frozen once steady. */
   steadyFor: number;
   frozen: boolean;

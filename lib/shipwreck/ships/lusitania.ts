@@ -21,7 +21,10 @@ import type {
  * transverse bunker forward of No. 1 boiler room, the afternoon); Ballard,
  * "Exploring the Lusitania" (the hit near No. 1 boiler room, the bow
  * striking the floor at 93 m, the wreck on her starboard side); Schwieger's
- * war diary (starboard, "right behind the bridge", running depth 3 m).
+ * war diary (starboard, "right behind the bridge", running depth 3 m);
+ * her general arrangement (profile and hold plan, "RMS Lusitania deck
+ * plans", Wikimedia Commons: bulkheads, funnels, the superstructure's ends
+ * and the boats are measured off it).
  *
  * Ship frame: metres, origin on the keel at midships (half of LBP), x
  * forward, y to port, z up.
@@ -205,29 +208,33 @@ function buildStations(): HullStation[] {
 }
 
 // ---------------------------------------------------------------------------
-// Watertight subdivision. Eleven principal transverse bulkheads, twelve
-// sections (Mersey). Positions in feet from the forward perpendicular are
-// estimates from the general arrangement (README): the collision bulkhead,
-// two cargo holds, the transverse coal bunker right in front of No. 1
-// boiler room, four boiler rooms over the middle half of her length, the
-// turbine room, the auxiliary (turbo-generator) room, the shaft tunnels and
-// the after peak with the steering gear.
+// Watertight subdivision, measured off her 1907 profile and hold plan
+// (John Brown & Co., as reproduced in "RMS Lusitania deck plans",
+// Wikimedia Commons; README "Lusitania's data"), scaled by her length
+// between perpendiculars (2.84 px per foot, AP and FP at frames 0 and
+// 300), each to about ±1 m. Twelve bulkheads (Galbraith's count; Mersey's
+// "eleven principal" leaves out the chain locker's): the collision
+// bulkhead, the trimming tank or cargo hold, the chain locker, the
+// magazine/reserve coal/cargo hold, the transverse coal bunker right in
+// front of No. 1 boiler room, the four boiler rooms (each centred under its
+// funnel), the L.P. engine (turbine) room, the condenser and auxiliary
+// machinery rooms, the steering gear with the tunnels' after ends, and
+// the after peak. The chain locker and the condenser/auxiliary bulkhead
+// are left out here (their spaces join the ones beside them): twelve
+// sections, as Mersey.
 
-function bulkheadX(feetFromFp: number): number {
-  return round((380 - feetFromFp) * FT, 0.01);
-}
 const BH = {
-  A: bulkheadX(40), // collision bulkhead
-  B: bulkheadX(100),
-  C: bulkheadX(175),
-  D: bulkheadX(200), // transverse bunker | No. 1 boiler room
-  E: bulkheadX(270),
-  F: bulkheadX(355),
-  G: bulkheadX(440),
-  H: bulkheadX(525), // No. 4 boiler room | turbine room
-  J: bulkheadX(620),
-  K: bulkheadX(665),
-  L: bulkheadX(720),
+  A: 102.2, // collision bulkhead (frame 288)
+  B: 86.7, // trimming tank or cargo | chain locker and magazine
+  C: 74.9, // magazine, reserve coal or cargo | transverse coal bunker
+  D: 65.7, // transverse bunker | No. 1 boiler room
+  E: 36.5, // No. 1 | No. 2
+  F: 12.4, // No. 2 | No. 3
+  G: -10.9, // No. 3 | No. 4
+  H: -36.3, // No. 4 | L.P. engine (turbine) room
+  J: -63.5, // turbine room | condenser room
+  K: -81.1, // auxiliary machinery | steering gear and tunnels
+  L: -111.7, // steering gear | after peak
 };
 
 /**
@@ -337,7 +344,7 @@ const COMPARTMENTS: Compartment[] = [
   ),
   compartment(
     "tunnels",
-    "Shaft tunnels",
+    "Steering gear",
     "shaft",
     BH.L,
     BH.K,
@@ -346,7 +353,7 @@ const COMPARTMENTS: Compartment[] = [
   ),
   compartment(
     "aux",
-    "Generator room",
+    "Condenser room",
     "engine",
     BH.K,
     BH.J,
@@ -405,12 +412,6 @@ const COMPARTMENTS: Compartment[] = [
   ),
 ];
 
-/**
- * The navigating bridge, 190 ft from the forward perpendicular: the forward
- * end of the long house under the boat deck. An assumption read off her
- * profile (no source found gives it; README).
- */
-const BRIDGE_X = round(HALF_LBP - 190 * FT, 0.1);
 /** The second explosion, a few seconds after the hit (shown seconds). */
 export const SECOND_EXPLOSION_T = 8;
 
@@ -463,10 +464,12 @@ const REAL_AFTERNOON: Opening[] = [
 /**
  * Side scuttles open on the warm afternoon: rows on the Lower (F) deck
  * clear of the boiler rooms' bunkers, and on the Main (E) deck along most
- * of her length, both sides. A 16-inch scuttle (0.126 m²) about every 2 m,
- * a little under half of them open: 0.027 m² per metre of row (README).
+ * of her length, both sides, each following the sheer as her decks do
+ * (`followsSheer`: `z` is at the row's middle). A 16-inch scuttle
+ * (0.126 m²) about every 2 m, about 40% of them open: 0.025 m²
+ * per metre of row (README).
  */
-const PORTHOLE_OPEN_M2_PER_M = 0.027;
+const PORTHOLE_OPEN_M2_PER_M = 0.025;
 function rows(z: (x: number) => number, from: number, to: number) {
   const mid = (from + to) / 2;
   return (["port", "starboard"] as const).map((side): PortholeRow => ({
@@ -475,6 +478,7 @@ function rows(z: (x: number) => number, from: number, to: number) {
     toX: to,
     side,
     openM2PerM: PORTHOLE_OPEN_M2_PER_M,
+    followsSheer: true,
   }));
 }
 const PORTHOLES: PortholeRow[] = [
@@ -496,14 +500,28 @@ export interface LusitaniaBoat {
   kind: "wooden" | "collapsible";
 }
 
-/** The boat deck's ends: from behind the bridge to the after house. */
-const BOAT_DECK_FWD = 52;
-const BOAT_DECK_AFT = -62;
+/**
+ * The superstructure, measured off the profile like the bulkheads: the
+ * house front (the navigating bridge and the Promenade deck's front, about
+ * 45 m from the stem head; photographs agree), the boat deck's after end
+ * and the second class house's after end. Between the house front and the
+ * stem her side is plated up to the Promenade (B) deck: a long foredeck,
+ * no well. Aft of the second class house the Shelter deck is open to the
+ * stern: no raised poop.
+ */
+const HOUSE_FRONT_X = 72.0; // 144 ft from the FP
+const BOAT_DECK_AFT = -63.2;
+const AFT_HOUSE_X = -104.3;
+/** The lifeboats' middles, first (1, 2) and last (21, 22) on each side. */
+const FIRST_BOAT_X = 56;
+const LAST_BOAT_X = -52;
+/** The after collapsibles' deck, behind the boat deck. */
+const AFT_DECK_X = -62;
 
 function buildBoats(): LusitaniaBoat[] {
   const out: LusitaniaBoat[] = [];
-  const step = (BOAT_DECK_FWD - BOAT_DECK_AFT - 10) / 10;
-  const davitX = (k: number) => round(BOAT_DECK_FWD - 5 - k * step, 0.1);
+  const step = (FIRST_BOAT_X - LAST_BOAT_X) / 10;
+  const davitX = (k: number) => round(FIRST_BOAT_X - k * step, 0.1);
   // Wooden boats: odd numbers to starboard, even to port, 1 and 2 forward.
   for (let k = 0; k < 11; k += 1)
     for (const side of ["starboard", "port"] as const)
@@ -533,7 +551,7 @@ function buildBoats(): LusitaniaBoat[] {
         index: out.length,
         label: `${side === "starboard" ? "S" : "P"}${k + 1}`,
         side,
-        x: round(BOAT_DECK_AFT - 6 - 4 * k, 0.1),
+        x: round(AFT_DECK_X - 6 - 4 * k, 0.1),
         kind: "collapsible",
       });
   return out;
@@ -574,13 +592,11 @@ function scripted(): ShipSpec["scripted"] {
   return events.sort((a, b) => a.t - b.t);
 }
 
-/** Over the four boiler rooms, a little aft of each room's middle. */
-const FUNNEL_X = [
-  round((BH.D + BH.E) / 2 - 3, 0.1),
-  round((BH.E + BH.F) / 2 - 3, 0.1),
-  round((BH.F + BH.G) / 2 - 3, 0.1),
-  round((BH.G + BH.H) / 2 - 3, 0.1),
-];
+/**
+ * The funnels' bases, measured off the profile (each over the middle of its
+ * boiler room, about 25.9 m apart).
+ */
+const FUNNEL_X = [51.2, 25.3, -0.6, -26.4];
 
 export const lusitania: ShipSpec = {
   id: "lusitania",
@@ -593,29 +609,39 @@ export const lusitania: ShipSpec = {
   // Six days out of New York with most of her coal burnt (README).
   draught: 9.35,
   displacementT: 35650,
-  // GM 1.09 m over this hull's KM of 10.54 m (README: a GM under about
+  // GM 0.84 m over this hull's KM of 10.54 m (README: a GM under about
   // 1.2 m, as three flooded side bunkers could take it all away).
-  kg: 9.45,
+  kg: 9.7,
   lcg: -2.6,
   tcg: 0,
   stations: buildStations(),
   sheerZ: lusitaniaSheerZ,
   superstructure: [
-    // The poop and docking bridge aft, the after house, the long house
-    // under the boat deck from the bridge aft, and the forecastle. The
-    // forward well (cranes, hatches) lies open between the bridge and the
-    // forecastle.
-    { fromX: STERN_X, toX: -100, topZ: round(DECK_B + 0.6, 0.01) },
-    { fromX: -100, toX: BOAT_DECK_AFT, topZ: DECK_B },
+    // The second class house aft (to the boat deck), the foredeck plated
+    // up to B from the house front to the stem, and the long house under
+    // the boat deck from its after end to the bridge. Flat tops at the
+    // deck's height at each box's middle (the sheer). Index 2 is the boat
+    // deck's house (the model reads its after end).
     {
-      fromX: BOAT_DECK_AFT,
-      toX: BRIDGE_X,
-      topZ: round((DECK_B + DECK_BOAT) / 2, 0.01),
+      fromX: AFT_HOUSE_X,
+      toX: BOAT_DECK_AFT,
+      topZ: round(
+        lusitaniaSheerZ((AFT_HOUSE_X + BOAT_DECK_AFT) / 2) + DECK_B - DECK_C,
+        0.01
+      ),
     },
     {
-      fromX: round(HALF_LBP - 95 * FT, 0.1),
+      fromX: HOUSE_FRONT_X,
       toX: STEM_X,
-      topZ: round(DECK_B + 1.5, 0.01),
+      topZ: round(
+        lusitaniaSheerZ((HOUSE_FRONT_X + STEM_X) / 2) + DECK_B - DECK_C,
+        0.01
+      ),
+    },
+    {
+      fromX: BOAT_DECK_AFT,
+      toX: HOUSE_FRONT_X,
+      topZ: round((DECK_B + DECK_BOAT) / 2, 0.01),
     },
   ],
   compartments: COMPARTMENTS,
@@ -638,7 +664,8 @@ export const lusitania: ShipSpec = {
   // 18 knots, the engines unable to stop as steam failed; she carried her
   // way about 2 nautical miles (README).
   headway: { startMs: 18 * 0.514444, halfLifeS: 300 },
-  // Her wreck lies on its starboard side in 93 m (Ballard): she rolls onto
-  // it as she goes under with her bow on the floor, and stays (README).
-  wreckKeepsList: true,
+  // Her wreck lies on its starboard side in 93 m (Ballard). She comes down
+  // listed to starboard (18–67° over the calibration sweep: the physics of
+  // her last minute is touchy); the survey, not the sim, lays her over.
+  wreck: { restDeg: 75, minListDeg: 10 },
 };
