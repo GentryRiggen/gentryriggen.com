@@ -5,8 +5,9 @@ import { useStore } from "zustand";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
 import { trackCamera } from "@/lib/shipwreck/analytics";
 import { helpFor } from "@/lib/shipwreck/help";
-import { PLACE_IDS, PLACES, type PlaceId } from "@/lib/shipwreck/places";
+import { PLACES_BY_SHIP, type PlaceId } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import { getShip } from "@/lib/shipwreck/ships";
 import { clockText, sinceText } from "@/lib/shipwreck/story";
 import {
   CAMERA_IDS,
@@ -65,6 +66,7 @@ export default function Hud({
   sound,
   hidden = false,
 }: HudProps) {
+  const ship = getShip(useStore(store, (s) => s.ship));
   const realMinute = useStore(store, (s) => Math.floor(s.realT / 60));
   const playing = useStore(store, (s) => s.playing);
   const speed = useStore(store, (s) => s.speed);
@@ -142,10 +144,10 @@ export default function Hud({
                 data-testid="shipwreck-clock"
                 className="text-3xl font-semibold tabular-nums leading-tight text-white sm:text-4xl"
               >
-                {clockText(realMinute * 60)}
+                {clockText(realMinute * 60, ship.clockStartS)}
               </span>
               <span className="text-sm text-slate-300 sm:text-base">
-                {sinceText(realMinute * 60)}
+                {sinceText(realMinute * 60, ship)}
               </span>
             </div>
             {chips && <div className="mt-2">{chips}</div>}
@@ -173,11 +175,11 @@ export default function Hud({
                 className={`${PANEL} pointer-events-auto flex flex-col gap-1.5 p-2`}
                 data-testid="shipwreck-places"
               >
-                {PLACE_IDS.map((id) => (
+                {PLACES_BY_SHIP[ship.id].map(({ id, label }) => (
                   <button
                     key={id}
                     type="button"
-                    aria-label={`Fly to the ${PLACES[id].label}`}
+                    aria-label={`Fly to the ${label}`}
                     aria-pressed={place === id}
                     data-testid={`shipwreck-place-${id}`}
                     onClick={() => pickPlace(id)}
@@ -188,7 +190,7 @@ export default function Hud({
                     } ${FOCUS}`}
                   >
                     <Icon name="pin" className="size-6 shrink-0" />
-                    {PLACES[id].label}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -324,7 +326,7 @@ export default function Hud({
 
       {help && (
         <HelpCard
-          help={helpFor("controls", null)}
+          help={helpFor("controls", null, ship)}
           icon="help"
           onClose={() => setHelp(false)}
         />

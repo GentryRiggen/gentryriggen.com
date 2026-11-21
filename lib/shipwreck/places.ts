@@ -1,4 +1,6 @@
+import { lusitania } from "./ships/lusitania";
 import { titanic } from "./ships/titanic";
+import type { ShipId, ShipSpec } from "./ships/types";
 
 /**
  * The places a player can fly to. Positions are ship-frame metres (x
@@ -10,13 +12,26 @@ import { titanic } from "./ships/titanic";
  * the reciprocating engine room between bulkheads K and L.
  */
 
+/** The Titanic's places (the 1.0 list). */
 export const PLACE_IDS = [
   "bridge",
   "grand-staircase",
   "boiler-room-6",
   "engine-room",
 ] as const;
-export type PlaceId = (typeof PLACE_IDS)[number];
+export type TitanicPlaceId = (typeof PLACE_IDS)[number];
+
+/** The Lusitania's places. */
+export const LUSITANIA_PLACE_IDS = [
+  "bridge",
+  "dining-saloon",
+  "boiler-room-1",
+  "starboard-bunker",
+  "turbine-room",
+] as const;
+
+/** Any ship's place (looked up with the ship: both have a bridge). */
+export type PlaceId = TitanicPlaceId | (typeof LUSITANIA_PLACE_IDS)[number];
 
 export interface Place {
   id: PlaceId;
@@ -36,10 +51,17 @@ export interface Place {
 }
 
 const DECK = Object.fromEntries(titanic.decks.map((d) => [d.name, d.z]));
-const DECK_C = DECK.C;
-/** A deck's height at x: its midships height plus the sheer there. */
-export function deckZAt(deck: string, x: number): number {
-  return DECK[deck] + (titanic.sheerZ(x) - DECK_C);
+/**
+ * A deck's height at x: its midships height plus the sheer there (the
+ * sheer measured from the C deck, the top of the hull, as the models do).
+ */
+export function deckZAt(
+  deck: string,
+  x: number,
+  spec: Pick<ShipSpec, "decks" | "sheerZ"> = titanic
+): number {
+  const z = (name: string) => spec.decks.find((d) => d.name === name)?.z ?? 0;
+  return z(deck) + (spec.sheerZ(x) - z("C"));
 }
 
 const BRIDGE_X = 68.6;
@@ -47,7 +69,7 @@ const STAIR_X = 37.4;
 const BR6_X = 62.5;
 const ENGINE_X = -38;
 
-export const PLACES: Record<PlaceId, Place> = {
+export const PLACES: Record<TitanicPlaceId, Place> = {
   bridge: {
     id: "bridge",
     label: "Bridge",
@@ -90,6 +112,93 @@ export const PLACES: Record<PlaceId, Place> = {
     view: [-16, -24, 10],
   },
 };
+
+/**
+ * The Lusitania's places, from her general arrangement as her data lays it
+ * out: the wheelhouse on the navigating bridge, on the roof of the boat
+ * deck's house about 4 m abaft its front; the first class dining saloon on
+ * the Upper (D) deck, two decks high under its dome, amidships forward;
+ * No. 1 boiler room between bulkheads D and E (the forward one, where the
+ * torpedo hit); the starboard side bunker of No. 2 boiler room (the second
+ * explosion opened it); and the turbine room between bulkheads H and J.
+ */
+const L_BRIDGE_X = 68.4;
+/** The navigating bridge: the boat deck house's roof (2.6 m up). */
+const L_BRIDGE_FLOOR = deckZAt("Boat", L_BRIDGE_X, lusitania) + 2.6;
+const L_SALOON_X = 22;
+const L_BR1_X = 46;
+const L_BUNKER_X = 24;
+const L_TURBINE_X = -47;
+const L_TANK_TOP =
+  lusitania.decks.find((d) => d.name === "Tank top")?.z ?? 1.52;
+
+export const LUSITANIA_PLACES: Record<
+  (typeof LUSITANIA_PLACE_IDS)[number],
+  Place
+> = {
+  bridge: {
+    id: "bridge",
+    label: "Bridge",
+    fact: "The ship was steered from the wheelhouse here, high above the sea. The torpedo hit her side down below, just behind it.",
+    at: [L_BRIDGE_X, 0, L_BRIDGE_FLOOR + 1.6],
+    floorZ: L_BRIDGE_FLOOR,
+    compartmentId: null,
+    interior: true,
+    view: [-14, -10, 6],
+  },
+  "dining-saloon": {
+    id: "dining-saloon",
+    label: "Dining Saloon",
+    fact: "First class passengers ate here, in a white and gold room two decks high under a painted dome.",
+    at: [L_SALOON_X, 0, deckZAt("D", L_SALOON_X, lusitania) + 2],
+    floorZ: deckZAt("D", L_SALOON_X, lusitania),
+    compartmentId: null,
+    interior: true,
+    view: [-16, -22, 10],
+  },
+  "boiler-room-1": {
+    id: "boiler-room-1",
+    label: "Boiler Room 1",
+    fact: "The front boiler room. She had 25 boilers in four boiler rooms, with 192 fires to stoke. The torpedo hit the side here.",
+    at: [L_BR1_X, 0, 5],
+    floorZ: L_TANK_TOP,
+    compartmentId: "br1",
+    interior: true,
+    view: [-14, -9, 15],
+  },
+  "starboard-bunker": {
+    id: "starboard-bunker",
+    label: "Coal Bunker",
+    fact: "Long coal stores ran down both sides of the boiler rooms. When the sea filled the ones on this side, their weight made her lean over fast.",
+    at: [L_BUNKER_X, -11.4, 6],
+    floorZ: 2,
+    compartmentId: "br2-stbd",
+    interior: true,
+    view: [-14, -14, 9],
+  },
+  "turbine-room": {
+    id: "turbine-room",
+    label: "Turbine Room",
+    fact: "Giant steam turbines spun her four propellers. They made her one of the fastest ships in the world.",
+    at: [L_TURBINE_X, 0, 6],
+    floorZ: L_TANK_TOP,
+    compartmentId: "turbine",
+    interior: true,
+    view: [-16, -20, 10],
+  },
+};
+
+/** Each ship's places, in the order the HUD lists them. */
+export const PLACES_BY_SHIP: Record<ShipId, readonly Place[]> = {
+  titanic: PLACE_IDS.map((id) => PLACES[id]),
+  lusitania: LUSITANIA_PLACE_IDS.map((id) => LUSITANIA_PLACES[id]),
+};
+
+/** A ship's place by id, or null if she has none by that id. */
+export function placeFor(ship: ShipId, id: string | null): Place | null {
+  if (id === null) return null;
+  return PLACES_BY_SHIP[ship].find((p) => p.id === id) ?? null;
+}
 
 /** Water depth here as a short line ("Water here: 2.1 m deep"). */
 export function waterHereText(depthM: number): string {

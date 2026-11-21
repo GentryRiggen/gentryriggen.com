@@ -1,19 +1,34 @@
 "use client";
 
+import { useId } from "react";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
-import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
+import type {
+  Compartment,
+  Opening,
+  ShipSpec,
+} from "@/lib/shipwreck/ships/types";
 
 /**
  * The ship's side profile from her own data: hull, decks, superstructure,
  * funnels and the watertight compartments (bow to the right). Optionally
  * the water in each compartment, the holes and the sea level tilted with
- * the trim; in the editor each compartment is a tap target.
+ * the trim; in the editor each compartment is a tap target. A ship with
+ * side bunkers (cells split by longitudinal bulkheads) also gets a plan
+ * from above under the profile, port at the top, so the water in each
+ * side's bunkers shows.
  */
 
 /** viewBox units per metre. */
 const S = 2;
 const PAD = 4;
 const TOP_Z = 56;
+/** Room between the profile and the plan, and for the side labels. */
+const PLAN_GAP = 6;
+
+/** A cell the side profile draws: the full-breadth or centre ones. */
+function inProfile(c: Compartment): boolean {
+  return !c.span || c.span.side === "centre";
+}
 
 interface HullDiagramProps {
   spec: ShipSpec;
@@ -38,10 +53,22 @@ export default function HullDiagram({
   className = "",
   title,
 }: HullDiagramProps) {
+  const uid = useId().replace(/:/g, "");
   const x0 = spec.stations[0].x;
   const x1 = spec.stations[spec.stations.length - 1].x;
   const W = (x1 - x0) * S + PAD * 2;
-  const H = TOP_Z * S + PAD * 2;
+  const profileH = TOP_Z * S + PAD * 2;
+  const hasPlan = spec.compartments.some((c) => c.span);
+  // The plan's half-width: the widest section, a metre to spare.
+  const halfB = Math.ceil(
+    Math.max(...spec.stations.flatMap((st) => st.offsets.map((o) => o[1])))
+  );
+  const planTop = profileH + PLAN_GAP;
+  const H = hasPlan ? planTop + halfB * 2 * S + PAD : profileH;
+  const PY = (y: number) => planTop + (halfB - y) * S;
+  const profile = spec.compartments
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => inProfile(c));
   const X = (x: number) => PAD + (x - x0) * S;
   const Z = (z: number) => PAD + (TOP_Z - z) * S;
 
@@ -53,6 +80,18 @@ export default function HullDiagram({
       .reverse()
       .map(([x, z]) => `${X(x).toFixed(1)},${Z(z).toFixed(1)}`)
       .join("L")}Z`;
+
+  // The plan: the widest breadth at each station, port above, starboard below.
+  const widest = spec.stations.map(
+    (st) => [st.x, Math.max(...st.offsets.map((o) => o[1]))] as const
+  );
+  const planPath = hasPlan
+    ? `M${widest.map(([x, b]) => `${X(x).toFixed(1)},${PY(b).toFixed(1)}`).join("L")}` +
+      `L${[...widest]
+        .reverse()
+        .map(([x, b]) => `${X(x).toFixed(1)},${PY(-b).toFixed(1)}`)
+        .join("L")}Z`
+    : "";
 
   // The deckhouses up to the boat deck, over the longest superstructure box
   // (the bridge deck), where the funnels stand.
@@ -87,9 +126,14 @@ export default function HullDiagram({
       aria-label={title}
     >
       <defs>
-        <clipPath id="sw-hull-clip">
+        <clipPath id={`${uid}-hull`}>
           <path d={hullPath} />
         </clipPath>
+        {hasPlan && (
+          <clipPath id={`${uid}-plan`}>
+            <path d={planPath} />
+          </clipPath>
+        )}
       </defs>
       {/* Superstructure and funnels. */}
       {spec.superstructure.map((b, i) => (
@@ -129,8 +173,8 @@ export default function HullDiagram({
       ))}
       {/* The hull. */}
       <path d={hullPath} fill="#111827" stroke="#cbd5e1" strokeWidth={1.2} />
-      <g clipPath="url(#sw-hull-clip)">
-        {spec.compartments.map((c, i) => {
+      <g clipPath={`url(#${uid}-hull)`}>
+        {profile.map(({ c, i }) => {
           const top = Math.max(c.aftBulkheadTopZ, c.fwdBulkheadTopZ);
           const fill = Math.max(0, Math.min(1, water?.[i] ?? 0));
           const on = selected?.has(c.id) ?? false;
@@ -174,7 +218,7 @@ export default function HullDiagram({
         ))}
       </g>
       {/* Bulkheads, to their own tops. */}
-      {spec.compartments.slice(1).map((c) => (
+      {profile.slice(1).map(({ c }) => (
         <line
           key={`b${c.id}`}
           x1={X(c.fromX)}
@@ -219,9 +263,100 @@ export default function HullDiagram({
           strokeDasharray="6 4"
         />
       )}
-      {/* Tap targets: each compartment's full height. */}
+      {hasPlan && (
+        <g data-testid="shipwreck-plan">
+          <path
+            d={planPath}
+            fill="#111827"
+            stroke="#cbd5e1"
+            strokeWidth={1.2}
+          />
+          <g clipPath={`url(#${uid}-plan)`}>
+            {spec.compartments.map((c, i) => {
+              const [lo, hi] = planSpan(c, halfB);
+              const fill = Math.max(0, Math.min(1, water?.[i] ?? 0));
+              const on = selected?.has(c.id) ?? false;
+              const box = {
+                x: X(c.fromX),
+                y: PY(hi),
+                width: (c.toX - c.fromX) * S,
+                height: (hi - lo) * S,
+              };
+              return (
+                <g key={c.id}>
+                  {on && <rect {...box} fill="#ef4444" opacity={0.28} />}
+                  {fill > 0.001 && (
+                    <rect
+                      data-plan-water={c.id}
+                      {...box}
+                      fill="#38bdf8"
+                      opacity={0.9 * fill}
+                    />
+                  )}
+                </g>
+              );
+            })}
+            {/* The longitudinal bulkheads beside the side bunkers. */}
+            {spec.compartments
+              .filter((c) => c.span && c.span.side !== "centre")
+              .map((c) => {
+                const y = c.span!.side === "port" ? c.span!.y : -c.span!.y;
+                return (
+                  <line
+                    key={`l${c.id}`}
+                    x1={X(c.fromX)}
+                    x2={X(c.toX)}
+                    y1={PY(y)}
+                    y2={PY(y)}
+                    stroke="#e2e8f0"
+                    strokeWidth={1}
+                  />
+                );
+              })}
+            {profile.slice(1).map(({ c }) => (
+              <line
+                key={`pb${c.id}`}
+                x1={X(c.fromX)}
+                x2={X(c.fromX)}
+                y1={PY(halfB)}
+                y2={PY(-halfB)}
+                stroke="#e2e8f0"
+                strokeWidth={1.2}
+              />
+            ))}
+          </g>
+          {openings.map((o, i) => {
+            const len = Math.max(4, Math.min(14, Math.sqrt(o.areaM2) * 20));
+            const edge =
+              o.side === "starboard" ? PY(-halfB) + 1.5 : PY(halfB) - 1.5;
+            const pts: string[] = [];
+            for (let k = 0; k <= 6; k += 1) {
+              const x = o.x - len / 2 + (len * k) / 6;
+              const y = edge + (k % 2 === 0 ? 1.6 : -1.6);
+              pts.push(`${X(x).toFixed(1)},${y.toFixed(1)}`);
+            }
+            return (
+              <polyline
+                key={`po${i}`}
+                points={pts.join(" ")}
+                fill="none"
+                stroke="#f87171"
+                strokeWidth={2.4}
+                strokeLinejoin="round"
+              />
+            );
+          })}
+          <text x={X(x0) + 2} y={PY(halfB) + 9} fontSize={9} fill="#94a3b8">
+            Port
+          </text>
+          <text x={X(x0) + 2} y={PY(-halfB) - 3} fontSize={9} fill="#94a3b8">
+            Starboard
+          </text>
+        </g>
+      )}
+      {/* Tap targets: each compartment's full height (and the plan's). */}
       {onToggle &&
-        spec.compartments.map((c) => {
+        profile.map(({ c }) => {
           const on = selected?.has(c.id) ?? false;
           return (
             <rect
@@ -249,4 +384,13 @@ export default function HullDiagram({
         })}
     </svg>
   );
+}
+
+/** A cell's y range in the plan (y to port), out to `halfB`. */
+function planSpan(c: Compartment, halfB: number): [number, number] {
+  const sp = c.span;
+  if (!sp) return [-halfB, halfB];
+  if (sp.side === "centre") return [-sp.y, sp.y];
+  if (sp.side === "port") return [sp.y, halfB];
+  return [-halfB, -sp.y];
 }

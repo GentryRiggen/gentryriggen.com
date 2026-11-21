@@ -24,13 +24,12 @@ import {
 import { useStore } from "zustand";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import {
-  PLACE_IDS,
-  PLACES,
+  PLACES_BY_SHIP,
   waterHereText,
   type PlaceId,
 } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildHull, hullHalfBreadth } from "@/lib/shipwreck/sim/geometry";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import {
@@ -39,6 +38,7 @@ import {
   earthZ,
   partAt,
   partCompartments,
+  spanRange,
   waterLevel,
   type VolumeSamples,
 } from "@/lib/shipwreck/xray";
@@ -54,15 +54,16 @@ import {
  * The X-ray cutaway: the hull and superstructure turn to a Fresnel ghost,
  * the bulkheads show as faint outlines, each compartment's water is a blue
  * volume cut at the level the sim gives it (level with the sea, not the
- * ship), the openings glow red, and the four places show their blockouts.
+ * ship; a side bunker only its wing), the openings glow red, and the
+ * ship's places show their blockouts.
  * The place pins (shown in X-ray or at a place) fly the camera there. Everything rides with
  * the part it is in (the halves after the break).
  */
 
 type PartName = "whole" | "bow" | "stern";
 const PARTS: PartName[] = ["whole", "bow", "stern"];
-const SLOTS = 16;
-const spec = titanic;
+/** Room for every cell of a part (the Lusitania has 20). */
+const SLOTS = 24;
 
 const ghostVertex = /* glsl */ `
   varying vec3 vN;
@@ -149,15 +150,17 @@ const surfaceVertex = /* glsl */ `
 const surfaceFragment = /* glsl */ `
   uniform mat4 uPartInv;
   uniform vec4 uBox[${SLOTS}];
+  uniform float uTop[${SLOTS}];
   uniform float uTime;
   uniform float uFade;
   varying vec3 vWorld;
   varying float vComp;
   void main() {
-    vec4 bx = uBox[int(vComp + 0.5)];
+    int k = int(vComp + 0.5);
+    vec4 bx = uBox[k];
     vec3 l = (uPartInv * vec4(vWorld, 1.0)).xyz; // three axes, ship frame
-    // x along, y up, z athwart: inside the compartment's box?
-    if (l.x < bx.x || l.x > bx.y || abs(l.z) > bx.z || l.y < 0.0 || l.y > bx.w)
+    // x along, y up, z athwart (from bx.z to bx.w): inside the cell's box?
+    if (l.x < bx.x || l.x > bx.y || l.z < bx.z || l.z > bx.w || l.y < 0.0 || l.y > uTop[k])
       discard;
     float r = 0.85 + 0.15 * sin(vWorld.x * 0.7 + uTime * 1.7) * sin(vWorld.z * 0.9 - uTime * 1.3);
     gl_FragColor = vec4(vec3(0.30, 0.80, 1.55) * r * mix(0.35, 1.0, uFade), 0.7 * uFade);
@@ -206,12 +209,15 @@ interface PartSet {
 interface XRayProps {
   store: PlaybackStore;
   runtime: SceneRuntime;
+  /** The ship on the stage. */
+  spec: ShipSpec;
 }
 
-export default function XRay({ store, runtime }: XRayProps) {
+export default function XRay({ store, runtime, spec }: XRayProps) {
   const breakX = useStore(store, (s) => s.track?.breakX ?? null);
   const openings = useStore(store, (s) => s.openings);
-  const hull = useMemo(() => buildHull(spec), []);
+  const hull = useMemo(() => buildHull(spec), [spec]);
+  const placeList = PLACES_BY_SHIP[spec.id];
 
   const mats = useMemo(() => {
     const ghost = new ShaderMaterial({
@@ -292,7 +298,7 @@ export default function XRay({ store, runtime }: XRayProps) {
       const gash = new Mesh(openingGeometry(hull, holes), mats.gash);
       gash.renderOrder = 12;
       group.add(water, lines, gash);
-      const surface = surfaceMesh(hull, pieces, levelsOf(water));
+      const surface = surfaceMesh(hull, spec, pieces, levelsOf(water));
       root.add(surface);
       out.set(name, {
         group,
@@ -306,7 +312,7 @@ export default function XRay({ store, runtime }: XRayProps) {
       });
     }
     return out;
-  }, [breakX, hull, mats, openings, root]);
+  }, [breakX, hull, mats, openings, root, spec]);
   useEffect(
     () => () => {
       for (const s of sets.values()) {
@@ -326,16 +332,16 @@ export default function XRay({ store, runtime }: XRayProps) {
   // The places' blockouts, parented to the part they are in.
   const places = useMemo(() => {
     const out = new Map<PlaceId, Group>();
-    for (const id of PLACE_IDS) {
+    for (const { id } of PLACES_BY_SHIP[spec.id]) {
       const g = new Group();
-      g.name = `place-${id}`;
-      const { solid, glow } = placeGeometry(id);
+      g.name = `place-${spec.id}-${id}`;
+      const { solid, glow } = placeGeometry(spec.id, id);
       if (solid) g.add(new Mesh(solid, mats.solid));
       if (glow) g.add(new Mesh(glow, mats.glow));
       out.set(id, g);
     }
     return out;
-  }, [mats]);
+  }, [mats, spec]);
   useEffect(
     () => () => {
       for (const g of places.values())
@@ -409,7 +415,7 @@ export default function XRay({ store, runtime }: XRayProps) {
 
     // Places ride with their part; blockouts only in X-ray.
     for (const [id, g] of places) {
-      const x = PLACES[id].at[0];
+      const x = placeList.find((p) => p.id === id)?.at[0] ?? 0;
       const name = partAt(breakX, runtime.broken, x);
       const part = runtime.part(name);
       g.visible = on && part !== null;
@@ -422,10 +428,9 @@ export default function XRay({ store, runtime }: XRayProps) {
     // camera within about a kilometre (they would crowd the other shots),
     // in X-ray or while a place is selected.
     const { width, height } = state.size;
-    for (const id of PLACE_IDS) {
-      const pin = runtime.pins.get(id);
+    for (const p of placeList) {
+      const pin = runtime.pins.get(p.id);
       if (!pin) continue;
-      const p = PLACES[id];
       const part = runtime.part(partAt(breakX, runtime.broken, p.at[0]));
       // Only in X-ray or at a place: over the plain ship four labels crowd
       // the view (the HUD's pin button lists the places too).
@@ -456,8 +461,11 @@ export default function XRay({ store, runtime }: XRayProps) {
     }
 
     // The water at the selected place.
-    if (s.place) {
-      const p = PLACES[s.place];
+    const selectedPlace = s.place
+      ? placeList.find((q) => q.id === s.place)
+      : undefined;
+    if (selectedPlace) {
+      const p = selectedPlace;
       const name = partAt(breakX, runtime.broken, p.at[0]);
       const pose = posed(name);
       if (pose) {
@@ -482,7 +490,7 @@ export default function XRay({ store, runtime }: XRayProps) {
           )
         );
         s.setPlaceWater(depth);
-        const label = runtime.pins.get(s.place)?.label;
+        const label = runtime.pins.get(p.id)?.label;
         if (label) label.textContent = waterHereText(depth);
       }
     }
@@ -505,6 +513,7 @@ function levelsOf(m: Mesh<BufferGeometry, ShaderMaterial>): Float32Array {
 /** The free-surface quads for a part's compartment pieces (see shader). */
 function surfaceMesh(
   hull: ReturnType<typeof buildHull>,
+  spec: ShipSpec,
   pieces: { index: number; fromX: number; toX: number }[],
   levels: Float32Array
 ): Mesh<BufferGeometry, ShaderMaterial> {
@@ -514,14 +523,20 @@ function surfaceMesh(
   const centre: Vector3[] = [];
   const reach: number[] = [];
   const box: Vector4[] = [];
+  const tops: number[] = [];
   pieces.forEach((p, k) => {
     const c = spec.compartments[p.index];
     const midX = (p.fromX + p.toX) / 2;
     const top = Math.min(c.aftBulkheadTopZ, c.fwdBulkheadTopZ);
     const hb = hullHalfBreadth(hull, midX, top * 0.6) * 0.96;
-    centre.push(new Vector3(midX, top / 2, 0));
-    reach.push(Math.hypot(p.toX - p.fromX, top, 2 * hb) / 2 + 1);
-    box.push(new Vector4(p.fromX + 0.15, p.toX - 0.15, Math.max(0.5, hb), top));
+    // The cell's share of the breadth (ship y), as three.z = -y.
+    const [lo, hi] = c.span
+      ? spanRange(c, hb)
+      : [-Math.max(0.5, hb), Math.max(0.5, hb)];
+    centre.push(new Vector3(midX, top / 2, -(lo + hi) / 2));
+    reach.push(Math.hypot(p.toX - p.fromX, top, hi - lo) / 2 + 1);
+    box.push(new Vector4(p.fromX + 0.15, p.toX - 0.15, -hi, -lo));
+    tops.push(top);
     for (const [a, b] of [
       [-1, -1],
       [1, -1],
@@ -539,6 +554,7 @@ function surfaceMesh(
     centre.push(new Vector3());
     reach.push(0);
     box.push(new Vector4());
+    tops.push(0);
   }
   const g = new BufferGeometry();
   g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
@@ -555,6 +571,7 @@ function surfaceMesh(
       uCentre: { value: centre },
       uReach: { value: reach },
       uBox: { value: box },
+      uTop: { value: new Float32Array(tops) },
       uPart: { value: new Matrix4() },
       uPartInv: { value: new Matrix4() },
       uTime: { value: 0 },

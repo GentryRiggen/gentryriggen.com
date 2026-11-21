@@ -130,7 +130,7 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
       </button>
       {topic && (
         <HelpCard
-          help={helpFor(topic, frame)}
+          help={helpFor(topic, frame, spec)}
           icon={CHIP_ICON[topic as Exclude<HelpTopic, "controls">]}
           onClose={() => setTopic(null)}
         />

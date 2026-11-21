@@ -1,4 +1,4 @@
-import { PLACE_IDS, type PlaceId } from "@/lib/shipwreck/places";
+import { placeFor, type PlaceId } from "@/lib/shipwreck/places";
 import {
   eventsSeen,
   phaseAt,
@@ -22,8 +22,7 @@ export function sceneHooks(store: PlaybackStore): ShipwreckSceneHooks {
     setXray: (on) => get().setXray(on),
     flyToPlace: (place) => {
       if (place === null) get().flyToPlace(null);
-      else if ((PLACE_IDS as readonly string[]).includes(place))
-        get().flyToPlace(place as PlaceId);
+      else if (placeFor(get().ship, place)) get().flyToPlace(place as PlaceId);
     },
     setQuality: (q) => get().setQuality(q),
     flyToView: (target, cam, snap) => get().flyToView({ target, cam, snap }),
@@ -31,6 +30,7 @@ export function sceneHooks(store: PlaybackStore): ShipwreckSceneHooks {
     getState: () => {
       const s = get();
       return {
+        ship: s.ship,
         t: s.t,
         realT: s.realT,
         phase: phaseAt(s.track, s.t),

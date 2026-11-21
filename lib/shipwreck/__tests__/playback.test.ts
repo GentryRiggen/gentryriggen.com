@@ -6,6 +6,7 @@ import {
   phaseAt,
   realTimeAt,
 } from "../playback";
+import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
 import type { SimRunner } from "../sim/run";
 import type { SimFrame, SimTrack } from "../sim/track";
@@ -231,5 +232,56 @@ describe("story helpers", () => {
     track.frames = [frame(0), frame(10, 10), frame(20, 70)];
     expect(realTimeAt(track, 15)).toBeCloseTo(40);
     expect(realTimeAt(null, 15)).toBe(15);
+  });
+});
+
+describe("playback: the ship on the stage", () => {
+  it("starts with the Titanic; a run puts its ship on the stage", () => {
+    const made: { ship: string; portholesOpen?: boolean }[] = [];
+    const store = createPlaybackStore({
+      createRunner: (spec, _o, options) => {
+        made.push({ ship: spec.id, portholesOpen: options.portholesOpen });
+        return fakeRunner(100, 100);
+      },
+    });
+    expect(store.getState().ship).toBe("titanic");
+    store
+      .getState()
+      .start(lusitania, lusitania.realNight, { portholesOpen: false });
+    expect(store.getState().ship).toBe("lusitania");
+    expect(made).toEqual([{ ship: "lusitania", portholesOpen: false }]);
+    store.getState().start(titanic, []);
+    expect(made[1]).toEqual({ ship: "titanic", portholesOpen: undefined });
+  });
+
+  it("setShip drops the other ship's run, and keeps her own", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    store.getState().start(titanic, titanic.realNight);
+    store.getState().pump();
+    store.getState().play();
+    store.getState().setShip("titanic");
+    expect(store.getState().track).not.toBeNull();
+    store.getState().setShip("lusitania");
+    const s = store.getState();
+    expect(s.ship).toBe("lusitania");
+    expect(s.track).toBeNull();
+    expect(s.openings).toEqual([]);
+    expect(s.playing).toBe(false);
+    expect(s.t).toBe(0);
+    // Nothing to pump until she is started.
+    s.pump();
+    expect(store.getState().track).toBeNull();
+  });
+
+  it("flies to her own places", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    store.getState().start(lusitania, []);
+    store.getState().flyToPlace("starboard-bunker");
+    expect(store.getState().place).toBe("starboard-bunker");
+    expect(store.getState().xray).toBe(true);
   });
 });

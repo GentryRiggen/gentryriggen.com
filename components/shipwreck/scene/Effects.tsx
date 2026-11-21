@@ -15,7 +15,7 @@ import {
 } from "three";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildHull, hullHalfBreadth } from "@/lib/shipwreck/sim/geometry";
 import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
 import { shipToThree } from "./cameraMath";
@@ -70,9 +70,11 @@ const fragment = /* glsl */ `
 interface EffectsProps {
   store: PlaybackStore;
   runtime: SceneRuntime;
+  /** The ship on the stage (her hull, for the foam). */
+  spec: ShipSpec;
 }
 
-export default function Effects({ store, runtime }: EffectsProps) {
+export default function Effects({ store, runtime, spec }: EffectsProps) {
   const pts = useMemo(() => {
     const g = new BufferGeometry();
     const pos = new BufferAttribute(new Float32Array(POOL * 3), 3);
@@ -104,7 +106,7 @@ export default function Effects({ store, runtime }: EffectsProps) {
     [pts]
   );
 
-  const hull = useMemo(() => buildHull(titanic), []);
+  const hull = useMemo(() => buildHull(spec), [spec]);
   // Per track: where each boat touched the water (sampled once).
   const launch = useRef<{ track: SimTrack | null; at: Map<number, Vector3> }>({
     track: null,
@@ -441,7 +443,7 @@ export default function Effects({ store, runtime }: EffectsProps) {
             z = (-body.z + sp * x - cp * sr * y) / (cp * cr);
             y = side * hullHalfBreadth(hull, x, z);
           }
-          if (z <= 0.3 || z >= titanic.sheerZ(x) || y === 0) continue;
+          if (z <= 0.3 || z >= spec.sheerZ(x) || y === 0) continue;
           const w = shipToThree(body, [x, y * 1.04, z]);
           const fl = 0.7 + 0.3 * Math.sin(wall * 2.3 + k * 1.7 + side);
           const b = (0.035 + 0.08 * power) * fl;

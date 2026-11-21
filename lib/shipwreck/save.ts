@@ -1,3 +1,4 @@
+import type { ShipId } from "./ships/types";
 import {
   CAMERA_IDS,
   OUTCOME_IDS,
@@ -15,9 +16,26 @@ export interface ShipwreckSave {
   v: 1;
   settings: { sound: boolean; speed: Speed; camera: CameraId };
   seen: { realNight: boolean; endings: OutcomeId[] };
-  /** Ids of the openings tried in the last What if? run. */
+  /** Ids of the openings tried in the last Titanic What if? run (1.0). */
   lastWhatIf: string[];
+  /** The ship chosen last on the title screen (missing: the Titanic). */
+  ship?: ShipId;
+  /**
+   * The last What if? of every other ship (1.1). The Titanic's stays in
+   * `lastWhatIf`, where 1.0 kept it.
+   */
+  whatIfByShip?: Partial<Record<ShipId, ShipWhatIf>>;
 }
+
+/** A ship's last What if?: where it was opened, and its portholes. */
+export interface ShipWhatIf {
+  ids: string[];
+  /** Torpedo ships: whether the portholes were open (default true). */
+  portholesOpen?: boolean;
+}
+
+/** The ships a save may name (kept here so the save needs no ship data). */
+export const SAVE_SHIP_IDS: readonly ShipId[] = ["titanic", "lusitania"];
 
 export const SAVE_KEY = "shipwreck:v1";
 /** Prefix of the backups of saves that could not be read in full. */
@@ -76,30 +94,77 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
       endings.push(e as OutcomeId);
     }
   }
-  const lastWhatIf: string[] = [];
-  for (const id of Array.isArray(raw.lastWhatIf) ? raw.lastWhatIf : []) {
+  const lastWhatIf = parseIds(raw.lastWhatIf);
+  const save: ShipwreckSave = {
+    v: 1,
+    settings: {
+      sound: typeof settings.sound === "boolean" ? settings.sound : true,
+      speed: oneOf<Speed>(settings.speed, SPEEDS, 30),
+      camera: oneOf<CameraId>(settings.camera, CAMERA_IDS, "orbit"),
+    },
+    seen: { realNight: seen.realNight === true, endings },
+    lastWhatIf,
+  };
+  if (isShipId(raw.ship)) save.ship = raw.ship;
+  if (isObj(raw.whatIfByShip)) {
+    const byShip: Partial<Record<ShipId, ShipWhatIf>> = {};
+    for (const [ship, value] of Object.entries(raw.whatIfByShip)) {
+      // The Titanic's What if? lives in lastWhatIf; unknown ships are dropped.
+      if (!isShipId(ship) || ship === "titanic" || !isObj(value)) continue;
+      const entry: ShipWhatIf = { ids: parseIds(value.ids) };
+      if (typeof value.portholesOpen === "boolean")
+        entry.portholesOpen = value.portholesOpen;
+      byShip[ship] = entry;
+    }
+    if (Object.keys(byShip).length > 0) save.whatIfByShip = byShip;
+  }
+  return { save, newer: raw.v > 1 };
+}
+
+function isShipId(v: unknown): v is ShipId {
+  return (SAVE_SHIP_IDS as readonly unknown[]).includes(v);
+}
+
+function parseIds(raw: unknown): string[] {
+  const ids: string[] = [];
+  for (const id of Array.isArray(raw) ? raw : []) {
     if (
       typeof id === "string" &&
       id.length > 0 &&
       id.length <= MAX_ID_LENGTH &&
-      !lastWhatIf.includes(id) &&
-      lastWhatIf.length < MAX_WHATIF
+      !ids.includes(id) &&
+      ids.length < MAX_WHATIF
     ) {
-      lastWhatIf.push(id);
+      ids.push(id);
     }
   }
+  return ids;
+}
+
+/** The ship a save chose (the Titanic for a 1.0 save). */
+export function shipOf(save: ShipwreckSave): ShipId {
+  return save.ship ?? "titanic";
+}
+
+/** A ship's last What if? (the Titanic's from `lastWhatIf`). */
+export function whatIfOf(save: ShipwreckSave, ship: ShipId): ShipWhatIf {
+  if (ship === "titanic") return { ids: save.lastWhatIf };
+  return save.whatIfByShip?.[ship] ?? { ids: [] };
+}
+
+/** The save with a ship's What if? remembered. */
+export function withWhatIf(
+  save: ShipwreckSave,
+  ship: ShipId,
+  whatIf: ShipWhatIf
+): ShipwreckSave {
+  if (ship === "titanic") return { ...save, lastWhatIf: [...whatIf.ids] };
   return {
-    save: {
-      v: 1,
-      settings: {
-        sound: typeof settings.sound === "boolean" ? settings.sound : true,
-        speed: oneOf<Speed>(settings.speed, SPEEDS, 30),
-        camera: oneOf<CameraId>(settings.camera, CAMERA_IDS, "orbit"),
-      },
-      seen: { realNight: seen.realNight === true, endings },
-      lastWhatIf,
+    ...save,
+    whatIfByShip: {
+      ...save.whatIfByShip,
+      [ship]: { ...whatIf, ids: [...whatIf.ids] },
     },
-    newer: raw.v > 1,
   };
 }
 

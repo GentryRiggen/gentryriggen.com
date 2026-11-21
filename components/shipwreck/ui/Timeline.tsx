@@ -10,10 +10,12 @@ import {
 } from "react";
 import { useStore } from "zustand";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import { getShip } from "@/lib/shipwreck/ships";
 import {
   clockText,
   MARK_PRIORITY,
   markRows,
+  storyOf,
   timelineMarks,
   type MarkKind,
 } from "@/lib/shipwreck/story";
@@ -39,11 +41,12 @@ interface TimelineProps {
 }
 
 /**
- * The night from 11:40 PM to the end: the computed part lit, the rest dim,
+ * The night from 11:40 PM (the afternoon from 2:10 PM) to the end: the computed part lit, the rest dim,
  * event icons above (tap to jump), drag anywhere to seek (within computed).
  */
 export default function Timeline({ store }: TimelineProps) {
   const end = useTimelineEnd(store);
+  const ship = getShip(useStore(store, (s) => s.ship));
   // The runner stores a new track object every frame while it computes:
   // follow only the number of events (and a new run), not the object.
   const events = useStore(store, (s) => s.track?.events.length ?? -1);
@@ -65,9 +68,9 @@ export default function Timeline({ store }: TimelineProps) {
   }, []);
 
   const marks = useMemo(
-    () => timelineMarks(store.getState().track),
+    () => timelineMarks(store.getState().track, ship),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- marks change only when events are added or a new run starts
-    [store, events, runStart]
+    [store, events, runStart, ship]
   );
   // Only what happens within the story (a ship that floats still has
   // boats and rockets after her story ends): none pile up at the right end.
@@ -137,11 +140,11 @@ export default function Timeline({ store }: TimelineProps) {
         ref={barRef}
         role="slider"
         tabIndex={0}
-        aria-label="Time in the night"
+        aria-label={`Time in the ${storyOf(ship).period}`}
         aria-valuemin={0}
         aria-valuemax={Math.round(end)}
         aria-valuenow={Math.round((tPermille / 1000) * end)}
-        aria-valuetext={clockText(realMinute * 60)}
+        aria-valuetext={clockText(realMinute * 60, ship.clockStartS)}
         data-testid="shipwreck-timeline"
         onPointerDown={onDown}
         onPointerMove={onMove}

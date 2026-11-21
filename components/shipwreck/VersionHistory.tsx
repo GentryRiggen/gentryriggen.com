@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CHANGELOG } from "@/lib/shipwreck/changelog";
 import { SHIPWRECK_VERSION } from "@/lib/shipwreck/version";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
-import { PARENT_LINE } from "./parentLine";
+import { PARENT_LINES } from "./parentLine";
 
 const dateFormat = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
@@ -68,7 +68,11 @@ export default function VersionHistory() {
             </article>
           ))}
         </main>
-        <p className="pb-6 text-sm text-slate-400">{PARENT_LINE}</p>
+        <div className="flex flex-col gap-1 pb-6 text-sm text-slate-400">
+          {Object.entries(PARENT_LINES).map(([id, line]) => (
+            <p key={id}>{line}</p>
+          ))}
+        </div>
       </div>
     </div>
   );

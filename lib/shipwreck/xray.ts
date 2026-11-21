@@ -48,8 +48,27 @@ export function compartmentTopZ(c: Compartment, x: number): number {
 }
 
 /**
+ * The ship-frame y range a compartment fills at a section of half-breadth
+ * `hb` (y to port): the whole breadth, or its share of a section split by
+ * longitudinal bulkheads (`span`). Empty (lo = hi) where the hull is
+ * narrower than the bulkhead's distance out.
+ */
+export function spanRange(
+  c: Pick<Compartment, "span">,
+  hb: number
+): [lo: number, hi: number] {
+  const sp = c.span;
+  if (!sp) return [-hb, hb];
+  const y = Math.min(sp.y, hb);
+  if (sp.side === "centre") return [-y, y];
+  if (sp.side === "port") return [y, hb];
+  return [-hb, -y];
+}
+
+/**
  * Samples a compartment's volume between `fromX` and `toX` (already clipped
- * to a part after the break), from the keel to its bulkhead tops.
+ * to a part after the break), from the keel to its bulkhead tops, across
+ * its share of the breadth (a side bunker only its wing).
  */
 export function compartmentSamples(
   hull: HullModel,
@@ -69,11 +88,11 @@ export function compartmentSamples(
     const dz = top / NZ;
     for (let j = 0; j < NZ; j += 1) {
       const z = dz * (j + 0.5);
-      const hb = hullHalfBreadth(hull, x, z);
-      const dy = (2 * hb) / NY;
+      const [lo, hi] = spanRange(c, hullHalfBreadth(hull, x, z));
+      const dy = (hi - lo) / NY;
       for (let m = 0; m < NY; m += 1) {
         points[k * 3] = x;
-        points[k * 3 + 1] = -hb + dy * (m + 0.5);
+        points[k * 3 + 1] = lo + dy * (m + 0.5);
         points[k * 3 + 2] = z;
         const w = Math.max(0, dx * dz * dy);
         weights[k] = w;

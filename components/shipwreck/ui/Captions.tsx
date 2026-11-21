@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import { getShip } from "@/lib/shipwreck/ships";
 import { eventsBetween } from "@/lib/shipwreck/sim/track";
-import { captionFor } from "@/lib/shipwreck/story";
+import { captionContext, captionFor } from "@/lib/shipwreck/story";
 
 /** How long a caption stays (wall ms). */
 export const CAPTION_MS = 6500;
@@ -23,7 +24,10 @@ interface CaptionsProps {
 export default function Captions({ store }: CaptionsProps) {
   const [text, setText] = useState<string | null>(() =>
     store.getState().t < CAPTION_RECENT_S
-      ? captionFor({ kind: "collision", t: 0, realT: 0 })
+      ? captionFor(
+          { kind: "collision", t: 0, realT: 0 },
+          getShip(store.getState().ship)
+        )
       : null
   );
 
@@ -34,7 +38,11 @@ export default function Captions({ store }: CaptionsProps) {
       for (let i = evs.length - 1; i >= 0; i -= 1) {
         // After a long seek, only what just happened.
         if (s.t - evs[i].t > CAPTION_RECENT_S) break;
-        const c = captionFor(evs[i]);
+        const c = captionFor(
+          evs[i],
+          getShip(s.ship),
+          captionContext(s.track, evs[i].t)
+        );
         if (c) {
           setText(c);
           return;

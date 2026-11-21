@@ -1,3 +1,5 @@
+import { titanic } from "./ships/titanic";
+import type { ShipSpec } from "./ships/types";
 import type { SimEvent } from "./sim/events";
 import type { SimTrack } from "./sim/track";
 import type { OutcomeId } from "./types";
@@ -23,14 +25,46 @@ export function clockText(
   return `${h12}:${String(m).padStart(2, "0")} ${h24 < 12 ? "AM" : "PM"}`;
 }
 
+/** Words that differ by what sank her and when. */
+export interface ShipStory {
+  /** "the iceberg" / "the torpedo". */
+  cause: string;
+  /** "Just hit the iceberg" / "Just hit by the torpedo". */
+  justHit: string;
+  /** "night" / "afternoon": the story's time of day. */
+  period: string;
+  /** The title screen's first button: "The real night". */
+  realLabel: string;
+}
+
+export function storyOf(ship: Pick<ShipSpec, "cause">): ShipStory {
+  return ship.cause === "torpedo"
+    ? {
+        cause: "the torpedo",
+        justHit: "Just hit by the torpedo",
+        period: "afternoon",
+        realLabel: "The real afternoon",
+      }
+    : {
+        cause: "the iceberg",
+        justHit: "Just hit the iceberg",
+        period: "night",
+        realLabel: "The real night",
+      };
+}
+
 /** "2 h 07 min after the iceberg" (or "Just hit the iceberg"). */
-export function sinceText(secondsAfter: number): string {
+export function sinceText(
+  secondsAfter: number,
+  ship: Pick<ShipSpec, "cause"> = titanic
+): string {
+  const story = storyOf(ship);
   const total = Math.max(0, Math.floor(secondsAfter / 60));
-  if (total < 1) return "Just hit the iceberg";
+  if (total < 1) return story.justHit;
   const h = Math.floor(total / 60);
   const m = total % 60;
-  if (h === 0) return `${m} min after the iceberg`;
-  return `${h} h ${String(m).padStart(2, "0")} min after the iceberg`;
+  if (h === 0) return `${m} min after ${story.cause}`;
+  return `${h} h ${String(m).padStart(2, "0")} min after ${story.cause}`;
 }
 
 /** "2 hours 40 minutes" (whole minutes). */
@@ -45,10 +79,80 @@ export function durationWords(seconds: number): string {
   return `${hs} ${ms}`;
 }
 
+/**
+ * What a caption may know about the run beyond its own event: whether the
+ * stern has gone under by then (`sternUnder`) and whether all of her has
+ * (`sunk`). The Titanic's words never need it.
+ */
+export interface CaptionContext {
+  sternUnder?: boolean;
+  sunk?: boolean;
+}
+
 /** The calm caption for an event, without the clock (null: no caption). */
 export function captionText(
-  e: Pick<SimEvent, "kind" | "index">
+  e: Pick<SimEvent, "kind" | "index">,
+  ship: ShipSpec = titanic,
+  ctx: CaptionContext = {}
 ): string | null {
+  const first = e.index === 0 || e.index === undefined;
+  const depth = `${ship.seaDepthM.toLocaleString("en-US")} m`;
+  // The sea is shallower than she is long: her ends touch the floor while
+  // the rest of her is still up.
+  const shallow = ship.seaDepthM < ship.lbp;
+  if (ship.cause === "torpedo") {
+    switch (e.kind) {
+      case "collision":
+        return "A torpedo hits the starboard side, just behind the bridge. Water rushes in.";
+      case "explosion":
+        return "A second, bigger explosion booms from deep inside the ship.";
+      case "steam-start":
+        return "Steam roars out of the funnels.";
+      case "steam-stop":
+        return "The steam stops.";
+      case "rocket":
+        // She fired none.
+        return null;
+      case "boat-lowered":
+        return first
+          ? "The first lifeboat is lowered. She leans so far that it swings out wide from her side."
+          : null;
+      case "last-boat":
+        return "The last lifeboat pulls clear of the ship.";
+      case "forecastle-under":
+        return "The front deck goes under the water.";
+      case "bridge-under":
+        return "The sea reaches the bridge.";
+      case "funnel-falls":
+        return first ? "The front funnel falls." : null;
+      case "lights-flicker":
+        // Her lights failed early, then went out: one caption is enough.
+        return null;
+      case "lights-out":
+        return "The power fails. The lights go out.";
+      case "breakup":
+        return "The ship breaks in two.";
+      case "bow-under":
+        return "The bow slips under the water.";
+      case "stern-under":
+        return "The stern goes under. She has sunk.";
+      case "bow-lands":
+        if (!shallow)
+          return `The bow ploughs into the sea floor, ${depth} down.`;
+        return ctx.sternUnder
+          ? `The bow ploughs into the sea floor, only ${depth} down.`
+          : `The bow ploughs into the sea floor, only ${depth} down. Her stern is still up out of the water!`;
+      case "stern-lands":
+        if (!shallow) return "The stern lands on the sea floor.";
+        return ctx.sunk
+          ? `She has sunk. She lies on the sea floor, ${depth} down.`
+          : `The stern touches the sea floor, only ${depth} down.`;
+      case "floating-steady":
+        return "The water stops rising. She is staying afloat!";
+      default:
+        return null;
+    }
+  }
   switch (e.kind) {
     case "collision":
       return "The iceberg scrapes along the starboard side. Water starts coming in.";
@@ -57,13 +161,11 @@ export function captionText(
     case "steam-stop":
       return "The steam stops. The night goes quiet.";
     case "rocket":
-      return e.index === 0 || e.index === undefined
+      return first
         ? "The first distress rocket goes up, calling for help."
         : null;
     case "boat-lowered":
-      return e.index === 0 || e.index === undefined
-        ? "The first lifeboat is lowered."
-        : null;
+      return first ? "The first lifeboat is lowered." : null;
     case "last-boat":
       return "The last lifeboat leaves the ship.";
     case "forecastle-under":
@@ -71,9 +173,7 @@ export function captionText(
     case "bridge-under":
       return "The sea reaches the bridge.";
     case "funnel-falls":
-      return e.index === 0 || e.index === undefined
-        ? "The front funnel falls."
-        : null;
+      return first ? "The front funnel falls." : null;
     case "lights-flicker":
       return "The lights flicker.";
     case "lights-out":
@@ -85,7 +185,7 @@ export function captionText(
     case "stern-under":
       return "The stern goes under. She has sunk.";
     case "bow-lands":
-      return "The bow ploughs into the sea floor, 3,800 m down.";
+      return `The bow ploughs into the sea floor, ${depth} down.`;
     case "stern-lands":
       return "The stern lands on the sea floor.";
     case "floating-steady":
@@ -95,10 +195,28 @@ export function captionText(
   }
 }
 
+/** What the track says about the run at an event's time (for its caption). */
+export function captionContext(
+  track: SimTrack | null,
+  t: number
+): CaptionContext {
+  if (!track) return {};
+  return {
+    sternUnder: track.events.some(
+      (e) => e.kind === "stern-under" && e.t <= t + 0.01
+    ),
+    sunk: track.sankAtT !== null && track.sankAtT <= t + 0.5,
+  };
+}
+
 /** A caption with its clock ("12:45 AM — The first lifeboat is lowered."). */
-export function captionFor(e: SimEvent): string | null {
-  const text = captionText(e);
-  return text ? `${clockText(e.realT)} — ${text}` : null;
+export function captionFor(
+  e: SimEvent,
+  ship: ShipSpec = titanic,
+  ctx: CaptionContext = {}
+): string | null {
+  const text = captionText(e, ship, ctx);
+  return text ? `${clockText(e.realT, ship.clockStartS)} — ${text}` : null;
 }
 
 export type MarkKind =
@@ -122,7 +240,10 @@ const MARK_OF: Partial<Record<SimEvent["kind"], [MarkKind, string]>> = {
 };
 
 /** The timeline's event icons: the first of each kind, in time order. */
-export function timelineMarks(track: SimTrack | null): TimelineMark[] {
+export function timelineMarks(
+  track: SimTrack | null,
+  ship: Pick<ShipSpec, "clockStartS"> = titanic
+): TimelineMark[] {
   if (!track) return [];
   const seen = new Set<MarkKind>();
   const out: TimelineMark[] = [];
@@ -134,7 +255,7 @@ export function timelineMarks(track: SimTrack | null): TimelineMark[] {
       kind: m[0],
       t: e.t,
       realT: e.realT,
-      label: `${m[1]}, ${clockText(e.realT)}`,
+      label: `${m[1]}, ${clockText(e.realT, ship.clockStartS)}`,
     });
   }
   return out;
@@ -211,34 +332,70 @@ export interface EndWords {
   lines: string[];
 }
 
+/** Optional facts about the run for the end card. */
+export interface EndContext {
+  /** Whether her portholes were open (torpedo ships; default true). */
+  portholesOpen?: boolean;
+}
+
+/** "93 m (305 feet)" for a shallow sea, "3,800 m (2.4 miles)" for a deep one. */
+function depthWords(seaDepthM: number): string {
+  const m = seaDepthM.toLocaleString("en-US");
+  if (seaDepthM >= 1609.344) {
+    return `${m} m (${(seaDepthM / 1609.344).toFixed(1)} miles)`;
+  }
+  // No break inside "93 m" or "305 feet".
+  return `${m}\u00a0m (${Math.round(seaDepthM / 0.3048).toLocaleString("en-US")}\u00a0feet)`;
+}
+
 /** The end card's words. `holes` is how many compartments were opened. */
 export function endWords(
   track: SimTrack,
-  shipName: string,
-  seaDepthM: number,
-  holes: number
+  ship: ShipSpec,
+  holes: number,
+  ctx: EndContext = {}
 ): EndWords {
   const outcome = outcomeOf(track);
+  const torpedo = ship.cause === "torpedo";
   if (outcome === "floated") {
+    if (torpedo) {
+      return {
+        outcome,
+        title: "She stayed afloat!",
+        lines: [
+          ctx.portholesOpen === false
+            ? "With her portholes shut, the water stayed in the rooms the torpedo opened, and she floated on."
+            : "The water stayed in the rooms the torpedo opened, and she floated on.",
+          `On the real afternoon the torpedo hit beside her front boiler room. Water in her starboard coal bunkers made her lean over, and the sea poured in through open portholes.`,
+        ],
+      };
+    }
     return {
       outcome,
       title: "She stayed afloat!",
       lines: [
         `With ${holes} ${holes === 1 ? "hole" : "holes"}, her bulkheads held. The water filled only the rooms that were opened, and she floated on.`,
-        "Titanic was built to float with any four of her front compartments full of water. On the real night, six were opened.",
+        `${ship.name} was built to float with any four of her front compartments full of water. On the real night, six were opened.`,
       ],
     };
   }
   const sank = track.events.find((e) => e.kind === "stern-under");
   const at = sank?.realT ?? track.sankAtT ?? track.endT;
-  const miles = (seaDepthM / 1609.344).toFixed(1);
+  const hit = torpedo ? "the torpedo hit" : "hitting the iceberg";
+  const broke = outcome === "broke-in-two" ? "broke in two and sank" : "sank";
+  const bowLands = track.events.find((e) => e.kind === "bow-lands");
+  const bowFirst =
+    bowLands !== undefined && (sank === undefined || bowLands.t < sank.t);
   return {
     outcome,
-    title: `${shipName} sank at ${clockText(at)}`,
+    title: `${ship.name} sank at ${clockText(at, ship.clockStartS)}`,
     lines: [
-      outcome === "broke-in-two"
-        ? `She broke in two and sank ${durationWords(at)} after hitting the iceberg. She lies ${seaDepthM.toLocaleString("en-US")} m (${miles} miles) down.`
-        : `She sank ${durationWords(at)} after hitting the iceberg. She lies ${seaDepthM.toLocaleString("en-US")} m (${miles} miles) down.`,
+      `She ${broke} ${durationWords(at)} after ${hit}. She lies ${depthWords(ship.seaDepthM)} down.`,
+      ...(bowFirst && ship.seaDepthM < ship.lbp
+        ? [
+            "The sea there is not as deep as she was long: her bow hit the floor while her stern was still up out of the water.",
+          ]
+        : []),
     ],
   };
 }
@@ -246,3 +403,10 @@ export function endWords(
 /** The "What really happened" note (history, labelled as such). */
 export const HISTORY_NOTE =
   "What really happened: the real Titanic sank at 2:20 AM. The ship Carpathia raced through the night, arrived at 4:10 AM and picked up the people in the lifeboats.";
+
+/** Each ship's "What really happened" note. */
+export function historyNote(ship: Pick<ShipSpec, "id">): string {
+  return ship.id === "lusitania"
+    ? "What really happened: the real Lusitania sank at 2:28\u00a0PM, just 18 minutes after the torpedo. Boats came out from the Irish coast and picked up the people in the lifeboats."
+    : HISTORY_NOTE;
+}

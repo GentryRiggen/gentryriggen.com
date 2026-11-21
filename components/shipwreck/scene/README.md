@@ -51,6 +51,7 @@ State (`PlaybackState`):
 
 | Field                           | Meaning                                                                                                                                                                                                                               |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ship`                          | The ship on the stage (`ShipId`). `start` sets it; `setShip` changes it and drops the run. The scene builds this ship (the rig is keyed by ship: the old model is disposed).                                                          |
 | `track`                         | The `SimTrack` so far (null before `start`). A new object each pump.                                                                                                                                                                  |
 | `openings`                      | The holes this run started with.                                                                                                                                                                                                      |
 | `computedT`, `done`, `progress` | How far the runner has got (`computedT` = last frame's shown time). Show computed vs not on the timeline.                                                                                                                             |
@@ -65,7 +66,8 @@ State (`PlaybackState`):
 | `snapId`, `flyId`, `flyView`    | Internal: bumps the camera rig reads.                                                                                                                                                                                                 |
 | `speedTouchedAt`                | When the player last chose a speed (wall seconds).                                                                                                                                                                                    |
 
-Actions: `start(spec, openings)`, `pump(budgetMs?)`, `tick(dt, nowS)`,
+Actions: `start(spec, openings, { portholesOpen? })`, `setShip(id)`,
+`pump(budgetMs?)`, `tick(dt, nowS)`,
 `play()`, `pause()`, `setSpeed(speed)`, `seek(t)` (clamped to computed,
 camera snaps), `setCamera(id)`, `takeControl()` (free camera from the
 current view, no jump), `setQuality(tier)`, `setXray(on)`,
@@ -77,8 +79,10 @@ Helpers: `phaseAt(track, t)` (`settling`, `lifeboats`, `final-plunge`,
 `breakup`, `descent`, `wreck`, `afloat`), `eventsSeen(track, t)`,
 `realTimeAt(track, t)`, `effectiveSpeed`, `inSlowMoWindow`.
 
-Lists for buttons: `CAMERA_IDS` (`lib/shipwreck/types.ts`), `PLACE_IDS` and
-`PLACES` (label, fact, position; `lib/shipwreck/places.ts`), `SPEEDS`.
+Lists for buttons: `CAMERA_IDS` (`lib/shipwreck/types.ts`),
+`PLACES_BY_SHIP[ship]` and `placeFor(ship, id)` (label, fact, position;
+`lib/shipwreck/places.ts`; both ships have a `bridge`, so look places up
+with the ship), `SPEEDS`.
 
 Every time the scene shows or computes comes from the track: events carry
 `t` and `realT`, `brokeAtT` / `sankAtT` are the sim's, never a fixed clock.

@@ -8,6 +8,10 @@ import { PANEL, PRIMARY, SECONDARY } from "./styles";
 
 interface EndCardProps {
   words: EndWords;
+  /** "What really happened" (default: the Titanic's). */
+  history?: string;
+  /** What sank her: the What if? button's icon. */
+  cause?: "iceberg" | "torpedo";
   /** First time this ending was seen: a small celebration. */
   isNew: boolean;
   onWatchAgain: () => void;
@@ -19,6 +23,8 @@ interface EndCardProps {
 /** How the night ended, and what to do next. */
 export default function EndCard({
   words,
+  history = HISTORY_NOTE,
+  cause = "iceberg",
   isNew,
   onWatchAgain,
   onWhatIf,
@@ -58,7 +64,7 @@ export default function EndCard({
         ))}
         {!floated && (
           <p className="rounded-xl bg-white/5 px-3 py-2 text-base leading-snug text-slate-300">
-            {HISTORY_NOTE}
+            {history}
           </p>
         )}
         <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -90,7 +96,7 @@ export default function EndCard({
             onClick={onWhatIf}
             className={SECONDARY}
           >
-            <Icon name="iceberg" className="size-7" />
+            <Icon name={cause} className="size-7" />
             Try What if?
           </button>
         </div>

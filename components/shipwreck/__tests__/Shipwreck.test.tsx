@@ -1,5 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import { playback } from "@/lib/shipwreck/playback";
 import { SAVE_KEY } from "@/lib/shipwreck/save";
+import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { resetSaveStore } from "@/lib/shipwreck/useSave";
 import Shipwreck from "../Shipwreck";
 
@@ -78,5 +80,91 @@ describe("Shipwreck title screen", () => {
       value: "visible",
       configurable: true,
     });
+  });
+});
+
+describe("Shipwreck: choosing the Lusitania", () => {
+  it("plays her real afternoon on her own clock and words", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-lusitania"));
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      /A torpedo sank her in 18 minutes/
+    );
+    expect(playback.getState().ship).toBe("lusitania");
+    expect(window.__shipwreck?.ship?.()).toBe("lusitania");
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("2:10 PM");
+    expect(screen.getByText("Just hit by the torpedo")).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /2:10 PM — A torpedo hits the starboard side/
+    );
+    expect(playback.getState().openings).toEqual(lusitania.realNight);
+    // Her places.
+    fireEvent.click(screen.getByTestId("shipwreck-places-button"));
+    expect(
+      screen.getByTestId("shipwreck-place-starboard-bunker")
+    ).toHaveTextContent("Coal Bunker");
+    expect(screen.queryByTestId("shipwreck-place-grand-staircase")).toBeNull();
+  });
+
+  it("remembers her, and her What if, apart from the Titanic's", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-lusitania"));
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "lusitania"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-chip-turbine"));
+    fireEvent.click(screen.getByTestId("shipwreck-portholes"));
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(playback.getState().openings.map((o) => o.compartmentId)).toContain(
+      "turbine"
+    );
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      fireEvent(document, new Event("visibilitychange"));
+    });
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+    const saved = JSON.parse(window.localStorage.getItem(SAVE_KEY)!);
+    expect(saved.ship).toBe("lusitania");
+    expect(saved.whatIfByShip.lusitania).toEqual({
+      ids: ["turbine"],
+      portholesOpen: false,
+    });
+    expect(saved.lastWhatIf).toEqual([]);
+
+    // Back to the Titanic: her own editor, as 1.0.
+    fireEvent.click(screen.getByTestId("shipwreck-ship-titanic"));
+    expect(playback.getState().ship).toBe("titanic");
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      /More than 1,500 people died/
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "titanic"
+    );
+    expect(screen.queryByTestId("shipwreck-portholes")).toBeNull();
+    expect(screen.getByTestId("shipwreck-preset-clear")).toBeInTheDocument();
+  });
+
+  it("starts on the ship the save chose", () => {
+    window.localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({ v: 1, ship: "lusitania", lastWhatIf: ["br6"] })
+    );
+    render(<Shipwreck />);
+    expect(
+      screen.getByRole("radio", { name: /Ship: Lusitania/ })
+    ).toHaveAttribute("aria-checked", "true");
+    expect(playback.getState().ship).toBe("lusitania");
   });
 });

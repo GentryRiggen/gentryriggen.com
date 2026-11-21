@@ -1,7 +1,7 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
-import { PLACES, type PlaceId } from "./places";
-import type { Opening, ShipSpec } from "./ships/types";
-import { createSimRunner, type SimRunner } from "./sim/run";
+import { placeFor, type PlaceId } from "./places";
+import type { Opening, ShipId, ShipSpec } from "./ships/types";
+import { createSimRunner, type SimOptions, type SimRunner } from "./sim/run";
 import { sampleTrack, type SimTrack } from "./sim/track";
 import type { CameraId, Speed } from "./types";
 
@@ -33,7 +33,12 @@ export interface ShipView {
   snap?: boolean;
 }
 
+/** What a run is started with beyond its openings. */
+export type RunOptions = Pick<SimOptions, "portholesOpen">;
+
 export interface PlaybackState {
+  /** The ship on the stage (the title's choice, then the run's). */
+  ship: ShipId;
   /** The track so far (live arrays while computing), or null before a run. */
   track: SimTrack | null;
   /** The holes this run was started with (the real night's or a What if). */
@@ -73,8 +78,20 @@ export interface PlaybackState {
 }
 
 export interface PlaybackActions {
-  /** Starts a new run (the real night or a What if). Resets the time to 0. */
-  start(spec: ShipSpec, openings: readonly Opening[]): void;
+  /**
+   * Starts a new run (the real night or a What if) of `spec`, which becomes
+   * the ship on the stage. Resets the time to 0.
+   */
+  start(
+    spec: ShipSpec,
+    openings: readonly Opening[],
+    options?: RunOptions
+  ): void;
+  /**
+   * Puts another ship on the stage: a different one drops the run (the
+   * game then starts her own; the scene rebuilds the model).
+   */
+  setShip(ship: ShipId): void;
   /** Steps the runner for up to `budgetMs`; call once per frame until done. */
   pump(budgetMs?: number): void;
   /**
@@ -104,6 +121,7 @@ export interface PlaybackActions {
 export type PlaybackStore = StoreApi<PlaybackState & PlaybackActions>;
 
 const INITIAL: PlaybackState = {
+  ship: "titanic",
   track: null,
   openings: [],
   placeWaterM: 0,
@@ -161,7 +179,11 @@ function lastT(track: SimTrack | null): number {
 
 export interface PlaybackOptions {
   /** Makes the runner (tests pass a fake). */
-  createRunner?: (spec: ShipSpec, openings: readonly Opening[]) => SimRunner;
+  createRunner?: (
+    spec: ShipSpec,
+    openings: readonly Opening[],
+    options: RunOptions
+  ) => SimRunner;
 }
 
 export function createPlaybackStore(
@@ -169,15 +191,16 @@ export function createPlaybackStore(
 ): PlaybackStore {
   const makeRunner =
     options.createRunner ??
-    ((spec: ShipSpec, openings: readonly Opening[]) =>
-      createSimRunner(spec, openings));
+    ((spec: ShipSpec, openings: readonly Opening[], o: RunOptions) =>
+      createSimRunner(spec, openings, o));
   let runner: SimRunner | null = null;
 
   return createStore<PlaybackState & PlaybackActions>()((set, get) => ({
     ...INITIAL,
-    start(spec, openings) {
-      runner = makeRunner(spec, openings);
+    start(spec, openings, options = {}) {
+      runner = makeRunner(spec, openings, options);
       set({
+        ship: spec.id,
         track: null,
         openings,
         computedT: 0,
@@ -187,6 +210,26 @@ export function createPlaybackStore(
         realT: 0,
         slowMo: false,
         place: null,
+        snapId: get().snapId + 1,
+      });
+    },
+    setShip(ship) {
+      if (ship === get().ship) return;
+      runner = null;
+      set({
+        ship,
+        track: null,
+        openings: [],
+        computedT: 0,
+        done: false,
+        progress: 0,
+        t: 0,
+        realT: 0,
+        playing: false,
+        slowMo: false,
+        place: null,
+        placeWaterM: 0,
+        flyView: null,
         snapId: get().snapId + 1,
       });
     },
@@ -257,7 +300,7 @@ export function createPlaybackStore(
       set({
         place,
         camera: place ? "orbit" : s.camera,
-        xray: xray ?? (place && PLACES[place].interior ? true : s.xray),
+        xray: xray ?? (placeFor(s.ship, place)?.interior ? true : s.xray),
         flyId: s.flyId + 1,
         flyView: null,
       });

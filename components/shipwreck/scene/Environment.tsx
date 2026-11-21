@@ -16,7 +16,6 @@ import {
   SRGBColorSpace,
   HemisphereLight,
 } from "three";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
 import type { SceneRuntime } from "./runtime";
 
 /**
@@ -26,7 +25,6 @@ import type { SceneRuntime } from "./runtime";
  * the camera so the wreck is readable.
  */
 
-const SEA_DEPTH = titanic.seaDepthM;
 // The sky's colour at the horizon (linear), so the sea fades into it.
 const NIGHT_FOG = new Color().setRGB(
   0.014,
@@ -77,9 +75,14 @@ function mudTexture(): CanvasTexture | null {
 
 interface EnvironmentProps {
   runtime: SceneRuntime;
+  /** The sea floor's depth under the ship on the stage (m). */
+  seaDepthM: number;
 }
 
-export default function Environment({ runtime }: EnvironmentProps) {
+export default function Environment({
+  runtime,
+  seaDepthM: SEA_DEPTH,
+}: EnvironmentProps) {
   const { scene, camera } = useThree();
 
   const fog = useMemo(() => new FogExp2(NIGHT_FOG.getHex(), 0.00011), []);
@@ -103,10 +106,12 @@ export default function Environment({ runtime }: EnvironmentProps) {
     const geo = new PlaneGeometry(24000, 24000);
     const m = new Mesh(geo, mat);
     m.rotation.x = -Math.PI / 2;
-    m.position.y = -SEA_DEPTH;
     m.name = "sea-floor";
     return { m, geo, mat, map };
   }, []);
+  useEffect(() => {
+    floor.m.position.y = -SEA_DEPTH;
+  }, [floor, SEA_DEPTH]);
   useEffect(
     () => () => {
       floor.geo.dispose();

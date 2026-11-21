@@ -9,7 +9,8 @@ import TitanicModel from "@/components/shipwreck/model/TitanicModel";
 import { applyBodyPose } from "@/components/shipwreck/model/pose";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
+import { getShip } from "@/lib/shipwreck/ships";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import { earthZ } from "@/lib/shipwreck/xray";
 import { shipToThree } from "./cameraMath";
@@ -24,14 +25,20 @@ import type { SceneRuntime } from "./runtime";
  * 2:14. At the break the whole hides and the halves take over.
  */
 
-const DECKS = titanic.decks.slice(0, 8);
 /** Warm-up frames for the split model (drawn under the whole ship). */
 const WARM_FRAMES = 3;
-/** Real deck lights near the decks (≤ 4 lights in the scene). */
-const LAMPS: readonly [number, number, number][] = [
-  [52, 0, 31],
-  [-50, 0, 31],
-];
+/**
+ * Real deck lights near the decks (≤ 4 lights in the scene): fore and aft,
+ * a little over the boat deck (the Titanic's at 31 m).
+ */
+function lampsOf(spec: ShipSpec): [number, number, number][] {
+  const boat = spec.decks.find((d) => d.name === "Boat")?.z ?? spec.depth;
+  const z = Math.round((boat + 2.81) * 100) / 100;
+  return [
+    [52, 0, z],
+    [-50, 0, z],
+  ];
+}
 
 /**
  * The models are built once, at high detail (rigging wires and rails: they
@@ -46,9 +53,14 @@ export const MODEL_QUALITY = "high" as const;
 interface ShipRigProps {
   store: PlaybackStore;
   runtime: SceneRuntime;
+  /**
+   * The ship on the stage. The scene keys the rig by ship, so another ship
+   * builds new models and the old ones are disposed with the old rig.
+   */
+  spec: ShipSpec;
 }
 
-export default function ShipRig({ store, runtime }: ShipRigProps) {
+export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
   const breakX = useStore(store, (s) => s.track?.breakX ?? null);
   // The halves stay built between runs (the track has no break for its
   // first seconds): Watch again on the same night never rebuilds them.
@@ -57,13 +69,29 @@ export default function ShipRig({ store, runtime }: ShipRigProps) {
   const warm = useRef(0);
   const { gl, scene, camera } = useThree();
 
+  const LAMPS = useMemo(() => lampsOf(spec), [spec]);
+  // The decks lit by deck (the top eight), with the sheer measured from the
+  // C deck as the model does.
+  const decks = useMemo(() => spec.decks.slice(0, 8), [spec]);
+  const sheerRef = spec.decks.find((d) => d.name === "C")?.z ?? spec.depth;
   const lamps = useMemo(
     () =>
       LAMPS.map(() => {
         const l = new PointLight(0xffd6a0, 0, 160, 1.6);
         return l;
       }),
-    []
+    [LAMPS]
+  );
+
+  // Another ship (or the game leaving): forget this rig's models, which
+  // their components dispose as they unmount.
+  useEffect(
+    () => () => {
+      runtime.whole = null;
+      runtime.split = null;
+      runtime.broken = false;
+    },
+    [runtime]
   );
 
   // A break somewhere new: forget the old halves until the new ones are built.
@@ -141,7 +169,7 @@ export default function ShipRig({ store, runtime }: ShipRigProps) {
       frame.bodies.find((b) => b.part === "stern") ?? frame.bodies[0];
     const model = runtime.broken ? split : whole;
     if (model) {
-      DECKS.forEach((d, i) => {
+      decks.forEach((d, i) => {
         let under = 0;
         for (let k = 0; k < 9; k += 1) {
           const x = -120 + k * 30;
@@ -149,7 +177,7 @@ export default function ShipRig({ store, runtime }: ShipRigProps) {
             runtime.broken && breakX !== null && x > breakX
               ? (frame.bodies.find((b) => b.part === "bow") ?? main)
               : main;
-          if (earthZ(body, x, 0, d.z + (titanic.sheerZ(x) - 19.66)) < 0)
+          if (earthZ(body, x, 0, d.z + (spec.sheerZ(x) - sheerRef)) < 0)
             under += 1;
         }
         model.setDeckPower(i, 1 - (under / 9) * 0.8);
@@ -174,14 +202,26 @@ export default function ShipRig({ store, runtime }: ShipRigProps) {
       {lamps.map((l, i) => (
         <primitive key={i} object={l} />
       ))}
-      <TitanicModel quality={MODEL_QUALITY} onReady={onWhole} />
+      <TitanicModel spec={spec} quality={MODEL_QUALITY} onReady={onWhole} />
       {modelBreakX !== null && (
         <TitanicModel
+          spec={spec}
           breakX={modelBreakX}
           quality={MODEL_QUALITY}
           onReady={onSplit}
         />
       )}
     </>
+  );
+}
+
+/**
+ * The rig for the ship on the stage, keyed by ship: picking another ship
+ * builds her models and disposes the old ones (their components unmount).
+ */
+export function ShipOnStage({ store, runtime }: Omit<ShipRigProps, "spec">) {
+  const ship = useStore(store, (s) => s.ship);
+  return (
+    <ShipRig key={ship} store={store} runtime={runtime} spec={getShip(ship)} />
   );
 }

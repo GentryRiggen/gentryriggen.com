@@ -4,6 +4,8 @@ export type IconName =
   | "back"
   | "clock"
   | "iceberg"
+  | "torpedo"
+  | "porthole"
   | "play"
   | "pause"
   | "help"
@@ -35,6 +37,10 @@ const PATHS: Record<IconName, string> = {
   clock: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3.5 2",
   iceberg:
     "M2 15h20M5 15l4-9 3 4 2-3 5 8M4 18c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 4 0",
+  torpedo:
+    "M5 9.5h10l3 2.5-3 2.5H5a2.5 2.5 0 0 1 0-5zM18 12h3M20 9.5v5M2 18c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
+  porthole:
+    "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM12 4v3.5M12 16.5V20M4 12h3.5M16.5 12H20",
   play: "M8 5v14l11-7z",
   pause: "M8 5v14M16 5v14",
   help: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01",

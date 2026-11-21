@@ -15,9 +15,9 @@ import {
   type Group,
 } from "three";
 import { OrbitControls } from "three-stdlib";
-import { PLACES } from "@/lib/shipwreck/places";
+import { placeFor } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { partAt } from "@/lib/shipwreck/xray";
 import {
   cinematicShot,
@@ -54,7 +54,6 @@ interface Fly {
   cam: Vector3;
 }
 
-const SEA_DEPTH = titanic.seaDepthM;
 const FLY_DISTANCE = 26;
 const DOUBLE_TAP_MS = 320;
 const DOUBLE_TAP_PX = 28;
@@ -62,13 +61,16 @@ const DOUBLE_TAP_PX = 28;
 interface CameraRigProps {
   store: PlaybackStore;
   runtime: SceneRuntime;
+  /** The ship on the stage (her sea floor and places). */
+  spec: ShipSpec;
 }
 
 /** A place's camera stays at least this far above the sea (m). */
 const PIN_SEA_CLEARANCE_M = 2.5;
 
-export default function CameraRig({ store, runtime }: CameraRigProps) {
+export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
   const { camera, gl } = useThree();
+  const SEA_DEPTH = spec.seaDepthM;
   const controls = useMemo(() => {
     const c = new OrbitControls(camera, gl.domElement);
     c.enableDamping = true;
@@ -271,8 +273,8 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
       st.current.flySnap = v.snap === true;
       return;
     }
-    if (!id) return;
-    const place = PLACES[id];
+    const place = placeFor(spec.id, id);
+    if (!place) return;
     const part = partAt(
       runtime.split?.breakX ?? null,
       runtime.broken,

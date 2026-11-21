@@ -17,6 +17,7 @@ import {
   type PlaybackStore,
   type QualityTier,
 } from "@/lib/shipwreck/playback";
+import { getShip } from "@/lib/shipwreck/ships";
 import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import CameraRig from "./CameraRig";
 import Effects from "./Effects";
@@ -24,7 +25,7 @@ import Environment from "./Environment";
 import Iceberg from "./Iceberg";
 import PlacePins from "./PlacePins";
 import Sea from "./Sea";
-import ShipRig from "./ShipRig";
+import { ShipOnStage } from "./ShipRig";
 import Sky from "./Sky";
 import XRay from "./XRay";
 import { createSceneRuntime, type SceneRuntime } from "./runtime";
@@ -72,6 +73,7 @@ export default function NightScene({
 }: NightSceneProps) {
   const runtime = useMemo(() => createSceneRuntime(), []);
   const quality = useStore(store, (s) => s.quality);
+  const spec = getShip(useStore(store, (s) => s.ship));
   // A lost WebGL context that does not come back stops the scene: thrown
   // here so the error boundary around it offers a fresh start.
   const [isLost, setLost] = useState(false);
@@ -127,14 +129,15 @@ export default function NightScene({
         )}
         <Driver store={store} />
         {TEST_HOOKS_ENABLED && <RenderInfoProbe quality={quality} dpr={dpr} />}
-        <Environment runtime={runtime} />
+        <Environment runtime={runtime} seaDepthM={spec.seaDepthM} />
         <Sky dpr={dpr} />
-        <ShipRig store={store} runtime={runtime} />
-        <Iceberg store={store} />
-        <Effects store={store} runtime={runtime} />
-        <XRay store={store} runtime={runtime} />
+        {/* Another ship builds her own model, disposing the old. */}
+        <ShipOnStage store={store} runtime={runtime} />
+        {spec.cause === "iceberg" && <Iceberg store={store} />}
+        <Effects store={store} runtime={runtime} spec={spec} />
+        <XRay store={store} runtime={runtime} spec={spec} />
         <SeaFromStore store={store} runtime={runtime} />
-        <CameraRig store={store} runtime={runtime} />
+        <CameraRig store={store} runtime={runtime} spec={spec} />
         {/* Fixed MSAA: changing it rebuilds the composer (a hitch on a tier step). */}
         <EffectComposer multisampling={4}>
           <Bloom
