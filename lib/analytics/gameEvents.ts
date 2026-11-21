@@ -16,7 +16,11 @@ export type GameSite =
   "plane-builder" | "ship-builder" | "flamelings" | "shipwreck";
 
 export type PropSpec =
-  | { kind: "enum"; values: readonly string[] }
+  /**
+   * `optional`: older clients (a cached service worker) never send it, so the
+   * key may be missing; when present it must still be one of the values.
+   */
+  | { kind: "enum"; values: readonly string[]; optional?: boolean }
   /** A whole number; `step` (when set) means a multiple of it, or -1 if `min` is -1. */
   | { kind: "int"; min: number; max: number; step?: number };
 
@@ -91,6 +95,13 @@ export type TemplateId = (typeof TEMPLATE_IDS)[number];
 export function isTemplateId(id: string): id is TemplateId {
   return (TEMPLATE_IDS as readonly string[]).includes(id);
 }
+
+/**
+ * The ships Shipwreck has. A literal list so public pages do not pull in the
+ * ship data; lib/shipwreck/__tests__/analytics.test.ts keeps it equal to
+ * SHIP_IDS, and gameRulesSync checks the rules mention each one.
+ */
+const SHIPWRECK_SHIPS = ["titanic", "lusitania"] as const;
 
 /** The cameras a Shipwreck player can pick. */
 const SHIPWRECK_CAMERAS = CAMERA_IDS;
@@ -352,7 +363,10 @@ export const GAME_EVENTS = {
     sample: 1,
     props: {
       mode: { kind: "enum", values: ["real", "whatif"] },
+      // The most any ship's What if? offers is 16 spots (the Titanic's), so
+      // the Lusitania (12) needs no more.
       opened: { kind: "int", min: 0, max: 16 },
+      ship: { kind: "enum", values: SHIPWRECK_SHIPS, optional: true },
     },
   },
   /**
@@ -366,6 +380,7 @@ export const GAME_EVENTS = {
       mode: { kind: "enum", values: ["real", "whatif"] },
       outcome: { kind: "enum", values: ["sank", "floated"] },
       minutes: { kind: "int", min: 0, max: 600 },
+      ship: { kind: "enum", values: SHIPWRECK_SHIPS, optional: true },
     },
   },
   /** A camera was picked. Players switch often, so only one in four is sent. */
@@ -390,8 +405,22 @@ type PropValue<S> = S extends { kind: "enum"; values: readonly (infer V)[] }
       ? string
       : never;
 
+type OptionalKeys<N extends GameEventName> = {
+  [
+    K in keyof (typeof GAME_EVENTS)[N]["props"]
+  ]: (typeof GAME_EVENTS)[N]["props"][K] extends {
+    optional: true;
+  }
+    ? K
+    : never;
+}[keyof (typeof GAME_EVENTS)[N]["props"]];
+
 export type GameEventProps<N extends GameEventName> = {
-  -readonly [K in keyof (typeof GAME_EVENTS)[N]["props"]]: PropValue<
+  -readonly [
+    K in Exclude<keyof (typeof GAME_EVENTS)[N]["props"], OptionalKeys<N>>
+  ]: PropValue<(typeof GAME_EVENTS)[N]["props"][K]>;
+} & {
+  -readonly [K in OptionalKeys<N>]?: PropValue<
     (typeof GAME_EVENTS)[N]["props"][K]
   >;
 };
@@ -431,13 +460,14 @@ export function isValidGameProps(
   if (typeof props !== "object" || props === null) return false;
   const specs: Record<string, PropSpec> =
     GAME_EVENTS[name as GameEventName].props;
-  const keys = Object.keys(props);
-  if (keys.length !== Object.keys(specs).length) return false;
-  return keys.every(
-    (key) =>
-      hasOwn(specs, key) &&
-      isValidProp(specs[key], (props as Record<string, unknown>)[key])
+  const given = props as Record<string, unknown>;
+  const keys = Object.keys(given);
+  if (!keys.every((key) => hasOwn(specs, key))) return false;
+  const missingOk = Object.entries(specs).every(
+    ([key, spec]) =>
+      hasOwn(given, key) || (spec.kind === "enum" && spec.optional === true)
   );
+  return missingOk && keys.every((key) => isValidProp(specs[key], given[key]));
 }
 
 export function isGameEventName(name: unknown): name is GameEventName {

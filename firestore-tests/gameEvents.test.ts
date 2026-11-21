@@ -222,7 +222,13 @@ describe("every event in the schema", () => {
       await assertFails(
         create(anon(), docFor(name, { props: { ...props, userId: 7 } }))
       );
-      for (const key of Object.keys(props)) {
+      const optional = (key: string) => {
+        const spec: PropSpec | undefined = (
+          GAME_EVENTS[name].props as Record<string, PropSpec>
+        )[key];
+        return spec?.kind === "enum" && spec.optional === true;
+      };
+      for (const key of Object.keys(props).filter((k) => !optional(k))) {
         const { [key]: _omitted, ...rest } = props;
         void _omitted;
         await assertFails(create(anon(), docFor(name, { props: rest })));
@@ -618,6 +624,68 @@ describe("shipwreck specifics", () => {
     );
   });
 
+  it("takes either ship on a start and an end, and an old client's event without one", async () => {
+    for (const ship of ["titanic", "lusitania"]) {
+      await assertSucceeds(
+        create(
+          anon(),
+          docFor("shipwreck_start", {
+            props: { mode: "whatif", opened: 3, ship },
+          })
+        )
+      );
+      await assertSucceeds(create(anon(), end({ ship })));
+    }
+    // Cached 1.0 clients send neither.
+    await assertSucceeds(create(anon(), start("real", 0)));
+    const { ship: _ship, ...old } = sampleProps("shipwreck_end");
+    void _ship;
+    await assertSucceeds(
+      create(anon(), docFor("shipwreck_end", { props: old }))
+    );
+  });
+
+  it("rejects an unknown, mistyped or doubled ship", async () => {
+    for (const ship of [
+      "britannic",
+      "Titanic",
+      "titanic ",
+      "",
+      1,
+      null,
+      true,
+    ]) {
+      await assertFails(
+        create(
+          anon(),
+          docFor("shipwreck_start", {
+            props: { mode: "real", opened: 0, ship },
+          })
+        )
+      );
+      await assertFails(create(anon(), end({ ship })));
+    }
+    // Still no extra keys beside it.
+    await assertFails(
+      create(
+        anon(),
+        docFor("shipwreck_start", {
+          props: { mode: "real", opened: 0, ship: "titanic", note: "hi" },
+        })
+      )
+    );
+    await assertFails(create(anon(), end({ ship: "titanic", userId: 7 })));
+    // A ship does not belong on the camera event.
+    await assertFails(
+      create(
+        anon(),
+        docFor("shipwreck_camera", {
+          props: { camera: "orbit", ship: "titanic" },
+        })
+      )
+    );
+  });
+
   it("takes an end as a mode, a sank or floated outcome and 0 to 600 minutes", async () => {
     await assertSucceeds(create(anon(), end({ minutes: 0 })));
     await assertSucceeds(
@@ -627,7 +695,6 @@ describe("shipwreck specifics", () => {
     await assertFails(create(anon(), end({ minutes: 1.5 })));
     await assertFails(create(anon(), end({ outcome: "broke-in-two" })));
     await assertFails(create(anon(), end({ mode: "x" })));
-    await assertFails(create(anon(), end({ ship: "titanic" })));
   });
 
   it("takes only a known camera", async () => {

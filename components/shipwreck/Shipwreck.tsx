@@ -180,7 +180,7 @@ export default function Shipwreck() {
       s.setSpeed(saveRef.current.settings.speed, -Infinity);
       s.play();
       const holes = new Set(openings.map((o) => o.compartmentId)).size;
-      trackStart(mode, mode === "real" ? 0 : choice.ids.length);
+      trackStart(mode, mode === "real" ? 0 : choice.ids.length, id);
       update((v) =>
         mode === "real"
           ? { ...v, seen: { ...v.seen, realNight: true } }
@@ -212,7 +212,7 @@ export default function Shipwreck() {
     const outcome = outcomeOf(tr);
     const end = storyEndT(tr, true) ?? tr.endT;
     const sank = tr.events.find((e) => e.kind === "stern-under");
-    trackEnd(run.mode, outcome, (sank?.realT ?? end) / 60);
+    trackEnd(run.mode, outcome, (sank?.realT ?? end) / 60, run.ship);
     const isNew = !saveRef.current.seen.endings.includes(outcome);
     setNewEnding(isNew);
     if (isNew)
@@ -244,7 +244,7 @@ export default function Shipwreck() {
           s.t >= s.track.sankAtT
             ? "sank"
             : "floated";
-        trackEnd(run.mode, outcome, s.realT / 60);
+        trackEnd(run.mode, outcome, s.realT / 60, run.ship);
       }
       recorded.current = run.id;
     }
