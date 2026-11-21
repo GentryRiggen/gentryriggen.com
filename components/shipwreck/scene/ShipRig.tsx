@@ -13,7 +13,7 @@ import { getShip } from "@/lib/shipwreck/ships";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import { earthZ } from "@/lib/shipwreck/xray";
-import { shipToThree } from "./cameraMath";
+import { seatOnFloor, shipToThree } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
 import { SCENE_SETTINGS } from "./settings";
 
@@ -47,7 +47,7 @@ function lampsOf(spec: ShipSpec): [number, number, number][] {
  * By day her lights barely show (the sun outshines them; her portholes
  * read as dark glass): the panes and deck lamps run at this share.
  */
-const DAY_LIGHTS = 0.08;
+const DAY_LIGHTS = 0.025;
 
 /**
  * The models are built once, at high detail (rigging wires and rails: they
@@ -81,6 +81,22 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
   const lampPositions = useMemo(() => lampsOf(spec), [spec]);
   const lightShare =
     SCENE_SETTINGS[spec.id].timeOfDay === "afternoon" ? DAY_LIGHTS : 1;
+  // Her hull's outline points, to seat a wreck on the floor (ships with a
+  // wreck rule only).
+  const hullPoints = useMemo(
+    () =>
+      spec.wreck
+        ? spec.stations
+            .filter((_, i) => i % 2 === 0)
+            .flatMap((st) =>
+              st.offsets.flatMap(([z, hb]) => [
+                [st.x, hb, z],
+                [st.x, -hb, z],
+              ])
+            )
+        : [],
+    [spec]
+  );
   const sternX = useMemo(
     () => Math.min(...spec.stations.map((st) => st.x)),
     [spec]
@@ -140,7 +156,17 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     const s = store.getState();
     const track = s.track;
     if (!track || track.frames.length === 0) return;
-    const frame = sampleTrack(track, s.t);
+    let frame = sampleTrack(track, s.t);
+    if (hullPoints.length > 0 && frame.groundedParts.length > 0) {
+      // Never drawn into the floor (see seatOnFloor); a copy, not the track's.
+      const bodies = frame.bodies.map((b) =>
+        frame.groundedParts.includes(b.part)
+          ? seatOnFloor(b, hullPoints, spec.seaDepthM)
+          : b
+      );
+      if (bodies.some((b, i) => b !== frame.bodies[i]))
+        frame = { ...frame, bodies };
+    }
     runtime.frame = frame;
     const two = frame.bodies.some((b) => b.part !== "whole");
     const whole = runtime.whole;

@@ -656,6 +656,12 @@ export default function Effects({
           fall += toSea * Math.max(0, (age - SWING_S) / LOWER_S);
         }
         tmp.v.copy(tmp.head).addScaledVector(tmp.down, fall);
+        // Gone under with her: back in its chocks (no falls to hang from).
+        tmp.w.copy(tmp.v).applyMatrix4(holder.matrixWorld);
+        if (tmp.w.y < -2) {
+          mdl.boats.stow(i);
+          continue;
+        }
         // Against her side, never into it (ship frame y = -three z).
         const z = tmp.v.y;
         const sheer = spec.sheerZ(info.x);
@@ -764,7 +770,7 @@ export default function Effects({
           const y =
             top.y + 2.4 * Math.pow(age, 0.72) + Math.sin(ang) * rr * 0.5;
           const z = top.z - wk.dz * back + Math.sin(ang) * rr - age * 0.25;
-          const fade = Math.pow(1 - a, 1.3) * Math.min(1, a * 12);
+          const fade = Math.pow(1 - a, 1.3) * Math.min(1, a * 45);
           const lit = Math.min(1, age / 14);
           emitDay(
             x,
@@ -782,10 +788,10 @@ export default function Effects({
         if (hit && ex !== undefined && t >= ex) {
           const steam = Math.exp(-(t - ex) / 200) * (alive ? 1 : 0);
           for (let k = 0; k < 24 && steam > 0.02; k += 1) {
-            const a = (((wall / 4 + hash(k, i + 70)) % 1) + 1) % 1;
-            const age = a * 4;
+            const a = (((wall / 6 + hash(k, i + 70)) % 1) + 1) % 1;
+            const age = a * 6;
             const x = top.x + 2.2 - wk.dx * rel * age * 0.6;
-            const y = top.y + 1 + age * 9 * (1 - a * 0.3);
+            const y = top.y + 1 + age * 6 * (1 - a * 0.4);
             const z =
               top.z - wk.dz * rel * age * 0.6 + (hash(k, i) - 0.5) * age * 2;
             emitDay(
@@ -795,8 +801,8 @@ export default function Effects({
               0.9,
               0.9,
               0.92,
-              0.45 * (1 - a) * steam,
-              2 + age * 2.2
+              0.3 * (1 - a) * Math.min(1, a * 20) * steam,
+              3 + age * 2.6
             );
           }
         }
@@ -819,8 +825,8 @@ export default function Effects({
         const o = shipToThree(pose, [hole.x, -14.6, 9.3]);
         burst(h, [o[0] - h[0], o[2] - h[2]], t, {
           count: 460,
-          up: [20, 15],
-          out: [1.5, 5],
+          up: [22, 16],
+          out: [2, 7],
           dark: 0.14,
           mist: 1,
         });
@@ -945,5 +951,10 @@ export default function Effects({
     }
   }, -1.5);
 
-  return <primitive object={pts.points} />;
+  return (
+    <>
+      <primitive object={pts.points} />
+      <primitive object={dayPts.points} />
+    </>
+  );
 }

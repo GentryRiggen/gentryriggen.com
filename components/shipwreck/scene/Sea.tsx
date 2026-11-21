@@ -257,7 +257,7 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
     (u.uDeep.value as Color).setRGB(0.008, 0.036, 0.05, LinearSRGBColorSpace);
     (u.uScatter.value as Color).setRGB(0.012, 0.05, 0.05, LinearSRGBColorSpace);
     (u.uSkyLow.value as Color).set(settings.fog);
-    (u.uSkyHigh.value as Color).setRGB(0.1, 0.25, 0.62, LinearSRGBColorSpace);
+    (u.uSkyHigh.value as Color).setRGB(0.045, 0.16, 0.55, LinearSRGBColorSpace);
     (u.uUnder.value as Color).setRGB(0.22, 0.5, 0.44, LinearSRGBColorSpace);
     const d = settings.sun
       ? sunDirection(settings.sun, settings.headingDeg ?? 90)

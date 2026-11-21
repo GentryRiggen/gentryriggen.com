@@ -161,7 +161,7 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
       azimuthDeg: round2(HIT_SUN.azimuthDeg),
     },
     // A light haze over a calm sea; green, sunlit shallow water.
-    fog: "#c5d3dc",
+    fog: "#bccddb",
     underwaterFog: "#2f7564",
     coast: true,
     iceberg: false,

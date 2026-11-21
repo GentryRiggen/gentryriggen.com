@@ -16,13 +16,13 @@ import { LUSITANIA_HIT } from "./settings";
  * of Kinsale): low green farmland over grey cliffs from Galley Head in the
  * west to Roche's Point in the east, the long narrow Old Head standing out
  * toward her, with its lighthouse (black with two white bands) at the tip.
- * Real places (latitude and longitude, below), heights shown 2× (at 20–45 km
+ * Real places (latitude and longitude, below), heights shown 2.5× (at 20–45 km
  * a 70 m cliff is a few pixels; drawn true it would not read as land). One
  * mesh, one draw call; the haze (the scene's fog) does the distance.
  */
 
 /** Heights are drawn this many times their real size. */
-export const COAST_HEIGHT_SCALE = 2;
+export const COAST_HEIGHT_SCALE = 2.5;
 
 /** The coast, west to east: [lat, lon, cliff m, hills inland m]. */
 const COASTLINE: readonly [number, number, number, number][] = [

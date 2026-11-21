@@ -86,7 +86,7 @@ const fragment = /* glsl */ `
     // When the bubbles here broke the surface.
     float age = uT + s / uSpeed - uLag;
     if (age < 0.0) discard;
-    float w = 0.9 + age * 0.07;
+    float w = 2.2 + age * 0.1;
     float churn = noise(vWorld.xz * 0.9 + vec2(age * 0.3, 0.0)) * 0.6
       + noise(vWorld.xz * 3.1) * 0.4;
     float core = exp(-pow(across / w, 2.0));

@@ -456,13 +456,13 @@ function lusitaniaView(shot: ShotId, ctx: ShotContext): View {
       const x = 10 + Math.sin(ctx.wall * 0.03) * 30;
       const tgt = shipToThree(b, [x - 10, -14, 20]);
       tgt[1] = Math.max(tgt[1], 4);
-      return { pos: levelToThree(b, [x + 30, -125, 10]), target: tgt };
+      return { pos: levelToThree(b, [x + 50, -165, 7]), target: tgt };
     }
     case "port-boats": {
       // High on the port quarter: her port side lifted, the boats in
       // against the hull.
-      const tgt = shipToThree(b, [0, 12, 22]);
-      return { pos: levelToThree(b, [-110, 150, 48]), target: tgt };
+      const tgt = shipToThree(b, [10, 12, 16]);
+      return { pos: levelToThree(b, [-70, 120, 18]), target: tgt };
     }
     case "bow-down": {
       const tgt = shipToThree(b, [30, 0, 10]);
@@ -471,17 +471,17 @@ function lusitaniaView(shot: ShotId, ctx: ShotContext): View {
     }
     case "grounded": {
       // Off the starboard quarter, low: her stern and screws in the air.
-      const tgt = shipToThree(b, [-80, 0, 6]);
-      tgt[1] = Math.max(tgt[1], 4);
-      return { pos: levelToThree(b, [-260, -230, 12]), target: tgt };
+      const tgt = shipToThree(b, [-75, 0, 8]);
+      tgt[1] = Math.max(tgt[1], 8);
+      return { pos: levelToThree(b, [-190, -150, 9]), target: tgt };
     }
     case "grounded-below": {
       // Under water on her starboard side: the bow dug into the floor, the
       // hull rising to the surface.
-      const tgt = shipToThree(b, [30, 0, 6]);
+      const tgt = shipToThree(b, [55, 0, 6]);
       tgt[1] = Math.min(-8, Math.max(tgt[1], floor + 8));
       return {
-        pos: levelToThree(b, [40, -135, Math.max(floor + 30, -52)]),
+        pos: levelToThree(b, [120, -125, Math.max(floor + 22, -60)]),
         target: tgt,
       };
     }
@@ -496,8 +496,10 @@ function lusitaniaUnderwater(ctx: ShotContext): View {
   const floor = -ctx.seaDepthM;
   const tgt = shipToThree(b, [10, 4, 12]);
   tgt[1] = Math.min(-6, Math.max(tgt[1], floor + 6));
-  const a = 2.2 + ctx.wall * 0.035;
-  const r = 105;
+  // Swinging slowly to and fro off her port side, which (on her
+  // starboard side on the floor) shows her decks.
+  const a = -Math.PI / 2 - 0.35 + Math.sin(ctx.wall * 0.03) * 0.6;
+  const r = 115;
   return {
     pos: [
       tgt[0] + Math.cos(a) * r,
@@ -506,4 +508,23 @@ function lusitaniaUnderwater(ctx: ShotContext): View {
     ],
     target: tgt,
   };
+}
+
+/**
+ * A grounded body raised, if need be, so no hull point (`points`, ship
+ * frame) is more than `embedM` into the sea floor. Display only: the sim's
+ * rest rule for a wreck on her side (`ShipSpec.wreck`) turns her over about
+ * her keel without re-seating her, which leaves her side far into the
+ * floor. Never lowers a body.
+ */
+export function seatOnFloor(
+  pose: BodyPose,
+  points: readonly (readonly number[])[],
+  seaDepthM: number,
+  embedM = 1.5
+): BodyPose {
+  let low = Infinity;
+  for (const p of points) low = Math.min(low, shipToThree(pose, p)[1]);
+  const floor = -seaDepthM - embedM;
+  return low < floor ? { ...pose, z: pose.z + (floor - low) } : pose;
 }

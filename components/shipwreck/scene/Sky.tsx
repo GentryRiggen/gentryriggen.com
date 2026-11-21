@@ -242,8 +242,8 @@ const daySkyFragment = /* glsl */ `
     vec3 d = normalize(vDir);
     float h = max(d.y, 0.0);
     // Deep blue overhead, paling to the haze at the horizon.
-    vec3 c = mix(uHorizon, uZenith, pow(h, 0.5));
-    c = mix(c, uHorizon * 1.04, exp(-h * 18.0) * 0.7);
+    vec3 c = mix(uHorizon, uZenith, pow(h, 0.32));
+    c = mix(c, uHorizon * 1.04, exp(-h * 30.0) * 0.6);
     // Brighter toward the sun (forward scattering in the haze).
     float cs = max(dot(d, uSunDir), 0.0);
     c += uSunColor * (0.06 * pow(cs, 4.0) + 0.22 * pow(cs, 48.0) + 1.2 * pow(cs, 900.0));
@@ -277,7 +277,7 @@ export function DaySky({ sunDir, horizon }: DaySkyProps) {
       uniforms: {
         uSunDir: { value: new Vector3() },
         uSunColor: { value: new Color().setRGB(1, 0.93, 0.82) },
-        uZenith: { value: new Color().setRGB(0.1, 0.25, 0.62) },
+        uZenith: { value: new Color().setRGB(0.045, 0.16, 0.55) },
         uHorizon: { value: new Color() },
       },
     });

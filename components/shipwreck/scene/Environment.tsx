@@ -45,7 +45,7 @@ import {
 const SEA_FOG = NIGHT_SEA_FOG;
 const DEEP_FOG = NIGHT_DEEP_FOG;
 /** The afternoon's haze (exp² density: the coast, 20 km off, half hidden). */
-const DAY_FOG_DENSITY = 0.000036;
+const DAY_FOG_DENSITY = 0.000027;
 /** Sunlit sea water in the Celtic Sea: green near the top, darker down. */
 const DAY_DEEP_WATER = new Color(0x0c3a33);
 
@@ -312,10 +312,15 @@ varying vec2 vCausticXZ;
 uniform float uTime;
 uniform float uCaustic;
 float causticAt(vec2 p) {
-  vec2 q = p * 0.16;
-  float a = sin(q.x * 1.7 + sin(q.y * 1.3 + uTime * 0.9) * 1.6 + uTime * 0.4);
-  float b = sin(q.y * 1.9 + sin(q.x * 1.1 - uTime * 0.7) * 1.4 - uTime * 0.5);
-  return pow(1.0 - abs(a * b), 7.0);
+  // Two warped ripple layers at odd angles: a loose, moving net of light.
+  vec2 q = p * 0.13;
+  q += vec2(sin(q.y * 0.7 + uTime * 0.3), cos(q.x * 0.6 - uTime * 0.25)) * 1.4;
+  float a = sin(q.x * 1.3 + q.y * 0.4 + uTime * 0.5);
+  float b = sin(q.y * 1.1 - q.x * 0.5 - uTime * 0.4);
+  float c1 = pow(1.0 - abs(a * b), 9.0);
+  vec2 r = p * 0.21 + vec2(3.1, 1.7);
+  float d = sin(r.x * 0.9 - r.y * 1.2 + uTime * 0.6) * sin(r.y * 0.8 + r.x * 0.3 - uTime * 0.35);
+  return c1 * (0.4 + 0.6 * pow(1.0 - abs(d), 5.0));
 }`
         )
         .replace(
@@ -343,9 +348,9 @@ float causticAt(vec2 p) {
   );
 
   const lights = useMemo(() => {
-    const sun = new DirectionalLight(0xfff1dc, 3.1);
+    const sun = new DirectionalLight(0xfff0d8, 4);
     sun.name = "sun";
-    const sky = new HemisphereLight(0xb9d4f0, 0x2f4a4c, 1.05);
+    const sky = new HemisphereLight(0xa9c8ee, 0x2f4a4c, 0.75);
     sky.name = "skylight";
     const lamp = new SpotLight(0xd8ecff, 0, 300, 0.6, 0.6, 1.1);
     lamp.name = "submersible-lamp";
@@ -375,19 +380,19 @@ float causticAt(vec2 p) {
       fog.density = 0.0085 + 0.004 * k;
       (scene.background as Color).copy(water);
       lights.sun.color.copy(lights.under);
-      lights.sun.intensity = 3.1 * (0.55 - 0.4 * k);
+      lights.sun.intensity = 4 * (0.45 - 0.33 * k);
       lights.sky.intensity = 0.95 - 0.55 * k;
     } else {
       fog.color.copy(haze);
       fog.density = DAY_FOG_DENSITY;
       (scene.background as Color).copy(haze);
       lights.sun.color.copy(lights.warm);
-      lights.sun.intensity = 3.1;
-      lights.sky.intensity = 1.05;
+      lights.sun.intensity = 4;
+      lights.sky.intensity = 0.75;
     }
     floor.m.visible = under;
     floor.caustics.uTime.value = state.clock.elapsedTime;
-    floor.caustics.uCaustic.value = under ? 0.22 : 0;
+    floor.caustics.uCaustic.value = under ? 0.12 * (1 - 0.5 * k) : 0;
     const lamp = lights.lamp;
     lamp.intensity = under ? Math.min(1, -y / 50) * 160 : 0;
     lamp.position.copy(camera.position);
