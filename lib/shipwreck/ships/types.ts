@@ -91,4 +91,11 @@ export interface ShipSpec {
   portholes?: readonly PortholeRow[];
   /** Forward speed at the first event and its decay (no propulsion model). */
   headway?: { startMs: number; halfLifeS: number };
+  /**
+   * On the floor she keeps the list she lands with (the Lusitania, on her
+   * starboard side). Missing or false: the 1.0 rest, which eases a landed
+   * body upright (a hull on the floor of the deep sea, as the Titanic's
+   * halves lie).
+   */
+  wreckKeepsList?: boolean;
 }

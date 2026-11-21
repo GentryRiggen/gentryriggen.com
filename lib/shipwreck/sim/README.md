@@ -122,7 +122,9 @@ that compartment at its x then (after a break too). The second explosion.
 **Headway (1.1).** `spec.headway` is a forward speed that decays,
 `u = u₀·2^(−t/T½)` over real time, integrated exactly per step
 (`u₀T½/ln2 · (2^(−t₀/T½) − 2^(−t₁/T½))`) into the earth x of every body
-afloat or falling, until it touches the floor. It is kinematic: no
+afloat or falling, until any part first touches the floor; then her way
+is gone for good (not again for the halves after a break). It is
+kinematic: no
 propulsion and no effect on flooding (the same run without it has the same
 events at the same times). The Titanic has none.
 
@@ -142,20 +144,14 @@ hull's axial and normal masses (with added mass) turned to earth plus the
 pitch and roll inertias; a contact that would pull is dropped and the
 system solved again. So the stem can ground and the hull pivots about it
 under buoyancy and weight while she floods; the floor forces go into the
-girder's load. Roll: nearly upright (under `LIE_OVER_MIN_DEG`, 10°) the
-flat bottom bears and the floor holds her upright; listed further, the
-bilge that touches digs into the soft mud rather than levering her upright
-(the floor gives no righting moment) until she lies on her side
-(`LIE_OVER_REST_DEG`, 75°), where it holds her again. At any list the mud
-also resists rolling (1.1, Task 2): rolling drags each contact sideways
-across the floor, `u_y = −(sin θ·rx + cos θ·rz)·ω_roll`, against the same
-regularised Coulomb friction as along it (μ 0.5 of the force the contact
-carries), applied implicitly in the roll row only (no sway). It holds the
-list she grounded with against what buoyancy is left aft, but never
-pushes her either way. Without it the Lusitania, grounded by the bow at
-30° of list, was rolled back upright by her floating stern in the last
-minute and landed at 0°. As the floor takes
-weight off her buoyancy, a listed hull lies further over. Once she is
+girder's load. Roll: the contact forces act in roll like any other, with
+no rule by list. There is no friction across the hull: with no sway in
+the model it could only lock her roll, not let her turn about the keel
+where it touches (a first version of 1.1 had it, and it held the
+Lusitania at 24° against the roll physics gives her). So a flat box rights
+itself on the floor, and the Lusitania, her narrow bow on the floor and
+her flooded hull going under at 25°, rolls onto her starboard side (67°
+to 76° at the moment she is gone over the calibration sweep below). Once she is
 wholly under she goes straight to the landing from where she lies (no
 fall), her contact as deep in the mud as it already is. Any contact puts
 the run in fast steps.
@@ -198,19 +194,22 @@ touch (the stem, for the bow) is held where it went in while its plough
 depth eases in over a couple of seconds (15 m for the bow, 4 m for the
 stern; `PLOUGH_TIME_S` 5 s real, about 0.8 s on screen at the ×6 descent); the rest of the body turns about that
 point and comes down. The bow settles upright with a slight bow-down rest
-(its after end bedded 3 m), the stern level. A body that lands listed more
-than `LIE_OVER_MIN_DEG` (10°) lies over on its low side instead, to its
-list or `LIE_OVER_REST_DEG` (75°), whichever is more (the Lusitania lies on
-her starboard side); the Titanic's halves land within a few degrees of
-upright, so this never applies to her. Terminal speeds come out about
+(its after end bedded 3 m), the stern level (the 1.0 rest: a rule, the
+mud not modelled). A ship with `wreckKeepsList` (the Lusitania: her wreck
+lies on its starboard side) keeps the list she lands with instead; the
+landing turns her no further in roll. No angle is scripted: the list is
+whatever the physics brought her down with. The Titanic has no flag, so
+her rests are 1.0's. Terminal speeds come out about
 13 m/s (bow) and 10 m/s (stern). The run ends when every part rests, or at
 6:00 AM (`t = 22800`) if any part still floats. Each floating body freezes
 once it has stopped moving and taking water for 5 minutes (after a break,
-each half on its own; the water counts as still when either this step's
-net flow or its average over about `STEADY_AVG_S`, 2 minutes, is under
+each half on its own; for a torpedo ship the water also counts as still
+when its net flow averaged over about `STEADY_AVG_S`, 2 minutes, is under
 0.05 m³/s: a 24 m² torpedo hole trades a cubic metre or two with the sea
-in a slow cycle of tiny steps around her level, which never let the
-instant value settle); when every part is frozen or on the floor the run
+in a slow cycle of tiny steps around her level, which never lets the
+instant value settle. An iceberg ship keeps the 1.0 test exactly: on it,
+boiler room 5's What-if never settles because of its pump, and 1.0 holds
+it that way); when every part is frozen or on the floor the run
 logs `floating-steady` and holds its pose to 6:00 AM at one frame a
 second.
 
@@ -269,10 +268,13 @@ collision. Scripted events fire only while she is afloat and whole;
   `ShipSpec.portholes` / `headway` (optional), `ShipSpec.clockStartS` and
   `cause` (required; the Titanic's are 11:40 PM and `"iceberg"`),
   `SimOptions.portholesOpen`, `SimProbe.lowestZ` (earth z of the lowest hull
-  vertex of any body), `SimFrame.groundedParts`.
-- `__tests__/titanicGolden.test.ts` freezes the Titanic's real night and two
+  vertex of any body), `SimFrame.groundedParts`, `ShipSpec.wreckKeepsList`
+  (optional), `whatIfSpots`.
+- `__tests__/titanicGolden.test.ts` freezes the Titanic's real night and six
   What-ifs (every event, every 50th frame's poses, water, list and trim, to
-  1e-9) as written by the 1.0 sim; a change that moves them is wrong for
+  1e-9) as written by the 1.0 sim: hold 1 + boiler room 4, the first five,
+  boiler room 5 alone, and the three most listed a search of 1.0 What-ifs
+  found (up to 19°; one breaks, one sinks whole, one floats); a change that moves them is wrong for
   the Titanic. `UPDATE_GOLDEN=1` rewrites the fixture, only on purpose.
   `__tests__/testShips.ts` has the box ships the 1.1 tests use.
 - `whatIfSpots(spec)`: the compartments a What-if offers (every one for an
@@ -428,10 +430,12 @@ depth 3 m). Where they disagree:
   (order from the survivors' accounts; the times are estimates within the
   18 minutes). The hit broke No. 5 to splinters (Mersey).
 - **Floor and clock.** 93 m of sea (Ballard), the clock from 2:10 PM.
+  `wreckKeepsList`: her wreck lies on its starboard side, so she rests with
+  the list she lands with (no angle given).
 - **Girder.** hog 5.0 GN·m, sag 4.6 GN·m: her shallower section (18.4 m by
   26.7 m) gives about 15 m³ of section modulus at the Titanic's
   proportions, in the high-tensile steel of her upper strakes and decks
-  (about 330 MPa). The real afternoon's peak is 0.49 of it afloat and 0.83
+  (about 330 MPa). The real afternoon's peak is 0.49 of it afloat and 0.64
   with the bow on the floor, so she does not break, as she did not.
 
 ## Calibration
@@ -455,7 +459,7 @@ Everything tuned is a physical quantity; no timing is scripted.
 | Portholes              | 5 m pieces, 0.4 m tall                                                                    | A 16-inch scuttle; short pieces so a row goes under progressively as she lists and trims.                                                                                                                                                                    |
 | Floor stiffness        | lightship on the keel sinks 1 m; damping 3 s × k                                          | Soft mud: a stem alone ploughs a few metres (about 4–6 m in the box tests) before enough hull bears. 3 s is about critical for a short contact and over-damped for a long one.                                                                               |
 | Floor friction         | μ 0.5 below 0.05 m/s                                                                      | Steel on clay mud; regularised so the implicit solve stays smooth.                                                                                                                                                                                           |
-| Lying over             | over 10° it lies over, to at least 75°                                                    | Wrecks that sank listed lie on their side (Lusitania, starboard). Under 10° the flat bottom bears and she stays upright, as the 1.0 landings did.                                                                                                            |
+| Rest on the floor      | 1.0: upright; `wreckKeepsList`: the list she lands with                                   | The Titanic's halves land within a few degrees of upright and rest as 1.0. The Lusitania lands on her starboard side (about 73°) and stays.                                                                                                                  |
 
 ### The Lusitania's calibration
 
@@ -464,17 +468,17 @@ the boats. Tuned against the history (list about 15° within minutes, up to
 about 25°; down by the head; the bow on the floor with the stern up; gone
 in 18 minutes; at rest on her starboard side), all other things fixed:
 
-| Parameter                | Value                                  | Why                                                                                                                                                                                                        |
-| ------------------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hit and second explosion | 8 + 6 m² at t = 0, 6 + 4 m² at t = 8 s | 24 m² in all, inside 10–30 m². With only No. 1's bunker and room open (12 + 6 m²) she lists at most 4.2° and floats: the list needs more than one starboard bunker ("three bunkers on one side").          |
-| Coal doors               | 0.1 m² per side bunker                 | Jammed open with coal. At 1 m² (doors wide open) the port bunkers fill through the rooms: 11° at 2:15, at most 16°, and she lands upright.                                                                 |
-| Side bunker permeability | 0.9                                    | Nearly empty bunkers (Ballard). The transverse bunker 0.6.                                                                                                                                                 |
-| KG (GM)                  | 9.45 m (1.09 m)                        | GM 0.6 m: 22° at once and 36° at the plunge (over the 25° of history); 1.24 m: 15° and 25° but over the 1.2 m that three flooded bunkers allow. 1.09 m: 16° at one minute, 18° at 2:15, at most 27°.       |
-| Porthole open area       | 0.027 m²/m                             | Sets the time (after the hit): 0.008 → 39:10 (and lands upright), 0.016 → 24:20, 0.020 → 21:12, 0.025 → 18:43, 0.027 → 17:59, 0.030 → 17:05. Shut, she floats at a 16° list: here the open ports sank her. |
-| Girder                   | hog 5.0, sag 4.6 GN·m                  | At 4.0/3.7 GN·m she broke at 2:27:52 with the bow on the floor (peak 0.998); she did not break.                                                                                                            |
-| Headway half-life        | 300 s                                  | 18 knots carried about 2 nautical miles (3,680 m to 18 minutes).                                                                                                                                           |
-| Mud friction across      | μ 0.5 (the floor's own)                | Not tuned: the floor's friction along the hull applied across it too (rolling). Without it she rolled back to 0° after grounding at 30° and landed upright.                                                |
-| Steady average           | 2 minutes                              | Not tuned to her timing: lets a big hole's slow exchange with the sea count as still (without it the What-ifs that float, such as hold 1, never log `floating-steady` and run to 6:00 AM).                 |
+| Parameter                | Value                                  | Why                                                                                                                                                                                                                             |
+| ------------------------ | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hit and second explosion | 8 + 6 m² at t = 0, 6 + 4 m² at t = 8 s | 24 m² in all, inside 10–30 m². With only No. 1's bunker and room open (12 + 6 m²) she lists at most 4.2° and floats: the list needs more than one starboard bunker ("three bunkers on one side").                               |
+| Coal doors               | 0.1 m² per side bunker                 | Jammed open with coal. At 1 m² (doors wide open) the port bunkers fill through the rooms: 11° at 2:15 and at most 16°, under the survivors' 15° within minutes.                                                                 |
+| Side bunker permeability | 0.9                                    | Nearly empty bunkers (Ballard). The transverse bunker 0.6.                                                                                                                                                                      |
+| KG (GM)                  | 9.45 m (1.09 m)                        | GM 0.6 m: 22° at once and 36° at the plunge (over the 25° of history); 1.24 m: 15° and 25° but over the 1.2 m that three flooded bunkers allow. 1.09 m: 16° at one minute, 18° at 2:15, at most 27°.                            |
+| Porthole open area       | 0.027 m²/m                             | Sets the time (after the hit): 0.008 → 38:18, 0.016 → 24:01, 0.020 → 20:59, 0.025 → 18:35, 0.027 → 17:52, 0.030 → 17:00 (rest 72–76° in every case). Shut, she floats at a 16° list: here the open ports sank her.              |
+| Girder                   | hog 5.0, sag 4.6 GN·m                  | At 4.0/3.7 GN·m she broke at 2:27:52 with the bow on the floor (peak 0.998); she did not break.                                                                                                                                 |
+| Headway half-life        | 300 s                                  | 18 knots carried about 2 nautical miles (3,680 m to 18 minutes).                                                                                                                                                                |
+| Rest                     | `wreckKeepsList`                       | Not tuned: no angle. She rolls onto her side as she goes under (67°–76° over this sweep) and keeps it. A first version held her with a sideways floor friction and laid her over to 75° by rule; both are gone (Task 1 review). |
+| Steady average           | 2 minutes                              | Not tuned to her timing, torpedo ships only: lets a big hole's slow exchange with the sea count as still (without it the What-ifs that float, such as hold 1, never log `floating-steady` and run to 6:00 AM).                  |
 
 ## Pass criteria (enforced by `__tests__/`)
 
@@ -498,11 +502,12 @@ in 18 minutes; at rest on her starboard side), all other things fixed:
 | Lusitania: list ≥ 12° by 2:15, at most 15–30°       | 18.3° at 2:15, at most 26.7°                        |
 | Lusitania: down by the head from 2:12               | trim > 0 from 2:12 on (1.3° then)                   |
 | Lusitania: bow on the floor, stern in the air       | bow lands 2:26:51 PM, trim 28°                      |
-| Lusitania: gone at 2:25–2:32 PM (real 2:28)         | 2:27:59 PM, no breakup                              |
-| Lusitania: at rest on her starboard side (≥ 45°)    | 75°                                                 |
+| Lusitania: gone at 2:25–2:32 PM (real 2:28)         | 2:27:52 PM, no breakup                              |
+| Lusitania: at rest on her starboard side (≥ 45°)    | about 73° (the list she went under with)            |
+| Titanic What-ifs as 1.0                             | 83 checked frame by frame against e5fd6da4: same    |
 | Lusitania: explosion within 30 s                    | 8 s                                                 |
 | Lusitania What-if: 12 spots × portholes open/shut   | all finite, all float steady or rest on the floor   |
-| Lusitania portholes shut at the real spot           | floats (open: sinks at 2:27:59 PM)                  |
+| Lusitania portholes shut at the real spot           | floats (open: sinks at 2:27:52 PM)                  |
 | Lusitania real afternoon `simulate`                 | about 0.5–0.9 s (the Titanic's 3 s budget)          |
 
 ## Known limits
@@ -513,10 +518,9 @@ in 18 minutes; at rest on her starboard side), all other things fixed:
 - Surge and sway are only G's own motion and a 0.02 m/s drift; no yaw while
   afloat; no waves.
 - After the break the two halves do not touch each other.
-- Lying over is a rule about the mud, not a contact mechanics result: a
-  rigid flat-bottomed hull on a hard floor would right itself from any list
-  under about 50°. Between 10° and 75° the floor carries weight but no roll
-  moment, and the landing rests at the larger of the list and 75°.
+- The rest on the floor is a rule either way: 1.0 eases a landed body
+  upright (the Titanic), `wreckKeepsList` holds the list she landed with
+  (the Lusitania). Neither models the mud's give under a bilge.
 - A hull held still on the floor while partly under can keep exchanging
   water between deeply submerged, nearly full cells (a 1.0 flooding
   behaviour: one fills to the brim, spills, refills). It then never logs

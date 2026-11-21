@@ -637,4 +637,7 @@ export const lusitania: ShipSpec = {
   // 18 knots, the engines unable to stop as steam failed; she carried her
   // way about 2 nautical miles (README).
   headway: { startMs: 18 * 0.514444, halfLifeS: 300 },
+  // Her wreck lies on its starboard side in 93 m (Ballard): she rolls onto
+  // it as she goes under with her bow on the floor, and stays (README).
+  wreckKeepsList: true,
 };

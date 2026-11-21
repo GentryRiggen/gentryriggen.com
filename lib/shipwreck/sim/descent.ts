@@ -6,8 +6,6 @@ import {
   PLOUGH_TIME_S,
   DRAG_CD,
   GRAV,
-  LIE_OVER_MIN_DEG,
-  LIE_OVER_REST_DEG,
   RHO,
   STEEL_BUOYANCY,
   STERN_CRUSH_M,
@@ -146,15 +144,9 @@ function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
   b.contactD0 = onFloor ? max(0, floorZ - e[2]) : 0;
   b.contactT = 0;
   b.contactPitch = b.pitch;
-  // Listed far enough, it lies over on its low side; else it rights.
-  const lieMin = (LIE_OVER_MIN_DEG * Math.PI) / 180;
-  b.restRoll =
-    abs(b.roll) >= lieMin
-      ? (b.roll > 0 ? 1 : -1) *
-        max(abs(b.roll), (LIE_OVER_REST_DEG * Math.PI) / 180)
-      : b.part === "stern"
-        ? 0.05
-        : 0;
+  // A ship whose wreck lies as she came down (spec.wreckKeepsList) keeps
+  // the list she lands with; else she rights (the 1.0 rest).
+  b.restRoll = b.keepsList ? b.roll : b.part === "stern" ? 0.05 : 0;
   if (b.part === "stern") b.restPitch = -0.02;
   else {
     // Nose deep in the mud, the after end bedded: a slight bow-down rest.

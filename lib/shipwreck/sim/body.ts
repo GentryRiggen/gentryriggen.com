@@ -7,8 +7,6 @@ import {
   FLOOR_FRICTION,
   FLOOR_SLIP_MS,
   GRAV,
-  LIE_OVER_MIN_DEG,
-  LIE_OVER_REST_DEG,
   HEAVE_ZETA,
   PITCH_ZETA,
   PUMP_DEPTH_M,
@@ -41,7 +39,6 @@ import {
 
 // Local bindings: global lookups are slow inside test sandboxes (vm).
 const { abs, cos, max, min, sin, sqrt } = Math;
-const DEG = Math.PI / 180;
 
 /**
  * A rigid floating body (the whole ship, or the bow or stern after the
@@ -138,6 +135,8 @@ export interface Body {
   /** Highest / lowest earth z of the body (hull and boxes). */
   top: number;
   bottom: number;
+  /** Rest as she lands, keeping her list (`spec.wreckKeepsList`). */
+  keepsList: boolean;
   /** Afloat and still for this long (s); frozen once steady. */
   steadyFor: number;
   frozen: boolean;
@@ -530,7 +529,6 @@ let fD = new Float64Array(64);
 let fK = new Float64Array(64);
 let fC = new Float64Array(64);
 let fCf = new Float64Array(64);
-let fCy = new Float64Array(64);
 let fR = new Float64Array(64 * 3);
 const fA = new Float64Array(16);
 const fRhs = new Float64Array(4);
@@ -544,7 +542,6 @@ function growFloor(n: number): void {
   fK = new Float64Array(m);
   fC = new Float64Array(m);
   fCf = new Float64Array(m);
-  fCy = new Float64Array(m);
   fR = new Float64Array(m * 3);
 }
 
@@ -589,13 +586,9 @@ function solve4(a: Float64Array, r: Float64Array, x: Float64Array): boolean {
  * wp, wr) and each contact's Jacobians Jz (vertical) and Jx (along),
  *   (M + dt·Σ[(k·dt + c)·Jz·Jzᵀ + cf·Jx·Jxᵀ]) q' = M·q + dt·Σ k·d·Jz,
  * and a contact that would pull is dropped and the system solved again.
- * Roll: a hull nearly upright (under LIE_OVER_MIN_DEG) bears on its flat
- * bottom and the floor holds it upright. Listed further, the bilge that
- * touches digs into the soft mud rather than levering her upright: the
- * floor carries weight and pivots her in pitch but takes no part in roll,
- * until she lies on her side (LIE_OVER_REST_DEG), where it holds her again.
- * So a listed hull keeps its list on the floor and, as the floor takes
- * weight off her buoyancy, lies further over.
+ * Roll: the contacts' forces act in roll like any other (no rule by list).
+ * There is no sideways friction: with no sway in the model it would lock
+ * her roll instead of letting her turn about the keel where it touches.
  * Returns true if anything touched.
  */
 function floorContact(
@@ -611,12 +604,8 @@ function floorContact(
   const pts = b.floorPts;
   const np = pts.length / 4;
   growFloor(np);
-  const list = abs(b.roll) / DEG;
-  const lever = list < LIE_OVER_MIN_DEG || list >= LIE_OVER_REST_DEG ? 1 : 0;
-  const cp = cos(b.pitch) * lever;
-  const sp = sin(b.pitch) * lever;
-  const cpp = cos(b.pitch);
-  const spp = sin(b.pitch);
+  const cp = cos(b.pitch);
+  const sp = sin(b.pitch);
   const mid = (b.xFrom + b.xTo) / 2;
   let n = 0;
   for (let p = 0; p < np; p += 1) {
@@ -637,9 +626,9 @@ function floorContact(
   }
   if (n === 0) return false;
   // Generalised mass: the hull's axial and normal masses turned to earth.
-  const mxx = mt * cpp * cpp + mn * spp * spp;
-  const mzz = mt * spp * spp + mn * cpp * cpp;
-  const mxz = (mn - mt) * spp * cpp;
+  const mxx = mt * cp * cp + mn * sp * sp;
+  const mzz = mt * sp * sp + mn * cp * cp;
+  const mxz = (mn - mt) * sp * cp;
   const q0 = [b.vx, b.vz, b.wp, b.wr];
   // Friction coefficients from the force each contact carries now.
   for (let i = 0; i < n; i += 1) {
@@ -650,9 +639,6 @@ function floorContact(
     const ux = q0[0] + rz * q0[2] + sp * ry * q0[3];
     const f0 = max(0, fK[i] * fD[i] - fC[i] * uz);
     fCf[i] = (FLOOR_FRICTION * f0) / max(FLOOR_SLIP_MS, abs(ux));
-    // Sideways: rolling drags the contact across the mud (earth y).
-    const uy = -(spp * rx + cpp * rz) * q0[3];
-    fCy[i] = (FLOOR_FRICTION * f0) / max(FLOOR_SLIP_MS, abs(uy));
   }
   const active = new Uint8Array(n).fill(1);
   for (let pass = 0; pass < 4; pass += 1) {
@@ -695,9 +681,6 @@ function floorContact(
       const jx = [1, 0, rz, sp * ry];
       for (let r = 0; r < 4; r += 1)
         for (let c = 0; c < 4; c += 1) fA[r * 4 + c] += kx * jx[r] * jx[c];
-      // Jy = (0, 0, 0, -(sin θ·rx + cos θ·rz)): roll only (no sway).
-      const jy = -(spp * rx + cpp * rz);
-      fA[15] += dt * fCy[i] * jy * jy;
     }
     if (!solve4(fA, fRhs, fQ)) return false;
     let dropped = false;

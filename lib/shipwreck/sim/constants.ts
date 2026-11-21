@@ -150,14 +150,6 @@ export const FLOOR_SINK_M = 1;
 export const FLOOR_DAMP_S = 3;
 export const FLOOR_FRICTION = 0.5;
 export const FLOOR_SLIP_MS = 0.05;
-/**
- * A hull that comes down listed more than LIE_OVER_MIN_DEG lies over on its
- * low side: the mud under the loaded bilge gives way and it settles to
- * LIE_OVER_REST_DEG (the Lusitania lies on her starboard side). Less than
- * that and it settles upright as before.
- */
-export const LIE_OVER_MIN_DEG = 10;
-export const LIE_OVER_REST_DEG = 75;
 /** The way down plays this many times faster once both parts are under. */
 export const DESCENT_TIME_SCALE = 6;
 

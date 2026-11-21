@@ -67,6 +67,37 @@ describe("wing cells", () => {
     expect(early?.water[CENTRE]).toBeLessThan(0.05);
   });
 
+  it("cross flow runs both ways and to both wings", () => {
+    // The centre holed: the sea fills it, and it fills both wings through
+    // their doors (centre to wing), the two alike.
+    const doors = withComp(
+      withComp(wingShip(), "stbd", { crossFlowM2: 0.05 }),
+      "port",
+      { crossFlowM2: 0.05 }
+    );
+    const centreHole: Opening = { ...stbdHole, compartmentId: "centre" };
+    const end = last(simulate(doors, [centreHole], { endT: END }));
+    expect(end.water[CENTRE]).toBeGreaterThan(0.2);
+    expect(end.water[PORT]).toBeGreaterThan(0.01);
+    expect(end.water[STBD]).toBeGreaterThan(0.01);
+    expect(end.water[PORT]).toBeLessThan(end.water[CENTRE]);
+    expect(Math.abs(end.water[PORT] - end.water[STBD])).toBeLessThan(
+      0.2 * end.water[STBD]
+    );
+    // The port wing holed: it fills the centre (wing to centre, port side),
+    // and the starboard wing only through the centre, last.
+    const portHole: Opening = {
+      ...stbdHole,
+      compartmentId: "port",
+      side: "port",
+    };
+    const fromPort = last(simulate(doors, [portHole], { endT: END }));
+    expect(fromPort.listDeg).toBeLessThan(0); // to port
+    expect(fromPort.water[CENTRE]).toBeGreaterThan(0.01);
+    expect(fromPort.water[CENTRE]).toBeLessThan(fromPort.water[PORT]);
+    expect(fromPort.water[STBD]).toBeLessThan(fromPort.water[CENTRE]);
+  });
+
   it("wing and centre volumes add up to the full section", () => {
     const spec = wingShip();
     const hull = buildHull(spec);
@@ -125,6 +156,24 @@ describe("portholes", () => {
     // The water they let in lists her further.
     const at = (track: SimTrack) => track.frames.find((f) => f.t >= 1200);
     expect(at(open)!.listDeg).toBeGreaterThan(at(shut)!.listDeg + 2);
+  });
+});
+
+describe("porthole sides", () => {
+  it("a port row stays dry while she lists to starboard", () => {
+    // The same row as above, but on the port side: her list lifts it.
+    const port = (): ShipSpec => ({
+      ...wingShip(),
+      portholes: [
+        { z: 7.5, fromX: 20, toX: 45, side: "port", openM2PerM: 0.01 },
+      ],
+    });
+    const track = simulate(port(), [stbdHole], { endT: END });
+    expect(Math.max(...track.frames.map((f) => f.listDeg))).toBeGreaterThan(10);
+    expect(track.frames.every((f) => f.water[FORE] === 0)).toBe(true);
+    expect(last(track)).toEqual(
+      last(simulate(port(), [stbdHole], { endT: END, portholesOpen: false }))
+    );
   });
 });
 

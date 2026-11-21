@@ -230,8 +230,9 @@ interface World {
   pending: { i: number; o: Cell["openings"][number] }[];
   /** Openings that open later (shown seconds), soonest first. */
   timed: { t: number; i: number; o: Cell["openings"][number] }[];
-  /** Forward way (none for the Titanic). */
+  /** Forward way (none for the Titanic), lost for good at the first touch. */
   headway: ShipSpec["headway"];
+  wayLost: boolean;
 }
 
 /** Settle her level before the collision, then open the holes at t = 0. */
@@ -506,6 +507,7 @@ function makeBody(
     grounded: false,
     touchBow: false,
     touchStern: false,
+    keepsList: w.spec.wreckKeepsList ?? false,
     floorN: 0,
     floorX: new Float64Array(0),
     floorF: new Float64Array(0),
@@ -676,6 +678,7 @@ function buildWorld(
     pending,
     timed,
     headway: spec.headway,
+    wayLost: false,
     probe: opts.probe,
     forecastle: fwdBox
       ? { x: (fwdBox.fromX + fwdBox.toX) / 2, z: fwdBox.topZ }
@@ -1017,6 +1020,7 @@ function headwayRun(h: ShipSpec["headway"], t0: number, t1: number): number {
 function touched(w: World, b: Body): void {
   if (!b.grounded) return;
   w.fast = true;
+  w.wayLost = true;
   const bow = b.part === "bow" || (b.part === "whole" && b.touchBow);
   const stern = b.part === "stern" || (b.part === "whole" && b.touchStern);
   if (bow) once(w, "bow-lands", "bow-lands");
@@ -1046,12 +1050,7 @@ function step(w: World): void {
     for (const b of w.bodies) {
       if (b.mode === "float" && b.frozen) continue;
       // Her way through the water, until she touches the floor.
-      if (
-        way !== 0 &&
-        (b.mode === "float" || b.mode === "fall") &&
-        !b.touchBow &&
-        !b.touchStern
-      )
+      if (way !== 0 && !w.wayLost && (b.mode === "float" || b.mode === "fall"))
         b.x += way;
       if (b.mode === "float") {
         const girderNow = !w.broken;
@@ -1086,6 +1085,7 @@ function step(w: World): void {
         }
       } else if (b.mode === "fall") {
         if (stepFall(b, dt, -spec.seaDepthM)) {
+          w.wayLost = true;
           // An intact hull is both: it lands as one (unless an end already
           // touched while she was afloat).
           if (b.part !== "stern") once(w, "bow-lands", "bow-lands");
@@ -1122,11 +1122,12 @@ function step(w: World): void {
   if (!w.steady && w.t > 1800) {
     for (const b of w.bodies) {
       if (b.mode !== "float" || b.frozen) continue;
-      // A big hole can trade water with the sea in a slow cycle of tiny
-      // steps around her level: the average then shows she is steady.
+      // A torpedo's holes (tens of m²) trade water with the sea in a slow
+      // cycle of tiny steps around her level: for a torpedo ship the
+      // average also counts (the iceberg ships keep the 1.0 test exactly).
       const still =
         (abs(b.netFlow) < STEADY_INFLOW_M3S ||
-          abs(b.flowAvg) < STEADY_INFLOW_M3S) &&
+          (w.spec.cause === "torpedo" && abs(b.flowAvg) < STEADY_INFLOW_M3S)) &&
         abs(b.wp) < 1e-5 &&
         abs(b.wr) < 1e-5 &&
         abs(b.vz) < 1e-3;
