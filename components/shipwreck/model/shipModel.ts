@@ -40,6 +40,7 @@ import {
 } from "./partGeometry";
 import { acquireShipTextures, releaseShipTextures } from "./textures";
 import {
+  swungOutY,
   titanicRecipe,
   type BoatRecipe,
   type LightSpot,
@@ -300,8 +301,7 @@ export function createTitanicModel(
     swing = 0,
     out = new Matrix4()
   ): Matrix4 {
-    const s = b.side === "port" ? 1 : -1;
-    const outY = s * (Math.abs(b.edgeY) + 0.35 + b.beam / 2 + 0.7);
+    const outY = swungOutY(b);
     const y = b.y + (outY - b.y) * swing;
     v3a.set(b.x, b.z - dropM, -y);
     q4.identity();

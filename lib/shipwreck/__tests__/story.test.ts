@@ -148,6 +148,15 @@ describe("the Lusitania's words", () => {
     ).toMatch(/^2:10 PM — A torpedo hits the starboard side/);
   });
 
+  it("says smoke and steam pour from her funnels (the Titanic's as 1.0)", () => {
+    expect(captionText({ kind: "steam-start" }, lusitania)).toBe(
+      "Steam and smoke pour out of the funnels."
+    );
+    expect(captionText({ kind: "steam-start" }, titanic)).toBe(
+      "The engines stop. Steam roars out of the funnels."
+    );
+  });
+
   it("says her bow lands in shallow water while her stern is still up", () => {
     expect(captionText({ kind: "bow-lands" }, lusitania)).toBe(
       "The bow ploughs into the sea floor, only 93 m down. Her stern is still up out of the water!"

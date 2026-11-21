@@ -118,6 +118,17 @@ export interface BoatRecipe {
   deckZ: number;
 }
 
+/**
+ * The ship-frame y of a boat's middle swung out over the side on its
+ * davits (+ to port): just clear of the deck edge.
+ */
+export function swungOutY(
+  b: Pick<BoatRecipe, "side" | "edgeY" | "beam">
+): number {
+  const s = b.side === "port" ? 1 : -1;
+  return s * (Math.abs(b.edgeY) + 0.35 + b.beam / 2 + 0.7);
+}
+
 export interface DavitRecipe {
   boat: number;
   x: number;

@@ -8,6 +8,7 @@ import { createHullSurface } from "./hullSurface";
 import {
   hash01,
   normalize,
+  swungOutY,
   type Block,
   type BoatRecipe,
   type BoxPart,
@@ -533,7 +534,14 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
     if (!b.hasDavits) continue;
     for (const dx of [-1, 1]) {
       const x = b.x + dx * (b.length / 2 - 0.45);
-      davits.push({ boat: b.index, x, footY: b.edgeY, headY: b.y, z: Boat(x) });
+      // Swung out (Turner had the boats swung out the day before).
+      davits.push({
+        boat: b.index,
+        x,
+        footY: b.edgeY,
+        headY: swungOutY(b),
+        z: Boat(x),
+      });
     }
   }
 

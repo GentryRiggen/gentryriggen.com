@@ -4,7 +4,7 @@ import { TEAR_AMPLITUDE, sideOf } from "../breakCut";
 import { buildShipPart, type ShipPartData } from "../buildShip";
 import { PEACETIME_PAINT, lusitaniaRecipe } from "../lusitaniaRecipe";
 import { recipeFor } from "../shipModel";
-import type { V3 } from "../titanicRecipe";
+import { swungOutY, type V3 } from "../titanicRecipe";
 
 const r = lusitaniaRecipe(lusitania);
 const { hull, layout: L } = r;
@@ -97,7 +97,8 @@ describe("Lusitania recipe", () => {
     });
     expect(r.boats.filter((b) => b.kind === "lifeboat")).toHaveLength(22);
     expect(r.boats.filter((b) => b.kind === "collapsible")).toHaveLength(26);
-    // Two davits a wooden boat, at its ends, feet at the deck edge.
+    // Two davits a wooden boat, at its ends, feet at the deck edge, arms
+    // swung out over the side (as they were from the day before).
     expect(r.davits).toHaveLength(44);
     for (const b of r.boats.filter((x) => x.hasDavits)) {
       const ds = r.davits.filter((d) => d.boat === b.index);
@@ -105,7 +106,8 @@ describe("Lusitania recipe", () => {
       for (const d of ds) {
         expect(Math.abs(d.x - b.x)).toBeLessThan(b.length / 2);
         expect(d.footY).toBe(b.edgeY);
-        expect(d.headY).toBe(b.y);
+        expect(d.headY).toBe(swungOutY(b));
+        expect(Math.abs(d.headY)).toBeGreaterThan(Math.abs(d.footY));
       }
     }
     // No two boats overlap: apart in plan, or stacked one on the other.

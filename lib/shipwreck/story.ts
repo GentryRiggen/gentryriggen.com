@@ -107,7 +107,7 @@ export function captionText(
       case "explosion":
         return "A second, bigger explosion booms from deep inside the ship.";
       case "steam-start":
-        return "Steam roars out of the funnels.";
+        return "Steam and smoke pour out of the funnels.";
       case "steam-stop":
         return "The steam stops.";
       case "rocket":
