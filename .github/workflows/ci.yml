@@ -293,7 +293,9 @@ jobs:
     name: 🎭 E2E ${{ matrix.name }}
     needs: [changes, e2e-build]
     if: needs.changes.outputs.e2e == 'true'
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest became 26.04, where Playwright's WebKit build
+    # cannot load libicudata.so.74, so every webkit and iPad test failed.
+    runs-on: ubuntu-24.04
     # Software WebGL (SwiftShader) takes every core it can get, so those specs
     # get their own jobs with one worker; running them beside the plain specs
     # starves those and makes them time out. The slow groups are split with
