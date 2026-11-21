@@ -86,13 +86,14 @@ const fragment = /* glsl */ `
     // When the bubbles here broke the surface.
     float age = uT + s / uSpeed - uLag;
     if (age < 0.0) discard;
-    float w = 2.2 + age * 0.1;
+    // A few metres of white froth, wider at the fresh head, spreading.
+    float head = smoothstep(4.0, 0.0, age);
+    float w = 3.0 + age * 0.12 + head * 2.5;
     float churn = noise(vWorld.xz * 0.9 + vec2(age * 0.3, 0.0)) * 0.6
       + noise(vWorld.xz * 3.1) * 0.4;
     float core = exp(-pow(across / w, 2.0));
     float fade = exp(-age / (uLife * 0.35)) * smoothstep(uLife, uLife * 0.6, age);
     // The fresh head is the brightest, a white boil.
-    float head = smoothstep(4.0, 0.0, age);
     float a = core * fade * (0.45 + 0.55 * churn) * (0.75 + 0.6 * head);
     if (a < 0.01) discard;
     gl_FragColor = vec4(vec3(0.88, 0.93, 0.94), clamp(a, 0.0, 0.9));

@@ -442,14 +442,15 @@ function lusitaniaView(shot: ShotId, ctx: ShotContext): View {
       };
     }
     case "run-in": {
-      // Before the hit: standing off her starboard bow, ahead of where the
-      // torpedo will strike. She steams in from the left, the white track
-      // streaks in from the right, and they meet at the hit.
+      // Before the hit: standing well ahead of where the torpedo will
+      // strike, off her starboard bow, looking back along her course. She
+      // steams toward us from the distance; the white track streaks in
+      // from the left; they meet at the hit.
       const h = ctx.hitAt ?? shipToThree(b, [hitX, -13.4, 9]);
       const drift = Math.sin(ctx.wall * 0.05) * 6;
       return {
-        pos: [h[0] + 230 + drift, 34, h[2] + 310],
-        target: [h[0] - 110, 4, h[2] + 70],
+        pos: [h[0] + 300 + drift, 75, h[2] + 260],
+        target: [h[0] - 90, 0, h[2] + 110],
       };
     }
     case "hit": {
