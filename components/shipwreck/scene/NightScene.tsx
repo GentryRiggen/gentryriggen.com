@@ -10,7 +10,7 @@ import {
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { WebGLRenderer } from "three";
+import { Color, type WebGLRenderer } from "three";
 import { useStore } from "zustand";
 import {
   QUALITY_TIERS,
@@ -20,15 +20,18 @@ import {
 import { getShip } from "@/lib/shipwreck/ships";
 import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import CameraRig from "./CameraRig";
+import Coast from "./Coast";
 import Effects from "./Effects";
 import Environment from "./Environment";
 import Iceberg from "./Iceberg";
 import PlacePins from "./PlacePins";
 import Sea from "./Sea";
 import { ShipOnStage } from "./ShipRig";
-import Sky from "./Sky";
+import Sky, { DaySky } from "./Sky";
+import Torpedo from "./Torpedo";
 import XRay from "./XRay";
 import { createSceneRuntime, type SceneRuntime } from "./runtime";
+import { SCENE_SETTINGS, sunDirection, type SceneSettings } from "./settings";
 
 /**
  * The night: the sky, the sea, the ship from the track, the effects and
@@ -74,6 +77,16 @@ export default function NightScene({
   const runtime = useMemo(() => createSceneRuntime(), []);
   const quality = useStore(store, (s) => s.quality);
   const spec = getShip(useStore(store, (s) => s.ship));
+  const settings = SCENE_SETTINGS[spec.id];
+  const day = settings.timeOfDay === "afternoon";
+  const haze = useMemo(() => new Color(settings.fog), [settings]);
+  const sunDir = useMemo(
+    () =>
+      settings.sun
+        ? sunDirection(settings.sun, settings.headingDeg ?? 90)
+        : ([0, 1, 0] as [number, number, number]),
+    [settings]
+  );
   // A lost WebGL context that does not come back stops the scene: thrown
   // here so the error boundary around it offers a fresh start.
   const [isLost, setLost] = useState(false);
@@ -129,21 +142,34 @@ export default function NightScene({
         )}
         <Driver store={store} />
         {TEST_HOOKS_ENABLED && <RenderInfoProbe quality={quality} dpr={dpr} />}
-        <Environment runtime={runtime} seaDepthM={spec.seaDepthM} />
-        <Sky dpr={dpr} />
+        <Environment
+          runtime={runtime}
+          seaDepthM={spec.seaDepthM}
+          settings={settings}
+        />
+        {day ? <DaySky sunDir={sunDir} horizon={haze} /> : <Sky dpr={dpr} />}
+        {settings.coast && <Coast />}
         {/* Another ship builds her own model, disposing the old. */}
         <ShipOnStage store={store} runtime={runtime} />
-        {spec.cause === "iceberg" && <Iceberg store={store} />}
-        <Effects store={store} runtime={runtime} spec={spec} />
+        {settings.iceberg && <Iceberg store={store} />}
+        {spec.cause === "torpedo" && <Torpedo store={store} />}
+        <Effects
+          store={store}
+          runtime={runtime}
+          spec={spec}
+          settings={settings}
+        />
         <XRay store={store} runtime={runtime} spec={spec} />
-        <SeaFromStore store={store} runtime={runtime} />
+        <SeaFromStore store={store} runtime={runtime} settings={settings} />
         <CameraRig store={store} runtime={runtime} spec={spec} />
         {/* Fixed MSAA: changing it rebuilds the composer (a hitch on a tier step). */}
         <EffectComposer multisampling={4}>
           <Bloom
-            luminanceThreshold={1}
+            // By day the sunlit paint must not glow: only the sun, its
+            // glitter on the sea and the flashes bloom.
+            luminanceThreshold={day ? 1.6 : 1}
             luminanceSmoothing={0.25}
-            intensity={1.25}
+            intensity={day ? 0.9 : 1.25}
             mipmapBlur
             resolutionScale={quality === "high" ? 0.5 : 0.35}
           />
@@ -173,13 +199,17 @@ function step(store: PlaybackStore, by: 1 | -1) {
 function SeaFromStore({
   store,
   runtime,
+  settings,
 }: {
   store: PlaybackStore;
   runtime: SceneRuntime;
+  settings: SceneSettings;
 }) {
   const quality = useStore(store, (s) => s.quality);
   const xray = useStore(store, (s) => s.xray);
-  return <Sea runtime={runtime} quality={quality} xray={xray} />;
+  return (
+    <Sea runtime={runtime} quality={quality} xray={xray} settings={settings} />
+  );
 }
 
 /** Advances the runner (≤ 6 ms a frame) and the shown time. */

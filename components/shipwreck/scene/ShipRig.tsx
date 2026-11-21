@@ -15,6 +15,7 @@ import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import { earthZ } from "@/lib/shipwreck/xray";
 import { shipToThree } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
+import { SCENE_SETTINGS } from "./settings";
 
 /**
  * The ship driven by the track: samples the sim frame at the store's `t`
@@ -34,11 +35,19 @@ const WARM_FRAMES = 3;
 function lampsOf(spec: ShipSpec): [number, number, number][] {
   const boat = spec.decks.find((d) => d.name === "Boat")?.z ?? spec.depth;
   const z = Math.round((boat + 2.81) * 100) / 100;
+  // The Lusitania's boat deck runs from 72 m forward to -63 m aft.
+  const [fwd, aft] = spec.id === "lusitania" ? [46, -42] : [52, -50];
   return [
-    [52, 0, z],
-    [-50, 0, z],
+    [fwd, 0, z],
+    [aft, 0, z],
   ];
 }
+
+/**
+ * By day her lights barely show (the sun outshines them; her portholes
+ * read as dark glass): the panes and deck lamps run at this share.
+ */
+const DAY_LIGHTS = 0.08;
 
 /**
  * The models are built once, at high detail (rigging wires and rails: they
@@ -70,6 +79,12 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
   const { gl, scene, camera } = useThree();
 
   const lampPositions = useMemo(() => lampsOf(spec), [spec]);
+  const lightShare =
+    SCENE_SETTINGS[spec.id].timeOfDay === "afternoon" ? DAY_LIGHTS : 1;
+  const sternX = useMemo(
+    () => Math.min(...spec.stations.map((st) => st.x)),
+    [spec]
+  );
   // The decks lit by deck (the top eight), with the sheer measured from the
   // C deck as the model does.
   const decks = useMemo(() => spec.decks.slice(0, 8), [spec]);
@@ -134,7 +149,7 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     runtime.broken = two && split !== null;
     // Halves kept from an earlier run that has not broken (yet): hidden.
     if (!split && runtime.split) runtime.split.root.visible = false;
-    const power = frame.power;
+    const power = frame.power * lightShare;
     const flicker = power > 0 && power < 1 ? 0.6 : 0;
 
     if (whole) {
@@ -195,6 +210,35 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
       lamps[i].position.set(w[0], w[1], w[2]);
       lamps[i].intensity = power * 900;
     });
+
+    // Her wake while she has way (ships with headway).
+    const wake = runtime.wake;
+    if (spec.headway && !runtime.broken) {
+      const now = frame.bodies[0];
+      const before = sampleTrack(track, Math.max(0, s.t - 2)).bodies[0];
+      const start = track.frames[0].bodies[0];
+      const dt = Math.min(2, s.t);
+      const speed =
+        dt > 0.2
+          ? Math.hypot(now.x - before.x, now.y - before.y) / dt
+          : spec.headway.startMs;
+      const stern = shipToThree(now, [sternX, 0, 0]);
+      const fwd = shipToThree(now, [sternX + 10, 0, 0]);
+      const len = Math.hypot(fwd[0] - stern[0], fwd[2] - stern[2]) || 1;
+      wake.x = stern[0];
+      wake.z = stern[2];
+      wake.dx = (fwd[0] - stern[0]) / len;
+      wake.dz = (fwd[2] - stern[2]) / len;
+      // The title's calm ship (no hole) steams on at full speed.
+      wake.amount =
+        s.openings.length === 0
+          ? 1
+          : Math.min(1, speed / spec.headway.startMs) * (stern[1] > -4 ? 1 : 0);
+      wake.length = Math.max(
+        s.openings.length === 0 ? 900 : 0,
+        Math.min(900, Math.hypot(now.x - start.x, now.y - start.y))
+      );
+    } else wake.amount = 0;
   }, -2);
 
   return (

@@ -69,6 +69,12 @@ export interface BoatControls {
   lower(index: number, dropM: number, swing?: number): void;
   /** Free of the ship: `matrix` in the model root's space (keel centre). */
   float(index: number, matrix: Matrix4): void;
+  /**
+   * Aboard, its middle at `position` turned by `quaternion`, both in its
+   * part's own three.js axes (a boat hanging from its falls, plumb while
+   * the ship lists).
+   */
+  hang(index: number, position: Vector3, quaternion: Quaternion): void;
   hide(index: number): void;
 }
 
@@ -444,6 +450,12 @@ export function createTitanicModel(
         v3b
       );
       put(afloat, i, m4);
+    },
+    hang(i, position, quaternion) {
+      const b = recipe.boats[i];
+      v3b.set(b.length, b.depth, b.beam);
+      put(aboard, i, m4.compose(position, quaternion, v3b));
+      put(afloat, i, zero);
     },
     hide(i) {
       put(aboard, i, zero);

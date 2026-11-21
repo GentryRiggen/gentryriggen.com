@@ -20,6 +20,11 @@ export const QUALITY_TIERS: readonly QualityTier[] = ["high", "medium", "low"];
 /** Seconds around the break and the plunge played at ×1 on the cinematic camera. */
 export const SLOWMO_BREAK = { before: 30, after: 45 } as const;
 export const SLOWMO_PLUNGE = { before: 45, after: 15 } as const;
+/**
+ * A torpedo's hit (a track with a second explosion, and holes): its first
+ * seconds at ×1 on the cinematic camera, through the second explosion.
+ */
+export const SLOWMO_HIT_S = 20;
 /** A speed the player touched this recently (s) overrides the slow-mo. */
 export const SPEED_TOUCH_HOLD_S = 10;
 /** The runner's wall-time budget per frame (ms; the sim may run ~0.5 ms over). */
@@ -156,14 +161,33 @@ export function inSlowMoWindow(track: SimTrack | null, t: number): boolean {
   );
 }
 
+/** True in the first seconds after a torpedo's hit (see SLOWMO_HIT_S). */
+export function inHitWindow(
+  track: SimTrack | null,
+  openings: readonly Opening[] | undefined,
+  t: number
+): boolean {
+  return (
+    track !== null &&
+    (openings?.length ?? 0) > 0 &&
+    t <= SLOWMO_HIT_S &&
+    track.events.some((e) => e.kind === "explosion")
+  );
+}
+
 /** The speed playback actually runs at. */
 export function effectiveSpeed(
-  s: Pick<PlaybackState, "track" | "t" | "speed" | "camera" | "speedTouchedAt">,
+  s: Pick<
+    PlaybackState,
+    "track" | "t" | "speed" | "camera" | "speedTouchedAt"
+  > & { openings?: readonly Opening[] },
   nowS: number
 ): number {
   if (s.camera !== "cinematic") return s.speed;
   if (nowS - s.speedTouchedAt < SPEED_TOUCH_HOLD_S) return s.speed;
-  return inSlowMoWindow(s.track, s.t) ? 1 : s.speed;
+  return inSlowMoWindow(s.track, s.t) || inHitWindow(s.track, s.openings, s.t)
+    ? 1
+    : s.speed;
 }
 
 /** The real time at shown time `t` (the sim's frames carry both). */

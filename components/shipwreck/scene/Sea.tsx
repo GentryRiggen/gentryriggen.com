@@ -24,6 +24,7 @@ import {
 } from "three";
 import type { QualityTier } from "@/lib/shipwreck/playback";
 import type { SceneRuntime } from "./runtime";
+import { sunDirection, type SceneSettings } from "./settings";
 
 /**
  * The sea on the night: flat calm, "like glass". One big quad with a
@@ -68,6 +69,17 @@ const fragment = /* glsl */ `
   uniform vec3 uSkyLow;
   uniform vec3 uSkyHigh;
   uniform vec3 uUnder;
+  #ifdef DAY
+  uniform vec3 uSunDir;
+  uniform vec3 uSunColor;
+  uniform vec3 uScatter;
+  uniform vec4 uWake;
+  uniform float uWakeAmt;
+  uniform float uWakeLen;
+  #define RIPPLE 0.34
+  #else
+  #define RIPPLE 0.18
+  #endif
 
   // Value noise and its gradient, for the ripples.
   float hash(vec2 p) {
@@ -102,12 +114,17 @@ const fragment = /* glsl */ `
     float e = 0.6;
     float h0 = height(p);
     vec2 grad = vec2(height(p + vec2(e, 0.0)) - h0, height(p + vec2(0.0, e)) - h0) / e;
-    vec3 n = normalize(vec3(-grad.x * 0.18 * fine, 1.0, -grad.y * 0.18 * fine));
+    vec3 n = normalize(vec3(-grad.x * RIPPLE * fine, 1.0, -grad.y * RIPPLE * fine));
 
     if (!gl_FrontFacing) {
       // From under the water: the bright window overhead, dark beyond.
       float up = clamp(-v.y, 0.0, 1.0);
       vec3 c = mix(uUnder * 0.25, uUnder, pow(up, 3.0));
+      #ifdef DAY
+      // Snell's window: the bright sky overhead, the sun in it.
+      c += smoothstep(0.6, 0.72, up) * vec3(0.35, 0.5, 0.45);
+      c += uSunColor * pow(max(dot(-v, normalize(uSunDir + vec3(0.0, 1.2, 0.0))), 0.0), 60.0) * 1.5;
+      #endif
       gl_FragColor = vec4(c, 1.0);
       #include <fog_fragment>
       return;
@@ -125,9 +142,37 @@ const fragment = /* glsl */ `
       vec3 mirror = texture2D(uReflection, uv, bias).rgb;
       refl = mirror + sky * 0.15;
     }
+    #ifdef DAY
+    // The sea in the sun: blue-green water lit from within, the sky's
+    // reflection, the glitter of the sun on the ripples, and her wake.
+    vec3 body = uDeep + uScatter * max(uSunDir.y, 0.0) * (0.7 + 0.3 * n.y);
+    vec3 c = mix(body, refl, clamp(fres * 1.1 + 0.05, 0.0, 1.0));
+    float sd = max(dot(r, uSunDir), 0.0);
+    c += uSunColor * (pow(sd, 700.0) * 30.0 + pow(sd, 50.0) * 0.35) * (0.35 + 0.65 * fine);
+    float foam = 0.0;
+    if (uWakeAmt > 0.0) {
+      vec2 rel = vWorld.xz - uWake.xy;
+      float s = -dot(rel, uWake.zw);
+      float lat = abs(dot(rel, vec2(-uWake.w, uWake.z)));
+      if (s > 0.0 && s < uWakeLen) {
+        float u = s / max(uWakeLen, 1.0);
+        float churn = noise(vWorld.xz * 0.3 + vec2(uTime * 0.21, 0.0)) * 0.6
+          + noise(vWorld.xz * 1.1 - vec2(0.0, uTime * 0.37)) * 0.4;
+        float w = 8.0 + s * 0.05;
+        foam += smoothstep(w, w * 0.15, lat) * (1.0 - u) * (0.3 + 0.7 * churn);
+        // The Kelvin wave's arms, 19.5° each side.
+        float arm = s * 0.354;
+        foam += exp(-pow((lat - arm) / (1.2 + s * 0.012), 2.0)) * (1.0 - u) * 0.35 * churn;
+      }
+      foam *= uWakeAmt;
+    }
+    c = mix(c, vec3(0.8, 0.86, 0.88), clamp(foam, 0.0, 0.8));
+    gl_FragColor = vec4(c, uOpacity);
+    #else
     vec3 c = mix(uDeep, refl, clamp(fres * 1.15 + 0.08, 0.0, 1.0));
     c += uFlash * vec3(0.05, 0.055, 0.06) * fres;
     gl_FragColor = vec4(c, uOpacity);
+    #endif
     #include <fog_fragment>
   }
 `;
@@ -136,9 +181,12 @@ interface SeaProps {
   runtime: SceneRuntime;
   quality: QualityTier;
   xray: boolean;
+  /** The ship's scene: the afternoon's sea is sunlit, with her wake. */
+  settings?: SceneSettings;
 }
 
-export default function Sea({ runtime, quality, xray }: SeaProps) {
+export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
+  const day = settings?.timeOfDay === "afternoon";
   const size = REFLECTION_SIZE[quality];
   const { gl, scene, camera } = useThree();
 
@@ -162,6 +210,7 @@ export default function Sea({ runtime, quality, xray }: SeaProps) {
         fragmentShader: fragment,
         side: DoubleSide,
         fog: true,
+        defines: day ? { DAY: "" } : {},
         uniforms: UniformsUtils.merge([
           UniformsLib.fog,
           {
@@ -189,11 +238,32 @@ export default function Sea({ runtime, quality, xray }: SeaProps) {
               ),
             },
             uUnder: { value: new Color(0x1d5a70) },
+            uSunDir: { value: new Vector3(0, 1, 0) },
+            uSunColor: { value: new Color().setRGB(1, 0.93, 0.82) },
+            uScatter: { value: new Color() },
+            uWake: { value: new Vector4(0, 0, 1, 0) },
+            uWakeAmt: { value: 0 },
+            uWakeLen: { value: 0 },
           },
         ]),
       }),
-    []
+    [day]
   );
+  // The afternoon's colours (linear): the haze at the horizon, the blue
+  // overhead, the water and the light under it.
+  useEffect(() => {
+    if (!day || !settings) return;
+    const u = material.uniforms;
+    (u.uDeep.value as Color).setRGB(0.008, 0.036, 0.05, LinearSRGBColorSpace);
+    (u.uScatter.value as Color).setRGB(0.012, 0.05, 0.05, LinearSRGBColorSpace);
+    (u.uSkyLow.value as Color).set(settings.fog);
+    (u.uSkyHigh.value as Color).setRGB(0.1, 0.25, 0.62, LinearSRGBColorSpace);
+    (u.uUnder.value as Color).setRGB(0.22, 0.5, 0.44, LinearSRGBColorSpace);
+    const d = settings.sun
+      ? sunDirection(settings.sun, settings.headingDeg ?? 90)
+      : [0, 1, 0];
+    (u.uSunDir.value as Vector3).set(d[0], d[1], d[2]).normalize();
+  }, [day, settings, material]);
   useEffect(() => () => material.dispose(), [material]);
 
   useEffect(() => {
@@ -257,6 +327,12 @@ export default function Sea({ runtime, quality, xray }: SeaProps) {
     const u = material.uniforms;
     u.uTime.value = state.clock.elapsedTime;
     u.uFlash.value = runtime.flash;
+    if (day) {
+      const w = runtime.wake;
+      (u.uWake.value as Vector4).set(w.x, w.z, w.dx, w.dz);
+      u.uWakeAmt.value = w.amount;
+      u.uWakeLen.value = w.length;
+    }
     // The sea follows the camera so its edge never shows.
     mesh.position.set(camera.position.x, 0, camera.position.z);
     if (!target || camera.position.y < 0.3) return;

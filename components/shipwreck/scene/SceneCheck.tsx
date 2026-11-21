@@ -2,26 +2,32 @@
 
 import { useEffect } from "react";
 import { playback } from "@/lib/shipwreck/playback";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
+import { getShip } from "@/lib/shipwreck/ships";
+import type { ShipId } from "@/lib/shipwreck/ships/types";
 import NightScene from "./NightScene";
 
 /**
  * The checking entry for the night (`/shipwreck?scene`, dev and e2e builds
  * only): the real night on the playback store, no UI. Drive it with
  * `window.__shipwreck.seek / setCamera / setXray / flyToPlace`. Add
- * `&quality=high|medium|low` to pin a tier (the frame-rate monitor is off).
+ * `&quality=high|medium|low` to pin a tier (the frame-rate monitor is off),
+ * `&ship=lusitania` for her real afternoon (default the Titanic's night).
  */
 export default function SceneCheck() {
-  const pinned =
+  const params =
     typeof window === "undefined"
       ? null
-      : new URLSearchParams(window.location.search).get("quality");
+      : new URLSearchParams(window.location.search);
+  const pinned = params?.get("quality") ?? null;
+  const ship: ShipId =
+    params?.get("ship") === "lusitania" ? "lusitania" : "titanic";
 
   useEffect(() => {
     const s = playback.getState();
     if (pinned === "high" || pinned === "medium" || pinned === "low")
       s.setQuality(pinned);
-    s.start(titanic, titanic.realNight);
+    const spec = getShip(ship);
+    s.start(spec, spec.realNight);
     s.play();
     // Checking only: compute the night in bigger chunks than the frame loop
     // (software WebGL can run at a frame a second).
@@ -36,7 +42,7 @@ export default function SceneCheck() {
       clearTimeout(timer);
       playback.getState().reset();
     };
-  }, [pinned]);
+  }, [pinned, ship]);
 
   return (
     <div

@@ -169,6 +169,30 @@ describe("slow-mo", () => {
     expect(effectiveSpeed({ ...base, t: 7000 }, 1000)).toBe(100);
   });
 
+  it("holds ×1 through a torpedo's hit and the second explosion", () => {
+    const hitTrack = fakeTrack(1000, {
+      events: [
+        { kind: "collision", t: 0, realT: 0 },
+        { kind: "explosion", t: 8, realT: 8 },
+      ],
+    });
+    const hole = {
+      compartmentId: "br1",
+      areaM2: 6,
+      zLow: 2,
+      zHigh: 6,
+      x: 60,
+      side: "starboard" as const,
+    };
+    const run = { ...base, track: hitTrack, openings: [hole] };
+    expect(effectiveSpeed({ ...run, t: 0 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 15 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 40 }, 1000)).toBe(100);
+    // No hole (the title's calm ship), and the Titanic's night: as before.
+    expect(effectiveSpeed({ ...run, openings: [], t: 5 }, 1000)).toBe(100);
+    expect(effectiveSpeed({ ...base, openings: [hole], t: 5 }, 1000)).toBe(100);
+  });
+
   it("not on other cameras, nor within 10 s of a speed change", () => {
     expect(effectiveSpeed({ ...base, t: 8010, camera: "orbit" }, 1000)).toBe(
       100

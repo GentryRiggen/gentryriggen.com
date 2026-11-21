@@ -23,10 +23,10 @@ import {
   cinematicShot,
   clampAboveFloor,
   dampSpring,
-  HULL_BOXES,
+  hullBoxesFor,
+  keepClear,
   lifeboatView,
   nearFor,
-  pushOutOfHull,
   shipToThree as shipThree,
   portraitPullBack,
   shotView,
@@ -36,6 +36,7 @@ import {
   type View,
 } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
+import { torpedoHole } from "./Torpedo";
 
 /**
  * Every camera. `orbit` is the free camera: one finger orbits, pinch or the
@@ -71,6 +72,7 @@ const PIN_SEA_CLEARANCE_M = 2.5;
 export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
   const { camera, gl } = useThree();
   const SEA_DEPTH = spec.seaDepthM;
+  const boxes = hullBoxesFor(spec.id);
   const controls = useMemo(() => {
     const c = new OrbitControls(camera, gl.domElement);
     c.enableDamping = true;
@@ -222,7 +224,7 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       g.updateMatrixWorld();
       tmp.inv.copy(g.matrixWorld).invert();
       tmp.localRay.copy(tmp.ray.ray).applyMatrix4(tmp.inv);
-      for (const b of HULL_BOXES) {
+      for (const b of boxes) {
         let x0 = b.x[0];
         let x1 = b.x[1];
         if (n === "bow" && breakX !== null) x0 = Math.max(x0, breakX);
@@ -364,6 +366,8 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
         bodies: frame.bodies,
         breakX: p.track?.breakX ?? null,
         seaDepthM: SEA_DEPTH,
+        ship: spec.id,
+        hitX: torpedoHole(p.openings)?.x,
       };
       let view: View;
       let cut = false;
@@ -372,7 +376,11 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       else if (p.camera === "bridge") view = bridgeView(ctx);
       else if (p.camera === "stern") view = sternView(ctx);
       else {
-        const shot = p.track ? cinematicShot(p.track, p.t) : "establishing";
+        const shot = p.track
+          ? cinematicShot(p.track, p.t, spec.id, p.openings.length > 0)
+          : spec.id === "lusitania"
+            ? "afternoon"
+            : "establishing";
         // Reduced motion: cut between the shots instead of flying.
         if (reducedMotion && shot !== s.shot) cut = true;
         s.shot = shot;
@@ -419,10 +427,13 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       for (const n of ["whole", "bow", "stern"] as PartName[]) {
         const g = runtime.part(n);
         if (!g) continue;
+        const pose = frame.bodies.find((b) => b.part === n) ?? frame.bodies[0];
         const l = g.worldToLocal(tmp.a.copy(camera.position));
         // Local three axes to ship frame and back.
         const ship: V3 = [l.x, -l.z, l.y];
-        const out = pushOutOfHull(ship);
+        // Out of her and never through the sea floor (a wreck on her side
+        // has a face on the floor).
+        const out = keepClear(ship, pose, SEA_DEPTH, boxes, 0.6, 3);
         if (out[0] !== ship[0] || out[1] !== ship[1] || out[2] !== ship[2]) {
           g.localToWorld(tmp.a.set(out[0], out[2], -out[1]));
           camera.position.copy(tmp.a);
@@ -447,6 +458,13 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
 
 function bridgeView(ctx: ShotContext): View {
   const b = ctx.bodies.find((x) => x.part === "bow") ?? ctx.bodies[0];
+  if (ctx.ship === "lusitania")
+    // Her starboard bridge wing (the bridge at 68 m, over the boat deck),
+    // looking aft along the boats.
+    return {
+      pos: shipThree(b, [69, -14.6, 28.4]),
+      target: shipThree(b, [-30, -10, 25]),
+    };
   return {
     pos: shipThree(b, [74, -15.5, 31.5]),
     target: shipThree(b, [-30, -10, 29]),
@@ -455,6 +473,12 @@ function bridgeView(ctx: ShotContext): View {
 
 function sternView(ctx: ShotContext): View {
   const b = ctx.bodies.find((x) => x.part === "stern") ?? ctx.bodies[0];
+  if (ctx.ship === "lusitania")
+    // Her open Shelter deck aft (no raised poop), looking forward.
+    return {
+      pos: shipThree(b, [-116, 0, 22.5]),
+      target: shipThree(b, [10, 0, 24]),
+    };
   return {
     pos: shipThree(b, [-130, 0, 26]),
     target: shipThree(b, [10, 0, 26]),
