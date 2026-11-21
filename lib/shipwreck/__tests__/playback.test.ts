@@ -20,6 +20,7 @@ function frame(t: number, realT = t): SimFrame {
     trimDeg: 0,
     listDeg: 0,
     power: 1,
+    groundedParts: [],
   };
 }
 

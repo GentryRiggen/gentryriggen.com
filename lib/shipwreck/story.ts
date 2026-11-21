@@ -11,10 +11,12 @@ import type { OutcomeId } from "./types";
 /** The collision, 11:40 PM, as seconds after midnight. */
 export const CLOCK_START_S = 23 * 3600 + 40 * 60;
 
-/** "1:47 AM" for seconds after the collision. */
-export function clockText(secondsAfter: number): string {
-  const s =
-    (((CLOCK_START_S + Math.floor(secondsAfter)) % 86400) + 86400) % 86400;
+/** "1:47 AM" for seconds after the first event (the collision by default). */
+export function clockText(
+  secondsAfter: number,
+  startS: number = CLOCK_START_S
+): string {
+  const s = (((startS + Math.floor(secondsAfter)) % 86400) + 86400) % 86400;
   const h24 = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;

@@ -7,7 +7,7 @@
  * `x` forward, `y` to port, `z` up from the keel.
  */
 
-export type ShipId = "titanic";
+export type ShipId = "titanic" | "lusitania";
 
 export interface HullStation {
   x: number;
@@ -25,6 +25,12 @@ export interface Compartment {
   fwdBulkheadTopZ: number;
   /** Share of the space flood water can fill (default by kind in the sim). */
   permeability?: number;
+  /** Transverse extent. Missing = the full breadth (the 1.0 behaviour).
+   *  centre: |y| <= y; port: y >= y; starboard: y <= -y (y > 0, metres). */
+  span?: { side: "centre" | "port" | "starboard"; y: number };
+  /** Open area (m²) joining this cell to the cell(s) beside it across a
+   *  longitudinal bulkhead at the same x (coal doors, leaks). Default 0. */
+  crossFlowM2?: number;
 }
 
 export interface Opening {
@@ -34,11 +40,23 @@ export interface Opening {
   zHigh: number;
   x: number;
   side: "port" | "starboard";
+  /** Shown seconds after the first event when it opens (default 0). */
+  t?: number;
+}
+
+/** A row of side scuttles (portholes) that lets water in once under. */
+export interface PortholeRow {
+  z: number;
+  fromX: number;
+  toX: number;
+  side: "port" | "starboard";
+  /** Open area per metre of row when the portholes are open (m²/m). */
+  openM2PerM: number;
 }
 
 export interface ScriptedEvent {
   t: number;
-  kind: "steam-start" | "steam-stop" | "rocket" | "boat-lowered";
+  kind: "steam-start" | "steam-stop" | "rocket" | "boat-lowered" | "explosion";
   index?: number;
 }
 
@@ -66,4 +84,11 @@ export interface ShipSpec {
   funnels: { x: number; baseZ: number; topZ: number; dummy: boolean }[];
   decks: { name: string; z: number }[]; // Boat, A, B, C, D, E, F, G, Orlop, Tank top (for lights by deck and the diagram)
   seaDepthM: number; // 3,800 for Titanic
+  /** Seconds after midnight of the first event (Titanic 23*3600+40*60). */
+  clockStartS: number;
+  /** What opened the hull: drives words, scene and What-if. */
+  cause: "iceberg" | "torpedo";
+  portholes?: readonly PortholeRow[];
+  /** Forward speed at the first event and its decay (no propulsion model). */
+  headway?: { startMs: number; halfLifeS: number };
 }

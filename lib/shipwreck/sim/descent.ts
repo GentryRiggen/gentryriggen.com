@@ -6,6 +6,8 @@ import {
   PLOUGH_TIME_S,
   DRAG_CD,
   GRAV,
+  LIE_OVER_MIN_DEG,
+  LIE_OVER_REST_DEG,
   RHO,
   STEEL_BUOYANCY,
   STERN_CRUSH_M,
@@ -89,6 +91,15 @@ function lowestPoint(b: Body): [number, number, number] {
 export function stepFall(b: Body, dt: number, floorZ: number): boolean {
   // Flooded: every cell full.
   for (const c of b.all) c.water = c.cap;
+  // Already on the floor (it grounded while afloat): it settles from where
+  // it lies, its contact as deep in the mud as it already is.
+  const onFloor = b.grounded;
+  if (!onFloor && !fall(b, dt, floorZ)) return false;
+  return touch(b, floorZ, onFloor);
+}
+
+/** One step of the fall itself; true once it reaches the floor. */
+function fall(b: Body, dt: number, floorZ: number): boolean {
   const env = envelope(b);
   const g = floodedCentre(b);
   const ge = earthOf(b, g[0], g[1], g[2]);
@@ -121,15 +132,29 @@ export function stepFall(b: Body, dt: number, floorZ: number): boolean {
   placeAbout(b, g, ge);
   updateBounds(b);
   if (b.bottom > floorZ) return false;
-  // Touched: from here it turns about the point in the mud.
-  b.mode = "landing";
   b.z += floorZ - b.bottom;
+  return true;
+}
+
+/** Touched: from here it turns about the point in the mud. */
+function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
+  b.mode = "landing";
   const p = lowestPoint(b);
   const e = earthOf(b, p[0], p[1], p[2]);
   b.contactP = p;
   b.contactE = [e[0], e[1], floorZ];
+  b.contactD0 = onFloor ? max(0, floorZ - e[2]) : 0;
   b.contactT = 0;
   b.contactPitch = b.pitch;
+  // Listed far enough, it lies over on its low side; else it rights.
+  const lieMin = (LIE_OVER_MIN_DEG * Math.PI) / 180;
+  b.restRoll =
+    abs(b.roll) >= lieMin
+      ? (b.roll > 0 ? 1 : -1) *
+        max(abs(b.roll), (LIE_OVER_REST_DEG * Math.PI) / 180)
+      : b.part === "stern"
+        ? 0.05
+        : 0;
   if (b.part === "stern") b.restPitch = -0.02;
   else {
     // Nose deep in the mud, the after end bedded: a slight bow-down rest.
@@ -147,7 +172,7 @@ export function stepFall(b: Body, dt: number, floorZ: number): boolean {
  */
 export function stepLanding(b: Body, dt: number): boolean {
   const bow = b.part !== "stern";
-  const restRoll = bow ? 0 : 0.05;
+  const restRoll = b.restRoll;
   const tau = bow ? 5 : 2.5;
   b.contactT += dt;
   b.pitch = relax(b.pitch, b.restPitch, dt, tau);
@@ -157,9 +182,11 @@ export function stepLanding(b: Body, dt: number): boolean {
   b.vx = 0;
   b.vz = 0;
   b.wp = 0;
-  const depth =
+  const depth = max(
+    b.contactD0,
     (bow ? BOW_PLOUGH_M : STERN_CRUSH_M) *
-    (1 - exp(-b.contactT / PLOUGH_TIME_S));
+      (1 - exp(-b.contactT / PLOUGH_TIME_S))
+  );
   placeAbout(b, b.contactP, [
     b.contactE[0],
     b.contactE[1],

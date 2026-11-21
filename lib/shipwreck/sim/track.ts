@@ -31,6 +31,8 @@ export interface SimFrame {
   listDeg: number;
   /** 0..1: the lights, flickering before they fail. */
   power: number;
+  /** Parts touching the sea floor (afloat or landed); empty while none do. */
+  groundedParts: BodyPose["part"][];
 }
 
 export interface SimTrack {
@@ -111,6 +113,7 @@ export function sampleTrack(track: SimTrack, t: number): SimFrame {
     trimDeg: lerp(a.trimDeg, b.trimDeg, u),
     listDeg: lerp(a.listDeg, b.listDeg, u),
     power: lerp(a.power, b.power, u),
+    groundedParts: (u < 0.5 ? a : b).groundedParts,
   };
 }
 

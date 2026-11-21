@@ -189,7 +189,8 @@ function station(
   const hi = max(zl, zh) + ay + c;
   if (hi < 0) {
     stA[i] = s.fullA[i];
-    stAy[i] = 0;
+    // A full-breadth section is symmetric; a wing or centre cell is not.
+    stAy[i] = s.fullAy ? s.fullAy[i] : 0;
     stAz[i] = s.fullAz[i];
     stCh[i] = 0;
     stCh3[i] = 0;
@@ -335,7 +336,7 @@ export function integrateSlice(
     for (let e = 0; e < 2; e += 1) {
       const k = i + e;
       if (stState[k] === 0) continue;
-      const full = 2 * s.hbMax[k];
+      const full = s.width ? s.width[k] : 2 * s.hbMax[k];
       const b =
         stState[k] === 2
           ? full
@@ -355,11 +356,15 @@ export function integrateSlice(
     else
       breadths[n - 1] =
         stState[n - 1] === 2
-          ? 2 * s.hbMax[n - 1]
+          ? s.width
+            ? s.width[n - 1]
+            : 2 * s.hbMax[n - 1]
           : max(
               stCh[n - 1],
               s.fullA[n - 1] > 0
-                ? (2 * s.hbMax[n - 1] * stA[n - 1]) / s.fullA[n - 1]
+                ? ((s.width ? s.width[n - 1] : 2 * s.hbMax[n - 1]) *
+                    stA[n - 1]) /
+                    s.fullA[n - 1]
                 : 0
             );
     for (let i = 0; i < n - 1; i += 1) if (stState[i] === 0) breadths[i] = 0;

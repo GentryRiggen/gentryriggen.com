@@ -15,6 +15,7 @@ function frame(t: number, bodies: BodyPose[], water = 0): SimFrame {
     trimDeg: t,
     listDeg: 0,
     power: 1,
+    groundedParts: [],
   };
 }
 

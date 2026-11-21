@@ -41,6 +41,7 @@ const customJestConfig = {
     "/__tests__/nightSim\\.ts$",
     "/__tests__/skySim\\.ts$",
     "/__tests__/lastSim\\.ts$",
+    "/__tests__/testShips\\.ts$",
     // A CLI --testPathIgnorePatterns would replace this whole list, so the
     // lane is chosen by environment instead.
     ...(LANE === "fast"

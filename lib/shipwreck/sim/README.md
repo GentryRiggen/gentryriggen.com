@@ -79,6 +79,77 @@ area with a bracketed secant/bisection fallback. Water moves by:
 - each flow is capped so one step can only half-close the level difference it
   drives (no overshoot at a fixed step).
 
+**Wing cells (1.1).** A compartment with a `span` is only part of each
+section: `centre` is |y| ≤ y, `port` y ≥ y, `starboard` y ≤ −y (the
+Lusitania's longitudinal coal bunkers beside her boiler rooms). Each
+section polygon keeps its 28 vertices with the side's half-breadths clamped
+at the bulkhead (`centre`: min(hb, y); a wing: max(hb, y) against y), so
+sections still blend vertex by vertex, a wing has no width where the hull
+is narrower than its bulkhead, and centre + port + starboard add up to the
+whole section exactly (`wingCells.test.ts`, to 0.5%). A spanned slice also
+carries its transverse centre (a full wing's water sits off centre, so it
+lists her) and its own breadth. Quantities that do not add across a
+longitudinal bulkhead (waterplane inertia for roll damping, strip added
+mass, the axial front) come from a full-breadth stand-in over every
+stretch of spanned cells (`Body.cuts`). The deck edge belongs to the
+centre cell (hatches and stairways lead into the main space): it takes the
+downflooding at the hull's own deck edges, a wing takes none (its deck
+corner still counts toward the burst vents). Spill over a bulkhead top
+joins any two cells end to end over the breadth they share at the top.
+
+**Cross flow (1.1).** Cells side by side whose spans meet at a
+longitudinal bulkhead exchange water through `crossFlowM2` (coal doors,
+leaks), the larger of what either declares, prorated to the length they
+share: `q = Cd·A·√(2g·Δh)`, `Δh` the higher surface less the lower one (or
+less the doors, if those are higher), both directions, capped like a spill
+to half-equalise per step. The doors sit `CROSS_DOOR_Z_M` (1.5 m, the
+stokehold plates) over the section's bottom.
+
+**Portholes (1.1).** Each `PortholeRow` is let in as pieces at most
+`PORTHOLE_PIECE_M` (5 m) long, each an opening `PORTHOLE_HEIGHT_M` (0.4 m)
+tall at the row's height on its side of the hull with `openM2PerM` × its
+length of area, in the outermost cell at that x on that side (the wing if
+there is one: the scuttles are in its shell). They take the orifice law like
+any opening, so a row floods only once the list or trim puts it under, bit
+by bit along its length. `SimOptions.portholesOpen: false` leaves them shut.
+
+**Timed openings (1.1).** An opening with `t` opens when the shown time
+reaches it (the step from `t` lets water in), into whichever cell holds
+that compartment at its x then (after a break too). The second explosion.
+
+**Headway (1.1).** `spec.headway` is a forward speed that decays,
+`u = u₀·2^(−t/T½)` over real time, integrated exactly per step
+(`u₀T½/ln2 · (2^(−t₀/T½) − 2^(−t₁/T½))`) into the earth x of every body
+afloat or falling, until it touches the floor. It is kinematic: no
+propulsion and no effect on flooding (the same run without it has the same
+events at the same times). The Titanic has none.
+
+**The floor while afloat (1.1).** A hull can ground before it sinks (the
+Lusitania, 240 m long in 93 m of sea). Every hull vertex of a floating
+body below `−seaDepthM` pushes back with a spring and damper per metre of
+hull it stands for, `f = k·d − c·u` (`d` its depth into the mud, `u` its
+vertical speed), `k = lightship·g / (2·L·FLOOR_SINK_M)` (the whole weight
+laid on the whole keel would sink `FLOOR_SINK_M` = 1 m), `c = FLOOR_DAMP_S`
+(3 s) × `k`, and drags along the floor with regularised Coulomb friction
+(`FLOOR_FRICTION` 0.5, linear below `FLOOR_SLIP_MS` 0.05 m/s). The contact
+is applied implicitly to the velocities the step has just found: with
+`q = (vx, vz, wp, wr)` and each contact's Jacobians `Jz = (0, 1, −rx,
+cos θ·ry)`, `Jx = (1, 0, rz, sin θ·ry)` (r from G, earth),
+`(M + dt·Σ[(k·dt + c)·Jz·Jzᵀ + cf·Jx·Jxᵀ]) q' = M·q + dt·Σ k·d·Jz`, M the
+hull's axial and normal masses (with added mass) turned to earth plus the
+pitch and roll inertias; a contact that would pull is dropped and the
+system solved again. So the stem can ground and the hull pivots about it
+under buoyancy and weight while she floods; the floor forces go into the
+girder's load. Roll: nearly upright (under `LIE_OVER_MIN_DEG`, 10°) the
+flat bottom bears and the floor holds her upright; listed further, the
+bilge that touches digs into the soft mud rather than levering her upright
+(the floor takes no part in roll) until she lies on her side
+(`LIE_OVER_REST_DEG`, 75°), where it holds her again. As the floor takes
+weight off her buoyancy, a listed hull lies further over. Once she is
+wholly under she goes straight to the landing from where she lies (no
+fall), her contact as deep in the mud as it already is. Any contact puts
+the run in fast steps.
+
 **Motion.** Weight (lightship + water) acts at G, buoyancy at B; G moves
 under the net vertical force and drag, the hull turns about G (pitch and
 roll). Added mass and pitch inertia are strip theory (0.7 × ρπs²/8 per metre
@@ -117,7 +188,11 @@ touch (the stem, for the bow) is held where it went in while its plough
 depth eases in over a couple of seconds (15 m for the bow, 4 m for the
 stern; `PLOUGH_TIME_S` 5 s real, about 0.8 s on screen at the ×6 descent); the rest of the body turns about that
 point and comes down. The bow settles upright with a slight bow-down rest
-(its after end bedded 3 m), the stern level. Terminal speeds come out about
+(its after end bedded 3 m), the stern level. A body that lands listed more
+than `LIE_OVER_MIN_DEG` (10°) lies over on its low side instead, to its
+list or `LIE_OVER_REST_DEG` (75°), whichever is more (the Lusitania lies on
+her starboard side); the Titanic's halves land within a few degrees of
+upright, so this never applies to her. Terminal speeds come out about
 13 m/s (bow) and 10 m/s (stern). The run ends when every part rests, or at
 6:00 AM (`t = 22800`) if any part still floats. Each floating body freezes
 once it has stopped moving and taking water for 5 minutes (after a break,
@@ -139,9 +214,14 @@ dynamos).
 forward of midships under the sea (before a break: the bow has gone from
 view; on the real night 31 s before the break), or the bow body wholly under
 after a break (if the first never fired). `stern-under` fires when the last
-of her goes under (`sankAtT`). `bow-lands` / `stern-lands` when each half
-touches the floor; a hull that sinks in one piece logs both at the same
-moment. Every event carries `t` (shown) and `realT` (real) seconds after the
+of her goes under (`sankAtT`). `bow-lands` / `stern-lands` when each end
+first touches the floor, which may be while she is still afloat (a whole
+hull: a contact forward of its middle is the bow's, aft the stern's); a
+hull that sinks in one piece logs both at the same moment. `explosion` is
+a scripted event (the Lusitania's second explosion). Events found during a
+step carry the time at its start; the first frame after shows them.
+`SimFrame.groundedParts` lists the parts touching the floor (afloat or
+landed), empty while none do. Every event carries `t` (shown) and `realT` (real) seconds after the
 collision. Scripted events fire only while she is afloat and whole;
 `last-boat` follows the last `boat-lowered`.
 
@@ -171,6 +251,16 @@ collision. Scripted events fire only while she is afloat and whole;
 - `ShipSpec` additions beyond the brief, both optional physical data:
   `Compartment.permeability` (default by kind, below) and `ShipSpec.tcg`
   (transverse centre of mass, + to port).
+- 1.1 additions: `Compartment.span` / `crossFlowM2`, `Opening.t`,
+  `ShipSpec.portholes` / `headway` (optional), `ShipSpec.clockStartS` and
+  `cause` (required; the Titanic's are 11:40 PM and `"iceberg"`),
+  `SimOptions.portholesOpen`, `SimProbe.lowestZ` (earth z of the lowest hull
+  vertex of any body), `SimFrame.groundedParts`.
+- `__tests__/titanicGolden.test.ts` freezes the Titanic's real night and two
+  What-ifs (every event, every 50th frame's poses, water, list and trim, to
+  1e-9) as written by the 1.0 sim; a change that moves them is wrong for
+  the Titanic. `UPDATE_GOLDEN=1` rewrites the fixture, only on purpose.
+  `__tests__/testShips.ts` has the box ships the 1.1 tests use.
 
 ## Titanic's data and sources
 
@@ -224,6 +314,11 @@ Everything tuned is a physical quantity; no timing is scripted.
 | Torn zone at the break | 25 m, 40% of the section                                                                  | The fracture tore shell, decks and bulkheads either side. Without it the bow floated vertically for hours on air in its dry after boiler rooms.                                                                                                              |
 | TCG                    | 0.02 m to port                                                                            | Coal drawn unevenly and stores: enough to pick a side when flooding takes her stability away (she leaned to port). The damage is to starboard but the water inside lies level, so it gives no starboard list.                                                |
 | Damping                | heave and pitch 0.5, roll 0.15 of critical, Cd 1.0                                        | Strong, as the brief asks; the slow phases are effectively quasi-static.                                                                                                                                                                                     |
+| Coal doors             | 1.5 m over the bottom                                                                     | Doors from the wing bunkers to the stokeholds opened at the plates, a double bottom's height over the keel.                                                                                                                                                  |
+| Portholes              | 5 m pieces, 0.4 m tall                                                                    | A 16-inch scuttle; short pieces so a row goes under progressively as she lists and trims.                                                                                                                                                                    |
+| Floor stiffness        | lightship on the keel sinks 1 m; damping 3 s × k                                          | Soft mud: a stem alone ploughs a few metres (about 4–6 m in the box tests) before enough hull bears. 3 s is about critical for a short contact and over-damped for a long one.                                                                               |
+| Floor friction         | μ 0.5 below 0.05 m/s                                                                      | Steel on clay mud; regularised so the implicit solve stays smooth.                                                                                                                                                                                           |
+| Lying over             | over 10° it lies over, to at least 75°                                                    | Wrecks that sank listed lie on their side (Lusitania, starboard). Under 10° the flat bottom bears and she stays upright, as the 1.0 landings did.                                                                                                            |
 
 ## Pass criteria (enforced by `__tests__/`)
 
@@ -252,3 +347,12 @@ Everything tuned is a physical quantity; no timing is scripted.
 - Surge and sway are only G's own motion and a 0.02 m/s drift; no yaw while
   afloat; no waves.
 - After the break the two halves do not touch each other.
+- Lying over is a rule about the mud, not a contact mechanics result: a
+  rigid flat-bottomed hull on a hard floor would right itself from any list
+  under about 50°. Between 10° and 75° the floor carries weight but no roll
+  moment, and the landing rests at the larger of the list and 75°.
+- A hull held still on the floor while partly under can keep exchanging
+  water between deeply submerged, nearly full cells (a 1.0 flooding
+  behaviour: one fills to the brim, spills, refills). It then never logs
+  `floating-steady` and runs fast steps to 6:00 AM (about 25 s of compute
+  for a 200 m box). A sinking hull is not affected.

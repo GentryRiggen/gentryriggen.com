@@ -1,21 +1,34 @@
-import type { Opening, ShipSpec } from "../ships/types";
+import type { Compartment, Opening, ShipSpec } from "../ships/types";
 import {
   BOX_PERMEABILITY,
   BREAK_DAMAGE_M,
   BREAK_OPEN_FRACTION,
   BREAK_SNAP_M,
+  CROSS_DOOR_Z_M,
   DESCENT_TIME_SCALE,
   DRIFT_MPS,
   END_T,
   FAST_FRAME_S,
   FAST_STEP_S,
+  FLOOR_SINK_M,
+  GRAV,
   PERMEABILITY,
+  PORTHOLE_HEIGHT_M,
+  PORTHOLE_PIECE_M,
   PUMP_M3S,
   RHO,
   SIM_STEP_S,
   SLOW_FRAME_S,
 } from "./constants";
-import { type Body, earthZ, stepFloat, updateBounds } from "./body";
+import {
+  type Body,
+  type CrossLink,
+  type SpillLink,
+  earthZ,
+  stepFloat,
+  upOf,
+  updateBounds,
+} from "./body";
 import { stepFall, stepLanding } from "./descent";
 import {
   DYNAMO_FLOOD_M,
@@ -31,6 +44,7 @@ import {
 import { type Cell, makeCell } from "./flooding";
 import {
   type HullModel,
+  type Span,
   boxSlice,
   buildHull,
   hullHalfBreadth,
@@ -43,7 +57,7 @@ import { type MassModel, buildMass, massOf } from "./mass";
 import type { BodyPose, SimFrame, SimTrack } from "./track";
 
 // Local bindings: global lookups are slow inside test sandboxes (vm).
-const { abs, cos, floor, min, sin } = Math;
+const { abs, cos, exp, floor, max, min, sin } = Math;
 
 /**
  * Running the night: build the ship, settle her, open the holes at t = 0
@@ -60,6 +74,8 @@ export interface SimProbe {
   /** Bending moment per hull station (N·m, + hogging) and the stations. */
   girderHog: Float64Array;
   stationX: Float64Array;
+  /** Earth z of the lowest hull vertex of any body (m). */
+  lowestZ: number;
 }
 
 export interface SimOptions {
@@ -67,6 +83,8 @@ export interface SimOptions {
   endT?: number;
   /** Called after every step (tools and calibration only). */
   probe?: (p: SimProbe) => void;
+  /** Whether `spec.portholes` are open (default true). */
+  portholesOpen?: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -130,6 +148,10 @@ interface World {
   /** Settling before the collision (s left), and the holes to open then. */
   settleLeft: number;
   pending: { i: number; o: Cell["openings"][number] }[];
+  /** Openings that open later (shown seconds), soonest first. */
+  timed: { t: number; i: number; o: Cell["openings"][number] }[];
+  /** Forward way (none for the Titanic). */
+  headway: ShipSpec["headway"];
 }
 
 /** Settle her level before the collision, then open the holes at t = 0. */
@@ -167,17 +189,174 @@ function cellOpening(
   };
 }
 
-function wallsOf(hull: HullModel, cells: Cell[]): number[] {
-  const walls: number[] = [];
-  for (let i = 0; i < cells.length - 1; i += 1) {
-    const a = cells[i];
-    walls.push(
-      a.fwdWall && cells[i + 1].aftWall
-        ? 2 * hullHalfBreadth(hull, a.slice.xTo, a.fwdTopZ - 0.05)
-        : 0
+const X_EPS = 1e-6;
+
+/** The cell's transverse range at a height where the hull is hb wide. */
+function yRange(span: Span | undefined, hb: number): [number, number] {
+  if (!span) return [-hb, hb];
+  if (span.side === "centre") {
+    const h = min(hb, span.y);
+    return [-h, h];
+  }
+  if (span.side === "port") return [span.y, max(hb, span.y)];
+  return [-max(hb, span.y), -span.y];
+}
+
+/**
+ * Bulkhead tops water can spill over: every pair of cells end to end (a's
+ * forward end on b's after end, a bulkhead at both), over the breadth they
+ * share at the top (all of it for two full-breadth cells).
+ */
+function linksOf(hull: HullModel, cells: Cell[]): SpillLink[] {
+  const links: SpillLink[] = [];
+  for (let i = 0; i < cells.length; i += 1)
+    for (let j = i + 1; j < cells.length; j += 1) {
+      for (const [ia, ib] of [
+        [i, j],
+        [j, i],
+      ]) {
+        const a = cells[ia];
+        const b = cells[ib];
+        if (abs(a.slice.xTo - b.slice.xFrom) > X_EPS) continue;
+        if (!a.fwdWall || !b.aftWall) continue;
+        const hb = hullHalfBreadth(hull, a.slice.xTo, a.fwdTopZ - 0.05);
+        let breadth: number;
+        let y = 0;
+        if (!a.slice.span && !b.slice.span) breadth = 2 * hb;
+        else {
+          const ra = yRange(a.slice.span, hb);
+          const rb = yRange(b.slice.span, hb);
+          const lo = max(ra[0], rb[0]);
+          const hi = min(ra[1], rb[1]);
+          breadth = hi - lo;
+          y = (lo + hi) / 2;
+        }
+        if (breadth <= 0) continue;
+        links.push({
+          a: ia,
+          b: ib,
+          x: a.slice.xTo,
+          topZ: a.fwdTopZ,
+          y,
+          breadth,
+        });
+      }
+    }
+  return links;
+}
+
+/** Where two spans meet across a longitudinal bulkhead (y), or null. */
+function boundary(a: Span, b: Span): number | null {
+  const one = (p: Span, q: Span): number | null => {
+    if (p.side === "centre" && q.side === "port" && p.y === q.y) return p.y;
+    if (p.side === "centre" && q.side === "starboard" && p.y === q.y)
+      return -p.y;
+    if (p.side === "port" && q.side === "starboard" && p.y === 0 && q.y === 0)
+      return 0;
+    return null;
+  };
+  return one(a, b) ?? one(b, a);
+}
+
+/**
+ * Cells side by side (overlapping in x, their spans meeting at a
+ * longitudinal bulkhead) with coal doors between them. The area is the
+ * larger of what either cell declares, for the length they share.
+ */
+function crossesOf(hull: HullModel, cells: Cell[]): CrossLink[] {
+  const out: CrossLink[] = [];
+  for (let i = 0; i < cells.length; i += 1)
+    for (let j = i + 1; j < cells.length; j += 1) {
+      const a = cells[i];
+      const b = cells[j];
+      if (a.cross <= 0 && b.cross <= 0) continue;
+      const sa = a.slice.span;
+      const sb = b.slice.span;
+      if (!sa || !sb) continue;
+      const y = boundary(sa, sb);
+      if (y === null) continue;
+      const x0 = max(a.slice.xFrom, b.slice.xFrom);
+      const x1 = min(a.slice.xTo, b.slice.xTo);
+      if (x1 - x0 <= X_EPS) continue;
+      const lenA = a.slice.xTo - a.slice.xFrom;
+      const lenB = b.slice.xTo - b.slice.xFrom;
+      const area = max(
+        (a.cross * (x1 - x0)) / lenA,
+        (b.cross * (x1 - x0)) / lenB
+      );
+      if (area <= 0) continue;
+      const x = (x0 + x1) / 2;
+      out.push({
+        a: i,
+        b: j,
+        area,
+        x,
+        y,
+        z: sectionAt(hull, x).zb + CROSS_DOOR_Z_M,
+      });
+    }
+  return out;
+}
+
+/**
+ * Full-breadth stand-ins over every stretch of wing and centre cells (for
+ * the cut quantities that do not add up across a longitudinal bulkhead).
+ */
+function cutsOf(hull: HullModel, cells: Cell[]): Cell[] {
+  const spanned = cells.filter((c) => c.slice.span);
+  if (spanned.length === 0) return [];
+  const xs = Array.from(
+    new Set(spanned.flatMap((c) => [c.slice.xFrom, c.slice.xTo]))
+  ).sort((p, q) => p - q);
+  const out: Cell[] = [];
+  for (let k = 0; k < xs.length - 1; k += 1) {
+    const m = (xs[k] + xs[k + 1]) / 2;
+    if (!spanned.some((c) => c.slice.xFrom < m && c.slice.xTo > m)) continue;
+    out.push(
+      makeCell(
+        hullSlice(hull, xs[k], xs[k + 1]),
+        -2,
+        false,
+        0,
+        0,
+        false,
+        false,
+        1
+      )
     );
   }
-  return walls;
+  return out;
+}
+
+/** Every hull vertex of [xFrom, xTo] with the length of hull it stands for. */
+function floorPoints(
+  hull: HullModel,
+  xFrom: number,
+  xTo: number
+): Float64Array {
+  const s = hullSlice(hull, xFrom, xTo);
+  const out: number[] = [];
+  for (let i = 0; i < s.n; i += 1) {
+    if (s.fullA[i] <= 0) continue;
+    const dx =
+      ((i < s.n - 1 ? s.xs[i + 1] : s.xs[i]) -
+        (i > 0 ? s.xs[i - 1] : s.xs[i])) /
+      2;
+    if (dx <= 0) continue;
+    for (let v = 0; v < s.nv; v += 1)
+      out.push(s.xs[i], s.ys[i * s.nv + v], s.zs[i * s.nv + v], dx);
+  }
+  return Float64Array.from(out);
+}
+
+/** Earth z of the body's lowest hull vertex. */
+function lowestZ(b: Body): number {
+  const [nx, ny, nz] = upOf(b);
+  const p = b.floorPts;
+  let lo = Infinity;
+  for (let k = 0; k < p.length; k += 4)
+    lo = min(lo, b.z + nx * p[k] + ny * p[k + 1] + nz * p[k + 2]);
+  return lo;
 }
 
 function makeBody(
@@ -186,8 +365,12 @@ function makeBody(
   cells: Cell[],
   boxes: Cell[]
 ): Body {
-  const xFrom = cells[0].slice.xFrom;
-  const xTo = cells[cells.length - 1].slice.xTo;
+  let xFrom = Infinity;
+  let xTo = -Infinity;
+  for (const c of cells) {
+    xFrom = min(xFrom, c.slice.xFrom);
+    xTo = max(xTo, c.slice.xTo);
+  }
   const light = massOf(w.mass, xFrom, xTo);
   return {
     part,
@@ -196,7 +379,9 @@ function makeBody(
     cells,
     boxes,
     all: cells.concat(boxes),
-    walls: wallsOf(w.hull, cells),
+    links: linksOf(w.hull, cells),
+    crosses: crossesOf(w.hull, cells),
+    cuts: cutsOf(w.hull, cells),
     lightMass: light.mass,
     lightCx: light.cx,
     lightCy: w.spec.tcg ?? 0,
@@ -233,7 +418,82 @@ function makeBody(
     contactT: 0,
     contactPitch: 0,
     restPitch: 0,
+    restRoll: 0,
+    contactD0: 0,
+    floorPts: floorPoints(w.hull, xFrom, xTo),
+    floorK: (light.mass * GRAV) / (2 * max(1, xTo - xFrom) * FLOOR_SINK_M),
+    grounded: false,
+    touchBow: false,
+    touchStern: false,
+    floorN: 0,
+    floorX: new Float64Array(0),
+    floorF: new Float64Array(0),
   };
+}
+
+/** A compartment's own walls: a bulkhead at an end unless it is the hull's. */
+function wallAt(
+  comps: readonly Compartment[],
+  i: number,
+  end: "aft" | "fwd"
+): boolean {
+  const c = comps[i];
+  return comps.some((o, k) =>
+    k === i
+      ? false
+      : end === "aft"
+        ? abs(o.toX - c.fromX) < X_EPS
+        : abs(o.fromX - c.toX) < X_EPS
+  );
+}
+
+/**
+ * Portholes as openings: each row in pieces at most PORTHOLE_PIECE_M long,
+ * each piece in the outermost cell on its side at that x (the wing, if
+ * there is one; the portholes are in its shell).
+ */
+function portholeOpenings(
+  spec: ShipSpec,
+  hull: HullModel
+): { i: number; o: Cell["openings"][number] }[] {
+  const out: { i: number; o: Cell["openings"][number] }[] = [];
+  const comps = spec.compartments;
+  for (const row of spec.portholes ?? []) {
+    const sign = row.side === "port" ? 1 : -1;
+    const cuts = new Set<number>([row.fromX, row.toX]);
+    for (const c of comps)
+      for (const x of [c.fromX, c.toX])
+        if (x > row.fromX && x < row.toX) cuts.add(x);
+    const xs = Array.from(cuts).sort((p, q) => p - q);
+    for (let k = 0; k < xs.length - 1; k += 1) {
+      const len = xs[k + 1] - xs[k];
+      const parts = Math.ceil(len / PORTHOLE_PIECE_M - 1e-9);
+      for (let p = 0; p < parts; p += 1) {
+        const x = xs[k] + (len * (p + 0.5)) / parts;
+        let best = -1;
+        comps.forEach((c, ci) => {
+          if (x < c.fromX || x > c.toX) return;
+          if (!c.span) {
+            if (best < 0) best = ci;
+          } else if (c.span.side === row.side) best = ci;
+          else if (c.span.side === "centre" && (best < 0 || !comps[best].span))
+            best = ci;
+        });
+        if (best < 0) continue;
+        out.push({
+          i: best,
+          o: {
+            x,
+            y: sign * hullHalfBreadth(hull, x, row.z),
+            zLow: row.z - PORTHOLE_HEIGHT_M / 2,
+            zHigh: row.z + PORTHOLE_HEIGHT_M / 2,
+            area: (row.openM2PerM * len) / parts,
+          },
+        });
+      }
+    }
+  }
+  return out;
 }
 
 function buildWorld(
@@ -261,17 +521,17 @@ function buildWorld(
     boxSlice(hull, spec.sheerZ, s.fromX, s.toX, s.topZ)
   );
   const mass = buildMass(spec, hull, fullArea, boxSlices);
-  const last = spec.compartments.length - 1;
   const cells = spec.compartments.map((c, i) =>
     makeCell(
-      hullSlice(hull, c.fromX, c.toX),
+      hullSlice(hull, c.fromX, c.toX, c.span),
       i,
       false,
       c.aftBulkheadTopZ,
       c.fwdBulkheadTopZ,
-      i > 0,
-      i < last,
-      c.permeability ?? PERMEABILITY[c.kind]
+      wallAt(spec.compartments, i, "aft"),
+      wallAt(spec.compartments, i, "fwd"),
+      c.permeability ?? PERMEABILITY[c.kind],
+      c.crossFlowM2 ?? 0
     )
   );
   spec.compartments.forEach((c, i) => {
@@ -283,12 +543,16 @@ function buildWorld(
   const ctx = { spec, hull, mass };
   const body = makeBody(ctx, "whole", cells, boxes);
 
-  const pending = openings
+  const all = openings
     .map((o) => ({
+      t: o.t ?? 0,
       i: spec.compartments.findIndex((c) => c.id === o.compartmentId),
       o: cellOpening(hull, o),
     }))
     .filter((p) => p.i >= 0);
+  const pending = all.filter((p) => p.t <= 0).map((p) => ({ i: p.i, o: p.o }));
+  const timed = all.filter((p) => p.t > 0).sort((a, b) => a.t - b.t);
+  if (opts.portholesOpen ?? true) pending.push(...portholeOpenings(spec, hull));
 
   // Landmarks for the geometric events.
   const fwdBox = spec.superstructure
@@ -329,6 +593,8 @@ function buildWorld(
     strength: strengthProfile(hull.xs, spec.compartments),
     settleLeft: SETTLE_S,
     pending,
+    timed,
+    headway: spec.headway,
     probe: opts.probe,
     forecastle: fwdBox
       ? { x: (fwdBox.fromX + fwdBox.toX) / 2, z: fwdBox.topZ }
@@ -404,6 +670,9 @@ function frame(w: World): SimFrame {
     trimDeg: lead.pitch / DEG,
     listDeg: lead.roll / DEG,
     power: power(w),
+    groundedParts: w.bodies
+      .filter((b) => b.grounded || b.mode === "landing" || b.mode === "landed")
+      .map((b) => b.part),
   };
 }
 
@@ -423,25 +692,28 @@ function breakUp(w: World, xRaw: number): void {
     if (c.slice.xTo <= x + 1e-6) sternCells.push(c);
     else if (c.slice.xFrom >= x - 1e-6) bowCells.push(c);
     else {
+      const len = c.slice.xTo - c.slice.xFrom;
       const aft = makeCell(
-        hullSlice(w.hull, c.slice.xFrom, x),
+        hullSlice(w.hull, c.slice.xFrom, x, c.slice.span),
         c.comp,
         false,
         c.aftTopZ,
         c.fwdTopZ,
         c.aftWall,
         false,
-        c.perm
+        c.perm,
+        (c.cross * (x - c.slice.xFrom)) / len
       );
       const fwd = makeCell(
-        hullSlice(w.hull, x, c.slice.xTo),
+        hullSlice(w.hull, x, c.slice.xTo, c.slice.span),
         c.comp,
         false,
         c.aftTopZ,
         c.fwdTopZ,
         false,
         c.fwdWall,
-        c.perm
+        c.perm,
+        (c.cross * (c.slice.xTo - x)) / len
       );
       if (c.water > 0) {
         let aftWater: number;
@@ -506,19 +778,30 @@ function breakUp(w: World, xRaw: number): void {
     const d = abs(end - x);
     if (d > BREAK_DAMAGE_M) return;
     const sec = sectionAt(w.hull, end);
+    let area = faceArea(end) * (1 - d / BREAK_DAMAGE_M);
+    const sl = cell.slice;
+    if (sl.span) {
+      // A wing or centre cell: its share of the section at that end.
+      const own = stern ? sl.fullA[sl.n - 1] : sl.fullA[0];
+      const full = hullSlice(w.hull, end - 0.5, end + 0.5).fullA[0];
+      area *= full > 0 ? min(1, own / full) : 0;
+    }
     cell.openings.push({
       // Half a metre inside the cell (stern cells lie aft of their end).
       x: end + (stern ? -0.5 : 0.5),
-      y: 0,
+      y: sl.cy,
       zLow: sec.zb,
       zHigh: sec.zt,
-      area: faceArea(end) * (1 - d / BREAK_DAMAGE_M),
+      area,
     });
   };
   for (const c of sternCells) tear(c, c.slice.xTo, true);
   for (const c of bowCells) tear(c, c.slice.xFrom, false);
-  sternCells[sternCells.length - 1].fwdWall = false;
-  bowCells[0].aftWall = false;
+  // No bulkhead at the broken face.
+  for (const c of sternCells)
+    if (abs(c.slice.xTo - x) < X_EPS) c.fwdWall = false;
+  for (const c of bowCells)
+    if (abs(c.slice.xFrom - x) < X_EPS) c.aftWall = false;
 
   const ctx = { spec: w.spec, hull: w.hull, mass: w.mass };
   const parts = [
@@ -630,12 +913,45 @@ function under(w: World, b: Body): void {
   if (w.bodies.every((p) => p.mode !== "float")) w.sankAtT = w.t;
 }
 
+/** The cell that now holds compartment i at ship-frame x (after a break too). */
+function cellAt(w: World, i: number, x: number): Cell | null {
+  let best: Cell | null = null;
+  for (const b of w.bodies)
+    for (const c of b.cells) {
+      if (c.comp !== i) continue;
+      if (x >= c.slice.xFrom - X_EPS && x <= c.slice.xTo + X_EPS) return c;
+      best = best ?? c;
+    }
+  return best;
+}
+
+/** Earth x the way she still has carries her over real seconds t0..t1. */
+function headwayRun(h: ShipSpec["headway"], t0: number, t1: number): number {
+  if (!h || h.startMs === 0) return 0;
+  const k = Math.LN2 / h.halfLifeS;
+  return (h.startMs / k) * (exp(-k * t0) - exp(-k * t1));
+}
+
+/** Floor contact afloat: the first touch of each end is its landing. */
+function touched(w: World, b: Body): void {
+  if (!b.grounded) return;
+  w.fast = true;
+  const bow = b.part === "bow" || (b.part === "whole" && b.touchBow);
+  const stern = b.part === "stern" || (b.part === "whole" && b.touchStern);
+  if (bow) once(w, "bow-lands", "bow-lands");
+  if (stern) once(w, "stern-lands", "stern-lands");
+}
+
 function step(w: World): void {
   if (w.settleLeft > 0) {
     settle(w);
     return;
   }
   const spec = w.spec;
+  while (w.timed.length > 0 && w.timed[0].t <= w.t) {
+    const p = w.timed.shift() as World["timed"][number];
+    cellAt(w, p.i, p.o.x)?.openings.push(p.o);
+  }
   const compressed = w.bodies.every((b) => b.mode !== "float");
   const dt = w.steady
     ? SIM_STEP_S
@@ -644,12 +960,29 @@ function step(w: World): void {
       : w.fast
         ? FAST_STEP_S
         : SIM_STEP_S;
+  const way = headwayRun(w.headway, w.realT, w.realT + dt);
   if (!w.steady) {
     for (const b of w.bodies) {
       if (b.mode === "float" && b.frozen) continue;
+      // Her way through the water, until she touches the floor.
+      if (
+        way !== 0 &&
+        (b.mode === "float" || b.mode === "fall") &&
+        !b.touchBow &&
+        !b.touchStern
+      )
+        b.x += way;
       if (b.mode === "float") {
         const girderNow = !w.broken;
-        stepFloat(b, dt, girderNow, DRIFT_MPS, w.lightsOut ? 0 : PUMP_M3S);
+        stepFloat(
+          b,
+          dt,
+          girderNow,
+          DRIFT_MPS,
+          w.lightsOut ? 0 : PUMP_M3S,
+          -spec.seaDepthM
+        );
+        touched(w, b);
         updateBounds(b);
         if (girderNow) {
           girder(
@@ -672,9 +1005,10 @@ function step(w: World): void {
         }
       } else if (b.mode === "fall") {
         if (stepFall(b, dt, -spec.seaDepthM)) {
-          // An intact hull is both: it lands as one.
-          if (b.part !== "stern") emit(w, "bow-lands");
-          if (b.part !== "bow") emit(w, "stern-lands");
+          // An intact hull is both: it lands as one (unless an end already
+          // touched while she was afloat).
+          if (b.part !== "stern") once(w, "bow-lands", "bow-lands");
+          if (b.part !== "bow") once(w, "stern-lands", "stern-lands");
         }
       } else if (b.mode === "landing") {
         stepLanding(b, dt);
@@ -737,6 +1071,7 @@ function step(w: World): void {
       girderHogNm: w.girderState.worstHog,
       girderHog: w.girderState.hog,
       stationX: w.hull.xs,
+      lowestZ: w.bodies.reduce((lo, b) => min(lo, lowestZ(b)), Infinity),
     });
   if (w.bodies.every((b) => b.mode === "landed")) {
     w.done = true;

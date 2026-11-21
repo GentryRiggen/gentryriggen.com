@@ -1,4 +1,7 @@
-import type { ShipSpec } from "../ships/types";
+import type { Compartment, ShipSpec } from "../ships/types";
+
+/** A compartment's transverse extent (missing: the full breadth). */
+export type Span = NonNullable<Compartment["span"]>;
 
 /**
  * The hull resampled for the sim: `HULL_STATIONS` evenly spaced stations,
@@ -127,10 +130,18 @@ export interface Slice {
   hbMax: Float64Array;
   zLo: Float64Array;
   zHi: Float64Array;
-  /** The whole slice: volume and centroid. */
+  /** The whole slice: volume and centroid (cy is 0 unless spanned). */
   capacity: number;
   cx: number;
+  cy: number;
   cz: number;
+  /** A wing or centre cell: its span, and the hull's own half-breadth at
+   * the top of each station (the deck edge, outside a centre cell). */
+  span?: Span;
+  edgeHb?: Float64Array;
+  /** Spanned only: each station's first moment in y (A·cy) and breadth. */
+  fullAy?: Float64Array;
+  width?: Float64Array;
 }
 
 function polygonArea(
@@ -138,23 +149,26 @@ function polygonArea(
   zs: Float64Array,
   off: number,
   nv: number
-): [number, number] {
+): [number, number, number] {
   let a2 = 0;
+  let sy = 0;
   let sz = 0;
   for (let i = 0; i < nv; i += 1) {
     const j = i === nv - 1 ? 0 : i + 1;
     const cr = ys[off + i] * zs[off + j] - ys[off + j] * zs[off + i];
     a2 += cr;
+    sy += (ys[off + i] + ys[off + j]) * cr;
     sz += (zs[off + i] + zs[off + j]) * cr;
   }
   const area = a2 / 2;
-  return [area, area > 1e-12 ? sz / 6 : 0];
+  return [area, area > 1e-12 ? sz / 6 : 0, area > 1e-12 ? sy / 6 : 0];
 }
 
 function finishSlice(
   xs: number[],
   sections: { y: number[]; z: number[] }[],
-  nv: number
+  nv: number,
+  span?: Span
 ): Slice {
   const n = xs.length;
   const s: Slice = {
@@ -172,8 +186,10 @@ function finishSlice(
     zHi: new Float64Array(n),
     capacity: 0,
     cx: 0,
+    cy: 0,
     cz: 0,
   };
+  const fullAy = new Float64Array(n);
   for (let i = 0; i < n; i += 1) {
     let hbMax = 0;
     let zLo = Infinity;
@@ -187,7 +203,8 @@ function finishSlice(
       zLo = Math.min(zLo, z);
       zHi = Math.max(zHi, z);
     }
-    const [a, az] = polygonArea(s.ys, s.zs, i * nv, nv);
+    const [a, az, ay] = polygonArea(s.ys, s.zs, i * nv, nv);
+    fullAy[i] = ay;
     s.fullA[i] = a;
     s.fullAz[i] = az;
     s.hbMax[i] = hbMax;
@@ -206,6 +223,27 @@ function finishSlice(
   s.capacity = v;
   s.cx = v > 0 ? mx / v : (s.xFrom + s.xTo) / 2;
   s.cz = v > 0 ? mz / v : 0;
+  if (span) {
+    // A full-breadth section is symmetric (cy 0); only a wing or centre
+    // cell needs its transverse centre.
+    let my = 0;
+    for (let i = 0; i < n - 1; i += 1)
+      my += ((fullAy[i] + fullAy[i + 1]) * (s.xs[i + 1] - s.xs[i])) / 2;
+    s.cy = v > 0 ? my / v : 0;
+    s.span = span;
+    s.fullAy = fullAy;
+    const width = new Float64Array(n);
+    for (let i = 0; i < n; i += 1) {
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let k = 0; k < nv; k += 1) {
+        lo = Math.min(lo, s.ys[i * nv + k]);
+        hi = Math.max(hi, s.ys[i * nv + k]);
+      }
+      width[i] = hi - lo;
+    }
+    s.width = width;
+  }
   return s;
 }
 
@@ -226,8 +264,40 @@ function hullPolygon(sec: { zb: number; zt: number; hb: number[] }): {
   return { y, z };
 }
 
-/** The hull between xFrom and xTo, with sections clipped there. */
-export function hullSlice(hull: HullModel, xFrom: number, xTo: number): Slice {
+/**
+ * Part of a hull section beside a longitudinal bulkhead at |y| = span.y,
+ * with the same vertex count (so sections still blend vertex by vertex):
+ * the side's half-breadths clamped at the bulkhead. Where the hull is
+ * narrower than the bulkhead's offset a wing has no width (its vertices
+ * coincide). Centre + port + starboard add up to the whole section.
+ */
+function spanPolygon(
+  poly: { y: number[]; z: number[] },
+  span: Span
+): { y: number[]; z: number[] } {
+  const y = poly.y.slice();
+  const half = y.length / 2;
+  const b = span.y;
+  for (let v = 0; v < y.length; v += 1) {
+    const hb = Math.abs(poly.y[v]);
+    const right = v < half; // the port side, bottom to top
+    if (span.side === "centre") y[v] = (right ? 1 : -1) * Math.min(hb, b);
+    else if (span.side === "port") y[v] = right ? Math.max(hb, b) : b;
+    else y[v] = right ? -b : -Math.max(hb, b);
+  }
+  return { y, z: poly.z };
+}
+
+/**
+ * The hull between xFrom and xTo, with sections clipped there; with a
+ * span, only that wing or the centre between the longitudinal bulkheads.
+ */
+export function hullSlice(
+  hull: HullModel,
+  xFrom: number,
+  xTo: number,
+  span?: Span
+): Slice {
   const a = Math.max(hull.xMin, xFrom);
   const b = Math.min(hull.xMax, xTo);
   const xs: number[] = [a];
@@ -246,11 +316,21 @@ export function hullSlice(hull: HullModel, xFrom: number, xTo: number): Slice {
         out.push(xs[i] + ((xs[i + 1] - xs[i]) * p) / parts);
     }
   }
-  return finishSlice(
+  if (!span)
+    return finishSlice(
+      out,
+      out.map((x) => hullPolygon(sectionAt(hull, x))),
+      NL * 2
+    );
+  const sections = out.map((x) => sectionAt(hull, x));
+  const slice = finishSlice(
     out,
-    out.map((x) => hullPolygon(sectionAt(hull, x))),
-    NL * 2
+    sections.map((sec) => spanPolygon(hullPolygon(sec), span)),
+    NL * 2,
+    span
   );
+  slice.edgeHb = Float64Array.from(sections.map((sec) => sec.hb[NL - 1]));
+  return slice;
 }
 
 /**

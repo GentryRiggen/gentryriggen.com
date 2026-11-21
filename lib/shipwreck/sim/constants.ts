@@ -48,6 +48,18 @@ export const BREAK_OPEN_FRACTION = 0.4;
 export const HEAD_EPS = 0.02;
 /** Fraction of the level difference one step may equalise. */
 export const FLOW_CAP = 0.5;
+/**
+ * Coal doors and leaks in a longitudinal bulkhead sit just above the tank
+ * top (the stokehold plates): this high over the section's bottom (m).
+ */
+export const CROSS_DOOR_Z_M = 1.5;
+/**
+ * Portholes: a row is let in as pieces at most this long (m), each a strip
+ * this tall (m, a 16-inch scuttle), so a row goes under bit by bit as she
+ * lists and trims.
+ */
+export const PORTHOLE_PIECE_M = 5;
+export const PORTHOLE_HEIGHT_M = 0.4;
 
 // --- Body -----------------------------------------------------------------
 
@@ -125,6 +137,27 @@ export const BOW_BEDDED_M = 3;
 /** The plough or crush eases in over a few of these (real seconds). */
 export const PLOUGH_TIME_S = 5;
 export const STERN_CRUSH_M = 4;
+/**
+ * The sea floor under a body still afloat (it grounds before it sinks): a
+ * spring and damper at every hull vertex under the floor, per metre of
+ * hull. Stiffness: the body's whole lightship weight laid along its whole
+ * keel would press FLOOR_SINK_M into the mud; a short contact (the stem)
+ * sinks deeper until enough of the hull bears. Damping: FLOOR_DAMP_S times
+ * the stiffness (well damped for any contact length here). Friction: mud
+ * on steel, regularised below a slip speed.
+ */
+export const FLOOR_SINK_M = 1;
+export const FLOOR_DAMP_S = 3;
+export const FLOOR_FRICTION = 0.5;
+export const FLOOR_SLIP_MS = 0.05;
+/**
+ * A hull that comes down listed more than LIE_OVER_MIN_DEG lies over on its
+ * low side: the mud under the loaded bilge gives way and it settles to
+ * LIE_OVER_REST_DEG (the Lusitania lies on her starboard side). Less than
+ * that and it settles upright as before.
+ */
+export const LIE_OVER_MIN_DEG = 10;
+export const LIE_OVER_REST_DEG = 75;
 /** The way down plays this many times faster once both parts are under. */
 export const DESCENT_TIME_SCALE = 6;
 

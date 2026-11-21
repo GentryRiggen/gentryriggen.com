@@ -2,6 +2,7 @@
 
 export const SIM_EVENT_KINDS = [
   "collision",
+  "explosion",
   "steam-start",
   "steam-stop",
   "rocket",
