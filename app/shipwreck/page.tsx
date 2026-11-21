@@ -1,4 +1,5 @@
 import Shipwreck from "@/components/shipwreck/Shipwreck";
+import ShipwreckErrorBoundary from "@/components/shipwreck/ui/ShipwreckErrorBoundary";
 import { gameMetadata } from "@/lib/game-kit/metadata";
 import { SHIPWRECK_THEME_COLOR } from "@/lib/theme/themeScript";
 
@@ -14,5 +15,9 @@ export const { metadata, viewport } = gameMetadata({
 });
 
 export default function ShipwreckPage() {
-  return <Shipwreck />;
+  return (
+    <ShipwreckErrorBoundary>
+      <Shipwreck />
+    </ShipwreckErrorBoundary>
+  );
 }

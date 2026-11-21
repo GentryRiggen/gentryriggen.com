@@ -30,7 +30,7 @@ const MAX_ID_LENGTH = 48;
 export function emptySave(): ShipwreckSave {
   return {
     v: 1,
-    settings: { sound: true, speed: 1, camera: "orbit" },
+    settings: { sound: true, speed: 30, camera: "orbit" },
     seen: { realNight: false, endings: [] },
     lastWhatIf: [],
   };
@@ -93,7 +93,7 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
       v: 1,
       settings: {
         sound: typeof settings.sound === "boolean" ? settings.sound : true,
-        speed: oneOf<Speed>(settings.speed, SPEEDS, 1),
+        speed: oneOf<Speed>(settings.speed, SPEEDS, 30),
         camera: oneOf<CameraId>(settings.camera, CAMERA_IDS, "orbit"),
       },
       seen: { realNight: seen.realNight === true, endings },

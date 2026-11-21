@@ -38,6 +38,15 @@ describe("shipwreck analytics", () => {
     });
   });
 
+  it("counts breaking in two as sinking", () => {
+    trackEnd("real", "broke-in-two", 155);
+    expect(trackGame).toHaveBeenCalledWith("shipwreck_end", {
+      mode: "real",
+      outcome: "sank",
+      minutes: 155,
+    });
+  });
+
   it("sends only the camera id, and everything passes the schema", () => {
     for (const camera of CAMERA_IDS) trackCamera(camera);
     for (const [name, props] of trackGame.mock.calls) {

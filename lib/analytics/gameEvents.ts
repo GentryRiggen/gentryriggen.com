@@ -10,6 +10,7 @@
  */
 
 import { hasOwn } from "@/lib/game-kit/compat";
+import { CAMERA_IDS } from "@/lib/shipwreck/types";
 
 export type GameSite =
   "plane-builder" | "ship-builder" | "flamelings" | "shipwreck";
@@ -91,15 +92,8 @@ export function isTemplateId(id: string): id is TemplateId {
   return (TEMPLATE_IDS as readonly string[]).includes(id);
 }
 
-/** The cameras a Shipwreck player can pick (lib/shipwreck/types.ts). */
-const SHIPWRECK_CAMERAS = [
-  "orbit",
-  "bridge",
-  "stern",
-  "lifeboat",
-  "underwater",
-  "cinematic",
-] as const;
+/** The cameras a Shipwreck player can pick. */
+const SHIPWRECK_CAMERAS = CAMERA_IDS;
 
 /** The longest course is under 10 km; crash positions are 50 m buckets. */
 export const CRASH_BUCKET_METERS = 50;

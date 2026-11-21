@@ -4,6 +4,11 @@ import { resetSaveStore } from "@/lib/shipwreck/useSave";
 import Shipwreck from "../Shipwreck";
 
 jest.mock("@/lib/analytics/trackGame", () => ({ trackGame: jest.fn() }));
+// The 3D scene needs WebGL: the tests cover the DOM UI over it.
+jest.mock("next/dynamic", () => ({
+  __esModule: true,
+  default: () => () => null,
+}));
 jest.mock("@/components/update/useUpdateCheck", () => ({
   useUpdateCheck: () => ({ isUpdateReady: false }),
 }));
@@ -26,14 +31,32 @@ describe("Shipwreck title screen", () => {
     );
   });
 
-  it("says the game is coming soon", () => {
+  it("starts the real night: the HUD shows and the hooks say night", () => {
     render(<Shipwreck />);
-    expect(screen.getByTestId("shipwreck-coming-soon")).toHaveTextContent(
-      "Check back soon"
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    expect(screen.getByTestId("shipwreck-hud")).toBeInTheDocument();
+    expect(window.__shipwreck?.getScreen()).toBe("night");
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("11:40 PM");
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /11:40 PM — The iceberg scrapes along the starboard side/
     );
-    expect(
-      screen.getByRole("img", { name: "The Titanic sinking at night" })
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+    expect(window.__shipwreck?.getScreen()).toBe("title");
+  });
+
+  it("opens the What if? editor and starts a run with the chosen holes", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(window.__shipwreck?.getScreen()).toBe("editor");
+    fireEvent.click(screen.getByTestId("shipwreck-preset-clear"));
+    expect(screen.getByTestId("shipwreck-go")).toBeDisabled();
+    fireEvent.click(screen.getByTestId("shipwreck-chip-fore-peak"));
+    fireEvent.click(screen.getByTestId("shipwreck-chip-hold1"));
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "2 holes"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(window.__shipwreck?.getScreen()).toBe("night");
   });
 
   it("exposes the screen to test hooks", () => {

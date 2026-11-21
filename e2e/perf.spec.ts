@@ -65,19 +65,18 @@ type RenderInfoWindow = {
   __shipBuilderRenderInfo?: () => Counts;
   __planeBuilderRenderInfo?: () => Counts;
   __planetSmasherRenderInfo?: () => Counts;
+  /** Shipwreck's is the last frame's numbers, not a function. */
+  __shipwreckRenderInfo?: Counts;
 };
 
+type Probe = keyof RenderInfoWindow;
+
 /** Waits for the probe to report a drawn frame, then samples frame times. */
-async function measure(
-  page: Page,
-  probe:
-    | "__shipBuilderRenderInfo"
-    | "__planeBuilderRenderInfo"
-    | "__planetSmasherRenderInfo"
-): Promise<Measurement> {
+async function measure(page: Page, probe: Probe): Promise<Measurement> {
   await page.waitForFunction(
     (name) => {
-      const info = (window as unknown as RenderInfoWindow)[name]?.();
+      const v = (window as unknown as RenderInfoWindow)[name];
+      const info = typeof v === "function" ? v() : v;
       return Boolean(info && info.calls > 0);
     },
     probe,
@@ -95,7 +94,8 @@ async function measure(
       times.sort((a, b) => a - b);
       const at = (q: number) =>
         times[Math.min(times.length - 1, Math.floor(q * times.length))];
-      const info = (window as unknown as RenderInfoWindow)[name]!();
+      const v = (window as unknown as RenderInfoWindow)[name]!;
+      const info = typeof v === "function" ? v() : v;
       return {
         calls: info.calls,
         triangles: info.triangles,
@@ -141,6 +141,10 @@ const SCENES = [
   "plane-city-flight",
   "planet-earth-idle",
   "planet-earth-shatter",
+  "shipwreck-1145pm-cinematic",
+  "shipwreck-breakup-cinematic",
+  "shipwreck-xray-staircase",
+  "shipwreck-underwater",
 ] as const;
 
 test.afterAll(() => {
@@ -457,5 +461,76 @@ test.describe("Planet Smasher budget", () => {
       "planet-earth-shatter",
       await measure(page, "__planetSmasherRenderInfo")
     );
+  });
+});
+
+// ── Shipwreck ──
+
+test.describe("Shipwreck budget", () => {
+  // The whole night is computed first (software WebGL runs slowly).
+  test.setTimeout(420_000);
+
+  test("the night at the top tier: 11:45 PM, the breakup, X-ray, under water", async ({
+    page,
+  }) => {
+    // The night scene alone at the high tier (frame-rate monitor off).
+    await page.goto("/shipwreck?scene&quality=high");
+    await page.waitForFunction(
+      () => window.__shipwreck?.getState?.().done === true,
+      null,
+      { timeout: 300_000 }
+    );
+    const at = async (setup: () => void, settleMs = 2500) => {
+      await page.evaluate(setup);
+      await page.waitForTimeout(settleMs);
+      return measure(page, "__shipwreckRenderInfo");
+    };
+
+    record(
+      "shipwreck-1145pm-cinematic",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.pause!();
+        h.seek!(5 * 60); // 11:45 PM
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-breakup-cinematic",
+      await at(() => {
+        const h = window.__shipwreck!;
+        const e = h.getEvents!().find((x) => x.kind === "breakup")!;
+        h.seek!(e.t + 2);
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-xray-staircase",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.seek!(3 * 3600 - 25 * 60); // 2:15 AM (2 h 35 min after 11:40 PM)
+        h.setXray!(true);
+        h.flyToPlace!("grand-staircase");
+      }, 3500)
+    );
+    record(
+      "shipwreck-underwater",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.flyToPlace!(null);
+        h.setXray!(false);
+        const e = h.getEvents!().find((x) => x.kind === "stern-under")!;
+        h.seek!(e.t + 90);
+        h.setCamera!("underwater");
+      })
+    );
+    // The spec's ceiling at the top tier, apart from the budget.
+    for (const scene of SCENES.filter((s) => s.startsWith("shipwreck-"))) {
+      const m = JSON.parse(
+        fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")
+      ) as Measurement;
+      expect(m.calls, `${scene}: draw calls`).toBeLessThanOrEqual(160);
+      expect(m.triangles, `${scene}: triangles`).toBeLessThanOrEqual(450_000);
+    }
   });
 });
