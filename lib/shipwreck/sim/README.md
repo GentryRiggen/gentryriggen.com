@@ -158,7 +158,14 @@ her last minute: 25°–77° at the moment she is gone across the calibration
 sweep below. That roll is touchy (it turns on which dry spaces are left
 aft and when), so her rest is the survey's rule (below), not this. Once she is
 wholly under she goes straight to the landing from where she lies (no
-fall), her contact as deep in the mud as it already is. Any contact puts
+fall), her contact as deep in the mud as it already is, and ploughs no
+deeper (`seated`). She settles along the floor (rest pitch 0) and turns to
+her rest about that contact; each step re-seats her so her lowest hull
+point stays at the depth the contact had (turning about the keel would
+otherwise swing her other side most of a beam into the floor: the
+Lusitania's lowest point went from −94.4 m to −115.3 m in 5 s; now it stays
+at about −95 m). A body that falls (the Titanic's halves) ploughs and rests
+as in 1.0. Any contact puts
 the run in fast steps.
 
 **Motion.** Weight (lightship + water) acts at G, buoyancy at B; G moves
@@ -475,6 +482,15 @@ depth 3 m). Where they disagree:
   2:15, 9 at 2:17, 11 at 2:18, 13 at 2:19:30, 15 at 2:21, 21 at 2:24
   (order from the survivors' accounts; the times are estimates within the
   18 minutes). The hit broke No. 5 to splinters (Mersey).
+- **Steam.** `steam-start` at t = 10 s (just after the second explosion)
+  and `steam-stop` at 2:14 PM. Lookout Leslie Morton saw "a cloud of coal
+  dust and steam" shoot up at the hit; her steam pressure fell from
+  195 psi to 50 psi and falling after the explosions (No. 1 boiler room's
+  lines and boilers flooded and broken), and her power failed at about
+  2:14 (Wikipedia, "Sinking of the RMS Lusitania", after the survivors'
+  and engineers' accounts). After the second explosion, accounts also
+  have thick grey smoke pouring from her funnels and ventilators. The
+  times are estimates; the venting is sourced, its exact end is not.
 - **Floor and clock.** 93 m of sea (Ballard), the clock from 2:10 PM.
   `wreck: { restDeg: 75, minListDeg: 10 }`: her wreck lies on its
   starboard side (Ballard), a rule for her rest (see "The way down").

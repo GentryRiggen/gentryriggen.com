@@ -93,6 +93,37 @@ describe("the real afternoon", () => {
     }
   });
 
+  it("lies on the floor, not in it, through her rest", () => {
+    // She was on the floor when she went under: as she settles and lies
+    // over, her lowest hull point stays at the depth she was already in
+    // the mud (not dragged under by turning about the contact).
+    let lowest = Infinity;
+    let atUnder = Infinity;
+    simulate(lusitania, lusitania.realNight, {
+      probe: (p) => {
+        if (p.bodies.some((b) => b.mode === "float")) {
+          atUnder = p.lowestZ;
+          return;
+        }
+        lowest = Math.min(lowest, p.lowestZ);
+      },
+    });
+    expect(lowest).toBeLessThan(Infinity);
+    expect(lowest).toBeGreaterThanOrEqual(-lusitania.seaDepthM - 3);
+    expect(lowest).toBeGreaterThanOrEqual(atUnder - 0.5);
+    const last = track.frames[track.frames.length - 1];
+    // Along the floor, on her side.
+    expect(Math.abs(last.bodies[0].pitch / DEG)).toBeLessThan(2);
+  });
+
+  it("vents steam from the second explosion until her power fails", () => {
+    const on = eventT(track, "steam-start")!;
+    const off = eventT(track, "steam-stop")!;
+    expect(on).toBeGreaterThan(eventT(track, "explosion")!);
+    expect(off).toBeGreaterThan(on);
+    expect(off).toBeLessThanOrEqual(5 * 60);
+  });
+
   it("has the second explosion within 30 s of the hit", () => {
     const hit = eventT(track, "collision") as number;
     const boom = eventT(track, "explosion");

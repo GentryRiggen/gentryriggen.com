@@ -414,6 +414,9 @@ const COMPARTMENTS: Compartment[] = [
 
 /** The second explosion, a few seconds after the hit (shown seconds). */
 export const SECOND_EXPLOSION_T = 8;
+/** Steam venting: just after the second explosion, until 2:14 PM. */
+const STEAM_START_T = SECOND_EXPLOSION_T + 2;
+const STEAM_STOP_T = 4 * 60;
 
 /**
  * The real afternoon. U-20's torpedo (set to run 3 m deep, so about 6 m
@@ -582,6 +585,12 @@ const BOATS_AWAY: [string, number][] = [
 function scripted(): ShipSpec["scripted"] {
   const events: ShipSpec["scripted"][number][] = [
     { t: SECOND_EXPLOSION_T, kind: "explosion" },
+    // Steam: a cloud of it shot up at the hit (lookout Leslie Morton), and
+    // her steam pressure collapsed from 195 psi to 50 psi and falling as
+    // No. 1 boiler room's lines and boilers were flooded and broken; with
+    // it went her power at about 2:14 (README).
+    { t: STEAM_START_T, kind: "steam-start" },
+    { t: STEAM_STOP_T, kind: "steam-stop" },
   ];
   for (const [label, t] of BOATS_AWAY) {
     const boat = LUSITANIA_BOATS.find(

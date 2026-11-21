@@ -142,6 +142,7 @@ function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
   b.contactP = p;
   b.contactE = [e[0], e[1], floorZ];
   b.contactD0 = onFloor ? max(0, floorZ - e[2]) : 0;
+  b.seated = onFloor;
   b.contactT = 0;
   b.contactPitch = b.pitch;
   // The rest (a rule): a ship with a surveyed wreck (spec.wreck) lies over
@@ -153,6 +154,9 @@ function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
     b.restRoll = (w.rest > 0 ? 1 : -1) * max(abs(b.roll), abs(w.rest));
   else b.restRoll = b.roll;
   if (b.part === "stern") b.restPitch = -0.02;
+  else if (onFloor)
+    // Already on the floor, no nose dive into it: she settles along it.
+    b.restPitch = 0;
   else {
     // Nose deep in the mud, the after end bedded: a slight bow-down rest.
     const lever = max(20, abs(p[0] - b.xFrom));
@@ -179,17 +183,31 @@ export function stepLanding(b: Body, dt: number): boolean {
   b.vx = 0;
   b.vz = 0;
   b.wp = 0;
-  const depth = max(
-    b.contactD0,
-    (bow ? BOW_PLOUGH_M : STERN_CRUSH_M) *
-      (1 - exp(-b.contactT / PLOUGH_TIME_S))
-  );
+  // A body that fell ploughs (or crushes) in; one that was already on the
+  // floor when she went under is as deep in the mud as she will go.
+  const depth = b.seated
+    ? b.contactD0
+    : max(
+        b.contactD0,
+        (bow ? BOW_PLOUGH_M : STERN_CRUSH_M) *
+          (1 - exp(-b.contactT / PLOUGH_TIME_S))
+      );
   placeAbout(b, b.contactP, [
     b.contactE[0],
     b.contactE[1],
     b.contactE[2] - depth,
   ]);
   updateBounds(b);
+  if (b.seated) {
+    // Turning to her rest about the contact would drive her other side
+    // into the floor (lying over, her deck edge swings down by most of her
+    // beam): re-seat her lowest hull point at that same depth.
+    const seat = b.contactE[2] - b.contactD0;
+    if (b.bottom < seat) {
+      b.z += seat - b.bottom;
+      updateBounds(b);
+    }
+  }
   const rest =
     b.contactT > 5 * PLOUGH_TIME_S &&
     abs(b.pitch - b.restPitch) < 0.004 &&

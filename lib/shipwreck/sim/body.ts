@@ -150,6 +150,9 @@ export interface Body {
   restRoll: number;
   /** How deep the contact already was when it landed afloat (m). */
   contactD0: number;
+  /** Landed from afloat (grounded when she went under): no further plough,
+   * and her lowest hull point kept at that depth in the mud as she turns. */
+  seated: boolean;
   /** Hull vertices for the floor while afloat: x, y, z, length (m) each. */
   floorPts: Float64Array;
   /** Floor stiffness per metre of hull per vertex (N/m per m). */

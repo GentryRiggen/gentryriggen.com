@@ -506,6 +506,7 @@ function makeBody(
     restPitch: 0,
     restRoll: 0,
     contactD0: 0,
+    seated: false,
     floorPts: floorPoints(w.hull, xFrom, xTo),
     floorK: (light.mass * GRAV) / (2 * max(1, xTo - xFrom) * FLOOR_SINK_M),
     grounded: false,

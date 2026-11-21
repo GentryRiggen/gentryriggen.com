@@ -117,6 +117,34 @@ describe("the sea floor under a ship afloat", () => {
     expect(lowest).toBeGreaterThanOrEqual(-SEA - BOW_PLOUGH_M - 0.5);
   });
 
+  it("lying over on the floor, she stays on it, not in it", () => {
+    // Grounded afloat, then under: she lies over about her contact and is
+    // re-seated so her lowest hull point stays as deep as it already was.
+    let lowest = Infinity;
+    let atUnder = Infinity;
+    const track = simulate(
+      longShip({
+        seaDepthM: SEA,
+        depth: 16,
+        tcg: -0.2,
+        extra: { wreck: { restDeg: 75, minListDeg: 0 } },
+      }),
+      bowHoles,
+      {
+        probe: (p) => {
+          if (p.bodies.some((b) => b.mode === "float")) atUnder = p.lowestZ;
+          else lowest = Math.min(lowest, p.lowestZ);
+        },
+      }
+    );
+    const rest = track.frames[track.frames.length - 1];
+    expect(track.outcome).toBe("sank");
+    expect(rest.listDeg).toBeGreaterThan(70);
+    expect(lowest).toBeGreaterThanOrEqual(atUnder - 0.5);
+    // (the mud under a box's flat bottom gives a few metres while afloat)
+    expect(lowest).toBeGreaterThanOrEqual(-SEA - 6);
+  });
+
   it("rests as her wreck does only if the ship says so (spec.wreck)", () => {
     // Deep enough that she sinks before she touches, and lands listed.
     const listed = (extra?: Partial<ShipSpec>) =>
