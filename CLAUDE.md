@@ -103,6 +103,15 @@ Every Planet Smasher change that ships to users (anything in `components/planet-
 
 The Versions page (`/planet-smasher/versions`, linked from the "What's new" label in the game) renders the changelog. `lib/planet-smasher/__tests__/changelog.test.ts` fails if the version and the top entry disagree. 1.0.0 is the first release: until it ships, keep editing the 1.0.0 entry instead of bumping.
 
+### Shipwreck releases
+
+Every Shipwreck change that ships to users (anything in `components/shipwreck`, `lib/shipwreck`, `app/shipwreck`, `public/shipwreck-icons` or `public/shipwreck-sw.js`) is a release:
+
+1. Bump `SHIPWRECK_VERSION` in `lib/shipwreck/version.ts` (semver: patch for fixes, minor for features, major for big new modes).
+2. Add a matching entry at the top of `CHANGELOG` in `lib/shipwreck/changelog.ts`, written from the commits since the last release (`git log <last version commit>..HEAD -- lib/shipwreck components/shipwreck app/shipwreck public/shipwreck-icons public/shipwreck-sw.js`), in plain words a young player or their parent would follow.
+
+The Versions page (`/shipwreck/versions`, linked from the "What's new" label on the title screen) renders the changelog. `lib/shipwreck/__tests__/changelog.test.ts` fails if the version and the top entry disagree. 1.0.0 is the first release: until it ships, keep editing the 1.0.0 entry instead of bumping. The save lives in `localStorage["shipwreck:v1"]` (settings and a few flags, no tab lock): a change to its shape needs a migration in `lib/shipwreck/save.ts` (or a new key), never a silent reset. `lib/shipwreck/analytics.ts` is the only caller of `trackGame`. e2e reads the game through `window.__shipwreck` (dev and `NEXT_PUBLIC_E2E=1` builds only). `scripts/shipwreck-icons.mjs` regenerates the home-screen icons; `public/shipwreck-sw.js` is generated (never edit it by hand).
+
 ### Flamelings releases
 
 Every Flamelings change that ships to users (anything in `components/flamelings`, `lib/flamelings`, `app/flamelings` or `public/flamelings*`) is a release:

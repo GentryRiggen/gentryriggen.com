@@ -2,6 +2,7 @@ import {
   summarizeFlamelings,
   summarizePlane,
   summarizeShip,
+  summarizeShipwreck,
   type WorldSummary,
 } from "@/lib/analytics/gameAggregate";
 import type { GameEvent } from "@/lib/analytics/gameEvents";
@@ -102,6 +103,7 @@ export default function GamesView({ events }: GamesViewProps) {
   const plane = useMemo(() => summarizePlane(events), [events]);
   const ship = useMemo(() => summarizeShip(events), [events]);
   const flame = useMemo(() => summarizeFlamelings(events), [events]);
+  const wreck = useMemo(() => summarizeShipwreck(events), [events]);
   const playedWorlds = plane.worlds.filter(
     (world) => world.flights > 0 || world.quits > 0
   );
@@ -306,6 +308,50 @@ export default function GamesView({ events }: GamesViewProps) {
           />
           <BreakdownList title="Friends" rows={flame.friends} unit="actions" />
           <BreakdownList title="Pictures" rows={flame.shares} unit="shares" />
+        </div>
+      </Section>
+
+      <Section title="Shipwreck">
+        <div className="grid gap-4 sm:grid-cols-3">
+          {[
+            { id: "starts", label: "Runs started", value: wreck.starts },
+            { id: "sank", label: "Sank", value: wreck.sank },
+            { id: "floated", label: "Stayed afloat", value: wreck.floated },
+          ].map((tile) => (
+            <div
+              key={tile.id}
+              className="rounded-lg border border-gray-200 p-4 dark:border-gray-800"
+            >
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {tile.label}
+              </div>
+              <div
+                data-testid={`shipwreck-${tile.id}`}
+                className="mt-1 text-3xl font-semibold tabular-nums"
+              >
+                {tile.value.toLocaleString()}
+              </div>
+            </div>
+          ))}
+        </div>
+        <p
+          data-testid="shipwreck-averages"
+          className="text-sm text-gray-600 dark:text-gray-400"
+        >
+          {wreck.starts === 0 ? "No runs yet" : `${wreck.starts} runs`}
+          {wreck.averageOpened !== null &&
+            ` · ${wreck.averageOpened.toFixed(1)} openings per What if?`}
+          {wreck.averageSinkMinutes !== null &&
+            ` · sank after ${Math.round(wreck.averageSinkMinutes)} min on average`}
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <BreakdownList title="Modes" rows={wreck.modes} unit="runs" />
+          <BreakdownList title="How runs ended" rows={wreck.ends} unit="runs" />
+          <BreakdownList
+            title="Cameras (sampled)"
+            rows={wreck.cameras}
+            unit="picks"
+          />
         </div>
       </Section>
     </div>

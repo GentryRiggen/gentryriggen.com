@@ -3,6 +3,7 @@ import {
   summarizeFlamelings,
   summarizePlane,
   summarizeShip,
+  summarizeShipwreck,
 } from "../gameAggregate";
 
 function plane(name: GameEvent["name"], props: GameEvent["props"]): GameEvent {
@@ -239,5 +240,40 @@ describe("summarizeFlamelings", () => {
     expect(empty.averagePets).toBeNull();
     expect(empty.averageScore).toBeNull();
     expect(empty.highestLevel).toBe(0);
+  });
+});
+
+describe("summarizeShipwreck", () => {
+  const ev = (
+    name: GameEvent["name"],
+    props: GameEvent["props"]
+  ): GameEvent => ({ site: "shipwreck", name, props, day: "2026-11-20" });
+
+  it("counts runs, outcomes, sink times and cameras", () => {
+    const summary = summarizeShipwreck([
+      ev("shipwreck_start", { mode: "real", opened: 0 }),
+      ev("shipwreck_start", { mode: "whatif", opened: 2 }),
+      ev("shipwreck_start", { mode: "whatif", opened: 4 }),
+      ev("shipwreck_end", { mode: "real", outcome: "sank", minutes: 160 }),
+      ev("shipwreck_end", { mode: "whatif", outcome: "sank", minutes: 200 }),
+      ev("shipwreck_end", { mode: "whatif", outcome: "floated", minutes: 360 }),
+      ev("shipwreck_camera", { camera: "bridge" }),
+      ev("shipwreck_camera", { camera: "bridge" }),
+      ev("shipwreck_camera", { camera: "orbit" }),
+    ]);
+    expect(summary.starts).toBe(3);
+    expect(summary.modes[0]).toEqual({ key: "whatif", views: 2 });
+    expect(summary.averageOpened).toBe(3);
+    expect(summary.sank).toBe(2);
+    expect(summary.floated).toBe(1);
+    expect(summary.averageSinkMinutes).toBe(180);
+    expect(summary.cameras[0]).toEqual({ key: "bridge", views: 2 });
+  });
+
+  it("has empty answers with no events", () => {
+    const empty = summarizeShipwreck([]);
+    expect(empty.starts).toBe(0);
+    expect(empty.averageOpened).toBeNull();
+    expect(empty.averageSinkMinutes).toBeNull();
   });
 });

@@ -78,6 +78,30 @@ describe("flamelings command", () => {
   });
 });
 
+describe("shipwreck command", () => {
+  it.each(["shipwreck", "titanic", "SHIPWRECK"])(
+    "responds to %s with a blurb, a link, and a navigation target",
+    (input) => {
+      const result = getCommandResponse(input, []);
+      render(<>{result.output}</>);
+
+      expect(
+        screen.getByText(/A realistic sinking-ship simulator/)
+      ).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /\/shipwreck/ })).toHaveAttribute(
+        "href",
+        "/shipwreck"
+      );
+      expect(result.navigateTo).toBe("/shipwreck");
+    }
+  );
+
+  it("is listed in help", () => {
+    const result = getCommandResponse("help", []);
+    expect(result.output).toEqual(expect.stringMatching(/^\s+shipwreck\s/m));
+  });
+});
+
 describe("ever onward command", () => {
   it.each([
     "onward",

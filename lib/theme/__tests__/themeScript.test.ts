@@ -1,6 +1,7 @@
 import {
   EVER_ONWARD_THEME_COLOR,
   FLAMELINGS_THEME_COLOR,
+  SHIPWRECK_THEME_COLOR,
   JIM_THEME_COLOR,
   THEME_SCRIPT,
   fixedThemeColor,
@@ -106,4 +107,18 @@ it("keeps Flamelings its own purple, light or dark", () => {
   }
   expect(run("/flamelingsx", "light").themeColor).toBe("#ffffff");
   expect(fixedThemeColor("/flamelings/versions")).toBe(FLAMELINGS_THEME_COLOR);
+});
+
+it("keeps Shipwreck its own night blue, light or dark", () => {
+  for (const path of [
+    "/shipwreck",
+    "/shipwreck/",
+    "/shipwreck.html",
+    "/shipwreck/versions",
+  ]) {
+    expect(run(path).themeColor).toBe(SHIPWRECK_THEME_COLOR);
+    expect(run(path, "light").themeColor).toBe(SHIPWRECK_THEME_COLOR);
+  }
+  expect(run("/shipwreckx", "light").themeColor).toBe("#ffffff");
+  expect(fixedThemeColor("/shipwreck/versions")).toBe(SHIPWRECK_THEME_COLOR);
 });

@@ -240,7 +240,7 @@ describe("every event in the schema", () => {
   });
 
   it("rejects every event on any other game's site", async () => {
-    const sites = ["plane-builder", "ship-builder", "flamelings"];
+    const sites = ["plane-builder", "ship-builder", "flamelings", "shipwreck"];
     for (const name of GAME_EVENT_NAMES) {
       for (const other of sites.filter((s) => s !== GAME_EVENTS[name].site)) {
         await assertFails(create(anon(), docFor(name, { site: other })));
@@ -596,5 +596,54 @@ describe("access", () => {
     await assertFails(
       setDoc(doc(anon(), "gameEventsExtra/x"), docFor("flight_end"))
     );
+  });
+});
+
+describe("shipwreck specifics", () => {
+  const start = (mode: string, opened: number) =>
+    docFor("shipwreck_start", { props: { mode, opened } });
+  const end = (props: Record<string, unknown>) =>
+    docFor("shipwreck_end", {
+      props: { ...sampleProps("shipwreck_end"), ...props },
+    });
+
+  it("takes a start with a mode and 0 to 16 openings", async () => {
+    await assertSucceeds(create(anon(), start("real", 0)));
+    await assertSucceeds(create(anon(), start("whatif", 16)));
+    await assertFails(create(anon(), start("whatif", 17)));
+    await assertFails(create(anon(), start("whatif", -1)));
+    await assertFails(create(anon(), start("sandbox", 2)));
+    await assertFails(
+      create(anon(), docFor("shipwreck_start", { props: { mode: "real" } }))
+    );
+  });
+
+  it("takes an end as a mode, a sank or floated outcome and 0 to 600 minutes", async () => {
+    await assertSucceeds(create(anon(), end({ minutes: 0 })));
+    await assertSucceeds(
+      create(anon(), end({ outcome: "floated", minutes: 600 }))
+    );
+    await assertFails(create(anon(), end({ minutes: 601 })));
+    await assertFails(create(anon(), end({ minutes: 1.5 })));
+    await assertFails(create(anon(), end({ outcome: "broke-in-two" })));
+    await assertFails(create(anon(), end({ mode: "x" })));
+    await assertFails(create(anon(), end({ ship: "titanic" })));
+  });
+
+  it("takes only a known camera", async () => {
+    const camera = (value: unknown) =>
+      docFor("shipwreck_camera", { props: { camera: value } });
+    for (const name of [
+      "orbit",
+      "bridge",
+      "stern",
+      "lifeboat",
+      "underwater",
+      "cinematic",
+    ]) {
+      await assertSucceeds(create(anon(), camera(name)));
+    }
+    await assertFails(create(anon(), camera("selfie")));
+    await assertFails(create(anon(), camera(3)));
   });
 });

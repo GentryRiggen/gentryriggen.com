@@ -81,6 +81,20 @@ export default function Hobbies() {
         </span>
         ).
       </p>
+      <p className="leading-relaxed">
+        🚢 And a realistic sinking-ship simulator, starting with the Titanic:{" "}
+        <a
+          href="/shipwreck"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /shipwreck
+        </a>{" "}
+        (or type{" "}
+        <span className="text-green-600 dark:text-green-300">
+          &apos;shipwreck&apos;
+        </span>
+        ).
+      </p>
     </div>
   );
 }
