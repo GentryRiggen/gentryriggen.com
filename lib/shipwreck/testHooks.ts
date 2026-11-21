@@ -23,7 +23,8 @@ export interface ModelViewOptions {
     | "bow-close"
     | "stern-close"
     | "astern"
-    | "break-close";
+    | "break-close"
+    | "boat-deck";
   stage?: "day" | "night";
 }
 

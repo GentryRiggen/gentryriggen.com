@@ -16,6 +16,7 @@ import {
 } from "./geoBuffer";
 import { HULL_FRACTIONS } from "./hullSurface";
 import type {
+  Block,
   House,
   LightSpot,
   Placement,
@@ -106,6 +107,8 @@ export const COLORS = {
   rail: 0xe0ddd3,
   rig: 0x56524c,
   brass: 0xb38f4f,
+  /** A wall inside a promenade, out of the sun. */
+  shade: 0xd4d0c5,
 } as const;
 
 /** Plate tile: two 30 ft plates by two 6 ft strakes. */
@@ -130,6 +133,8 @@ export interface ShipPartData {
   portholes: LightSpot[];
   windows: LightSpot[];
   vents: Placement[];
+  /** Drum ventilators (the Lusitania's). */
+  drums: Placement[];
   benches: Placement[];
   bollards: Placement[];
   /** Railing posts' feet. */
@@ -360,7 +365,7 @@ function buildHull(ctx: Ctx): void {
   const ledge = rgb(COLORS.ledge);
   const x0 = ctx.breakX - TEAR_AMPLITUDE - 2.2;
   const x1 = ctx.breakX + TEAR_AMPLITUDE + 2.2;
-  for (const deck of ["C", "D", "E", "F", "G", "Orlop"]) {
+  for (const deck of r.ledgeDecks ?? ["C", "D", "E", "F", "G", "Orlop"]) {
     const plate = (x: number, down: boolean): Column => {
       const z = r.deckZ(deck, x);
       const w = Math.max(
@@ -482,6 +487,10 @@ function band(ctx: Ctx, o: BandSpec): void {
 
 function buildSuperstructure(ctx: Ctx): void {
   const { r } = ctx;
+  if (r.blocks) {
+    buildBlocks(ctx, r.blocks);
+    return;
+  }
   const L = r.layout;
   const edge = (x: number) => r.hull.topHalfBreadth(x);
   const full =
@@ -684,6 +693,139 @@ function buildSuperstructure(ctx: Ctx): void {
   }
 }
 
+/**
+ * Superstructure from the recipe's tiers (the Lusitania's): each a band
+ * following the sheer, flush with the side or set in, a strip (a
+ * bulwark), or the hull's own plating carried up (a raised foredeck);
+ * then the houses and domes on top.
+ */
+function buildBlocks(ctx: Ctx, blocks: Block[]): void {
+  const { r } = ctx;
+  // Every tier samples the deck edge at the same columns: sample it once.
+  const edges = new Map<number, number>();
+  const edge = (x: number): number => {
+    let e = edges.get(x);
+    if (e === undefined) {
+      e = r.hull.topHalfBreadth(x);
+      edges.set(x, e);
+    }
+    return e;
+  };
+  for (const b of blocks) {
+    const zb = (x: number) => r.deckZ(b.deck, x) + (b.dz ?? 0);
+    const R = b.roundFwd ?? 0;
+    const hw = (x: number): number => {
+      const w = b.halfWidth ?? Math.max(0, edge(x) - (b.inset ?? 0));
+      if (R <= 0 || x <= b.x1 - R) return w;
+      const t = Math.min(1, (x - (b.x1 - R)) / R);
+      return w * Math.sqrt(Math.max(0, 1 - t * t));
+    };
+    if (b.wall === "plating") {
+      platingBlock(ctx, b, zb, hw);
+      continue;
+    }
+    const roof: BandSpec["roof"] =
+      b.roof === "pine" || b.roof === "pitch" ? "deck" : b.roof;
+    const o: Omit<BandSpec, "yr"> = {
+      x0: b.x0,
+      x1: b.x1,
+      zb,
+      h: b.h,
+      wall: rgb(b.wall === "shade" ? COLORS.shade : COLORS.white),
+      roof,
+      roofColor:
+        b.roof === "pitch"
+          ? rgb(COLORS.pitchPine)
+          : b.roof === "pine"
+            ? rgb(COLORS.pine)
+            : undefined,
+      ends: b.ends ?? true,
+      under: b.under,
+    };
+    const strip = b.strip;
+    if (strip) {
+      band(ctx, { ...o, yr: (x) => [hw(x) - strip, hw(x)] });
+      band(ctx, { ...o, yr: (x) => [-hw(x), -hw(x) + strip] });
+    } else {
+      band(ctx, { ...o, yr: (x) => [-hw(x), hw(x)] });
+    }
+  }
+  for (const h of r.houses) buildHouse(ctx, h);
+  for (const d of r.domes) {
+    const c: V3 = [d.x, 0, d.z];
+    if (!inPart(ctx, c)) continue;
+    dome(ctx.d.paint, c, d.a, d.b, d.c, 20, 6, rgb(COLORS.glass));
+    cylinder(
+      ctx.d.paint,
+      [d.x, 0, d.z - 0.25],
+      [d.x, 0, d.z + 0.05],
+      1,
+      1,
+      24,
+      rgb(COLORS.white),
+      { start: false, end: false },
+      [d.a + 0.15, d.b + 0.15]
+    );
+  }
+}
+
+/**
+ * The hull's plating carried above the sheer (the hull material, so the
+ * plates, rivets and paint run on unbroken), with a planked deck on top.
+ */
+function platingBlock(
+  ctx: Ctx,
+  b: Block,
+  zb: (x: number) => number,
+  hw: (x: number) => number
+): void {
+  const { r } = ctx;
+  const span = r.hull.xMax - r.hull.xMin;
+  const rows = [0, 0.5, 1];
+  const wall = (x: number, s: 1 | -1): Column => {
+    const sheer = r.spec.sheerZ(x);
+    const p = rows.map((k): V3 => [
+      x,
+      s * hw(x),
+      zb(x) + b.h * (s > 0 ? k : 1 - k),
+    ]);
+    // Girth runs down from the deck edge, so it is negative up here.
+    const g = p.map((q) => sheer - q[2]);
+    return {
+      p,
+      uv: g.map((v) => [x / PLATE_TILE_X, v / PLATE_TILE_Y]),
+      uv1: g.map((v) => [(x - r.hull.xMin) / span, v / 40]),
+      extra: repeat(sheer, p.length),
+    };
+  };
+  const port = grid(ctx, ctx.d.hull, b.x0, b.x1, (x) => wall(x, 1));
+  if (!port) return;
+  const stbd = grid(ctx, ctx.d.hull, b.x0, b.x1, (x) => wall(x, -1));
+  if (b.roof === "pine" || b.roof === "pitch") {
+    const color = rgb(b.roof === "pitch" ? COLORS.pitchPine : COLORS.pine);
+    grid(ctx, ctx.d.deck, b.x0, b.x1, (x) => {
+      const w = hw(x);
+      const p: V3[] = [0, 1, 2, 3, 4].map((k) => [
+        x,
+        w * (1 - k / 2),
+        zb(x) + b.h,
+      ]);
+      return {
+        p,
+        color: repeat(color, p.length),
+        uv: p.map((v) => [v[0] / PLANK_TILE, v[1] / PLANK_TILE]),
+      };
+    });
+  }
+  if (port.cut && port.cutPts && stbd?.cutPts)
+    polygon(
+      ctx.d.paint,
+      [...port.cutPts, ...stbd.cutPts],
+      capFacing(ctx),
+      rgb(COLORS.interior)
+    );
+}
+
 function buildHouse(ctx: Ctx, h: House): void {
   const white = rgb(COLORS.white);
   const z = (x: number) => h.z0 + ((h.z1 - h.z0) * (x - h.x0)) / (h.x1 - h.x0);
@@ -828,15 +970,26 @@ function buildFittings(ctx: Ctx): void {
     box(paint, c, [h.x1 - h.x0, 2 * h.hw, h.h], tarp);
   }
 
+  for (const b of r.boxes ?? []) {
+    if (!inPart(ctx, b.c)) continue;
+    box(paint, b.c, b.size, rgb(b.color), b.yaw ?? 0, b.pitch ?? 0);
+  }
+
   // Bow and stern staffs.
   const wood = rgb(COLORS.wood);
   const L = r.layout;
-  const jack: V3 = [L.stemX - 0.5, 0, r.deckZ("B", L.stemX - 0.5)];
-  if (inPart(ctx, jack))
-    cylinder(paint, jack, add(jack, [0.5, 0, 6.5]), 0.09, 0.05, 6, wood);
-  const ensign: V3 = [L.sternX + 0.6, 0, r.deckZ("B", L.sternX + 0.6)];
-  if (inPart(ctx, ensign))
-    cylinder(paint, ensign, add(ensign, [-0.8, 0, 7.5]), 0.1, 0.05, 6, wood);
+  if (r.staffs) {
+    for (const st of r.staffs)
+      if (inPart(ctx, st.foot))
+        cylinder(paint, st.foot, st.top, 0.1, 0.05, 6, wood);
+  } else {
+    const jack: V3 = [L.stemX - 0.5, 0, r.deckZ("B", L.stemX - 0.5)];
+    if (inPart(ctx, jack))
+      cylinder(paint, jack, add(jack, [0.5, 0, 6.5]), 0.09, 0.05, 6, wood);
+    const ensign: V3 = [L.sternX + 0.6, 0, r.deckZ("B", L.sternX + 0.6)];
+    if (inPart(ctx, ensign))
+      cylinder(paint, ensign, add(ensign, [-0.8, 0, 7.5]), 0.1, 0.05, 6, wood);
+  }
 
   // Anchors in their recesses.
   for (const a of r.anchors) {
@@ -893,7 +1046,7 @@ function buildUnderwater(ctx: Ctx): void {
   const sheer = (x: number) => r.spec.sheerZ(x);
   const v = (p: V3) =>
     hullBuf.vertex(p, undefined, [0, 0], [0, 0], sheer(p[0]));
-  const rudderCentre: V3 = [-134, 0, 6];
+  const rudderCentre: V3 = r.rudder.centre ?? [-134, 0, 6];
   if (inPart(ctx, rudderCentre)) {
     const t = r.rudder.thickness / 2;
     const out = r.rudder.outline;
@@ -937,8 +1090,12 @@ function buildUnderwater(ctx: Ctx): void {
     }
     // Rudder post and the sole piece under the propeller aperture.
     const post = new GeoBuffer({ uv: true, uv1: true, extra: "aSheer" });
-    box(post, [-131.9, 0, 6.6], [0.55, 0.62, 12.2]);
-    box(post, [-130.9, 0, 0.35], [2.6, 0.62, 0.7]);
+    if (r.rudder.posts) {
+      for (const p of r.rudder.posts) box(post, p.c, p.size);
+    } else {
+      box(post, [-131.9, 0, 6.6], [0.55, 0.62, 12.2]);
+      box(post, [-130.9, 0, 0.35], [2.6, 0.62, 0.7]);
+    }
     mergeInto(hullBuf, post, sheer);
   }
   for (const b of r.bossings) {
@@ -1073,7 +1230,13 @@ function buildNames(ctx: Ctx): void {
           const s = n.side === "port" ? 1 : -1;
           // Read left to right from outboard: aft-to-fore to starboard.
           const x = n.x + (n.side === "port" ? 0.5 - u : u - 0.5) * n.width;
-          row.push([x, s * (r.hull.halfBreadth(x, z) + 0.035), z]);
+          // Above the sheer (a raised foredeck's plating) the side is
+          // upright at the deck edge's breadth.
+          const hb =
+            z > r.hull.zTop(x)
+              ? r.hull.topHalfBreadth(x)
+              : r.hull.halfBreadth(x, z);
+          row.push([x, s * (hb + 0.035), z]);
         }
         rowUv.push([u, v0 + k * 0.5]);
       }
@@ -1151,7 +1314,10 @@ function buildLinesAndInstances(ctx: Ctx): void {
     ctx.d.benches = r.benches.filter((b) => inPart(ctx, b.p));
     ctx.d.bollards = r.bollards.filter((b) => inPart(ctx, b.p));
   }
-  if (q.vents) ctx.d.vents = r.vents.filter((v) => inPart(ctx, v.p));
+  if (q.vents) {
+    ctx.d.vents = r.vents.filter((v) => inPart(ctx, v.p));
+    ctx.d.drums = (r.drums ?? []).filter((v) => inPart(ctx, v.p));
+  }
   if (q.rigging) {
     for (const w of r.wires)
       addLine(ctx, w.a, w.b, w.kind === "aerial" ? COLORS.rig : COLORS.rig);
@@ -1198,6 +1364,7 @@ export function buildShipPart(
     portholes: [],
     windows: [],
     vents: [],
+    drums: [],
     benches: [],
     bollards: [],
     posts: [],

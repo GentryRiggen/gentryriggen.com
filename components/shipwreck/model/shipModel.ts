@@ -26,10 +26,12 @@ import {
   type LightUniforms,
   type ShipMaterials,
 } from "./materials";
+import { lusitaniaRecipe } from "./lusitaniaRecipe";
 import {
   benchGeometry,
   boatGeometry,
   bollardGeometry,
+  drumVentGeometry,
   funnelGeometry,
   portholePaneGeometry,
   postGeometry,
@@ -47,8 +49,9 @@ import {
 } from "./titanicRecipe";
 
 /**
- * The Titanic as a three.js object tree, plus the handles the night scene
- * drives each frame without React. See README.md for the handle API.
+ * A ship (the Titanic or the Lusitania) as a three.js object tree, plus the
+ * handles the scene drives each frame without React. See README.md for the
+ * handle API.
  */
 
 export interface BoatControls {
@@ -105,7 +108,7 @@ const recipes = new WeakMap<ShipSpec, ShipRecipe>();
 export function recipeFor(spec: ShipSpec): ShipRecipe {
   let r = recipes.get(spec);
   if (!r) {
-    r = titanicRecipe(spec);
+    r = spec.id === "lusitania" ? lusitaniaRecipe(spec) : titanicRecipe(spec);
     recipes.set(spec, r);
   }
   return r;
@@ -206,9 +209,15 @@ export function createTitanicModel(
   const started = performance.now();
   const recipe = recipeFor(spec);
   const q = QUALITY[quality];
-  const textures = acquireShipTextures();
+  const shipName = recipe.paint?.name ?? "TITANIC";
+  const textures = acquireShipTextures(shipName);
   const mats: ShipMaterials = createShipMaterials(textures, {
     rivets: q.rivets,
+    hull: recipe.paint && {
+      loadWaterline: recipe.layout.loadWaterline,
+      bootTop: recipe.layout.bootTop,
+      sheerLine: recipe.paint.sheerLine,
+    },
   });
   const geometries: BufferGeometry[] = [];
   // Instanced meshes hold their instance buffers on the mesh, not the
@@ -221,7 +230,7 @@ export function createTitanicModel(
   let triangles = 0;
 
   const root = new Group();
-  root.name = "titanic";
+  root.name = spec.id;
   const whole = new Group();
   whole.name = "whole";
   const bow = new Group();
@@ -234,6 +243,7 @@ export function createTitanicModel(
   // Shared fitting geometry.
   const shared = {
     vent: own(ventGeometry(q)),
+    drum: own(drumVentGeometry(q)),
     bench: own(benchGeometry()),
     bollard: own(bollardGeometry(q)),
     post: own(postGeometry()),
@@ -345,6 +355,11 @@ export function createTitanicModel(
     );
     addInstanced(
       group,
+      instanced(shared.drum, mats.paint, d.drums.map(placementMatrix)),
+      "drum-vents"
+    );
+    addInstanced(
+      group,
       instanced(shared.bench, mats.paint, d.benches.map(placementMatrix)),
       "benches"
     );
@@ -373,7 +388,7 @@ export function createTitanicModel(
       const fg = new Group();
       fg.name = `funnel-${i}`;
       toThree([f.x, 0, f.baseZ], fg.position);
-      addMesh(fg, funnelGeometry(f, q), mats.paint, "funnel");
+      addMesh(fg, funnelGeometry(f, q, recipe.paint), mats.paint, "funnel");
       group.add(fg);
       funnels[i] = fg;
       const guys = q.rigging
@@ -472,7 +487,7 @@ export function createTitanicModel(
       for (const m of instancedMeshes) m.dispose();
       for (const g of geometries) g.dispose();
       mats.dispose();
-      releaseShipTextures();
+      releaseShipTextures(shipName);
     },
   };
 }

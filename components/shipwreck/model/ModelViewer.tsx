@@ -18,6 +18,9 @@ import {
 import { Color, PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { titanic } from "@/lib/shipwreck/ships/titanic";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type {
   ModelInfo,
   ModelViewOptions,
@@ -28,9 +31,9 @@ import type { TitanicHandles } from "./shipModel";
 
 /**
  * A neutral stage for checking the model (`/shipwreck?model`, dev and e2e
- * builds only): orbit controls, a day light or the night with bloom, and
- * `window.__shipwreck.setModelView` to set the break, lights, quality and
- * a camera preset.
+ * builds only; `&ship=lusitania` for her): orbit controls, a day light or
+ * the night with bloom, and `window.__shipwreck.setModelView` to set the
+ * break, lights, quality and a camera preset.
  */
 
 type Required3 = Required<ModelViewOptions>;
@@ -59,7 +62,17 @@ const CAMERAS: Record<
   "stern-close": { pos: [-176, 22, 52], target: [-118, 16, 0] },
   astern: { pos: [-172, 17, 0], target: [-130, 15.5, 0] },
   "break-close": { pos: [-2, 34, 72], target: [-27, 14, 0] },
+  "boat-deck": { pos: [52, 40, 52], target: [18, 26, 6] },
 };
+
+const STERN_CAMERAS: Required3["camera"][] = ["stern", "stern-close", "astern"];
+
+/** The ship named by `?ship=` (the Titanic by default). */
+function shipFromUrl(): ShipSpec {
+  if (typeof window === "undefined") return titanic;
+  const id = new URLSearchParams(window.location.search).get("ship");
+  return id === "lusitania" ? lusitania : titanic;
+}
 
 interface ModelViewerProps {
   hooksRef: RefObject<ShipwreckModelHooks | null>;
@@ -67,6 +80,7 @@ interface ModelViewerProps {
 
 export default function ModelViewer({ hooksRef }: ModelViewerProps) {
   const [view, setView] = useState<Required3>(DEFAULT_VIEW);
+  const [spec] = useState(shipFromUrl);
   const info = useRef<ModelInfo>({
     ready: false,
     calls: 0,
@@ -104,7 +118,7 @@ export default function ModelViewer({ hooksRef }: ModelViewerProps) {
         camera={{ fov: 30, near: 1, far: 4000, position: [215, 58, 190] }}
         gl={{ antialias: true }}
       >
-        <Stage view={view} onInfo={onInfo} />
+        <Stage view={view} spec={spec} onInfo={onInfo} />
       </Canvas>
     </div>
   );
@@ -112,10 +126,11 @@ export default function ModelViewer({ hooksRef }: ModelViewerProps) {
 
 interface StageProps {
   view: Required3;
+  spec: ShipSpec;
   onInfo(patch: Partial<ModelInfo>): void;
 }
 
-function Stage({ view, onInfo }: StageProps) {
+function Stage({ view, spec, onInfo }: StageProps) {
   const get = useThree((s) => s.get);
   const controls = useRef<OrbitControlsImpl>(null);
   const handles = useRef<TitanicHandles | null>(null);
@@ -139,11 +154,15 @@ function Stage({ view, onInfo }: StageProps) {
   useEffect(() => {
     const { camera } = get();
     const c = CAMERAS[view.camera];
-    camera.position.set(c.pos[0], c.pos[1], c.pos[2]);
-    controls.current?.target.set(c.target[0], c.target[1], c.target[2]);
+    // The presets frame the Titanic; slide the stern ones to this ship's.
+    const dx = STERN_CAMERAS.includes(view.camera)
+      ? spec.stations[0].x - titanic.stations[0].x
+      : 0;
+    camera.position.set(c.pos[0] + dx, c.pos[1], c.pos[2]);
+    controls.current?.target.set(c.target[0] + dx, c.target[1], c.target[2]);
     controls.current?.update();
-    camera.lookAt(new Vector3(c.target[0], c.target[1], c.target[2]));
-  }, [get, view.camera]);
+    camera.lookAt(new Vector3(c.target[0] + dx, c.target[1], c.target[2]));
+  }, [get, view.camera, spec]);
 
   const apply = useCallback(
     (h: TitanicHandles) => {
@@ -213,6 +232,7 @@ function Stage({ view, onInfo }: StageProps) {
         </>
       )}
       <TitanicModel
+        spec={spec}
         breakX={view.breakX}
         quality={view.quality}
         onReady={(h) => {
