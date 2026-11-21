@@ -114,3 +114,38 @@ it("shows the Flamelings section, with no pet names to show", () => {
   );
   expect(screen.getByText("hat · gift")).toBeInTheDocument();
 });
+
+it("shows the Shipwreck section", () => {
+  const sw = (
+    name: GameEvent["name"],
+    props: GameEvent["props"]
+  ): GameEvent => ({
+    site: "shipwreck",
+    name,
+    props,
+    day: "2026-11-20",
+  });
+  render(
+    <GamesView
+      events={[
+        sw("shipwreck_start", { mode: "real", opened: 0 }),
+        sw("shipwreck_start", { mode: "whatif", opened: 4 }),
+        sw("shipwreck_end", { mode: "real", outcome: "sank", minutes: 160 }),
+        sw("shipwreck_end", {
+          mode: "whatif",
+          outcome: "floated",
+          minutes: 300,
+        }),
+        sw("shipwreck_camera", { camera: "bridge" }),
+      ]}
+    />
+  );
+  expect(screen.getByTestId("shipwreck-starts")).toHaveTextContent("2");
+  expect(screen.getByTestId("shipwreck-sank")).toHaveTextContent("1");
+  expect(screen.getByTestId("shipwreck-floated")).toHaveTextContent("1");
+  expect(screen.getByText("whatif · floated")).toBeInTheDocument();
+  expect(screen.getByText("bridge")).toBeInTheDocument();
+  expect(screen.getByTestId("shipwreck-averages")).toHaveTextContent(
+    "4.0 openings per What if? · sank after 160 min on average"
+  );
+});

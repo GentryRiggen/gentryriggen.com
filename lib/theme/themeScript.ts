@@ -7,6 +7,9 @@ export const EVER_ONWARD_THEME_COLOR = "#020617";
 /** Flamelings' status bar: the night-purple of its home-screen icon. */
 export const FLAMELINGS_THEME_COLOR = "#2a1a4a";
 
+/** Shipwreck's status bar: the near-black night blue of its icon. */
+export const SHIPWRECK_THEME_COLOR = "#05080f";
+
 /**
  * True on /jim, which is always Ayu Mirage, so the site's light/dark
  * theme-color must not apply there. Plain string checks (no regex): the same
@@ -34,6 +37,15 @@ export function isFlamelingsPath(p: string): boolean {
   );
 }
 
+/** True on /shipwreck and its pages (always its own night blue). */
+export function isShipwreckPath(p: string): boolean {
+  return (
+    p === "/shipwreck" ||
+    p === "/shipwreck.html" ||
+    p.indexOf("/shipwreck/") === 0
+  );
+}
+
 /**
  * The theme-color a page always uses whatever the site theme, or null. iOS
  * tints the top of a home-screen app with it, so a site color there shows
@@ -43,6 +55,7 @@ export function fixedThemeColor(p: string): string | null {
   if (isJimPath(p)) return JIM_THEME_COLOR;
   if (isEverOnwardPath(p)) return EVER_ONWARD_THEME_COLOR;
   if (isFlamelingsPath(p)) return FLAMELINGS_THEME_COLOR;
+  if (isShipwreckPath(p)) return SHIPWRECK_THEME_COLOR;
   return null;
 }
 
@@ -65,11 +78,12 @@ export const THEME_SCRIPT = `
   var jim = p === '/jim' || p === '/jim.html' || p.indexOf('/jim/') === 0;
   var eo = p === '/ever-onward' || p === '/ever-onward.html' || p.indexOf('/ever-onward/') === 0;
   var fl = p === '/flamelings' || p === '/flamelings.html' || p.indexOf('/flamelings/') === 0;
+  var sw = p === '/shipwreck' || p === '/shipwreck.html' || p.indexOf('/shipwreck/') === 0;
   var themeColorMeta = document.querySelector('meta[name="theme-color"]');
   // The root layout's theme-color can come before a page's own (the order is
   // up to the build), and Safari uses the first one, so set it either way.
   if (themeColorMeta) {
-    themeColorMeta.setAttribute('content', jim ? '${JIM_THEME_COLOR}' : eo ? '${EVER_ONWARD_THEME_COLOR}' : fl ? '${FLAMELINGS_THEME_COLOR}' : theme === 'dark' ? '#030712' : '#ffffff');
+    themeColorMeta.setAttribute('content', jim ? '${JIM_THEME_COLOR}' : eo ? '${EVER_ONWARD_THEME_COLOR}' : fl ? '${FLAMELINGS_THEME_COLOR}' : sw ? '${SHIPWRECK_THEME_COLOR}' : theme === 'dark' ? '#030712' : '#ffffff');
   }
 })();
 `;

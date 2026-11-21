@@ -8,6 +8,7 @@ describe("sitemap", () => {
       "https://gentryriggen.com/plane-builder",
       "https://gentryriggen.com/planet-smasher",
       "https://gentryriggen.com/flamelings",
+      "https://gentryriggen.com/shipwreck",
       "https://gentryriggen.com/ever-onward",
     ]);
   });

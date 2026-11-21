@@ -71,3 +71,6 @@ __pycache__/
 
 # Jim's own Hosting site, built from out/ by scripts/jim-site.mjs
 /out-jim/
+
+# Screenshots taken while building a feature
+.screenshots/

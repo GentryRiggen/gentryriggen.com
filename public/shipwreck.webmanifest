@@ -1,0 +1,32 @@
+{
+  "name": "Shipwreck",
+  "short_name": "Shipwreck",
+  "description": "A realistic sinking-ship simulator.",
+  "id": "/shipwreck",
+  "start_url": "/shipwreck",
+  "scope": "/shipwreck",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#05080f",
+  "background_color": "#05080f",
+  "icons": [
+    {
+      "src": "/shipwreck-icons/icon-192-v1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/shipwreck-icons/icon-512-v1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/shipwreck-icons/icon-512-maskable-v1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

@@ -176,6 +176,7 @@ const HELP_TEXT = `Available commands:
   onward           Play Ever Onward, my incremental game
   planets          Play my planet-smashing game
   flamelings       Hatch a little flame pet
+  shipwreck        Watch the Titanic's last night
   hire me          Get in touch
   git status       Check repository status
   git blame        Find out who did it
@@ -390,6 +391,23 @@ function flamelingsOutput(): ReactNode {
   );
 }
 
+function shipwreckOutput(): ReactNode {
+  return (
+    <div className="space-y-1">
+      <p>A realistic sinking-ship simulator. The Titanic goes first 🚢</p>
+      <p>
+        Checking the bulkheads...{" "}
+        <a
+          href="/shipwreck"
+          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
+        >
+          /shipwreck
+        </a>
+      </p>
+    </div>
+  );
+}
+
 function everOnwardOutput(): ReactNode {
   return (
     <div className="space-y-1">
@@ -475,6 +493,15 @@ export function getCommandResponse(
       output: flamelingsOutput(),
       shouldClear: false,
       navigateTo: "/flamelings",
+    };
+  }
+
+  // --- shipwreck ---
+  if (lower === "shipwreck" || lower === "titanic") {
+    return {
+      output: shipwreckOutput(),
+      shouldClear: false,
+      navigateTo: "/shipwreck",
     };
   }
 

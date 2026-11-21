@@ -216,6 +216,31 @@ describe("Flamelings icon caching order", () => {
   });
 });
 
+describe("Shipwreck caching", () => {
+  it.each([
+    "/shipwreck",
+    "/shipwreck.html",
+    "/shipwreck/versions",
+    "/shipwreck/versions.html",
+    "/shipwreck-sw.js",
+    "/shipwreck.webmanifest",
+    "/shipwreck/version.json",
+    "/shipwreck-icons/**",
+  ])("%s is revalidated, so deploys land", (source) => {
+    expect(headersFor(target("main"), source)).toContainEqual({
+      key: "Cache-Control",
+      value: "no-cache",
+    });
+  });
+
+  it("lists the icons rule after the year-long image rule so it wins", () => {
+    const sources = target("main").headers.map((h) => h.source);
+    expect(sources.indexOf("/shipwreck-icons/**")).toBeGreaterThan(
+      sources.findIndex((s) => s.startsWith("**/*.@("))
+    );
+  });
+});
+
 describe("Planet Smasher caching", () => {
   it.each([
     "/planet-smasher",

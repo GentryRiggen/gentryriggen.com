@@ -217,6 +217,8 @@ describe("create", () => {
       "a flamelings subpath",
       { site: "flamelings", path: "/flamelings/versions" },
     ],
+    ["a shipwreck event", { site: "shipwreck", path: "/shipwreck" }],
+    ["a shipwreck subpath", { site: "shipwreck", path: "/shipwreck/versions" }],
   ])("allows %s", async (_label, patch) => {
     await assertSucceeds(
       addDoc(collection(anon(), "pageviews"), stamped(patch))
@@ -301,6 +303,10 @@ describe("create", () => {
     [
       "flamelings with a lookalike path",
       { site: "flamelings", path: "/flamelingsx" },
+    ],
+    [
+      "shipwreck with a lookalike path",
+      { site: "shipwreck", path: "/shipwreckx" },
     ],
     ["an unknown site jim", { site: "jim", path: "/jim" }],
     ["an oversized path", { path: "/ship-builder/" + "a".repeat(250) }],

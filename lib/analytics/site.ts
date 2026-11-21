@@ -24,5 +24,8 @@ export function siteForPath(pathname: string): Site | null {
   if (path === "/flamelings" || path.startsWith("/flamelings/")) {
     return "flamelings";
   }
+  if (path === "/shipwreck" || path.startsWith("/shipwreck/")) {
+    return "shipwreck";
+  }
   return null;
 }

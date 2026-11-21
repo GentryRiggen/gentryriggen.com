@@ -18,7 +18,11 @@ import path from "path";
  * that holds nothing touchable (a backdrop, a scene) puts `safe-area-ok:
  * <why>` in a comment on its line or the line above.
  */
-export const GAME_DIRS = ["components/ever-onward", "components/flamelings"];
+export const GAME_DIRS = [
+  "components/ever-onward",
+  "components/flamelings",
+  "components/shipwreck",
+];
 
 const ROOT = path.join(__dirname, "../../..");
 

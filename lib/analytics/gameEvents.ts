@@ -11,7 +11,8 @@
 
 import { hasOwn } from "@/lib/game-kit/compat";
 
-export type GameSite = "plane-builder" | "ship-builder" | "flamelings";
+export type GameSite =
+  "plane-builder" | "ship-builder" | "flamelings" | "shipwreck";
 
 export type PropSpec =
   | { kind: "enum"; values: readonly string[] }
@@ -89,6 +90,16 @@ export type TemplateId = (typeof TEMPLATE_IDS)[number];
 export function isTemplateId(id: string): id is TemplateId {
   return (TEMPLATE_IDS as readonly string[]).includes(id);
 }
+
+/** The cameras a Shipwreck player can pick (lib/shipwreck/types.ts). */
+const SHIPWRECK_CAMERAS = [
+  "orbit",
+  "bridge",
+  "stern",
+  "lifeboat",
+  "underwater",
+  "cinematic",
+] as const;
 
 /** The longest course is under 10 km; crash positions are 50 m buckets. */
 export const CRASH_BUCKET_METERS = 50;
@@ -339,6 +350,35 @@ export const GAME_EVENTS = {
     props: {
       via: { kind: "enum", values: ["share", "download"] },
     },
+  },
+  // ---- Shipwreck (a simulator: only modes, outcomes and whole numbers) ----
+  /** A run began: the real night, or What if? with `opened` openings made. */
+  shipwreck_start: {
+    site: "shipwreck",
+    sample: 1,
+    props: {
+      mode: { kind: "enum", values: ["real", "whatif"] },
+      opened: { kind: "int", min: 0, max: 16 },
+    },
+  },
+  /**
+   * A run ended: she sank (minutes after the collision) or floated (minutes
+   * until the player left, or 6:00 AM).
+   */
+  shipwreck_end: {
+    site: "shipwreck",
+    sample: 1,
+    props: {
+      mode: { kind: "enum", values: ["real", "whatif"] },
+      outcome: { kind: "enum", values: ["sank", "floated"] },
+      minutes: { kind: "int", min: 0, max: 600 },
+    },
+  },
+  /** A camera was picked. Players switch often, so only one in four is sent. */
+  shipwreck_camera: {
+    site: "shipwreck",
+    sample: 0.25,
+    props: { camera: { kind: "enum", values: SHIPWRECK_CAMERAS } },
   },
 } as const satisfies Record<
   string,

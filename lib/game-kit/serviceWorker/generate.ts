@@ -20,6 +20,12 @@ export const GENERATED_GAME_WORKERS: readonly GameServiceWorkerConfig[] = [
     assetPrefixes: ["/flamelings-icons/"],
     assetPaths: ["/flamelings.webmanifest"],
   },
+  {
+    slug: "shipwreck",
+    title: "Shipwreck",
+    assetPrefixes: ["/shipwreck-icons/"],
+    assetPaths: ["/shipwreck.webmanifest"],
+  },
 ];
 
 /** The file's path inside `public/`, which is also its URL. */

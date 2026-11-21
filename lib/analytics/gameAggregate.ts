@@ -92,6 +92,22 @@ export interface FlamelingsSummary {
   shares: Count[];
 }
 
+export interface ShipwreckSummary {
+  /** Runs started, and how many were each mode. */
+  starts: number;
+  modes: Count[];
+  /** Average openings made at the start of a What if? run, or null. */
+  averageOpened: number | null;
+  /** Runs ended by mode and outcome, e.g. "whatif · floated". */
+  ends: Count[];
+  sank: number;
+  floated: number;
+  /** Average minutes after the collision when she sank, or null. */
+  averageSinkMinutes: number | null;
+  /** Sampled (about 1 in 4), so only the proportions mean anything. */
+  cameras: Count[];
+}
+
 function average(values: number[]): number | null {
   return values.length === 0
     ? null
@@ -248,6 +264,25 @@ export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
         (e) =>
           `${str(e, "kind")} · ${num(e, "done") === 1 ? "done" : "started"}`
       )
+    ),
+  };
+}
+
+export function summarizeShipwreck(events: GameEvent[]): ShipwreckSummary {
+  const starts = ofName(events, "shipwreck_start");
+  const ends = ofName(events, "shipwreck_end");
+  const whatIfs = starts.filter((e) => str(e, "mode") === "whatif");
+  const sank = ends.filter((e) => str(e, "outcome") === "sank");
+  return {
+    starts: starts.length,
+    modes: tally(starts.map((e) => str(e, "mode"))),
+    averageOpened: average(whatIfs.map((e) => num(e, "opened"))),
+    ends: tally(ends.map((e) => `${str(e, "mode")} · ${str(e, "outcome")}`)),
+    sank: sank.length,
+    floated: ends.length - sank.length,
+    averageSinkMinutes: average(sank.map((e) => num(e, "minutes"))),
+    cameras: tally(
+      ofName(events, "shipwreck_camera").map((e) => str(e, "camera"))
     ),
   };
 }
