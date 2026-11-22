@@ -52,13 +52,6 @@ export interface SceneRuntime {
   walker: WalkerView | null;
   /** True while floating and looking under (clear water, her lights on). */
   walkLookUnder: boolean;
-  /** 0..1 how hard the deck is pushing the walker downhill (HUD arrows). */
-  walkSlide: number;
-  /**
-   * Which way downhill is on screen while walking: [right, ahead], a unit
-   * vector (or [0, 0] on a level deck), for the HUD's slide arrows.
-   */
-  walkDownhill: [number, number];
   /** Bumped each time the walker goes into the sea (the splash). */
   walkSplash: number;
   /** True while floating and Back on deck could put them on her now. */
@@ -131,8 +124,6 @@ export function createSceneRuntime(): SceneRuntime {
     wake: { x: 0, z: 0, dx: 1, dz: 0, amount: 0, length: 0 },
     walker: null,
     walkLookUnder: false,
-    walkSlide: 0,
-    walkDownhill: [0, 0],
     walkSplash: 0,
     walkCanReboard: false,
     walkInputOff: false,

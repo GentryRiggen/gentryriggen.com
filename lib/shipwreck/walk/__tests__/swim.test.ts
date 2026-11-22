@@ -34,13 +34,13 @@ function pose(p: Partial<BodyPose> = {}): BodyPose {
 }
 
 describe("the swimmer", () => {
-  it("paddles at 0.5 m/s", () => {
+  it("paddles at 2 m/s", () => {
     let s = { x: 0, y: -100, yaw: Math.PI };
     for (let i = 0; i < 600; i += 1)
       s = stepSwimmer(s, FORWARD, 1 / 60, [{ pose: pose(), spec }]);
-    expect(SWIM_SPEED_MS).toBe(0.5);
-    expect(Math.abs(Math.hypot(s.x, s.y + 100) - 5)).toBeLessThan(0.2);
-    expect(s.x).toBeLessThan(-4.8);
+    expect(SWIM_SPEED_MS).toBe(2);
+    expect(Math.abs(Math.hypot(s.x, s.y + 100) - 20)).toBeLessThan(0.5);
+    expect(s.x).toBeLessThan(-19.5);
   });
 
   it("turns with the look drag", () => {
@@ -85,10 +85,7 @@ describe("the swimmer", () => {
           area: "boat-deck",
           x: 10,
           y,
-          vx: 0,
-          vy: 0,
           yaw: 0,
-          sliding: true,
         };
         const s = swimmerFrom(w, p, spec, map);
         expect(
@@ -116,7 +113,6 @@ describe("placing the walker on the real night", () => {
       x: map.spawn.at[0],
       y: map.spawn.at[1],
       yaw: map.spawn.yaw,
-      sliding: false,
     });
     expect(canReboard(map, spec, sampleTrack(track, 0), track.breakX)).toBe(
       true

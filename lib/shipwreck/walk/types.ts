@@ -19,15 +19,13 @@ export interface WalkArea {
   deck: string;
   /** Extra height above that deck (e.g. a house roof); default 0. */
   raiseM?: number;
-  /** Closed polygon, counter-clockwise; edges are railings unless listed. */
+  /**
+   * Closed polygon, counter-clockwise. Every edge holds you in: edges are
+   * railings unless listed in wallEdges.
+   */
   outline: readonly V2[];
   /**
-   * Indices i of edges outline[i]→outline[i+1] that are not railings (a
-   * ladder mouth): walking through one takes you off the deck.
-   */
-  openEdges?: readonly number[];
-  /**
-   * Indices of edges that always hold, even when sliding: a house side or
+   * Indices i of edges outline[i]→outline[i+1] that are a house side or
    * bulkhead, or a rail over a lower deck rather than the sea.
    */
   wallEdges?: readonly number[];
@@ -56,26 +54,18 @@ export interface WalkMap {
 
 // --- Tuning (see README.md) -------------------------------------------------
 
-/** Below this slope (degrees) the deck feels flat. */
-export const WALK_PUSH_FROM_DEG = 10;
-/** At and above this slope you slide and cannot climb. */
-export const WALK_SLIDE_FROM_DEG = 20;
 /** Eye height over the feet (m). */
 export const WALK_EYE_M = 1.6;
 /** Water this deep over the feet (waist) puts you in the sea (m). */
 export const WALK_IN_WATER_DEPTH_M = 1.0;
-/** Knee depth (m): half speed; a railing this deep under no longer holds. */
+/** Knee depth (m): Back on deck never lands you deeper than this. */
 export const WALK_KNEE_DEPTH_M = 0.5;
-/** Walking speed on a level, dry deck (m/s). */
-export const WALK_SPEED_MS = 1.4;
+/** Walking speed on a dry deck (m/s): a brisk run, for fun (was 1.4). */
+export const WALK_SPEED_MS = 4;
 /** Turn per pixel of look drag (rad). */
 export const WALK_TURN_PER_PX = 0.005;
-/** Friction under the push between the two thresholds (μ). */
-export const WALK_FRICTION_MU = 0.35;
 /** The walker's body radius for blockers and railings (m). */
 export const WALK_RADIUS_M = 0.3;
-/** Gravity (m/s²). */
-export const WALK_G = 9.81;
 
 // --- Plan geometry ----------------------------------------------------------
 

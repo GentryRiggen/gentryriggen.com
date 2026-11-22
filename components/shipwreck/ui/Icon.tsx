@@ -24,7 +24,6 @@ export type IconName =
   | "on-deck"
   | "look-under"
   | "drag-look"
-  | "slide"
   | "rocket"
   | "boat"
   | "lights"
@@ -78,7 +77,6 @@ const PATHS: Record<IconName, string> = {
   "drag-look":
     "M10 16.5V9a1.5 1.5 0 0 1 3 0v4h3.5a2 2 0 0 1 2 2v2.5a4 4 0 0 1-4 4H12a4 4 0 0 1-3-1.4l-2.8-3.3a1.4 1.4 0 0 1 2-2L10 16.5M2.5 4.5h5M4.5 2.5l-2 2 2 2M16.5 4.5h5M19.5 2.5l2 2-2 2",
   // Two arrows down the slope.
-  slide: "M5 4l7 7 7-7M5 12l7 7 7-7",
   rocket: "M12 21v-7M12 3l2.5 5h-5zM6 9l2 2M18 9l-2 2M5 14h2M17 14h2",
   boat: "M3 14h18l-3 5H6zM8 14v-3M16 14v-3M7 11h10",
   lights: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z",

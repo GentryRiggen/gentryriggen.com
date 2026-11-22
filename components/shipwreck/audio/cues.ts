@@ -163,8 +163,6 @@ export interface CueInput {
 /** What the walk tells the sound (from the scene runtime). */
 export interface WalkCueInput {
   phase: "off" | "deck" | "water";
-  /** 0..1 how hard the deck pushes them downhill. */
-  slide: number;
   /** Bumped each time they go into the sea. */
   splash: number;
 }
@@ -376,14 +374,11 @@ export function createCueScheduler(
         nextGullAt = i.now + GULL_MIN_S + ((gulls * 0.618) % 1) * GULL_SPREAD_S;
       }
 
-      // Walking (real time, playing or not): a splash on going in, and
-      // the deck's scrape while it pushes them downhill (the scrape's own
-      // gap, ≥ 1.5 s, keeps it from piling up).
+      // Walking (real time, playing or not): a splash on going in.
       const w = i.walk;
       if (w && w.phase !== "off") {
         if (lastSplash !== null && w.splash > lastSplash && w.phase === "water")
           fire("splash", 1, i);
-        if (w.phase === "deck" && w.slide > 0) fire("scrape", w.slide, i);
       }
       if (w) lastSplash = w.splash;
 

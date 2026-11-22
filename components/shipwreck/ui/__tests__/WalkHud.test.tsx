@@ -318,24 +318,6 @@ describe("walking", () => {
     expect(store.getState().walk.phase).toBe("deck");
   });
 
-  it("shows slide arrows at the downhill edge while sliding", () => {
-    const { runtime, tick } = setup();
-    fireEvent.click(walkButton()!);
-    tick();
-    expect(screen.queryByTestId("shipwreck-walk-slide")).toBeNull();
-    runtime.walkSlide = 1;
-    runtime.walkDownhill[0] = 1;
-    runtime.walkDownhill[1] = 0;
-    tick();
-    expect(screen.getByTestId("shipwreck-walk-slide")).toHaveAttribute(
-      "data-edge",
-      "right"
-    );
-    runtime.walkSlide = 0;
-    tick();
-    expect(screen.queryByTestId("shipwreck-walk-slide")).toBeNull();
-  });
-
   it("ripples once on going in", () => {
     const { store, runtime, tick } = setup();
     fireEvent.click(walkButton()!);

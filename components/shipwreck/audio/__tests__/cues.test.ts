@@ -311,7 +311,6 @@ describe("walking cues", () => {
   type Walk = NonNullable<CueInput["walk"]>;
   const walk = (over: Partial<Walk>): Walk => ({
     phase: "deck",
-    slide: 0,
     splash: 0,
     ...over,
   });
@@ -335,35 +334,10 @@ describe("walking cues", () => {
     expect(walkCues(played)).toEqual(["splash"]);
   });
 
-  it("sliding fires scrape no more than once per 1.5 s, at the slide's level", () => {
-    const played: { cue: Cue; level: number; now: number }[] = [];
-    let now = 100;
-    const s = createCueScheduler((cue, level) =>
-      played.push({ cue, level, now })
-    );
-    for (; now < 112; now += 0.1)
-      s.update(
-        [],
-        [frame(0, 0)],
-        input({ playing: false, now, walk: walk({ slide: 0.6 }) })
-      );
-    const scrapes = played.filter((p) => p.cue === "scrape");
-    expect(scrapes.length).toBeGreaterThan(1);
-    for (let k = 1; k < scrapes.length; k += 1)
-      expect(scrapes[k].now - scrapes[k - 1].now).toBeGreaterThanOrEqual(1.5);
-    expect(scrapes[0].level).toBeCloseTo(0.6);
-  });
-
-  it("no scrape on a level deck or in the water", () => {
+  it("never scrapes on deck, however steep", () => {
     const { played, run } = setup([]);
-    for (let now = 100; now < 110; now += 0.2) {
-      run({ playing: false, now, walk: walk({ slide: 0 }) });
-      run({
-        playing: false,
-        now: now + 0.1,
-        walk: walk({ phase: "water", slide: 0.8 }),
-      });
-    }
+    for (let now = 100; now < 110; now += 0.2)
+      run({ playing: false, now, walk: walk({}) });
     expect(walkCues(played)).toEqual([]);
   });
 
@@ -373,7 +347,7 @@ describe("walking cues", () => {
       run({
         playing: false,
         now,
-        walk: walk({ phase: "off", slide: 1, splash: Math.floor(now) }),
+        walk: walk({ phase: "off", splash: Math.floor(now) }),
       });
     run({ playing: false, now: 111 });
     expect(walkCues(played)).toEqual([]);

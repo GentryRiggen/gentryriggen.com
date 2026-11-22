@@ -29,22 +29,7 @@ const OVER_BAR =
 const OVER_MARKS =
   "bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+14rem)] sm:bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+11rem)]";
 
-type Edge = "top" | "bottom" | "left" | "right";
-
-/** Where the slide arrows sit, and which way they point (Icon "slide" points down). */
-const EDGE_CLASS: Record<Edge, string> = {
-  top: "inset-x-0 top-[calc(max(0.75rem,env(safe-area-inset-top))+5.5rem)] flex justify-center [&>svg]:rotate-180",
-  bottom: `inset-x-0 ${OVER_BAR} flex justify-center`,
-  left: "left-[max(1rem,env(safe-area-inset-left))] top-1/2 -translate-y-1/2 [&>svg]:rotate-90",
-  right:
-    "right-[max(1rem,env(safe-area-inset-right))] top-1/2 -translate-y-1/2 [&>svg]:-rotate-90",
-};
-
 interface Feel {
-  /** The downhill edge while sliding, else null. */
-  edge: Edge | null;
-  /** True from half the slide up (brighter, pulsing arrows). */
-  hard: boolean;
   canReboard: boolean;
   /** The splash being rippled (its count), or 0: none. */
   ripple: number;
@@ -54,18 +39,7 @@ interface Feel {
 const RIPPLE_MS = 700;
 
 function readFeel(rt: SceneRuntime, ripple = 0): Feel {
-  const canReboard = rt.walkCanReboard;
-  if (rt.walkSlide <= 0) return { edge: null, hard: false, canReboard, ripple };
-  const [right, ahead] = rt.walkDownhill;
-  const edge: Edge =
-    Math.abs(right) > Math.abs(ahead)
-      ? right > 0
-        ? "right"
-        : "left"
-      : ahead > 0
-        ? "top"
-        : "bottom";
-  return { edge, hard: rt.walkSlide >= 0.5, canReboard, ripple };
+  return { canReboard: rt.walkCanReboard, ripple };
 }
 
 /**
@@ -88,12 +62,7 @@ function useFeel(runtime: SceneRuntime, on: boolean): Feel {
       }
       const next = readFeel(runtime, now < rippleUntil ? seen : 0);
       setFeel((f) =>
-        f.edge === next.edge &&
-        f.hard === next.hard &&
-        f.canReboard === next.canReboard &&
-        f.ripple === next.ripple
-          ? f
-          : next
+        f.canReboard === next.canReboard && f.ripple === next.ripple ? f : next
       );
       raf = requestAnimationFrame(loop);
     };
@@ -113,8 +82,8 @@ interface WalkHudProps {
 /**
  * The walk's own controls, pictures only (words only in `aria-label`):
  * the stick bottom left, drag anywhere else to look, Fly top right. In the
- * water: Back on deck (while she can be boarded) and Look under. Sliding
- * shows arrows at the downhill edge. Sits under the night HUD, whose
+ * water: Back on deck (while she can be boarded) and Look under. Sits
+ * under the night HUD, whose
  * play, speeds and timeline stay.
  */
 export default function WalkHud({
@@ -158,19 +127,6 @@ export default function WalkHud({
               />
             )
           )}
-        </div>
-      )}
-
-      {feel.edge && !water && (
-        <div
-          aria-hidden="true"
-          data-testid="shipwreck-walk-slide"
-          data-edge={feel.edge}
-          className={`pointer-events-none absolute text-amber-300 ${EDGE_CLASS[feel.edge]} ${
-            feel.hard ? "opacity-100 motion-safe:animate-pulse" : "opacity-80"
-          }`}
-        >
-          <Icon name="slide" className="size-24 drop-shadow-lg" />
         </div>
       )}
 
