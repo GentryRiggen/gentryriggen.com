@@ -63,6 +63,9 @@ export default function Timeline({ store }: TimelineProps) {
     Math.round(((s.computedT - s.minT) / Math.max(1, end - s.minT)) * 1000)
   );
   const realMinute = useStore(store, (s) => Math.floor(s.realT / 60));
+  // Walking or swimming: no event marks (they sit under Look under and
+  // Back on deck, an easy mis-tap); play, speeds and the bar stay.
+  const walking = useStore(store, (s) => s.walk.phase !== "off");
   const barRef = useRef<HTMLDivElement>(null);
   const [barPx, setBarPx] = useState(320);
   useEffect(() => {
@@ -124,7 +127,7 @@ export default function Timeline({ store }: TimelineProps) {
     // bar take touches.
     <div className="pointer-events-none relative mt-12 min-w-0 flex-1 pt-12 sm:mt-0">
       {shown.map((m, i) =>
-        rows[i] < 0 ? null : (
+        walking || rows[i] < 0 ? null : (
           <button
             key={m.kind}
             type="button"

@@ -9,6 +9,7 @@ import { PLACES_BY_SHIP, type PlaceId } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import { clockText, sinceText } from "@/lib/shipwreck/story";
+import { walkMapFor } from "@/lib/shipwreck/walk";
 import {
   CAMERA_IDS,
   SPEEDS,
@@ -19,6 +20,7 @@ import Captions from "./Captions";
 import HelpCard from "./HelpCard";
 import Icon, { type IconName } from "./Icon";
 import Timeline from "./Timeline";
+import WalkButton, { beginWalk } from "./WalkButton";
 import { FOCUS, PANEL, ROUND, ROUND_ON } from "./styles";
 
 export const CAMERA_LABEL: Record<CameraId, string> = {
@@ -28,6 +30,7 @@ export const CAMERA_LABEL: Record<CameraId, string> = {
   lifeboat: "Lifeboat",
   underwater: "Under water",
   cinematic: "Movie camera",
+  walk: "Walk the deck",
 };
 
 const CAMERA_ICON: Record<CameraId, IconName> = {
@@ -37,6 +40,7 @@ const CAMERA_ICON: Record<CameraId, IconName> = {
   lifeboat: "lifeboat",
   underwater: "underwater",
   cinematic: "cinematic",
+  walk: "walk",
 };
 
 interface HudProps {
@@ -73,6 +77,15 @@ export default function Hud({
   const camera = useStore(store, (s) => s.camera);
   const xray = useStore(store, (s) => s.xray);
   const place = useStore(store, (s) => s.place);
+  // Walking: only play, speeds, the timeline (and sound) stay.
+  const walking = camera === "walk";
+  // "Walk the deck" is in the picker only for a ship you can walk on, and
+  // (as the Walk button) needs a frame to stand on.
+  const canWalk = walkMapFor(ship.id) !== null;
+  const hasFrame = useStore(
+    store,
+    (s) => s.track !== null && s.track.frames.length > 0
+  );
   const [panel, setPanel] = useState<"places" | "cameras" | null>(null);
   const [help, setHelp] = useState(false);
 
@@ -92,6 +105,9 @@ export default function Hud({
         const v = SPEEDS[Number(e.key) - 1];
         s.setSpeed(v);
         onSpeed?.(v);
+      } else if (s.camera === "walk") {
+        // Walking: the arrows walk (WalkRunner's keys), not seek.
+        return;
       } else if (e.key === "ArrowRight") s.seek(s.t + 60);
       else if (e.key === "ArrowLeft") s.seek(s.t - 60);
       else return;
@@ -102,6 +118,12 @@ export default function Hud({
   }, [store, onSpeed, hidden]);
 
   const pickCamera = (id: CameraId) => {
+    if (id === "walk") {
+      // The Walk button's path: counted only once the walk started.
+      beginWalk(store);
+      setPanel(null);
+      return;
+    }
     store.getState().flyToPlace(null, store.getState().xray);
     store.getState().setCamera(id);
     trackCamera(id);
@@ -170,7 +192,7 @@ export default function Hud({
       <div className={`relative flex min-h-0 flex-1 justify-end ${SAFE_SIDES}`}>
         <div className="flex flex-col items-end gap-3 pt-3">
           <div className="flex items-start gap-3">
-            {panel === "places" && (
+            {panel === "places" && !walking && (
               <div
                 className={`${PANEL} pointer-events-auto flex flex-col gap-1.5 p-2`}
                 data-testid="shipwreck-places"
@@ -195,32 +217,37 @@ export default function Hud({
                 ))}
               </div>
             )}
-            {panel === "cameras" && (
+            {panel === "cameras" && !walking && (
               <div
                 className={`${PANEL} pointer-events-auto grid grid-cols-2 gap-1.5 p-2`}
                 data-testid="shipwreck-cameras"
               >
-                {CAMERA_IDS.map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-label={`Camera: ${CAMERA_LABEL[id]}`}
-                    aria-pressed={camera === id}
-                    data-testid={`shipwreck-camera-${id}`}
-                    onClick={() => pickCamera(id)}
-                    className={`flex min-h-16 w-24 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold sm:w-28 ${
-                      camera === id
-                        ? "bg-sky-500/85 text-white"
-                        : "text-slate-100 hover:bg-white/10"
-                    } ${FOCUS}`}
-                  >
-                    <Icon name={CAMERA_ICON[id]} className="size-7" />
-                    {CAMERA_LABEL[id]}
-                  </button>
-                ))}
+                {/* Walking: only on a ship with a walk map. */}
+                {CAMERA_IDS.filter((id) => id !== "walk" || canWalk).map(
+                  (id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-label={`Camera: ${CAMERA_LABEL[id]}`}
+                      aria-pressed={camera === id}
+                      data-testid={`shipwreck-camera-${id}`}
+                      disabled={id === "walk" && !hasFrame}
+                      onClick={() => pickCamera(id)}
+                      className={`flex min-h-16 w-24 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold disabled:opacity-40 sm:w-28 ${
+                        camera === id
+                          ? "bg-sky-500/85 text-white"
+                          : "text-slate-100 hover:bg-white/10"
+                      } ${FOCUS}`}
+                    >
+                      <Icon name={CAMERA_ICON[id]} className="size-7" />
+                      {CAMERA_LABEL[id]}
+                    </button>
+                  )
+                )}
               </div>
             )}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col items-end gap-3">
+              {!hidden && <WalkButton store={store} />}
               {sound && (
                 <button
                   type="button"
@@ -236,42 +263,50 @@ export default function Hud({
                   />
                 </button>
               )}
-              <button
-                type="button"
-                aria-label={
-                  xray ? "X-ray off" : "X-ray on: see the water inside"
-                }
-                aria-pressed={xray}
-                data-testid="shipwreck-xray"
-                onClick={() => store.getState().setXray(!xray)}
-                className={xray ? ROUND_ON : ROUND}
-              >
-                <Icon name="xray" className="size-8" />
-              </button>
-              <button
-                type="button"
-                aria-label="Places to visit"
-                aria-expanded={panel === "places"}
-                data-testid="shipwreck-places-button"
-                onClick={() => setPanel(panel === "places" ? null : "places")}
-                className={panel === "places" || place ? ROUND_ON : ROUND}
-              >
-                <Icon name="pin" className="size-8" />
-              </button>
-              <button
-                type="button"
-                aria-label={`Cameras (now: ${CAMERA_LABEL[camera]})`}
-                aria-expanded={panel === "cameras"}
-                data-testid="shipwreck-cameras-button"
-                onClick={() => setPanel(panel === "cameras" ? null : "cameras")}
-                className={panel === "cameras" ? ROUND_ON : ROUND}
-              >
-                <Icon name={CAMERA_ICON[camera]} className="size-8" />
-              </button>
+              {!walking && (
+                <>
+                  <button
+                    type="button"
+                    aria-label={
+                      xray ? "X-ray off" : "X-ray on: see the water inside"
+                    }
+                    aria-pressed={xray}
+                    data-testid="shipwreck-xray"
+                    onClick={() => store.getState().setXray(!xray)}
+                    className={xray ? ROUND_ON : ROUND}
+                  >
+                    <Icon name="xray" className="size-8" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Places to visit"
+                    aria-expanded={panel === "places"}
+                    data-testid="shipwreck-places-button"
+                    onClick={() =>
+                      setPanel(panel === "places" ? null : "places")
+                    }
+                    className={panel === "places" || place ? ROUND_ON : ROUND}
+                  >
+                    <Icon name="pin" className="size-8" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Cameras (now: ${CAMERA_LABEL[camera]})`}
+                    aria-expanded={panel === "cameras"}
+                    data-testid="shipwreck-cameras-button"
+                    onClick={() =>
+                      setPanel(panel === "cameras" ? null : "cameras")
+                    }
+                    className={panel === "cameras" ? ROUND_ON : ROUND}
+                  >
+                    <Icon name={CAMERA_ICON[camera]} className="size-8" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
-        {side && (
+        {side && !walking && (
           <div className="pointer-events-none absolute bottom-2 left-[max(1rem,env(safe-area-inset-left))] flex flex-col items-start gap-2">
             {side}
           </div>

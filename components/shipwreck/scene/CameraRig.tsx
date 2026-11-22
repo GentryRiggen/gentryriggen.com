@@ -38,6 +38,7 @@ import {
 } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
 import { torpedoHole } from "./Torpedo";
+import { viewDirection } from "./walkCamera";
 
 /**
  * Every camera. `orbit` is the free camera: one finger orbits, pinch or the
@@ -109,6 +110,8 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
     lastTap: { at: -1e9, x: 0, y: 0 },
     shot: "" as string,
     down: { x: 0, y: 0, at: 0 },
+    walked: false,
+    dir: [0, 0, 0] as V3,
   });
   const reducedMotion = useMemo(
     () =>
@@ -202,7 +205,9 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
         x: e.clientX,
         y: e.clientY,
       };
-      if (isDouble) flyToPoint(e.clientX, e.clientY);
+      // Walking: a double tap is a look drag's, not a fly-to.
+      if (isDouble && store.getState().camera !== "walk")
+        flyToPoint(e.clientX, e.clientY);
     };
     el.addEventListener("pointerdown", onDown);
     el.addEventListener("pointerup", onUp);
@@ -325,7 +330,38 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
     }
     const d = Math.min(0.1, dt);
 
-    if (p.camera === "orbit" || !frame) {
+    const walker = p.camera === "walk" ? runtime.walker : null;
+    if (walker) {
+      // First person: the walker's eyes, level with the horizon. The free
+      // camera's controls, its bounds and its anchor stay out of it.
+      controls.enabled = false;
+      s.fly = null;
+      s.walked = true;
+      const dir = viewDirection(walker, s.dir);
+      camera.position.set(walker.pos[0], walker.pos[1], walker.pos[2]);
+      controls.target.set(
+        walker.pos[0] + dir[0] * 10,
+        walker.pos[1] + dir[1] * 10,
+        walker.pos[2] + dir[2] * 10
+      );
+      camera.up.set(0, 1, 0);
+      camera.lookAt(controls.target);
+      const near = nearFor(0.5);
+      if (Math.abs(cam.near - near) > near * 0.1) {
+        cam.near = near;
+        cam.updateProjectionMatrix();
+      }
+      runtime.underwater = camera.position.y < 0;
+      return;
+    }
+    if (s.walked) {
+      // Back from walking: the free camera carries on from the eyes.
+      s.walked = false;
+      controls.enabled = true;
+      reanchor();
+    }
+
+    if (p.camera === "orbit" || p.camera === "walk" || !frame) {
       // Ride with the anchored part.
       if (s.anchor && !runtime.part(s.anchor)) {
         // The break: hand the anchor to the half under the target.

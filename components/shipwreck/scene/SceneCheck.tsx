@@ -5,6 +5,12 @@ import { playback } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import type { ShipId } from "@/lib/shipwreck/ships/types";
 import NightScene from "./NightScene";
+import type { SceneRuntime } from "./runtime";
+
+interface SceneCheckProps {
+  /** The runtime the test hooks read the walker from. */
+  runtime?: SceneRuntime;
+}
 
 /**
  * The checking entry for the night (`/shipwreck?scene`, dev and e2e builds
@@ -13,7 +19,7 @@ import NightScene from "./NightScene";
  * `&quality=high|medium|low` to pin a tier (the frame-rate monitor is off),
  * `&ship=lusitania` for her real afternoon (default the Titanic's night).
  */
-export default function SceneCheck() {
+export default function SceneCheck({ runtime }: SceneCheckProps) {
   const params =
     typeof window === "undefined"
       ? null
@@ -50,7 +56,11 @@ export default function SceneCheck() {
       // safe-area-ok: a full-bleed stage for checking the scene, no controls
       className="fixed inset-0 bg-[#02040a]"
     >
-      <NightScene store={playback} autoQuality={pinned === null} />
+      <NightScene
+        store={playback}
+        autoQuality={pinned === null}
+        runtime={runtime}
+      />
     </div>
   );
 }

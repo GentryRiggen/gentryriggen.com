@@ -39,12 +39,14 @@ import {
   useShipwreckSave,
 } from "@/lib/shipwreck/useSave";
 import { useShipwreckSound } from "./audio/useShipwreckSound";
+import { createSceneRuntime } from "./scene/runtime";
 import { sceneHooks } from "./scene/sceneHooks";
 import EndCard from "./ui/EndCard";
 import Hud from "./ui/Hud";
 import NightPanels from "./ui/NightPanels";
 import ShipwreckErrorBoundary from "./ui/ShipwreckErrorBoundary";
 import TitleScreen from "./ui/TitleScreen";
+import WalkHud from "./ui/WalkHud";
 import { useAtStoryEnd } from "./ui/useTimelineEnd";
 import WhatIfEditor, {
   realWhatIfIds,
@@ -108,6 +110,8 @@ export default function Shipwreck() {
     () => false
   );
   const modelHooks = useRef<ShipwreckModelHooks | null>(null);
+  // The scene's runtime, shared with the walk controls over it.
+  const runtime = useMemo(() => createSceneRuntime(), []);
   const isGame = !isModelView && !isSceneView;
 
   const [screen, setScreen] = useState<Screen>("title");
@@ -237,6 +241,7 @@ export default function Shipwreck() {
   );
 
   const leaveNight = useCallback(() => {
+    playback.getState().leaveWalk();
     const s = playback.getState();
     if (run && recorded.current !== run.id) {
       // Left before the end: count it if they watched a minute or more.
@@ -282,11 +287,15 @@ export default function Shipwreck() {
         () => modelHooks.current
       );
     if (isSceneView)
-      return installTestHooks(() => "scene", undefined, sceneHooks(playback));
+      return installTestHooks(
+        () => "scene",
+        undefined,
+        sceneHooks(playback, runtime)
+      );
     return installTestHooks(
       () => screenRef.current,
       undefined,
-      sceneHooks(playback),
+      sceneHooks(playback, runtime),
       {
         setShip: (id) => {
           if (!(SHIP_IDS as readonly string[]).includes(id)) return;
@@ -305,12 +314,12 @@ export default function Shipwreck() {
         },
       }
     );
-  }, [isModelView, isSceneView, startRun, pickShip]);
+  }, [isModelView, isSceneView, startRun, pickShip, runtime]);
 
   useVisibilityPause({ onPersist: persist });
 
   const soundOn = save.settings.sound;
-  useShipwreckSound(playback, isGame && screen === "night", soundOn);
+  useShipwreckSound(playback, isGame && screen === "night", soundOn, runtime);
   const toggleSound = useCallback(() => {
     update((v) => ({ ...v, settings: { ...v.settings, sound: !soundOn } }));
     persist();
@@ -332,7 +341,7 @@ export default function Shipwreck() {
   });
 
   if (isModelView && ModelViewer) return <ModelViewer hooksRef={modelHooks} />;
-  if (isSceneView && SceneCheck) return <SceneCheck />;
+  if (isSceneView && SceneCheck) return <SceneCheck runtime={runtime} />;
 
   // At the end the run is done, so the track no longer changes.
   const endTrack = showEnd && hasTrack ? playback.getState().track : null;
@@ -348,7 +357,7 @@ export default function Shipwreck() {
       {/* safe-area-ok: the full-bleed 3D stage; the UI above pads itself */}
       <div className="absolute inset-0" data-testid="shipwreck-stage">
         <ShipwreckErrorBoundary>
-          <NightScene store={playback} />
+          <NightScene store={playback} runtime={runtime} />
         </ShipwreckErrorBoundary>
       </div>
       {screen === "title" && (
@@ -369,6 +378,9 @@ export default function Shipwreck() {
           onBack={() => setScreen("title")}
           onGo={(choice) => startRun("whatif", choice)}
         />
+      )}
+      {screen === "night" && run && (
+        <WalkHud store={playback} runtime={runtime} hidden={showEnd} />
       )}
       {screen === "night" && run && (
         <Hud

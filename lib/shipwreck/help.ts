@@ -2,6 +2,16 @@ import { PLACES_BY_SHIP } from "./places";
 import { titanic } from "./ships/titanic";
 import type { ShipSpec } from "./ships/types";
 import type { SimFrame } from "./sim/track";
+import { walkMapFor } from "./walk";
+
+/** The controls card's walk line (a ship you can walk on only). */
+function walkLines(ship: ShipSpec): string[] {
+  return walkMapFor(ship.id)
+    ? [
+        "The walking button puts you on her deck: the stick walks, drag to look. If she sinks under you, you float; the eye button looks under the water, and the bird button goes back to flying.",
+      ]
+    : [];
+}
 
 /** What a help card says. Short words: the players are young. */
 export interface Help {
@@ -106,6 +116,7 @@ function torpedoHelp(
           "Drag the timeline, or tap an icon on it, to jump to that moment.",
           `X-ray shows the water inside. The pins fly you to ${placeList(ship)}.`,
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
+          ...walkLines(ship),
         ],
       };
   }
@@ -165,6 +176,7 @@ export function helpFor(
           "Drag the timeline, or tap an icon on it, to jump to that moment.",
           "X-ray shows the water inside. The pins fly you to the Bridge, the Grand Staircase, Boiler Room 6 and the Engine Room.",
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
+          ...walkLines(ship),
         ],
       };
   }

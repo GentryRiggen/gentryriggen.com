@@ -64,6 +64,18 @@ button:focus-visible {
 }
 
 /* Terminal cursor blink animation */
+/* Shipwreck: going into the sea, rings of water wipe out from the middle. */
+@keyframes shipwreck-ripple {
+  from {
+    transform: scale(0.1);
+    opacity: 0.95;
+  }
+  to {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
 @keyframes blink {
   0%,
   100% {

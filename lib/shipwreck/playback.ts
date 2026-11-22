@@ -1,4 +1,5 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
+import { resetWalkInput, walkMapFor } from "./walk";
 import { placeFor, type PlaceId } from "./places";
 import type { Opening, ShipId, ShipSpec } from "./ships/types";
 import { createSimRunner, type SimOptions, type SimRunner } from "./sim/run";
@@ -40,6 +41,16 @@ export interface ShipView {
   snap?: boolean;
 }
 
+/** The walker's state; the scene decides deck or water when `seq` changes. */
+export interface WalkState {
+  phase: "off" | "deck" | "water";
+  lookUnder: boolean;
+  /** Bumped whenever the walker must be re-placed (start, seek, back on deck). */
+  seq: number;
+}
+
+const WALK_OFF: WalkState = { phase: "off", lookUnder: false, seq: 0 };
+
 /** What a run is started with beyond its openings. */
 export type RunOptions = Pick<SimOptions, "portholesOpen">;
 
@@ -76,6 +87,7 @@ export interface PlaybackState {
   /** True while the cinematic camera holds ×1 for the break or the plunge. */
   slowMo: boolean;
   camera: CameraId;
+  walk: WalkState;
   quality: QualityTier;
   xray: boolean;
   place: PlaceId | null;
@@ -119,6 +131,19 @@ export interface PlaybackActions {
   setCamera(camera: CameraId): void;
   /** Switches to the free camera from the current view, without a snap. */
   takeControl(): void;
+  /** Walk the deck (no-op for a ship without a walk map). */
+  startWalk(): void;
+  /** Back to the orbit camera; zeroes the walk controls. */
+  leaveWalk(): void;
+  /**
+   * The walker is in the water. `steppedIn` (default true) is a real step or
+   * slide off her deck: then, from the deck, the speed drops (see
+   * speedOnGoingIn). False when re-placing found nowhere to stand: no change.
+   */
+  wentInWater(steppedIn?: boolean): void;
+  /** The walker is back on the deck. */
+  backOnDeck(): void;
+  setLookUnder(on: boolean): void;
   setQuality(quality: QualityTier): void;
   setXray(on: boolean): void;
   /** Flies the free camera to a place (X-ray on for the interior places). */
@@ -147,6 +172,7 @@ const INITIAL: PlaybackState = {
   speed: 10,
   slowMo: false,
   camera: "orbit",
+  walk: WALK_OFF,
   // iPad first: start at medium; the scene's PerformanceMonitor steps up.
   quality: "medium",
   xray: false,
@@ -156,6 +182,32 @@ const INITIAL: PlaybackState = {
   flyView: null,
   speedTouchedAt: -Infinity,
 };
+
+/**
+ * Going in this close (s of sim time) before her last piece goes under drops
+ * the speed to ×1, so Look under shows her go down.
+ */
+export const WATCH_HER_GO_S = 300;
+
+/**
+ * The speed change when the walker goes into the water from her deck: ×1 if
+ * her last piece goes under within WATCH_HER_GO_S, else at most ×10 (a faster
+ * speed comes down to ×10, a slower one stays). When she has gone under is
+ * `track.sankAtT`, which the run sets as soon as its computed frames reach
+ * it: while it is null she is afloat through every frame computed so far, so
+ * she is not known to go soon. The player can speed up again either way.
+ */
+export function speedOnGoingIn(
+  track: SimTrack | null,
+  t: number,
+  speed: Speed
+): Partial<Pick<PlaybackState, "speed" | "slowMo">> {
+  const sank = track?.sankAtT ?? null;
+  if (sank !== null && sank >= t && sank - t <= WATCH_HER_GO_S)
+    return { speed: 1, slowMo: false };
+  if (speed > 10) return { speed: 10, slowMo: false };
+  return {};
+}
 
 /** True when `t` is inside the slow-mo windows of `track`. */
 export function inSlowMoWindow(track: SimTrack | null, t: number): boolean {
@@ -229,133 +281,199 @@ export function createPlaybackStore(
       createSimRunner(spec, openings, o));
   let runner: SimRunner | null = null;
 
-  return createStore<PlaybackState & PlaybackActions>()((set, get) => ({
-    ...INITIAL,
-    start(spec, openings, options = {}) {
-      runner = makeRunner(spec, openings, options);
-      const pre = openings.length > 0 ? (spec.preRollS ?? 0) : 0;
-      const minT = pre > 0 ? -pre : 0;
-      set({
-        ship: spec.id,
-        track: null,
-        openings,
-        computedT: 0,
-        done: false,
-        progress: 0,
-        t: minT,
-        realT: minT,
-        minT,
-        slowMo: false,
-        place: null,
-        snapId: get().snapId + 1,
-      });
-    },
-    setShip(ship) {
-      if (ship === get().ship) return;
-      runner = null;
-      set({
-        ship,
-        track: null,
-        openings: [],
-        computedT: 0,
-        done: false,
-        progress: 0,
-        t: 0,
-        realT: 0,
-        minT: 0,
-        playing: false,
-        slowMo: false,
-        place: null,
-        placeWaterM: 0,
-        flyView: null,
-        snapId: get().snapId + 1,
-      });
-    },
-    pump(budgetMs = RUNNER_BUDGET_MS) {
-      if (!runner || get().done) return;
-      const done = runner.advance(budgetMs);
-      const track = runner.track();
-      const computedT = done ? Math.max(lastT(track), 0) : lastT(track);
-      set({
-        // A new object each pump so subscribers see the track grow.
-        track: { ...track },
-        computedT,
-        done,
-        progress: done ? 1 : runner.progress(),
-      });
-    },
-    tick(dtReal, nowS) {
+  return createStore<PlaybackState & PlaybackActions>()((set, get) => {
+    /** Walk off, the camera back to orbit if it was walking. */
+    const walkOff = (): Partial<PlaybackState> => {
+      resetWalkInput();
       const s = get();
-      if (!s.playing || !s.track || !(dtReal > 0)) return;
-      const speed = effectiveSpeed(s, nowS);
-      const end = s.computedT;
-      const t = Math.min(end, s.t + dtReal * speed);
-      const atEnd = s.done && t >= end;
-      const slowMo = speed !== s.speed;
-      set({
-        t,
-        realT: realTimeAt(s.track, t),
-        playing: !atEnd,
-        ...(slowMo !== s.slowMo ? { slowMo } : {}),
-      });
-    },
-    play() {
-      const s = get();
-      // Playing from the end starts the night again.
-      if (s.done && s.t >= s.computedT)
-        set({ t: s.minT, realT: s.minT, snapId: s.snapId + 1 });
-      set({ playing: true });
-    },
-    pause() {
-      set({ playing: false });
-    },
-    setSpeed(speed, nowS = performance.now() / 1000) {
-      set({ speed, speedTouchedAt: nowS, slowMo: false });
-    },
-    seek(t) {
-      const s = get();
-      const clamped = Math.max(s.minT, Math.min(s.computedT, t));
-      set({
-        t: clamped,
-        realT: realTimeAt(s.track, clamped),
-        snapId: s.snapId + 1,
-      });
-    },
-    setCamera(camera) {
-      set({ camera, snapId: get().snapId + 1 });
-    },
-    takeControl() {
-      if (get().camera !== "orbit") set({ camera: "orbit" });
-    },
-    setQuality(quality) {
-      set({ quality });
-    },
-    setXray(xray) {
-      set({ xray });
-    },
-    flyToPlace(place, xray) {
-      const s = get();
-      set({
-        place,
-        camera: place ? "orbit" : s.camera,
-        xray: xray ?? (placeFor(s.ship, place)?.interior ? true : s.xray),
-        flyId: s.flyId + 1,
-        flyView: null,
-      });
-    },
-    setPlaceWater(depthM) {
-      if (Math.abs(depthM - get().placeWaterM) >= 0.05)
-        set({ placeWaterM: depthM });
-    },
-    flyToView(view) {
-      const s = get();
-      set({ place: null, camera: "orbit", flyView: view, flyId: s.flyId + 1 });
-    },
-    reset() {
-      runner = null;
-      set({ ...INITIAL, snapId: get().snapId + 1 });
-    },
-  }));
+      return {
+        walk: { phase: "off", lookUnder: false, seq: s.walk.seq },
+        ...(s.camera === "walk" ? { camera: "orbit" as const } : {}),
+      };
+    };
+    return {
+      ...INITIAL,
+      start(spec, openings, options = {}) {
+        runner = makeRunner(spec, openings, options);
+        const pre = openings.length > 0 ? (spec.preRollS ?? 0) : 0;
+        const minT = pre > 0 ? -pre : 0;
+        set({
+          ship: spec.id,
+          track: null,
+          openings,
+          computedT: 0,
+          done: false,
+          progress: 0,
+          t: minT,
+          realT: minT,
+          minT,
+          slowMo: false,
+          place: null,
+          ...walkOff(),
+          snapId: get().snapId + 1,
+        });
+      },
+      setShip(ship) {
+        if (ship === get().ship) return;
+        runner = null;
+        set({
+          ship,
+          track: null,
+          openings: [],
+          computedT: 0,
+          done: false,
+          progress: 0,
+          t: 0,
+          realT: 0,
+          minT: 0,
+          playing: false,
+          slowMo: false,
+          place: null,
+          placeWaterM: 0,
+          flyView: null,
+          ...walkOff(),
+          snapId: get().snapId + 1,
+        });
+      },
+      pump(budgetMs = RUNNER_BUDGET_MS) {
+        if (!runner || get().done) return;
+        const done = runner.advance(budgetMs);
+        const track = runner.track();
+        const computedT = done ? Math.max(lastT(track), 0) : lastT(track);
+        set({
+          // A new object each pump so subscribers see the track grow.
+          track: { ...track },
+          computedT,
+          done,
+          progress: done ? 1 : runner.progress(),
+        });
+      },
+      tick(dtReal, nowS) {
+        const s = get();
+        if (!s.playing || !s.track || !(dtReal > 0)) return;
+        const speed = effectiveSpeed(s, nowS);
+        const end = s.computedT;
+        const t = Math.min(end, s.t + dtReal * speed);
+        const atEnd = s.done && t >= end;
+        const slowMo = speed !== s.speed;
+        set({
+          t,
+          realT: realTimeAt(s.track, t),
+          playing: !atEnd,
+          ...(slowMo !== s.slowMo ? { slowMo } : {}),
+        });
+      },
+      play() {
+        const s = get();
+        // Playing from the end starts the night again.
+        if (s.done && s.t >= s.computedT)
+          set({ t: s.minT, realT: s.minT, snapId: s.snapId + 1 });
+        set({ playing: true });
+      },
+      pause() {
+        set({ playing: false });
+      },
+      setSpeed(speed, nowS = performance.now() / 1000) {
+        set({ speed, speedTouchedAt: nowS, slowMo: false });
+      },
+      seek(t) {
+        const s = get();
+        const clamped = Math.max(s.minT, Math.min(s.computedT, t));
+        set({
+          t: clamped,
+          realT: realTimeAt(s.track, clamped),
+          snapId: s.snapId + 1,
+          ...(s.walk.phase !== "off"
+            ? { walk: { ...s.walk, seq: s.walk.seq + 1 } }
+            : {}),
+        });
+      },
+      setCamera(camera) {
+        if (camera === "walk") {
+          get().startWalk();
+          return;
+        }
+        set({ ...walkOff(), camera, snapId: get().snapId + 1 });
+      },
+      takeControl() {
+        if (get().camera !== "orbit") set({ ...walkOff(), camera: "orbit" });
+      },
+      startWalk() {
+        const s = get();
+        if (!walkMapFor(s.ship)) return;
+        set({
+          camera: "walk",
+          walk: { phase: "deck", lookUnder: false, seq: s.walk.seq + 1 },
+          snapId: s.snapId + 1,
+        });
+      },
+      leaveWalk() {
+        set({ ...walkOff(), camera: "orbit", snapId: get().snapId + 1 });
+      },
+      wentInWater(steppedIn = true) {
+        const s = get();
+        if (s.walk.phase === "off") return;
+        set({
+          walk: { ...s.walk, phase: "water" },
+          ...(s.walk.phase === "deck" && steppedIn
+            ? speedOnGoingIn(s.track, s.t, s.speed)
+            : {}),
+        });
+      },
+      backOnDeck() {
+        const s = get();
+        if (s.walk.phase === "off") return;
+        set({
+          walk: { phase: "deck", lookUnder: false, seq: s.walk.seq + 1 },
+        });
+      },
+      setLookUnder(on) {
+        const s = get();
+        if (s.walk.phase === "off") return;
+        set({ walk: { ...s.walk, lookUnder: on } });
+      },
+      setQuality(quality) {
+        set({ quality });
+      },
+      setXray(xray) {
+        set({ xray });
+      },
+      flyToPlace(place, xray) {
+        const s = get();
+        set({
+          ...(place ? walkOff() : {}),
+          place,
+          camera: place ? "orbit" : s.camera,
+          xray: xray ?? (placeFor(s.ship, place)?.interior ? true : s.xray),
+          flyId: s.flyId + 1,
+          flyView: null,
+        });
+      },
+      setPlaceWater(depthM) {
+        if (Math.abs(depthM - get().placeWaterM) >= 0.05)
+          set({ placeWaterM: depthM });
+      },
+      flyToView(view) {
+        const s = get();
+        set({
+          ...walkOff(),
+          place: null,
+          camera: "orbit",
+          flyView: view,
+          flyId: s.flyId + 1,
+        });
+      },
+      reset() {
+        runner = null;
+        resetWalkInput();
+        set({
+          ...INITIAL,
+          walk: { ...WALK_OFF, seq: get().walk.seq },
+          snapId: get().snapId + 1,
+        });
+      },
+    };
+  });
 }
 
 /** The game's one playback store. */

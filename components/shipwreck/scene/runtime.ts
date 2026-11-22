@@ -2,6 +2,7 @@ import type { Group } from "three";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import type { PlaceId } from "@/lib/shipwreck/places";
 import type { SimFrame } from "@/lib/shipwreck/sim/track";
+import type { WalkerView } from "./walkCamera";
 
 /**
  * What the scene's parts share each frame without React: the sampled sim
@@ -39,6 +40,44 @@ export interface SceneRuntime {
     amount: number;
     length: number;
   };
+  /**
+   * Walking (WalkRunner, priority −1.5): the first-person eyes, null when
+   * not walking; CameraRig stands the camera there on the "walk" camera.
+   */
+  walker: WalkerView | null;
+  /** True while floating and looking under (clear water, her lights on). */
+  walkLookUnder: boolean;
+  /** 0..1 how hard the deck is pushing the walker downhill (HUD arrows). */
+  walkSlide: number;
+  /**
+   * Which way downhill is on screen while walking: [right, ahead], a unit
+   * vector (or [0, 0] on a level deck), for the HUD's slide arrows.
+   */
+  walkDownhill: [number, number];
+  /** Bumped each time the walker goes into the sea (the splash). */
+  walkSplash: number;
+  /** True while floating and Back on deck could put them on her now. */
+  walkCanReboard: boolean;
+  /**
+   * True while the walk controls are hidden (the end card): the keys and any
+   * held input do not move the walker. Written by WalkHud.
+   */
+  walkInputOff: boolean;
+  /** For the test hooks: where the walker is (null when not walking). */
+  walkInfo: WalkInfo | null;
+}
+
+/** The walker for the test hooks. */
+export interface WalkInfo {
+  phase: "deck" | "water";
+  part: "whole" | "bow" | "stern" | null;
+  /** Ship frame on deck (m), earth frame in the water. */
+  x: number;
+  y: number;
+  slopeDeg: number;
+  /** Sea over the feet (m; negative when dry); 0 in the water. */
+  depthM: number;
+  area: string | null;
 }
 
 export function createSceneRuntime(): SceneRuntime {
@@ -57,6 +96,19 @@ export function createSceneRuntime(): SceneRuntime {
     underwater: false,
     pins: new Map(),
     wake: { x: 0, z: 0, dx: 1, dz: 0, amount: 0, length: 0 },
+    walker: null,
+    walkLookUnder: false,
+    walkSlide: 0,
+    walkDownhill: [0, 0],
+    walkSplash: 0,
+    walkCanReboard: false,
+    walkInputOff: false,
+    walkInfo: null,
   };
   return rt;
+}
+
+/** Stops (or lets) the walk input move the walker: the end card's gate. */
+export function setWalkInputOff(runtime: SceneRuntime, off: boolean): void {
+  runtime.walkInputOff = off;
 }

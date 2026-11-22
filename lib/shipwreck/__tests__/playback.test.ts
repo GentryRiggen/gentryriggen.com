@@ -5,7 +5,11 @@ import {
   inSlowMoWindow,
   phaseAt,
   realTimeAt,
+  speedOnGoingIn,
+  WATCH_HER_GO_S,
 } from "../playback";
+import type { Speed } from "../types";
+import { walkInput } from "../walk";
 import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
 import type { SimRunner } from "../sim/run";
@@ -345,5 +349,177 @@ describe("playback: the ship on the stage", () => {
     store.getState().flyToPlace("starboard-bunker");
     expect(store.getState().place).toBe("starboard-bunker");
     expect(store.getState().xray).toBe(true);
+  });
+});
+
+describe("playback: walking", () => {
+  function started(spec = titanic) {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(1000, 1000),
+    });
+    store.getState().start(spec, spec.realNight);
+    store.getState().pump();
+    return store;
+  }
+
+  it("startWalk sets the camera and the deck phase", () => {
+    const store = started();
+    store.getState().startWalk();
+    const s = store.getState();
+    expect(s.camera).toBe("walk");
+    expect(s.walk.phase).toBe("deck");
+    expect(s.walk.seq).toBe(1);
+  });
+
+  it("startWalk does nothing for a ship without a map", () => {
+    const store = started();
+    store.getState().setShip("nope" as never);
+    store.getState().startWalk();
+    expect(store.getState().camera).toBe("orbit");
+    expect(store.getState().walk.phase).toBe("off");
+  });
+
+  it("leaveWalk returns to orbit and zeroes the walk input", () => {
+    const store = started();
+    store.getState().startWalk();
+    walkInput.forward = 1;
+    walkInput.lookDx = 40;
+    store.getState().leaveWalk();
+    expect(store.getState().camera).toBe("orbit");
+    expect(store.getState().walk.phase).toBe("off");
+    expect(walkInput.forward).toBe(0);
+    expect(walkInput.lookDx).toBe(0);
+  });
+
+  it("seek re-places the walker", () => {
+    const store = started();
+    store.getState().startWalk();
+    store.getState().wentInWater();
+    const seq = store.getState().walk.seq;
+    store.getState().seek(500);
+    expect(store.getState().walk.seq).toBe(seq + 1);
+    expect(store.getState().walk.phase).toBe("water");
+    store.getState().backOnDeck();
+    expect(store.getState().walk.phase).toBe("deck");
+    expect(store.getState().walk.seq).toBe(seq + 2);
+  });
+
+  it("seek does not touch the walk seq when not walking", () => {
+    const store = started();
+    store.getState().seek(500);
+    expect(store.getState().walk.seq).toBe(0);
+  });
+
+  it("restart and ship change clear walk", () => {
+    const store = started();
+    store.getState().startWalk();
+    store.getState().setLookUnder(true);
+    walkInput.strafe = 1;
+    store.getState().start(titanic, titanic.realNight);
+    expect(store.getState().walk.phase).toBe("off");
+    expect(store.getState().camera).toBe("orbit");
+    expect(walkInput.strafe).toBe(0);
+
+    store.getState().startWalk();
+    store.getState().setShip("lusitania");
+    expect(store.getState().walk.phase).toBe("off");
+    expect(store.getState().walk.lookUnder).toBe(false);
+    expect(store.getState().camera).toBe("orbit");
+
+    store.getState().setShip("titanic");
+    store.getState().startWalk();
+    store.getState().reset();
+    expect(store.getState().walk.phase).toBe("off");
+  });
+
+  it("setCamera away from walk and takeControl turn walk off", () => {
+    const store = started();
+    store.getState().startWalk();
+    store.getState().setCamera("bridge");
+    expect(store.getState().camera).toBe("bridge");
+    expect(store.getState().walk.phase).toBe("off");
+    store.getState().startWalk();
+    store.getState().takeControl();
+    expect(store.getState().camera).toBe("orbit");
+    expect(store.getState().walk.phase).toBe("off");
+  });
+
+  it("flying to a place or a view turns walk off", () => {
+    const store = started();
+    store.getState().startWalk();
+    walkInput.forward = 1;
+    store.getState().flyToPlace("bridge");
+    expect(store.getState().camera).toBe("orbit");
+    expect(store.getState().walk.phase).toBe("off");
+    expect(walkInput.forward).toBe(0);
+    store.getState().startWalk();
+    store.getState().flyToView({ target: [0, 0, 20], cam: [40, 0, 30] });
+    expect(store.getState().camera).toBe("orbit");
+    expect(store.getState().walk.phase).toBe("off");
+  });
+
+  /** Walking with her last piece going under at `sankAtT` (or not known). */
+  function walkingAt(t: number, sankAtT: number | null, speed: Speed) {
+    const store = started();
+    const track = store.getState().track!;
+    store.setState({ track: { ...track, sankAtT } });
+    store.getState().seek(t);
+    store.getState().setSpeed(speed);
+    store.getState().startWalk();
+    return store;
+  }
+
+  it("going in within 5 minutes of her going under drops the speed to x1", () => {
+    const store = walkingAt(400, 400 + WATCH_HER_GO_S, 100);
+    store.getState().wentInWater();
+    expect(store.getState().speed).toBe(1);
+    // The player can speed up again; already in the water changes nothing.
+    store.getState().setSpeed(30);
+    store.getState().wentInWater();
+    expect(store.getState().speed).toBe(30);
+  });
+
+  it("going in earlier brings a speed above x10 down to x10", () => {
+    const store = walkingAt(100, 100 + WATCH_HER_GO_S + 10, 100);
+    store.getState().wentInWater();
+    expect(store.getState().speed).toBe(10);
+    // Not known to go under yet (sankAtT null): the same.
+    const unknown = walkingAt(100, null, 30);
+    unknown.getState().wentInWater();
+    expect(unknown.getState().speed).toBe(10);
+  });
+
+  it("going in earlier leaves x10 and slower alone", () => {
+    for (const speed of [1, 10] as const) {
+      const store = walkingAt(100, null, speed);
+      store.getState().wentInWater();
+      expect(store.getState().speed).toBe(speed);
+    }
+  });
+
+  it("re-placing into the water (not stepping in) keeps the speed", () => {
+    const store = walkingAt(400, 450, 100);
+    store.getState().wentInWater(false);
+    expect(store.getState().walk.phase).toBe("water");
+    expect(store.getState().speed).toBe(100);
+  });
+
+  it("speedOnGoingIn ignores a sinking already past", () => {
+    const track = fakeTrack(1000, { sankAtT: 300 });
+    expect(speedOnGoingIn(track, 400, 100)).toEqual({
+      speed: 10,
+      slowMo: false,
+    });
+    expect(speedOnGoingIn(track, 250, 100)).toEqual({
+      speed: 1,
+      slowMo: false,
+    });
+    expect(speedOnGoingIn(null, 0, 10)).toEqual({});
+  });
+
+  it("setCamera('walk') starts the walk", () => {
+    const store = started();
+    store.getState().setCamera("walk");
+    expect(store.getState().walk.phase).toBe("deck");
   });
 });

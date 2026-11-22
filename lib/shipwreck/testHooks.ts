@@ -94,6 +94,35 @@ export interface ShipwreckSceneHooks {
   } | null;
   /** Whether a named scene object ("iceberg", "coast") is on screen. */
   isShown(name: string): boolean;
+  /**
+   * Steps the night's computation for up to `budgetMs` now (the game does
+   * 6 ms a frame; software WebGL draws few frames, so e2e computes ahead).
+   */
+  pump(budgetMs: number): void;
+  /** Walk the deck (as the Walk button does; no-op without a walk map). */
+  startWalk(): void;
+  /** Holds the stick at `forward` and `strafe` (each −1..1; 0, 0 lets go). */
+  setWalkInput(forward: number, strafe: number): void;
+  /** Turns the walker's view by `yawRad` (positive: to the left). */
+  turnWalk(yawRad: number): void;
+  /** Where the walker is, or null when not walking. */
+  getWalk(): WalkHookInfo | null;
+  setLookUnder(on: boolean): void;
+}
+
+/** What `getWalk()` reports. */
+export interface WalkHookInfo {
+  /** "deck" | "water". */
+  phase: string;
+  /** The piece underfoot ("whole" | "bow" | "stern"), "none" in the water. */
+  part: string;
+  /** Ship frame on deck (m), earth frame in the water. */
+  x: number;
+  y: number;
+  slopeDeg: number;
+  /** Sea over the feet (m; negative when dry); 0 in the water. */
+  depthM: number;
+  lookUnder: boolean;
 }
 
 /** The game's own hooks: start a run, read where it is and how it ended. */

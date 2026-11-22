@@ -55,3 +55,19 @@ describe("the Lusitania's help", () => {
     );
   });
 });
+
+describe("the walk line", () => {
+  it("tells parents about the walking button on both ships", () => {
+    for (const ship of [titanic, lusitania])
+      expect(helpFor("controls", null, ship).lines.join(" ")).toMatch(
+        /walking button puts you on her deck/
+      );
+  });
+
+  it("is left out for a ship you cannot walk on", () => {
+    const noWalk = { ...titanic, id: "nope" as typeof titanic.id };
+    expect(helpFor("controls", null, noWalk).lines.join(" ")).not.toMatch(
+      /walking button/
+    );
+  });
+});

@@ -17,6 +17,12 @@ export type IconName =
   | "lifeboat"
   | "underwater"
   | "cinematic"
+  | "walk"
+  | "fly"
+  | "on-deck"
+  | "look-under"
+  | "drag-look"
+  | "slide"
   | "rocket"
   | "boat"
   | "lights"
@@ -54,6 +60,19 @@ const PATHS: Record<IconName, string> = {
   underwater:
     "M3 7c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M7 14a1.5 1.5 0 1 0 0 .1M13 17a1 1 0 1 0 0 .1M17 12a2 2 0 1 0 0 .1",
   cinematic: "M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5",
+  walk: "M13 4.5a1.5 1.5 0 1 0 0 .1M9 21l2-6-2-2 1-5 3 2 3 1M11 15l3 2 1 4M10 8l-3 2",
+  // A gull in the air over a swoosh rising up and away: fly.
+  fly: "M3 7c2.5-2 5-2 9 2 4-4 6.5-4 9-2M3 21c6 0 11-3 14-8M13.5 12.5H17.5V16.5",
+  // A ship with an up arrow over her: back on her deck.
+  "on-deck": "M3 15h18l-3 5H6zM7 15v-2.5h4V15M12 11V2.5M8.5 6L12 2.5 15.5 6",
+  // An eye over a wave line, an arrow going down under it.
+  "look-under":
+    "M3 7c2.2-3 5.4-4.5 9-4.5S18.8 4 21 7c-2.2 3-5.4 4.5-9 4.5S5.2 10 3 7zM12 5.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6zM2 15c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6 0M12 17.5v4.5M9.5 19.5L12 22l2.5-2.5",
+  // A finger on the screen with arrows either side: drag to look.
+  "drag-look":
+    "M10 16.5V9a1.5 1.5 0 0 1 3 0v4h3.5a2 2 0 0 1 2 2v2.5a4 4 0 0 1-4 4H12a4 4 0 0 1-3-1.4l-2.8-3.3a1.4 1.4 0 0 1 2-2L10 16.5M2.5 4.5h5M4.5 2.5l-2 2 2 2M16.5 4.5h5M19.5 2.5l2 2-2 2",
+  // Two arrows down the slope.
+  slide: "M5 4l7 7 7-7M5 12l7 7 7-7",
   rocket: "M12 21v-7M12 3l2.5 5h-5zM6 9l2 2M18 9l-2 2M5 14h2M17 14h2",
   boat: "M3 14h18l-3 5H6zM8 14v-3M16 14v-3M7 11h10",
   lights: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z",

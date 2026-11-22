@@ -7,6 +7,7 @@ export const CAMERA_IDS = [
   "lifeboat",
   "underwater",
   "cinematic",
+  "walk",
 ] as const;
 export type CameraId = (typeof CAMERA_IDS)[number];
 
