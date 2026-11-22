@@ -42,6 +42,8 @@ const customJestConfig = {
     "/__tests__/skySim\\.ts$",
     "/__tests__/lastSim\\.ts$",
     "/__tests__/testShips\\.ts$",
+    // The frozen 1.0 sim (titanicGolden.test.ts) holds no tests.
+    "/__tests__/v1_0/",
     // A CLI --testPathIgnorePatterns would replace this whole list, so the
     // lane is chosen by environment instead.
     ...(LANE === "fast"

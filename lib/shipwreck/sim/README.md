@@ -286,12 +286,14 @@ collision. Scripted events fire only while she is afloat and whole;
   `SimOptions.portholesOpen`, `SimProbe.lowestZ` (earth z of the lowest hull
   vertex of any body), `SimFrame.groundedParts`, `ShipSpec.wreck`
   (optional), `PortholeRow.followsSheer` (optional), `whatIfSpots`.
-- `__tests__/titanicGolden.test.ts` freezes the Titanic's real night and six
-  What-ifs (every event, every 50th frame's poses, water, list and trim, to
-  1e-9) as written by the 1.0 sim: hold 1 + boiler room 4, the first five,
-  boiler room 5 alone, and the three most listed a search of 1.0 What-ifs
-  found (up to 19°; one breaks, one sinks whole, one floats); a change that moves them is wrong for
-  the Titanic. `UPDATE_GOLDEN=1` rewrites the fixture, only on purpose.
+- `__tests__/titanicGolden.test.ts` runs the Titanic's real night and six
+  What-ifs through both the current sim and `__tests__/v1_0/`, a frozen copy
+  of the 1.0 sim and Titanic (never edit it), and requires identical tracks:
+  every event and every frame, to the last bit. Comparing on the same machine
+  keeps it exact across V8 versions and OSes. The What-ifs: hold 1 + boiler
+  room 4, the first five, boiler room 5 alone, and the three most listed a
+  search of 1.0 What-ifs found (up to 19°; one breaks, one sinks whole, one
+  floats); a change that moves them is wrong for the Titanic.
   `__tests__/testShips.ts` has the box ships the 1.1 tests use.
 - `whatIfSpots(spec)`: the compartments a What-if offers (every one for an
   iceberg ship; for a torpedo ship the twelve main spaces, not the side

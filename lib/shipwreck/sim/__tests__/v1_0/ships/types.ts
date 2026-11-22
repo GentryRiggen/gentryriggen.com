@@ -1,0 +1,69 @@
+/**
+ * The ship data format. One file per ship (`titanic.ts`); the sim, the 3D
+ * model and the hull diagram all read it, so it is the single source of
+ * truth for a ship.
+ *
+ * Ship frame: metres, origin on the keel line at midships (half of LBP),
+ * `x` forward, `y` to port, `z` up from the keel.
+ */
+
+export type ShipId = "titanic";
+
+export interface HullStation {
+  x: number;
+  /** [z, halfBreadth] pairs from the bottom of the section up to its top. */
+  offsets: readonly (readonly [z: number, halfBreadth: number])[];
+}
+
+export interface Compartment {
+  id: string;
+  label: string;
+  kind: "peak" | "hold" | "boiler" | "engine" | "shaft" | "stern";
+  fromX: number;
+  toX: number;
+  aftBulkheadTopZ: number;
+  fwdBulkheadTopZ: number;
+  /** Share of the space flood water can fill (default by kind in the sim). */
+  permeability?: number;
+}
+
+export interface Opening {
+  compartmentId: string;
+  areaM2: number;
+  zLow: number;
+  zHigh: number;
+  x: number;
+  side: "port" | "starboard";
+}
+
+export interface ScriptedEvent {
+  t: number;
+  kind: "steam-start" | "steam-stop" | "rocket" | "boat-lowered";
+  index?: number;
+}
+
+export interface ShipSpec {
+  id: ShipId;
+  name: string;
+  year: number;
+  lbp: number;
+  loa: number;
+  beam: number;
+  depth: number;
+  draught: number;
+  displacementT: number;
+  kg: number;
+  lcg: number; // mass and its centre (ship frame)
+  /** Transverse centre of mass, + to port (m); default 0. */
+  tcg?: number;
+  stations: readonly HullStation[]; // ≥ 41 stations, aft to fwd, the full hull to the top of the shelter deck
+  sheerZ: (x: number) => number; // height of the uppermost continuous deck edge at x
+  superstructure: { fromX: number; toX: number; topZ: number }[]; // buoyant volume above the hull once sealed decks submerge (coarse boxes)
+  compartments: readonly Compartment[]; // the 16 watertight compartments, aft to fwd
+  realNight: readonly Opening[]; // the iceberg damage
+  girder: { hogMaxNm: number; sagMaxNm: number }; // hull girder strength
+  scripted: readonly ScriptedEvent[]; // historical non-physics events (t seconds after collision)
+  funnels: { x: number; baseZ: number; topZ: number; dummy: boolean }[];
+  decks: { name: string; z: number }[]; // Boat, A, B, C, D, E, F, G, Orlop, Tank top (for lights by deck and the diagram)
+  seaDepthM: number; // 3,800 for Titanic
+}
