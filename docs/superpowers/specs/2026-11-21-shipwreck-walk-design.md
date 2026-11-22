@@ -1,9 +1,9 @@
-# Shipwreck 1.3 — Walk the decks
+# Shipwreck 1.2 — Walk the decks
 
 A first-person walk mode for `/shipwreck`: stand on the open decks of the
 Titanic or the Lusitania while she sinks, feel the deck tilt under you,
 slide when it gets too steep, and end up in the water watching her go.
-Builds on the 1.0, 1.1 and 1.2 specs, which still hold for everything this
+Builds on the 1.0 and 1.1 specs, which still hold for everything this
 document does not change.
 
 ## Why
@@ -17,7 +17,7 @@ now, rooms later.
 
 - **First person.** You see through the walker's eyes; no body, hands or
   character is drawn. This keeps the 1.0 rule: no people shown.
-- **Open decks only in 1.3.** Rooms (the bridge, the engine room, the Grand
+- **Open decks only in 1.2.** Rooms (the bridge, the engine room, the Grand
   Staircase) come in a later release.
 - **When the water reaches you or you slide off, you end up in the water.**
   You bob at the surface, can paddle slowly, and watch her go down from sea
@@ -30,7 +30,7 @@ now, rooms later.
   dips your eyes just below the surface to follow her down (see Look
   under).
 - **Next release, be ready:** the kids will ask to "go down with the ship".
-  Build 1.3 so that is a small follow-up (see Later).
+  Build 1.2 so that is a small follow-up (see Later).
 
 ## North-star goals (every builder re-reads these)
 
@@ -48,7 +48,7 @@ now, rooms later.
 4. **Kind to a young player.** No people, no death counts, no screams, no
    drowning. In the water you are just floating and watching. A parent line
    says what walk mode shows.
-5. **The other cameras and ships do not regress.** Every 1.0–1.2 test and
+5. **The other cameras and ships do not regress.** Every 1.0–1.1 test and
    golden track passes unchanged; walk mode reads the sim, never writes it.
 
 ## Goals
@@ -141,7 +141,7 @@ vanish within metres. To let the kids watch her go to the bottom:
 - This is the honest bit stretched for kids: a call Gentry may revisit.
   It also is the first half of "go down with the ship".
 
-## Non-goals (1.3)
+## Non-goals (1.2)
 
 - Rooms or anything below the open decks.
 - Showing other people, lifeboats being boarded, or the walker's body.
@@ -187,13 +187,13 @@ vanish within metres. To let the kids watch her go to the bottom:
 - Analytics: if walk mode gets an event, it follows the gameEvents rules
   (closed enums only; schema, rules and dashboard together). Builder's call
   whether to add `camera: "walk"` to an existing enum.
-- Release: Shipwreck 1.3.0 (minor), changelog entry, help text and parent
-  line updated. Ships after 1.2.0 (the Edmund Fitzgerald) merges; this
-  branch rebases on it then.
+- Release: Shipwreck 1.2.0 (minor), changelog entry, help text and parent
+  line updated. Ships before the Edmund Fitzgerald, which becomes 1.3.0
+  (Gentry, 2026-11-22).
 
 ## Calls we made (Gentry may revisit)
 
-- **No walking on the Edmund Fitzgerald.** Her 1.2 spec says no dwelling on
+- **No walking on the Edmund Fitzgerald.** Her spec says no dwelling on
   the last moments (a 1975 loss with living families); standing on her deck
   as she dives would. Walk is offered on the Titanic and the Lusitania.
 - **Slope thresholds ~10° / ~20°.** The Titanic only gets that steep in her
@@ -207,7 +207,7 @@ vanish within metres. To let the kids watch her go to the bottom:
 ## Later (be ready)
 
 - **Go down with the ship** (next ask): stay on deck as she goes under; the
-  view goes under with you into the dark, like the underwater camera. 1.3
+  view goes under with you into the dark, like the underwater camera. 1.2
   should make this a switch: the "in the water" check is one function the
   next release can change.
 - Rooms: the bridge, the engine room, the Grand Staircase, the Lusitania's

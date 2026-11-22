@@ -17,8 +17,8 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
-    version: "1.3.0",
-    date: "2026-11-21",
+    version: "1.2.0",
+    date: "2026-11-22",
     title: "Walk the decks",
     highlights: [
       "Walk on the deck of the Titanic or the Lusitania! Tap the walking button, then push the stick to walk and drag anywhere else to look around",
