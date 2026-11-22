@@ -7,6 +7,10 @@ import type { WalkMap } from "./types";
 export * from "./types";
 export { TITANIC_WALK } from "./titanicDecks";
 export { LUSITANIA_WALK } from "./lusitaniaDecks";
+export * from "./slope";
+export * from "./step";
+export * from "./swim";
+export { resetWalkInput, walkInput } from "./walkInput";
 
 const MAPS: Partial<Record<ShipId, WalkMap>> = {
   titanic: TITANIC_WALK,
