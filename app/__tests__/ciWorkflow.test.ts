@@ -197,7 +197,10 @@ describe("CI build job", () => {
   });
 
   it("checks Jim's site after the build", () => {
-    const b = stepIndex(build, (s) => s.run?.trim() === "npm run build");
+    const b = stepIndex(
+      build,
+      (s) => !!s.run?.trim().startsWith("npm run build")
+    );
     const check = stepIndex(
       build,
       (s) => s.run?.trim() === "node scripts/jim-site.mjs --check"
@@ -209,7 +212,9 @@ describe("CI build job", () => {
     const gate = build.steps.find((s) => s.env?.JIM_TENANT !== undefined);
     expect(gate?.if).toContain("refs/heads/main");
     expect(gate?.run).toContain("exit 1");
-    const b = build.steps.find((s) => s.run?.trim() === "npm run build");
+    const b = build.steps.find(
+      (s) => !!s.run?.trim().startsWith("npm run build")
+    );
     expect(b?.env?.NEXT_PUBLIC_JIM_TENANT).toBe("${{ vars.JIM_TENANT }}");
   });
 });

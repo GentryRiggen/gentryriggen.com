@@ -68,7 +68,8 @@ jobs:
       - name: 🏗️ Build for e2e
         env:
           NEXT_PUBLIC_E2E: "1"
-        run: npm run build
+        # One retry: the build fetches Google Fonts, which now and then times out.
+        run: npm run build || npm run build
       - name: 🎬 Smoke test
         env:
           E2E_PREBUILT: "1"
@@ -118,7 +119,8 @@ jobs:
       - name: 🏗️ Build
         env:
           NEXT_PUBLIC_JIM_TENANT: ${{ vars.JIM_TENANT }}
-        run: npm run build
+        # One retry: the build fetches Google Fonts, which now and then times out.
+        run: npm run build || npm run build
 
       # Jim's own site: the page's inline scripts get hashed into its CSP, and
       # a page that loads test hooks, App Check, reCAPTCHA or analytics fails.
