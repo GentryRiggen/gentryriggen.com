@@ -42,11 +42,16 @@ interface Feel {
   /** True from half the slide up (brighter, pulsing arrows). */
   hard: boolean;
   canReboard: boolean;
+  /** The splash being rippled (its count), or 0: none. */
+  ripple: number;
 }
 
-function readFeel(rt: SceneRuntime): Feel {
+/** How long the ripple wipe shows (ms; its keyframes run 600 ms). */
+const RIPPLE_MS = 700;
+
+function readFeel(rt: SceneRuntime, ripple = 0): Feel {
   const canReboard = rt.walkCanReboard;
-  if (rt.walkSlide <= 0) return { edge: null, hard: false, canReboard };
+  if (rt.walkSlide <= 0) return { edge: null, hard: false, canReboard, ripple };
   const [right, ahead] = rt.walkDownhill;
   const edge: Edge =
     Math.abs(right) > Math.abs(ahead)
@@ -56,24 +61,33 @@ function readFeel(rt: SceneRuntime): Feel {
       : ahead > 0
         ? "top"
         : "bottom";
-  return { edge, hard: rt.walkSlide >= 0.5, canReboard };
+  return { edge, hard: rt.walkSlide >= 0.5, canReboard, ripple };
 }
 
 /**
  * Reads the walk's few on-screen values from the scene runtime once a
- * frame, re-rendering only when one changes.
+ * frame, re-rendering only when one changes. A splash (going in) starts
+ * the ripple wipe.
  */
 function useFeel(runtime: SceneRuntime, on: boolean): Feel {
   const [feel, setFeel] = useState<Feel>(() => readFeel(runtime));
   useEffect(() => {
     if (!on) return;
     let raf = 0;
+    let seen = runtime.walkSplash;
+    let rippleUntil = -Infinity;
     const loop = () => {
-      const next = readFeel(runtime);
+      const now = performance.now();
+      if (runtime.walkSplash !== seen) {
+        seen = runtime.walkSplash;
+        rippleUntil = now + RIPPLE_MS;
+      }
+      const next = readFeel(runtime, now < rippleUntil ? seen : 0);
       setFeel((f) =>
         f.edge === next.edge &&
         f.hard === next.hard &&
-        f.canReboard === next.canReboard
+        f.canReboard === next.canReboard &&
+        f.ripple === next.ripple
           ? f
           : next
       );
@@ -117,6 +131,25 @@ export default function WalkHud({
       className="pointer-events-none absolute inset-0"
     >
       <WalkLookLayer />
+
+      {/* Going in: rings of water wipe out from the middle (not with reduced motion). */}
+      {feel.ripple > 0 && (
+        <div
+          key={feel.ripple}
+          aria-hidden="true"
+          data-testid="shipwreck-walk-ripple"
+          className="pointer-events-none absolute inset-0 overflow-hidden motion-reduce:hidden"
+        >
+          {["", "[animation-delay:90ms]", "[animation-delay:180ms]"].map(
+            (delay) => (
+              <div
+                key={delay}
+                className={`absolute left-1/2 top-1/2 size-[70vmax] -translate-x-1/2 -translate-y-1/2 animate-[shipwreck-ripple_600ms_ease-out_both] rounded-full border-[1.5rem] border-sky-200/60 bg-sky-300/10 ${delay}`}
+              />
+            )
+          )}
+        </div>
+      )}
 
       {feel.edge && !water && (
         <div

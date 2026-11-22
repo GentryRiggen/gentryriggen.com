@@ -331,6 +331,42 @@ const VOICES: Record<Cue, Voice> = {
       });
     }
   },
+  splash(e, t, l) {
+    // Going in: a bright rush of water falling to a low churn, and a few
+    // drips after.
+    noise(e, {
+      buffer: e.white,
+      start: t,
+      duration: 0.7,
+      filter: "bandpass",
+      freq: 2400,
+      freqEnd: 500,
+      q: 0.8,
+      gain: 0.09 * l,
+      attack: 0.01,
+    });
+    noise(e, {
+      buffer: e.brown,
+      start: t,
+      duration: 1.3,
+      filter: "lowpass",
+      freq: 420,
+      freqEnd: 160,
+      gain: 0.08 * l,
+      attack: 0.04,
+    });
+    for (let k = 0; k < 3; k += 1) {
+      tone(e, {
+        type: "sine",
+        start: t + 0.45 + k * 0.22,
+        duration: 0.09,
+        freq: 900 + k * 260,
+        freqEnd: 1500 + k * 300,
+        gain: 0.025 * l,
+        attack: 0.005,
+      });
+    }
+  },
   thud(e, t, l) {
     tone(e, {
       type: "sine",

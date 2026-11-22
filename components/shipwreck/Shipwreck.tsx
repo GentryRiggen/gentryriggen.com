@@ -315,7 +315,7 @@ export default function Shipwreck() {
   useVisibilityPause({ onPersist: persist });
 
   const soundOn = save.settings.sound;
-  useShipwreckSound(playback, isGame && screen === "night", soundOn);
+  useShipwreckSound(playback, isGame && screen === "night", soundOn, runtime);
   const toggleSound = useCallback(() => {
     update((v) => ({ ...v, settings: { ...v.settings, sound: !soundOn } }));
     persist();

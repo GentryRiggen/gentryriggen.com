@@ -221,6 +221,20 @@ describe("walking", () => {
     expect(screen.queryByTestId("shipwreck-walk-slide")).toBeNull();
   });
 
+  it("ripples once on going in", () => {
+    const { store, runtime, tick } = setup();
+    fireEvent.click(walkButton()!);
+    tick();
+    expect(screen.queryByTestId("shipwreck-walk-ripple")).toBeNull();
+    runtime.walkSplash += 1;
+    act(() => store.getState().wentInWater());
+    tick();
+    const ripple = screen.getByTestId("shipwreck-walk-ripple");
+    expect(ripple.className).toMatch(/motion-reduce:hidden/);
+    act(() => jest.advanceTimersByTime(1000));
+    expect(screen.queryByTestId("shipwreck-walk-ripple")).toBeNull();
+  });
+
   it("every walk button is big, named, and shows no words", () => {
     const { store, runtime, tick, container } = setup();
     const check = () => {

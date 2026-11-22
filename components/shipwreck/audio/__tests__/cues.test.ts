@@ -301,3 +301,78 @@ describe("the afternoon (Lusitania)", () => {
     expect(s.bed.ship).toBe("titanic");
   });
 });
+
+describe("walking cues", () => {
+  const walkCues = (played: Cue[]) =>
+    played.filter((c) => c === "splash" || c === "scrape");
+  type Walk = NonNullable<CueInput["walk"]>;
+  const walk = (over: Partial<Walk>): Walk => ({
+    phase: "deck",
+    slide: 0,
+    splash: 0,
+    ...over,
+  });
+
+  it("has a splash cue with a 2 s gap", () => {
+    expect(CUE_GAP_S.splash).toBe(2);
+  });
+
+  it("going in fires splash once", () => {
+    const { played, run } = setup([]);
+    run({ playing: false, now: 100, walk: walk({ splash: 3 }) });
+    run({ playing: false, now: 100.2, walk: walk({ splash: 3 }) });
+    expect(walkCues(played)).toEqual([]);
+    run({
+      playing: false,
+      now: 100.4,
+      walk: walk({ phase: "water", splash: 4 }),
+    });
+    for (let now = 100.6; now < 110; now += 0.2)
+      run({ playing: false, now, walk: walk({ phase: "water", splash: 4 }) });
+    expect(walkCues(played)).toEqual(["splash"]);
+  });
+
+  it("sliding fires scrape no more than once per 1.5 s, at the slide's level", () => {
+    const played: { cue: Cue; level: number; now: number }[] = [];
+    let now = 100;
+    const s = createCueScheduler((cue, level) =>
+      played.push({ cue, level, now })
+    );
+    for (; now < 112; now += 0.1)
+      s.update(
+        [],
+        [frame(0, 0)],
+        input({ playing: false, now, walk: walk({ slide: 0.6 }) })
+      );
+    const scrapes = played.filter((p) => p.cue === "scrape");
+    expect(scrapes.length).toBeGreaterThan(1);
+    for (let k = 1; k < scrapes.length; k += 1)
+      expect(scrapes[k].now - scrapes[k - 1].now).toBeGreaterThanOrEqual(1.5);
+    expect(scrapes[0].level).toBeCloseTo(0.6);
+  });
+
+  it("no scrape on a level deck or in the water", () => {
+    const { played, run } = setup([]);
+    for (let now = 100; now < 110; now += 0.2) {
+      run({ playing: false, now, walk: walk({ slide: 0 }) });
+      run({
+        playing: false,
+        now: now + 0.1,
+        walk: walk({ phase: "water", slide: 0.8 }),
+      });
+    }
+    expect(walkCues(played)).toEqual([]);
+  });
+
+  it("no walk cues when walk is off", () => {
+    const { played, run } = setup([]);
+    for (let now = 100; now < 110; now += 0.2)
+      run({
+        playing: false,
+        now,
+        walk: walk({ phase: "off", slide: 1, splash: Math.floor(now) }),
+      });
+    run({ playing: false, now: 111 });
+    expect(walkCues(played)).toEqual([]);
+  });
+});

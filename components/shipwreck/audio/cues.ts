@@ -17,7 +17,8 @@ export type Cue =
   | "thud"
   | "torpedo"
   | "boom"
-  | "gull";
+  | "gull"
+  | "splash";
 
 /** Which event makes which cue (events not listed make none). */
 export const EVENT_CUES: Partial<Record<SimEventKind, Cue>> = {
@@ -68,6 +69,7 @@ export const CUE_GAP_S: Record<Cue, number> = {
   torpedo: 4,
   boom: 4,
   gull: 4,
+  splash: 2,
 };
 
 /** Short cues are skipped from this speed up; beds and long cues stay. */
@@ -109,6 +111,17 @@ export interface CueInput {
   now: number;
   /** The ship on the stage (the Titanic when left out). */
   ship?: ShipId;
+  /** Walking the deck (left out: not walking). */
+  walk?: WalkCueInput;
+}
+
+/** What the walk tells the sound (from the scene runtime). */
+export interface WalkCueInput {
+  phase: "off" | "deck" | "water";
+  /** 0..1 how hard the deck pushes them downhill. */
+  slide: number;
+  /** Bumped each time they go into the sea. */
+  splash: number;
 }
 
 /** The held sounds, written by the scheduler and read by the beds. */
@@ -185,6 +198,7 @@ export function createCueScheduler(
     torpedo: -Infinity,
     boom: -Infinity,
     gull: -Infinity,
+    splash: -Infinity,
   };
   let events: readonly SimEvent[] | null = null;
   let next = 0;
@@ -194,6 +208,8 @@ export function createCueScheduler(
   let nextCreakAt = 0;
   let nextGullAt = 0;
   let gulls = 0;
+  /** The walk's splash count last seen (null before the first update). */
+  let lastSplash: number | null = null;
 
   function fire(cue: Cue, level: number, i: CueInput) {
     if (i.speed >= THIN_FROM_SPEED && SHORT.has(cue)) return;
@@ -228,6 +244,7 @@ export function createCueScheduler(
       next = 0;
       lastT = 0;
       lastSnap = -1;
+      lastSplash = null;
       steamOn = false;
       nextCreakAt = 0;
       nextGullAt = 0;
@@ -283,6 +300,17 @@ export function createCueScheduler(
         gulls += 1;
         nextGullAt = i.now + GULL_MIN_S + ((gulls * 0.618) % 1) * GULL_SPREAD_S;
       }
+
+      // Walking (real time, playing or not): a splash on going in, and
+      // the deck's scrape while it pushes them downhill (the scrape's own
+      // gap, ≥ 1.5 s, keeps it from piling up).
+      const w = i.walk;
+      if (w && w.phase !== "off") {
+        if (lastSplash !== null && w.splash > lastSplash && w.phase === "water")
+          fire("splash", 1, i);
+        if (w.phase === "deck" && w.slide > 0) fire("scrape", w.slide, i);
+      }
+      if (w) lastSplash = w.splash;
 
       // Groans as she tilts: faster and louder with the trim; far-off
       // creaks when the camera is under the sea.

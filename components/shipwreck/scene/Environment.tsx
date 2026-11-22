@@ -30,7 +30,14 @@ import {
   sunDirection,
   type SceneSettings,
 } from "./settings";
-import { lookUnderFog, walkAmbient } from "./walkCamera";
+import {
+  LOOK_UNDER_LAMP_RANGE_M,
+  LOOK_UNDER_NIGHT_WATER,
+  lookUnderAmbient,
+  lookUnderFog,
+  lookUnderLamp,
+  walkAmbient,
+} from "./walkCamera";
 
 /**
  * Light, fog and the deep. The night (the Titanic): very low starlight
@@ -49,6 +56,9 @@ const DEEP_FOG = NIGHT_DEEP_FOG;
 const DAY_FOG_DENSITY = 0.000027;
 /** Sunlit sea water in the Celtic Sea: green near the top, darker down. */
 const DAY_DEEP_WATER = new Color(0x0c3a33);
+/** The submersible lamp's reach (m), at night and in the afternoon. */
+const LAMP_RANGE_M = 420;
+const DAY_LAMP_RANGE_M = 300;
 
 function sandTexture(): CanvasTexture | null {
   if (typeof document === "undefined") return null;
@@ -213,10 +223,11 @@ function NightEnvironment({
   }, []);
 
   const lamp = useMemo(() => {
-    const l = new SpotLight(0xd8ecff, 0, 420, 0.55, 0.6, 1.1);
+    const l = new SpotLight(0xd8ecff, 0, LAMP_RANGE_M, 0.55, 0.6, 1.1);
     l.name = "submersible-lamp";
     return l;
   }, []);
+  const lookUnderWater = useMemo(() => new Color(LOOK_UNDER_NIGHT_WATER), []);
 
   useFrame((state) => {
     const y = camera.position.y;
@@ -225,7 +236,9 @@ function NightEnvironment({
       // Thicker and darker the deeper it goes.
       const k = Math.min(1, -y / 600);
       fog.color.copy(SEA_FOG).lerp(DEEP_FOG, k);
-      // Look under (from the sea while walking): clearer, to watch her go.
+      // Look under (from the sea while walking): clearer and lighter
+      // water, to watch her go.
+      if (runtime.walkLookUnder) fog.color.copy(lookUnderWater);
       fog.density = lookUnderFog(
         "night",
         0.0065 - 0.002 * k,
@@ -239,7 +252,14 @@ function NightEnvironment({
     }
     floor.m.visible = y < -SEA_DEPTH + 2500;
     // The lamp rides on the camera, a little above, pointing where it looks.
-    lamp.intensity = under ? Math.min(1, -y / 40) * 320 : 0;
+    lamp.intensity = lookUnderLamp(
+      "night",
+      under ? Math.min(1, -y / 40) * 320 : 0,
+      runtime.walkLookUnder
+    );
+    lamp.distance = runtime.walkLookUnder
+      ? LOOK_UNDER_LAMP_RANGE_M
+      : LAMP_RANGE_M;
     lamp.position.copy(camera.position);
     lamp.position.y += 1.5;
     state.camera.getWorldDirection(lamp.target.position);
@@ -248,7 +268,9 @@ function NightEnvironment({
     runtime.underwater = under;
     // Walking: a faint lift so a child can see the deck.
     sky.intensity = walkAmbient(
-      under ? 0.25 : 0.9 + runtime.flash * 5,
+      under
+        ? lookUnderAmbient(0.25, runtime.walkLookUnder)
+        : 0.9 + runtime.flash * 5,
       runtime.walkInfo?.phase === "deck"
     );
   }, -0.8);
@@ -362,7 +384,7 @@ float causticAt(vec2 p) {
     sun.name = "sun";
     const sky = new HemisphereLight(0xa9c8ee, 0x2f4a4c, 0.75);
     sky.name = "skylight";
-    const lamp = new SpotLight(0xd8ecff, 0, 300, 0.6, 0.6, 1.1);
+    const lamp = new SpotLight(0xd8ecff, 0, DAY_LAMP_RANGE_M, 0.6, 0.6, 1.1);
     lamp.name = "submersible-lamp";
     return {
       sun,
@@ -414,7 +436,14 @@ float causticAt(vec2 p) {
     floor.caustics.uTime.value = state.clock.elapsedTime;
     floor.caustics.uCaustic.value = under ? 0.12 * (1 - 0.5 * k) : 0;
     const lamp = lights.lamp;
-    lamp.intensity = under ? Math.min(1, -y / 50) * 160 : 0;
+    lamp.intensity = lookUnderLamp(
+      "afternoon",
+      under ? Math.min(1, -y / 50) * 160 : 0,
+      runtime.walkLookUnder
+    );
+    lamp.distance = runtime.walkLookUnder
+      ? LOOK_UNDER_LAMP_RANGE_M
+      : DAY_LAMP_RANGE_M;
     lamp.position.copy(camera.position);
     lamp.position.y += 1.5;
     state.camera.getWorldDirection(lamp.target.position);

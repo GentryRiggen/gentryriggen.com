@@ -38,8 +38,19 @@ export const BOB_AMPLITUDE_M = 0.25;
 export const BOB_PERIOD_S = 7;
 /** How far the look tilts up or down (rad, about 75°). */
 export const WALK_PITCH_LIMIT = 1.3;
-/** Her hull lights' least power while looking under (a dim lit shape). */
-export const LOOK_UNDER_MIN_POWER = 0.12;
+/**
+ * Her hull lights' least power while looking under: well lit, so a child
+ * can watch her go down (0.12 read as a near-black silhouette).
+ */
+export const LOOK_UNDER_MIN_POWER = 0.5;
+/** The camera's lamp while looking under (it aims where the look follows her). */
+export const LOOK_UNDER_LAMP = { night: 1600, afternoon: 500 } as const;
+/** And its reach (m): she sinks a few hundred metres away. */
+export const LOOK_UNDER_LAMP_RANGE_M = 900;
+/** The night's starlight while looking under (it is 0.25 under the sea). */
+export const LOOK_UNDER_NIGHT_AMBIENT = 0.9;
+/** The night's water while looking under: lifted from near black to a deep teal. */
+export const LOOK_UNDER_NIGHT_WATER = 0x0c3546;
 /** The night's under-water fog while looking under (exp² density). */
 export const LOOK_UNDER_NIGHT_FOG = 0.0018;
 /** The afternoon's under-water fog is this share of its own while looking under. */
@@ -144,4 +155,23 @@ export function viewDirection(v: WalkerView, out: V3): V3 {
   out[1] = Math.sin(v.pitch);
   out[2] = -Math.sin(v.yaw) * cp;
   return out;
+}
+
+/** The camera lamp's power: strong while looking under. */
+export function lookUnderLamp(
+  timeOfDay: "night" | "afternoon",
+  intensity: number,
+  lookUnder: boolean
+): number {
+  return lookUnder
+    ? Math.max(intensity, LOOK_UNDER_LAMP[timeOfDay])
+    : intensity;
+}
+
+/** The night's starlight under the sea: lifted while looking under. */
+export function lookUnderAmbient(
+  intensity: number,
+  lookUnder: boolean
+): number {
+  return lookUnder ? Math.max(intensity, LOOK_UNDER_NIGHT_AMBIENT) : intensity;
 }

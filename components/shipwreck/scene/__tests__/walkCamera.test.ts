@@ -16,6 +16,10 @@ import {
   lookUnderFog,
   walkAmbient,
   walkHullPower,
+  lookUnderAmbient,
+  lookUnderLamp,
+  LOOK_UNDER_LAMP,
+  LOOK_UNDER_NIGHT_AMBIENT,
   waterEyes,
 } from "../walkCamera";
 
@@ -116,8 +120,16 @@ describe("look under helps", () => {
   it("keeps her hull lights faintly on", () => {
     expect(walkHullPower(0, false)).toBe(0);
     expect(walkHullPower(0, true)).toBe(LOOK_UNDER_MIN_POWER);
-    expect(LOOK_UNDER_MIN_POWER).toBe(0.12);
+    expect(LOOK_UNDER_MIN_POWER).toBe(0.5);
     expect(walkHullPower(0.8, true)).toBe(0.8);
+  });
+
+  it("lights her with the lamp and the starlight only while looking under", () => {
+    expect(lookUnderLamp("night", 8, false)).toBe(8);
+    expect(lookUnderLamp("night", 8, true)).toBe(LOOK_UNDER_LAMP.night);
+    expect(lookUnderLamp("afternoon", 0, true)).toBe(LOOK_UNDER_LAMP.afternoon);
+    expect(lookUnderAmbient(0.25, false)).toBe(0.25);
+    expect(lookUnderAmbient(0.25, true)).toBe(LOOK_UNDER_NIGHT_AMBIENT);
   });
 
   it("clears the water", () => {

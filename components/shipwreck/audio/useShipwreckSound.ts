@@ -4,14 +4,17 @@ import { useEffect, useRef } from "react";
 import { useResilientAudio } from "@/components/game-audio/useResilientAudio";
 import { effectiveSpeed, type PlaybackStore } from "@/lib/shipwreck/playback";
 import type { VoiceEngine } from "@/components/game-audio/primitives";
+import type { SceneRuntime } from "@/components/shipwreck/scene/runtime";
 import { createBeds, type Beds } from "./beds";
-import { createCueScheduler } from "./cues";
+import { createCueScheduler, type WalkCueInput } from "./cues";
 import { CUE_BUS_LEVEL, playCue } from "./voices";
 
 /** Seconds between updates of the held beds (their levels glide anyway). */
 const BED_EVERY_S = 0.2;
 /** How fast the night bus fades when sound goes off or the night is left. */
 const MUTE_TC_S = 0.05;
+/** While walking (real time, even when paused): how often the walk is heard (ms). */
+const WALK_EVERY_MS = 200;
 
 /**
  * The night's own buses on an engine: everything goes through `night`
@@ -55,7 +58,8 @@ function disposeNightBuses(b: NightBuses) {
 }
 
 /**
- * Wires the night's sound: nothing plays until the player's first tap
+ * Wires the night's sound (and, given the scene's runtime, the walk's
+ * splash and scrape): nothing plays until the player's first tap
  * unlocks the audio (ambient session, so their music keeps going); beds run
  * only while `active` (the night screen) and `enabled` (the sound button).
  * Call once, high in the tree.
@@ -63,7 +67,8 @@ function disposeNightBuses(b: NightBuses) {
 export function useShipwreckSound(
   store: PlaybackStore,
   active: boolean,
-  enabled: boolean
+  enabled: boolean,
+  runtime?: SceneRuntime
 ): void {
   const audio = useResilientAudio();
   const live = useRef({ active, enabled });
@@ -112,6 +117,9 @@ export function useShipwreckSound(
 
     const unsubEngine = audio.onEngine(() => refresh.current?.());
 
+    const walk: WalkCueInput = { phase: "off", slide: 0, splash: 0 };
+    let walkTimer: ReturnType<typeof setInterval> | null = null;
+
     const onChange = () => {
       const s = store.getState();
       const { active: isActive, enabled: isOn } = live.current;
@@ -127,6 +135,7 @@ export function useShipwreckSound(
         underwater: s.camera === "underwater",
         now,
         ship: s.ship,
+        walk: runtime ? walkNow(s.walk.phase) : undefined,
       });
       if (now - lastBedAt < BED_EVERY_S) return;
       lastBedAt = now;
@@ -135,7 +144,27 @@ export function useShipwreckSound(
       setOn(b, isActive && isOn);
       b.beds.apply(scheduler.bed, isActive && isOn);
     };
-    const unsub = store.subscribe(onChange);
+    function walkNow(phase: WalkCueInput["phase"]): WalkCueInput {
+      walk.phase = phase;
+      walk.slide = runtime!.walkSlide;
+      walk.splash = runtime!.walkSplash;
+      return walk;
+    }
+    // Walking runs in real time, so a paused night still hears it: tick
+    // while walking (the store does not change then).
+    const syncWalkTimer = () => {
+      const walking = !!runtime && store.getState().walk.phase !== "off";
+      if (walking && walkTimer === null)
+        walkTimer = setInterval(onChange, WALK_EVERY_MS);
+      else if (!walking && walkTimer !== null) {
+        clearInterval(walkTimer);
+        walkTimer = null;
+      }
+    };
+    const unsub = store.subscribe(() => {
+      syncWalkTimer();
+      onChange();
+    });
     refresh.current = () => {
       lastBedAt = -Infinity;
       // Mute at once, even before a track exists (in-flight cues too).
@@ -159,11 +188,12 @@ export function useShipwreckSound(
     return () => {
       refresh.current = null;
       unsub();
+      if (walkTimer !== null) clearInterval(walkTimer);
       unsubEngine();
       document.removeEventListener("visibilitychange", onShow);
       window.removeEventListener("pageshow", onShow);
       if (resumeTimer !== null) clearTimeout(resumeTimer);
       if (buses) disposeNightBuses(buses);
     };
-  }, [audio, store]);
+  }, [audio, store, runtime]);
 }
