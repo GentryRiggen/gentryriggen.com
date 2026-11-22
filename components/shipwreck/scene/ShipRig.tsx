@@ -25,6 +25,7 @@ import {
 } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
 import { SCENE_SETTINGS } from "./settings";
+import { walkHullPower } from "./walkCamera";
 
 /**
  * The ship driven by the track: samples the sim frame at the store's `t`
@@ -192,8 +193,11 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     runtime.broken = two && split !== null;
     // Halves kept from an earlier run that has not broken (yet): hidden.
     if (!split && runtime.split) runtime.split.root.visible = false;
-    const power = frame.power * lightShare;
-    const flicker = power > 0 && power < 1 ? 0.6 : 0;
+    const lit = frame.power * lightShare;
+    const flicker = lit > 0 && lit < 1 ? 0.6 : 0;
+    // Looking under from the sea: her hull lights stay faintly on, so she
+    // is a dim lit shape going down.
+    const power = walkHullPower(lit, runtime.walkLookUnder);
 
     if (whole) {
       whole.root.visible = !runtime.broken;
@@ -251,7 +255,7 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
         : main;
       const w = shipToThree(body, p);
       lamps[i].position.set(w[0], w[1], w[2]);
-      lamps[i].intensity = power * 900;
+      lamps[i].intensity = lit * 900;
     });
 
     // Her wake while she has way (ships with headway).

@@ -94,6 +94,9 @@ export default function Hud({
         const v = SPEEDS[Number(e.key) - 1];
         s.setSpeed(v);
         onSpeed?.(v);
+      } else if (s.camera === "walk") {
+        // Walking: the arrows walk (WalkRunner's keys), not seek.
+        return;
       } else if (e.key === "ArrowRight") s.seek(s.t + 60);
       else if (e.key === "ArrowLeft") s.seek(s.t - 60);
       else return;

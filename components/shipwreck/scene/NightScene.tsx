@@ -29,6 +29,7 @@ import Sea from "./Sea";
 import { ShipOnStage } from "./ShipRig";
 import Sky, { DaySky } from "./Sky";
 import Torpedo from "./Torpedo";
+import WalkRunner from "./WalkRunner";
 import XRay from "./XRay";
 import { createSceneRuntime, type SceneRuntime } from "./runtime";
 import { SCENE_SETTINGS, sunDirection, type SceneSettings } from "./settings";
@@ -163,6 +164,7 @@ export default function NightScene({
         />
         <XRay store={store} runtime={runtime} spec={spec} />
         <SeaFromStore store={store} runtime={runtime} settings={settings} />
+        <WalkRunner key={spec.id} store={store} runtime={runtime} spec={spec} />
         <CameraRig store={store} runtime={runtime} spec={spec} />
         {/* Fixed MSAA: changing it rebuilds the composer (a hitch on a tier step). */}
         <EffectComposer multisampling={4}>

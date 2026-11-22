@@ -30,6 +30,7 @@ import {
   sunDirection,
   type SceneSettings,
 } from "./settings";
+import { lookUnderFog, walkAmbient } from "./walkCamera";
 
 /**
  * Light, fog and the deep. The night (the Titanic): very low starlight
@@ -224,7 +225,12 @@ function NightEnvironment({
       // Thicker and darker the deeper it goes.
       const k = Math.min(1, -y / 600);
       fog.color.copy(SEA_FOG).lerp(DEEP_FOG, k);
-      fog.density = 0.0065 - 0.002 * k;
+      // Look under (from the sea while walking): clearer, to watch her go.
+      fog.density = lookUnderFog(
+        "night",
+        0.0065 - 0.002 * k,
+        runtime.walkLookUnder
+      );
       (scene.background as Color).copy(fog.color);
     } else {
       fog.color.copy(NIGHT_FOG);
@@ -240,7 +246,11 @@ function NightEnvironment({
     lamp.target.position.multiplyScalar(60).add(camera.position);
     lamp.target.updateMatrixWorld();
     runtime.underwater = under;
-    sky.intensity = under ? 0.25 : 0.9 + runtime.flash * 5;
+    // Walking: a faint lift so a child can see the deck.
+    sky.intensity = walkAmbient(
+      under ? 0.25 : 0.9 + runtime.flash * 5,
+      runtime.walkInfo?.phase === "deck"
+    );
   }, -0.8);
 
   return (
@@ -377,18 +387,28 @@ float causticAt(vec2 p) {
       // Green and bright near the top, dimmer toward the floor.
       water.copy(shallow).lerp(DAY_DEEP_WATER, k * 0.85);
       fog.color.copy(water);
-      fog.density = 0.0085 + 0.004 * k;
+      fog.density = lookUnderFog(
+        "afternoon",
+        0.0085 + 0.004 * k,
+        runtime.walkLookUnder
+      );
       (scene.background as Color).copy(water);
       lights.sun.color.copy(lights.under);
       lights.sun.intensity = 4 * (0.45 - 0.33 * k);
-      lights.sky.intensity = 0.95 - 0.55 * k;
+      lights.sky.intensity = walkAmbient(
+        0.95 - 0.55 * k,
+        runtime.walkInfo?.phase === "deck"
+      );
     } else {
       fog.color.copy(haze);
       fog.density = DAY_FOG_DENSITY;
       (scene.background as Color).copy(haze);
       lights.sun.color.copy(lights.warm);
       lights.sun.intensity = 4;
-      lights.sky.intensity = 0.75;
+      lights.sky.intensity = walkAmbient(
+        0.75,
+        runtime.walkInfo?.phase === "deck"
+      );
     }
     floor.m.visible = under;
     floor.caustics.uTime.value = state.clock.elapsedTime;

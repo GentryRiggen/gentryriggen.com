@@ -27,13 +27,16 @@ from one **playback store** (`lib/shipwreck/playback.ts`); the DOM UI
 | `xrayGeometry.ts` | The water lofts, bulkhead lines, opening quads and the four places' blockouts.                                                                                                                                                                                                                                                                                        |
 | `CameraRig.tsx`   | The free camera (OrbitControls, double-tap fly-to, rides with the ship, bounds) and the presets/cinematic shots.                                                                                                                                                                                                                                                      |
 | `cameraMath.ts`   | Pure camera maths: `shipToThree`, `dampSpring`, `pushOutOfHull`, `clampAboveFloor`, `nearFor`, `cinematicShot`, `shotView`, preset views.                                                                                                                                                                                                                             |
+| `WalkRunner.tsx`  | Walking (camera `walk`): places the walker on `walk.seq` changes, steps them on her deck or the swimmer in the sea (real time), WASD/arrow keys into `walkInput`, writes `runtime.walker`.                                                                                                                                                                            |
+| `walkCamera.ts`   | Pure: the walker's eyes (`deckEyes`, `waterEyes`, `bob`), `followShipPitch`, and Look under's numbers (fog, hull light floor, the ambient lift).                                                                                                                                                                                                                      |
 | `runtime.ts`      | The per-frame values the scene's parts share (sampled frame, visible parts, flash).                                                                                                                                                                                                                                                                                   |
 | `sceneHooks.ts`   | The `window.__shipwreck` test hooks for a store.                                                                                                                                                                                                                                                                                                                      |
 | `SceneCheck.tsx`  | `/shipwreck?scene` (dev and e2e builds only): the real night with no UI. `&quality=high\|medium\|low` pins a tier.                                                                                                                                                                                                                                                    |
 
 Frame loop order (R3F priorities): driver −3 (pump the runner, advance `t`),
-ship rig −2, effects −1.5, X-ray −0.9, environment −0.8, sky −0.7, camera −1
-… sea reflection −0.5, then the composer renders (1).
+ship rig −2, effects and the walk runner −1.5, camera −1, X-ray −0.9,
+environment −0.8, sky −0.7, sea reflection −0.5, then the composer renders
+(1).
 
 ## Using it (Task 5)
 
@@ -131,6 +134,19 @@ shot framed for landscape still fits the ship.
   The cinematic camera plays her hit at ×1 for its first 20 s
   (`inHitWindow`). Her boat camera is off the starboard quarter (her boats
   got away from that side); bridge and stern views are hers.
+- **walk** (first person, the Titanic and the Lusitania): the eyes 1.6 m
+  over her deck (straight up from the feet, so a list never tilts the
+  view; yaw and pitch are the player's look only, no roll, no head bob),
+  or 0.3 m over the sea on a 0.25 m, 7 s swell when floating (the sea quad
+  is flat: the swell is the camera's own), or 1 m under to **Look under**.
+  `WalkRunner` writes `runtime.walker`; the rig stands the camera there,
+  turns OrbitControls off, skips the bounds and the anchor, uses
+  `nearFor(0.5)`, and ignores double-tap fly-to. Look under clears the
+  water (night fog 0.0018; by day 0.35 of its own), keeps her hull lights
+  at ≥ 0.12 power and tilts down to keep her nearest piece in frame while
+  she is within 600 m; paddling comes back up. On deck the ambient light
+  is lifted ×1.25. The rules are `lib/shipwreck/walk/` (see its README).
+  Keys: WASD or the arrows (the HUD's ←/→ seek is off while walking).
 - **Bounds per ship**: `hullBoxesFor(ship)`; `keepClear` pushes the free
   camera out of the boxes through a face that leaves it above the floor (a
   wreck on her side has a face on the floor).
