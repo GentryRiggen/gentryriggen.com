@@ -16,6 +16,7 @@ import {
   type SimRunner,
 } from "./sim/run";
 import { sampleTrack, type SimTrack } from "./sim/track";
+import { storyEndT } from "./story";
 import type { CameraId, Speed } from "./types";
 
 /**
@@ -59,6 +60,8 @@ export const STORM_START_SPEED = 10;
 export const SPEED_TOUCH_HOLD_S = 10;
 /** The runner's wall-time budget per frame (ms; the sim may run ~0.5 ms over). */
 export const RUNNER_BUDGET_MS = 6;
+/** While a tail run holds for the runner (nothing moves): a bigger budget. */
+export const HOLD_BUDGET_MS = 12;
 
 /** A free-camera view in the ship frame (x forward, y port, z up; m). */
 export interface ShipView {
@@ -131,6 +134,12 @@ export interface PlaybackState {
    */
   minT: number;
   /**
+   * The ship's `timelineTail` for this run (0: the whole run). Until the
+   * runner is done the time holds at 0; then `minT` and `t` move to the
+   * start of the tail.
+   */
+  tail: number;
+  /**
    * Real seconds after the collision at `t` (the sim's frame time). Equal to
    * `t` until both parts are under; the way down plays faster than real time.
    */
@@ -180,7 +189,7 @@ export interface PlaybackActions {
   play(): void;
   pause(): void;
   setSpeed(speed: Speed, nowS?: number): void;
-  /** Jumps to `t`, clamped to [minT, computedT]. */
+  /** Jumps to `t`, clamped to [minT, computedT] (not while a tail run holds). */
   seek(t: number): void;
   setCamera(camera: CameraId): void;
   /** Switches to the free camera from the current view, without a snap. */
@@ -224,6 +233,7 @@ const INITIAL: PlaybackState = {
   t: 0,
   realT: 0,
   minT: 0,
+  tail: 0,
   playing: false,
   speed: 10,
   slowMo: false,
@@ -371,6 +381,24 @@ export function realTimeAt(track: SimTrack | null, t: number): number {
   return sampleTrack(track, t).realT;
 }
 
+/**
+ * A finished tail run's start: the last `tail` of its story (to the end
+ * the timeline shows), whole seconds.
+ */
+export function tailStartT(track: SimTrack, tail: number): number {
+  const end = storyEndT(track, true) ?? lastT(track);
+  return Math.max(0, Math.floor(end * (1 - tail)));
+}
+
+function tailStart(
+  track: SimTrack,
+  tail: number,
+  snapId: number
+): Partial<PlaybackState> {
+  const minT = tailStartT(track, tail);
+  return { minT, t: minT, realT: realTimeAt(track, minT), snapId: snapId + 1 };
+}
+
 function lastT(track: SimTrack | null): number {
   if (!track || track.frames.length === 0) return 0;
   return track.frames[track.frames.length - 1].t;
@@ -419,6 +447,7 @@ export function createPlaybackStore(
             : (chosen ?? (firstHole ? [firstHole.x] : []));
         const pre = openings.length > 0 ? (spec.preRollS ?? 0) : 0;
         const minT = pre > 0 ? -pre : 0;
+        const tail = preview ? 0 : (spec.timelineTail ?? 0);
         set({
           ship: spec.id,
           track: null,
@@ -431,6 +460,7 @@ export function createPlaybackStore(
           t: minT,
           realT: minT,
           minT,
+          tail,
           slowMo: false,
           place: null,
           ...walkOff(),
@@ -452,6 +482,7 @@ export function createPlaybackStore(
           t: 0,
           realT: 0,
           minT: 0,
+          tail: 0,
           playing: false,
           slowMo: false,
           place: null,
@@ -462,21 +493,27 @@ export function createPlaybackStore(
         });
       },
       pump(budgetMs = RUNNER_BUDGET_MS) {
-        if (!runner || get().done) return;
-        const done = runner.advance(budgetMs);
-        const track = runner.track();
+        const s = get();
+        if (!runner || s.done) return;
+        const done = runner.advance(
+          s.tail > 0 ? Math.max(budgetMs, HOLD_BUDGET_MS) : budgetMs
+        );
+        const track = { ...runner.track() };
         const computedT = done ? Math.max(lastT(track), 0) : lastT(track);
         set({
           // A new object each pump so subscribers see the track grow.
-          track: { ...track },
+          track,
           computedT,
           done,
           progress: done ? 1 : runner.progress(),
+          ...(done && s.tail > 0 ? tailStart(track, s.tail, s.snapId) : {}),
         });
       },
       tick(dtReal, nowS) {
         const s = get();
         if (!s.playing || !s.track || !(dtReal > 0)) return;
+        // A tail run holds at its first moment until the tail is known.
+        if (s.tail > 0 && !s.done) return;
         const speed = effectiveSpeed(s, nowS);
         const end = s.computedT;
         const t = Math.min(end, s.t + dtReal * speed);
@@ -504,6 +541,8 @@ export function createPlaybackStore(
       },
       seek(t) {
         const s = get();
+        // Holding for the tail: nothing to scrub to yet.
+        if (s.tail > 0 && !s.done) return;
         const clamped = Math.max(s.minT, Math.min(s.computedT, t));
         set({
           t: clamped,

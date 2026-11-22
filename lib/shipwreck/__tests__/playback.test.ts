@@ -92,6 +92,36 @@ describe("playback store", () => {
     expect(store.getState().progress).toBe(1);
   });
 
+  it("a tail ship (the Fitzgerald) holds until done, then shows only her last 10%", () => {
+    expect(fitzgerald.timelineTail).toBe(0.1);
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(1000, 400),
+    });
+    store.getState().start(fitzgerald, fitzgerald.realNight);
+    store.getState().play();
+    store.getState().pump();
+    expect(store.getState().done).toBe(false);
+    // Holding: no time passes and no seeking yet.
+    store.getState().tick(1, 100);
+    store.getState().seek(300);
+    expect(store.getState().t).toBe(0);
+    store.getState().pump();
+    store.getState().pump();
+    expect(store.getState().done).toBe(true);
+    expect(store.getState().minT).toBe(900);
+    expect(store.getState().t).toBe(900);
+    // Seeks stay in the tail; play goes on from its start.
+    store.getState().seek(100);
+    expect(store.getState().t).toBe(900);
+    store.getState().tick(1, 100);
+    expect(store.getState().t).toBeGreaterThan(900);
+    // The title's stage and other ships show the whole run.
+    store.getState().start(fitzgerald, [], { preview: true });
+    expect(store.getState().tail).toBe(0);
+    store.getState().start(titanic, titanic.realNight);
+    expect(store.getState().tail).toBe(0);
+  });
+
   it("advances t by delta times speed and clamps at the computed end", () => {
     const store = started(1000, 400);
     store.getState().pump();

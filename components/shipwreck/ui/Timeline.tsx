@@ -85,7 +85,8 @@ export default function Timeline({ store }: TimelineProps) {
   );
   // Only what happens within the story (a ship that floats still has
   // boats and rockets after her story ends): none pile up at the right end.
-  const shown = marks.filter((m) => m.t <= end + 1);
+  // A tail run's bar starts late: nothing from before it either.
+  const shown = marks.filter((m) => m.t <= end + 1 && m.t >= start - 1);
   const fractions = shown.map((m) =>
     Math.min(1, Math.max(0, (m.t - start) / span))
   );
