@@ -55,7 +55,7 @@ export default function TitleScreen({
         <div
           role="radiogroup"
           aria-label="Choose a ship"
-          className="flex w-full justify-center gap-2 overflow-x-auto px-1 pb-1"
+          className="flex w-full shrink-0 justify-center gap-2 overflow-x-auto p-1"
         >
           {SHIP_IDS.map((id) => {
             const s = getShip(id);
