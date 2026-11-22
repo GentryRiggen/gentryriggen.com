@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.1",
+    date: "2026-11-22",
+    title: "A shorter storm",
+    highlights: [
+      "The Edmund Fitzgerald's timeline now starts at 6:50 PM, about 20 minutes before she sinks, so you can scrub straight to the big waves and the end instead of hours of storm",
+      "She takes a few seconds to get ready before it starts playing",
+    ],
+  },
+  {
     version: "1.3.0",
     date: "2026-11-22",
     title: "The Edmund Fitzgerald",

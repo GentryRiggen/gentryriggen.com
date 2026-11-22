@@ -710,6 +710,10 @@ export const fitzgerald: ShipSpec = {
   funnelPaint: { funnel: 0x45201b, top: 0x161616 },
   seaDepthM: 162,
   clockStartS: 15 * 3600 + 30 * 60, // 3:30 PM, her first report
+  // Her afternoon is almost four hours of storm and a few minutes' loss:
+  // the timeline shows the last 10% (about 6:50 PM on the real run, before
+  // her 7:10 message), the sim still runs from 3:30.
+  timelineTail: 0.1,
   cause: "storm",
   // Lake Superior in November: fresh, its surface about 6–7 °C on 10
   // November (NOAA CoastWatch GLSEA average), the deep lake about 4 °C.

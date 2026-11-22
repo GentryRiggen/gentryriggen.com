@@ -227,6 +227,13 @@ export interface ShipSpec {
    */
   preRollS?: number;
   /**
+   * A run's timeline shows only its last part: this fraction of the story
+   * (0.1 = the last 10%), from when the runner finishes. Until then the
+   * playback holds at the first moment. Missing: the whole run (the
+   * Fitzgerald's afternoon is hours of storm before a few minutes' loss).
+   */
+  timelineTail?: number;
+  /**
    * Forward speed at the first event (no propulsion model) and, if given,
    * its half-life from then. Missing `halfLifeS`: she keeps her speed (her
    * engine still turning) until she goes under, then loses it with

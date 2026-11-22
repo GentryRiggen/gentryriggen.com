@@ -236,13 +236,17 @@ describe("Shipwreck: choosing the Edmund Fitzgerald (1.3)", () => {
     expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
       /^3:30 PM — Her captain radios the Arthur M. Anderson/
     );
-    // 5:30 PM, two hours into the storm.
+    // Computed: her timeline is the last 10%, from 6:50 PM.
     act(() => {
       playback.getState().pump(60_000);
-      playback.getState().seek(2 * 3600);
     });
-    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("5:30 PM");
-    expect(screen.getByText("2 h 00 min into the storm")).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("6:50 PM");
+    // 7:00 PM, three and a half hours into the storm.
+    act(() => {
+      playback.getState().seek(3.5 * 3600);
+    });
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("7:00 PM");
+    expect(screen.getByText("3 h 30 min into the storm")).toBeInTheDocument();
     fireEvent.click(screen.getByTestId("shipwreck-places-button"));
     for (const id of [
       "pilothouse",
