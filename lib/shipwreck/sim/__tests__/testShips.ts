@@ -122,3 +122,74 @@ export function longShip(more: Partial<BoxShip> = {}): ShipSpec {
     ...more,
   });
 }
+
+/** The side tanks' inboard bulkheads in the storm ship (m from the centreline). */
+export const TANK_Y = 9;
+
+/**
+ * 200 m × 24 m × 12 m, draught 8.5 m in fresh water (a laker's 3.5 m of
+ * freeboard): an after space, one long hold with a side tank each side of
+ * it (x -80…80), a fore space; three hatches on the hold (No. 1 forward)
+ * with 0.6 m coamings, and a vent on deck into each side tank. No storm
+ * unless `extra` gives one.
+ */
+export function stormShip(more: Partial<BoxShip> = {}): ShipSpec {
+  const top = 12;
+  const draught = more.draught ?? 8.5;
+  const base = boxShip({
+    length: 200,
+    beam: 24,
+    depth: top,
+    draught,
+    kg: 8,
+    compartments: [
+      compartment("aft", -100, -80, top),
+      compartment("hold", -80, 80, top, {
+        span: { side: "centre", y: TANK_Y },
+      }),
+      compartment("tank-p", -80, 80, top, {
+        span: { side: "port", y: TANK_Y },
+      }),
+      compartment("tank-s", -80, 80, top, {
+        span: { side: "starboard", y: TANK_Y },
+      }),
+      compartment("fore", 80, 100, top),
+    ],
+    ...more,
+    extra: {
+      waterDensity: 1000,
+      deckOpenings: [
+        {
+          id: "h1",
+          compartmentId: "hold",
+          kind: "hatch",
+          x: 50,
+          y: 0,
+          z: 12.6,
+          areaM2: 0.02,
+        },
+        {
+          id: "h2",
+          compartmentId: "hold",
+          kind: "hatch",
+          x: 0,
+          y: 0,
+          z: 12.6,
+          areaM2: 0.02,
+        },
+        {
+          id: "h3",
+          compartmentId: "hold",
+          kind: "hatch",
+          x: -50,
+          y: 0,
+          z: 12.6,
+          areaM2: 0.02,
+        },
+      ],
+      ...more.extra,
+    },
+  });
+  // In fresh water: the displacement of the box at her draught.
+  return { ...base, displacementT: (200 * 24 * draught * 1000) / 1000 };
+}

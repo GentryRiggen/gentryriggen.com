@@ -20,7 +20,11 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { partAt } from "@/lib/shipwreck/xray";
 import {
+  FITZGERALD_WIDE_SHOTS,
+  aboveWaves,
+  cinematicHit,
   cinematicShot,
+  fitAcross,
   clampAboveFloor,
   dampSpring,
   hullBoxesFor,
@@ -33,6 +37,7 @@ import {
   shotView,
   underwaterView,
   type ShotContext,
+  type ShotId,
   type V3,
   type View,
 } from "./cameraMath";
@@ -431,10 +436,17 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       else if (p.camera === "stern") view = sternView(ctx);
       else {
         const shot = p.track
-          ? cinematicShot(p.track, p.t, spec.id, p.openings.length > 0)
+          ? cinematicShot(
+              p.track,
+              p.t,
+              spec.id,
+              cinematicHit(p.openings.length, spec.cause, p.preview)
+            )
           : spec.id === "lusitania"
             ? "afternoon"
-            : "establishing";
+            : spec.id === "fitzgerald"
+              ? "storm"
+              : "establishing";
         // Reduced motion: cut between the shots instead of flying.
         if (reducedMotion && shot !== s.shot) cut = true;
         s.shot = shot;
@@ -454,10 +466,30 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       // (Across only: the height is the shot's, so a camera on the water
       // stays on the water.)
       // (Not so far in her green water, where 200 m is lost in the murk.)
-      const back =
-        spec.id === "lusitania" && s.pos[1] < 0
-          ? Math.min(1.2, portraitPullBack(cam.aspect))
-          : portraitPullBack(cam.aspect);
+      // Her length across a portrait screen in her wide shots (1.15 × her
+      // length shows); under water at most 1.2 (lost in the dark water).
+      const pull = portraitPullBack(cam.aspect);
+      let back =
+        spec.id !== "titanic" && s.pos[1] < 0 ? Math.min(1.2, pull) : pull;
+      if (
+        spec.id === "fitzgerald" &&
+        p.camera === "cinematic" &&
+        s.pos[1] >= 0 &&
+        cam.aspect < 1.2 &&
+        FITZGERALD_WIDE_SHOTS.includes(s.shot as ShotId)
+      )
+        back = Math.min(
+          2.8,
+          Math.max(
+            back,
+            fitAcross(
+              cam.aspect,
+              cam.fov,
+              Math.hypot(s.pos[0] - s.tgt[0], s.pos[2] - s.tgt[2]),
+              1.15 * spec.loa
+            )
+          )
+        );
       camera.position.set(
         s.tgt[0] + (s.pos[0] - s.tgt[0]) * back,
         s.pos[1],
@@ -502,13 +534,21 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       const g = partGroup(s.anchor);
       if (g) s.local.copy(g.worldToLocal(tmp.a.copy(controls.target)));
     }
+    // A storm: clear of the waves under (or over) the camera, and the
+    // target never inside a crest (trap 4: the local surface, not z = 0).
+    const sea = runtime.sea;
+    if (sea.storm) {
+      const surf = runtime.seaY(camera.position.x, camera.position.z);
+      camera.position.y = aboveWaves(camera.position.y, surf, 1.5);
+      sea.atCamera = surf;
+    } else sea.atCamera = 0;
     camera.lookAt(controls.target);
     const near = nearFor(camera.position.distanceTo(controls.target));
     if (Math.abs(cam.near - near) > near * 0.1) {
       cam.near = near;
       cam.updateProjectionMatrix();
     }
-    runtime.underwater = camera.position.y < 0;
+    runtime.underwater = camera.position.y < sea.atCamera;
   }, -1);
 
   return null;
@@ -516,6 +556,13 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
 
 function bridgeView(ctx: ShotContext): View {
   const b = ctx.bodies.find((x) => x.part === "bow") ?? ctx.bodies[0];
+  if (ctx.ship === "fitzgerald")
+    // Her pilothouse's starboard wing, forward, looking aft down her deck
+    // (the hatches, the seas coming up from astern).
+    return {
+      pos: shipThree(b, [101, -8.5, 22.5]),
+      target: shipThree(b, [-60, -2, 13]),
+    };
   if (ctx.ship === "lusitania")
     // Her starboard bridge wing (the bridge at 68 m, over the boat deck),
     // looking aft along the boats.
@@ -531,6 +578,12 @@ function bridgeView(ctx: ShotContext): View {
 
 function sternView(ctx: ShotContext): View {
   const b = ctx.bodies.find((x) => x.part === "stern") ?? ctx.bodies[0];
+  if (ctx.ship === "fitzgerald")
+    // On her after house by the funnel, looking forward along her deck.
+    return {
+      pos: shipThree(b, [-84, 0, 20.5]),
+      target: shipThree(b, [60, 0, 13]),
+    };
   if (ctx.ship === "lusitania")
     // Her open Shelter deck aft (no raised poop), looking forward.
     return {

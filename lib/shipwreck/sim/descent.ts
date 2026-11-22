@@ -6,7 +6,6 @@ import {
   PLOUGH_TIME_S,
   DRAG_CD,
   GRAV,
-  RHO,
   STEEL_BUOYANCY,
   STERN_CRUSH_M,
   STERN_GLIDE,
@@ -45,6 +44,24 @@ function relax(v: number, target: number, dt: number, tau: number): number {
   return target + (v - target) * exp(-dt / tau);
 }
 
+/**
+ * The stern's capsize as it falls (`wreckParts.stern`, a rule like the
+ * rest): it rolls toward the side it leans (starboard if level) at its
+ * rate (`rollDegS`, else STERN_CAPSIZE_DEG_S) until it lies at `rest`
+ * (radians) that way.
+ */
+function capsizeRoll(
+  roll: number,
+  rest: number,
+  rate: number,
+  dt: number
+): number {
+  const target = roll >= 0 ? rest : -rest;
+  const step = rate * dt;
+  const d = target - roll;
+  return abs(d) <= step ? target : roll + (d > 0 ? step : -step);
+}
+
 /** Centre of mass of a flooded body, ship frame. */
 function floodedCentre(b: Body): [number, number, number] {
   let m = b.lightMass;
@@ -52,7 +69,7 @@ function floodedCentre(b: Body): [number, number, number] {
   const my = b.lightMass * b.lightCy;
   let mz = b.lightMass * b.lightCz;
   for (const c of b.all) {
-    const w = RHO * c.cap;
+    const w = b.rho * c.cap;
     m += w;
     mx += w * c.slice.cx;
     mz += w * c.slice.cz;
@@ -102,9 +119,9 @@ function fall(b: Body, dt: number, floorZ: number): boolean {
   const g = floodedCentre(b);
   const ge = earthOf(b, g[0], g[1], g[2]);
   const weight = b.lightMass * GRAV * (1 - STEEL_BUOYANCY);
-  const mEff = b.lightMass + RHO * env.vol * 1.2;
+  const mEff = b.lightMass + b.rho * env.vol * 1.2;
   const shown = env.plan * abs(cos(b.pitch)) + env.section * abs(sin(b.pitch));
-  const drag = 0.5 * RHO * DRAG_CD * shown * abs(b.vz);
+  const drag = 0.5 * b.rho * DRAG_CD * shown * abs(b.vz);
   b.vz = (mEff * b.vz - weight * dt) / (mEff + drag * dt);
   const down = abs(b.vz);
   if (b.part === "stern") {
@@ -114,7 +131,8 @@ function fall(b: Body, dt: number, floorZ: number): boolean {
     b.pitch += b.wp * dt;
     b.wy = relax(b.wy, STERN_SPIN, dt, 20);
     b.yaw += b.wy * dt;
-    b.roll = relax(b.roll, 0.08, dt, 40);
+    if (b.capsize === null) b.roll = relax(b.roll, 0.08, dt, 40);
+    else b.roll = capsizeRoll(b.roll, b.capsize, b.capsizeRate, dt);
     b.vx = -down * STERN_GLIDE;
   } else {
     b.pitch = relax(b.pitch, BOW_DESCENT_PITCH, dt, 25);
@@ -149,7 +167,10 @@ function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
   // to it if she lands listed toward it, else keeps her list; any other
   // ship rights (the 1.0 rest).
   const w = b.wreck;
-  if (!w) b.restRoll = b.part === "stern" ? 0.05 : 0;
+  if (b.capsize !== null)
+    // Upside down (wreckParts.stern): it finishes its roll on the floor.
+    b.restRoll = b.roll >= 0 ? b.capsize : -b.capsize;
+  else if (!w) b.restRoll = b.part === "stern" ? 0.05 : 0;
   else if (b.roll * w.rest > 0 && abs(b.roll) >= w.min)
     b.restRoll = (w.rest > 0 ? 1 : -1) * max(abs(b.roll), abs(w.rest));
   else b.restRoll = b.roll;
@@ -177,7 +198,11 @@ export function stepLanding(b: Body, dt: number): boolean {
   const tau = bow ? 5 : 2.5;
   b.contactT += dt;
   b.pitch = relax(b.pitch, b.restPitch, dt, tau);
-  b.roll = relax(b.roll, restRoll, dt, tau);
+  // A capsizing stern keeps rolling at its own rate; the rest ease in.
+  b.roll =
+    b.capsize === null
+      ? relax(b.roll, restRoll, dt, tau)
+      : capsizeRoll(b.roll, b.capsize, b.capsizeRate, dt);
   b.wy = relax(b.wy, 0, dt, 1.5);
   b.yaw += b.wy * dt;
   b.vx = 0;
@@ -203,6 +228,14 @@ export function stepLanding(b: Body, dt: number): boolean {
     // into the floor (lying over, her deck edge swings down by most of her
     // beam): re-seat her lowest hull point at that same depth.
     const seat = b.contactE[2] - b.contactD0;
+    if (b.bottom < seat) {
+      b.z += seat - b.bottom;
+      updateBounds(b);
+    }
+  } else if (b.capsize !== null) {
+    // A capsizing stern still rolling as it lands: the same, at the depth
+    // its crush has reached, so its deck does not swing into the floor.
+    const seat = b.contactE[2] - depth;
     if (b.bottom < seat) {
       b.z += seat - b.bottom;
       updateBounds(b);

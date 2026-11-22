@@ -27,6 +27,8 @@ import {
   DAY_PARTICLES,
   type AfternoonFrame,
 } from "./afternoonEffects";
+import { STORM_MIN_PX, STORM_PARTICLES } from "./storm";
+import { StormEffects, type StormFrame } from "./stormEffects";
 
 /**
  * The night's events, all worked out from the shown time `t` (so seeking
@@ -78,18 +80,25 @@ const fragment = /* glsl */ `
  * Daylight particles (the afternoon): smoke, steam, spray, blended over
  * the scene (additive light cannot make dark coal smoke). One more draw.
  */
+/** The blended buffer per scene (the afternoon's, or the storm's). */
 const DAY_POOL = DAY_PARTICLES.high.pool;
+const STORM_POOL = STORM_PARTICLES.high.pool;
 const dayVertex = /* glsl */ `
   attribute vec4 aColor;
   attribute float aSize;
   uniform float uScale;
   uniform float uMaxPx;
+  uniform float uMinPx;
   varying vec4 vColor;
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
     vColor = aColor;
-    gl_PointSize = clamp(aSize * uScale / max(1.0, -mv.z), 1.5, uMaxPx);
+    float px = aSize * uScale / max(1.0, -mv.z);
+    // The storm's snow: a flake smaller than uMinPx on screen fades out
+    // instead of being drawn up to a pinpoint (0: off, the afternoon).
+    if (uMinPx > 0.0) vColor.a *= smoothstep(uMinPx * 0.5, uMinPx, px);
+    gl_PointSize = clamp(px, 1.5, uMaxPx);
   }
 `;
 const dayFragment = /* glsl */ `
@@ -120,6 +129,9 @@ export default function Effects({
   settings,
 }: EffectsProps) {
   const day = settings.timeOfDay === "afternoon";
+  // The storm (the Fitzgerald): snow, spray and torn smoke in the blended
+  // buffer; none of the liners' boats, rockets, smoke or waterline foam.
+  const storm = settings.storm === true;
   const pts = useMemo(() => {
     const g = new BufferGeometry();
     const pos = new BufferAttribute(new Float32Array(POOL * 3), 3);
@@ -151,11 +163,12 @@ export default function Effects({
     [pts]
   );
 
+  const pool = storm ? STORM_POOL : DAY_POOL;
   const dayPts = useMemo(() => {
     const g = new BufferGeometry();
-    const pos = new BufferAttribute(new Float32Array(DAY_POOL * 3), 3);
-    const col = new BufferAttribute(new Float32Array(DAY_POOL * 4), 4);
-    const size = new BufferAttribute(new Float32Array(DAY_POOL), 1);
+    const pos = new BufferAttribute(new Float32Array(pool * 3), 3);
+    const col = new BufferAttribute(new Float32Array(pool * 4), 4);
+    const size = new BufferAttribute(new Float32Array(pool), 1);
     g.setAttribute("position", pos);
     g.setAttribute("aColor", col);
     g.setAttribute("aSize", size);
@@ -169,6 +182,7 @@ export default function Effects({
       uniforms: {
         uScale: { value: 600 },
         uMaxPx: { value: DAY_PARTICLES.high.maxPx },
+        uMinPx: { value: storm ? STORM_MIN_PX : 0 },
       },
     });
     const points = new Points(g, mat);
@@ -176,7 +190,7 @@ export default function Effects({
     points.renderOrder = 31;
     points.name = "effects-day";
     return { g, pos, col, size, mat, points };
-  }, []);
+  }, [pool, storm]);
   useEffect(
     () => () => {
       dayPts.g.dispose();
@@ -198,6 +212,21 @@ export default function Effects({
     [spec, hull, dayPts]
   );
   const dayFrame = useMemo(() => ({}) as AfternoonFrame, []);
+  const stormFx = useMemo(
+    () =>
+      storm
+        ? new StormEffects(
+            spec,
+            hull,
+            runtime,
+            dayPts.pos.array as Float32Array,
+            dayPts.col.array as Float32Array,
+            dayPts.size.array as Float32Array
+          )
+        : null,
+    [storm, spec, hull, runtime, dayPts]
+  );
+  const stormFrame = useMemo(() => ({}) as StormFrame, []);
   const lastSnap = useRef(-1);
   // Per track: where each boat touched the water (sampled once).
   const launch = useRef<{ track: SimTrack | null; at: Map<number, Vector3> }>({
@@ -250,7 +279,7 @@ export default function Effects({
         ));
 
     dayPts.mat.uniforms.uScale.value = pts.mat.uniforms.uScale.value;
-    dayPts.points.visible = day;
+    dayPts.points.visible = day || storm;
 
     runtime.flash = 0;
     if (!track || !frame) {
@@ -361,6 +390,7 @@ export default function Effects({
       f.track = track;
       f.frame = frame;
       f.openings = s.openings;
+      f.hits = s.hits;
       f.t = t;
       f.wall = wall;
       f.dt = Math.min(0.1, dt);
@@ -376,6 +406,30 @@ export default function Effects({
       // Point size capped per tier (framebuffer pixels, as the night's 96).
       dayPts.mat.uniforms.uMaxPx.value = DAY_PARTICLES[s.quality].maxPx;
       dn = afternoon.update(f);
+    }
+    if (stormFx) {
+      const f = stormFrame;
+      const cam = state.camera.position;
+      f.frame = frame;
+      f.t = t;
+      f.wall = wall;
+      f.dt = Math.min(0.1, dt);
+      f.quality = s.quality;
+      f.funnel = visible?.funnels[0] ?? null;
+      f.camX = cam.x;
+      f.camY = cam.y;
+      f.camZ = cam.z;
+      f.under = runtime.underwater;
+      let out = false;
+      for (const e of events)
+        if (e.kind === "bow-under" && e.t <= t) {
+          out = true;
+          break;
+        }
+      f.firesOut = out;
+      f.track = track;
+      dayPts.mat.uniforms.uMaxPx.value = STORM_PARTICLES[s.quality].maxPx;
+      dn = stormFx.update(f);
     }
     lastSnap.current = s.snapId;
     // Lanterns of boats still on the falls.
@@ -413,7 +467,7 @@ export default function Effects({
       events.find((e) => e.kind === "steam-stop")?.t ?? -Infinity;
     const steaming = t >= steamStart && t < steamStop;
     const firesLit = track.brokeAtT === null || t < track.brokeAtT;
-    if (visible && firesLit && !day) {
+    if (visible && firesLit && !day && !storm) {
       for (let i = 0; i < 3; i += 1) {
         const f = visible.funnels[i];
         if (!f || (fell.has(i) && t >= (fell.get(i) ?? 0))) continue;
@@ -489,6 +543,7 @@ export default function Effects({
     // --- Sparks at the break.
     const brokeAt = track.brokeAtT;
     if (
+      !storm &&
       brokeAt !== null &&
       track.breakX !== null &&
       t >= brokeAt &&
@@ -524,6 +579,8 @@ export default function Effects({
       const x0 = e.kind === "bow-under" ? 60 : -100;
       const c = shipToThree(body, [x0, 0, 10]);
       const fade = Math.min(1, age * 2) * (1 - age / 40);
+      // On the storm's sea, where it is now.
+      const seaAt = storm ? runtime.seaY(c[0], c[2]) : 0;
       for (let k = 0; k < 160; k += 1) {
         const th = hash(k, 21) * Math.PI * 2;
         const r = Math.sqrt(hash(k, 22)) * (8 + age * 1.6);
@@ -531,7 +588,7 @@ export default function Effects({
         const b = 0.5 * fade * pulse;
         emit(
           c[0] + Math.cos(th) * r,
-          0.2,
+          seaAt + 0.2,
           c[2] + Math.sin(th) * r,
           b,
           b,
@@ -544,7 +601,8 @@ export default function Effects({
     // --- A faint wash of foam where the hull meets the sea.
     const power = frame.power;
     // (Not in X-ray, where it would show through the ghost hull.)
-    for (const body of s.xray ? [] : frame.bodies) {
+    // (Nor in the storm: its sea is not at z = 0, and spray marks it.)
+    for (const body of s.xray || storm ? [] : frame.bodies) {
       const lo =
         body.part === "bow" && track.breakX !== null ? track.breakX : -136;
       const hi =
@@ -577,7 +635,7 @@ export default function Effects({
 
     // --- Marine snow drifting past the camera under water.
     const cam = state.camera.position;
-    if (cam.y < -2) {
+    if (cam.y < (storm ? runtime.sea.atCamera : 0) - 2) {
       const box = 70;
       for (let k = 0; k < 500; k += 1) {
         const wrap = (v: number) => (((v % box) + box) % box) - box / 2;
@@ -593,7 +651,7 @@ export default function Effects({
     pts.col.needsUpdate = true;
     pts.size.needsUpdate = true;
     pts.g.setDrawRange(0, n);
-    if (day) {
+    if (day || storm) {
       dayPts.pos.needsUpdate = true;
       dayPts.col.needsUpdate = true;
       dayPts.size.needsUpdate = true;

@@ -78,5 +78,17 @@
   "shipwreck-walk-look-under": {
     "calls": 37,
     "triangles": 68626
+  },
+  "shipwreck-fitzgerald-storm": {
+    "calls": 39,
+    "triangles": 192627
+  },
+  "shipwreck-fitzgerald-dive": {
+    "calls": 37,
+    "triangles": 191753
+  },
+  "shipwreck-fitzgerald-wreck": {
+    "calls": 44,
+    "triangles": 189495
   }
 }

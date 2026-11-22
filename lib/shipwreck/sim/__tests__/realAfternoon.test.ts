@@ -1,4 +1,5 @@
 import { lusitania } from "../../ships";
+import { hullOpenings } from "../../ships/types";
 import { simulate, whatIfOpenings, whatIfSpots } from "../run";
 import type { BodyPose, SimTrack } from "../track";
 
@@ -198,7 +199,7 @@ describe("What if? the torpedo elsewhere, portholes open or shut", () => {
       );
       expect(ids).toContain(`br${n}-stbd`);
       expect(ids).toContain(`br${n}`);
-      for (const o of whatIfOpenings(lusitania, [`br${n}`])) {
+      for (const o of hullOpenings(whatIfOpenings(lusitania, [`br${n}`]))) {
         expect(o.side).toBe("starboard");
         expect(o.zHigh).toBeLessThan(lusitania.draught);
         const c = lusitania.compartments.find((k) => k.id === o.compartmentId)!;

@@ -103,5 +103,36 @@ test(
   }
 );
 
-// The Walk button is absent on the Edmund Fitzgerald (no walk map): added
-// when this branch is rebased on her 1.2.0.
+test("no Walk button on the Edmund Fitzgerald (she has no walk map)", async ({
+  page,
+}) => {
+  await page.goto("/shipwreck");
+  await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
+  await page.getByTestId("shipwreck-ship-fitzgerald").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "fitzgerald"
+  );
+  // Once she has frames, the HUD is complete: still no Walk button. (Her
+  // first frames are computed here: a busy machine draws few frames.)
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const h = window.__shipwreck!;
+          h.pump!(100);
+          return h.getState!().computedT;
+        }),
+      { timeout: 60_000 }
+    )
+    .toBeGreaterThan(0);
+  await expect(page.getByTestId("shipwreck-play")).toBeVisible();
+  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+  // And the hook's walk does nothing on her.
+  await page.evaluate(() => window.__shipwreck!.startWalk!());
+  expect(
+    await page.evaluate(() => window.__shipwreck!.getState!().camera)
+  ).not.toBe("walk");
+  expect(await page.evaluate(() => window.__shipwreck!.getWalk!())).toBeNull();
+});

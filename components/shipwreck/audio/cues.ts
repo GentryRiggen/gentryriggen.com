@@ -1,6 +1,8 @@
 import type { SimEvent, SimEventKind } from "@/lib/shipwreck/sim/events";
 import type { SimFrame } from "@/lib/shipwreck/sim/track";
-import type { ShipId } from "@/lib/shipwreck/ships/types";
+import type { ShipId, StormSpec } from "@/lib/shipwreck/ships/types";
+import { rampAt } from "@/lib/shipwreck/sim/waves";
+import { hitTimeS } from "@/lib/shipwreck/sim/run";
 
 /** Every one-shot the night can make. No voices of any kind. */
 export type Cue =
@@ -18,7 +20,10 @@ export type Cue =
   | "torpedo"
   | "boom"
   | "gull"
-  | "splash";
+  | "splash"
+  | "swell"
+  | "hatch"
+  | "waveCrash";
 
 /** Which event makes which cue (events not listed make none). */
 export const EVENT_CUES: Partial<Record<SimEventKind, Cue>> = {
@@ -48,9 +53,39 @@ export const LUSITANIA_EVENT_CUES: Partial<Record<SimEventKind, Cue>> = {
   rocket: undefined,
 };
 
+/**
+ * The Edmund Fitzgerald's afternoon: the run opens at 3:30 PM with the damage
+ * already done, so no scrape, only a quiet storm swell. Each hatch cover that
+ * gives way sounds (rate limited), and her end is the shared breakup, dive
+ * and landing. No rocket, no whistle (her funnel never falls).
+ */
+export const FITZGERALD_EVENT_CUES: Partial<Record<SimEventKind, Cue>> = {
+  collision: "swell",
+  "hatch-fails": "hatch",
+  "lights-out": "powerDown",
+  breakup: "breakup",
+  "bow-under": "plunge",
+  "stern-under": "plunge",
+  "bow-lands": "thud",
+  "stern-lands": "thud",
+};
+
 /** The event-to-cue map for a ship (the Titanic's is `EVENT_CUES`). */
 export function eventCuesFor(ship: ShipId): Partial<Record<SimEventKind, Cue>> {
-  return ship === "lusitania" ? LUSITANIA_EVENT_CUES : EVENT_CUES;
+  if (ship === "lusitania") return LUSITANIA_EVENT_CUES;
+  if (ship === "fitzgerald") return FITZGERALD_EVENT_CUES;
+  return EVENT_CUES;
+}
+
+/** The wind's loudness (0..1) from the storm's sea at shown time `t`. */
+export const WIND_FULL_KN = 60;
+export function windAt(
+  storm: StormSpec | undefined,
+  scale: number,
+  t: number
+): number {
+  if (!storm) return 0;
+  return Math.min(1, (storm.windKn / WIND_FULL_KN) * rampAt(storm, t) * scale);
 }
 
 /** Seconds (wall clock) before the same cue may sound again. */
@@ -66,10 +101,14 @@ export const CUE_GAP_S: Record<Cue, number> = {
   breakup: 4,
   plunge: 4,
   thud: 2,
-  torpedo: 4,
+  // Under the stagger between a multi-torpedo run's hits (3 s).
+  torpedo: 2,
   boom: 4,
   gull: 4,
   splash: 2,
+  swell: 6,
+  hatch: 3,
+  waveCrash: 2,
 };
 
 /** Short cues are skipped from this speed up; beds and long cues stay. */
@@ -113,6 +152,12 @@ export interface CueInput {
   ship?: ShipId;
   /** Walking the deck (left out: not walking). */
   walk?: WalkCueInput;
+  /** The run's torpedo hits (each lands at `hitTimeS`; the first is the
+   *  collision event). */
+  hits?: number;
+  /** The run's storm (with `stormScale`): wind, and its wave groups' crashes. */
+  storm?: StormSpec;
+  stormScale?: number;
 }
 
 /** What the walk tells the sound (from the scene runtime). */
@@ -136,6 +181,8 @@ export interface BedState {
   speed: number;
   /** Which ship's afternoon or night the beds make (Titanic if absent). */
   ship?: ShipId;
+  /** 0..1 how hard the wind blows (the storm's, rising with its sea). */
+  wind?: number;
 }
 
 export interface CueScheduler {
@@ -199,6 +246,9 @@ export function createCueScheduler(
     boom: -Infinity,
     gull: -Infinity,
     splash: -Infinity,
+    swell: -Infinity,
+    hatch: -Infinity,
+    waveCrash: -Infinity,
   };
   let events: readonly SimEvent[] | null = null;
   let next = 0;
@@ -211,9 +261,14 @@ export function createCueScheduler(
   /** The walk's splash count last seen (null before the first update). */
   let lastSplash: number | null = null;
 
-  function fire(cue: Cue, level: number, i: CueInput) {
+  /**
+   * Plays a cue unless thinned by speed or within its gap. `scheduled`: a
+   * cue at its own sim time (a torpedo's later hit), which the wall-clock
+   * gap must not drop at a fast speed.
+   */
+  function fire(cue: Cue, level: number, i: CueInput, scheduled = false) {
     if (i.speed >= THIN_FROM_SPEED && SHORT.has(cue)) return;
-    if (i.now - lastAt[cue] < CUE_GAP_S[cue]) return;
+    if (!scheduled && i.now - lastAt[cue] < CUE_GAP_S[cue]) return;
     lastAt[cue] = i.now;
     emit(cue, level);
   }
@@ -273,6 +328,25 @@ export function createCueScheduler(
           const cue = cues[e.kind];
           if (cue) fire(cue, i.underwater ? 0.5 : 1, i);
         }
+        // A multi-torpedo run's later hits land staggered after t = 0.
+        const n = i.hits ?? 0;
+        if (ship === "lusitania" && n > 1)
+          for (let k = 1; k < n; k += 1) {
+            const tk = hitTimeS(k, n);
+            if (tk > lastT && tk <= i.t) fire("torpedo", 1, i, true);
+          }
+        // Her wave groups break on her, one per sea, centred on the group's
+        // biggest crest at `t`.
+        const groups = i.storm?.groups;
+        if (groups)
+          for (let g = 0; g < groups.length; g += 1) {
+            const grp = groups[g];
+            for (let k = 0; k < grp.count; k += 1) {
+              const tk = grp.t + (k - (grp.count - 1) / 2) * grp.periodS;
+              if (tk > lastT && tk <= i.t)
+                fire("waveCrash", i.underwater ? 0.5 : 1, i);
+            }
+          }
       }
       lastT = i.t;
 
@@ -287,6 +361,7 @@ export function createCueScheduler(
       bed.underwater = i.underwater;
       bed.speed = i.speed;
       bed.ship = ship;
+      bed.wind = windAt(i.storm, i.stormScale ?? 1, i.t);
 
       // Her afternoon: a gull now and then, far off, while she is upright.
       if (

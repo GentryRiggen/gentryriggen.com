@@ -2,6 +2,7 @@ import {
   BoxGeometry,
   BufferAttribute,
   BufferGeometry,
+  ConeGeometry,
   CylinderGeometry,
   SphereGeometry,
   TorusGeometry,
@@ -10,11 +11,17 @@ import {
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
+  FITZGERALD_PLACES,
   LUSITANIA_PLACES,
   PLACES,
   deckZAt,
   type PlaceId,
 } from "@/lib/shipwreck/places";
+import {
+  FITZGERALD_HATCHES,
+  FITZGERALD_TANK_Y,
+  fitzgerald,
+} from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import type {
   Compartment,
@@ -23,7 +30,7 @@ import type {
   ShipSpec,
 } from "@/lib/shipwreck/ships/types";
 import { hullHalfBreadth, type HullModel } from "@/lib/shipwreck/sim/geometry";
-import { compartmentTopZ } from "@/lib/shipwreck/xray";
+import { cargoLayer, compartmentTopZ } from "@/lib/shipwreck/xray";
 
 /**
  * Geometry for the X-ray cutaway, in the ship frame written in three.js
@@ -68,12 +75,13 @@ function sectionRing(
   hull: HullModel,
   x: number,
   top: number,
-  cell?: Pick<Compartment, "span">
+  cell?: Pick<Compartment, "span">,
+  bottom = 0.05
 ): number[][] {
   const port: number[][] = [];
   const star: number[][] = [];
   for (let j = 0; j <= NZ; j += 1) {
-    const z = 0.05 + ((top - 0.05) * j) / NZ;
+    const z = bottom + ((top - bottom) * j) / NZ;
     const hb = Math.max(0.05, hullHalfBreadth(hull, x, z) * INSET);
     const [lo, hi] = cellSpan(cell, hb);
     // three.z = -y
@@ -141,6 +149,109 @@ export function waterGeometry(
   g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
   g.setAttribute("aComp", new BufferAttribute(new Float32Array(comp), 1));
   g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * A laker's cargo in the X-ray: each hold's taconite as a dense, solid
+ * layer from her tank top to its level (`cargoLayer`: its bulk volume
+ * across the hold), a closed loft across the hold's own span, for the
+ * pieces a part holds. Null for a ship without cargo.
+ */
+export function cargoGeometry(
+  hull: HullModel,
+  spec: Pick<ShipSpec, "compartments" | "decks" | "beam">,
+  pieces: readonly { index: number; fromX: number; toX: number }[]
+): BufferGeometry | null {
+  const pos: number[] = [];
+  const tri = (a: number[], b: number[], c: number[]) =>
+    pos.push(...a, ...b, ...c);
+  for (const piece of pieces) {
+    const c = spec.compartments[piece.index];
+    const layer = cargoLayer(spec, c);
+    if (!layer || piece.toX - piece.fromX < 0.5) continue;
+    const rings: number[][][] = [];
+    for (let i = 0; i <= NX; i += 1) {
+      const x = piece.fromX + 0.25 + ((piece.toX - piece.fromX - 0.5) * i) / NX;
+      rings.push(sectionRing(hull, x, layer.topZ, c, layer.bottomZ));
+    }
+    const n = rings[0].length;
+    for (let i = 0; i < NX; i += 1)
+      for (let k = 0; k < n; k += 1) {
+        const k2 = (k + 1) % n;
+        tri(rings[i][k], rings[i + 1][k], rings[i + 1][k2]);
+        tri(rings[i][k], rings[i + 1][k2], rings[i][k2]);
+      }
+    for (const [ring, flip] of [
+      [rings[0], true],
+      [rings[NX], false],
+    ] as const) {
+      let cy = 0;
+      let cz = 0;
+      for (const p of ring) {
+        cy += p[1];
+        cz += p[2];
+      }
+      const centre = [ring[0][0], cy / n, cz / n];
+      for (let k = 0; k < n; k += 1) {
+        const k2 = (k + 1) % n;
+        if (flip) tri(centre, ring[k2], ring[k]);
+        else tri(centre, ring[k], ring[k2]);
+      }
+    }
+  }
+  if (pos.length === 0) return null;
+  const g = new BufferGeometry();
+  g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
+  g.computeVertexNormals();
+  return g;
+}
+
+/**
+ * A laker's double bottom in the X-ray: the tank top over it along each
+ * cargo hold, at the hold's sides and across at its ends, as line pairs
+ * (her side tanks show by their longitudinal bulkheads, `bulkheadLines`).
+ * Null for a ship without cargo.
+ */
+export function doubleBottomLines(
+  hull: HullModel,
+  spec: Pick<ShipSpec, "compartments" | "decks" | "beam">,
+  fromX: number,
+  toX: number
+): BufferGeometry | null {
+  const pts: number[] = [];
+  for (const c of spec.compartments) {
+    const layer = cargoLayer(spec, c);
+    if (!layer) continue;
+    const a = Math.max(c.fromX, fromX);
+    const b = Math.min(c.toX, toX);
+    if (b - a < 0.1) continue;
+    const z = layer.bottomZ;
+    const halfAt = (x: number) =>
+      Math.min(
+        c.span?.side === "centre" ? c.span.y : spec.beam / 2,
+        hullHalfBreadth(hull, x, z)
+      );
+    for (const side of [-1, 1])
+      pts.push(a, z, side * halfAt(a), b, z, side * halfAt(b));
+    pts.push(
+      a,
+      z,
+      -halfAt(a),
+      a,
+      z,
+      halfAt(a),
+      b,
+      z,
+      -halfAt(b),
+      b,
+      z,
+      halfAt(b)
+    );
+  }
+  if (pts.length === 0) return null;
+  const g = new BufferGeometry();
+  g.setAttribute("position", new BufferAttribute(new Float32Array(pts), 3));
   return g;
 }
 
@@ -561,6 +672,138 @@ function turbineParts(): Part[] {
   return parts;
 }
 
+// The Fitzgerald's places.
+
+function fitzPilothouseParts(): Part[] {
+  const p = FITZGERALD_PLACES.pilothouse;
+  const parts = bridgeAt(p.at[0], p.at[0] + 1.2, p.floorZ);
+  // The radar sets and the chart table along its after wall.
+  for (const y of [-3.2, 3.2])
+    parts.push({
+      g: box(p.at[0] - 2.4, y, p.floorZ + 0.6, 1.0, 1.4, 1.2),
+      color: 0x4a5560,
+    });
+  parts.push({
+    g: box(p.at[0] - 2.6, 0, p.floorZ + 0.45, 1.2, 2.2, 0.9),
+    color: 0x7a5a3a,
+  });
+  // The radar screens, lit.
+  for (const y of [-3.2, 3.2])
+    parts.push({
+      g: at(
+        new CylinderGeometry(0.32, 0.32, 0.06, 14),
+        p.at[0] - 2.4,
+        y,
+        p.floorZ + 1.23
+      ),
+      color: 0x7dffb0,
+      glow: true,
+    });
+  return parts;
+}
+
+function fitzBellParts(): Part[] {
+  const [x, y, z] = FITZGERALD_PLACES.bell.at;
+  const floor = FITZGERALD_PLACES.bell.floorZ;
+  return [
+    // Its bronze bell hanging from a yoke on a short post.
+    {
+      g: box(x, y, (floor + z) / 2 + 0.2, 0.12, 0.12, z - floor + 0.4),
+      color: 0x5a5a5a,
+    },
+    { g: box(x, y, z + 0.45, 0.12, 0.9, 0.12), color: 0x5a5a5a },
+    {
+      g: at(new CylinderGeometry(0.16, 0.3, 0.5, 16, 1, true), x, y, z),
+      color: 0xc08a2e,
+    },
+    {
+      g: at(
+        new SphereGeometry(0.17, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+        x,
+        y,
+        z + 0.24
+      ),
+      color: 0xc08a2e,
+    },
+  ];
+}
+
+function fitzHoldParts(): Part[] {
+  // Her taconite is the X-ray's cargo layer; loaded by chute through each
+  // hatch, it heaped up under them (USCG: the normal loading profile).
+  const hold = fitzgerald.compartments.find((c) => c.id === "hold1")!;
+  const layer = cargoLayer(fitzgerald, hold)!;
+  return FITZGERALD_HATCHES.filter(
+    (h) => h.x > hold.fromX && h.x < hold.toX
+  ).map((h) => ({
+    g: at(new ConeGeometry(3.6, 1.6, 14), h.x, 0, layer.topZ + 0.75),
+    color: 0x5c3a2c,
+  }));
+}
+
+function fitzTankParts(): Part[] {
+  const [x0] = FITZGERALD_PLACES["ballast-tank"].at;
+  const shell = 22.86 / 2;
+  const wing = shell - FITZGERALD_TANK_Y;
+  const parts: Part[] = [];
+  // Her side frames in the tank (a few drawn): a web up the shell and a
+  // floor across the wing to the tank's inner wall.
+  for (let k = -3; k <= 3; k += 1) {
+    const x = x0 + k * 2.4;
+    parts.push({
+      g: box(x, -(shell - 0.45), 6, 0.14, 0.5, 9.6),
+      color: 0x4a4a4a,
+    });
+    parts.push({
+      g: box(x, -(FITZGERALD_TANK_Y + wing / 2), 1.2, 0.14, wing - 0.3, 0.5),
+      color: 0x4a4a4a,
+    });
+  }
+  // The two broken vent pipes up to the deck, 8 in bores.
+  for (const d of fitzgerald.deckOpenings ?? [])
+    if (d.kind === "vent")
+      parts.push({
+        g: at(new CylinderGeometry(0.1, 0.1, 3, 8), d.x, d.y, d.z - 1.5),
+        color: 0x8a5a3a,
+      });
+  return parts;
+}
+
+function fitzEngineParts(): Part[] {
+  const x0 = FITZGERALD_PLACES["engine-room"].at[0];
+  const floor = FITZGERALD_PLACES["engine-room"].floorZ;
+  const parts: Part[] = [
+    { g: box(x0, 0, floor, 24, 16, 0.15), color: 0x3a3a3a },
+  ];
+  // Her steam turbine and its gearing on the centre line, two boilers
+  // forward of it, the shaft aft to her one propeller.
+  parts.push({
+    g: at(new CylinderGeometry(1.6, 1.9, 7, 18), x0 - 4, 0, floor + 2.4, {
+      z: Math.PI / 2,
+    }),
+    color: 0x3d4a44,
+  });
+  parts.push({ g: box(x0 - 9, 0, floor + 1.6, 3, 4, 3), color: 0x56635c });
+  for (const y of [-3.6, 3.6])
+    parts.push({
+      g: box(x0 + 7, y, floor + 3.2, 5, 4.4, 6.2),
+      color: 0x5a3a2a,
+    });
+  parts.push({
+    g: at(new CylinderGeometry(0.3, 0.3, 14, 8), x0 - 17, 0, 2.6, {
+      z: Math.PI / 2,
+    }),
+    color: 0x9a9a8a,
+  });
+  for (const x of [x0 - 6, x0, x0 + 6])
+    parts.push({
+      g: at(new SphereGeometry(0.3, 8, 6), x, 0, floor + 7.5),
+      color: 0xffe0a0,
+      glow: true,
+    });
+  return parts;
+}
+
 const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
   titanic: {
     bridge: bridgeParts,
@@ -574,6 +817,14 @@ const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
     "boiler-room-1": lusitaniaBoilerParts,
     "starboard-bunker": bunkerParts,
     "turbine-room": turbineParts,
+  },
+  // The hatch crane needs none: the model draws it.
+  fitzgerald: {
+    pilothouse: fitzPilothouseParts,
+    bell: fitzBellParts,
+    "cargo-hold-1": fitzHoldParts,
+    "ballast-tank": fitzTankParts,
+    "engine-room": fitzEngineParts,
   },
 };
 

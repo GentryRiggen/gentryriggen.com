@@ -1,3 +1,4 @@
+import { FITZGERALD_HATCHES, fitzgerald } from "./ships/fitzgerald";
 import { lusitania } from "./ships/lusitania";
 import { titanic } from "./ships/titanic";
 import type { ShipId, ShipSpec } from "./ships/types";
@@ -30,8 +31,21 @@ export const LUSITANIA_PLACE_IDS = [
   "turbine-room",
 ] as const;
 
-/** Any ship's place (looked up with the ship: both have a bridge). */
-export type PlaceId = TitanicPlaceId | (typeof LUSITANIA_PLACE_IDS)[number];
+/** The Edmund Fitzgerald's places. */
+export const FITZGERALD_PLACE_IDS = [
+  "pilothouse",
+  "bell",
+  "cargo-hold-1",
+  "ballast-tank",
+  "engine-room",
+  "hatch-crane",
+] as const;
+
+/** Any ship's place (looked up with the ship: several have a bridge). */
+export type PlaceId =
+  | TitanicPlaceId
+  | (typeof LUSITANIA_PLACE_IDS)[number]
+  | (typeof FITZGERALD_PLACE_IDS)[number];
 
 export interface Place {
   id: PlaceId;
@@ -188,10 +202,107 @@ export const LUSITANIA_PLACES: Record<
   },
 };
 
+/**
+ * The Edmund Fitzgerald's places, from her data (and the model's houses):
+ * the pilothouse on the texas deck forward, her bell on its roof, No. 1
+ * cargo hold with its taconite, the No. 1 starboard ballast tanks where
+ * her vents broke, the engine room aft and the hatch crane on its rails at
+ * No. 21 hatch. A deck's height at x is its height amidships plus her
+ * sheer there (measured from the spar deck, the top of her hull).
+ */
+function fitzDeckZ(deck: string, x: number): number {
+  const z = (name: string) =>
+    fitzgerald.decks.find((d) => d.name === name)?.z ?? 0;
+  return z(deck) + fitzgerald.sheerZ(x) - z("Spar");
+}
+const hatchAt = (n: number) => FITZGERALD_HATCHES[n - 1].x;
+/** The pilothouse (the model's, set back on the texas deck). */
+const F_PILOT_X = 99;
+const F_PILOT_FLOOR = fitzDeckZ("Pilothouse", F_PILOT_X);
+/** Its roof: one tier (2.6 m) over the texas deck's step (the model). */
+const F_PILOT_ROOF = fitzDeckZ("Texas", F_PILOT_X) + 0.7 + 2.6;
+/** The tank top over her double bottom: flat, not following the sheer. */
+const F_TANK_TOP =
+  fitzgerald.decks.find((d) => d.name === "Tank top")?.z ?? 1.52;
+/** Over the No. 1 starboard tanks, between her two broken vents. */
+const F_TANK_X = Math.round(((hatchAt(3) + hatchAt(5)) / 2 - 3.6) * 10) / 10;
+/** Midway between the tanks' inner wall (7.43 m out) and her side. */
+const F_TANK_Y = -9.4;
+const F_ENGINE_X = -86;
+const F_CRANE_X = hatchAt(21);
+
+export const FITZGERALD_PLACES: Record<
+  (typeof FITZGERALD_PLACE_IDS)[number],
+  Place
+> = {
+  pilothouse: {
+    id: "pilothouse",
+    label: "Pilothouse",
+    fact: "She was steered from here, high up at her front. From its windows you could see all 21 of her hatches in a row along her long deck.",
+    at: [F_PILOT_X, 0, F_PILOT_FLOOR + 1.6],
+    floorZ: F_PILOT_FLOOR,
+    compartmentId: null,
+    interior: true,
+    view: [-14, -10, 6],
+  },
+  bell: {
+    id: "bell",
+    label: "Ship's Bell",
+    fact: "Her bronze bell stood on the pilothouse roof. Divers brought it up from the wreck in 1995, and it is kept at the Great Lakes Shipwreck Museum at Whitefish Point.",
+    at: [F_PILOT_X + 1, 0, F_PILOT_ROOF + 0.6],
+    floorZ: F_PILOT_ROOF,
+    compartmentId: null,
+    interior: false,
+    view: [-8, -7, 4],
+  },
+  "cargo-hold-1": {
+    id: "cargo-hold-1",
+    label: "Cargo Hold 1",
+    fact: "Her holds carried taconite: small, hard pellets of iron ore, over 26,000 tons of them, on their way to be made into steel. In the X-ray they are the dark layer.",
+    // Forward in the hold, clear of the ballast tank's pin beside it.
+    at: [76, 0, 6],
+    floorZ: F_TANK_TOP,
+    compartmentId: "hold1",
+    interior: true,
+    view: [-18, -24, 12],
+  },
+  "ballast-tank": {
+    id: "ballast-tank",
+    label: "Ballast Tank",
+    fact: "Tanks ran along both sides of her holds. Filled with water, they kept her steady when she had no cargo. Here, water got in and made her lean. Experts still argue how: through her broken vents, or after a scrape on a shoal.",
+    at: [F_TANK_X, F_TANK_Y, 6],
+    floorZ: 0.3,
+    compartmentId: "tank1-s",
+    interior: true,
+    view: [-14, -14, 9],
+  },
+  "engine-room": {
+    id: "engine-room",
+    label: "Engine Room",
+    fact: "A steam turbine as strong as 7,500 horses turned her one big propeller and drove her along at about 13 miles an hour.",
+    at: [F_ENGINE_X, 0, 6],
+    floorZ: F_TANK_TOP,
+    compartmentId: "engine",
+    interior: true,
+    view: [-16, -20, 10],
+  },
+  "hatch-crane": {
+    id: "hatch-crane",
+    label: "Hatch Crane",
+    fact: "This crane rolled on rails along her deck. It lifted the heavy steel hatch covers off for loading, and put them back on before she sailed.",
+    at: [F_CRANE_X, 0, fitzDeckZ("Spar", F_CRANE_X) + 5.6],
+    floorZ: fitzDeckZ("Spar", F_CRANE_X),
+    compartmentId: null,
+    interior: false,
+    view: [16, -22, 8],
+  },
+};
+
 /** Each ship's places, in the order the HUD lists them. */
 export const PLACES_BY_SHIP: Record<ShipId, readonly Place[]> = {
   titanic: PLACE_IDS.map((id) => PLACES[id]),
   lusitania: LUSITANIA_PLACE_IDS.map((id) => LUSITANIA_PLACES[id]),
+  fitzgerald: FITZGERALD_PLACE_IDS.map((id) => FITZGERALD_PLACES[id]),
 };
 
 /** A ship's place by id, or null if she has none by that id. */

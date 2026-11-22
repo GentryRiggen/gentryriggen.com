@@ -613,10 +613,10 @@ describe("shipwreck specifics", () => {
       props: { ...sampleProps("shipwreck_end"), ...props },
     });
 
-  it("takes a start with a mode and 0 to 16 openings", async () => {
+  it("takes a start with a mode and 0 to 25 openings", async () => {
     await assertSucceeds(create(anon(), start("real", 0)));
-    await assertSucceeds(create(anon(), start("whatif", 16)));
-    await assertFails(create(anon(), start("whatif", 17)));
+    await assertSucceeds(create(anon(), start("whatif", 25)));
+    await assertFails(create(anon(), start("whatif", 26)));
     await assertFails(create(anon(), start("whatif", -1)));
     await assertFails(create(anon(), start("sandbox", 2)));
     await assertFails(
@@ -624,8 +624,8 @@ describe("shipwreck specifics", () => {
     );
   });
 
-  it("takes either ship on a start and an end, and an old client's event without one", async () => {
-    for (const ship of ["titanic", "lusitania"]) {
+  it("takes every ship on a start and an end, and an old client's event without one", async () => {
+    for (const ship of ["titanic", "lusitania", "fitzgerald"]) {
       await assertSucceeds(
         create(
           anon(),

@@ -5,7 +5,7 @@
  *   node scripts/shipwreck-model-shots.mjs <baseURL> <outDir> [ship]
  *
  * Needs a running dev server (`npx next dev --webpack`) at baseURL. Opens
- * the model viewer (`/shipwreck?model`, `&ship=lusitania` when given) at
+ * the model viewer (`/shipwreck?model`, `&ship=<id>` when given) at
  * 1133x744, sets each view with
  * `window.__shipwreck.setModelView`, saves `<outDir>/<id>.png` and writes
  * the last frame's draw calls and triangles to `<outDir>/render-info.json`.
@@ -21,7 +21,8 @@ const [
   ship = "titanic",
 ] = process.argv.slice(2);
 
-const BREAK_X = ship === "lusitania" ? 4 : -27.1;
+// Where each ship's sim breaks her (the Fitzgerald near hatch No. 9).
+const BREAK_X = { lusitania: 4, fitzgerald: 18 }[ship] ?? -27.1;
 const SHOTS = [
   { id: "bow-day", view: { camera: "bow" } },
   { id: "stern-day", view: { camera: "stern" } },

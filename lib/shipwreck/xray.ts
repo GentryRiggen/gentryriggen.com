@@ -41,6 +41,25 @@ const NX = 8;
 const NZ = 14;
 const NY = 4;
 
+/** Bulk density of a laker's cargo (t/m³): taconite, 130 lb/ft³ (USCG). */
+export const CARGO_BULK_T_M3 = 2.08;
+
+/**
+ * A hold's cargo drawn as a level layer (the X-ray, the diagram): from her
+ * tank top up to the height its bulk volume fills across the hold's own
+ * breadth (its span, or her beam), or null for a space with none.
+ */
+export function cargoLayer(
+  spec: Pick<ShipSpec, "decks" | "beam">,
+  c: Pick<Compartment, "cargoT" | "span" | "fromX" | "toX">
+): { bottomZ: number; topZ: number } | null {
+  if (!c.cargoT || c.cargoT <= 0 || c.toX <= c.fromX) return null;
+  const bottomZ = spec.decks.find((d) => d.name === "Tank top")?.z ?? 0;
+  const width = c.span?.side === "centre" ? 2 * c.span.y : spec.beam;
+  const h = c.cargoT / CARGO_BULK_T_M3 / ((c.toX - c.fromX) * width);
+  return { bottomZ, topZ: bottomZ + h };
+}
+
 /** The top of a compartment's watertight envelope at x (its bulkhead tops). */
 export function compartmentTopZ(c: Compartment, x: number): number {
   const u = c.toX > c.fromX ? (x - c.fromX) / (c.toX - c.fromX) : 0;

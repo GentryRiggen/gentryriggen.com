@@ -49,7 +49,7 @@ export interface ShipwreckModelHooks {
 
 /** What `getState()` reports about the night's playback. */
 export interface ScenePlaybackInfo {
-  /** The ship on the stage ("titanic" | "lusitania"). */
+  /** The ship on the stage ("titanic" | "lusitania" | "fitzgerald"). */
   ship: string;
   t: number;
   realT: number;
@@ -129,14 +129,16 @@ export interface WalkHookInfo {
 export interface ShipwreckGameHooks {
   /** Picks a ship as the title screen does (and shows the title). */
   setShip(id: string): void;
-  /** The ship chosen ("titanic" | "lusitania"). */
+  /** The ship chosen ("titanic" | "lusitania" | "fitzgerald"). */
   ship(): string;
   startReal(): void;
   /**
-   * Starts a What if with these compartment ids open (a torpedo ship: where
-   * it hits), and for a torpedo ship whether the portholes are open.
+   * Starts a What if with these spots chosen (compartments open; a torpedo
+   * ship: where torpedoes hit; a storm ship: her leaking hatches, vents and
+   * shoal scrapes), and for a torpedo ship whether the portholes are open,
+   * for a storm ship the storm ("real" | "calmer" | "worse").
    */
-  startWhatIf(ids: string[], portholesOpen?: boolean): void;
+  startWhatIf(ids: string[], portholesOpen?: boolean, storm?: string): void;
   /** "sank" | "floated" | "broke-in-two" once the run is done, else null. */
   getOutcome(): string | null;
 }

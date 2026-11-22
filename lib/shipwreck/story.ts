@@ -1,5 +1,5 @@
 import { titanic } from "./ships/titanic";
-import type { ShipSpec } from "./ships/types";
+import type { ShipId, ShipSpec } from "./ships/types";
 import type { SimEvent } from "./sim/events";
 import type { SimTrack } from "./sim/track";
 import type { OutcomeId } from "./types";
@@ -39,12 +39,25 @@ export interface ShipStory {
   realLabel: string;
 }
 
-export function storyOf(ship: Pick<ShipSpec, "cause">): ShipStory {
+export function storyOf(
+  ship: Pick<ShipSpec, "cause">,
+  /** Torpedo ships: how many hit (a What if may have more than one). */
+  hits = 1
+): ShipStory {
+  if (ship.cause === "storm")
+    return {
+      cause: "the storm",
+      justHit: "Her first report",
+      justBefore: "Before her first report",
+      period: "storm",
+      realLabel: "The real storm",
+    };
+  const torpedo = hits > 1 ? "the torpedoes" : "the torpedo";
   return ship.cause === "torpedo"
     ? {
-        cause: "the torpedo",
-        justHit: "Just hit by the torpedo",
-        justBefore: "Just before the torpedo",
+        cause: torpedo,
+        justHit: `Just hit by ${torpedo}`,
+        justBefore: `Just before ${torpedo}`,
         period: "afternoon",
         realLabel: "The real afternoon",
       }
@@ -57,29 +70,45 @@ export function storyOf(ship: Pick<ShipSpec, "cause">): ShipStory {
       };
 }
 
-/**
- * The caption for a torpedo's run-in before the hit (the pre-roll), or
- * null for a ship without one.
- */
-export function runInCaption(ship: Pick<ShipSpec, "cause">): string | null {
-  return ship.cause === "torpedo"
-    ? "A torpedo is coming! Its white trail of bubbles streaks toward her starboard side."
-    : null;
+/** "Two" for 2 (small counts in words, then digits). */
+function countWord(n: number): string {
+  const words = ["No", "One", "Two", "Three", "Four", "Five", "Six"];
+  return words[n] ?? String(n);
 }
 
-/** "2 h 07 min after the iceberg" (or "Just hit the iceberg"). */
+/**
+ * The caption for a torpedo's run-in before the hit (the pre-roll), or
+ * null for a ship without one. `hits`: how many torpedoes (default one).
+ */
+export function runInCaption(
+  ship: Pick<ShipSpec, "cause">,
+  hits = 1
+): string | null {
+  if (ship.cause !== "torpedo") return null;
+  return hits > 1
+    ? `${countWord(hits)} torpedoes are coming! Their white trails of bubbles streak toward her starboard side.`
+    : "A torpedo is coming! Its white trail of bubbles streaks toward her starboard side.";
+}
+
+/**
+ * "2 h 07 min after the iceberg" (or "Just hit the iceberg"). A storm
+ * ship counts from her first report: "2 h 10 min into the storm".
+ */
 export function sinceText(
   secondsAfter: number,
-  ship: Pick<ShipSpec, "cause"> = titanic
+  ship: Pick<ShipSpec, "cause"> = titanic,
+  hits = 1
 ): string {
-  const story = storyOf(ship);
+  const story = storyOf(ship, hits);
   if (secondsAfter < 0) return story.justBefore;
   const total = Math.max(0, Math.floor(secondsAfter / 60));
   if (total < 1) return story.justHit;
   const h = Math.floor(total / 60);
   const m = total % 60;
-  if (h === 0) return `${m} min after ${story.cause}`;
-  return `${h} h ${String(m).padStart(2, "0")} min after ${story.cause}`;
+  const since =
+    ship.cause === "storm" ? `into ${story.cause}` : `after ${story.cause}`;
+  if (h === 0) return `${m} min ${since}`;
+  return `${h} h ${String(m).padStart(2, "0")} min ${since}`;
 }
 
 /** "2 hours 40 minutes" (whole minutes). */
@@ -102,6 +131,10 @@ export function durationWords(seconds: number): string {
 export interface CaptionContext {
   sternUnder?: boolean;
   sunk?: boolean;
+  /** False when an event of the same kind came before it in the run. */
+  first?: boolean;
+  /** How many torpedoes hit (torpedo ships; default one). */
+  hits?: number;
 }
 
 /** The calm caption for an event, without the clock (null: no caption). */
@@ -115,10 +148,14 @@ export function captionText(
   // The sea is shallower than she is long: her ends touch the floor while
   // the rest of her is still up.
   const shallow = ship.seaDepthM < ship.lbp;
+  if (ship.cause === "storm") return stormCaption(e, ship, ctx);
   if (ship.cause === "torpedo") {
+    const hits = ctx.hits ?? 1;
     switch (e.kind) {
       case "collision":
-        return "A torpedo hits the starboard side, just behind the bridge. Water rushes in.";
+        return hits > 1
+          ? `${countWord(hits)} torpedoes hit the starboard side. Water rushes in.`
+          : "A torpedo hits the starboard side, just behind the bridge. Water rushes in.";
       case "explosion":
         return "A second, bigger explosion booms from deep inside the ship.";
       case "steam-start":
@@ -164,6 +201,11 @@ export function captionText(
           : `The stern touches the sea floor, only ${depth} down.`;
       case "floating-steady":
         return "The water stops rising. She is staying afloat!";
+      case "hatch-fails":
+      case "sheltered":
+      case "radio":
+        // A storm's events: she had no storm.
+        return null;
       default:
         return null;
     }
@@ -205,6 +247,72 @@ export function captionText(
       return "The stern lands on the sea floor.";
     case "floating-steady":
       return "The water stops rising. She is staying afloat!";
+    case "hatch-fails":
+    case "sheltered":
+    case "radio":
+      // A storm's events: she had no storm.
+      return null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * A storm ship's captions (the Fitzgerald's): her first report, her
+ * radars, her last message, the first hatch cover, the dive, the wreck, or
+ * shelter. Calm, no people, no blame, nothing of the song.
+ */
+function stormCaption(
+  e: Pick<SimEvent, "kind" | "index">,
+  ship: ShipSpec,
+  ctx: CaptionContext
+): string | null {
+  const depth = `${ship.seaDepthM.toLocaleString("en-US")} m`;
+  switch (e.kind) {
+    case "collision":
+      return "Her captain radios the Arthur M. Anderson, the ship behind her: a railing is down, two vents are broken, and she is leaning. The storm is building.";
+    case "radio":
+      if (e.index === 0)
+        return "Both of her radars stop working. The Anderson keeps watch and helps her find the way.";
+      if (e.index === 1)
+        return "Her captain radios the Anderson: \u201cWe are holding our own.\u201d";
+      return null;
+    case "hatch-fails":
+      // Once: the covers go one after another within seconds.
+      return ctx.first === false
+        ? null
+        : "Huge waves sweep over her deck. A hatch cover gives way, and the lake pours into her hold.";
+    case "bow-under":
+      return "Her bow dips under a giant wave and does not come back up. She dives.";
+    case "lights-out":
+      return "Her lights go out.";
+    case "bow-lands":
+      return ctx.sternUnder
+        ? `Her bow strikes the bottom of the lake, only ${depth} down.`
+        : `Her bow strikes the bottom of the lake, only ${depth} down, while her stern is still at the surface.`;
+    case "breakup":
+      return "The ship breaks in two.";
+    case "stern-under":
+      return "Her stern slips under the waves. She has sunk.";
+    case "stern-lands":
+      return `Her stern turns over as it sinks, and lands upside down on the bottom, ${depth} down.`;
+    case "sheltered":
+      return "She reaches the shelter of Whitefish Bay, where the waves are smaller. She made it!";
+    // Her lights fail as she dives (one caption is enough), the bow says
+    // the forecastle, and the rest never happen in a storm: no rockets,
+    // boats lowered or explosions, no steam, a welded funnel that stays,
+    // and no steady float while the next big wave can always come.
+    case "lights-flicker":
+    case "forecastle-under":
+    case "bridge-under":
+    case "explosion":
+    case "steam-start":
+    case "steam-stop":
+    case "rocket":
+    case "boat-lowered":
+    case "last-boat":
+    case "funnel-falls":
+    case "floating-steady":
     default:
       return null;
   }
@@ -213,15 +321,19 @@ export function captionText(
 /** What the track says about the run at an event's time (for its caption). */
 export function captionContext(
   track: SimTrack | null,
-  t: number
+  t: number,
+  event?: SimEvent
 ): CaptionContext {
   if (!track) return {};
-  return {
+  const ctx: CaptionContext = {
     sternUnder: track.events.some(
       (e) => e.kind === "stern-under" && e.t <= t + 0.01
     ),
     sunk: track.sankAtT !== null && track.sankAtT <= t + 0.5,
   };
+  if (event)
+    ctx.first = track.events.find((e) => e.kind === event.kind) === event;
+  return ctx;
 }
 
 /** A caption with its clock ("12:45 AM — The first lifeboat is lowered."). */
@@ -235,7 +347,15 @@ export function captionFor(
 }
 
 export type MarkKind =
-  "iceberg" | "rocket" | "boat" | "lights" | "break" | "sinks" | "afloat";
+  | "iceberg"
+  | "rocket"
+  | "boat"
+  | "lights"
+  | "break"
+  | "sinks"
+  | "afloat"
+  | "hatch"
+  | "shelter";
 
 export interface TimelineMark {
   kind: MarkKind;
@@ -252,6 +372,8 @@ const MARK_OF: Partial<Record<SimEvent["kind"], [MarkKind, string]>> = {
   breakup: ["break", "Breaks in two"],
   "stern-under": ["sinks", "Sinks"],
   "floating-steady": ["afloat", "Stays afloat"],
+  "hatch-fails": ["hatch", "A hatch cover gives way"],
+  sheltered: ["shelter", "Whitefish Bay"],
 };
 
 /** The timeline's event icons: the first of each kind, in time order. */
@@ -310,7 +432,9 @@ export function markRows(
 export const MARK_PRIORITY: Record<MarkKind, number> = {
   sinks: 3,
   afloat: 3,
+  shelter: 3,
   break: 2,
+  hatch: 1,
   iceberg: 1,
   rocket: 1,
   boat: 1,
@@ -341,6 +465,22 @@ export function outcomeOf(track: SimTrack): OutcomeId {
   return track.brokeAtT !== null ? "broke-in-two" : "sank";
 }
 
+/**
+ * Ruling R16: no "New ending found!" badge on the Fitzgerald's real run
+ * (a 1975 loss with all hands and living families: not a prize). Her
+ * What-if endings, and every other ship's, keep the badge.
+ */
+export const NO_BADGE_REAL_RUN: readonly ShipId[] = ["fitzgerald"];
+
+/** Whether the end card shows "New ending found!" for this run. */
+export function showsNewEnding(
+  ship: ShipId,
+  mode: "real" | "whatif",
+  isNew: boolean
+): boolean {
+  return isNew && !(mode === "real" && NO_BADGE_REAL_RUN.includes(ship));
+}
+
 export interface EndWords {
   outcome: OutcomeId;
   title: string;
@@ -351,6 +491,10 @@ export interface EndWords {
 export interface EndContext {
   /** Whether her portholes were open (torpedo ships; default true). */
   portholesOpen?: boolean;
+  /** How many torpedoes hit (torpedo ships; default one). */
+  hits?: number;
+  /** The What-if storm (storm ships; default "real"). */
+  storm?: "real" | "calmer" | "worse";
 }
 
 /** "93 m (305 feet)" for a shallow sea, "3,800 m (2.4 miles)" for a deep one. */
@@ -372,15 +516,35 @@ export function endWords(
 ): EndWords {
   const outcome = outcomeOf(track);
   const torpedo = ship.cause === "torpedo";
+  const storm = ship.cause === "storm";
+  const torpedoes = (ctx.hits ?? 1) > 1 ? "the torpedoes" : "the torpedo";
   if (outcome === "floated") {
+    if (storm) {
+      const safe = track.events.find((e) => e.kind === "sheltered");
+      const at = clockText(safe?.realT ?? track.endT, ship.clockStartS);
+      const sea =
+        ctx.storm === "calmer"
+          ? "In a calmer storm"
+          : ctx.storm === "worse"
+            ? "Even in a worse storm"
+            : "In the storm";
+      return {
+        outcome,
+        title: `She made it to ${ship.shelter?.name ?? "shelter"}.`,
+        lines: [
+          `${sea}, she held on and reached the shelter of ${ship.shelter?.name ?? "the bay"} at ${at.replace(" ", "\u00a0")}, where the waves are smaller.`,
+          "On the real night the biggest waves came just after 7:10\u00a0PM, and she never reached the bay. Experts still argue about why she sank. What if lets you switch each cause off.",
+        ],
+      };
+    }
     if (torpedo) {
       return {
         outcome,
         title: "She stayed afloat!",
         lines: [
           ctx.portholesOpen === false
-            ? "With her portholes shut, the water stayed in the rooms the torpedo opened, and she floated on."
-            : "The water stayed in the rooms the torpedo opened, and she floated on.",
+            ? `With her portholes shut, the water stayed in the rooms ${torpedoes} opened, and she floated on.`
+            : `The water stayed in the rooms ${torpedoes} opened, and she floated on.`,
           `On the real afternoon the torpedo hit beside her front boiler room. Water in her starboard coal bunkers made her lean over, and the sea poured in through open portholes.`,
         ],
       };
@@ -396,7 +560,11 @@ export function endWords(
   }
   const sank = track.events.find((e) => e.kind === "stern-under");
   const at = sank?.realT ?? track.sankAtT ?? track.endT;
-  const hit = torpedo ? "the torpedo hit" : "hitting the iceberg";
+  const hit = storm
+    ? `her ${clockText(0, ship.clockStartS).replace(" ", "\u00a0")} report`
+    : torpedo
+      ? `${torpedoes} hit`
+      : "hitting the iceberg";
   const broke = outcome === "broke-in-two" ? "broke in two and sank" : "sank";
   const bowLands = track.events.find((e) => e.kind === "bow-lands");
   const bowFirst =
@@ -408,7 +576,9 @@ export function endWords(
       `She ${broke} ${durationWords(at)} after ${hit}. She lies ${depthWords(ship.seaDepthM)} down.`,
       ...(bowFirst && ship.seaDepthM < ship.lbp
         ? [
-            "The sea there is not as deep as she was long: her bow hit the floor while her stern was still up out of the water.",
+            storm
+              ? "The lake there is not as deep as she was long: her bow hit the bottom while her stern was still at the surface."
+              : "The sea there is not as deep as she was long: her bow hit the floor while her stern was still up out of the water.",
           ]
         : []),
     ],
@@ -421,6 +591,8 @@ export const HISTORY_NOTE =
 
 /** Each ship's "What really happened" note. */
 export function historyNote(ship: Pick<ShipSpec, "id">): string {
+  if (ship.id === "fitzgerald")
+    return "What really happened: the real Edmund Fitzgerald sank in the storm just after 7:10\u00a0PM, about 17 miles from the shelter of Whitefish Bay. She very nearly made it. Experts still argue about why she sank.";
   return ship.id === "lusitania"
     ? "What really happened: the real Lusitania sank at 2:28\u00a0PM, just 18 minutes after the torpedo. Boats came out from the Irish coast and picked up the people in the lifeboats."
     : HISTORY_NOTE;

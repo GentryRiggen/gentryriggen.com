@@ -13,7 +13,9 @@ import type { HullModel, Slice } from "./geometry";
  * The lightship (everything but flood water) as a mass per bin on the hull's
  * resampled stations: the hull steel by its section area, the superstructure
  * by its boxes, machinery, coal and cargo by compartment kind, then tilted
- * linearly so its centre sits at `spec.lcg`.
+ * linearly so its centre sits at `spec.lcg`. Cargo a compartment declares
+ * (`cargoT`, an ore carrier's) is laid along that compartment first; the
+ * kind shares then split what is left of the displacement.
  */
 export interface MassModel {
   /** Bin centres (the hull's stations) and their half-widths. */
@@ -49,6 +51,10 @@ export function buildMass(
     hi[i] = i === n - 1 ? xs[n - 1] : (xs[i] + xs[i + 1]) / 2;
   }
   const total = spec.displacementT * 1000;
+  let cargo = 0;
+  for (const c of spec.compartments) cargo += (c.cargoT ?? 0) * 1000;
+  // The kind shares are of the rest (all of it without declared cargo).
+  const rest = total - cargo;
   const kg = new Float64Array(n);
   const add = (weights: Float64Array, mass: number) => {
     let sum = 0;
@@ -57,6 +63,16 @@ export function buildMass(
     for (let i = 0; i < n; i += 1) kg[i] += (weights[i] / sum) * mass;
   };
   const w = new Float64Array(n);
+  // Declared cargo: each compartment's own, along it by section area.
+  for (const c of spec.compartments) {
+    if (!c.cargoT) continue;
+    w.fill(0);
+    for (let i = 0; i < n; i += 1) {
+      const overlap = Math.min(hi[i], c.toX) - Math.max(lo[i], c.fromX);
+      if (overlap > 0) w[i] = overlap * hullFullArea[i];
+    }
+    add(w, c.cargoT * 1000);
+  }
   // Machinery, coal, cargo: spread over each kind's compartments by length.
   let kinds = 0;
   for (const kind of Object.keys(KIND_FRACTION) as Compartment["kind"][]) {
@@ -68,7 +84,7 @@ export function buildMass(
         const overlap = Math.min(hi[i], c.toX) - Math.max(lo[i], c.fromX);
         if (overlap > 0) w[i] += overlap * hullFullArea[i];
       }
-    add(w, KIND_FRACTION[kind] * total);
+    add(w, KIND_FRACTION[kind] * rest);
     kinds += KIND_FRACTION[kind];
   }
   // Superstructure over its boxes, by their section area.
@@ -79,10 +95,10 @@ export function buildMass(
       const i = Math.max(0, Math.min(n - 1, Math.round(f)));
       w[i] += b.fullA[k];
     }
-  add(w, MASS_SUPERSTRUCTURE * total);
+  add(w, MASS_SUPERSTRUCTURE * rest);
   // The hull steel and everything else, by section area.
   for (let i = 0; i < n; i += 1) w[i] = hullFullArea[i] * (hi[i] - lo[i]);
-  add(w, (1 - kinds - MASS_SUPERSTRUCTURE) * total);
+  add(w, (1 - kinds - MASS_SUPERSTRUCTURE) * rest);
   // Tilt to the given centre of mass.
   let m = 0;
   let mx = 0;

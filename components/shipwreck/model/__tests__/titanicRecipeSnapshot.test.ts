@@ -1,14 +1,18 @@
 import * as fs from "fs";
 import * as path from "path";
+import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { lusitaniaRecipe } from "../lusitaniaRecipe";
 import { recipeFor } from "../shipModel";
 import { titanicRecipe, type ShipRecipe } from "../titanicRecipe";
 
 /**
- * The Titanic's recipe, frozen. The fixture was written by the 1.0 recipe
- * before the Lusitania (1.1) touched any shared model code: every later
- * change must leave the Titanic's placements, layout and hull exactly as
- * they were. Regenerate only on purpose:
+ * The Titanic's and the Lusitania's recipes, frozen. The Titanic's fixture
+ * was written by the 1.0 recipe before the Lusitania (1.1) touched any
+ * shared model code, the Lusitania's by the 1.1 recipe before the
+ * Fitzgerald (1.3) did: every later change must leave their placements,
+ * layout and hull exactly as they were. Regenerate only on purpose:
  * `UPDATE_RECIPE_SNAPSHOT=1 npx jest titanicRecipeSnapshot`.
  *
  * Numbers match to 1e-9 (relative, or absolute near zero), everything else
@@ -17,7 +21,7 @@ import { titanicRecipe, type ShipRecipe } from "../titanicRecipe";
  * geometry with no feedback, so a real change moves it far more than that.
  */
 
-const FIXTURE = path.join(__dirname, "fixtures", "titanicRecipe.json");
+const fixture = (name: string) => path.join(__dirname, "fixtures", name);
 
 /** Every data field of a recipe, the hull sampled, functions dropped. */
 function serialize(r: ShipRecipe): Record<string, unknown> {
@@ -73,20 +77,26 @@ function firstDiff(now: unknown, before: unknown, at: string): string | null {
   return null;
 }
 
-describe("the Titanic's recipe", () => {
-  const now = serialize(titanicRecipe(titanic));
+const SHIPS: [string, ShipSpec, (s: ShipSpec) => ShipRecipe, string][] = [
+  ["Titanic", titanic, titanicRecipe, "titanicRecipe.json"],
+  ["Lusitania", lusitania, lusitaniaRecipe, "lusitaniaRecipe.json"],
+];
+
+describe.each(SHIPS)("the %s's recipe", (_name, spec, make, file) => {
+  const now = serialize(make(spec));
+  const FIXTURE = fixture(file);
 
   if (process.env.UPDATE_RECIPE_SNAPSHOT) {
     fs.mkdirSync(path.dirname(FIXTURE), { recursive: true });
     fs.writeFileSync(FIXTURE, JSON.stringify(now));
   }
 
-  it("is the 1.0 recipe", () => {
+  it("is the frozen recipe", () => {
     const before = JSON.parse(fs.readFileSync(FIXTURE, "utf8"));
     expect(firstDiff(now, before, "recipe")).toBeNull();
   });
 
   it("is what the model builds for her", () => {
-    expect(serialize(recipeFor(titanic))).toEqual(now);
+    expect(serialize(recipeFor(spec))).toEqual(now);
   });
 });

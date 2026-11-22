@@ -40,8 +40,12 @@ function upright(draught: number) {
 describe("the Lusitania's data", () => {
   it("is in the registry", () => {
     expect(getShip("lusitania")).toBe(lusitania);
-    expect(SHIP_IDS).toEqual(["titanic", "lusitania"]);
-    expect(Object.keys(SHIPS).sort()).toEqual(["lusitania", "titanic"]);
+    expect(SHIP_IDS).toEqual(["titanic", "lusitania", "fitzgerald"]);
+    expect(Object.keys(SHIPS).sort()).toEqual([
+      "fitzgerald",
+      "lusitania",
+      "titanic",
+    ]);
     expect(lusitania.cause).toBe("torpedo");
     expect(lusitania.clockStartS).toBe(14 * 3600 + 10 * 60);
     expect(lusitania.seaDepthM).toBe(93);

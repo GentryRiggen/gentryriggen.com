@@ -1,4 +1,9 @@
-import { eventsBetween, sampleTrack } from "../track";
+import {
+  createFrame,
+  eventsBetween,
+  sampleTrack,
+  sampleTrackInto,
+} from "../track";
 import type { BodyPose, SimFrame, SimTrack } from "../track";
 
 function pose(part: BodyPose["part"], z: number, yaw = 0): BodyPose {
@@ -112,5 +117,51 @@ describe("eventsBetween", () => {
       ...eventsBetween(track, 2, 10),
     ];
     expect(seen).toEqual(track.events);
+  });
+});
+
+describe("deck water in the frames", () => {
+  it("interpolates each bay's water when both frames carry it", () => {
+    const a = { ...frame(0, [pose("whole", -10)]), deckWater: [0, 4] };
+    const b = { ...frame(1, [pose("whole", -10)]), deckWater: [2, 0] };
+    const tr: SimTrack = { ...track, frames: [a, b], endT: 1 };
+    expect(sampleTrack(tr, 0.25).deckWater).toEqual([0.5, 3]);
+    // A frame without it (a liner, or after the break): none.
+    const c = frame(2, [pose("stern", -14), pose("bow", -20)]);
+    const tr2: SimTrack = { ...track, frames: [b, c], endT: 2 };
+    expect(sampleTrack(tr2, 1.5).deckWater).toBeUndefined();
+  });
+});
+
+describe("sampleTrackInto", () => {
+  it("gives sampleTrack's values into one frame, allocating nothing after the first", () => {
+    const a = { ...frame(0, [pose("whole", -10)]), deckWater: [0, 4] };
+    const b = { ...frame(1, [pose("whole", -12, 3)], 1), deckWater: [2, 0] };
+    const tr: SimTrack = {
+      ...track,
+      frames: [a, b, ...track.frames.slice(2)],
+    };
+    const out = createFrame();
+    for (const t of [0.1, 0.25, 0.7, 1.3, 1.6, 2.5, 2.9]) {
+      const want = sampleTrack(tr, t);
+      const got = sampleTrackInto(tr, t, out);
+      expect(got).toBe(out);
+      expect({ ...got, deckWater: got.deckWater }).toEqual({
+        ...want,
+        deckWater: want.deckWater,
+      });
+    }
+    // The same arrays and poses every call.
+    const bodies = out.bodies;
+    const pose0 = out.bodies[0];
+    const water = out.water;
+    sampleTrackInto(tr, 2.2, out);
+    expect(out.bodies).toBe(bodies);
+    expect(out.bodies[0]).toBe(pose0);
+    expect(out.water).toBe(water);
+    const dw = sampleTrackInto(tr, 0.5, out).deckWater;
+    expect(sampleTrackInto(tr, 0.6, out).deckWater).toBe(dw);
+    // A frame's own time: that frame, as sampleTrack.
+    expect(sampleTrackInto(tr, 1, out)).toBe(tr.frames[1]);
   });
 });

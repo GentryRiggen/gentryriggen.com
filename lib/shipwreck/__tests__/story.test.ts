@@ -19,6 +19,7 @@ import {
   sinceText,
   storyEndT,
   timelineMarks,
+  showsNewEnding,
 } from "../story";
 
 describe("clock words", () => {
@@ -125,8 +126,15 @@ describe("the Lusitania's words", () => {
         else expect(text.length).toBeGreaterThan(10);
       }
     }
-    // She fired no rockets; her lights failed early, then went out.
-    expect([...new Set(none)].sort()).toEqual(["lights-flicker", "rocket"]);
+    // She fired no rockets; her lights failed early, then went out; she
+    // had no storm (no hatch covers to fail, no shelter to reach).
+    expect([...new Set(none)].sort()).toEqual([
+      "hatch-fails",
+      "lights-flicker",
+      "radio",
+      "rocket",
+      "sheltered",
+    ]);
   });
 
   it("never words people in danger or deaths, for either ship", () => {
@@ -212,5 +220,15 @@ describe("the Lusitania's words", () => {
     expect(marks.every((m) => / PM$/.test(m.label))).toBe(true);
     expect(storyOf(lusitania).realLabel).toBe("The real afternoon");
     expect(storyOf(titanic).realLabel).toBe("The real night");
+  });
+});
+
+describe("the new-ending badge (ruling R16)", () => {
+  it("is never on the Fitzgerald's real run; her What-ifs and the liners keep it", () => {
+    expect(showsNewEnding("fitzgerald", "real", true)).toBe(false);
+    expect(showsNewEnding("fitzgerald", "whatif", true)).toBe(true);
+    expect(showsNewEnding("titanic", "real", true)).toBe(true);
+    expect(showsNewEnding("lusitania", "real", true)).toBe(true);
+    expect(showsNewEnding("lusitania", "whatif", false)).toBe(false);
   });
 });

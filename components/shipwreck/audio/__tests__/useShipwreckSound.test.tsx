@@ -2,6 +2,7 @@ import { act, render } from "@testing-library/react";
 import { createFakeAudio } from "@/components/game-audio/testing/fakeAudio";
 import type { VoiceEngine } from "@/components/game-audio/primitives";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
+import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { createSceneRuntime } from "@/components/shipwreck/scene/runtime";
@@ -153,5 +154,21 @@ describe("useShipwreckSound", () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it("builds the storm beds and plays her swell at t = 0 for the Fitzgerald", () => {
+    const mock = playCue as jest.Mock;
+    const store = createPlaybackStore();
+    render(<Probe store={store} active enabled />);
+    act(() => store.getState().start(fitzgerald, fitzgerald.realNight));
+    mock.mockClear();
+    const before = audio.sources.length;
+    act(() => store.getState().pump(1));
+    expect(audio.sources.length).toBeGreaterThan(before);
+    expect(store.getState().t).toBe(0);
+    // Her collision event at t = 0 is the storm's swell, once playback moves.
+    act(() => store.getState().play());
+    act(() => store.getState().tick(0.1, 0));
+    expect(mock.mock.calls.map((c) => c[1])).toContain("swell");
   });
 });

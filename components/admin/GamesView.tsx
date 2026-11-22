@@ -339,8 +339,10 @@ export default function GamesView({ events }: GamesViewProps) {
           className="text-sm text-gray-600 dark:text-gray-400"
         >
           {wreck.starts === 0 ? "No runs yet" : `${wreck.starts} runs`}
-          {wreck.averageOpened !== null &&
-            ` · ${wreck.averageOpened.toFixed(1)} openings per What if?`}
+          {wreck.averageOpenedByShip.length > 0 &&
+            ` · What if? openings: ${wreck.averageOpenedByShip
+              .map((r) => `${r.ship} ${r.average.toFixed(1)}`)
+              .join(", ")}`}
           {wreck.averageSinkMinutes !== null &&
             ` · sank after ${Math.round(wreck.averageSinkMinutes)} min on average`}
         </p>

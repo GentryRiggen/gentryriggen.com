@@ -1,9 +1,10 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { playback } from "@/lib/shipwreck/playback";
 import { SAVE_KEY } from "@/lib/shipwreck/save";
+import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
-import { resetSaveStore } from "@/lib/shipwreck/useSave";
-import Shipwreck from "../Shipwreck";
+import { currentShipwreckSave, resetSaveStore } from "@/lib/shipwreck/useSave";
+import Shipwreck, { PREVIEW_END_S } from "../Shipwreck";
 
 jest.mock("@/lib/analytics/trackGame", () => ({ trackGame: jest.fn() }));
 // The 3D scene needs WebGL: the tests cover the DOM UI over it.
@@ -138,12 +139,14 @@ describe("Shipwreck: choosing the Lusitania", () => {
       "data-ship",
       "lusitania"
     );
+    // Two torpedoes (1.3): the real hit stays, a second at the turbines.
     fireEvent.click(screen.getByTestId("shipwreck-chip-turbine"));
     fireEvent.click(screen.getByTestId("shipwreck-portholes"));
     fireEvent.click(screen.getByTestId("shipwreck-go"));
     expect(playback.getState().openings.map((o) => o.compartmentId)).toContain(
       "turbine"
     );
+    expect(playback.getState().hits).toHaveLength(2);
     fireEvent.click(screen.getByLabelText("Back to the title"));
     act(() => {
       Object.defineProperty(document, "visibilityState", {
@@ -159,7 +162,7 @@ describe("Shipwreck: choosing the Lusitania", () => {
     const saved = JSON.parse(window.localStorage.getItem(SAVE_KEY)!);
     expect(saved.ship).toBe("lusitania");
     expect(saved.whatIfByShip.lusitania).toEqual({
-      ids: ["turbine"],
+      ids: ["br1", "turbine"],
       portholesOpen: false,
     });
     expect(saved.lastWhatIf).toEqual([]);
@@ -198,5 +201,123 @@ describe("Shipwreck: choosing the Lusitania", () => {
       screen.getByRole("radio", { name: /Ship: Lusitania/ })
     ).toHaveAttribute("aria-checked", "true");
     expect(playback.getState().ship).toBe("lusitania");
+  });
+});
+
+describe("Shipwreck: choosing the Edmund Fitzgerald (1.3)", () => {
+  it("previews only her opening moment behind the title", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-fitzgerald"));
+    expect(playback.getState().ship).toBe("fitzgerald");
+    act(() => {
+      for (let i = 0; i < 50 && !playback.getState().done; i += 1)
+        playback.getState().pump(50);
+    });
+    expect(playback.getState().done).toBe(true);
+    expect(playback.getState().computedT).toBeLessThanOrEqual(
+      PREVIEW_END_S + 1
+    );
+  });
+
+  it("plays her real storm on her own clock, words and places", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-fitzgerald"));
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      /all 29 of her crew died/
+    );
+    expect(screen.getByTestId("shipwreck-real-night")).toHaveTextContent(
+      "The real storm"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    expect(playback.getState().t).toBe(0);
+    expect(playback.getState().openings).toEqual(fitzgerald.realNight);
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("3:30 PM");
+    expect(screen.getByText("Her first report")).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /^3:30 PM — Her captain radios the Arthur M. Anderson/
+    );
+    // 5:30 PM, two hours into the storm.
+    act(() => {
+      playback.getState().pump(60_000);
+      playback.getState().seek(2 * 3600);
+    });
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("5:30 PM");
+    expect(screen.getByText("2 h 00 min into the storm")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("shipwreck-places-button"));
+    for (const id of [
+      "pilothouse",
+      "bell",
+      "cargo-hold-1",
+      "ballast-tank",
+      "engine-room",
+      "hatch-crane",
+    ])
+      expect(screen.getByTestId(`shipwreck-place-${id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId("shipwreck-place-bridge")).toBeNull();
+  });
+
+  it("her What if: spots and a calmer storm, remembered under her name", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-fitzgerald"));
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "fitzgerald"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-preset-clear"));
+    fireEvent.click(screen.getByTestId("shipwreck-chip-hatch-1"));
+    fireEvent.click(screen.getByTestId("shipwreck-chip-shoal-3"));
+    fireEvent.click(screen.getByTestId("shipwreck-storm-calmer"));
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(playback.getState().ship).toBe("fitzgerald");
+    expect(playback.getState().openings).toEqual([
+      fitzgerald.shoalOpenings![2],
+    ]);
+    expect(playback.getState().hits).toEqual([]);
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      fireEvent(document, new Event("visibilitychange"));
+    });
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+    const saved = JSON.parse(window.localStorage.getItem(SAVE_KEY)!);
+    expect(saved.ship).toBe("fitzgerald");
+    expect(saved.whatIfByShip.fitzgerald).toEqual({
+      ids: ["hatch-1", "shoal-3"],
+      storm: "calmer",
+    });
+    // Back in the editor: as she was left.
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-storm-calmer")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "1 leaky hatch · 1 shoal scrape"
+    );
+    // Like the real storm: her real spots, her real hull damage.
+    fireEvent.click(screen.getByTestId("shipwreck-preset-real"));
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(playback.getState().openings).toEqual(fitzgerald.realNight);
+  });
+
+  it("her real run shows no ending badge and records no ending as seen", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-fitzgerald"));
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    act(() => {
+      for (let i = 0; i < 400 && !playback.getState().done; i += 1)
+        playback.getState().pump(50);
+      playback.getState().seek(playback.getState().computedT);
+    });
+    expect(screen.getByTestId("shipwreck-end")).toBeInTheDocument();
+    expect(document.querySelector(".sw-badge")).toBeNull();
+    expect(currentShipwreckSave().seen.endings).toEqual([]);
   });
 });

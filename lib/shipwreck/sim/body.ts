@@ -10,15 +10,16 @@ import {
   HEAVE_ZETA,
   PITCH_ZETA,
   PUMP_DEPTH_M,
-  RHO,
   ROLL_ADDED,
   ROLL_GYRATION,
   ROLL_ZETA,
   VERTICAL_GYRATION,
 } from "./constants";
+import { type DeckWater, deckFlows } from "./deckWater";
 import { STEADY_AVG_S } from "./events";
 import {
   type Cell,
+  type DeckSea,
   capSeaFlow,
   cellBounds,
   cellSea,
@@ -105,6 +106,8 @@ export interface Body {
   lightIyy: number;
   beam: number;
   depth: number;
+  /** Density of the water she floats in and floods with (kg/m³). */
+  rho: number;
   // Pose: earth position of the ship-frame origin, angles.
   x: number;
   y: number;
@@ -137,6 +140,11 @@ export interface Body {
   bottom: number;
   /** Her wreck's rest rule in radians (`spec.wreck`), or null (1.0). */
   wreck: { rest: number; min: number } | null;
+  /** A stern part that rolls over as it falls (`wreckParts.stern`): the
+   *  roll it lands at (radians, magnitude), or null. */
+  capsize: number | null;
+  /** Its roll rate (rad/s) while it capsizes. */
+  capsizeRate: number;
   /** Afloat and still for this long (s); frozen once steady. */
   steadyFor: number;
   frozen: boolean;
@@ -165,6 +173,8 @@ export interface Body {
   floorN: number;
   floorX: Float64Array;
   floorF: Float64Array;
+  /** Green water on her open deck (the whole hull afloat), or null. */
+  deckWater: DeckWater | null;
 }
 
 /** Earth up in the ship frame. */
@@ -266,6 +276,7 @@ export function waterOf(b: Body): number {
 }
 
 let dwBuf = new Float64Array(32);
+let deckBuf = new Float64Array(32);
 
 /** Mass properties from the lightship and the water (ship frame). */
 function massProps(b: Body): { ip: number } {
@@ -275,7 +286,7 @@ function massProps(b: Body): { ip: number } {
   let mz = b.lightMass * b.lightCz;
   for (const c of b.all) {
     if (c.water <= 0) continue;
-    const w = RHO * c.water;
+    const w = b.rho * c.water;
     m += w;
     mx += w * c.wx;
     // Cabins and corridors cut the superstructure up: its water cannot
@@ -293,7 +304,7 @@ function massProps(b: Body): { ip: number } {
     m * (VERTICAL_GYRATION * b.depth) ** 2;
   for (const c of b.all) {
     if (c.water <= 0) continue;
-    const w = RHO * c.water;
+    const w = b.rho * c.water;
     const len = c.slice.xTo - c.slice.xFrom;
     ip += w * ((c.wx - b.gx) ** 2 + (len * len) / 12);
   }
@@ -303,7 +314,9 @@ function massProps(b: Body): { ip: number } {
 /**
  * One fixed step of a floating body: hydrostatics at the current pose, the
  * water's levels, the flows (applied), then the motion. `areas` asks the
- * cells to keep per-station areas for the girder.
+ * cells to keep per-station areas for the girder. `sea` (when the ship has
+ * deck openings) is the wave surface they see; `pumpDepth` the water depth
+ * over which the pumps in a space stop.
  */
 export function stepFloat(
   b: Body,
@@ -311,7 +324,9 @@ export function stepFloat(
   areas: boolean,
   drift: number,
   pumps = 0,
-  floorZ = -Infinity
+  floorZ = -Infinity,
+  sea: DeckSea | null = null,
+  pumpDepth = PUMP_DEPTH_M
 ): void {
   const [nx, ny, nz] = upOf(b);
   updateBounds(b);
@@ -367,12 +382,44 @@ export function stepFloat(
   const all = b.all;
   if (dwBuf.length < all.length) dwBuf = new Float64Array(all.length * 2);
   const dw = dwBuf;
+  if (deckBuf.length < all.length) deckBuf = new Float64Array(all.length * 2);
+  const deckQ = deckBuf;
+  if (sea !== null)
+    deckFlows(
+      all,
+      b.deckWater,
+      b.x,
+      b.y,
+      b.z,
+      cos(b.pitch),
+      sin(b.pitch),
+      cos(b.roll),
+      sin(b.roll),
+      sea,
+      dt,
+      deckQ
+    );
   for (let i = 0; i < all.length; i += 1) {
     const c = all[i];
     const q = capSeaFlow(c, seaInflow(c, nx, ny, nz, b.z), dt);
     c.inflow = q;
     inflow += q;
     dw[i] = q * dt;
+    if (q > 0) c.seaIn += q * dt;
+    if (sea !== null && c.deck.length > 0) {
+      // Over the deck: one step may fill the cell, no more, or empty it.
+      // Deck water a full cell cannot take is dropped (its bay already
+      // gave it up: a negligible leak, deckWater.ts).
+      let qd = deckQ[i];
+      qd =
+        qd > 0
+          ? min(qd, max(0, c.cap - c.water - dw[i]) / dt)
+          : max(qd, -max(0, c.water + dw[i]) / dt);
+      c.inflow += qd;
+      inflow += qd;
+      dw[i] += qd * dt;
+      if (qd > 0) c.deckIn += qd * dt;
+    }
   }
   for (const l of b.links) {
     const q = spill(
@@ -412,7 +459,7 @@ export function stepFloat(
   let pumpLeft = pumps * dt;
   for (let i = 0; i < b.cells.length && pumpLeft > 0; i += 1) {
     const c = b.cells[i];
-    if (!c.pumped || c.water <= 0 || c.level - c.zMin > PUMP_DEPTH_M) continue;
+    if (!c.pumped || c.water <= 0 || c.level - c.zMin > pumpDepth) continue;
     const take = min(pumpLeft, c.water + dw[i]);
     if (take <= 0) continue;
     dw[i] -= take;
@@ -439,25 +486,26 @@ export function stepFloat(
   const by = vol > 0 ? bmy / vol : b.gy;
   const bz = vol > 0 ? bmz / vol : b.gz;
   const r = rotate(b.pitch, b.roll, bx - b.gx, by - b.gy, bz - b.gz);
-  const fb = RHO * GRAV * vol;
+  const rho = b.rho;
+  const fb = rho * GRAV * vol;
   const fz = fb - b.mass * GRAV;
   const tauP = -r[0] * fb;
   const tauR = r[1] * fb * c;
 
   const lean = sqrt(max(0, 1 - nx * nx));
-  const strip = ADDED_MASS_COEF * RHO * (Math.PI / 8);
+  const strip = ADDED_MASS_COEF * rho * (Math.PI / 8);
   const gx = b.gx;
   const mn = b.mass + strip * s2;
-  const mt = b.mass + AXIAL_ADDED_MASS * RHO * vol;
+  const mt = b.mass + AXIAL_ADDED_MASS * rho * vol;
   const ipe = ip + strip * max(0, s2xx - 2 * gx * s2x + gx * gx * s2);
   const ir = b.mass * (ROLL_GYRATION * b.beam) ** 2 * (1 + ROLL_ADDED);
 
   // Linear damping from the waterplane's stiffness.
   const awp = lean > 0.3 ? ch / lean : 0;
   const il = lean > 0.3 ? max(0, chxx - 2 * gx * chx + gx * gx * ch) / lean : 0;
-  const cn0 = 2 * HEAVE_ZETA * sqrt(RHO * GRAV * awp * mn);
-  const cp0 = 2 * PITCH_ZETA * sqrt(RHO * GRAV * il * ipe);
-  const cr0 = 2 * ROLL_ZETA * sqrt(RHO * GRAV * max(0, cht) * ir);
+  const cn0 = 2 * HEAVE_ZETA * sqrt(rho * GRAV * awp * mn);
+  const cp0 = 2 * PITCH_ZETA * sqrt(rho * GRAV * il * ipe);
+  const cr0 = 2 * ROLL_ZETA * sqrt(rho * GRAV * max(0, cht) * ir);
 
   // Quadratic drag normal to the axis, per station, linearised.
   const vn = b.vx * s + b.vz * c;
@@ -465,7 +513,7 @@ export function stepFloat(
   let cnn = cn0;
   let cnp = 0;
   let cpp = cp0;
-  const half = 0.5 * RHO * DRAG_CD;
+  const half = 0.5 * rho * DRAG_CD;
   for (const cell of b.all) {
     const sl = cell.slice;
     for (let i = 0; i < sl.n; i += 1) {
@@ -496,7 +544,7 @@ export function stepFloat(
   const det = a11 * a22 - a12 * a12;
   const vn2 = (r1 * a22 - a12 * r2) / det;
   const wp2 = (a11 * r2 - a12 * r1) / det;
-  const ct = 0.5 * RHO * AXIAL_CD * front * abs(vt);
+  const ct = 0.5 * rho * AXIAL_CD * front * abs(vt);
   const vt2 = (mt * vt + ft * dt) / (mt + ct * dt);
   const wr2 = (ir * b.wr + tauR * dt) / (ir + cr0 * dt);
   const wp0 = b.wp;

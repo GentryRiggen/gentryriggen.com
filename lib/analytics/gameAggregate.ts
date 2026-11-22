@@ -96,8 +96,12 @@ export interface ShipwreckSummary {
   /** Runs started, and how many were each mode. */
   starts: number;
   modes: Count[];
-  /** Average openings made at the start of a What if? run, or null. */
-  averageOpened: number | null;
+  /**
+   * Average openings chosen at the start of a What if? run, per ship (a
+   * Titanic compartment, a Lusitania torpedo hit and a Fitzgerald spot do
+   * not average together), in the order the ships came; none without one.
+   */
+  averageOpenedByShip: { ship: string; average: number }[];
   /** Runs ended by mode and outcome, e.g. "whatif · floated". */
   ends: Count[];
   sank: number;
@@ -277,6 +281,26 @@ export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
   };
 }
 
+/** The ships in the order they came to the game (unknown ones after). */
+const SHIPWRECK_SHIP_ORDER = ["titanic", "lusitania", "fitzgerald"];
+
+function averageByShip(
+  whatIfs: GameEvent[]
+): { ship: string; average: number }[] {
+  const ships = [...new Set(whatIfs.map(shipOf))].sort(
+    (a, b) =>
+      (SHIPWRECK_SHIP_ORDER.indexOf(a) + 1 || 99) -
+        (SHIPWRECK_SHIP_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b)
+  );
+  return ships.map((ship) => ({
+    ship,
+    average:
+      average(
+        whatIfs.filter((e) => shipOf(e) === ship).map((e) => num(e, "opened"))
+      ) ?? 0,
+  }));
+}
+
 export function summarizeShipwreck(events: GameEvent[]): ShipwreckSummary {
   const starts = ofName(events, "shipwreck_start");
   const ends = ofName(events, "shipwreck_end");
@@ -285,7 +309,7 @@ export function summarizeShipwreck(events: GameEvent[]): ShipwreckSummary {
   return {
     starts: starts.length,
     modes: tally(starts.map((e) => str(e, "mode"))),
-    averageOpened: average(whatIfs.map((e) => num(e, "opened"))),
+    averageOpenedByShip: averageByShip(whatIfs),
     ends: tally(ends.map((e) => `${str(e, "mode")} · ${str(e, "outcome")}`)),
     sank: sank.length,
     floated: ends.length - sank.length,

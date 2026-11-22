@@ -263,7 +263,10 @@ describe("summarizeShipwreck", () => {
     ]);
     expect(summary.starts).toBe(3);
     expect(summary.modes[0]).toEqual({ key: "whatif", views: 2 });
-    expect(summary.averageOpened).toBe(3);
+    // Events before the ship prop are the Titanic's.
+    expect(summary.averageOpenedByShip).toEqual([
+      { ship: "titanic", average: 3 },
+    ]);
     expect(summary.sank).toBe(2);
     expect(summary.floated).toBe(1);
     expect(summary.averageSinkMinutes).toBe(180);
@@ -275,7 +278,14 @@ describe("summarizeShipwreck", () => {
       ev("shipwreck_start", { mode: "real", opened: 0 }),
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "titanic" }),
       ev("shipwreck_start", { mode: "whatif", opened: 1, ship: "lusitania" }),
+      ev("shipwreck_start", { mode: "real", opened: 0, ship: "fitzgerald" }),
       ev("shipwreck_end", { mode: "real", outcome: "sank", minutes: 18 }),
+      ev("shipwreck_end", {
+        mode: "real",
+        outcome: "sank",
+        minutes: 20,
+        ship: "fitzgerald",
+      }),
       ev("shipwreck_end", {
         mode: "whatif",
         outcome: "floated",
@@ -285,18 +295,36 @@ describe("summarizeShipwreck", () => {
     ]);
     expect(summary.ships).toEqual([
       { key: "titanic", views: 2 },
+      { key: "fitzgerald", views: 1 },
       { key: "lusitania", views: 1 },
     ]);
     expect(summary.shipEnds).toEqual([
+      { key: "fitzgerald · sank", views: 1 },
       { key: "lusitania · floated", views: 1 },
       { key: "titanic · sank", views: 1 },
+    ]);
+  });
+
+  it("averages What-if openings per ship: compartments, hits and spots apart", () => {
+    const summary = summarizeShipwreck([
+      ev("shipwreck_start", { mode: "whatif", opened: 4 }),
+      ev("shipwreck_start", { mode: "whatif", opened: 2, ship: "titanic" }),
+      ev("shipwreck_start", { mode: "whatif", opened: 1, ship: "lusitania" }),
+      ev("shipwreck_start", { mode: "whatif", opened: 3, ship: "lusitania" }),
+      ev("shipwreck_start", { mode: "whatif", opened: 22, ship: "fitzgerald" }),
+      ev("shipwreck_start", { mode: "real", opened: 0, ship: "fitzgerald" }),
+    ]);
+    expect(summary.averageOpenedByShip).toEqual([
+      { ship: "titanic", average: 3 },
+      { ship: "lusitania", average: 2 },
+      { ship: "fitzgerald", average: 22 },
     ]);
   });
 
   it("has empty answers with no events", () => {
     const empty = summarizeShipwreck([]);
     expect(empty.starts).toBe(0);
-    expect(empty.averageOpened).toBeNull();
+    expect(empty.averageOpenedByShip).toEqual([]);
     expect(empty.averageSinkMinutes).toBeNull();
   });
 });

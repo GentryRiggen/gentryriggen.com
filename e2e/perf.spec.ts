@@ -151,6 +151,9 @@ const SCENES = [
   "shipwreck-lusitania-list",
   "shipwreck-lusitania-grounded",
   "shipwreck-lusitania-wreck",
+  "shipwreck-fitzgerald-storm",
+  "shipwreck-fitzgerald-dive",
+  "shipwreck-fitzgerald-wreck",
 ] as const;
 
 test.afterAll(() => {
@@ -558,7 +561,10 @@ test.describe("Shipwreck budget", () => {
     );
     // The spec's ceiling at the top tier, apart from the budget.
     for (const scene of SCENES.filter(
-      (s) => s.startsWith("shipwreck-") && !s.startsWith("shipwreck-lusitania")
+      (s) =>
+        s.startsWith("shipwreck-") &&
+        !s.startsWith("shipwreck-lusitania") &&
+        !s.startsWith("shipwreck-fitzgerald")
     )) {
       const m = JSON.parse(
         fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")
@@ -623,6 +629,62 @@ test.describe("Shipwreck budget: the Lusitania", () => {
     );
     for (const scene of SCENES.filter((s) =>
       s.startsWith("shipwreck-lusitania")
+    )) {
+      const m = JSON.parse(
+        fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")
+      ) as Measurement;
+      expect(m.calls, `${scene}: draw calls`).toBeLessThanOrEqual(160);
+      expect(m.triangles, `${scene}: triangles`).toBeLessThanOrEqual(450_000);
+    }
+  });
+});
+
+test.describe("Shipwreck budget: the Fitzgerald", () => {
+  test.setTimeout(420_000);
+
+  test("her storm at the top tier: 5:30 PM on deck, the dive, the wreck", async ({
+    page,
+  }) => {
+    await page.goto("/shipwreck?scene&ship=fitzgerald&quality=high");
+    await page.waitForFunction(
+      () => window.__shipwreck?.getState?.().done === true,
+      null,
+      { timeout: 300_000 }
+    );
+    const at = async (setup: () => void, settleMs = 2500) => {
+      await page.evaluate(setup);
+      await page.waitForTimeout(settleMs);
+      return measure(page, "__shipwreckRenderInfo");
+    };
+    record(
+      "shipwreck-fitzgerald-storm",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.pause!();
+        h.seek!(2 * 3600); // 5:30 PM: night, on her deck in the storm
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-fitzgerald-dive",
+      await at(() => {
+        const h = window.__shipwreck!;
+        const e = h.getEvents!().find((x) => x.kind === "bow-under")!;
+        h.seek!(e.t + 20); // about 7:13 PM: her bow going down
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-fitzgerald-wreck",
+      await at(() => {
+        const h = window.__shipwreck!;
+        const e = h.getEvents!().find((x) => x.kind === "stern-lands")!;
+        h.seek!(e.t + 30); // both parts on the floor, 162 m down
+        h.setCamera!("underwater");
+      })
+    );
+    for (const scene of SCENES.filter((s) =>
+      s.startsWith("shipwreck-fitzgerald")
     )) {
       const m = JSON.parse(
         fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")

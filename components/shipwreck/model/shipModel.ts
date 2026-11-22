@@ -26,6 +26,7 @@ import {
   type LightUniforms,
   type ShipMaterials,
 } from "./materials";
+import { fitzgeraldRecipe } from "./fitzgeraldRecipe";
 import { lusitaniaRecipe } from "./lusitaniaRecipe";
 import {
   benchGeometry,
@@ -38,7 +39,11 @@ import {
   ventGeometry,
   windowPaneGeometry,
 } from "./partGeometry";
-import { acquireShipTextures, releaseShipTextures } from "./textures";
+import {
+  acquireShipTextures,
+  releaseShipTextures,
+  type NameStyle,
+} from "./textures";
 import {
   swungOutY,
   titanicRecipe,
@@ -50,7 +55,7 @@ import {
 } from "./titanicRecipe";
 
 /**
- * A ship (the Titanic or the Lusitania) as a three.js object tree, plus the
+ * A ship (the Titanic, the Lusitania or the Edmund Fitzgerald) as a three.js object tree, plus the
  * handles the scene drives each frame without React. See README.md for the
  * handle API.
  */
@@ -115,7 +120,12 @@ const recipes = new WeakMap<ShipSpec, ShipRecipe>();
 export function recipeFor(spec: ShipSpec): ShipRecipe {
   let r = recipes.get(spec);
   if (!r) {
-    r = spec.id === "lusitania" ? lusitaniaRecipe(spec) : titanicRecipe(spec);
+    r =
+      spec.id === "lusitania"
+        ? lusitaniaRecipe(spec)
+        : spec.id === "fitzgerald"
+          ? fitzgeraldRecipe(spec)
+          : titanicRecipe(spec);
     recipes.set(spec, r);
   }
   return r;
@@ -217,14 +227,23 @@ export function createTitanicModel(
   const recipe = recipeFor(spec);
   const q = QUALITY[quality];
   const shipName = recipe.paint?.name ?? "TITANIC";
-  const textures = acquireShipTextures(shipName);
+  const letters = recipe.paint?.letters;
+  const nameStyle: NameStyle | undefined = letters && {
+    ...letters,
+    port: recipe.paint?.port ?? "LIVERPOOL",
+  };
+  const textures = acquireShipTextures(shipName, nameStyle);
   const mats: ShipMaterials = createShipMaterials(textures, {
     rivets: q.rivets,
     hull: recipe.paint && {
       loadWaterline: recipe.layout.loadWaterline,
       bootTop: recipe.layout.bootTop,
       sheerLine: recipe.paint.sheerLine,
+      topsides: recipe.paint.hull?.topsides,
+      bottom: recipe.paint.hull?.bottom,
+      relief: recipe.paint.hull?.relief,
     },
+    paintedNames: letters !== undefined,
   });
   const geometries: BufferGeometry[] = [];
   // Instanced meshes hold their instance buffers on the mesh, not the
@@ -256,7 +275,7 @@ export function createTitanicModel(
     post: own(postGeometry()),
     porthole: own(portholePaneGeometry()),
     window: own(windowPaneGeometry()),
-    lifeboat: own(boatGeometry("lifeboat", q)),
+    lifeboat: own(boatGeometry("lifeboat", q, recipe.paint?.boat)),
     collapsible: own(boatGeometry("collapsible", q)),
   };
 
@@ -499,7 +518,7 @@ export function createTitanicModel(
       for (const m of instancedMeshes) m.dispose();
       for (const g of geometries) g.dispose();
       mats.dispose();
-      releaseShipTextures(shipName);
+      releaseShipTextures(shipName, nameStyle);
     },
   };
 }

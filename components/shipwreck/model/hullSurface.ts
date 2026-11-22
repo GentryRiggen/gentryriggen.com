@@ -34,6 +34,32 @@ export interface CounterRounding {
   exponent?: number;
   zFrom: number;
   zTo: number;
+  /**
+   * The bow's rounding only: over this length aft of the stem head the
+   * rounding narrows to a point at the stem (a sharp stem under a bluff
+   * forecastle, not a blunt nose). None by default.
+   */
+  tip?: number;
+  /**
+   * Blend the rounding into the offsets over this much difference in
+   * breadth (m) instead of taking the larger of the two: the larger of two
+   * surfaces creases where they cross; this rounds the crease off. It
+   * fades in with the rounding, so where there is no rounding the hull is
+   * the offsets exactly. None by default (the larger, as the liners').
+   */
+  blend?: number;
+}
+
+/**
+ * A propeller aperture cut from the drawn hull: from `fromX` (aft) to
+ * `toX` (the sternpost's after face) the hull starts at `zTop` (or its own
+ * bottom, whichever is higher), so the propeller turns in open water. The
+ * sim's offsets keep the deadwood; this is drawing only.
+ */
+export interface Aperture {
+  fromX: number;
+  toX: number;
+  zTop: number;
 }
 
 /** Fritsch–Carlson slopes for a monotone cubic through (xs, ys). */
@@ -132,6 +158,17 @@ export interface HullSection {
   /** Half-breadth at each of `HULL_FRACTIONS`. */
   hb: Float64Array;
   slopes: Float64Array;
+  /**
+   * In a propeller aperture: the hull starts here, not at `zb`. Its rows
+   * keep their heights over it (so the surface runs on unbroken from the
+   * sections forward of the aperture) and those below fold up onto it.
+   */
+  zCut?: number;
+  /**
+   * Where its rows start (default `zb`): rows from here up, those below
+   * `zCut` (or `zb`) folded up onto it.
+   */
+  zRow?: number;
 }
 
 export interface HullSurface {
@@ -141,6 +178,8 @@ export interface HullSurface {
   section(x: number): HullSection;
   /** Half-breadth at fraction u of a section's height. */
   halfBreadthU(section: HullSection, u: number): number;
+  /** Height of fraction u of a section (folded up to its `zCut`). */
+  zAtU(section: HullSection, u: number): number;
   /** Half-breadth at (x, z); 0 outside the hull. */
   halfBreadth(x: number, z: number): number;
   /** Height of the section's bottom (the keel line and the counter). */
@@ -153,7 +192,13 @@ export interface HullSurface {
 
 export function createHullSurface(
   spec: Pick<ShipSpec, "stations" | "sheerZ">,
-  counter?: CounterRounding
+  counter?: CounterRounding,
+  /**
+   * The same rounding at the bow (a laker's bluff forecastle over a finer
+   * entrance): from `fromX` forward to the stem head. None by default.
+   */
+  bow?: CounterRounding,
+  aperture?: Aperture
 ): HullSurface {
   const st = spec.stations;
   const xs = st.map((s) => s.x);
@@ -181,6 +226,32 @@ export function createHullSurface(
       counter.halfBreadth ??
       pchipAt(xs, series[NF - 1], seriesSlopes[NF - 1], counter.fromX);
   }
+  /**
+   * The larger of `a` and `b`, rounded over `k` (m) where they cross: a
+   * quadratic join, so the surface's slope runs on without a crease.
+   */
+  function softMax(a: number, b: number, k: number): number {
+    const d = b - a;
+    if (k <= 0) return d > 0 ? b : a;
+    if (d <= -k) return a;
+    if (d >= k) return b;
+    return a + ((d + k) * (d + k)) / (4 * k);
+  }
+  /** The blend for a rounding at (x, z): faded in (and tapered) with it. */
+  function blendAt(
+    r: CounterRounding | undefined,
+    z: number,
+    taper = 1
+  ): number {
+    if (!r?.blend) return 0;
+    return r.blend * smoothstep(r.zFrom, r.zTo, z) * taper;
+  }
+  function bowTaper(x: number): number {
+    if (!bow?.tip) return 1;
+    const t = (xMax - x) / bow.tip;
+    return t < 1 ? Math.max(0, t * (2 - t)) : 1;
+  }
+
   function counterWidth(x: number, z: number): number {
     if (!counter || x >= counter.fromX) return 0;
     const a = counter.fromX - xMin;
@@ -194,34 +265,158 @@ export function createHullSurface(
     );
   }
 
-  function zBottom(x: number): number {
+  let bowB = 0;
+  if (bow) {
+    bowB =
+      bow.halfBreadth ??
+      pchipAt(xs, series[NF - 1], seriesSlopes[NF - 1], bow.fromX);
+  }
+  function bowWidth(x: number, z: number): number {
+    if (!bow || x <= bow.fromX) return 0;
+    const v = (x - bow.fromX) / (xMax - bow.fromX);
+    if (v >= 1) return 0;
+    const n = bow.exponent ?? 2;
+    return (
+      bowB *
+      Math.pow(1 - Math.pow(v, n), 1 / n) *
+      smoothstep(bow.zFrom, bow.zTo, z) *
+      bowTaper(x)
+    );
+  }
+
+  function ownBottom(x: number): number {
     const top = spec.sheerZ(x);
     return Math.min(top - 0.3, pchipAt(xs, zb, zbSlopes, x));
   }
 
-  function section(x: number): HullSection {
-    const bottom = zBottom(x);
+  function inAperture(x: number): boolean {
+    return !!aperture && x >= aperture.fromX && x < aperture.toX;
+  }
+
+  function zBottom(x: number): number {
+    const own = ownBottom(x);
+    if (!aperture || !inAperture(x)) return own;
+    return Math.min(spec.sheerZ(x) - 0.3, Math.max(own, aperture.zTop));
+  }
+
+  /**
+   * With a blended rounding the roundings are not sampled into the
+   * section's few heights (a flare a metre or two tall falls between them,
+   * and the monotone curve through the samples kinks): each section holds
+   * the offsets only, and the roundings are worked out exactly wherever
+   * the surface is read. Without one, the liners' way: sampled.
+   */
+  const analytic = !!(counter?.blend || bow?.blend);
+
+  function ownSection(x: number): HullSection {
+    const bottom = ownBottom(x);
     const top = spec.sheerZ(x);
     const hb = new Float64Array(NF);
     for (let j = 0; j < NF; j += 1) {
       const h = Math.max(0, pchipAt(xs, series[j], seriesSlopes[j], x));
+      if (analytic) {
+        hb[j] = h;
+        continue;
+      }
       const z = bottom + (top - bottom) * HULL_FRACTIONS[j];
-      hb[j] = Math.max(h, counterWidth(x, z));
+      hb[j] = Math.max(h, counterWidth(x, z), bowWidth(x, z));
     }
     // Ends: the counter's tip and the stem head close to a line.
     if (x <= xMin + 1e-6 || x >= xMax - 1e-6) hb.fill(0);
     return { x, zb: bottom, zt: top, hb, slopes: pchipSlopes(fractions, hb) };
   }
 
-  function halfBreadthU(s: HullSection, u: number): number {
+  /** The section's own curve (the offsets, or sampled with its roundings). */
+  function baseU(s: HullSection, u: number): number {
     return Math.max(0, pchipAt(fractions, s.hb, s.slopes, u));
+  }
+
+  function section(x: number): HullSection {
+    const own = ownSection(x);
+    const bottom = zBottom(x);
+    if (!analytic) return bottom <= own.zb ? own : { ...own, zCut: bottom };
+    // Rows at the same heights in every section, from the keel up, folded
+    // onto the section's own bottom (the stem's and the counter's edges,
+    // the aperture's top): rows never shear from one section to the next
+    // where the bottom climbs, so the roundings show no crease there.
+    return {
+      ...own,
+      zRow: Math.min(0, own.zb),
+      zCut: Math.max(bottom, own.zb),
+    };
+  }
+
+  function zAtU(s: HullSection, u: number): number {
+    const zr = s.zRow ?? s.zb;
+    const z = zr + (s.zt - zr) * u;
+    return s.zCut !== undefined ? Math.max(z, s.zCut) : z;
+  }
+
+  // The offsets' own sections where the roundings begin.
+  const counterStart = analytic && counter ? ownSection(counter.fromX) : null;
+  const bowStart = analytic && bow ? ownSection(bow.fromX) : null;
+  function startBreadth(st: HullSection | null, z: number): number {
+    if (!st) return 0;
+    const u = Math.min(1, Math.max(0, (z - st.zb) / (st.zt - st.zb)));
+    return baseU(st, u);
+  }
+
+  /** Breadth at height z of a section (z within it). */
+  function breadthAtZ(s: HullSection, z: number): number {
+    const zc = s.zCut !== undefined ? Math.max(z, s.zCut) : z;
+    const ud = (zc - s.zb) / (s.zt - s.zb);
+    const base = baseU(s, ud);
+    if (!analytic) return base;
+    return rounded(s.x, zc, ud, base);
+  }
+
+  /** The offsets' breadth `base` at (x, z) with the roundings worked in. */
+  function rounded(x: number, z: number, ud: number, base: number): number {
+    if (x <= xMin + 1e-6 || x >= xMax - 1e-6) return 0;
+    // Near a section's own bottom (the stem's and the counter's edges,
+    // where the section is short) the roundings fade out, so those edges
+    // stay sharp lines.
+    const edge = smoothstep(0, 0.2, ud);
+    // Each rounding's breadth at a height starts from the offsets' own at
+    // that height where it begins (not the deck edge's), so the hull takes
+    // no step there, and its blend grows in from there too.
+    let w = base;
+    if (counter && x < counter.fromX) {
+      const v = (counter.fromX - x) / (counter.fromX - xMin);
+      const start = startBreadth(counterStart, z);
+      const scale = ellipseB > 0 ? start / ellipseB : 0;
+      w = softMax(
+        w,
+        counterWidth(x, z) * scale * edge,
+        blendAt(counter, z) * edge * smoothstep(0, 0.25, v)
+      );
+    }
+    if (bow && x > bow.fromX) {
+      const v = (x - bow.fromX) / (xMax - bow.fromX);
+      const start = startBreadth(bowStart, z);
+      const scale = bowB > 0 ? start / bowB : 0;
+      w = softMax(
+        w,
+        bowWidth(x, z) * scale * edge,
+        blendAt(bow, z, bowTaper(x)) * edge * smoothstep(0, 0.25, v)
+      );
+    }
+    return w;
+  }
+
+  function halfBreadthU(s: HullSection, u: number): number {
+    // The liners' sections: their own fractions, as sampled.
+    if (s.zRow === undefined && s.zCut === undefined) return baseU(s, u);
+    return breadthAtZ(s, zAtU(s, u));
   }
 
   function halfBreadth(x: number, z: number): number {
     if (x < xMin || x > xMax) return 0;
     const s = section(x);
-    if (z < s.zb || z > s.zt) return 0;
-    return halfBreadthU(s, (z - s.zb) / (s.zt - s.zb));
+    if (z < (s.zCut ?? s.zb) || z > s.zt) return 0;
+    if (s.zRow === undefined && s.zCut === undefined)
+      return baseU(s, (z - s.zb) / (s.zt - s.zb));
+    return breadthAtZ(s, z);
   }
 
   return {
@@ -229,12 +424,13 @@ export function createHullSurface(
     xMax,
     section,
     halfBreadthU,
+    zAtU,
     halfBreadth,
     zBottom,
     zTop: (x) => spec.sheerZ(x),
     topHalfBreadth: (x) => {
       if (x <= xMin || x >= xMax) return 0;
-      return section(x).hb[NF - 1];
+      return analytic ? halfBreadthU(section(x), 1) : section(x).hb[NF - 1];
     },
   };
 }

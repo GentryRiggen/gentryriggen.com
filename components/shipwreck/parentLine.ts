@@ -6,6 +6,8 @@ export const PARENT_LINES: Record<ShipId, string> = {
     "Based on the real sinking of the Titanic in 1912. More than 1,500 people died; this game shows only the ship. You can walk her open decks.",
   lusitania:
     "This is the Lusitania in 1915. A torpedo sank her in 18 minutes during the First World War, and more than 1,190 people died. This game shows only the ship. You can walk her open decks.",
+  fitzgerald:
+    "This is the Edmund Fitzgerald, an ore carrier on Lake Superior. She sank in a storm on 10 November 1975, and all 29 of her crew died. This game shows only the ship.",
 };
 
 /** The Titanic's line (the 1.0 line). */

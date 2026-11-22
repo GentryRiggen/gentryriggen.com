@@ -1,4 +1,5 @@
-import { titanic } from "../../ships";
+import { RUNNER_BUDGET_MS } from "../../playback";
+import { fitzgerald, titanic } from "../../ships";
 import { createSimRunner, simulate } from "../run";
 
 /**
@@ -33,6 +34,27 @@ describe("performance", () => {
     if (GATE) expect(ms).toBeLessThan(3000);
   });
 
+  it("simulates the Fitzgerald's afternoon within 1.5× the night's budget", () => {
+    // Her run is longer (about 3 h 45 min of storm at 1 s steps, the deck
+    // openings sampling the waves four times a step): 1.5 × 3 s.
+    simulate(fitzgerald, fitzgerald.realNight, { endT: 600 }); // warm up
+    let track: ReturnType<typeof simulate> | null = null;
+    const times = [0, 1].map(() => {
+      const t0 = performance.now();
+      track = simulate(fitzgerald, fitzgerald.realNight);
+      return performance.now() - t0;
+    });
+    const ms = Math.min(...times);
+    expect(track!.outcome).toBe("sank");
+    expect(track!.brokeAtT).not.toBeNull();
+    console.log(
+      `Shipwreck Fitzgerald simulated in ${ms.toFixed(0)} ms (runs: ${times
+        .map((t) => t.toFixed(0))
+        .join(", ")} ms)`
+    );
+    if (GATE) expect(ms).toBeLessThan(1.5 * 3000);
+  });
+
   it("advance(8) stays within about 10 ms a call", () => {
     // The slowest call of a whole run, measured over two runs and the better
     // run kept: under the full suite another worker can stall any one call.
@@ -58,5 +80,32 @@ describe("performance", () => {
     );
     if (GATE) expect(worst).toBeLessThanOrEqual(10);
     expect(runs[0].track).toEqual(simulate(titanic, titanic.realNight));
+  });
+
+  it("the Fitzgerald's runner keeps every call at the UI's budget under 8 ms", () => {
+    // The game pumps her runner at RUNNER_BUDGET_MS a frame: no call may
+    // block a frame (the 1.0 budget, 8 ms), storm sampling and all.
+    const pass = () => {
+      const runner = createSimRunner(fitzgerald, fitzgerald.realNight);
+      let worst = 0;
+      let calls = 0;
+      while (!runner.done) {
+        const t0 = performance.now();
+        runner.advance(RUNNER_BUDGET_MS);
+        worst = Math.max(worst, performance.now() - t0);
+        calls += 1;
+      }
+      expect(runner.progress()).toBe(1);
+      return { worst, calls, track: runner.track() };
+    };
+    const runs = [pass(), pass()];
+    const worst = Math.min(...runs.map((r) => r.worst));
+    console.log(
+      `Shipwreck Fitzgerald advance(${RUNNER_BUDGET_MS}): ${runs[0].calls} calls, slowest ${worst.toFixed(
+        2
+      )} ms (runs: ${runs.map((r) => r.worst.toFixed(2)).join(", ")} ms)`
+    );
+    if (GATE) expect(worst).toBeLessThan(8);
+    expect(runs[0].track.outcome).toBe("sank");
   });
 });

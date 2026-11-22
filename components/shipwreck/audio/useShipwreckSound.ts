@@ -136,6 +136,9 @@ export function useShipwreckSound(
         now,
         ship: s.ship,
         walk: runtime ? walkNow(s.walk.phase) : undefined,
+        hits: s.hits.length,
+        storm: s.track.storm,
+        stormScale: s.track.stormScale,
       });
       if (now - lastBedAt < BED_EVERY_S) return;
       lastBedAt = now;

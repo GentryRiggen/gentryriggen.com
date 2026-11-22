@@ -18,6 +18,7 @@ import {
 import { Color, PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
@@ -31,7 +32,7 @@ import type { TitanicHandles } from "./shipModel";
 
 /**
  * A neutral stage for checking the model (`/shipwreck?model`, dev and e2e
- * builds only; `&ship=lusitania` for her): orbit controls, a day light or
+ * builds only; `&ship=lusitania` or `&ship=fitzgerald`): orbit controls, a day light or
  * the night with bloom, and `window.__shipwreck.setModelView` to set the
  * break, lights, quality and a camera preset.
  */
@@ -72,13 +73,31 @@ const SHIP_CAMERAS: Partial<Record<ShipSpec["id"], Partial<typeof CAMERAS>>> = {
     "stern-close": { pos: [-168, 20, 56], target: [-104, 12, 0] },
     astern: { pos: [-160, 17, 0], target: [-118, 15.5, 0] },
   },
+  // A 729 ft laker: houses at the ends, the hatches between.
+  fitzgerald: {
+    bow: { pos: [225, 40, 140], target: [30, 10, 0] },
+    stern: { pos: [-185, 12, 82], target: [-92, 4, 0] },
+    side: { pos: [0, 16, 400], target: [0, 12, 0] },
+    top: { pos: [0, 330, 16], target: [0, 0, 0] },
+    break: { pos: [10, 34, 360], target: [10, 12, 0] },
+    bridge: { pos: [138, 30, 46], target: [97, 20, 0] },
+    "bow-close": { pos: [142, 15, 34], target: [100, 11.5, 0] },
+    "stern-close": { pos: [-150, 12, 46], target: [-108, 6, 0] },
+    astern: { pos: [-150, 14, 0], target: [-110, 10, 0] },
+    "break-close": { pos: [40, 30, 60], target: [18, 12, 0] },
+    "boat-deck": { pos: [-56, 30, 44], target: [-92, 19, 0] },
+  },
 };
 
 /** The ship named by `?ship=` (the Titanic by default). */
 function shipFromUrl(): ShipSpec {
   if (typeof window === "undefined") return titanic;
   const id = new URLSearchParams(window.location.search).get("ship");
-  return id === "lusitania" ? lusitania : titanic;
+  return id === "lusitania"
+    ? lusitania
+    : id === "fitzgerald"
+      ? fitzgerald
+      : titanic;
 }
 
 interface ModelViewerProps {

@@ -19,6 +19,9 @@ export const SIM_EVENT_KINDS = [
   "bow-lands",
   "stern-lands",
   "floating-steady",
+  "hatch-fails",
+  "sheltered",
+  "radio",
 ] as const;
 
 export type SimEventKind = (typeof SIM_EVENT_KINDS)[number];
@@ -29,7 +32,8 @@ export interface SimEvent {
   /** Real seconds after the collision (differs once the way down is sped up). */
   realT: number;
   kind: SimEventKind;
-  /** Rocket, boat (spec order) or funnel (0 forward) number. */
+  /** Rocket, boat (spec order), funnel (0 forward), hatch (from 1) or
+   *  radio message (the ship's own numbering) number. */
   index?: number;
 }
 
@@ -51,3 +55,10 @@ export const STEADY_INFLOW_M3S = 0.05;
 export const STEADY_HOLD_S = 300;
 /** The inflow is also judged averaged over about this long (s). */
 export const STEADY_AVG_S = 120;
+/**
+ * `hatch-fails`: a hatch cover gives way once the water over its lip
+ * reaches its `failHeadM` (ship data); a tight cover (`SimOptions
+ * .hatchesTight`, Kestner clamps all done up) holds this many times that.
+ * `sheltered`: still afloat and whole at `spec.shelter.t`.
+ */
+export const HATCH_TIGHT_FAIL_FACTOR = 2;

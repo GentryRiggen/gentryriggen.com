@@ -40,6 +40,60 @@ describe("Captions", () => {
     );
   });
 
+  it("says how many torpedoes are coming and hit (a What if, 1.3)", () => {
+    const store = createPlaybackStore();
+    act(() =>
+      store.setState({ ship: "lusitania", t: -40, minT: -40, hits: [1, 2] })
+    );
+    render(<Captions store={store} />);
+    expect(screen.getByTestId("shipwreck-caption").textContent).toMatch(
+      /^2:09 PM — Two torpedoes are coming!/
+    );
+    const track = {
+      frames: [],
+      events: [{ kind: "collision" as const, t: 0, realT: 0 }],
+      outcome: "sank" as const,
+      sankAtT: null,
+      brokeAtT: null,
+      breakX: null,
+      endT: 100,
+    };
+    act(() => store.setState({ track, t: -0.5 }));
+    act(() => store.setState({ t: 0.5 }));
+    expect(screen.getByTestId("shipwreck-caption").textContent).toBe(
+      "2:10 PM — Two torpedoes hit the starboard side. Water rushes in."
+    );
+  });
+
+  it("captions only the first of the Fitzgerald's hatch covers to go", () => {
+    const store = createPlaybackStore();
+    const ev = (t: number, index: number) => ({
+      kind: "hatch-fails" as const,
+      t,
+      realT: t,
+      index,
+    });
+    const track = {
+      frames: [],
+      events: [ev(100, 15), ev(101, 16), ev(110, 3)],
+      outcome: "sank" as const,
+      sankAtT: null,
+      brokeAtT: null,
+      breakX: null,
+      endT: 200,
+    };
+    act(() => store.setState({ ship: "fitzgerald", t: 99.5, track }));
+    render(<Captions store={store} />);
+    act(() => store.setState({ t: 100.5 }));
+    expect(screen.getByTestId("shipwreck-caption").textContent).toMatch(
+      /A hatch cover gives way/
+    );
+    const first = screen.getByTestId("shipwreck-caption").textContent;
+    act(() => store.setState({ t: 111 }));
+    // The later covers add no caption of their own.
+    expect(screen.getByTestId("shipwreck-caption").textContent).toBe(first);
+  });
+
   it("shows the run-in again whenever time goes back before the hit", () => {
     const store = createPlaybackStore();
     act(() => store.setState({ ship: "lusitania", t: 600, minT: -40 }));

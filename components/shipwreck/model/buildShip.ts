@@ -326,13 +326,13 @@ function buildHull(ctx: Ctx): void {
     const half: V3[] = us.map((u) => [
       x,
       hull.halfBreadthU(s, u),
-      s.zb + (s.zt - s.zb) * u,
+      hull.zAtU(s, u),
     ]);
     // Starboard top to bottom, the keel, port bottom to top.
     const p: V3[] = [];
     for (let i = half.length - 1; i >= 0; i -= 1)
       p.push([x, -half[i][1], half[i][2]]);
-    p.push([x, 0, s.zb]);
+    p.push([x, 0, hull.zAtU(s, 0)]);
     for (const h of half) p.push(h);
     // Girth from the deck edge down, the same on both sides.
     const girthHalf: number[] = [0];
@@ -400,6 +400,8 @@ interface BandSpec {
   ends: boolean;
   /** Underside (a slab seen from below). */
   under?: boolean;
+  /** A deck or painted roof this much higher on the centre line. */
+  camber?: number;
 }
 
 function band(ctx: Ctx, o: BandSpec): void {
@@ -423,10 +425,22 @@ function band(ctx: Ctx, o: BandSpec): void {
     }
     return out;
   };
+  /** The roof's row across at x, cambered when asked. */
+  const roofRow = (x: number): V3[] => {
+    const camber = o.camber;
+    if (!camber) return across(x, o.zb(x) + o.h, 4);
+    const [lo, hi] = o.yr(x);
+    const mid = (lo + hi) / 2;
+    const half = Math.max(1e-6, (hi - lo) / 2);
+    return across(x, o.zb(x) + o.h, 8).map(([px, py, pz]): V3 => {
+      const t = (py - mid) / half;
+      return [px, py, pz + camber * (1 - t * t)];
+    });
+  };
   let roof: GridResult | null = null;
   if (o.roof === "deck") {
     roof = grid(ctx, ctx.d.deck, o.x0, o.x1, (x) => {
-      const p = across(x, o.zb(x) + o.h, 4);
+      const p = roofRow(x);
       return {
         p,
         color: repeat(o.roofColor ?? [1, 1, 1], p.length),
@@ -435,7 +449,7 @@ function band(ctx: Ctx, o: BandSpec): void {
     });
   } else if (o.roof === "paint") {
     roof = grid(ctx, paint, o.x0, o.x1, (x) => {
-      const p = across(x, o.zb(x) + o.h, 4);
+      const p = roofRow(x);
       return { p, color: repeat(o.roofColor ?? rgb(COLORS.roof), p.length) };
     });
   } else if (o.roof === "skylight") {
@@ -731,16 +745,21 @@ function buildBlocks(ctx: Ctx, blocks: Block[]): void {
       x1: b.x1,
       zb,
       h: b.h,
-      wall: rgb(b.wall === "shade" ? COLORS.shade : COLORS.white),
+      wall: rgb(
+        b.wallColor ?? (b.wall === "shade" ? COLORS.shade : COLORS.white)
+      ),
       roof,
       roofColor:
-        b.roof === "pitch"
-          ? rgb(COLORS.pitchPine)
-          : b.roof === "pine"
-            ? rgb(COLORS.pine)
-            : undefined,
+        b.roofColor !== undefined
+          ? rgb(b.roofColor)
+          : b.roof === "pitch"
+            ? rgb(COLORS.pitchPine)
+            : b.roof === "pine"
+              ? rgb(COLORS.pine)
+              : undefined,
       ends: b.ends ?? true,
       under: b.under,
+      camber: b.camber,
     };
     const strip = b.strip;
     if (strip) {
@@ -868,7 +887,7 @@ function buildFittings(ctx: Ctx): void {
       white
     );
     // Spreaders for the wireless aerial.
-    box(paint, at(m.topZ - 0.6), [0.25, 3.6, 0.2], color);
+    if (m.yard !== false) box(paint, at(m.topZ - 0.6), [0.25, 3.6, 0.2], color);
     if (m.crowsNest) {
       const n = m.crowsNest;
       cylinder(paint, at(n.z), at(n.z + n.h), n.r, n.r, seg + 4, white);
@@ -965,9 +984,13 @@ function buildFittings(ctx: Ctx): void {
 
   const tarp = rgb(COLORS.tarp);
   for (const h of r.hatches) {
+    if (h.coaming) {
+      hatchOnCoaming(ctx, h, h.coaming);
+      continue;
+    }
     const c: V3 = [(h.x0 + h.x1) / 2, 0, h.z + h.h / 2];
     if (!inPart(ctx, c)) continue;
-    box(paint, c, [h.x1 - h.x0, 2 * h.hw, h.h], tarp);
+    box(paint, c, [h.x1 - h.x0, 2 * h.hw, h.h], h.color ? rgb(h.color) : tarp);
   }
 
   for (const b of r.boxes ?? []) {
@@ -994,6 +1017,10 @@ function buildFittings(ctx: Ctx): void {
   // Anchors in their recesses.
   for (const a of r.anchors) {
     if (!inPart(ctx, a.p)) continue;
+    if (a.pocket) {
+      anchorInPocket(ctx, a.p, a.side, a.pocket);
+      continue;
+    }
     const s = a.side === "port" ? 1 : -1;
     const [x, , z] = a.p;
     const on = (dx: number, dz: number, out: number): V3 => {
@@ -1035,6 +1062,159 @@ function buildFittings(ctx: Ctx): void {
       anchor
     );
   }
+}
+
+/**
+ * A steel hatch cover on its coaming: the coaming from the deck at side up
+ * to the cover, the cover over it, both cut by the tear like the deck.
+ */
+function hatchOnCoaming(
+  ctx: Ctx,
+  h: ShipRecipe["hatches"][number],
+  coaming: NonNullable<ShipRecipe["hatches"][number]["coaming"]>
+): void {
+  const mid = (h.x0 + h.x1) / 2;
+  const sheer = (x: number) => ctx.r.spec.sheerZ(x) - ctx.r.spec.sheerZ(mid);
+  const base = ctx.r.spec.sheerZ(mid);
+  band(ctx, {
+    x0: mid - coaming.hx,
+    x1: mid + coaming.hx,
+    zb: (x) => base + sheer(x),
+    h: h.z - base,
+    yr: () => [-coaming.hw, coaming.hw],
+    wall: rgb(coaming.color),
+    roof: "none",
+    ends: true,
+  });
+  band(ctx, {
+    x0: h.x0,
+    x1: h.x1,
+    zb: (x) => h.z + sheer(x),
+    h: h.h,
+    yr: () => [-h.hw, h.hw],
+    wall: rgb(h.color ?? COLORS.tarp),
+    roof: "paint",
+    roofColor: rgb(h.color ?? COLORS.tarp),
+    ends: true,
+    under: true,
+  });
+}
+
+/** Bells (the Fitzgerald's on her pilothouse roof), in bronze. */
+function buildBells(ctx: Ctx): void {
+  for (const b of ctx.r.bells ?? []) {
+    if (!inPart(ctx, b.p)) continue;
+    const [x, y, z] = b.p;
+    const seg = ctx.q.cylSeg + 4;
+    const buf = ctx.d.bronze;
+    cylinder(
+      buf,
+      [x, y, z],
+      [x, y, z + 0.32],
+      b.r,
+      b.r * 0.72,
+      seg,
+      undefined,
+      {
+        start: false,
+        end: false,
+      }
+    );
+    cylinder(
+      buf,
+      [x, y, z + 0.32],
+      [x, y, z + 0.5],
+      b.r * 0.72,
+      b.r * 0.35,
+      seg
+    );
+    // The yoke it hangs from.
+    box(ctx.d.paint, [x, y, z + 0.62], [0.12, 0.5, 0.12], rgb(COLORS.dark));
+    const top = z + 0.62;
+    for (const dy of [-0.22, 0.22])
+      box(
+        ctx.d.paint,
+        [x, y + dy, (top + b.footZ) / 2],
+        [0.08, 0.06, Math.max(0.1, top - b.footZ)],
+        rgb(COLORS.dark)
+      );
+  }
+}
+
+/**
+ * A laker's anchor pocket: a dark square recess in the bow plating, the
+ * stockless anchor housed in it, its shank up into the hawse pipe.
+ */
+function anchorInPocket(
+  ctx: Ctx,
+  p: V3,
+  side: "port" | "starboard",
+  pocket: { w: number; h: number }
+): void {
+  const { r } = ctx;
+  const paint = ctx.d.paint;
+  const s = side === "port" ? 1 : -1;
+  const [x, , z] = p;
+  const on = (dx: number, dz: number, out: number): V3 => {
+    const hb = r.hull.halfBreadth(x + dx, z + dz);
+    return [x + dx, s * (hb + out), z + dz];
+  };
+  const W = pocket.w / 2;
+  const H = pocket.h / 2;
+  // The recess follows the bow's curve in small quads (a flat one would
+  // sink into it).
+  const n = 4;
+  const dark = rgb(COLORS.interior);
+  for (let i = 0; i < n; i += 1)
+    for (let j = 0; j < n; j += 1) {
+      const u0 = -W + (2 * W * i) / n;
+      const u1 = -W + (2 * W * (i + 1)) / n;
+      const v0 = -H + (2 * H * j) / n;
+      const v1 = -H + (2 * H * (j + 1)) / n;
+      quad(
+        paint,
+        [
+          on(u0, v0, 0.04),
+          on(u1, v0, 0.04),
+          on(u1, v1, 0.04),
+          on(u0, v1, 0.04),
+        ],
+        [0, s, 0],
+        dark
+      );
+    }
+  // A rim of plating round the pocket.
+  const rim = rgb(0x2a1414);
+  for (const [a, b] of [
+    [on(-W, -H, 0.06), on(W, -H, 0.06)],
+    [on(-W, H, 0.06), on(W, H, 0.06)],
+  ] as [V3, V3][])
+    box(paint, scale(add(a, b), 0.5), [2 * W, 0.12, 0.12], rim);
+  const k = pocket.h / 3.2;
+  const anchor = rgb(0x26272a);
+  const shankTop = on(0, H - 0.15, 0.2);
+  const shankBot = on(0, -H + 0.5 * k, 0.2);
+  box(
+    paint,
+    scale(add(shankTop, shankBot), 0.5),
+    [0.3 * k, 0.28, shankTop[2] - shankBot[2]],
+    anchor
+  );
+  box(
+    paint,
+    add(shankBot, [0, 0, -0.12 * k]),
+    [1.5 * k, 0.34, 0.32 * k],
+    anchor
+  );
+  for (const dx of [-0.65, 0.65])
+    box(
+      paint,
+      add(shankBot, [dx * k, 0, 0.35 * k]),
+      [0.36 * k, 0.3, 0.85 * k],
+      anchor,
+      0,
+      dx > 0 ? 0.35 : -0.35
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -1228,11 +1408,15 @@ function buildNames(ctx: Ctx): void {
     const uvs: [number, number][][] = [];
     // Bow names use the top half of the texture, the stern the bottom half.
     const v0 = n.where === "bow" ? 0.5 : 0;
+    // Rows up the board: its two edges, or more where it curves in height.
+    const ks = n.rows
+      ? Array.from({ length: n.rows + 1 }, (_, j) => j / n.rows!)
+      : [0, 1];
     for (let i = 0; i <= cols; i += 1) {
       const u = i / cols;
       const row: V3[] = [];
       const rowUv: [number, number][] = [];
-      for (const k of [0, 1]) {
+      for (const k of ks) {
         const z = n.z + (k - 0.5) * n.height;
         if (n.side === "aft") {
           // Round the counter: port on the left as you look forward. Stand
@@ -1273,19 +1457,20 @@ function buildNames(ctx: Ctx): void {
     const ids = pts.map((row, i) =>
       row.map((p, k) => buf.vertex(p, undefined, uvs[i][k]))
     );
-    for (let i = 0; i < cols; i += 1) {
-      const a = ids[i][0];
-      const b = ids[i + 1][0];
-      const c = ids[i + 1][1];
-      const d = ids[i][1];
-      if (flip) {
-        buf.tri(a, c, b);
-        buf.tri(a, d, c);
-      } else {
-        buf.tri(a, b, c);
-        buf.tri(a, c, d);
+    for (let i = 0; i < cols; i += 1)
+      for (let j = 0; j < ks.length - 1; j += 1) {
+        const a = ids[i][j];
+        const b = ids[i + 1][j];
+        const c = ids[i + 1][j + 1];
+        const d = ids[i][j + 1];
+        if (flip) {
+          buf.tri(a, c, b);
+          buf.tri(a, d, c);
+        } else {
+          buf.tri(a, b, c);
+          buf.tri(a, c, d);
+        }
       }
-    }
   }
 }
 
@@ -1327,7 +1512,7 @@ function buildLinesAndInstances(ctx: Ctx): void {
             ctx,
             add(pts[i], [0, 0, hgt]),
             add(pts[i + 1], [0, 0, hgt]),
-            COLORS.rail
+            run.color ?? COLORS.rail
           );
     }
   }
@@ -1407,6 +1592,7 @@ export function buildShipPart(
   buildSuperstructure(ctx);
   buildFittings(ctx);
   buildUnderwater(ctx);
+  buildBells(ctx);
   buildNames(ctx);
   buildLinesAndInstances(ctx);
   return d;
