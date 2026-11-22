@@ -103,6 +103,40 @@ describe("walking in the scene", () => {
     fireEvent.keyUp(document.body, { key: "ArrowLeft" });
   });
 
+  it("levels the look out after coming up from Look under", () => {
+    const { store, runtime, frame } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    act(() => store.getState().seek((track.sankAtT as number) - 30));
+    frame();
+    expect(store.getState().walk.phase).toBe("water");
+    act(() => store.getState().setLookUnder(true));
+    for (let i = 0; i < 120; i += 1) frame();
+    expect(runtime.walker!.pitch).toBeLessThan(-0.1);
+    act(() => store.getState().setLookUnder(false));
+    for (let i = 0; i < 180; i += 1) frame();
+    expect(Math.abs(runtime.walker!.pitch)).toBeLessThan(0.05);
+  });
+
+  it("keys on a focused button or a card do not walk", () => {
+    const { store } = setup();
+    act(() => store.getState().startWalk());
+    const button = document.createElement("button");
+    const card = document.createElement("div");
+    card.setAttribute("role", "dialog");
+    const inCard = document.createElement("span");
+    card.appendChild(inCard);
+    document.body.append(button, card);
+    fireEvent.keyDown(button, { key: "ArrowUp" });
+    fireEvent.keyDown(inCard, { key: "w" });
+    expect(walkInput.forward).toBe(0);
+    fireEvent.keyDown(document.body, { key: "w" });
+    expect(walkInput.forward).toBe(1);
+    fireEvent.keyUp(document.body, { key: "w" });
+    button.remove();
+    card.remove();
+  });
+
   it("does nothing off the walk camera and ignores keys", () => {
     const { runtime, frame } = setup();
     frame();

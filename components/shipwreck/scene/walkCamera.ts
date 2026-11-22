@@ -48,6 +48,7 @@ export const LOOK_UNDER_DAY_FOG_SHARE = 0.35;
 export const WALK_AMBIENT_LIFT = 1.25;
 
 const feet: V3 = [0, 0, 0];
+const feetAt: [number, number, number] = [0, 0, 0];
 
 /**
  * The eyes of a walker on her deck: the feet on the area's floor through
@@ -60,14 +61,24 @@ export function deckEyes(
   pose: BodyPose,
   spec: ShipSpec,
   map: WalkMap,
-  lookPitch: number
+  lookPitch: number,
+  out: WalkerView = newView()
 ): WalkerView {
-  shipToThreeInto(pose, [w.x, w.y, floorZ(map, w.area, w.x, spec)], feet);
-  return {
-    pos: [feet[0], feet[1] + WALK_EYE_M, feet[2]],
-    yaw: pose.yaw + w.yaw,
-    pitch: lookPitch,
-  };
+  feetAt[0] = w.x;
+  feetAt[1] = w.y;
+  feetAt[2] = floorZ(map, w.area, w.x, spec);
+  shipToThreeInto(pose, feetAt, feet);
+  out.pos[0] = feet[0];
+  out.pos[1] = feet[1] + WALK_EYE_M;
+  out.pos[2] = feet[2];
+  out.yaw = pose.yaw + w.yaw;
+  out.pitch = lookPitch;
+  return out;
+}
+
+/** A fresh view (the frame loop keeps one and passes it as `out`). */
+export function newView(): WalkerView {
+  return { pos: [0, 0, 0], yaw: 0, pitch: 0 };
 }
 
 /**
@@ -84,13 +95,15 @@ export function waterEyes(
   s: SwimmerState,
   wallT: number,
   lookPitch: number,
-  lookUnder: boolean
+  lookUnder: boolean,
+  out: WalkerView = newView()
 ): WalkerView {
-  return {
-    pos: [s.x, lookUnder ? LOOK_UNDER_EYE_Y : bob(wallT) + FLOAT_EYE_M, -s.y],
-    yaw: s.yaw,
-    pitch: lookPitch,
-  };
+  out.pos[0] = s.x;
+  out.pos[1] = lookUnder ? LOOK_UNDER_EYE_Y : bob(wallT) + FLOAT_EYE_M;
+  out.pos[2] = -s.y;
+  out.yaw = s.yaw;
+  out.pitch = lookPitch;
+  return out;
 }
 
 /**

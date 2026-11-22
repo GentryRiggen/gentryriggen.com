@@ -25,10 +25,11 @@ import {
   type WalkerState,
 } from "@/lib/shipwreck/walk";
 import { shipToThreeInto, type V3 } from "./cameraMath";
-import type { SceneRuntime } from "./runtime";
+import type { SceneRuntime, WalkInfo } from "./runtime";
 import {
   deckEyes,
   followShipPitch,
+  newView,
   WALK_PITCH_LIMIT,
   waterEyes,
 } from "./walkCamera";
@@ -51,6 +52,8 @@ const LOOK_UNDER_SIGHT_M = 600;
 const FOLLOW_RATE = 2;
 /** Paddling harder than this comes back up from Look under. */
 const PADDLE_UP = 0.3;
+/** How quickly the look levels out after coming up from Look under (1/s). */
+const SURFACE_RATE = 3;
 
 interface WalkRunnerProps {
   store: PlaybackStore;
@@ -67,15 +70,38 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     walker: null as WalkerState | null,
     swimmer: null as SwimmerState | null,
     pitch: 0,
+    /** Just came up from Look under: the look levels out. */
+    surfacing: false,
+    wasUnder: false,
   });
+  // Written in place every frame (no per-frame allocations).
   const scratch = useMemo(
     () => ({
       hull: [] as HullPiece[],
+      pieces: [0, 1, 2].map(() => ({ pose: null!, spec }) as HullPiece),
       eye: [0, 0, 0] as V3,
       centre: [0, 0, 0] as V3,
+      c: [0, 0, 0] as V3,
       p: [0, 0, 0] as [number, number, number],
+      view: newView(),
+      info: {
+        phase: "deck",
+        part: null,
+        area: null,
+        x: 0,
+        y: 0,
+        slopeDeg: 0,
+        depthM: 0,
+      } as WalkInfo,
+      ctx: {
+        map: map!,
+        spec,
+        pose: null! as BodyPose,
+        breakX: null as number | null,
+        seaZ: FLAT_SEA,
+      },
     }),
-    []
+    [spec, map]
   );
   const stemX = spec.stations[spec.stations.length - 1].x;
   const sternX = spec.stations[0].x;
@@ -88,6 +114,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     s.walker = null;
     s.swimmer = null;
     s.pitch = 0;
+    s.surfacing = false;
+    s.wasUnder = false;
     runtime.walker = null;
     runtime.walkLookUnder = false;
     runtime.walkSlide = 0;
@@ -111,12 +139,13 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   function hullOf(frame: SimFrame, breakX: number | null): HullPiece[] {
     const hull = scratch.hull;
     hull.length = 0;
-    for (const b of frame.bodies) {
-      if (b.part === "bow" && breakX !== null)
-        hull.push({ pose: b, spec, fromX: breakX });
-      else if (b.part === "stern" && breakX !== null)
-        hull.push({ pose: b, spec, toX: breakX });
-      else hull.push({ pose: b, spec });
+    for (let i = 0; i < frame.bodies.length && i < 3; i += 1) {
+      const b = frame.bodies[i];
+      const h = scratch.pieces[i];
+      h.pose = b;
+      h.fromX = b.part === "bow" && breakX !== null ? breakX : undefined;
+      h.toX = b.part === "stern" && breakX !== null ? breakX : undefined;
+      hull.push(h);
     }
     return hull;
   }
@@ -127,7 +156,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     breakX: number | null,
     eye: V3
   ): V3 | null {
-    let best: V3 | null = null;
+    let found = false;
     let bestD = Infinity;
     for (const b of frame.bodies) {
       const lo = b.part === "bow" && breakX !== null ? breakX : sternX;
@@ -135,18 +164,17 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       scratch.p[0] = (lo + hi) / 2;
       scratch.p[1] = 0;
       scratch.p[2] = spec.depth / 2;
-      const c: V3 = [0, 0, 0];
-      shipToThreeInto(b, scratch.p, c);
+      const c = shipToThreeInto(b, scratch.p, scratch.c);
       const d = Math.hypot(c[0] - eye[0], c[1] - eye[1], c[2] - eye[2]);
       if (d < bestD) {
         bestD = d;
-        best = c;
+        found = true;
+        scratch.centre[0] = c[0];
+        scratch.centre[1] = c[1];
+        scratch.centre[2] = c[2];
       }
     }
-    if (!best || bestD > LOOK_UNDER_SIGHT_M) return null;
-    scratch.centre[0] = best[0];
-    scratch.centre[1] = best[1];
-    scratch.centre[2] = best[2];
+    if (!found || bestD > LOOK_UNDER_SIGHT_M) return null;
     return scratch.centre;
   }
 
@@ -205,6 +233,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       -WALK_PITCH_LIMIT,
       Math.min(WALK_PITCH_LIMIT, s.pitch - walkInput.lookDy * WALK_TURN_PER_PX)
     );
+    const tilted = walkInput.lookDy !== 0;
     walkInput.lookDy = 0;
 
     if (s.walker) {
@@ -215,12 +244,10 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         w = { ...w, part: partFor(w.x, breakX, broken) };
         pose = poseOf(frame, w.part) ?? frame.bodies[0];
       }
-      const r = stepWalker(
-        w,
-        walkInput,
-        { map, spec, pose, breakX, seaZ: FLAT_SEA },
-        dt
-      );
+      const ctx = scratch.ctx;
+      ctx.pose = pose;
+      ctx.breakX = breakX;
+      const r = stepWalker(w, walkInput, ctx, dt);
       walkInput.lookDx = 0;
       if (r.inWater) {
         s.walker = null;
@@ -229,7 +256,14 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         store.getState().wentInWater();
       } else {
         s.walker = r.state;
-        runtime.walker = deckEyes(r.state, pose, spec, map, s.pitch);
+        runtime.walker = deckEyes(
+          r.state,
+          pose,
+          spec,
+          map,
+          s.pitch,
+          scratch.view
+        );
         runtime.walkLookUnder = false;
         runtime.walkSlide = r.state.sliding
           ? 1
@@ -241,15 +275,15 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
                   (WALK_SLIDE_FROM_DEG - WALK_PUSH_FROM_DEG)
               )
             );
-        runtime.walkInfo = {
-          phase: "deck",
-          part: r.state.part,
-          area: r.state.area,
-          x: r.state.x,
-          y: r.state.y,
-          slopeDeg: r.slopeDeg,
-          depthM: r.depthM,
-        };
+        const info = scratch.info;
+        info.phase = "deck";
+        info.part = r.state.part;
+        info.area = r.state.area;
+        info.x = r.state.x;
+        info.y = r.state.y;
+        info.slopeDeg = r.slopeDeg;
+        info.depthM = r.depthM;
+        runtime.walkInfo = info;
         return;
       }
     }
@@ -267,6 +301,18 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     walkInput.lookDx = 0;
     s.swimmer = next;
     const under = store.getState().walk.lookUnder;
+    // Came up (the button or paddling): the look levels out again, unless
+    // the player tilts it themselves.
+    if (s.wasUnder && !under) s.surfacing = true;
+    s.wasUnder = under;
+    if (under || tilted) s.surfacing = false;
+    if (s.surfacing) {
+      s.pitch *= Math.exp(-Math.min(dt, 0.1) * SURFACE_RATE);
+      if (Math.abs(s.pitch) < 0.01) {
+        s.pitch = 0;
+        s.surfacing = false;
+      }
+    }
     if (under) {
       // Tilt down to keep her in frame while she is in sight.
       const eye = scratch.eye;
@@ -280,18 +326,24 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
           (want - s.pitch) * (1 - Math.exp(-Math.min(dt, 0.1) * FOLLOW_RATE));
       }
     }
-    runtime.walker = waterEyes(next, state.clock.elapsedTime, s.pitch, under);
+    runtime.walker = waterEyes(
+      next,
+      state.clock.elapsedTime,
+      s.pitch,
+      under,
+      scratch.view
+    );
     runtime.walkLookUnder = under;
     runtime.walkSlide = 0;
-    runtime.walkInfo = {
-      phase: "water",
-      part: null,
-      area: null,
-      x: next.x,
-      y: next.y,
-      slopeDeg: 0,
-      depthM: 0,
-    };
+    const info = scratch.info;
+    info.phase = "water";
+    info.part = null;
+    info.area = null;
+    info.x = next.x;
+    info.y = next.y;
+    info.slopeDeg = 0;
+    info.depthM = 0;
+    runtime.walkInfo = info;
   }, -1.5);
 
   return null;
@@ -329,7 +381,11 @@ function useWalkKeys(walking: boolean) {
       const k = e.key.toLowerCase();
       if (!(k in KEYS)) return;
       const el = e.target as HTMLElement | null;
-      if (el?.closest?.("input, textarea, [role=slider]")) return;
+      // As Hud's keys: not while a button, a field or a card has focus.
+      if (
+        el?.closest?.("button, input, textarea, [role=slider], [role=dialog]")
+      )
+        return;
       e.preventDefault();
       if (held.has(k)) return;
       held.add(k);

@@ -51,7 +51,11 @@ describe("Shipwreck title screen", () => {
     fireEvent.click(screen.getByTestId("shipwreck-real-night"));
     act(() => playback.getState().startWalk());
     expect(playback.getState().walk.phase).toBe("deck");
+    // The title's own setCamera also walks off: check leaveNight asks.
+    const leave = jest.spyOn(playback.getState(), "leaveWalk");
     fireEvent.click(screen.getByLabelText("Back to the title"));
+    expect(leave).toHaveBeenCalled();
+    leave.mockRestore();
     expect(playback.getState().walk.phase).toBe("off");
     expect(playback.getState().camera).not.toBe("walk");
   });
