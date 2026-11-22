@@ -3,13 +3,11 @@
  * Onward's scorecards, dials and maps, the plane balance sweep). They are
  * about 97% of unit-test time, so they run in their own lane:
  *
- * - `npm test` (and CI's blocking unit job) skips them: JEST_LANE=fast.
- * - `npm run test:sims` runs only them: JEST_LANE=sims. CI runs them in
- *   .github/workflows/sims.yml when game code changes; that workflow reports
- *   but never holds up a deploy.
+ * - `npm test` (and CI's unit job) skips them: JEST_LANE=fast.
+ * - `npm run test:sims` runs only them: JEST_LANE=sims. CI runs them only by
+ *   hand (.github/workflows/sims.yml, Actions > Sims > Run workflow).
  *
- * CI fails a fast-lane file that takes over 45 s (scripts/check-test-times.mjs)
- * and names it: add a new simulation test here.
+ * A new test that plays whole runs goes here, so it stays out of CI.
  */
 module.exports = [
   "components/ever-onward/scenes/grow/__tests__/TradeoffArt.test.tsx",

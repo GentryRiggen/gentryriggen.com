@@ -1,32 +1,10 @@
 name: Sims
 
 # The game-balance simulations (jest.sims.js): bots play whole runs to check
-# pacing and scorecards. They take minutes, so they live outside CI/CD: they
-# report on the pull request and on main, but never hold up a deploy. A red
-# run here means a balance regression to fix forward.
+# pacing and scorecards. They take minutes, so they run only by hand
+# (Actions > Sims > Run workflow) or locally with `npm run test:sims`.
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "lib/ever-onward/**"
-      - "components/ever-onward/**"
-      - "lib/plane-builder/**"
-      - "lib/shipwreck/**"
-      - "jest.sims.js"
-      - "jest.config.js"
-      - "package-lock.json"
-      - ".github/workflows/sims.yml"
-  pull_request:
-    paths:
-      - "lib/ever-onward/**"
-      - "components/ever-onward/**"
-      - "lib/plane-builder/**"
-      - "lib/shipwreck/**"
-      - "jest.sims.js"
-      - "jest.config.js"
-      - "package-lock.json"
-      - ".github/workflows/sims.yml"
   workflow_dispatch:
 
 permissions:

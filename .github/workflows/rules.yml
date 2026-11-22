@@ -1,0 +1,42 @@
+name: Firestore rules
+
+# The rules are the security boundary for analytics and leaderboards, so a
+# pull request that touches them (or the schema they mirror) runs the
+# emulator tests. Nothing else does.
+
+on:
+  pull_request:
+    paths:
+      - "firestore.rules"
+      - "firestore-tests/**"
+      - "lib/analytics/**"
+      - "lib/leaderboard/**"
+      - "jest.rules.config.js"
+      - ".github/workflows/rules.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rules:
+    name: 🔐 Firestore rules tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup
+      - name: ☕ Setup Java (Firestore emulator)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: 💾 Cache Firestore emulator
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/firebase/emulators
+          key: ${{ runner.os }}-firebase-emulators-${{ hashFiles('package-lock.json') }}
+      - name: 🔐 Firestore rules tests
+        run: npm run test:rules
