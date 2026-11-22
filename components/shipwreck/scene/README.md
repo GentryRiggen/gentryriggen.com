@@ -146,7 +146,7 @@ shot framed for landscape still fits the ship.
   turns OrbitControls off, skips the bounds and the anchor, uses
   `nearFor(0.5)`, and ignores double-tap fly-to. Look under clears the
   water (night fog 0.0018; by day 0.35 of its own), keeps her hull lights
-  at ≥ 0.12 power and tilts down to keep her nearest piece in frame while
+  at ≥ 0.5 power (`LOOK_UNDER_MIN_POWER`) and tilts down to keep her nearest piece in frame while
   she is within 600 m; paddling comes back up. On deck the ambient light
   is lifted ×1.25. The rules are `lib/shipwreck/walk/` (see its README).
   Keys: WASD or the arrows (the HUD's ←/→ seek is off while walking).

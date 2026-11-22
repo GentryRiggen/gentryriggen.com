@@ -5,7 +5,10 @@ import {
   inSlowMoWindow,
   phaseAt,
   realTimeAt,
+  speedOnGoingIn,
+  WATCH_HER_GO_S,
 } from "../playback";
+import type { Speed } from "../types";
 import { walkInput } from "../walk";
 import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
@@ -455,16 +458,63 @@ describe("playback: walking", () => {
     expect(store.getState().walk.phase).toBe("off");
   });
 
-  it("going into the water drops the speed to x1; the player can speed up again", () => {
+  /** Walking with her last piece going under at `sankAtT` (or not known). */
+  function walkingAt(t: number, sankAtT: number | null, speed: Speed) {
     const store = started();
-    store.getState().setSpeed(100);
+    const track = store.getState().track!;
+    store.setState({ track: { ...track, sankAtT } });
+    store.getState().seek(t);
+    store.getState().setSpeed(speed);
     store.getState().startWalk();
-    expect(store.getState().speed).toBe(100);
+    return store;
+  }
+
+  it("going in within 5 minutes of her going under drops the speed to x1", () => {
+    const store = walkingAt(400, 400 + WATCH_HER_GO_S, 100);
     store.getState().wentInWater();
     expect(store.getState().speed).toBe(1);
+    // The player can speed up again; already in the water changes nothing.
     store.getState().setSpeed(30);
     store.getState().wentInWater();
     expect(store.getState().speed).toBe(30);
+  });
+
+  it("going in earlier brings a speed above x10 down to x10", () => {
+    const store = walkingAt(100, 100 + WATCH_HER_GO_S + 10, 100);
+    store.getState().wentInWater();
+    expect(store.getState().speed).toBe(10);
+    // Not known to go under yet (sankAtT null): the same.
+    const unknown = walkingAt(100, null, 30);
+    unknown.getState().wentInWater();
+    expect(unknown.getState().speed).toBe(10);
+  });
+
+  it("going in earlier leaves x10 and slower alone", () => {
+    for (const speed of [1, 10] as const) {
+      const store = walkingAt(100, null, speed);
+      store.getState().wentInWater();
+      expect(store.getState().speed).toBe(speed);
+    }
+  });
+
+  it("re-placing into the water (not stepping in) keeps the speed", () => {
+    const store = walkingAt(400, 450, 100);
+    store.getState().wentInWater(false);
+    expect(store.getState().walk.phase).toBe("water");
+    expect(store.getState().speed).toBe(100);
+  });
+
+  it("speedOnGoingIn ignores a sinking already past", () => {
+    const track = fakeTrack(1000, { sankAtT: 300 });
+    expect(speedOnGoingIn(track, 400, 100)).toEqual({
+      speed: 10,
+      slowMo: false,
+    });
+    expect(speedOnGoingIn(track, 250, 100)).toEqual({
+      speed: 1,
+      slowMo: false,
+    });
+    expect(speedOnGoingIn(null, 0, 10)).toEqual({});
   });
 
   it("setCamera('walk') starts the walk", () => {

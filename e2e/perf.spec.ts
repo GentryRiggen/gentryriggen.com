@@ -539,11 +539,13 @@ test.describe("Shipwreck budget", () => {
         h.turnWalk!(Math.PI); // look aft
       })
     );
-    // In the water a minute after the stern went under, looking under.
+    // In the water 10 s before her stern goes under, looking under: she is
+    // in view, going down. (After it the way down is shown 6x faster: 20 s
+    // later she is 1.6 km down and out of sight.)
     await page.evaluate(() => {
       const h = window.__shipwreck!;
       const e = h.getEvents!().find((x) => x.kind === "stern-under")!;
-      h.seek!(e.t + 60);
+      h.seek!(e.t - 10);
     });
     await page.waitForFunction(
       () => window.__shipwreck?.getWalk?.()?.phase === "water",

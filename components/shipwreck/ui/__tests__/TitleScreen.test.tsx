@@ -34,7 +34,7 @@ describe("the ship picker", () => {
   it("words the Lusitania's afternoon and tells the grown-ups", () => {
     title("lusitania");
     expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
-      "This is the Lusitania in 1915. A torpedo sank her in 18 minutes during the First World War, and more than 1,190 people died. This game shows only the ship. You can walk her open decks; no people are shown."
+      "This is the Lusitania in 1915. A torpedo sank her in 18 minutes during the First World War, and more than 1,190 people died. This game shows only the ship. You can walk her open decks."
     );
     expect(screen.getByTestId("shipwreck-real-night")).toHaveTextContent(
       "The real afternoon"

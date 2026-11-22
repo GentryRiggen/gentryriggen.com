@@ -27,6 +27,22 @@ function writeSeen() {
   }
 }
 
+/**
+ * Starts a walk, as the Walk button and the camera picker's "Walk the deck"
+ * both do: leaves a place and X-ray, then walks. Counted (and the button
+ * stops glowing) only when the walk really started; returns whether it did.
+ */
+export function beginWalk(store: PlaybackStore): boolean {
+  const s = store.getState();
+  if (s.place) s.flyToPlace(null, false);
+  s.setXray(false);
+  store.getState().startWalk();
+  if (store.getState().camera !== "walk") return false;
+  trackCamera("walk");
+  writeSeen();
+  return true;
+}
+
 interface WalkButtonProps {
   store: PlaybackStore;
 }
@@ -48,17 +64,7 @@ export default function WalkButton({ store }: WalkButtonProps) {
   if (!walkMapFor(ship) || walking) return null;
 
   const onWalk = () => {
-    const s = store.getState();
-    if (s.place) s.flyToPlace(null, false);
-    s.setXray(false);
-    store.getState().startWalk();
-    // Counted only when the walk really started.
-    if (store.getState().camera !== "walk") return;
-    trackCamera("walk");
-    if (!seen) {
-      writeSeen();
-      setSeen(true);
-    }
+    if (beginWalk(store) && !seen) setSeen(true);
   };
 
   return (
@@ -67,7 +73,7 @@ export default function WalkButton({ store }: WalkButtonProps) {
         <span
           aria-hidden="true"
           data-testid="shipwreck-walk-glow"
-          className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-amber-300/50 motion-reduce:animate-pulse"
+          className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-amber-300/50 motion-reduce:-inset-1.5 motion-reduce:animate-none motion-reduce:bg-transparent motion-reduce:ring-4 motion-reduce:ring-amber-300/80"
         />
       )}
       <button

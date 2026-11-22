@@ -13,6 +13,7 @@ import {
   floorZ,
   partFor,
   placeWalker,
+  resetWalkInput,
   shipToEarth,
   stepSwimmer,
   stepWalker,
@@ -31,6 +32,7 @@ import type { SceneRuntime, WalkInfo } from "./runtime";
 import {
   deckEyes,
   followShipPitch,
+  LOOK_UNDER_EYE_Y,
   newView,
   WALK_PITCH_LIMIT,
   waterEyes,
@@ -68,7 +70,7 @@ interface WalkRunnerProps {
 export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   const map = useMemo(() => walkMapFor(spec.id), [spec]);
   const walking = useStore(store, (s) => s.camera === "walk");
-  useWalkKeys(walking);
+  useWalkKeys(walking, runtime);
   const st = useRef({
     seq: null as number | null,
     walker: null as WalkerState | null,
@@ -196,6 +198,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       return;
     }
     const s = st.current;
+    // Under the end card: nothing the player holds moves the walker.
+    if (runtime.walkInputOff) resetWalkInput();
     const breakX = p.track?.breakX ?? null;
     const broken = frame.bodies.some((b) => b.part !== "whole");
 
@@ -234,7 +238,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
           }
         }
         s.swimmer = { x: e[0], y: e[1], yaw };
-        if (p.walk.phase !== "water") store.getState().wentInWater();
+        // Re-placed, not stepped in: no speed change.
+        if (p.walk.phase !== "water") store.getState().wentInWater(false);
       }
     }
 
@@ -335,7 +340,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       // Tilt down to keep her in frame while she is in sight.
       const eye = scratch.eye;
       eye[0] = next.x;
-      eye[1] = -1;
+      eye[1] = LOOK_UNDER_EYE_Y;
       eye[2] = -next.y;
       const c = nearestCentre(frame, breakX, eye);
       if (c) {
@@ -386,7 +391,7 @@ const KEYS: Record<string, [axis: "forward" | "strafe", dir: 1 | -1]> = {
 };
 
 /** WASD and the arrows walk while walking (they write `walkInput`). */
-function useWalkKeys(walking: boolean) {
+function useWalkKeys(walking: boolean, runtime: SceneRuntime) {
   useEffect(() => {
     if (!walking) return;
     const held = new Set<string>();
@@ -405,6 +410,8 @@ function useWalkKeys(walking: boolean) {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (!(k in KEYS)) return;
+      // Not under the end card.
+      if (runtime.walkInputOff) return;
       const el = e.target as HTMLElement | null;
       // As Hud's keys: not while a button, a field or a card has focus.
       if (
@@ -435,5 +442,5 @@ function useWalkKeys(walking: boolean) {
       window.removeEventListener("blur", clear);
       clear();
     };
-  }, [walking]);
+  }, [walking, runtime]);
 }

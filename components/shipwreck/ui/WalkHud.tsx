@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import type { SceneRuntime } from "@/components/shipwreck/scene/runtime";
+import { resetWalkInput } from "@/lib/shipwreck/walk";
+import {
+  setWalkInputOff,
+  type SceneRuntime,
+} from "@/components/shipwreck/scene/runtime";
 import Icon from "./Icon";
 import WalkJoystick from "./WalkJoystick";
 import WalkLookLayer from "./WalkLookLayer";
@@ -121,6 +125,12 @@ export default function WalkHud({
   const phase = useStore(store, (s) => s.walk.phase);
   const lookUnder = useStore(store, (s) => s.walk.lookUnder);
   const on = phase !== "off" && !hidden;
+  // Under the end card the walk keys and held input stop (WalkRunner).
+  useEffect(() => {
+    setWalkInputOff(runtime, hidden);
+    if (hidden) resetWalkInput();
+  }, [runtime, hidden]);
+  useEffect(() => () => setWalkInputOff(runtime, false), [runtime]);
   const feel = useFeel(runtime, on);
   if (!on) return null;
   const water = phase === "water";

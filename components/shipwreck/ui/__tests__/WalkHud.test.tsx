@@ -117,6 +117,79 @@ describe("the Walk button", () => {
   });
 });
 
+describe("the camera picker's Walk the deck", () => {
+  const openCameras = () =>
+    fireEvent.click(screen.getByTestId("shipwreck-cameras-button"));
+
+  it("is listed for a ship you can walk on and starts a walk like the button", () => {
+    const { store } = setup();
+    openCameras();
+    fireEvent.click(screen.getByTestId("shipwreck-camera-walk"));
+    expect(store.getState().camera).toBe("walk");
+    expect(store.getState().walk.phase).toBe("deck");
+    expect(trackGame).toHaveBeenCalledTimes(1);
+    expect(trackGame).toHaveBeenCalledWith("shipwreck_camera", {
+      camera: "walk",
+    });
+    expect(window.localStorage.getItem("shipwreck:walk-seen")).toBe("1");
+    expect(screen.queryByTestId("shipwreck-cameras")).toBeNull();
+  });
+
+  it("is not listed for a ship with no map", () => {
+    (walkMapFor as jest.Mock).mockReturnValue(null);
+    try {
+      setup();
+      openCameras();
+      expect(screen.getByTestId("shipwreck-camera-orbit")).toBeInTheDocument();
+      expect(screen.queryByTestId("shipwreck-camera-walk")).toBeNull();
+    } finally {
+      (walkMapFor as jest.Mock).mockImplementation(
+        jest.requireActual("@/lib/shipwreck/walk").walkMapFor
+      );
+    }
+  });
+
+  it("is disabled without a frame and not counted when the walk did not start", () => {
+    setup(false);
+    openCameras();
+    expect(screen.getByTestId("shipwreck-camera-walk")).toBeDisabled();
+  });
+
+  it("does not count a walk that did not start", () => {
+    const { store } = setup();
+    jest.spyOn(store.getState(), "startWalk").mockImplementation(() => {});
+    openCameras();
+    fireEvent.click(screen.getByTestId("shipwreck-camera-walk"));
+    expect(trackGame).not.toHaveBeenCalled();
+    expect(store.getState().camera).toBe("orbit");
+  });
+});
+
+describe("the Walk glow", () => {
+  it("is a still ring, not a pulse, with reduced motion", () => {
+    setup();
+    const glow = screen.getByTestId("shipwreck-walk-glow");
+    expect(glow.className).toContain("motion-reduce:animate-none");
+    expect(glow.className).toContain("motion-reduce:ring-4");
+    expect(glow.className).not.toContain("animate-pulse");
+  });
+});
+
+describe("under the end card", () => {
+  it("stops the walk input while hidden and lets it go after", () => {
+    const store = makeStore();
+    const runtime = createSceneRuntime();
+    const view = render(<WalkHud store={store} runtime={runtime} />);
+    act(() => store.getState().startWalk());
+    walkInput.forward = 1;
+    view.rerender(<WalkHud store={store} runtime={runtime} hidden />);
+    expect(runtime.walkInputOff).toBe(true);
+    expect(walkInput.forward).toBe(0);
+    view.rerender(<WalkHud store={store} runtime={runtime} />);
+    expect(runtime.walkInputOff).toBe(false);
+  });
+});
+
 describe("walking", () => {
   it("hides X-ray, places and cameras; shows Fly, the stick and the look layer", () => {
     const { store } = setup();

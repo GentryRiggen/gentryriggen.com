@@ -103,11 +103,14 @@ All in `types.ts`: `WALK_PUSH_FROM_DEG` 10, `WALK_SLIDE_FROM_DEG` 20,
 
 ## Where the rest lives
 
-The store's walk slice, the walk controller in `CameraRig` (camera id
-`"walk"`, eyes `WALK_EYE_M` over the feet, head level with the horizon), the
-sea-level float and Look under, and the controls (Walk button, joystick,
-look layer, Fly, Back on deck, Look under) are wired in later 1.3 tasks
-under `components/shipwreck/` (`scene/` and `ui/`).
+- The store's walk slice (`startWalk`, `wentInWater`, `backOnDeck`,
+  `setLookUnder`): `lib/shipwreck/playback.ts`.
+- The scene side: `components/shipwreck/scene/WalkRunner.tsx` places and
+  steps the walker or the swimmer each frame and reads the keys;
+  `scene/walkCamera.ts` turns that into the eyes (deck, float, Look under)
+  that `CameraRig` stands the camera at.
+- The controls: `components/shipwreck/ui/Walk*` (`WalkButton`, `WalkHud`
+  with Fly, Back on deck and Look under, `WalkJoystick`, `WalkLookLayer`).
 
 Tests: `__tests__/maps.test.ts` (the maps hold together), `slope.test.ts`,
 `step.test.ts` (every rule above) and `swim.test.ts` (the swimmer, and

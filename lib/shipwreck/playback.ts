@@ -135,8 +135,12 @@ export interface PlaybackActions {
   startWalk(): void;
   /** Back to the orbit camera; zeroes the walk controls. */
   leaveWalk(): void;
-  /** The walker went into the water (from the deck: speed ×1). */
-  wentInWater(): void;
+  /**
+   * The walker is in the water. `steppedIn` (default true) is a real step or
+   * slide off her deck: then, from the deck, the speed drops (see
+   * speedOnGoingIn). False when re-placing found nowhere to stand: no change.
+   */
+  wentInWater(steppedIn?: boolean): void;
   /** The walker is back on the deck. */
   backOnDeck(): void;
   setLookUnder(on: boolean): void;
@@ -178,6 +182,32 @@ const INITIAL: PlaybackState = {
   flyView: null,
   speedTouchedAt: -Infinity,
 };
+
+/**
+ * Going in this close (s of sim time) before her last piece goes under drops
+ * the speed to ×1, so Look under shows her go down.
+ */
+export const WATCH_HER_GO_S = 300;
+
+/**
+ * The speed change when the walker goes into the water from her deck: ×1 if
+ * her last piece goes under within WATCH_HER_GO_S, else at most ×10 (a faster
+ * speed comes down to ×10, a slower one stays). When she has gone under is
+ * `track.sankAtT`, which the run sets as soon as its computed frames reach
+ * it: while it is null she is afloat through every frame computed so far, so
+ * she is not known to go soon. The player can speed up again either way.
+ */
+export function speedOnGoingIn(
+  track: SimTrack | null,
+  t: number,
+  speed: Speed
+): Partial<Pick<PlaybackState, "speed" | "slowMo">> {
+  const sank = track?.sankAtT ?? null;
+  if (sank !== null && sank >= t && sank - t <= WATCH_HER_GO_S)
+    return { speed: 1, slowMo: false };
+  if (speed > 10) return { speed: 10, slowMo: false };
+  return {};
+}
 
 /** True when `t` is inside the slow-mo windows of `track`. */
 export function inSlowMoWindow(track: SimTrack | null, t: number): boolean {
@@ -380,15 +410,13 @@ export function createPlaybackStore(
       leaveWalk() {
         set({ ...walkOff(), camera: "orbit", snapId: get().snapId + 1 });
       },
-      wentInWater() {
+      wentInWater(steppedIn = true) {
         const s = get();
         if (s.walk.phase === "off") return;
-        // Into the water from the deck: ×1, so Look under lasts long enough
-        // to watch her go down (the player can speed up again).
         set({
           walk: { ...s.walk, phase: "water" },
-          ...(s.walk.phase === "deck"
-            ? { speed: 1 as const, slowMo: false }
+          ...(s.walk.phase === "deck" && steppedIn
+            ? speedOnGoingIn(s.track, s.t, s.speed)
             : {}),
         });
       },

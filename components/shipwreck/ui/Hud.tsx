@@ -9,6 +9,7 @@ import { PLACES_BY_SHIP, type PlaceId } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import { clockText, sinceText } from "@/lib/shipwreck/story";
+import { walkMapFor } from "@/lib/shipwreck/walk";
 import {
   CAMERA_IDS,
   SPEEDS,
@@ -19,7 +20,7 @@ import Captions from "./Captions";
 import HelpCard from "./HelpCard";
 import Icon, { type IconName } from "./Icon";
 import Timeline from "./Timeline";
-import WalkButton from "./WalkButton";
+import WalkButton, { beginWalk } from "./WalkButton";
 import { FOCUS, PANEL, ROUND, ROUND_ON } from "./styles";
 
 export const CAMERA_LABEL: Record<CameraId, string> = {
@@ -78,6 +79,13 @@ export default function Hud({
   const place = useStore(store, (s) => s.place);
   // Walking: only play, speeds, the timeline (and sound) stay.
   const walking = camera === "walk";
+  // "Walk the deck" is in the picker only for a ship you can walk on, and
+  // (as the Walk button) needs a frame to stand on.
+  const canWalk = walkMapFor(ship.id) !== null;
+  const hasFrame = useStore(
+    store,
+    (s) => s.track !== null && s.track.frames.length > 0
+  );
   const [panel, setPanel] = useState<"places" | "cameras" | null>(null);
   const [help, setHelp] = useState(false);
 
@@ -110,6 +118,12 @@ export default function Hud({
   }, [store, onSpeed, hidden]);
 
   const pickCamera = (id: CameraId) => {
+    if (id === "walk") {
+      // The Walk button's path: counted only once the walk started.
+      beginWalk(store);
+      setPanel(null);
+      return;
+    }
     store.getState().flyToPlace(null, store.getState().xray);
     store.getState().setCamera(id);
     trackCamera(id);
@@ -208,25 +222,28 @@ export default function Hud({
                 className={`${PANEL} pointer-events-auto grid grid-cols-2 gap-1.5 p-2`}
                 data-testid="shipwreck-cameras"
               >
-                {/* Walking has its own button (not on every ship). */}
-                {CAMERA_IDS.filter((id) => id !== "walk").map((id) => (
-                  <button
-                    key={id}
-                    type="button"
-                    aria-label={`Camera: ${CAMERA_LABEL[id]}`}
-                    aria-pressed={camera === id}
-                    data-testid={`shipwreck-camera-${id}`}
-                    onClick={() => pickCamera(id)}
-                    className={`flex min-h-16 w-24 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold sm:w-28 ${
-                      camera === id
-                        ? "bg-sky-500/85 text-white"
-                        : "text-slate-100 hover:bg-white/10"
-                    } ${FOCUS}`}
-                  >
-                    <Icon name={CAMERA_ICON[id]} className="size-7" />
-                    {CAMERA_LABEL[id]}
-                  </button>
-                ))}
+                {/* Walking: only on a ship with a walk map. */}
+                {CAMERA_IDS.filter((id) => id !== "walk" || canWalk).map(
+                  (id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      aria-label={`Camera: ${CAMERA_LABEL[id]}`}
+                      aria-pressed={camera === id}
+                      data-testid={`shipwreck-camera-${id}`}
+                      disabled={id === "walk" && !hasFrame}
+                      onClick={() => pickCamera(id)}
+                      className={`flex min-h-16 w-24 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold disabled:opacity-40 sm:w-28 ${
+                        camera === id
+                          ? "bg-sky-500/85 text-white"
+                          : "text-slate-100 hover:bg-white/10"
+                      } ${FOCUS}`}
+                    >
+                      <Icon name={CAMERA_ICON[id]} className="size-7" />
+                      {CAMERA_LABEL[id]}
+                    </button>
+                  )
+                )}
               </div>
             )}
             <div className="flex flex-col items-end gap-3">

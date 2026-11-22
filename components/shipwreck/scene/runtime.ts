@@ -58,6 +58,11 @@ export interface SceneRuntime {
   walkSplash: number;
   /** True while floating and Back on deck could put them on her now. */
   walkCanReboard: boolean;
+  /**
+   * True while the walk controls are hidden (the end card): the keys and any
+   * held input do not move the walker. Written by WalkHud.
+   */
+  walkInputOff: boolean;
   /** For the test hooks: where the walker is (null when not walking). */
   walkInfo: WalkInfo | null;
 }
@@ -97,7 +102,13 @@ export function createSceneRuntime(): SceneRuntime {
     walkDownhill: [0, 0],
     walkSplash: 0,
     walkCanReboard: false,
+    walkInputOff: false,
     walkInfo: null,
   };
   return rt;
+}
+
+/** Stops (or lets) the walk input move the walker: the end card's gate. */
+export function setWalkInputOff(runtime: SceneRuntime, off: boolean): void {
+  runtime.walkInputOff = off;
 }

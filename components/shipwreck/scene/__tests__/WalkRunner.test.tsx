@@ -137,6 +137,61 @@ describe("walking in the scene", () => {
     card.remove();
   });
 
+  it("Back on deck with nowhere to stand keeps the speed", () => {
+    const { store, runtime, frame } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    // Long after she has gone: re-placing finds nowhere to stand.
+    act(() => store.getState().seek((track.sankAtT as number) + 60));
+    act(() => store.getState().setSpeed(100));
+    frame();
+    expect(store.getState().walk.phase).toBe("water");
+    expect(store.getState().speed).toBe(100);
+    act(() => store.getState().backOnDeck());
+    frame();
+    expect(store.getState().walk.phase).toBe("water");
+    expect(runtime.walkInfo?.phase).toBe("water");
+    expect(store.getState().speed).toBe(100);
+  });
+
+  it("stepping off her deck into the sea does change the speed", () => {
+    const { store, runtime, frame } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    act(() => store.getState().setSpeed(100));
+    // Her boat deck goes under as the night plays on.
+    act(() => store.getState().seek((track.sankAtT as number) - 600));
+    frame();
+    expect(store.getState().walk.phase).toBe("deck");
+    let t = store.getState().t;
+    while (store.getState().walk.phase === "deck" && t < track.sankAtT!) {
+      t += 2;
+      store.setState({ t });
+      frame();
+    }
+    expect(store.getState().walk.phase).toBe("water");
+    expect(runtime.walkSplash).toBeGreaterThan(0);
+    expect(store.getState().speed).toBeLessThan(100);
+  });
+
+  it("keys and held input do not move the walker under the end card", () => {
+    const { store, runtime, frame } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    const x0 = runtime.walkInfo!.x;
+    runtime.walkInputOff = true;
+    fireEvent.keyDown(document.body, { key: "w" });
+    expect(walkInput.forward).toBe(0);
+    walkInput.forward = 1;
+    for (let i = 0; i < 60; i += 1) frame();
+    expect(walkInput.forward).toBe(0);
+    expect(Math.abs(runtime.walkInfo!.x - x0)).toBeLessThan(0.05);
+    runtime.walkInputOff = false;
+    fireEvent.keyDown(document.body, { key: "w" });
+    expect(walkInput.forward).toBe(1);
+    fireEvent.keyUp(document.body, { key: "w" });
+  });
+
   it("does nothing off the walk camera and ignores keys", () => {
     const { runtime, frame } = setup();
     frame();
