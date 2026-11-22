@@ -244,21 +244,24 @@ test.describe("planet smasher", () => {
 
   test("progress survives a reload", async ({ page }) => {
     await open(page);
-    // One asteroid can lose less than a whole point: keep firing until it counts.
+    // This test is about saving, so it hits the store directly (the same hit
+    // an impact makes, which saves). A fired shot only scores when its effect
+    // lands, effects step at most 0.05 s a frame (fxClock), and the queue
+    // keeps 12, dropping the oldest. Under CI's software WebGL (about 1-2 fps
+    // since 1.4.0's displaced planet) an asteroid needed many seconds to land,
+    // so re-firing evicted every one in flight and no point ever counted.
     await expect
       .poll(
-        async () => {
-          // Spread the hits: a crater already hit pays less.
-          await page.evaluate(() => {
+        () =>
+          page.evaluate(() => {
+            const game = window.__planetSmasher!;
+            // One asteroid can lose less than a whole point (oceans hold almost
+            // nobody), and a crater already hit pays less: spread the hits.
             for (let i = 0; i < 6; i++) {
-              window.__planetSmasher!.fire("asteroid", 0.1 + i * 0.15, 0.5);
+              game.state().hit("asteroid", 0.1 + i * 0.15, 0.5);
             }
-          });
-          await page.waitForTimeout(500);
-          return page.evaluate(
-            () => window.__planetSmasher!.state().progress.points
-          );
-        },
+            return game.state().progress.points;
+          }),
         { timeout: 60_000 }
       )
       .toBeGreaterThan(0);
