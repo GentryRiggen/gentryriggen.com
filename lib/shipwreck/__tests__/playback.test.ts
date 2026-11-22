@@ -441,6 +441,20 @@ describe("playback: walking", () => {
     expect(store.getState().walk.phase).toBe("off");
   });
 
+  it("flying to a place or a view turns walk off", () => {
+    const store = started();
+    store.getState().startWalk();
+    walkInput.forward = 1;
+    store.getState().flyToPlace("bridge");
+    expect(store.getState().camera).toBe("orbit");
+    expect(store.getState().walk.phase).toBe("off");
+    expect(walkInput.forward).toBe(0);
+    store.getState().startWalk();
+    store.getState().flyToView({ target: [0, 0, 20], cam: [40, 0, 30] });
+    expect(store.getState().camera).toBe("orbit");
+    expect(store.getState().walk.phase).toBe("off");
+  });
+
   it("setCamera('walk') starts the walk", () => {
     const store = started();
     store.getState().setCamera("walk");

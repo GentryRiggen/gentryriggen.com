@@ -237,6 +237,7 @@ export default function Shipwreck() {
   );
 
   const leaveNight = useCallback(() => {
+    playback.getState().leaveWalk();
     const s = playback.getState();
     if (run && recorded.current !== run.id) {
       // Left before the end: count it if they watched a minute or more.

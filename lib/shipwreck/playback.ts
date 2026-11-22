@@ -406,6 +406,7 @@ export function createPlaybackStore(
       flyToPlace(place, xray) {
         const s = get();
         set({
+          ...(place ? walkOff() : {}),
           place,
           camera: place ? "orbit" : s.camera,
           xray: xray ?? (placeFor(s.ship, place)?.interior ? true : s.xray),
@@ -420,6 +421,7 @@ export function createPlaybackStore(
       flyToView(view) {
         const s = get();
         set({
+          ...walkOff(),
           place: null,
           camera: "orbit",
           flyView: view,
