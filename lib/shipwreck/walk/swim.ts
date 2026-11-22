@@ -4,6 +4,7 @@ import { deckSlope, earthToShip, shipToEarth, type V3 } from "./slope";
 import { partFor, type WalkerState, type WalkInput } from "./step";
 import {
   floorZ,
+  WALK_KNEE_DEPTH_M,
   WALK_SLIDE_FROM_DEG,
   WALK_TURN_PER_PX,
   type WalkMap,
@@ -157,16 +158,21 @@ export function swimmerFrom(
   return { x, y, yaw: pose.yaw + w.yaw };
 }
 
+/** The flat sea (earth z = 0), the default surface. */
+const FLAT_SEA = () => 0;
+
 /**
  * Spawn on the boat deck for this frame, on the piece the spawn point is
- * on, or null when that piece is gone or the deck at the spawn is under
- * water (the sea at z = 0 over the feet).
+ * on, or null when that piece is gone or the deck at the spawn is not dry
+ * by a knee's depth (the sea, `seaZ` as stepWalker's, within
+ * WALK_KNEE_DEPTH_M of the feet): never placed straight into wading water.
  */
 export function placeWalker(
   map: WalkMap,
   spec: ShipSpec,
   frame: SimFrame,
-  breakX: number | null
+  breakX: number | null,
+  seaZ: (x: number, y: number) => number = FLAT_SEA
 ): WalkerState | null {
   const broken = frame.bodies.some((b) => b.part !== "whole");
   const [x, y] = map.spawn.at;
@@ -174,7 +180,7 @@ export function placeWalker(
   const pose = frame.bodies.find((b) => b.part === part);
   if (!pose) return null;
   const feet = shipToEarth(pose, [x, y, floorZ(map, map.spawn.area, x, spec)]);
-  if (feet[2] <= 0) return null;
+  if (seaZ(feet[0], feet[1]) - feet[2] >= -WALK_KNEE_DEPTH_M) return null;
   return {
     part,
     area: map.spawn.area,
@@ -192,5 +198,6 @@ export const canReboard = (
   map: WalkMap,
   spec: ShipSpec,
   frame: SimFrame,
-  breakX: number | null
-): boolean => placeWalker(map, spec, frame, breakX) !== null;
+  breakX: number | null,
+  seaZ: (x: number, y: number) => number = FLAT_SEA
+): boolean => placeWalker(map, spec, frame, breakX, seaZ) !== null;

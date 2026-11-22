@@ -5,6 +5,7 @@ import {
   insideBlocker,
   pointInPolygon,
   walkMapFor,
+  WALK_RADIUS_M,
   type V2,
   type WalkMap,
 } from "..";
@@ -116,12 +117,20 @@ describe.each(["titanic", "lusitania"] as const)("the %s walk map", (id) => {
     for (const s of map.stairs) {
       for (const end of [s.from, s.to]) {
         expect(pointInPolygon(end.at, area(map, end.area).outline)).toBe(true);
-        expect(insideBlocker(map, end.area, end.at, 0)).toBe(false);
+        // The walker's whole body fits at each end.
+        expect([
+          s.id,
+          end.area,
+          insideBlocker(map, end.area, end.at, WALK_RADIUS_M),
+        ]).toEqual([s.id, end.area, false]);
       }
       const dz =
         floorZ(map, s.to.area, s.to.at[0], spec) -
         floorZ(map, s.from.area, s.from.at[0], spec);
-      expect(Math.abs(dz)).toBeGreaterThan(1);
+      // A ladder; the Lusitania's gangway instead bridges the mast gap
+      // between two decks at the same height.
+      if (s.id.includes("gangway")) expect(Math.abs(dz)).toBeLessThan(0.5);
+      else expect(Math.abs(dz)).toBeGreaterThan(1);
     }
   });
 
@@ -170,5 +179,30 @@ describe.each(["titanic", "lusitania"] as const)("the %s walk map", (id) => {
       deckZ + (boat.raiseM ?? 0),
       9
     );
+  });
+});
+
+describe("the Lusitania's boat deck", () => {
+  const map = walkMapFor("lusitania") as WalkMap;
+  const boat = area(map, "boat-deck");
+  const front = Math.max(...boat.outline.map(([x]) => x));
+
+  it("walls its rounded front corners (over the foredeck, not the sea)", () => {
+    const n = boat.outline.length;
+    for (let i = 0; i < n; i += 1) {
+      const a = boat.outline[i];
+      const b = boat.outline[(i + 1) % n];
+      if (Math.max(a[0], b[0]) > front - 4)
+        expect([i, boat.wallEdges?.includes(i)]).toEqual([i, true]);
+    }
+  });
+
+  it("has a gangway straight to the after deck", () => {
+    const direct = map.stairs.filter(
+      (s) =>
+        (s.from.area === "boat-deck" && s.to.area === "aft-deck") ||
+        (s.from.area === "aft-deck" && s.to.area === "boat-deck")
+    );
+    expect(direct.length).toBe(2);
   });
 });

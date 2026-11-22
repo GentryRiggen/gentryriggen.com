@@ -24,7 +24,9 @@ import type { Blocker, Stair, V2, WalkArea, WalkMap } from "./types";
  *
  * Ladders join each to the next: the boat deck's front down to the
  * foredeck, its after end down into the mast gap, the gap up to the after
- * deck, and the after deck down to the stern.
+ * deck, and the after deck down to the stern. A short gangway also joins
+ * the boat deck's after end straight to the after deck over the gap, so a
+ * young walker gets aft without threading the gap's ladders.
  */
 
 const FT = 0.3048;
@@ -63,20 +65,36 @@ function sided(
   x0: number,
   x1: number,
   ends: { fwd: "wall" | "rail"; aft: "wall" | "rail" },
-  halfWidth: (x: number) => number = rail
+  halfWidth: (x: number) => number = rail,
+  /** Side edges reaching forward of this x are walls too. */
+  wallsFromX = Infinity
 ): WalkArea {
   const s = sidedOutline(halfWidth, x0, x1);
   const wallEdges: number[] = [];
   if (ends.fwd === "wall") wallEdges.push(s.fwdEdge);
   if (ends.aft === "wall") wallEdges.push(s.aftEdge);
+  const n = s.outline.length;
+  for (let i = 0; i < n; i += 1) {
+    if (i === s.fwdEdge || i === s.aftEdge) continue;
+    const a = s.outline[i];
+    const b = s.outline[(i + 1) % n];
+    if (Math.max(a[0], b[0]) > wallsFromX) wallEdges.push(i);
+  }
   return { id, deck, outline: s.outline, wallEdges };
 }
 
 const areas: WalkArea[] = [
   // Her ends over a lower deck are walls: you cannot slide off them into
   // the sea, only off the sides.
-  sided("boat-deck", "Boat", A, F, { fwd: "wall", aft: "wall" }, (x) =>
-    Math.max(0.5, rail(x) - roundCut(x, F, DECK_ROUND))
+  // Its rounded front corners stand over the foredeck, not the sea: walls.
+  sided(
+    "boat-deck",
+    "Boat",
+    A,
+    F,
+    { fwd: "wall", aft: "wall" },
+    (x) => Math.max(0.5, rail(x) - roundCut(x, F, DECK_ROUND)),
+    F - DECK_ROUND
   ),
   sided("forecastle", "B", F, STEM_X - 2, { fwd: "rail", aft: "wall" }),
   sided("mast-gap", "C", X1, A, { fwd: "wall", aft: "wall" }),
@@ -204,6 +222,12 @@ const stairs: Stair[] = [
     { area: "mast-gap", x: GAP_X },
     { area: "aft-deck", x: X1 - 1.4 },
     10.5
+  ),
+  ...stairPair(
+    "aft-gangway",
+    { area: "boat-deck", x: A + 1.2 },
+    { area: "aft-deck", x: X1 - 1.4 },
+    5
   ),
   ...stairPair(
     "stern-ladder",

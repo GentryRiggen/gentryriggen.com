@@ -71,6 +71,8 @@ export type StepResult = {
   slopeDeg: number;
 };
 
+/** The fastest a slide goes (m/s): a long steep deck never runs away. */
+export const WALK_MAX_SLIP_MS = 10;
 /** The fixed substep (s). */
 export const WALK_DT = 1 / 60;
 /** The longest frame stepped (s): a stalled tab does not teleport. */
@@ -429,9 +431,18 @@ export function stepWalker(
       if (depth > 0)
         push += WALK_G * sinT * clamp(depth / WALK_IN_WATER_DEPTH_M, 0, 1);
     }
+    // μ·g as a linear drag rate (1/s) on the slip, on purpose: it settles
+    // the push to a steady drift. It is not Coulomb friction.
     const drag = sliding ? 0 : WALK_FRICTION_MU * WALK_G;
     sub.vx = (sub.vx + push * downhill[0] * h) / (1 + drag * h);
     sub.vy = (sub.vy + push * downhill[1] * h) / (1 + drag * h);
+    if (sliding) {
+      const v = Math.hypot(sub.vx, sub.vy);
+      if (v > WALK_MAX_SLIP_MS) {
+        sub.vx *= WALK_MAX_SLIP_MS / v;
+        sub.vy *= WALK_MAX_SLIP_MS / v;
+      }
+    }
 
     const px = sub.x;
     const py = sub.y;

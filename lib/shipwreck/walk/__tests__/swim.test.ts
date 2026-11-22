@@ -129,6 +129,23 @@ describe("placing the walker on the real night", () => {
     expect(canReboard(map, spec, f, track.breakX)).toBe(false);
   });
 
+  it("needs the spawn dry by a knee's depth on the real sea", () => {
+    const f = sampleTrack(track, 0);
+    const pose0 = f.bodies[0];
+    const [, , fz] = shipToEarth(pose0, [
+      map.spawn.at[0],
+      map.spawn.at[1],
+      floorZ(map, map.spawn.area, map.spawn.at[0], spec),
+    ]);
+    // The sea 0.4 m under the feet: too close to stand.
+    const near = () => fz - 0.4;
+    expect(placeWalker(map, spec, f, track.breakX, near)).toBeNull();
+    expect(canReboard(map, spec, f, track.breakX, near)).toBe(false);
+    // 0.6 m under: room to stand.
+    const clear = () => fz - 0.6;
+    expect(placeWalker(map, spec, f, track.breakX, clear)).not.toBeNull();
+  });
+
   it("puts them on the part their spawn is on after the break", () => {
     const breakX = track.breakX as number;
     const f = sampleTrack(track, (track.brokeAtT as number) + 1);

@@ -224,6 +224,16 @@ describe("slopes", () => {
     expect(dx).toBeLessThan(0.7);
   });
 
+  it("caps the slide at about 10 m/s", () => {
+    // Steep and on a long run of deck: the slip never runs away.
+    const c = ctx({ pose: pose({ pitch: 45 * DEG }) });
+    let fastest = 0;
+    run(walker({ x: -40, y: 0, vx: 30 }), STILL, c, 4, (r) => {
+      fastest = Math.max(fastest, Math.hypot(r.state.vx, r.state.vy));
+    });
+    expect(fastest).toBeLessThanOrEqual(10 + 1e-9);
+  });
+
   it("walks normally below 10°", () => {
     const c = ctx({ pose: pose({ pitch: -8 * DEG }) });
     const r = run(walker(), FORWARD, c, 1);

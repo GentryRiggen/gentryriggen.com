@@ -35,7 +35,10 @@ ship you cannot walk on, such as the Edmund Fitzgerald) mark, per ship:
   model's recipes draw them. Boats are not blockers: they leave.
 - **stairs**: two-way links between areas of different heights. Walking
   into either end (within half its width, from outside) moves you to the
-  other end; arriving inside an end does not send you back.
+  other end; arriving inside an end does not send you back. (The
+  Lusitania's `aft-gangway` instead joins two decks at one height across
+  her mast gap, so getting aft takes one step.) Each end leaves room for
+  the walker's body (0.3 m) clear of every blocker.
 - **spawn**: on the boat deck, where Walk and Back on deck put you.
 
 Titanic: boat deck, forward well, forecastle, after well, poop. Lusitania:
@@ -55,7 +58,8 @@ substeps of 1/60 s (dt clamped to 0.25 s). Each substep:
    walking scales from full to nothing, and a push downhill ramps in
    (`g sin θ` times 0 at 10° to 1 at 20°) against friction (μ 0.35 as a
    drag, so it is a drift, never a run away). From 20° (`WALK_SLIDE_FROM_DEG`)
-   you slide: `g sin θ` with no friction and no way uphill. Water on the
+   you slide: `g sin θ` with no friction and no way uphill, capped at
+   10 m/s (`WALK_MAX_SLIP_MS`). Water on the
    deck adds a gentle push downhill in proportion to its depth.
 3. The move against the outline: a held edge stops you and keeps the motion
    along it. A railing gives way when you are sliding and it faces downhill
@@ -81,7 +85,9 @@ widest half-breadth at that x). `stepSwimmer` paddles at 0.5 m/s
 where that piece is at the surface (`hullClearanceM`; a piece held up in the
 air or sunk below is no obstacle). `placeWalker` stands them on the spawn for
 a frame, on the piece the spawn's x is on, or returns null when that piece
-is gone or the spawn is under water (`canReboard` drives Back on deck).
+is gone or the spawn is not dry by a knee's depth (0.5 m) on the sea it is
+given (`seaZ`, as `stepWalker`'s; flat by default) (`canReboard` drives
+Back on deck).
 
 `walkInput.ts` is the mutable controls singleton: the joystick, the look
 layer and the keys write it; the walk runner reads it each frame and zeroes
