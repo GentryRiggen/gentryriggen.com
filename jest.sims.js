@@ -56,6 +56,9 @@ module.exports = [
   "lib/ever-onward/universes/smile/__tests__/town.test.ts",
   "lib/ever-onward/universes/smile/__tests__/world.test.ts",
   "lib/plane-builder/balance/__tests__/balance.test.ts",
+  "lib/shipwreck/sim/__tests__/perf.test.ts",
   "lib/shipwreck/sim/__tests__/realAfternoon.test.ts",
   "lib/shipwreck/sim/__tests__/realStorm.test.ts",
+  "lib/shipwreck/sim/__tests__/robustness.test.ts",
+  "lib/shipwreck/sim/__tests__/seabed.test.ts",
 ];
