@@ -722,6 +722,21 @@ test("the Friends screen and keypad fit the screen @smoke", async ({
       path: `${process.env.HELP_SHOTS}/keypad-${page.viewportSize()!.width}.png`,
     });
   }
+  // The Add a friend card slides up 24px as it opens (fl-sheet-up), and each
+  // boundingBox() is read on its own frame, so mid-slide Q and W on the same
+  // row differ by a few pixels. Measure once the card has come to rest.
+  await page.getByTestId("add-friend").evaluate((card) =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => {
+          const target = (a.effect as KeyframeEffect | null)?.target;
+          const end = a.effect?.getComputedTiming().endTime;
+          return target?.contains(card) && end !== Infinity;
+        })
+        .map((a) => a.finished)
+    )
+  );
   // QWERTY: Q sits left of W on the same row, and A is under Q.
   const q = (await page.getByTestId("key-Q").boundingBox())!;
   const w = (await page.getByTestId("key-W").boundingBox())!;
