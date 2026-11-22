@@ -11,11 +11,18 @@ import type { SimTrack } from "../track";
  * wrote (`UPDATE_GOLDEN=1 npx jest lusitaniaGolden` rewrites it; only do
  * that for a change meant to move her).
  *
- * Every event, the outcome, and every 50th frame (and the last) to 1e-9:
- * stored numbers, so a little room for Math's last bit across machines.
+ * Every event, the outcome, and every 50th frame (and the last) to 1e-9.
+ * One fixture per CPU architecture: Math's last bits differ between arm64
+ * (Macs) and x64 (CI), and her runs amplify that past any tolerance, so
+ * each was written by the 1.1 sim on its own architecture (rewrite both
+ * with `UPDATE_GOLDEN=1` on each when she is meant to move).
  */
 
-const FIXTURE = join(__dirname, "fixtures", "lusitaniaGolden.json");
+const FIXTURE = join(
+  __dirname,
+  "fixtures",
+  `lusitaniaGolden.${process.arch}.json`
+);
 const EPS = 1e-9;
 
 const RUNS: Record<
