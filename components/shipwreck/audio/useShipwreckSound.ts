@@ -117,7 +117,7 @@ export function useShipwreckSound(
 
     const unsubEngine = audio.onEngine(() => refresh.current?.());
 
-    const walk: WalkCueInput = { phase: "off", slide: 0, splash: 0 };
+    const walk: WalkCueInput = { phase: "off", splash: 0 };
     let walkTimer: ReturnType<typeof setInterval> | null = null;
 
     const onChange = () => {
@@ -149,7 +149,6 @@ export function useShipwreckSound(
     };
     function walkNow(phase: WalkCueInput["phase"]): WalkCueInput {
       walk.phase = phase;
-      walk.slide = runtime!.walkSlide;
       walk.splash = runtime!.walkSplash;
       return walk;
     }

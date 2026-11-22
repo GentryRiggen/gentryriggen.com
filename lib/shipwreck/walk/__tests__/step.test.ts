@@ -14,6 +14,7 @@ import {
   pointInPolygon,
   TITANIC_WALK,
   WALK_RADIUS_M,
+  WALK_SPEED_MS,
   type WalkMap,
 } from "..";
 
@@ -45,10 +46,7 @@ function walker(p: Partial<WalkerState> = {}): WalkerState {
     area: map.spawn.area,
     x: map.spawn.at[0],
     y: map.spawn.at[1],
-    vx: 0,
-    vy: 0,
     yaw: map.spawn.yaw,
-    sliding: false,
     ...p,
   };
 }
@@ -86,18 +84,18 @@ function seaOver(p: BodyPose, depth: number): () => number {
   return () => feet[2] + depth;
 }
 
-it("walks forward at 1.4 m/s", () => {
-  const r = run(walker(), FORWARD, ctx(), 1);
-  expect(r.state.x - map.spawn.at[0]).toBeCloseTo(1.4, 1);
-  expect(Math.abs(r.state.x - map.spawn.at[0] - 1.4)).toBeLessThan(0.05);
+it("walks forward at WALK_SPEED_MS", () => {
+  expect(WALK_SPEED_MS).toBe(4);
+  const r = run(walker(), FORWARD, ctx(), 0.5);
+  expect(Math.abs(r.state.x - map.spawn.at[0] - 2)).toBeLessThan(0.05);
   expect(r.state.y).toBeCloseTo(map.spawn.at[1], 6);
 });
 
 it("turns with the look drag and walks the way it faces", () => {
   const r = stepWalker(walker(), { ...STILL, lookDx: -100 }, ctx(), 1 / 60);
   expect(r.state.yaw).toBeCloseTo(0.5, 9);
-  const s = run(walker({ yaw: Math.PI / 2 }), FORWARD, ctx(), 0.5).state;
-  expect(s.y - map.spawn.at[1]).toBeCloseTo(0.7, 1);
+  const s = run(walker({ yaw: Math.PI / 2 }), FORWARD, ctx(), 0.25).state;
+  expect(s.y - map.spawn.at[1]).toBeCloseTo(1, 1);
 });
 
 describe("blockers", () => {
@@ -138,7 +136,7 @@ describe("blockers", () => {
       walker({ x: f.x - 0.3, y: -9, yaw: Math.PI / 2 - 0.3 }),
       FORWARD,
       ctx(),
-      6,
+      2,
       (q) => {
         minD = Math.min(minD, Math.hypot(q.state.x - f.x, q.state.y));
       }
@@ -152,110 +150,81 @@ describe("blockers", () => {
 });
 
 describe("railings", () => {
-  const atRail = () => walker({ x: 10, y: -13.2 });
+  const inside = (q: StepResult) =>
+    pointInPolygon([q.state.x, q.state.y], outline(map, q.state.area));
 
-  it("hold below the slide threshold", () => {
-    const c = ctx({ pose: pose({ roll: 15 * DEG }) });
-    const r = run(atRail(), STILL, c, 5, (q) => {
-      expect(
-        pointInPolygon([q.state.x, q.state.y], outline(map, q.state.area))
-      ).toBe(true);
-      expect(q.inWater).toBeNull();
+  it("always hold, however steep she lists", () => {
+    for (const roll of [15, 25, 45, -60]) {
+      const c = ctx({ pose: pose({ roll: roll * DEG }) });
+      const r = run(walker(), { ...STILL, strafe: 1 }, c, 8, (q) => {
+        expect(inside(q)).toBe(true);
+        expect(q.inWater).toBeNull();
+      });
+      expect(r.slopeDeg).toBeCloseTo(Math.abs(roll), 6);
+    }
+  });
+
+  it("hold with the sea knee deep over them", () => {
+    const p = pose();
+    const c = ctx({ pose: p, seaZ: seaOver(p, 0.6) });
+    const r = run(walker(), { ...STILL, strafe: 1 }, c, 15, (q) => {
+      expect(inside(q)).toBe(true);
     });
-    expect(r.state.sliding).toBe(false);
-    expect(r.slopeDeg).toBeCloseTo(15, 6);
-    // Pushed down to the rail and held there.
-    expect(r.state.y).toBeLessThan(-13.2);
-  });
-
-  it("let you over the downhill one once sliding", () => {
-    const c = ctx({ pose: pose({ roll: 25 * DEG }) });
-    const r = run(walker(), STILL, c, 10);
-    expect(r.inWater).toBe("railing");
-    expect(r.state.sliding).toBe(true);
-  });
-
-  it("go over the downhill side, not the uphill one", () => {
-    const c = ctx({ pose: pose({ roll: -25 * DEG }) });
-    // Walking hard to starboard, uphill, while sliding to port.
-    // Between the lounge roof and the compass platform: open to port.
-    const r = run(walker({ x: 8.6 }), { ...STILL, strafe: 1 }, c, 10);
-    expect(r.inWater).toBe("railing");
-    expect(r.state.y).toBeGreaterThan(0);
+    expect(r.inWater).toBeNull();
   });
 
   it("does not cross a railing at ×100", () => {
     let s = walker({ x: -5, y: -13.5 });
-    let roll = 0;
-    let dir = 1;
     for (let i = 0; i < 200; i += 1) {
-      roll += dir * 2;
-      if (Math.abs(roll) >= 18) dir = -dir;
       const r = stepWalker(
         s,
-        { ...STILL, strafe: i % 3 === 0 ? 1 : 0 },
-        ctx({ pose: pose({ roll: roll * DEG }) }),
+        { ...STILL, strafe: i % 3 === 0 ? 1 : -1 },
+        ctx({ pose: pose({ roll: ((i % 40) - 20) * DEG }) }),
         0.25
       );
       expect(r.inWater).toBeNull();
-      expect(
-        pointInPolygon([r.state.x, r.state.y], outline(map, r.state.area))
-      ).toBe(true);
+      expect(inside(r)).toBe(true);
       s = r.state;
     }
   });
 });
 
 describe("slopes", () => {
-  it("cannot climb above 20°", () => {
-    const c = ctx({ pose: pose({ pitch: 22 * DEG }) });
-    // Walking toward the stern, uphill: slides toward the bow instead.
-    const r = run(walker({ yaw: Math.PI }), FORWARD, c, 3);
-    expect(r.state.sliding).toBe(true);
-    expect(r.state.x).toBeGreaterThan(map.spawn.at[0] + 1);
+  it("never push you: standing still stays put at any tilt", () => {
+    for (const [pitch, roll] of [
+      [22, 0],
+      [45, 30],
+      [-30, -60],
+    ]) {
+      const c = ctx({ pose: pose({ pitch: pitch * DEG, roll: roll * DEG }) });
+      const r = run(walker(), STILL, c, 3);
+      expect(r.state.x).toBeCloseTo(map.spawn.at[0], 9);
+      expect(r.state.y).toBeCloseTo(map.spawn.at[1], 9);
+    }
   });
 
-  it("walks uphill slower between 10° and 20°", () => {
-    const c = ctx({ pose: pose({ pitch: -15 * DEG }) });
-    // Bow up: forward is uphill, about half speed less the push back.
-    const r = run(walker(), FORWARD, c, 1);
-    const dx = r.state.x - map.spawn.at[0];
-    expect(dx).toBeGreaterThan(0);
-    expect(dx).toBeLessThan(0.7);
-  });
-
-  it("caps the slide at about 10 m/s", () => {
-    // Steep and on a long run of deck: the slip never runs away.
-    const c = ctx({ pose: pose({ pitch: 45 * DEG }) });
-    let fastest = 0;
-    run(walker({ x: -40, y: 0, vx: 30 }), STILL, c, 4, (r) => {
-      fastest = Math.max(fastest, Math.hypot(r.state.vx, r.state.vy));
-    });
-    expect(fastest).toBeLessThanOrEqual(10 + 1e-9);
-  });
-
-  it("walks normally below 10°", () => {
-    const c = ctx({ pose: pose({ pitch: -8 * DEG }) });
-    const r = run(walker(), FORWARD, c, 1);
-    expect(r.state.x - map.spawn.at[0]).toBeCloseTo(1.4, 1);
+  it("walks uphill at full speed", () => {
+    const c = ctx({ pose: pose({ pitch: -30 * DEG }) });
+    // Bow up: forward is uphill.
+    const r = run(walker(), FORWARD, c, 0.5);
+    expect(Math.abs(r.state.x - map.spawn.at[0] - 2)).toBeLessThan(0.05);
   });
 });
 
 describe("water", () => {
-  it("wades at half speed at knee depth", () => {
+  it("wades a little slower at knee depth", () => {
     const p = pose();
-    const r = run(walker(), FORWARD, ctx({ seaZ: seaOver(p, 0.5) }), 1);
-    expect(Math.abs(r.state.x - map.spawn.at[0] - 0.7)).toBeLessThan(0.05);
+    const r = run(walker(), FORWARD, ctx({ seaZ: seaOver(p, 0.5) }), 0.5);
+    // 0.8 of full speed at half the waist depth.
+    expect(Math.abs(r.state.x - map.spawn.at[0] - 1.6)).toBeLessThan(0.1);
     expect(r.depthM).toBeCloseTo(0.5, 1);
     expect(r.inWater).toBeNull();
   });
 
-  it("is pushed downhill by water on the deck", () => {
+  it("does not push you downhill", () => {
     const p = pose({ pitch: 5 * DEG });
-    const dry = run(walker(), STILL, ctx({ pose: p }), 3);
-    expect(dry.state.x).toBeCloseTo(map.spawn.at[0], 9);
     const r = run(walker(), STILL, ctx({ pose: p, seaZ: seaOver(p, 0.5) }), 3);
-    expect(r.state.x).toBeGreaterThan(map.spawn.at[0] + 0.1);
+    expect(r.state.x).toBeCloseTo(map.spawn.at[0], 9);
     expect(r.inWater).toBeNull();
   });
 
@@ -276,41 +245,27 @@ describe("water", () => {
     );
     expect(knee.inWater).toBeNull();
   });
-
-  it("lets you over a railing the sea is knee deep over", () => {
-    const p = pose();
-    const c = ctx({ pose: p, seaZ: seaOver(p, 0.6) });
-    const r = run(walker(), { ...STILL, strafe: 1 }, c, 15);
-    expect(r.inWater).toBe("open-end");
-  });
 });
 
 describe("the break", () => {
-  it("is an open end", () => {
+  it("holds you on the bow", () => {
     const c = ctx({ breakX: 10 });
-    let last: StepResult | null = null;
     const r = run(
       walker({ part: "bow", x: 11, yaw: Math.PI }),
       FORWARD,
       c,
       3,
-      (q) => {
-        if (!q.inWater) {
-          expect(q.state.x).toBeGreaterThanOrEqual(10);
-          last = q;
-        }
-      }
+      (q) => expect(q.state.x).toBeGreaterThanOrEqual(10)
     );
-    expect(last).not.toBeNull();
-    expect(r.inWater).toBe("open-end");
-    expect(r.state.x).toBeLessThan(10);
+    expect(r.inWater).toBeNull();
   });
 
-  it("is an open end from the stern side too", () => {
+  it("holds you on the stern", () => {
     const c = ctx({ breakX: 10 });
-    const r = run(walker({ part: "stern", x: 9, yaw: 0 }), FORWARD, c, 3);
-    expect(r.inWater).toBe("open-end");
-    expect(r.state.x).toBeGreaterThanOrEqual(10);
+    const r = run(walker({ part: "stern", x: 9, yaw: 0 }), FORWARD, c, 3, (q) =>
+      expect(q.state.x).toBeLessThan(10)
+    );
+    expect(r.inWater).toBeNull();
   });
 
   it("puts a walker at breakX on the part on their side", () => {
@@ -366,5 +321,5 @@ describe("stairs", () => {
 
 it("clamps a long frame to 0.25 s", () => {
   const r = stepWalker(walker(), FORWARD, ctx(), 5);
-  expect(r.state.x - map.spawn.at[0]).toBeCloseTo(0.35, 6);
+  expect(r.state.x - map.spawn.at[0]).toBeCloseTo(1, 6);
 });

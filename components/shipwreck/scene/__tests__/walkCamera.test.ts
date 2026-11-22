@@ -45,10 +45,7 @@ const walker: WalkerState = {
   area: map.spawn.area,
   x: map.spawn.at[0],
   y: map.spawn.at[1],
-  vx: 0,
-  vy: 0,
   yaw: 0.4,
-  sliding: false,
 };
 
 describe("eyes on deck", () => {

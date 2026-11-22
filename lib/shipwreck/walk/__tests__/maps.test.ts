@@ -80,7 +80,7 @@ describe.each(["titanic", "lusitania"] as const)("the %s walk map", (id) => {
         expect(x).toBeGreaterThanOrEqual(sternX);
         expect(x).toBeLessThanOrEqual(stemX);
       }
-      for (const i of [...(a.openEdges ?? []), ...(a.wallEdges ?? [])]) {
+      for (const i of a.wallEdges ?? []) {
         expect(i).toBeGreaterThanOrEqual(0);
         expect(i).toBeLessThan(a.outline.length);
       }
@@ -138,9 +138,7 @@ describe.each(["titanic", "lusitania"] as const)("the %s walk map", (id) => {
     const a = area(map, map.spawn.area);
     expect(pointInPolygon(map.spawn.at, a.outline)).toBe(true);
     expect(insideBlocker(map, a.id, map.spawn.at, 0)).toBe(false);
-    const open = new Set(a.openEdges ?? []);
     for (let i = 0; i < a.outline.length; i += 1) {
-      if (open.has(i)) continue;
       const d = distToSegment(
         map.spawn.at,
         a.outline[i],

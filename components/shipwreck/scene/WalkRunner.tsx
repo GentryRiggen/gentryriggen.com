@@ -9,7 +9,6 @@ import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose, SimFrame } from "@/lib/shipwreck/sim/track";
 import {
   canReboard,
-  deckSlope,
   floorZ,
   partFor,
   placeWalker,
@@ -20,8 +19,6 @@ import {
   swimmerFrom,
   walkInput,
   walkMapFor,
-  WALK_PUSH_FROM_DEG,
-  WALK_SLIDE_FROM_DEG,
   WALK_TURN_PER_PX,
   type HullPiece,
   type SwimmerState,
@@ -126,9 +123,6 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     s.wasUnder = false;
     runtime.walker = null;
     runtime.walkLookUnder = false;
-    runtime.walkSlide = 0;
-    runtime.walkDownhill[0] = 0;
-    runtime.walkDownhill[1] = 0;
     runtime.walkCanReboard = false;
     runtime.walkInfo = null;
   }, [walking, runtime]);
@@ -136,7 +130,6 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     () => () => {
       runtime.walker = null;
       runtime.walkLookUnder = false;
-      runtime.walkSlide = 0;
       runtime.walkCanReboard = false;
       runtime.walkInfo = null;
     },
@@ -282,22 +275,6 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         );
         runtime.walkLookUnder = false;
         runtime.walkCanReboard = false;
-        // Downhill on screen: along the walker's right and ahead.
-        const { downhill } = deckSlope(pose);
-        const cy = Math.cos(r.state.yaw);
-        const sy = Math.sin(r.state.yaw);
-        runtime.walkDownhill[0] = downhill[0] * sy - downhill[1] * cy;
-        runtime.walkDownhill[1] = downhill[0] * cy + downhill[1] * sy;
-        runtime.walkSlide = r.state.sliding
-          ? 1
-          : Math.max(
-              0,
-              Math.min(
-                1,
-                (r.slopeDeg - WALK_PUSH_FROM_DEG) /
-                  (WALK_SLIDE_FROM_DEG - WALK_PUSH_FROM_DEG)
-              )
-            );
         const info = scratch.info;
         info.phase = "deck";
         info.part = r.state.part;
@@ -357,7 +334,6 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       scratch.view
     );
     runtime.walkLookUnder = under;
-    runtime.walkSlide = 0;
     // Back on deck: only while her boat deck is above water (a few times a
     // second; placing is cheap maths, but not needed every frame).
     s.reboardIn -= dt;

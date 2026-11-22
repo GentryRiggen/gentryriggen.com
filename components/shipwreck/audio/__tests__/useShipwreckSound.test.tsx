@@ -123,7 +123,7 @@ describe("useShipwreckSound", () => {
     expect(audio.sources.length).toBeGreaterThan(before);
   });
 
-  it("hears the walk: a splash on going in, the scrape while paused", () => {
+  it("hears the walk: a splash on going in, even while paused", () => {
     jest.useFakeTimers();
     try {
       const mock = playCue as jest.Mock;
@@ -136,11 +136,7 @@ describe("useShipwreckSound", () => {
       act(() => store.getState().startWalk());
       mock.mockClear();
       const cues = () => mock.mock.calls.map((c) => c[1]);
-      // Sliding while paused: the walk timer hears it.
-      runtime.walkSlide = 1;
-      act(() => jest.advanceTimersByTime(500));
-      expect(cues()).toContain("scrape");
-      runtime.walkSlide = 0;
+      // Paused: the walk timer hears it.
       runtime.walkSplash += 1;
       act(() => store.getState().wentInWater());
       act(() => jest.advanceTimersByTime(1000));
@@ -148,9 +144,9 @@ describe("useShipwreckSound", () => {
       // Walk off: no more walk cues.
       act(() => store.getState().leaveWalk());
       mock.mockClear();
-      runtime.walkSlide = 1;
+      runtime.walkSplash += 1;
       act(() => jest.advanceTimersByTime(5000));
-      expect(cues()).not.toContain("scrape");
+      expect(cues()).not.toContain("splash");
     } finally {
       jest.useRealTimers();
     }

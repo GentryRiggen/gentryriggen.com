@@ -1,11 +1,10 @@
 import type { ShipSpec } from "../ships/types";
 import type { BodyPose, SimFrame } from "../sim/track";
-import { deckSlope, earthToShip, shipToEarth, type V3 } from "./slope";
+import { earthToShip, shipToEarth, type V3 } from "./slope";
 import { partFor, type WalkerState, type WalkInput } from "./step";
 import {
   floorZ,
   WALK_KNEE_DEPTH_M,
-  WALK_SLIDE_FROM_DEG,
   WALK_TURN_PER_PX,
   type WalkMap,
 } from "./types";
@@ -24,8 +23,8 @@ export interface SwimmerState {
   yaw: number;
 }
 
-/** Paddling speed (m/s). */
-export const SWIM_SPEED_MS = 0.5;
+/** Paddling speed (m/s): quick, so a kid can keep up with her (was 0.5). */
+export const SWIM_SPEED_MS = 2;
 /** How far a swimmer is kept off her side (m). */
 const HULL_MARGIN_M = 0.3;
 /** Where a swimmer lands, clear of her side (m). */
@@ -186,10 +185,7 @@ export function placeWalker(
     area: map.spawn.area,
     x,
     y,
-    vx: 0,
-    vy: 0,
     yaw: map.spawn.yaw,
-    sliding: deckSlope(pose).deg >= WALK_SLIDE_FROM_DEG,
   };
 }
 

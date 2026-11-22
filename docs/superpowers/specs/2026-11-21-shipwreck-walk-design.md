@@ -13,6 +13,16 @@ boats while they're sinking". The long-term goal from 1.0 was "go inside
 certain places, see things as it sinks"; this is the first step: open decks
 now, rooms later.
 
+## Changed in 1.3.2 (Gentry, 2026-11-22)
+
+"Walking is way too slow, and we should probably just remove the whole
+sliding off of it … just walking is the whole idea of it's fun, not
+necessarily realistic." On the Lusitania you slid off early and floated
+away from her. So: walking 4 m/s (was 1.4), paddling 2 m/s (was 0.5), no
+slope push or slide, every railing and the break hold, and you go in only
+at waist-deep water. The slide arrows and the deck scrape are gone. Where
+this spec says otherwise below, this wins.
+
 ## Decided with Gentry (2026-11-21)
 
 - **First person.** You see through the walker's eyes; no body, hands or

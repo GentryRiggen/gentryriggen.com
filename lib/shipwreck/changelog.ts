@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.2",
+    date: "2026-11-22",
+    title: "Faster walking, no sliding",
+    highlights: [
+      "Walking is much faster now, so you can run all over her deck",
+      "No more sliding off: however much she tilts, the railings hold you on, so you can stay on her right to the end",
+      "You only end up in the water when the sea comes up around you, and you paddle faster too",
+    ],
+  },
+  {
     version: "1.3.1",
     date: "2026-11-22",
     title: "A shorter storm",
