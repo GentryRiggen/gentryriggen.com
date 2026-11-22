@@ -6,9 +6,20 @@ import {
 } from "@/lib/shipwreck/playback";
 import type { ShipwreckSceneHooks } from "@/lib/shipwreck/testHooks";
 import { CAMERA_IDS, type CameraId } from "@/lib/shipwreck/types";
+import { WALK_TURN_PER_PX, walkInput } from "@/lib/shipwreck/walk";
+import type { SceneRuntime } from "./runtime";
 
-/** The test hooks for a playback store (`window.__shipwreck` in dev/e2e). */
-export function sceneHooks(store: PlaybackStore): ShipwreckSceneHooks {
+const clampUnit = (v: number) =>
+  Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0;
+
+/**
+ * The test hooks for a playback store (`window.__shipwreck` in dev/e2e).
+ * `runtime` is the scene's (where the walk runner writes the walker).
+ */
+export function sceneHooks(
+  store: PlaybackStore,
+  runtime?: SceneRuntime
+): ShipwreckSceneHooks {
   const get = () => store.getState();
   return {
     seek: (t) => get().seek(t),
@@ -59,5 +70,31 @@ export function sceneHooks(store: PlaybackStore): ShipwreckSceneHooks {
     isShown: (name) =>
       typeof window !== "undefined" &&
       (window.__shipwreckRenderInfo?.isShown(name) ?? false),
+    pump: (budgetMs) => get().pump(Math.max(1, Math.min(500, budgetMs))),
+    startWalk: () => get().startWalk(),
+    setWalkInput: (forward, strafe) => {
+      walkInput.forward = clampUnit(forward);
+      walkInput.strafe = clampUnit(strafe);
+    },
+    turnWalk: (yawRad) => {
+      // The runner turns by −lookDx × WALK_TURN_PER_PX.
+      if (Number.isFinite(yawRad))
+        walkInput.lookDx -= yawRad / WALK_TURN_PER_PX;
+    },
+    getWalk: () => {
+      const w = get().walk;
+      const info = runtime?.walkInfo;
+      if (w.phase === "off" || !info) return null;
+      return {
+        phase: info.phase,
+        part: info.part ?? "none",
+        x: info.x,
+        y: info.y,
+        slopeDeg: info.slopeDeg,
+        depthM: info.depthM,
+        lookUnder: w.lookUnder,
+      };
+    },
+    setLookUnder: (on) => get().setLookUnder(on),
   };
 }

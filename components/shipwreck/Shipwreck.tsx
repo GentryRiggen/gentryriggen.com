@@ -287,11 +287,15 @@ export default function Shipwreck() {
         () => modelHooks.current
       );
     if (isSceneView)
-      return installTestHooks(() => "scene", undefined, sceneHooks(playback));
+      return installTestHooks(
+        () => "scene",
+        undefined,
+        sceneHooks(playback, runtime)
+      );
     return installTestHooks(
       () => screenRef.current,
       undefined,
-      sceneHooks(playback),
+      sceneHooks(playback, runtime),
       {
         setShip: (id) => {
           if (!(SHIP_IDS as readonly string[]).includes(id)) return;
@@ -310,7 +314,7 @@ export default function Shipwreck() {
         },
       }
     );
-  }, [isModelView, isSceneView, startRun, pickShip]);
+  }, [isModelView, isSceneView, startRun, pickShip, runtime]);
 
   useVisibilityPause({ onPersist: persist });
 
@@ -337,7 +341,7 @@ export default function Shipwreck() {
   });
 
   if (isModelView && ModelViewer) return <ModelViewer hooksRef={modelHooks} />;
-  if (isSceneView && SceneCheck) return <SceneCheck />;
+  if (isSceneView && SceneCheck) return <SceneCheck runtime={runtime} />;
 
   // At the end the run is done, so the track no longer changes.
   const endTrack = showEnd && hasTrack ? playback.getState().track : null;

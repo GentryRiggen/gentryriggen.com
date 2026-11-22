@@ -103,8 +103,11 @@ Every time the scene shows or computes comes from the track: events carry
 `eventsSeen`, `quality`, `camera`, `xray`, `place`, `playing`, `speed`,
 `slowMo`, `done`, `computedT`, `progress`), `getRenderInfo()` (last frame's
 draw calls and triangles over every pass, and the camera position).
-`window.__shipwreckRenderInfo` has the same plus the tier and DPR. Task 5
-installs them with `installTestHooks(getScreen, undefined, sceneHooks(playback))`.
+`window.__shipwreckRenderInfo` has the same plus the tier and DPR. Walking:
+`startWalk()`, `setWalkInput(forward, strafe)`, `turnWalk(yawRad)`,
+`setLookUnder(on)`, `getWalk()` (phase, part, x, y, slope, depth, look under;
+read from the runtime's `walkInfo`). `pump(ms)` computes ahead (e2e). Installed
+with `installTestHooks(getScreen, undefined, sceneHooks(playback, runtime))`.
 
 ## Cameras
 

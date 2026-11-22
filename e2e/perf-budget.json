@@ -70,5 +70,13 @@
   "shipwreck-lusitania-wreck": {
     "calls": 42,
     "triangles": 148321
+  },
+  "shipwreck-walk-boat-deck": {
+    "calls": 61,
+    "triangles": 289751
+  },
+  "shipwreck-walk-look-under": {
+    "calls": 24,
+    "triangles": 13011
   }
 }

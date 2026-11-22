@@ -145,6 +145,8 @@ const SCENES = [
   "shipwreck-breakup-cinematic",
   "shipwreck-xray-staircase",
   "shipwreck-underwater",
+  "shipwreck-walk-boat-deck",
+  "shipwreck-walk-look-under",
   "shipwreck-lusitania-hit",
   "shipwreck-lusitania-list",
   "shipwreck-lusitania-grounded",
@@ -474,7 +476,7 @@ test.describe("Shipwreck budget", () => {
   // The whole night is computed first (software WebGL runs slowly).
   test.setTimeout(420_000);
 
-  test("the night at the top tier: 11:45 PM, the breakup, X-ray, under water", async ({
+  test("the night at the top tier: 11:45 PM, the breakup, X-ray, under water, walking", async ({
     page,
   }) => {
     // The night scene alone at the high tier (frame-rate monitor off).
@@ -527,6 +529,30 @@ test.describe("Shipwreck budget", () => {
         h.seek!(e.t + 90);
         h.setCamera!("underwater");
       })
+    );
+    record(
+      "shipwreck-walk-boat-deck",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.seek!(2 * 3600 - 10 * 60); // 1:30 AM (1 h 50 min after 11:40 PM)
+        h.startWalk!();
+        h.turnWalk!(Math.PI); // look aft
+      })
+    );
+    // In the water a minute after the stern went under, looking under.
+    await page.evaluate(() => {
+      const h = window.__shipwreck!;
+      const e = h.getEvents!().find((x) => x.kind === "stern-under")!;
+      h.seek!(e.t + 60);
+    });
+    await page.waitForFunction(
+      () => window.__shipwreck?.getWalk?.()?.phase === "water",
+      null,
+      { timeout: 20_000 }
+    );
+    record(
+      "shipwreck-walk-look-under",
+      await at(() => window.__shipwreck!.setLookUnder!(true))
     );
     // The spec's ceiling at the top tier, apart from the budget.
     for (const scene of SCENES.filter(
