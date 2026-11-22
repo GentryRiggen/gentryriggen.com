@@ -4,25 +4,28 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import {
+  Group,
   Mesh,
   PlaneGeometry,
   ShaderMaterial,
   UniformsLib,
   UniformsUtils,
 } from "three";
-import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import { hitTimeS, type PlaybackStore } from "@/lib/shipwreck/playback";
 import type { Opening } from "@/lib/shipwreck/ships/types";
-import { sampleTrack } from "@/lib/shipwreck/sim/track";
-import { shipToThree } from "./cameraMath";
+import TrackPoses from "./torpedoPose";
 
 /**
- * The torpedo's track: a line of white bubbles on the calm sea, running in
- * from out of frame on her starboard side, square to her course (U-20's
- * diary: "angle of intersection 90°", fired at about 700 m), to where it
- * struck. The torpedo itself (3 m down) is not shown, nor the U-boat. The
- * bubbles surface a moment behind the torpedo, so the white head is still
- * running in for a second or two after the hit; then the track spreads and
- * fades over two minutes, left behind as she steams on. One draw call.
+ * The torpedoes' tracks: a line of white bubbles on the calm sea for each
+ * hit, running in from out of frame on her starboard side, square to her
+ * course (U-20's diary: "angle of intersection 90°", fired at about 700 m),
+ * to where it struck. More than one hit (a What if): the first at the hit,
+ * the rest a few seconds after it (`hitTimeS`, when the sim opens them),
+ * each where her side was then. The
+ * torpedo itself (3 m down) is not shown, nor the U-boat. The bubbles
+ * surface a moment behind the torpedo, so the white head is still running
+ * in for a second or two after the hit; then the track spreads and fades
+ * over two minutes, left behind as she steams on. One draw call a hit.
  */
 
 /** About 35 knots, and the range it was fired at (m). */
@@ -105,8 +108,10 @@ interface TorpedoProps {
   store: PlaybackStore;
 }
 
+type TrackMesh = Mesh<PlaneGeometry, ShaderMaterial>;
+
 export default function Torpedo({ store }: TorpedoProps) {
-  const track = useMemo(() => {
+  const rig = useMemo(() => {
     // Along +y: from the hull (v = 0) out to the firing point (v = 1).
     const geo = new PlaneGeometry(1, 1, 1, 1);
     geo.translate(0, 0.5, 0);
@@ -128,48 +133,63 @@ export default function Torpedo({ store }: TorpedoProps) {
         },
       ]),
     });
-    const m = new Mesh(geo, mat);
-    m.name = "torpedo-track";
-    m.renderOrder = 2;
-    m.visible = false;
-    return { m, geo, mat };
+    const group = new Group();
+    group.name = "torpedo-tracks";
+    // One mesh a hit, made as the hits need them (the first is the
+    // 1.1 track), each with its own clock.
+    const tracks: TrackMesh[] = [];
+    const trackFor = (k: number): TrackMesh => {
+      while (tracks.length <= k) {
+        const m: TrackMesh = new Mesh(
+          geo,
+          tracks.length === 0 ? mat : mat.clone()
+        );
+        m.name =
+          tracks.length === 0
+            ? "torpedo-track"
+            : `torpedo-track-${tracks.length}`;
+        m.renderOrder = 2;
+        m.visible = false;
+        group.add(m);
+        tracks.push(m);
+      }
+      return tracks[k];
+    };
+    return { geo, mat, group, tracks, trackFor, poses: new TrackPoses() };
   }, []);
   useEffect(
     () => () => {
-      track.geo.dispose();
-      track.mat.dispose();
+      rig.geo.dispose();
+      for (const m of rig.tracks) m.material.dispose();
+      rig.mat.dispose();
     },
-    [track]
+    [rig]
   );
 
   useFrame(() => {
     const s = store.getState();
-    const hole = torpedoHole(s.openings);
-    const m = track.m;
-    if (
-      !s.track ||
-      s.track.frames.length === 0 ||
-      !hole ||
-      s.t > TRACK_LIFE_S
-    ) {
-      m.visible = false;
-      return;
+    const hole = s.hits.length > 0 ? null : torpedoHole(s.openings);
+    const n = s.hits.length > 0 ? s.hits.length : hole ? 1 : 0;
+    const ready = s.track !== null && s.track.frames.length > 0;
+    // Where they struck, on the sea at the moment of each hit (they stay
+    // there as she steams on).
+    for (let k = 0; k < Math.max(n, rig.tracks.length); k += 1) {
+      const m = k < n ? rig.trackFor(k) : rig.tracks[k];
+      const at = hitTimeS(k, n);
+      if (!ready || k >= n || s.t - at > TRACK_LIFE_S) {
+        m.visible = false;
+        continue;
+      }
+      const x = s.hits.length > 0 ? s.hits[k] : hole!.x;
+      const pose = rig.poses.poseOf(s.track!, k, at, x);
+      m.position.set(pose.x, 0.06, pose.z);
+      // The plane's +y (in its own frame) lies along the track, flat on the sea.
+      m.rotation.set(-Math.PI / 2, 0, pose.rotZ);
+      m.scale.set(28, TORPEDO_RANGE_M, 1);
+      m.material.uniforms.uT.value = s.t - at;
+      m.visible = true;
     }
-    // Where it struck, on the sea at the moment of the hit (it stays there
-    // as she steams on).
-    const pose = sampleTrack(s.track, 0).bodies[0];
-    const hit = shipToThree(pose, [hole.x, -13.4, 9]);
-    const out = shipToThree(pose, [hole.x, -14.4, 9]);
-    const dx = out[0] - hit[0];
-    const dz = out[2] - hit[2];
-    const len = Math.hypot(dx, dz) || 1;
-    m.position.set(hit[0], 0.06, hit[2]);
-    // The plane's +y (in its own frame) lies along the track, flat on the sea.
-    m.rotation.set(-Math.PI / 2, 0, Math.atan2(dx / len, dz / len) + Math.PI);
-    m.scale.set(28, TORPEDO_RANGE_M, 1);
-    track.mat.uniforms.uT.value = s.t;
-    m.visible = true;
   }, -1.4);
 
-  return <primitive object={track.m} />;
+  return <primitive object={rig.group} />;
 }

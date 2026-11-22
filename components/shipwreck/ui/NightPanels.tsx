@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "zustand";
 import {
   bowDownText,
@@ -57,13 +57,28 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
   const [open, setOpen] = useState(startsOpen);
   const [frame, setFrame] = useState<SimFrame | null>(null);
   const [topic, setTopic] = useState<HelpTopic | null>(null);
+  // A storm ship's hatch covers that have given way by now, as a key
+  // ("3,4,5") so the panel re-renders only when one more goes.
+  const [failedKey, setFailedKey] = useState("");
   const openings = useStore(store, (s) => s.openings);
+  const failed = useMemo(
+    () =>
+      new Set(
+        failedKey === "" ? [] : failedKey.split(",").map((n) => Number(n))
+      ),
+    [failedKey]
+  );
 
   useEffect(() => {
     const read = () => {
       const s = store.getState();
       if (s.track && s.track.frames.length > 0)
         setFrame(sampleTrack(s.track, s.t));
+      const gone: number[] = [];
+      for (const e of s.track?.events ?? [])
+        if (e.kind === "hatch-fails" && e.t <= s.t && e.index !== undefined)
+          gone.push(e.index);
+      setFailedKey(gone.sort((a, b) => a - b).join(","));
     };
     read();
     const id = setInterval(read, READ_MS);
@@ -109,6 +124,7 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
             spec={spec}
             water={frame?.water}
             openings={openings}
+            failedHatches={failed}
             pose={whole}
             title="The water inside each compartment"
             className="block h-auto w-full"

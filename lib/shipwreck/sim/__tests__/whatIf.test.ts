@@ -1,4 +1,5 @@
 import { titanic } from "../../ships";
+import { hullOpenings } from "../../ships/types";
 import { END_T } from "../constants";
 import { simulate, whatIfOpenings } from "../run";
 import type { SimTrack } from "../track";
@@ -24,7 +25,7 @@ function expectAfloat(track: SimTrack) {
 
 describe("What if?", () => {
   it("uses the real damage where there was some, else a small hole", () => {
-    const o = whatIfOpenings(titanic, ["hold1", "br4"]);
+    const o = hullOpenings(whatIfOpenings(titanic, ["hold1", "br4"]));
     expect(o.filter((x) => x.compartmentId === "hold1")).toEqual(
       titanic.realNight.filter((x) => x.compartmentId === "hold1")
     );

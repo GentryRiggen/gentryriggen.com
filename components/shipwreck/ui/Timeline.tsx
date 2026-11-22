@@ -34,6 +34,8 @@ const MARK_ICON: Record<MarkKind, IconName> = {
   break: "break",
   sinks: "sinks",
   afloat: "afloat",
+  hatch: "hatch",
+  shelter: "afloat",
 };
 
 interface TimelineProps {
@@ -41,7 +43,7 @@ interface TimelineProps {
 }
 
 /**
- * The night from 11:40 PM (the afternoon from 2:10 PM) to the end: the computed part lit, the rest dim,
+ * The night from 11:40 PM (the afternoon from 2:10 PM, the storm from 3:30 PM) to the end: the computed part lit, the rest dim,
  * event icons above (tap to jump), drag anywhere to seek (within computed).
  */
 export default function Timeline({ store }: TimelineProps) {

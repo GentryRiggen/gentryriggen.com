@@ -74,3 +74,58 @@ test("shows the title screen with no network after one visit", async ({
     )
     .toBeGreaterThan(0);
 });
+
+test("starts the Edmund Fitzgerald's storm with no network after one visit", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/shipwreck?offline");
+  await page.waitForFunction(() => Boolean(window.__shipwreck));
+  await expect(page.getByTestId("shipwreck-title")).toBeVisible();
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await expect
+    .poll(() =>
+      page.evaluate(() => navigator.serviceWorker.controller !== null)
+    )
+    .toBe(true);
+  // The page's loaded files are stored (the page posts them to the worker).
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const names = await caches.keys();
+          const cache = await caches.open(
+            names.find((n) => n.startsWith("shipwreck-")) ?? ""
+          );
+          const urls = (await cache.keys()).map((request) => request.url);
+          return urls.some((url) => url.endsWith("/shipwreck"));
+        }),
+      { timeout: 30_000 }
+    )
+    .toBe(true);
+
+  await context.setOffline(true);
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__shipwreck));
+  await page.getByTestId("shipwreck-ship-fitzgerald").click();
+  await expect(page.getByTestId("shipwreck-parent-line")).toContainText(
+    "Edmund Fitzgerald"
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "fitzgerald"
+  );
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__shipwreck!.isShown!("storm-sky")),
+      { timeout: 30_000 }
+    )
+    .toBe(true);
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__shipwreck!.getState!().computedT),
+      { timeout: 30_000 }
+    )
+    .toBeGreaterThan(0);
+});

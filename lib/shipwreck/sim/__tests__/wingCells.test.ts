@@ -1,4 +1,6 @@
 import type { Opening, ShipSpec } from "../../ships/types";
+import { VENT_BURST_M2 } from "../constants";
+import { makeCell, seaInflow } from "../flooding";
 import { buildHull, hullSlice } from "../geometry";
 import { hydrostatics } from "../hydrostatics";
 import { simulate } from "../run";
@@ -126,6 +128,45 @@ describe("wing cells", () => {
     expect(hydrostatics(parts[1], under).cb.y).toBeGreaterThan(WING_Y);
     expect(hydrostatics(parts[2], under).cb.y).toBeLessThan(-WING_Y);
     expect(parts[1].cy).toBeCloseTo(8, 6);
+  });
+});
+
+describe("trapped air deep down", () => {
+  // The port wing, empty, its deck 40 m under a level sea.
+  const spec = withComp(wingShip(), "port", { burstM2: 0.2 });
+  const hull = buildHull(spec);
+  const wing = (burst?: number) => {
+    const c = makeCell(
+      hullSlice(hull, -15, 15, { side: "port", y: WING_Y }),
+      PORT,
+      false,
+      12,
+      12,
+      true,
+      true,
+      0.95
+    );
+    if (burst !== undefined) c.burst = burst;
+    return c;
+  };
+
+  it("bursts the 1.0 vents and hatches by default", () => {
+    const q = seaInflow(wing(), 0, 0, 1, -52);
+    expect(q).toBeCloseTo(0.6 * VENT_BURST_M2 * Math.sqrt(2 * 9.81 * 40), 6);
+  });
+
+  it("lets a tank's air out by its own vents (`burstM2`)", () => {
+    const q = seaInflow(wing(0.2), 0, 0, 1, -52);
+    expect(q).toBeCloseTo(0.6 * 0.2 * Math.sqrt(2 * 9.81 * 40), 6);
+    // The run takes it from the compartment.
+    let seen = -1;
+    simulate(spec, [], {
+      endT: 1,
+      probe: (p) => {
+        seen = p.bodies[0].cells[PORT].burst;
+      },
+    });
+    expect(seen).toBe(0.2);
   });
 });
 

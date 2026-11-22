@@ -1,9 +1,12 @@
 import type { SimEvent, SimEventKind } from "@/lib/shipwreck/sim/events";
+import type { StormSpec } from "@/lib/shipwreck/ships/types";
 import type { SimFrame } from "@/lib/shipwreck/sim/track";
 import {
   CUE_GAP_S,
   EVENT_CUES,
   LUSITANIA_EVENT_CUES,
+  FITZGERALD_EVENT_CUES,
+  windAt,
   eventCuesFor,
   createCueScheduler,
   frameNear,
@@ -374,5 +377,137 @@ describe("walking cues", () => {
       });
     run({ playing: false, now: 111 });
     expect(walkCues(played)).toEqual([]);
+  });
+});
+
+describe("the Edmund Fitzgerald's sounds", () => {
+  const storm = {
+    components: [],
+    hsM: 7,
+    windKn: 50,
+    ramp: [
+      [0, 0.5],
+      [1000, 1],
+    ],
+    groups: [{ t: 100, heightM: 5, count: 3, periodS: 10, dirDeg: 0 }],
+  } as unknown as StormSpec;
+
+  it("maps her events: a quiet swell for the collision, no scrape, rocket or whistle", () => {
+    const m = eventCuesFor("fitzgerald");
+    expect(m).toBe(FITZGERALD_EVENT_CUES);
+    expect(m.collision).toBe("swell");
+    expect(m["hatch-fails"]).toBe("hatch");
+    expect(m.breakup).toBe("breakup");
+    expect(m["bow-under"]).toBe("plunge");
+    expect(m["stern-lands"]).toBe("thud");
+    expect(m.rocket).toBeUndefined();
+    expect(m["funnel-falls"]).toBeUndefined();
+    expect(Object.values(m)).not.toContain("scrape");
+    expect(Object.values(m)).not.toContain("funnel");
+    expect(Object.values(m)).not.toContain("rocket");
+  });
+
+  it("leaves the Titanic's and the Lusitania's maps alone", () => {
+    expect(eventCuesFor("titanic")).toBe(EVENT_CUES);
+    expect(eventCuesFor("lusitania")).toBe(LUSITANIA_EVENT_CUES);
+  });
+
+  it("sounds a hatch at most once per gap, not 21 in a burst", () => {
+    const evs = Array.from({ length: 21 }, (_, k) => ({
+      ...ev(10 + k * 0.1, "hatch-fails"),
+      index: k + 1,
+    }));
+    const { played, run } = setup(evs);
+    run({ t: 0, ship: "fitzgerald" });
+    run({ t: 20, now: 101, ship: "fitzgerald" });
+    expect(played.filter((c) => c === "hatch")).toHaveLength(1);
+  });
+
+  it("breaks a wave group's crash once per big sea", () => {
+    const { played, run } = setup([]);
+    const at = (t: number, now: number) =>
+      run({ t, now, ship: "fitzgerald", storm, stormScale: 1 });
+    at(0, 100);
+    at(99, 101);
+    at(101, 110);
+    at(111, 120);
+    at(125, 130);
+    expect(played.filter((c) => c === "waveCrash")).toHaveLength(3);
+  });
+
+  it("does not replay crashes skipped by a seek", () => {
+    const { played, run } = setup([]);
+    run({ t: 0, ship: "fitzgerald", storm, stormScale: 1 });
+    run({ t: 200, now: 101, snapId: 1, ship: "fitzgerald", storm });
+    expect(played).toEqual([]);
+  });
+
+  it("raises the wind with the sea's ramp and the storm scale", () => {
+    expect(windAt(undefined, 1, 0)).toBe(0);
+    const early = windAt(storm, 1, 0);
+    const late = windAt(storm, 1, 1000);
+    expect(late).toBeGreaterThan(early);
+    expect(windAt(storm, 0.6, 1000)).toBeLessThan(late);
+    expect(late).toBeLessThanOrEqual(1);
+    const { s, run } = setup([]);
+    run({ t: 1000, ship: "fitzgerald", storm, stormScale: 1 });
+    expect(s.bed.wind).toBeCloseTo(late, 6);
+  });
+
+  it("plays the torpedo cue once per staggered hit, and once for one hit", () => {
+    const count = (hits: number) => {
+      const played: Cue[] = [];
+      const s = createCueScheduler((c) => played.push(c));
+      const evs = [ev(0, "collision")];
+      const fr = [frame(0, 0)];
+      let now = 100;
+      for (const t of [0, 0.5, 3.2, 3.5, 6.2, 7, 12]) {
+        now += t === 0 ? 0 : 3;
+        s.update(evs, fr, input({ t, now, ship: "lusitania", hits }));
+      }
+      return played.filter((c) => c === "torpedo").length;
+    };
+    expect(count(1)).toBe(1);
+    expect(count(3)).toBe(3);
+  });
+
+  it("plays every staggered hit at x10, inside the torpedo's wall-clock gap", () => {
+    const played: { cue: Cue; t: number }[] = [];
+    let t = 0;
+    const s = createCueScheduler((cue) => played.push({ cue, t }));
+    const evs = [ev(0, "collision")];
+    const fr = [frame(0, 0)];
+    // 20 updates a second of wall clock at x10: 0.5 s of sim each.
+    for (let k = 0; k <= 30; k += 1) {
+      t = k * 0.5;
+      s.update(
+        evs,
+        fr,
+        input({ t, now: 100 + k * 0.05, speed: 10, ship: "lusitania", hits: 3 })
+      );
+    }
+    // The first with the collision as playback moves, the rest at their times.
+    const hits = played.filter((p) => p.cue === "torpedo").map((p) => p.t);
+    expect(hits).toEqual([0.5, 3, 6]);
+  });
+
+  it("centres a wave group's crashes on its biggest crest", () => {
+    const at: number[] = [];
+    let t = 0;
+    const s = createCueScheduler((cue) => {
+      if (cue === "waveCrash") at.push(t);
+    });
+    const none: SimEvent[] = [];
+    const fr = [frame(0, 0)];
+    for (let k = 0; k <= 140; k += 1) {
+      t = k;
+      s.update(
+        none,
+        fr,
+        input({ t, now: 100 + k, ship: "fitzgerald", storm, stormScale: 1 })
+      );
+    }
+    // Group at t = 100, three seas 10 s apart: 90, 100, 110.
+    expect(at).toEqual([90, 100, 110]);
   });
 });

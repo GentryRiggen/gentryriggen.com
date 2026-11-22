@@ -1,4 +1,5 @@
-import type { ShipId } from "@/lib/shipwreck/ships/types";
+import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
+import type { ShipId, ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 
@@ -126,9 +127,68 @@ export const LUSITANIA_HULL_BOXES: readonly HullBox[] = [
   { x: [-104.3, 116.8], y: [-13.2, 13.2], z: [19.8, 25.4] },
 ];
 
+/**
+ * A laker's boxes from her data (lib/shipwreck/ships/fitzgerald.ts): the
+ * hull from her stern to her stem, the beam across, in three lengths so
+ * the free camera can come down to her low open deck between her houses:
+ * the after house (to its top tier), the spar deck amidships (to its
+ * sheer there) and the forecastle with the texas house and the pilothouse
+ * (about 3 m over its floor).
+ */
+function lakerBoxes(spec: ShipSpec): HullBox[] {
+  const xs = spec.stations.map((st) => st.x);
+  const stern = Math.min(...xs) - 0.2;
+  const stem = Math.max(...xs) + 0.2;
+  const y: [number, number] = [-(spec.beam / 2 + 0.1), spec.beam / 2 + 0.1];
+  const deck = spec.openDeck;
+  const aftX = deck?.fromX ?? -spec.lbp / 3;
+  const fwdX = deck?.toX ?? spec.lbp / 3;
+  const top = (from: number, to: number) =>
+    Math.max(
+      spec.sheerZ(from),
+      spec.sheerZ(to),
+      ...spec.superstructure
+        .filter((b) => b.fromX < to && b.toX > from)
+        .map((b) => b.topZ)
+    );
+  const pilothouse = spec.decks.find((d) => d.name === "Pilothouse");
+  return [
+    { x: [stern, aftX], y, z: [-0.5, top(stern, aftX)] },
+    {
+      x: [aftX, fwdX],
+      y,
+      z: [-0.5, Math.max(spec.sheerZ(aftX), spec.sheerZ(fwdX)) + 0.3],
+    },
+    {
+      x: [fwdX, stem],
+      y,
+      z: [-0.5, Math.max(top(fwdX, stem), (pilothouse?.z ?? 0) + 3)],
+    },
+  ];
+}
+
+export const FITZGERALD_HULL_BOXES: readonly HullBox[] = lakerBoxes(fitzgerald);
+
 /** The hull boxes of a ship (the camera's bounds and the double-tap proxies). */
 export function hullBoxesFor(ship: ShipId): readonly HullBox[] {
+  if (ship === "fitzgerald") return FITZGERALD_HULL_BOXES;
   return ship === "lusitania" ? LUSITANIA_HULL_BOXES : HULL_BOXES;
+}
+
+/**
+ * A camera height kept clear of the sea's surface under it (a storm's
+ * waves; `surface` the sea's height there): a camera meant above the sea
+ * (at or over the still water, y ≥ 0) stays `clearance` over the crest
+ * under it; one meant under it stays that far below the trough over it.
+ */
+export function aboveWaves(
+  y: number,
+  surface: number,
+  clearance = 1.5
+): number {
+  return y >= 0
+    ? Math.max(y, surface + clearance)
+    : Math.min(y, surface - clearance);
 }
 
 function insideBox(p: readonly number[], b: HullBox, margin: number): boolean {
@@ -226,6 +286,30 @@ export function portraitPullBack(aspect: number): number {
   return Math.min(1.9, 1.2 / aspect);
 }
 
+/**
+ * How much further back a shot `dist` m from its target must stand so
+ * `width` m fits across a screen this shape (w / h) with this vertical
+ * field of view (degrees): at least 1.
+ */
+export function fitAcross(
+  aspect: number,
+  fovDeg: number,
+  dist: number,
+  width: number
+): number {
+  if (!(aspect > 0) || !(dist > 0)) return 1;
+  const halfH = Math.tan((fovDeg * Math.PI) / 360) * aspect;
+  return Math.max(1, width / 2 / halfH / dist);
+}
+
+/** Her wide shots above the sea, fitted to her length on a narrow screen. */
+export const FITZGERALD_WIDE_SHOTS: readonly ShotId[] = [
+  "storm",
+  "storm-beam",
+  "sisters",
+  "going",
+];
+
 /** Keeps a three.js point above the sea floor (three y = -depth). */
 export function clampAboveFloor(p: V3, seaDepthM: number, clearance = 2): V3 {
   return [p[0], Math.max(p[1], -seaDepthM + clearance), p[2]];
@@ -258,7 +342,18 @@ export type ShotId =
   | "bow-down"
   | "grounded"
   | "grounded-below"
-  | "on-floor";
+  | "on-floor"
+  // The Fitzgerald's storm.
+  | "storm"
+  | "storm-beam"
+  | "deck"
+  | "sisters"
+  | "going"
+  | "dive"
+  | "strike"
+  | "stern-roll"
+  | "parts"
+  | "astern";
 
 export interface View {
   pos: V3;
@@ -299,6 +394,7 @@ function bowBody(ctx: ShotContext): BodyPose {
 
 /** The classic view: low on the water off the port quarter, drifting. */
 export function lifeboatView(ctx: ShotContext, distance = 420): View {
+  if (ctx.ship === "fitzgerald") return fitzgeraldBoatView(ctx);
   const drift = Math.sin(ctx.t / 900) * 12 + ctx.wall * 0.15;
   const s = sternBody(ctx);
   const tgt = shipToThree(s, [-10, 0, 14]);
@@ -324,6 +420,7 @@ export function lifeboatView(ctx: ShotContext, distance = 420): View {
 /** Follows the bow down (under water), then circles the wreck. */
 export function underwaterView(ctx: ShotContext): View {
   if (ctx.ship === "lusitania") return lusitaniaUnderwater(ctx);
+  if (ctx.ship === "fitzgerald") return fitzgeraldUnderwater(ctx);
   const b = bowBody(ctx);
   const mid = ctx.breakX !== null && b.part === "bow" ? ctx.breakX + 70 : 60;
   const tgt = shipToThree(b, [mid, 0, 6]);
@@ -345,6 +442,20 @@ export function underwaterView(ctx: ShotContext): View {
   return { pos, target: tgt };
 }
 
+/**
+ * Whether the run has something to follow (`cinematicShot`'s `hit`): a hole
+ * in her side, or a storm run (the Fitzgerald's deck openings never reach
+ * the playback, so a storm run has none yet is still a run, not the title's
+ * calm ship).
+ */
+export function cinematicHit(
+  openingCount: number,
+  cause: ShipSpec["cause"],
+  preview: boolean
+): boolean {
+  return openingCount > 0 || (cause === "storm" && !preview);
+}
+
 /** Which scripted shot plays at `t` (cinematic camera). */
 export function cinematicShot(
   track: Pick<SimTrack, "events" | "brokeAtT" | "sankAtT">,
@@ -354,6 +465,7 @@ export function cinematicShot(
   hit = true
 ): ShotId {
   if (ship === "lusitania") return hit ? lusitaniaShot(track, t) : "afternoon";
+  if (ship === "fitzgerald") return hit ? fitzgeraldShot(track, t) : "storm";
   const firstOf = (kind: string): number | null => {
     for (const e of track.events) if (e.kind === kind) return e.t;
     return null;
@@ -387,6 +499,17 @@ export function shotView(shot: ShotId, ctx: ShotContext): View {
     case "grounded-below":
     case "on-floor":
       return lusitaniaView(shot, ctx);
+    case "storm":
+    case "storm-beam":
+    case "deck":
+    case "sisters":
+    case "going":
+    case "dive":
+    case "strike":
+    case "stern-roll":
+    case "parts":
+    case "astern":
+      return fitzgeraldView(shot, ctx);
     case "establishing": {
       const a = 0.55 + ctx.t * 0.0006 + ctx.wall * 0.004;
       const tgt = shipToThree(w, [10, 0, 16]);
@@ -567,6 +690,188 @@ function lusitaniaUnderwater(ctx: ShotContext): View {
       Math.min(-6, Math.max(floor + 24, tgt[1] + 16)),
       tgt[2] + Math.sin(a) * r,
     ],
+    target: tgt,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The Fitzgerald's storm (162 m of water: her bow on the floor as her stern
+// goes under, the stern rolling over, both parts apart on the floor). Shots
+// above the sea stand at least 14 m up (her crests reach about 8 m, the
+// three sisters a few more); the camera rig also keeps every camera clear
+// of the local wave surface (`aboveWaves`).
+
+/** Shown seconds after 3:30 PM for h:mm PM. */
+function stormPm(h: number, m: number): number {
+  return (h + 12 - 15) * 3600 + (m - 30) * 60;
+}
+
+/** Each of her storm shots in turn through the afternoon, this long (s). */
+const STORM_SHOT_S = 900;
+const STORM_CYCLE: readonly ShotId[] = ["storm", "storm-beam", "deck"];
+/**
+ * The dark stretches between her squalls (`SQUALLS`, storm.ts) when the
+ * cinematic camera looks aft from her pilothouse at the Anderson's lights.
+ */
+const ASTERN_WINDOWS: readonly (readonly [number, number])[] = [
+  [stormPm(5, 50), stormPm(6, 5)],
+  [stormPm(6, 34), stormPm(6, 40)],
+];
+
+function fitzgeraldShot(
+  track: Pick<SimTrack, "events" | "brokeAtT" | "sankAtT">,
+  t: number
+): ShotId {
+  let bowUnder: number | null = null;
+  let bowLands: number | null = null;
+  let sternUnder: number | null = null;
+  let sternLands: number | null = null;
+  for (const e of track.events) {
+    if (e.kind === "bow-under" && bowUnder === null) bowUnder = e.t;
+    if (e.kind === "bow-lands" && bowLands === null) bowLands = e.t;
+    if (e.kind === "stern-under" && sternUnder === null) sternUnder = e.t;
+    if (e.kind === "stern-lands" && sternLands === null) sternLands = e.t;
+  }
+  if (sternLands !== null && t >= sternLands + 4) return "parts";
+  if (sternUnder !== null && t >= sternUnder - 0.5) return "stern-roll";
+  if (bowLands !== null && t >= bowLands - 3) return "strike";
+  if (bowUnder !== null && t >= bowUnder + 8) return "dive";
+  if (bowUnder !== null && t >= bowUnder - 30) return "going";
+  if (t >= stormPm(7, 0)) return "sisters";
+  // Looking aft when the snow thins in the dark: the Anderson's lights.
+  for (const [a, b] of ASTERN_WINDOWS) if (t >= a && t < b) return "astern";
+  const i = Math.floor(Math.max(0, t) / STORM_SHOT_S) % STORM_CYCLE.length;
+  return STORM_CYCLE[i];
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, v));
+}
+
+function fitzgeraldView(shot: ShotId, ctx: ShotContext): View {
+  const b = bowBody(ctx);
+  const s = sternBody(ctx);
+  const floor = -ctx.seaDepthM;
+  const breakX = ctx.breakX ?? 18;
+  switch (shot) {
+    case "storm": {
+      // High on her starboard quarter (26–43° off astern: nearer dead
+      // astern her square house and long side read as a kink), looking
+      // along her: the seas rolling up from astern and overtaking her.
+      const a = 0.6 + 0.15 * Math.sin(ctx.wall * 0.01);
+      return {
+        pos: levelToThree(b, [-360 * Math.cos(a), -360 * Math.sin(a), 65]),
+        target: shipToThree(b, [15, 0, 10]),
+      };
+    }
+    case "storm-beam":
+      // Low off her starboard beam: the seas over her low deck.
+      return {
+        pos: levelToThree(b, [-30, -175, 20]),
+        target: shipToThree(b, [-5, 0, 13]),
+      };
+    case "deck":
+      // Over her after house's starboard side, looking forward along her
+      // deck to the pilothouse (riding with her).
+      return {
+        pos: shipToThree(s, [-104, -13.5, 30]),
+        target: shipToThree(s, [50, 0, 12]),
+      };
+    case "sisters": {
+      // Wide on her starboard quarter: the big seas overtaking her.
+      const tgt = shipToThree(b, [-20, 0, 10]);
+      // (High enough to see her deck over the crest between.)
+      return { pos: levelToThree(b, [-290, -260, 50]), target: tgt };
+    }
+    case "going": {
+      // Off her starboard bow as her bow goes under.
+      const tgt = shipToThree(b, [30, 0, 8]);
+      tgt[1] = Math.max(tgt[1], 2);
+      return { pos: levelToThree(b, [215, -240, 48]), target: tgt };
+    }
+    case "astern":
+      // From her pilothouse's top, aft over her deck and after house to
+      // the Anderson's lights astern (a little to starboard).
+      return {
+        pos: shipToThree(b, [101, -5, 24.5]),
+        target: shipToThree(b, [-1500, -40, 16]),
+      };
+    case "dive": {
+      // Under water beside her bow, going down with it (about 75 m off).
+      const tgt = shipToThree(b, [60, 0, 6]);
+      tgt[1] = clamp(tgt[1], floor + 8, -10);
+      const pos = levelToThree(b, [45, -75, 0]);
+      pos[1] = clamp(tgt[1] + 8, floor + 14, -14);
+      return { pos, target: tgt };
+    }
+    case "strike": {
+      // Low on the floor ahead of her starboard bow, looking back along
+      // the clay: her bow strikes it (the plume) while her hull rises
+      // behind toward the surface. About 85 m off.
+      const tgt = shipToThree(b, [85, 0, 4]);
+      tgt[1] = clamp(tgt[1], floor + 4, -14);
+      const pos = levelToThree(b, [140, -60, 0]);
+      pos[1] = floor + 9;
+      return { pos, target: tgt };
+    }
+    case "stern-roll": {
+      // Off her stern's starboard quarter, a little below it: the hull
+      // turns over against the grey window of the surface. About 65 m.
+      const tgt = shipToThree(s, [-60, 0, 4]);
+      tgt[1] = clamp(tgt[1], floor + 8, -14);
+      const pos = levelToThree(s, [-105, -50, 0]);
+      pos[1] = clamp(tgt[1] - 6, floor + 12, -14);
+      return { pos, target: tgt };
+    }
+    default:
+      return fitzgeraldParts(ctx, breakX);
+  }
+}
+
+/** Both parts on the floor, circled slowly from above the gap between them. */
+function fitzgeraldParts(ctx: ShotContext, breakX: number): View {
+  const floor = -ctx.seaDepthM;
+  const bw = shipToThree(bowBody(ctx), [breakX + 20, 0, 4]);
+  const st = shipToThree(sternBody(ctx), [breakX - 20, 0, 4]);
+  const tgt: V3 = [
+    (bw[0] + st[0]) / 2,
+    clamp((bw[1] + st[1]) / 2, floor + 6, -14),
+    (bw[2] + st[2]) / 2,
+  ];
+  const a = 0.9 + ctx.wall * 0.04;
+  return {
+    pos: [
+      tgt[0] + Math.cos(a) * 80,
+      clamp(tgt[1] + 26, floor + 18, -14),
+      tgt[2] + Math.sin(a) * 80,
+    ],
+    target: tgt,
+  };
+}
+
+/** Under water with her: her bow going down, then both parts on the floor. */
+function fitzgeraldUnderwater(ctx: ShotContext): View {
+  const floor = -ctx.seaDepthM;
+  const b = bowBody(ctx);
+  const tgt = shipToThree(b, [40, 0, 6]);
+  if (tgt[1] < floor + 40) return fitzgeraldParts(ctx, ctx.breakX ?? 18);
+  tgt[1] = clamp(tgt[1], floor + 8, -10);
+  const pos = levelToThree(b, [20, -80, 0]);
+  pos[1] = clamp(tgt[1] + 6, floor + 14, -14);
+  return { pos, target: tgt };
+}
+
+/**
+ * Her boat camera: off her starboard quarter, high enough to stay over
+ * the crests between, where the Anderson's crew would have looked from.
+ */
+function fitzgeraldBoatView(ctx: ShotContext): View {
+  const s = sternBody(ctx);
+  const tgt = shipToThree(s, [-40, 0, 10]);
+  tgt[1] = Math.max(tgt[1], 6);
+  const a = 0.6 + Math.sin(ctx.wall * 0.02) * 0.1;
+  return {
+    pos: levelToThree(s, [-320 * Math.cos(a), -320 * Math.sin(a), 17]),
     target: tgt,
   };
 }

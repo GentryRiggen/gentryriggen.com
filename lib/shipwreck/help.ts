@@ -122,12 +122,71 @@ function torpedoHelp(
   }
 }
 
+/** The storm ship's cards (the Fitzgerald's): a laker in a lake storm. */
+function stormHelp(
+  topic: HelpTopic,
+  frame: SimFrame | null,
+  ship: ShipSpec
+): Help {
+  switch (topic) {
+    case "water":
+      return {
+        title: "Water aboard",
+        now: frame ? waterText(frame) : undefined,
+        lines: [
+          "How much lake water has come inside the ship, in tonnes. One tonne is about a bathtub and a half.",
+          `${ship.name} weighed about ${(Math.round(ship.displacementT / 1000) * 1000).toLocaleString("en-US")} t with her cargo of iron ore pellets. Waves washed over her low deck, and water got in through her hatch covers, her broken vents and her tanks.`,
+        ],
+      };
+    case "bow":
+      return {
+        title: "Bow down",
+        now: frame ? bowDownText(frame) : undefined,
+        lines: [
+          "How far the front of the ship tips down. In the storm she pitches up and down on every wave.",
+          `The lake here is only ${ship.seaDepthM} m deep, less than her length: if she dives, her bow can hit the bottom while her stern is still at the surface.`,
+        ],
+      };
+    case "lean":
+      return {
+        title: "Lean",
+        now: frame ? leanText(frame) : undefined,
+        lines: [
+          "How far the ship leans to one side. Port is the left side looking forward, starboard the right.",
+          "Her captain reported a lean in the afternoon. Water in the tanks along one side makes her lean that way. Experts still argue about how it got in: What if lets you switch each cause off.",
+        ],
+      };
+    case "power":
+      return {
+        title: "Power",
+        now: frame ? powerText(frame) : undefined,
+        lines: [
+          "Her steam turbine turned the propeller and made the electricity for her lights.",
+          "Her two big pumps worked all afternoon, pumping water out of her tanks.",
+        ],
+      };
+    case "controls":
+    default:
+      return {
+        title: "How to watch",
+        lines: [
+          "Drag to look around the ship. Pinch to zoom in and out. Two fingers move the view. Double-tap the ship to fly close.",
+          "Play and pause, and choose how fast the storm goes: ×1 is real time, and her storm lasts almost four hours, so try ×100.",
+          "Drag the timeline, or tap an icon on it, to jump to that moment.",
+          `X-ray shows the water inside, and her cargo of iron ore pellets. The pins fly you to ${placeList(ship)}.`,
+          "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
+        ],
+      };
+  }
+}
+
 /** The words on the card for `topic`, now (`frame` null before a run). */
 export function helpFor(
   topic: HelpTopic,
   frame: SimFrame | null,
   ship: ShipSpec = titanic
 ): Help {
+  if (ship.cause === "storm") return stormHelp(topic, frame, ship);
   if (ship.cause === "torpedo") return torpedoHelp(topic, frame, ship);
   switch (topic) {
     case "water":

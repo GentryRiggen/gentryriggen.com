@@ -82,6 +82,17 @@ export interface FunnelRecipe {
   /** Steam and waste pipes up the forward face: athwart offset, radius. */
   pipes: { y: number; r: number }[];
   hasWhistle: boolean;
+  /**
+   * Wide bands of colour over the funnel's own (fractions of its height
+   * from its foot; the Fitzgerald's buff band). None by default.
+   */
+  stripes?: { from: number; to: number; color: number }[];
+  /**
+   * The fleet's mark on both sides: a five-pointed star with a letter
+   * ("C") on it, centred at `z` (a fraction of the height), `r` m from its
+   * middle to a point.
+   */
+  emblem?: { z: number; r: number; star: number; letter: number };
 }
 
 export interface MastRecipe {
@@ -93,6 +104,8 @@ export interface MastRecipe {
   r1: number;
   rake: number;
   crowsNest?: { z: number; r: number; h: number };
+  /** The spreader across the top for a wireless aerial (default true). */
+  yard?: boolean;
 }
 
 export type BoatKind = "lifeboat" | "cutter" | "collapsible";
@@ -102,7 +115,8 @@ export interface BoatRecipe {
   index: number;
   label: string;
   kind: BoatKind;
-  side: "port" | "starboard";
+  /** "centre": a raft on the centre line (the Fitzgerald's after raft). */
+  side: "port" | "starboard" | "centre";
   /** Keel centre when stowed. */
   x: number;
   y: number;
@@ -151,11 +165,21 @@ export interface Hatch {
   hw: number;
   z: number;
   h: number;
+  /** Painted this colour (default the Titanic's tarpaulins). */
+  color?: number;
+  /**
+   * A steel cover on a coaming (the Fitzgerald's): the coaming rises from
+   * the deck at side to `z`, `hx` and `hw` its half-sizes; both are cut by
+   * the tear like the deck. Without it the hatch is one box.
+   */
+  coaming?: { hx: number; hw: number; color: number };
 }
 
 export interface RailRun {
   /** The rail's foot along the deck edge, in order. */
   points: V3[];
+  /** The wires' colour (default the white rails). */
+  color?: number;
 }
 
 export type WireKind = "rig" | "aerial";
@@ -181,6 +205,11 @@ export interface NameBoard {
   side: "port" | "starboard" | "aft";
   width: number;
   height: number;
+  /**
+   * Rows of the board up its height (default 1: its two edges); more on a
+   * counter that curves in height, so the letters follow it.
+   */
+  rows?: number;
 }
 
 export interface ShipLayout {
@@ -220,6 +249,28 @@ export interface ShipPaint {
   mast?: number;
   /** The inside of the cowl ventilators' mouths (default near black). */
   ventLining?: number;
+  /** The port of registry on the counter (default "LIVERPOOL"). */
+  port?: string;
+  /**
+   * The names' lettering (default gilt serif): painted letters, one colour
+   * on the bows and another on the counter.
+   */
+  letters?: {
+    bow: number;
+    stern: number;
+    font: "serif" | "sans";
+    /** "heavy": big black-weight capitals, condensed to fit the board. */
+    weight?: "heavy";
+  };
+  /**
+   * The hull's colours where they are not the liners' black topsides over
+   * red antifouling: `topsides` to the sheer, `bottom` below the paint line,
+   * and how strongly the plating's seams show (default 1; a welded hull
+   * less).
+   */
+  hull?: { topsides: number; bottom: number; relief?: number };
+  /** Lifeboats: topsides and bottom (default white, varnished gunwale). */
+  boat?: { hull: number; bottom: number };
 }
 
 /**
@@ -245,7 +296,13 @@ export interface Block {
   roundFwd?: number;
   /** plating: the hull's own black plates; shade: a wall in a promenade. */
   wall: "white" | "plating" | "shade";
+  /** Paint the walls this colour instead (not for "plating"). */
+  wallColor?: number;
   roof: "pine" | "pitch" | "paint" | "skylight" | "none";
+  /** A painted roof's colour (default the grey canvas). */
+  roofColor?: number;
+  /** A painted roof rises this much higher on the centre line (camber). */
+  camber?: number;
   /** Draw the underside (a deck seen from below). */
   under?: boolean;
   /** Close the ends (default true). */
@@ -300,7 +357,15 @@ export interface ShipRecipe {
   };
   /** Shaft bossings: from inside the hull aft to the wing propellers. */
   bossings: { from: V3; to: V3; r0: number; r1: number }[];
-  anchors: { p: V3; side: "port" | "starboard" }[];
+  /**
+   * Anchors in their recesses; with `pocket` (w × h, m), a laker's square
+   * pocket centred on `p` with the anchor housed inside it.
+   */
+  anchors: {
+    p: V3;
+    side: "port" | "starboard";
+    pocket?: { w: number; h: number };
+  }[];
   names: NameBoard[];
   // Optional: a recipe without them is built as the Titanic.
   paint?: ShipPaint;
@@ -318,6 +383,11 @@ export interface ShipRecipe {
    * sheer); far above the hull where the line stops.
    */
   sheerLineZ?: (x: number) => number;
+  /**
+   * Bells (bronze), each hung with its mouth at `p`, `r` its mouth's
+   * radius, from a yoke on two posts standing at `footZ`.
+   */
+  bells?: { p: V3; r: number; footZ: number }[];
 }
 
 const TO_RAD = Math.PI / 180;

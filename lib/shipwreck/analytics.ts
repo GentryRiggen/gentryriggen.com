@@ -1,3 +1,4 @@
+import { SHIPWRECK_MAX_OPENED } from "@/lib/analytics/gameEvents";
 import { trackGame } from "@/lib/analytics/trackGame";
 import type { ShipId } from "./ships/types";
 import type { CameraId, OutcomeId } from "./types";
@@ -14,10 +15,14 @@ const clamp = (n: number, lo: number, hi: number) =>
 
 /**
  * A run began on `ship`; `opened` is how many openings the player made (0 to
- * 16, the most any ship offers).
+ * 25, the most any ship offers).
  */
 export function trackStart(mode: RunMode, opened: number, ship: ShipId): void {
-  trackGame("shipwreck_start", { mode, opened: clamp(opened, 0, 16), ship });
+  trackGame("shipwreck_start", {
+    mode,
+    opened: clamp(opened, 0, SHIPWRECK_MAX_OPENED),
+    ship,
+  });
 }
 
 /**

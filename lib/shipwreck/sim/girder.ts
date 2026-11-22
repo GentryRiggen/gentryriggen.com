@@ -1,10 +1,5 @@
 import type { Compartment } from "../ships/types";
-import {
-  ENGINE_CASING_FACTOR,
-  GIRDER_END_FRACTION,
-  GRAV,
-  RHO,
-} from "./constants";
+import { ENGINE_CASING_FACTOR, GIRDER_END_FRACTION, GRAV } from "./constants";
 import type { Body } from "./body";
 import type { MassModel } from "./mass";
 
@@ -113,8 +108,8 @@ export function girder(
         2;
       if (dx <= 0) continue;
       const a = b.an - b.alpha * (s.xs[k] - b.gx);
-      const buoy = RHO * GRAV * c * cell.seaArea[k];
-      const wm = RHO * cell.waterArea[k];
+      const buoy = b.rho * GRAV * c * cell.seaArea[k];
+      const wm = b.rho * cell.waterArea[k];
       deposit(q, model, s.xs[k], (buoy - wm * (GRAV * c + a)) * dx);
     }
   }

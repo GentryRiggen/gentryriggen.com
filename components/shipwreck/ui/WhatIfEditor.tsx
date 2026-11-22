@@ -2,27 +2,41 @@
 
 import { useMemo, useState } from "react";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
-import type { ShipWhatIf } from "@/lib/shipwreck/save";
+import {
+  WHAT_IF_STORMS,
+  type ShipWhatIf,
+  type WhatIfStorm,
+} from "@/lib/shipwreck/save";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
-import type { ShipSpec } from "@/lib/shipwreck/ships/types";
-import { whatIfOpenings, whatIfSpots } from "@/lib/shipwreck/sim/run";
+import {
+  type Opening,
+  type ShipSpec,
+  isDeckOpening,
+} from "@/lib/shipwreck/ships/types";
+import {
+  whatIfOpenings,
+  whatIfRealIds,
+  whatIfSpots,
+} from "@/lib/shipwreck/sim/run";
+import {
+  STORM_LABEL,
+  spotAria,
+  spotLabel,
+  stormChoiceText,
+  stormSpotGroups,
+} from "@/lib/shipwreck/whatIf";
 import HullDiagram from "./HullDiagram";
 import Icon from "./Icon";
 import { FOCUS, PANEL, PRIMARY, ROUND, SECONDARY } from "./styles";
 
 /**
- * The What if? ids that give a ship's real damage: for an iceberg ship the
- * compartments it opened, for a torpedo ship the one spot where the real
- * hit lands (the hit moved there is the real afternoon).
+ * The What if? ids that give a ship's real damage (`whatIfRealIds`): for
+ * an iceberg ship the compartments it opened, for a torpedo ship the one
+ * spot where the real hit lands, for a storm ship every hatch, her vents
+ * and her graze on the shoal.
  */
 export function realWhatIfIds(spec: ShipSpec): string[] {
-  if (spec.cause !== "torpedo")
-    return [...new Set(spec.realNight.map((o) => o.compartmentId))];
-  const real = JSON.stringify(spec.realNight);
-  const spot = whatIfSpots(spec).find(
-    (id) => JSON.stringify(whatIfOpenings(spec, [id])) === real
-  );
-  return spot ? [spot] : [];
+  return whatIfRealIds(spec);
 }
 
 /** The compartments the iceberg opened on the real night. */
@@ -32,20 +46,68 @@ export interface WhatIfChoice {
   ids: string[];
   /** Torpedo ships only. */
   portholesOpen?: boolean;
+  /** Storm ships only. */
+  storm?: WhatIfStorm;
 }
 
 interface WhatIfEditorProps {
   spec: ShipSpec;
-  /** The ship's last What if, remembered in the save. */
+  /** The ship's last What if?, remembered in the save. */
   initial: ShipWhatIf;
   onBack: () => void;
   onGo: (choice: WhatIfChoice) => void;
 }
 
+/** The words that differ by what sank her. */
+function wordsOf(spec: ShipSpec) {
+  switch (spec.cause) {
+    case "storm":
+      return {
+        lead: "Tap what lets the lake in, and choose the storm. Will she make it?",
+        group: "What lets the lake in",
+        diagram: `${spec.name}'s side, bow to the right, and her deck from above. Tap a hatch cover, her broken vents or a shoal scrape to switch it on or off.`,
+        note: "Stern ← · → Bow. Red: hatch covers that leak (the rest are sealed tight), her two broken vents and the split by her railing (one spot), and scrapes on Six Fathom Shoal. Experts still argue which of them sank her: switch each one off and see.",
+        real: "Like the real storm",
+        realAria:
+          "Like the real storm: every hatch cover leaking, the broken vents and the shoal scrapes",
+        clear: "Clear: no damage, every hatch sealed tight",
+        icon: "storm" as const,
+        go: "Go: start the storm with these choices",
+      };
+    case "torpedo":
+      return {
+        lead: "Tap where torpedoes hit. Will she float?",
+        group: "Where torpedoes hit",
+        diagram: `${spec.name}'s side, bow to the right, and her plan from above. Tap where torpedoes hit.`,
+        note: "Stern ← · → Bow. Torpedoes come from starboard (the bottom of the plan). White lines: watertight walls and her side coal bunkers.",
+        real: "Like the real afternoon",
+        realAria:
+          "Like the real afternoon: the torpedo beside the front boiler room, portholes open",
+        clear: "Clear: no torpedoes",
+        icon: "torpedo" as const,
+        go: "Go: start the afternoon with these torpedoes",
+      };
+    default:
+      return {
+        lead: "Tap the hull to make holes. Will she float?",
+        group: "Compartments",
+        diagram: `${spec.name}'s side, bow to the right. Tap a compartment to open or close it.`,
+        note: "Stern ← · → Bow. The white lines are the watertight walls.",
+        real: "Like the real night",
+        realAria: "Like the real night: six compartments open",
+        clear: "Clear: no holes",
+        icon: "iceberg" as const,
+        go: "Go: start the night with these holes",
+      };
+  }
+}
+
 /**
- * Tap the hull's compartments to open them, then Go. For a torpedo ship,
- * tap where the one torpedo hits (along her starboard side), and choose
- * whether her portholes were open.
+ * Tap any number of spots, then Go. The same picker for every ship: an
+ * iceberg ship's compartments, a torpedo ship's hits along her starboard
+ * side (with her portholes open or shut), a storm ship's hatch covers,
+ * broken vents and shoal scrapes (with the storm as it was, calmer or
+ * worse).
  */
 export default function WhatIfEditor({
   spec,
@@ -54,34 +116,77 @@ export default function WhatIfEditor({
   onGo,
 }: WhatIfEditorProps) {
   const torpedo = spec.cause === "torpedo";
+  const storm = spec.cause === "storm";
+  const words = wordsOf(spec);
   const spots = useMemo(() => whatIfSpots(spec), [spec]);
   const real = useMemo(() => realWhatIfIds(spec), [spec]);
   const [ids, setIds] = useState<string[]>(() => {
     const known = initial.ids.filter((id) => spots.includes(id));
-    if (torpedo) return known.length > 0 ? known.slice(0, 1) : real;
-    return known.length > 0 ? known : real;
+    // A storm ship's saved What if may be no damage at all.
+    const saved = known.length > 0 || (storm && initial.storm !== undefined);
+    return saved ? known : real;
   });
   const [portholesOpen, setPortholesOpen] = useState(
     initial.portholesOpen ?? true
   );
+  const [sea, setSea] = useState<WhatIfStorm>(initial.storm ?? "real");
   const selected = useMemo(() => new Set(ids), [ids]);
   const openings = useMemo(() => whatIfOpenings(spec, ids), [spec, ids]);
   const toggle = (id: string) => {
     if (!spots.includes(id)) return;
-    // One torpedo: tapping a spot moves the hit there.
-    if (torpedo) setIds([id]);
-    else
-      setIds((cur) =>
-        cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
-      );
+    setIds((cur) =>
+      cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]
+    );
   };
   // Bow first: the order a player reads the ship from the hit side.
-  const comps = spec.compartments.filter((c) => spots.includes(c.id)).reverse();
-  const hit = spec.compartments.find((c) => c.id === ids[0]);
+  const chips = storm ? spots : [...spots].reverse();
+  const groups = storm ? stormSpotGroups(spec) : null;
   const isReal =
     ids.length === real.length &&
     ids.every((id) => real.includes(id)) &&
-    (!torpedo || portholesOpen);
+    (!torpedo || portholesOpen) &&
+    (!storm || sea === "real");
+  // No damage at all is a storm ship's question too (every cover tight).
+  const canGo = storm || ids.length > 0;
+
+  const chip = (id: string, short?: string) => {
+    const on = selected.has(id);
+    return (
+      <button
+        key={id}
+        type="button"
+        role="checkbox"
+        aria-checked={on}
+        aria-label={spotAria(spec, id, on)}
+        data-testid={`shipwreck-chip-${id}`}
+        onClick={() => toggle(id)}
+        className={`min-h-11 touch-manipulation rounded-full border px-3 text-sm font-semibold ${
+          short ? "min-w-11 px-2" : ""
+        } ${
+          on
+            ? "border-red-300 bg-red-500/80 text-white"
+            : "border-white/15 bg-slate-900/80 text-slate-200"
+        } ${FOCUS}`}
+      >
+        {short ?? spotLabel(spec, id)}
+      </button>
+    );
+  };
+
+  let count: string;
+  if (storm) count = stormChoiceText(spec, ids);
+  else if (torpedo)
+    count =
+      ids.length === 0
+        ? "Choose where they hit"
+        : ids.length === 1
+          ? `Hits: ${spotLabel(spec, ids[0])}`
+          : `${ids.length} torpedoes`;
+  else
+    count =
+      ids.length === 0
+        ? "No holes yet"
+        : `${ids.length} ${ids.length === 1 ? "hole" : "holes"}`;
 
   return (
     <div
@@ -102,11 +207,7 @@ export default function WhatIfEditor({
           <h1 className="text-3xl font-semibold text-white sm:text-4xl">
             What if?
           </h1>
-          <p className="text-base text-slate-300 sm:text-lg">
-            {torpedo
-              ? "Tap where the torpedo hits. Will she float?"
-              : "Tap the hull to make holes. Will she float?"}
-          </p>
+          <p className="text-base text-slate-300 sm:text-lg">{words.lead}</p>
         </div>
       </div>
 
@@ -118,57 +219,45 @@ export default function WhatIfEditor({
         <div className={`${PANEL} p-2 sm:p-4`}>
           <HullDiagram
             spec={spec}
-            openings={openings}
+            openings={openings.filter((o): o is Opening => !isDeckOpening(o))}
             selected={selected}
             onToggle={toggle}
-            title={
-              torpedo
-                ? `${spec.name}'s side, bow to the right, and her plan from above. Tap where the torpedo hits.`
-                : `${spec.name}'s side, bow to the right. Tap a compartment to open or close it.`
-            }
+            title={words.diagram}
             className="block h-auto w-full"
           />
           <p className="px-1 pt-1 text-xs text-slate-400 sm:text-sm">
-            {torpedo
-              ? "Stern ← · → Bow. The torpedo comes from starboard (the bottom of the plan). White lines: watertight walls and her side coal bunkers."
-              : "Stern ← · → Bow. The white lines are the watertight walls."}
+            {words.note}
           </p>
         </div>
 
         <div
-          className="flex flex-wrap justify-center gap-1.5"
-          role={torpedo ? "radiogroup" : "group"}
-          aria-label={torpedo ? "Where the torpedo hits" : "Compartments"}
+          className={
+            storm
+              ? "flex flex-col items-center gap-2"
+              : "flex flex-wrap justify-center gap-1.5"
+          }
+          role="group"
+          aria-label={words.group}
         >
-          {comps.map((c) => {
-            const on = selected.has(c.id);
-            return (
-              <button
-                key={c.id}
-                type="button"
-                role={torpedo ? "radio" : undefined}
-                aria-checked={torpedo ? on : undefined}
-                aria-pressed={torpedo ? undefined : on}
-                aria-label={
-                  torpedo
-                    ? `${c.label}${on ? ": the torpedo hits here" : ""}`
-                    : `${c.label}: ${on ? "open" : "closed"}`
-                }
-                data-testid={`shipwreck-chip-${c.id}`}
-                onClick={() => toggle(c.id)}
-                className={`min-h-11 touch-manipulation rounded-full border px-3 text-sm font-semibold ${
-                  on
-                    ? "border-red-300 bg-red-500/80 text-white"
-                    : "border-white/15 bg-slate-900/80 text-slate-200"
-                } ${FOCUS}`}
-              >
-                {c.label}
-              </button>
-            );
-          })}
+          {groups ? (
+            <>
+              <div className="flex flex-wrap items-center justify-center gap-1">
+                <span className="mr-1 text-sm font-semibold text-slate-300">
+                  Hatch covers that leak
+                </span>
+                {groups.hatches.map((id) => chip(id, id.slice(6)))}
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {groups.vents.map((id) => chip(id))}
+                {groups.shoal.map((id) => chip(id))}
+              </div>
+            </>
+          ) : (
+            chips.map((id) => chip(id))
+          )}
         </div>
 
-        {/* A torpedo ship's choices and Go share one row (her plan is taller). */}
+        {/* The choices and Go share one row where the plan is taller. */}
         <div
           className={
             torpedo
@@ -183,25 +272,49 @@ export default function WhatIfEditor({
                 : "flex flex-wrap items-center justify-center gap-3"
             }
           >
+            {storm && (
+              <div
+                role="radiogroup"
+                aria-label="The storm"
+                data-testid="shipwreck-storm"
+                className="flex items-center gap-1.5"
+              >
+                <Icon name="storm" className="size-6 text-slate-300" />
+                {WHAT_IF_STORMS.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    role="radio"
+                    aria-checked={sea === v}
+                    data-testid={`shipwreck-storm-${v}`}
+                    onClick={() => setSea(v)}
+                    className={`min-h-14 touch-manipulation rounded-full border px-4 text-base font-semibold ${
+                      sea === v
+                        ? "border-sky-300 bg-sky-500 text-white"
+                        : "border-white/15 bg-slate-900/80 text-slate-200"
+                    } ${FOCUS}`}
+                  >
+                    {STORM_LABEL[v]}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               data-testid="shipwreck-preset-real"
-              aria-label={
-                torpedo
-                  ? "Like the real afternoon: the torpedo beside the front boiler room, portholes open"
-                  : "Like the real night: six compartments open"
-              }
-              aria-pressed={torpedo ? isReal : undefined}
+              aria-label={words.realAria}
+              aria-pressed={isReal}
               onClick={() => {
                 setIds([...real]);
                 setPortholesOpen(true);
+                setSea("real");
               }}
               className={`${SECONDARY} min-h-14 px-5 text-base sm:text-lg`}
             >
-              <Icon name={torpedo ? "torpedo" : "iceberg"} className="size-6" />
-              {torpedo ? "Like the real afternoon" : "Like the real night"}
+              <Icon name={words.icon} className="size-6" />
+              {words.real}
             </button>
-            {torpedo ? (
+            {torpedo && (
               <button
                 type="button"
                 data-testid="shipwreck-portholes"
@@ -217,18 +330,17 @@ export default function WhatIfEditor({
                 <Icon name="porthole" className="size-6" />
                 {portholesOpen ? "Portholes open" : "Portholes shut"}
               </button>
-            ) : (
-              <button
-                type="button"
-                data-testid="shipwreck-preset-clear"
-                aria-label="Clear: no holes"
-                onClick={() => setIds([])}
-                className={`${SECONDARY} min-h-14 px-5 text-base sm:text-lg`}
-              >
-                <Icon name="close" className="size-6" />
-                Clear
-              </button>
             )}
+            <button
+              type="button"
+              data-testid="shipwreck-preset-clear"
+              aria-label={words.clear}
+              onClick={() => setIds([])}
+              className={`${SECONDARY} min-h-14 px-5 text-base sm:text-lg`}
+            >
+              <Icon name="close" className="size-6" />
+              Clear
+            </button>
           </div>
 
           <div className="flex items-center justify-center gap-4">
@@ -236,24 +348,22 @@ export default function WhatIfEditor({
               data-testid="shipwreck-hole-count"
               className="text-xl font-semibold text-white"
             >
-              {torpedo
-                ? hit
-                  ? `Hits: ${hit.label}`
-                  : "Choose where it hits"
-                : ids.length === 0
-                  ? "No holes yet"
-                  : `${ids.length} ${ids.length === 1 ? "hole" : "holes"}`}
+              {count}
             </p>
             <button
               type="button"
               data-testid="shipwreck-go"
-              aria-label={
-                torpedo
-                  ? "Go: start the afternoon with the torpedo here"
-                  : "Go: start the night with these holes"
+              aria-label={words.go}
+              disabled={!canGo}
+              onClick={() =>
+                onGo(
+                  torpedo
+                    ? { ids, portholesOpen }
+                    : storm
+                      ? { ids, storm: sea }
+                      : { ids }
+                )
               }
-              disabled={ids.length === 0}
-              onClick={() => onGo(torpedo ? { ids, portholesOpen } : { ids })}
               className={`${PRIMARY} min-w-36 disabled:cursor-not-allowed disabled:opacity-40`}
             >
               Go

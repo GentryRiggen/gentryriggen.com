@@ -2,7 +2,11 @@ import { trackCamera, trackEnd, trackStart } from "../analytics";
 import { CAMERA_IDS } from "../types";
 import { SHIP_IDS, SHIPS } from "../ships";
 import { whatIfSpots } from "../sim/run";
-import { GAME_EVENTS, isValidGameProps } from "@/lib/analytics/gameEvents";
+import {
+  GAME_EVENTS,
+  isValidGameProps,
+  SHIPWRECK_MAX_OPENED,
+} from "@/lib/analytics/gameEvents";
 
 const trackGame = jest.fn();
 jest.mock("@/lib/analytics/trackGame", () => ({
@@ -12,12 +16,12 @@ jest.mock("@/lib/analytics/trackGame", () => ({
 beforeEach(() => trackGame.mockClear());
 
 describe("shipwreck analytics", () => {
-  it("sends a start with the openings clamped to 0..16", () => {
+  it("sends a start with the openings clamped to 0..25", () => {
     trackStart("whatif", 40, "titanic");
     trackStart("real", -3, "lusitania");
     expect(trackGame).toHaveBeenNthCalledWith(1, "shipwreck_start", {
       mode: "whatif",
-      opened: 16,
+      opened: 25,
       ship: "titanic",
     });
     expect(trackGame).toHaveBeenNthCalledWith(2, "shipwreck_start", {
@@ -108,9 +112,32 @@ describe("shipwreck analytics", () => {
     ).toBe(false);
   });
 
-  it("never needs more than 16 openings: the most any ship's What if? offers", () => {
+  it("never needs more openings than the schema allows", () => {
     for (const id of SHIP_IDS) {
-      expect(whatIfSpots(SHIPS[id]).length).toBeLessThanOrEqual(16);
+      expect(whatIfSpots(SHIPS[id]).length).toBeLessThanOrEqual(
+        SHIPWRECK_MAX_OPENED
+      );
     }
+    const most = Math.max(
+      ...SHIP_IDS.map((id) => whatIfSpots(SHIPS[id]).length)
+    );
+    expect(SHIPWRECK_MAX_OPENED).toBe(most);
+    expect(GAME_EVENTS.shipwreck_start.props.opened.max).toBe(most);
+  });
+
+  it("sends the Fitzgerald's runs", () => {
+    trackStart("whatif", 25, "fitzgerald");
+    trackEnd("real", "sank", 20, "fitzgerald");
+    expect(trackGame).toHaveBeenNthCalledWith(1, "shipwreck_start", {
+      mode: "whatif",
+      opened: 25,
+      ship: "fitzgerald",
+    });
+    expect(trackGame).toHaveBeenNthCalledWith(2, "shipwreck_end", {
+      mode: "real",
+      outcome: "sank",
+      minutes: 20,
+      ship: "fitzgerald",
+    });
   });
 });

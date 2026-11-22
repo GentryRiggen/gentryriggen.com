@@ -15,6 +15,13 @@ export const FAST_STEP_S = 0.1;
 export const SLOW_FRAME_S = 1;
 export const FAST_FRAME_S = 0.1;
 
+/**
+ * What-if storms (`SimOptions.storm`): the field's heights scaled. Calmer
+ * 0.6 (Hs 7.6 → 4.6 m, a hard autumn gale the lakers sailed through);
+ * worse 1.25 (9.5 m, about the highest waves hindcast for Superior).
+ */
+export const STORM_SCALE = { real: 1, calmer: 0.6, worse: 1.25 } as const;
+
 /** 6:00 AM: a ship still afloat then has "floated". */
 export const END_T = 22800;
 
@@ -60,6 +67,12 @@ export const CROSS_DOOR_Z_M = 1.5;
  */
 export const PORTHOLE_PIECE_M = 5;
 export const PORTHOLE_HEIGHT_M = 0.4;
+/**
+ * Deck openings sample the storm's wave surface this often through a step
+ * (s): a 1 s step sees a wave crest (a few seconds over a hatch) at only a
+ * point or two; four samples a step follow its rise and fall.
+ */
+export const DECK_SAMPLE_S = 0.25;
 
 // --- Body -----------------------------------------------------------------
 
@@ -88,6 +101,14 @@ export const PUMP_M3S = 0.45;
 export const PUMP_DEPTH_M = 3;
 /** A slow drift to port, m/s, while she floats. */
 export const DRIFT_MPS = 0.02;
+/**
+ * Steady headway (no `halfLifeS`): once she goes under, her way halves
+ * every this many real seconds. A flooded hull of about 40,000 t with
+ * its added mass, driven by nothing, against the drag of its whole
+ * section (about 250 m² at Cd 1 in fresh water: 6 MN at 7 m/s) halves
+ * its speed in about 45 s.
+ */
+export const HEADWAY_LOST_HALF_LIFE_S = 45;
 
 // --- Lightship distribution (fractions of the displacement) ---------------
 
@@ -150,6 +171,14 @@ export const FLOOR_SINK_M = 1;
 export const FLOOR_DAMP_S = 3;
 export const FLOOR_FRICTION = 0.5;
 export const FLOOR_SLIP_MS = 0.05;
+/**
+ * `wreckParts.stern.capsize`: a stern part rolls over as it falls at this
+ * rate (degrees per real second), a rule like the rest on the floor. 10°/s
+ * turns it over in about 18 s, about the time it takes to fall 160 m at
+ * its 10 m/s terminal speed, so it lands about upside down; if it lands
+ * sooner it finishes the roll on the floor, re-seated so it stays on it.
+ */
+export const STERN_CAPSIZE_DEG_S = 10;
 /** The way down plays this many times faster once both parts are under. */
 export const DESCENT_TIME_SCALE = 6;
 

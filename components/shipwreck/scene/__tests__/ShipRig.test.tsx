@@ -1,10 +1,12 @@
 import { act, render } from "@testing-library/react";
 import { Group } from "three";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
+import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import type { SimRunner } from "@/lib/shipwreck/sim/run";
-import { ShipOnStage } from "../ShipRig";
+import { ShipOnStage, deckLightsOf } from "../ShipRig";
+import { MAX_LAMPS } from "../runtime";
 import { createSceneRuntime } from "../runtime";
 
 jest.mock("@react-three/fiber", () => ({
@@ -101,5 +103,58 @@ describe("the ship on the stage", () => {
     expect(runtime.whole?.root).toBe(mockBuilt[2].handles.root);
     // No halves were built for a run that never broke.
     expect(mockBuilt.every((m) => m.breakX === null)).toBe(true);
+  });
+
+  it("disposes each old model going Fitzgerald → Lusitania → Titanic", () => {
+    const store = createPlaybackStore({ createRunner: () => idle });
+    const runtime = createSceneRuntime();
+    act(() => store.getState().setShip("fitzgerald"));
+    act(() => store.getState().start(fitzgerald, []));
+    render(<ShipOnStage store={store} runtime={runtime} />);
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual(["fitzgerald"]);
+    const fitz = mockBuilt[0];
+    expect(runtime.whole?.root).toBe(fitz.handles.root);
+
+    act(() => store.getState().setShip("lusitania"));
+    act(() => store.getState().start(lusitania, []));
+    act(() => jest.runAllTimers());
+    expect(fitz.dispose).toHaveBeenCalledTimes(1);
+    const lus = mockBuilt[1];
+    expect(lus.ship).toBe("lusitania");
+    expect(lus.dispose).not.toHaveBeenCalled();
+
+    act(() => store.getState().setShip("titanic"));
+    act(() => store.getState().start(titanic, []));
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual([
+      "fitzgerald",
+      "lusitania",
+      "titanic",
+    ]);
+    expect(lus.dispose).toHaveBeenCalledTimes(1);
+    expect(fitz.dispose).toHaveBeenCalledTimes(1);
+    expect(mockBuilt[2].dispose).not.toHaveBeenCalled();
+    expect(runtime.whole?.root).toBe(mockBuilt[2].handles.root);
+  });
+});
+
+describe("her deck lights along the hatches (the storm's night)", () => {
+  it("stand over her open deck, both sides, for the sea and spray only", () => {
+    const lights = deckLightsOf(fitzgerald);
+    expect(lights.length).toBeGreaterThanOrEqual(4);
+    expect(lights.length).toBeLessThanOrEqual(MAX_LAMPS - 2);
+    const deck = fitzgerald.openDeck!;
+    for (const [x, y, z] of lights) {
+      expect(x).toBeGreaterThan(deck.fromX);
+      expect(x).toBeLessThan(deck.toX);
+      expect(Math.abs(y)).toBeLessThan(fitzgerald.beam / 2);
+      expect(z).toBeGreaterThan(fitzgerald.sheerZ(x));
+    }
+    expect(new Set(lights.map((l) => Math.sign(l[1])))).toEqual(
+      new Set([1, -1])
+    );
+    expect(deckLightsOf(titanic)).toEqual([]);
+    expect(deckLightsOf(lusitania)).toEqual([]);
   });
 });

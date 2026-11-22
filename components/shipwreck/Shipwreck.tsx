@@ -16,15 +16,20 @@ import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
 import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
 import { trackEnd, trackStart, type RunMode } from "@/lib/shipwreck/analytics";
-import { playback } from "@/lib/shipwreck/playback";
+import { playback, startSpeed } from "@/lib/shipwreck/playback";
 import { shipOf, whatIfOf, withWhatIf } from "@/lib/shipwreck/save";
 import { SHIP_IDS, getShip } from "@/lib/shipwreck/ships";
 import type { ShipId } from "@/lib/shipwreck/ships/types";
-import { whatIfOpenings } from "@/lib/shipwreck/sim/run";
+import {
+  torpedoHitXs,
+  whatIfOpenings,
+  whatIfRealIds,
+} from "@/lib/shipwreck/sim/run";
 import {
   endWords,
   historyNote,
   outcomeOf,
+  showsNewEnding,
   storyEndT,
 } from "@/lib/shipwreck/story";
 import {
@@ -77,11 +82,14 @@ type V3 = [number, number, number];
 /**
  * Each wreck from above (ship frame): the Titanic's bow from its port side;
  * the Lusitania from over her port side, which faces up as she lies on her
- * starboard side (and still clear of the floor if she lands upright).
+ * starboard side (and still clear of the floor if she lands upright); the
+ * Fitzgerald's upright bow, deep in the clay, from over its starboard side
+ * and aft, toward the broken middle and her upturned stern beyond.
  */
 const WRECK_VIEW: Record<ShipId, { target: V3; cam: V3 }> = {
   titanic: { target: [60, 0, 12], cam: [-20, -120, 50] },
   lusitania: { target: [40, 0, 10], cam: [-40, 60, 45] },
+  fitzgerald: { target: [60, 0, 10], cam: [130, -95, 48] },
 };
 
 interface Run {
@@ -96,6 +104,13 @@ interface Run {
 }
 
 type Screen = "title" | "editor" | "night";
+
+/**
+ * Behind the title and the editor her run is only her opening moment: a
+ * few seconds of sim, not her whole night (a storm ship's would run to
+ * 8:25 PM).
+ */
+export const PREVIEW_END_S = 5;
 
 export default function Shipwreck() {
   const { save, update, persist } = useShipwreckSave();
@@ -147,8 +162,14 @@ export default function Shipwreck() {
     if (!isGame || screen === "night") return;
     const s = playback.getState();
     const id = shipOf(currentShipwreckSave());
-    if (s.ship !== id || s.track === null || s.openings.length > 0 || s.t > 0) {
-      s.start(getShip(id), []);
+    if (
+      s.ship !== id ||
+      s.track === null ||
+      !s.preview ||
+      s.openings.length > 0 ||
+      s.t > 0
+    ) {
+      s.start(getShip(id), [], { endT: PREVIEW_END_S, preview: true });
       s.setXray(false);
       s.flyToPlace(null, false);
     }
@@ -180,11 +201,19 @@ export default function Shipwreck() {
           ? runSpec.realNight
           : whatIfOpenings(runSpec, choice.ids);
       const portholesOpen = mode === "real" || choice.portholesOpen !== false;
-      s.start(runSpec, openings, { portholesOpen });
+      const storm = mode === "real" ? "real" : (choice.storm ?? "real");
+      const hits = torpedoHitXs(
+        runSpec,
+        mode === "real" ? whatIfRealIds(runSpec) : choice.ids
+      );
+      s.start(runSpec, openings, { portholesOpen, storm, hits });
       s.flyToPlace(null, false);
       s.setXray(false);
       s.setCamera("cinematic");
-      s.setSpeed(saveRef.current.settings.speed, -Infinity);
+      s.setSpeed(
+        startSpeed(runSpec, saveRef.current.settings.speed),
+        -Infinity
+      );
       s.play();
       const holes = new Set(openings.map((o) => o.compartmentId)).size;
       trackStart(mode, mode === "real" ? 0 : choice.ids.length, id);
@@ -221,8 +250,11 @@ export default function Shipwreck() {
     const sank = tr.events.find((e) => e.kind === "stern-under");
     trackEnd(run.mode, outcome, (sank?.realT ?? end) / 60, run.ship);
     const isNew = !saveRef.current.seen.endings.includes(outcome);
-    setNewEnding(isNew);
-    if (isNew)
+    // Seen only when its badge shows: her real run has none (R16), so it
+    // must not quietly use up an ending she has not shown yet.
+    const shows = showsNewEnding(run.ship, run.mode, isNew);
+    setNewEnding(shows);
+    if (shows)
       update((v) => ({
         ...v,
         seen: { ...v.seen, endings: [...v.seen.endings, outcome] },
@@ -306,8 +338,14 @@ export default function Shipwreck() {
         ship: () => shipRef.current,
         startReal: () =>
           startRun("real", { ids: realWhatIfIds(getShip(shipRef.current)) }),
-        startWhatIf: (ids, portholesOpen) =>
-          startRun("whatif", { ids, portholesOpen }),
+        startWhatIf: (ids, portholesOpen, storm) =>
+          startRun("whatif", {
+            ids,
+            portholesOpen,
+            ...(storm === "real" || storm === "calmer" || storm === "worse"
+              ? { storm }
+              : {}),
+          }),
         getOutcome: () => {
           const s = playback.getState();
           return s.done && s.track ? outcomeOf(s.track) : null;
@@ -349,6 +387,8 @@ export default function Shipwreck() {
   const words = endTrack
     ? endWords(endTrack, runSpec, run!.holes, {
         portholesOpen: run!.choice.portholesOpen,
+        hits: playback.getState().hits.length,
+        storm: run!.mode === "real" ? "real" : run!.choice.storm,
       })
     : null;
 

@@ -30,22 +30,24 @@ export default function Captions({ store }: CaptionsProps) {
   const [text, setText] = useState<string | null>(() => {
     const s = store.getState();
     const ship = getShip(s.ship);
+    const hits = Math.max(1, s.hits.length);
     if (s.t < 0) {
       // The torpedo's run-in (the collision's caption comes at the hit).
-      const run = runInCaption(ship);
+      const run = runInCaption(ship, hits);
       return run ? `${clockText(s.t, ship.clockStartS)} — ${run}` : null;
     }
     return s.t < CAPTION_RECENT_S
-      ? captionFor({ kind: "collision", t: 0, realT: 0 }, ship)
+      ? captionFor({ kind: "collision", t: 0, realT: 0 }, ship, { hits })
       : null;
   });
 
   useEffect(() => {
     return store.subscribe((s, prev) => {
       // Back before the hit (a new run, a replay, a scrub): the run-in.
+      const hits = Math.max(1, s.hits.length);
       if (s.t < 0 && !(prev.t < 0)) {
         const ship = getShip(s.ship);
-        const run = runInCaption(ship);
+        const run = runInCaption(ship, hits);
         if (run) setText(`${clockText(s.t, ship.clockStartS)} — ${run}`);
         return;
       }
@@ -54,11 +56,10 @@ export default function Captions({ store }: CaptionsProps) {
       for (let i = evs.length - 1; i >= 0; i -= 1) {
         // After a long seek, only what just happened.
         if (s.t - evs[i].t > CAPTION_RECENT_S) break;
-        const c = captionFor(
-          evs[i],
-          getShip(s.ship),
-          captionContext(s.track, evs[i].t)
-        );
+        const c = captionFor(evs[i], getShip(s.ship), {
+          ...captionContext(s.track, evs[i].t, evs[i]),
+          hits,
+        });
         if (c) {
           setText(c);
           return;

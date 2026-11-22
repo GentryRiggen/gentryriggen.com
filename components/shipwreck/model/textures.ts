@@ -205,15 +205,21 @@ function plankMap(): Texture {
  * The name: e.g. "TITANIC" for the bows (top half), "TITANIC / LIVERPOOL"
  * for the counter (bottom half), in gilt letters.
  */
-function nameMap(name: string): Texture {
+function nameMap(name: string, style?: NameStyle): Texture {
   const W = 1024;
   const H = 512;
   const [c, ctx] = canvas(W, H);
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = "#e2bf62";
+  ctx.fillStyle = style ? hexCss(style.bow) : "#e2bf62";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  const font = (px: number) => `bold ${px}px Georgia, "Times New Roman", serif`;
+  const heavy = style?.weight === "heavy";
+  const font = (px: number) =>
+    heavy
+      ? `900 ${px}px "Arial Black", "Helvetica Neue", Arial, Helvetica, sans-serif`
+      : style?.font === "sans"
+        ? `bold ${px}px "Helvetica Neue", Arial, Helvetica, sans-serif`
+        : `bold ${px}px Georgia, "Times New Roman", serif`;
   const spaced = (
     text: string,
     x: number,
@@ -240,15 +246,70 @@ function nameMap(name: string): Texture {
       at += widths[i] + track;
     });
   };
-  spaced(name, W / 2, H * 0.25, 170, 34);
-  spaced(name, W / 2, H * 0.62, 104, 30);
-  spaced("LIVERPOOL", W / 2, H * 0.86, 86, 22);
+  /**
+   * Heavy painted capitals at full height, squeezed across to fit: the
+   * boards are far wider than their half of the texture, so the letters
+   * come out at their own proportions on the hull.
+   */
+  const condensed = (
+    text: string,
+    x: number,
+    y: number,
+    px: number,
+    track: number
+  ) => {
+    ctx.font = font(px);
+    const widths = Array.from(text).map((ch) => ctx.measureText(ch).width);
+    const total = widths.reduce((a, b) => a + b, 0) + track * (text.length - 1);
+    const k = Math.min(1, (W * 0.96) / total);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(k, 1);
+    let at = -total / 2;
+    Array.from(text).forEach((ch, i) => {
+      ctx.fillText(ch, at + widths[i] / 2, 0);
+      at += widths[i] + track;
+    });
+    ctx.restore();
+  };
+  if (heavy && style) {
+    condensed(name, W / 2, H * 0.25, 220, 16);
+    ctx.fillStyle = hexCss(style.stern);
+    condensed(name, W / 2, H * 0.6, 118, 12);
+    condensed(style.port, W / 2, H * 0.85, 84, 10);
+  } else {
+    spaced(name, W / 2, H * 0.25, 170, 34);
+    if (style) ctx.fillStyle = hexCss(style.stern);
+    spaced(name, W / 2, H * 0.62, 104, 30);
+    spaced(style?.port ?? "LIVERPOOL", W / 2, H * 0.86, 86, 22);
+  }
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;
   t.minFilter = LinearFilter;
   t.generateMipmaps = false;
   t.anisotropy = 4;
   return t;
+}
+
+/**
+ * Painted lettering, where it is not gilt serif: the bows' colour, the
+ * counter's, the port under the name there and the face.
+ */
+export interface NameStyle {
+  bow: number;
+  stern: number;
+  port: string;
+  font: "serif" | "sans";
+  weight?: "heavy";
+}
+
+function hexCss(hex: number): string {
+  return `#${hex.toString(16).padStart(6, "0")}`;
+}
+
+/** The cache key of a name board. */
+function boardKey(name: string, style?: NameStyle): string {
+  return style ? `${name}|${JSON.stringify(style)}` : name;
 }
 
 type Shared = Omit<ShipTextures, "names">;
@@ -260,7 +321,11 @@ const nameCache = new Map<string, { texture: Texture; users: number }>();
  * The shared textures (made on first use, freed when the last user goes),
  * with the name boards of the ship `name`.
  */
-export function acquireShipTextures(name = "TITANIC"): ShipTextures {
+export function acquireShipTextures(
+  name = "TITANIC",
+  style?: NameStyle
+): ShipTextures {
+  const key = boardKey(name, style);
   users += 1;
   if (!cache) {
     const plateNormal = plateNormalMap();
@@ -277,10 +342,10 @@ export function acquireShipTextures(name = "TITANIC"): ShipTextures {
       },
     };
   }
-  let names = nameCache.get(name);
+  let names = nameCache.get(key);
   if (!names) {
-    names = { texture: nameMap(name), users: 0 };
-    nameCache.set(name, names);
+    names = { texture: nameMap(name, style), users: 0 };
+    nameCache.set(key, names);
   }
   names.users += 1;
   const shared = cache;
@@ -290,18 +355,19 @@ export function acquireShipTextures(name = "TITANIC"): ShipTextures {
     names: board,
     // Shared: only frees them when no one else holds them.
     dispose() {
-      releaseShipTextures(name);
+      releaseShipTextures(name, style);
     },
   };
 }
 
-export function releaseShipTextures(name = "TITANIC"): void {
-  const names = nameCache.get(name);
+export function releaseShipTextures(name = "TITANIC", style?: NameStyle): void {
+  const key = boardKey(name, style);
+  const names = nameCache.get(key);
   if (names) {
     names.users -= 1;
     if (names.users <= 0) {
       names.texture.dispose();
-      nameCache.delete(name);
+      nameCache.delete(key);
     }
   }
   users = Math.max(0, users - 1);

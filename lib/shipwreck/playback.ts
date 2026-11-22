@@ -1,8 +1,20 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 import { resetWalkInput, walkMapFor } from "./walk";
 import { placeFor, type PlaceId } from "./places";
-import type { Opening, ShipId, ShipSpec } from "./ships/types";
-import { createSimRunner, type SimOptions, type SimRunner } from "./sim/run";
+import {
+  type Opening,
+  type RunOpening,
+  type ShipId,
+  type ShipSpec,
+  isDeckOpening,
+} from "./ships/types";
+import {
+  createSimRunner,
+  HIT_STAGGER_S,
+  hitTimeS,
+  type SimOptions,
+  type SimRunner,
+} from "./sim/run";
 import { sampleTrack, type SimTrack } from "./sim/track";
 import type { CameraId, Speed } from "./types";
 
@@ -28,6 +40,21 @@ export const SLOWMO_PLUNGE = { before: 45, after: 15 } as const;
 export const SLOWMO_HIT_S = 20;
 /** And the last seconds of its run-in before the hit. */
 export const SLOWMO_HIT_BEFORE_S = 20;
+/**
+ * A storm ship (a track with a storm): from this long before the big
+ * seas (its wave group) through her bow going under, joined to the
+ * break's window, at ×1, so the sea that takes her is watched at real
+ * speed.
+ */
+export const SLOWMO_SEAS = { before: 30 } as const;
+/**
+ * A storm ship: her parts' fall to the floor, from just before the bow
+ * strikes to just after the stern lands, at ×½ (a playback slow motion:
+ * the stern's roll lasts about 3 s).
+ */
+export const SLOWMO_HALF = { before: 3, after: 3, speed: 0.5 } as const;
+/** A storm ship's run starts at this speed at most (her 3¾ hours). */
+export const STORM_START_SPEED = 10;
 /** A speed the player touched this recently (s) overrides the slow-mo. */
 export const SPEED_TOUCH_HOLD_S = 10;
 /** The runner's wall-time budget per frame (ms; the sim may run ~0.5 ms over). */
@@ -52,15 +79,42 @@ export interface WalkState {
 const WALK_OFF: WalkState = { phase: "off", lookUnder: false, seq: 0 };
 
 /** What a run is started with beyond its openings. */
-export type RunOptions = Pick<SimOptions, "portholesOpen">;
+export type RunOptions = Pick<SimOptions, "portholesOpen" | "storm" | "endT">;
+
+/** And what the scene needs to know of it (not the sim). */
+export interface StartOptions extends RunOptions {
+  /**
+   * Where each torpedo strikes (ship-frame x, aft first: `torpedoHitXs`).
+   * Missing: the first hole in her side at the first moment, if any.
+   */
+  hits?: readonly number[];
+  /**
+   * Behind the title and the editor: her opening moment as a still stage
+   * whose storm sea (and her ride on it) runs on the wall clock while the
+   * playback is paused. Default false.
+   */
+  preview?: boolean;
+}
+
+/**
+ * Each torpedo's hit lands `hitTimeS(k, n)` after the first event (the
+ * first at 0, the sim opening hit k's holes then): re-exported for the
+ * scene.
+ */
+export { HIT_STAGGER_S, hitTimeS };
 
 export interface PlaybackState {
   /** The ship on the stage (the title's choice, then the run's). */
   ship: ShipId;
   /** The track so far (live arrays while computing), or null before a run. */
   track: SimTrack | null;
-  /** The holes this run was started with (the real night's or a What if). */
+  /** The holes in her hull this run was started with (the real night's or
+   *  a What if; deck openings go to the sim only). */
   openings: readonly Opening[];
+  /** Each torpedo's hit (ship-frame x, aft first; none for other ships). */
+  hits: readonly number[];
+  /** The title's stage (`StartOptions.preview`): her storm sea runs on. */
+  preview: boolean;
   /** Water over the selected place's floor (m), updated by the scene. */
   placeWaterM: number;
   /** The last computed frame's time (s); playback and seeks stop here. */
@@ -108,8 +162,8 @@ export interface PlaybackActions {
    */
   start(
     spec: ShipSpec,
-    openings: readonly Opening[],
-    options?: RunOptions
+    openings: readonly RunOpening[],
+    options?: StartOptions
   ): void;
   /**
    * Puts another ship on the stage: a different one drops the run (the
@@ -161,6 +215,8 @@ const INITIAL: PlaybackState = {
   ship: "titanic",
   track: null,
   openings: [],
+  hits: [],
+  preview: false,
   placeWaterM: 0,
   computedT: 0,
   done: false,
@@ -209,9 +265,52 @@ export function speedOnGoingIn(
   return {};
 }
 
+/**
+ * The speed the cinematic camera holds at `t` (1, or ½ for a storm ship's
+ * fall to the floor), or null outside the slow-mo windows. Per ship from
+ * the track: the liners' windows are the break and the plunge; a storm
+ * ship's add her big seas through bow-under (`SLOWMO_SEAS`) and her fall
+ * (`SLOWMO_HALF`).
+ */
+export function slowMoSpeed(track: SimTrack | null, t: number): number | null {
+  if (!track) return null;
+  if (track.storm) {
+    let under: number | null = null;
+    let lands: number | null = null;
+    let sternLands: number | null = null;
+    for (const e of track.events) {
+      if (e.kind === "bow-under" && under === null) under = e.t;
+      if (e.kind === "bow-lands" && lands === null) lands = e.t;
+      if (e.kind === "stern-lands" && sternLands === null) sternLands = e.t;
+    }
+    const first = lands ?? track.brokeAtT;
+    const last = sternLands ?? track.sankAtT;
+    if (
+      first !== null &&
+      last !== null &&
+      t >= first - SLOWMO_HALF.before &&
+      t <= last + SLOWMO_HALF.after
+    )
+      return SLOWMO_HALF.speed;
+    const groups = track.storm.groups;
+    if (under !== null && groups && groups.length > 0) {
+      let seas = groups[0].t;
+      for (const g of groups) seas = Math.min(seas, g.t);
+      const b = track.brokeAtT;
+      const end = Math.max(under, b !== null ? b - SLOWMO_BREAK.before : under);
+      if (t >= Math.min(seas, under) - SLOWMO_SEAS.before && t <= end) return 1;
+    }
+  }
+  return inLinerWindow(track, t) ? 1 : null;
+}
+
 /** True when `t` is inside the slow-mo windows of `track`. */
 export function inSlowMoWindow(track: SimTrack | null, t: number): boolean {
-  if (!track) return false;
+  return slowMoSpeed(track, t) !== null;
+}
+
+/** The break's and the plunge's windows (every ship). */
+function inLinerWindow(track: SimTrack, t: number): boolean {
   const b = track.brokeAtT;
   if (b !== null && t >= b - SLOWMO_BREAK.before && t <= b + SLOWMO_BREAK.after)
     return true;
@@ -225,12 +324,16 @@ export function inSlowMoWindow(track: SimTrack | null, t: number): boolean {
 export function inHitWindow(
   track: SimTrack | null,
   openings: readonly Opening[] | undefined,
-  t: number
+  t: number,
+  /** The run's torpedo hits: the window runs on until the last one's. */
+  hitCount = 1
 ): boolean {
   return (
     track !== null &&
     (openings?.length ?? 0) > 0 &&
-    t <= SLOWMO_HIT_S &&
+    t <=
+      SLOWMO_HIT_S +
+        hitTimeS(Math.max(hitCount, 1) - 1, Math.max(hitCount, 1)) &&
     t >= -SLOWMO_HIT_BEFORE_S &&
     track.events.some((e) => e.kind === "explosion")
   );
@@ -241,14 +344,24 @@ export function effectiveSpeed(
   s: Pick<
     PlaybackState,
     "track" | "t" | "speed" | "camera" | "speedTouchedAt"
-  > & { openings?: readonly Opening[] },
+  > & { openings?: readonly Opening[]; hits?: readonly number[] },
   nowS: number
 ): number {
   if (s.camera !== "cinematic") return s.speed;
   if (nowS - s.speedTouchedAt < SPEED_TOUCH_HOLD_S) return s.speed;
-  return inSlowMoWindow(s.track, s.t) || inHitWindow(s.track, s.openings, s.t)
-    ? 1
-    : s.speed;
+  const slow = slowMoSpeed(s.track, s.t);
+  if (slow !== null) return slow;
+  return inHitWindow(s.track, s.openings, s.t, s.hits?.length) ? 1 : s.speed;
+}
+
+/**
+ * The speed a run starts at: the player's, but a storm ship's long
+ * afternoon at most ×10 (at ×30 her sea plays as a time-lapse).
+ */
+export function startSpeed(spec: ShipSpec, saved: Speed): Speed {
+  return spec.cause === "storm" && saved > STORM_START_SPEED
+    ? STORM_START_SPEED
+    : saved;
 }
 
 /** The real time at shown time `t` (the sim's frames carry both). */
@@ -267,7 +380,7 @@ export interface PlaybackOptions {
   /** Makes the runner (tests pass a fake). */
   createRunner?: (
     spec: ShipSpec,
-    openings: readonly Opening[],
+    openings: readonly RunOpening[],
     options: RunOptions
   ) => SimRunner;
 }
@@ -277,7 +390,7 @@ export function createPlaybackStore(
 ): PlaybackStore {
   const makeRunner =
     options.createRunner ??
-    ((spec: ShipSpec, openings: readonly Opening[], o: RunOptions) =>
+    ((spec: ShipSpec, openings: readonly RunOpening[], o: RunOptions) =>
       createSimRunner(spec, openings, o));
   let runner: SimRunner | null = null;
 
@@ -293,14 +406,25 @@ export function createPlaybackStore(
     };
     return {
       ...INITIAL,
-      start(spec, openings, options = {}) {
-        runner = makeRunner(spec, openings, options);
+      start(spec, given, options = {}) {
+        const { hits: chosen, preview = false, ...run } = options;
+        runner = makeRunner(spec, given, run);
+        const openings = given.filter((o): o is Opening => !isDeckOpening(o));
+        const firstHole = openings.find(
+          (o) => o.side === "starboard" && (o.t ?? 0) === 0
+        );
+        const hits =
+          spec.cause !== "torpedo"
+            ? []
+            : (chosen ?? (firstHole ? [firstHole.x] : []));
         const pre = openings.length > 0 ? (spec.preRollS ?? 0) : 0;
         const minT = pre > 0 ? -pre : 0;
         set({
           ship: spec.id,
           track: null,
           openings,
+          hits,
+          preview,
           computedT: 0,
           done: false,
           progress: 0,
@@ -320,6 +444,8 @@ export function createPlaybackStore(
           ship,
           track: null,
           openings: [],
+          hits: [],
+          preview: false,
           computedT: 0,
           done: false,
           progress: 0,

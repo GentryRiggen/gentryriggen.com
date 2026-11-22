@@ -6,12 +6,28 @@
  *   npx tsx scripts/shipwreck-sim.ts --first=5       # What if? first 5 forward
  *   npx tsx scripts/shipwreck-sim.ts --ship=lusitania          # her afternoon
  *   npx tsx scripts/shipwreck-sim.ts --ship=lusitania br3      # torpedo at br3
+ *   npx tsx scripts/shipwreck-sim.ts --ship=fitzgerald         # her last afternoon
+ *   npx tsx scripts/shipwreck-sim.ts --ship=fitzgerald hatch-1 vents  # What if? these spots
  *   add --water for each compartment's fill at each line, --shut to keep
  *   the portholes shut, --every=<s> for the line interval (default 10
- *   minutes, 1 minute for a torpedo ship)
+ *   minutes, 1 minute for a torpedo ship, 15 minutes in a storm); for a
+ *   storm ship --storm=calmer|worse|none (none: still water, no shelter,
+ *   to 9:00 PM), --tight (every hatch cover clamped), --no-damage (none of
+ *   her damage: no vents, no deck-edge split, no hull openings), --shoal
+ *   (she touched Six Fathom Shoal: her real run already holds the graze); and for calibration sweeps (her data
+ *   changed for the run): --fail-head=<m> (every cover's failure head),
+ *   --leak=<m²> (every cover's leak), --split=<m²> (the deck-edge split,
+ *   in all), --vent=<m²> (each broken vent), --sisters=<m>|none (the
+ *   group's height), --sisters-at=<h:mm> (its time, PM)
  */
 import { SHIPS, type ShipId } from "../lib/shipwreck/ships";
 import {
+  type RunOpening,
+  type ShipSpec,
+  isDeckOpening,
+} from "../lib/shipwreck/ships/types";
+import {
+  type SimOptions,
   simulate,
   whatIfOpenings,
   whatIfSpots,
@@ -22,8 +38,58 @@ const args = process.argv.slice(2);
 const option = (name: string) =>
   args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
 const shipId = (option("ship") ?? "titanic") as ShipId;
-const spec = SHIPS[shipId];
-if (!spec) throw new Error(`unknown ship ${shipId}`);
+const base = SHIPS[shipId];
+if (!base) throw new Error(`unknown ship ${shipId}`);
+
+/** Her data with the calibration overrides applied (storm ships only). */
+function withOverrides(s: ShipSpec): ShipSpec {
+  if (s.cause !== "storm") return s;
+  const num = (name: string) => {
+    const v = option(name);
+    if (v === undefined) return undefined;
+    const n = Number(v);
+    if (!Number.isFinite(n)) throw new Error(`--${name}=<number>, not ${v}`);
+    return n;
+  };
+  const failHead = num("fail-head");
+  const leak = num("leak");
+  const split = num("split");
+  const vent = num("vent");
+  const splits = (s.deckOpenings ?? []).filter((d) => d.kind === "split");
+  const deckOpenings = (s.deckOpenings ?? []).map((d) => {
+    if (d.kind === "hatch")
+      return {
+        ...d,
+        ...(failHead === undefined ? {} : { failHeadM: failHead }),
+        ...(leak === undefined ? {} : { areaM2: leak }),
+      };
+    if (d.kind === "split" && split !== undefined)
+      return { ...d, areaM2: split / splits.length };
+    if (d.kind === "vent" && vent !== undefined) return { ...d, areaM2: vent };
+    return d;
+  });
+  let storm = s.storm;
+  const sisters = option("sisters");
+  const at = option("sisters-at");
+  if (storm && (sisters !== undefined || at !== undefined)) {
+    const [h, m] = (at ?? "").split(":").map(Number);
+    const groups =
+      sisters === "none"
+        ? []
+        : (storm.groups ?? []).map((g) => ({
+            ...g,
+            ...(sisters === undefined ? {} : { heightM: Number(sisters) }),
+            ...(at === undefined
+              ? {}
+              : { t: (h + 12 - 15) * 3600 + (m - 30) * 60 }),
+          }));
+    storm = { ...storm, groups };
+  }
+  if (option("storm") === "none")
+    return { ...s, deckOpenings, storm: undefined, shelter: undefined };
+  return { ...s, deckOpenings, storm };
+}
+const spec = withOverrides(base);
 
 function clock(t: number): string {
   const s = Math.round(spec.clockStartS + t) % 86400;
@@ -34,13 +100,21 @@ function clock(t: number): string {
   return `${h12}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 
+const storm = spec.cause === "storm";
 const showWater = args.includes("--water");
 const portholesOpen = !args.includes("--shut");
 const first = option("first");
-const every = Number(option("every") ?? (spec.cause === "torpedo" ? 60 : 600));
+const every = Number(
+  option("every") ?? (spec.cause === "torpedo" ? 60 : storm ? 900 : 600)
+);
 const ids = args.filter((a) => !a.startsWith("--"));
-let label = spec.cause === "torpedo" ? "The real afternoon" : "The real night";
-let openings = spec.realNight;
+let label =
+  spec.cause === "torpedo"
+    ? "The real afternoon"
+    : storm
+      ? "Her last afternoon"
+      : "The real night";
+let openings: readonly RunOpening[] = spec.realNight;
 if (first) {
   const n = Number(first);
   const forward = whatIfSpots(spec).slice(-n);
@@ -50,9 +124,32 @@ if (first) {
   openings = whatIfOpenings(spec, ids);
   label = `What if: ${ids.join(", ")}`;
 }
+const stormOption = option("storm");
+if (stormOption && !["real", "calmer", "worse", "none"].includes(stormOption))
+  throw new Error(`--storm=real|calmer|worse|none, not ${stormOption}`);
+const noDamage = args.includes("--no-damage");
+// No damage at all: no topside damage and none of her hull openings.
+if (noDamage) openings = openings.filter(isDeckOpening);
+const opts: SimOptions = {
+  portholesOpen,
+  storm: (stormOption === "none"
+    ? "real"
+    : (stormOption ?? "real")) as SimOptions["storm"],
+  // Still water: run to 9:00 PM (no shelter to end it).
+  ...(stormOption === "none" ? { endT: 5.5 * 3600 } : {}),
+  hatchesTight: args.includes("--tight"),
+  topsideDamage: !noDamage,
+  shoal: args.includes("--shoal"),
+};
+if (storm)
+  label +=
+    (stormOption === "none" ? ", no storm" : `, the ${opts.storm} storm`) +
+    (opts.hatchesTight ? ", hatches tight" : "") +
+    (opts.topsideDamage ? "" : ", no damage") +
+    (opts.shoal ? ", on the shoal" : "");
 
 const t0 = performance.now();
-const track = simulate(spec, openings, { portholesOpen });
+const track = simulate(spec, openings, opts);
 const ms = performance.now() - t0;
 
 console.log(
@@ -63,9 +160,14 @@ console.log(
         : ", portholes shut"
       : "")
 );
+const hull = openings.filter((o) => !isDeckOpening(o));
+const deck = openings.filter(isDeckOpening);
 console.log(
-  `  openings: ${openings.map((o) => `${o.compartmentId} ${o.areaM2} m²`).join(", ")}` +
-    ` (total ${openings.reduce((a, o) => a + o.areaM2, 0).toFixed(2)} m²)`
+  `  openings: ${hull.map((o) => `${o.compartmentId} ${o.areaM2} m²`).join(", ") || "none in the hull"}` +
+    ` (total ${hull.reduce((a, o) => a + o.areaM2, 0).toFixed(2)} m²)` +
+    (deck.length > 0
+      ? `; deck: ${deck.filter((d) => !d.tight).length} leaking, ${deck.filter((d) => d.tight).length} tight`
+      : "")
 );
 console.log(
   `  simulated in ${ms.toFixed(0)} ms, ${track.frames.length} frames\n`

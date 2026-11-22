@@ -45,6 +45,8 @@ import {
 import type { SceneRuntime } from "./runtime";
 import {
   bulkheadLines,
+  cargoGeometry,
+  doubleBottomLines,
   openingGeometry,
   placeGeometry,
   waterGeometry,
@@ -55,7 +57,9 @@ import {
  * the bulkheads show as faint outlines, each compartment's water is a blue
  * volume cut at the level the sim gives it (level with the sea, not the
  * ship; a side bunker only its wing), the openings glow red, and the
- * ship's places show their blockouts.
+ * ship's places show their blockouts. A laker's holds show her cargo as a
+ * dense layer over her double bottom (the tank top's outline), her side
+ * tanks by their walls.
  * The place pins (shown in X-ray or at a place) fly the camera there. Everything rides with
  * the part it is in (the halves after the break).
  */
@@ -261,7 +265,14 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
     });
     const glow = new MeshBasicMaterial({ vertexColors: true });
     glow.color.setScalar(3);
-    return { ghost, water, lines, gash, solid, glow };
+    // Taconite: dull, rusty grey-brown pellets, packed solid.
+    const cargo = new MeshStandardMaterial({
+      color: 0x5a3a2c,
+      roughness: 0.95,
+      metalness: 0.05,
+      emissive: 0x1a0e08,
+    });
+    return { ghost, water, lines, gash, solid, glow, cargo };
   }, []);
   useEffect(
     () => () => Object.values(mats).forEach((m: Material) => m.dispose()),
@@ -298,6 +309,18 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
       const gash = new Mesh(openingGeometry(hull, holes), mats.gash);
       gash.renderOrder = 12;
       group.add(water, lines, gash);
+      const cargo = cargoGeometry(hull, spec, pieces);
+      if (cargo) {
+        const m = new Mesh(cargo, mats.cargo);
+        m.name = `xray-cargo-${name}`;
+        group.add(m);
+      }
+      const bottom = doubleBottomLines(hull, spec, from, to);
+      if (bottom) {
+        const l = new LineSegments(bottom, mats.lines);
+        l.renderOrder = 15;
+        group.add(l);
+      }
       const surface = surfaceMesh(hull, spec, pieces, levelsOf(water));
       root.add(surface);
       out.set(name, {

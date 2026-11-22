@@ -12,18 +12,16 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import {
-  sampleTrack,
+  createFrame,
+  sampleTrackInto,
   type BodyPose,
   type SimFrame,
 } from "@/lib/shipwreck/sim/track";
 import { earthZ } from "@/lib/shipwreck/xray";
-import {
-  shipToThree,
-  shipToThreeInto,
-  trackSpeedAt,
-  type V3,
-} from "./cameraMath";
-import type { SceneRuntime } from "./runtime";
+import { seaFieldOf } from "./seaWaves";
+import { ridePose } from "./stormRide";
+import { shipToThreeInto, trackSpeedAt, type V3 } from "./cameraMath";
+import { MAX_LAMPS, type SceneRuntime } from "./runtime";
 import { SCENE_SETTINGS } from "./settings";
 import { walkHullPower } from "./walkCamera";
 
@@ -46,6 +44,17 @@ const WARM_FRAMES = 3;
  */
 function lampsOf(spec: ShipSpec): [number, number, number][] {
   if (SCENE_SETTINGS[spec.id].timeOfDay === "afternoon") return [];
+  if (SCENE_SETTINGS[spec.id].storm) {
+    // A laker's deck floodlights: on the forecastle's after face and the
+    // after house's forward face, a few metres over her spar deck, lighting
+    // the hatches between (on all afternoon in the storm).
+    const fwd = spec.openDeck?.toX ?? 88;
+    const aft = spec.openDeck?.fromX ?? -69;
+    return [
+      [fwd - 8, 0, Math.round((spec.sheerZ(fwd) + 6.5) * 100) / 100],
+      [aft + 8, 0, Math.round((spec.sheerZ(aft) + 6) * 100) / 100],
+    ];
+  }
   const boat = spec.decks.find((d) => d.name === "Boat")?.z ?? spec.depth;
   const z = Math.round((boat + 2.81) * 100) / 100;
   // The Lusitania's boat deck runs from 72 m forward to -63 m aft.
@@ -54,6 +63,30 @@ function lampsOf(spec: ShipSpec): [number, number, number][] {
     [fwd, 0, z],
     [aft, 0, z],
   ];
+}
+
+/**
+ * A laker's deck lights along her hatches (on the hatch crane's rails
+ * and the deck-edge posts: the builder's assumption, as her photographs
+ * show lights there but not where each stood), lighting the storm's sea,
+ * spray and green water only (`runtime.lamps`; no three.js lights, so
+ * the model's shaders are not touched). The liners have none.
+ */
+export function deckLightsOf(spec: ShipSpec): [number, number, number][] {
+  if (!SCENE_SETTINGS[spec.id].storm || !spec.openDeck) return [];
+  const { fromX, toX } = spec.openDeck;
+  const out: [number, number, number][] = [];
+  const n = 6;
+  for (let i = 0; i < n; i += 1) {
+    const x = fromX + ((toX - fromX) * (i + 0.5)) / n;
+    const side = i % 2 === 0 ? -1 : 1;
+    out.push([
+      Math.round(x * 10) / 10,
+      Math.round(side * (spec.beam / 2 - 2) * 10) / 10,
+      Math.round((spec.sheerZ(x) + 5) * 100) / 100,
+    ]);
+  }
+  return out;
 }
 
 /**
@@ -92,6 +125,14 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
   const { gl, scene, camera } = useThree();
 
   const lampPositions = useMemo(() => lampsOf(spec), [spec]);
+  const allLamps = useMemo(
+    () => [...lampPositions, ...deckLightsOf(spec)],
+    [lampPositions, spec]
+  );
+  // The night's two lamps light a liner's long decks; a laker's floodlights
+  // stand close over her deck and hatches (a dimmer lamp does).
+  const lampStrength = SCENE_SETTINGS[spec.id].storm ? 260 : 900;
+  // In the storm her lights are on all afternoon (the overcast is dim).
   const lightShare =
     SCENE_SETTINGS[spec.id].timeOfDay === "afternoon" ? DAY_LIGHTS : 1;
   // Scratch for her run-in frame and her wake (no allocation per frame).
@@ -104,6 +145,12 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
       fwd: [0, 0, 0] as V3,
       sternP: [0, 0, 0] as [number, number, number],
       fwdP: [0, 0, 0] as [number, number, number],
+      // Her ride on the storm's waves (`stormRide.ts`).
+      ride: new Float64Array(3),
+      rode: null as SimFrame | null,
+      rodeBodies: [] as BodyPose[],
+      sampled: createFrame(),
+      lamp: [0, 0, 0] as V3,
     }),
     []
   );
@@ -162,11 +209,16 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     [runtime, gl, scene, camera]
   );
 
-  useFrame(() => {
+  useFrame((state) => {
     const s = store.getState();
     const track = s.track;
-    if (!track || track.frames.length === 0) return;
-    let frame = sampleTrack(track, s.t);
+    const sea = runtime.sea;
+    if (!track || track.frames.length === 0) {
+      sea.storm = null;
+      sea.field = null;
+      return;
+    }
+    let frame = sampleTrackInto(track, s.t, scratch.sampled);
     // Before the hit (a torpedo's run-in) she steams on at her speed: the
     // first frame, run back along her heading (into scratch objects).
     if (s.t < 0 && spec.headway) {
@@ -184,6 +236,37 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
       f.bodies = scratch.bodies;
       scratch.frame = f;
       frame = f;
+    }
+    // A storm: the sea's time (her real time; on the title's stage the
+    // wall clock, so the sea runs while the playback waits) and her ride
+    // on it, added to the sim's still-water pose (no allocation).
+    sea.storm = track.storm ?? null;
+    sea.scale = track.stormScale ?? 1;
+    sea.field = seaFieldOf(track);
+    sea.t = frame.realT + (s.preview ? state.clock.elapsedTime : 0);
+    if (sea.storm) {
+      const rode = Object.assign(scratch.rode ?? { ...frame }, frame);
+      // (A frame without deck water, after the break, must not keep the
+      // last one's.)
+      rode.deckWater = frame.deckWater;
+      const bodies = scratch.rodeBodies;
+      bodies.length = frame.bodies.length;
+      for (let i = 0; i < frame.bodies.length; i += 1) {
+        const out = bodies[i] ?? { ...frame.bodies[i] };
+        bodies[i] = out;
+        ridePose(
+          spec,
+          track,
+          frame.bodies[i],
+          frame.realT,
+          sea.t,
+          out,
+          scratch.ride
+        );
+      }
+      rode.bodies = bodies;
+      scratch.rode = rode;
+      frame = rode;
     }
     runtime.frame = frame;
     const two = frame.bodies.some((b) => b.part !== "whole");
@@ -227,36 +310,57 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     }
 
     // Decks dim as the sea closes over them.
-    const main =
-      frame.bodies.find((b) => b.part === "stern") ?? frame.bodies[0];
+    // (Plain loops: no closures or searches allocated per frame.)
+    let sternBody: BodyPose | null = null;
+    let bowBody: BodyPose | null = null;
+    for (const b of frame.bodies) {
+      if (b.part === "stern" && !sternBody) sternBody = b;
+      if (b.part === "bow" && !bowBody) bowBody = b;
+    }
+    const main = sternBody ?? frame.bodies[0];
+    const bowPart = bowBody ?? main;
     const model = runtime.broken ? split : whole;
     if (model) {
-      decks.forEach((d, i) => {
+      for (let i = 0; i < decks.length; i += 1) {
+        const d = decks[i];
         let under = 0;
         for (let k = 0; k < 9; k += 1) {
           const x = -120 + k * 30;
           const body =
-            runtime.broken && breakX !== null && x > breakX
-              ? (frame.bodies.find((b) => b.part === "bow") ?? main)
-              : main;
+            runtime.broken && breakX !== null && x > breakX ? bowPart : main;
           if (earthZ(body, x, 0, d.z + (spec.sheerZ(x) - sheerRef)) < 0)
             under += 1;
         }
         model.setDeckPower(i, 1 - (under / 9) * 0.8);
-      });
+      }
     }
 
-    // Two warm lamps over the decks, fading with the power.
-    lampPositions.forEach((p, i) => {
-      const body = runtime.broken
-        ? (frame.bodies.find(
-            (b) => b.part === (p[0] > (breakX ?? 0) ? "bow" : "stern")
-          ) ?? main)
-        : main;
-      const w = shipToThree(body, p);
-      lamps[i].position.set(w[0], w[1], w[2]);
-      lamps[i].intensity = lit * 900;
-    });
+    // Two warm lamps over the decks, fading with the power (and, in the
+    // storm, her deck lights along her hatches for the sea and the spray:
+    // `runtime.lamps` only, no three.js lights).
+    let nl = 0;
+    for (let i = 0; i < allLamps.length && nl < MAX_LAMPS; i += 1) {
+      const p = allLamps[i];
+      let body = main;
+      if (runtime.broken) {
+        const part = p[0] > (breakX ?? 0) ? "bow" : "stern";
+        for (const b of frame.bodies) if (b.part === part) body = b;
+      }
+      const w = shipToThreeInto(body, p, scratch.lamp);
+      if (i < lamps.length) {
+        lamps[i].position.set(w[0], w[1], w[2]);
+        lamps[i].intensity = lit * lampStrength;
+      }
+      // A lamp deep under the sea lights nothing on it (one just under a
+      // breaking sea still glows through the foam over her deck).
+      if (w[1] < -6) continue;
+      runtime.lamps[nl * 3] = w[0];
+      runtime.lamps[nl * 3 + 1] = w[1];
+      runtime.lamps[nl * 3 + 2] = w[2];
+      nl += 1;
+    }
+    runtime.lampCount = nl;
+    runtime.lampPower = allLamps.length > 0 ? lit : 0;
 
     // Her wake while she has way (ships with headway).
     const wake = runtime.wake;

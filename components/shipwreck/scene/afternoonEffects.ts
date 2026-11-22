@@ -1,7 +1,7 @@
 import { Matrix4, Quaternion, Vector3, type Group } from "three";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import { swungOutY } from "@/components/shipwreck/model/titanicRecipe";
-import type { QualityTier } from "@/lib/shipwreck/playback";
+import { hitTimeS, type QualityTier } from "@/lib/shipwreck/playback";
 import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { SimEvent } from "@/lib/shipwreck/sim/events";
 import { hullHalfBreadth, type HullModel } from "@/lib/shipwreck/sim/geometry";
@@ -35,6 +35,11 @@ const HEAD_OVER_DECK_M = 4.0;
 /** The column and its mist last this long (s); the second explosion's cloud. */
 const COLUMN_S = 21;
 const EXPLOSION_S = 40;
+
+/** True while any of `n` hits' columns can still be showing at `t`. */
+export function columnOpen(t: number, n: number): boolean {
+  return n > 0 && t >= hitTimeS(0, n) && t < hitTimeS(n - 1, n) + COLUMN_S;
+}
 /** Smoke eases to its new strength at this rate (1/s). */
 const SMOKE_RATE = 3;
 
@@ -65,6 +70,8 @@ export interface AfternoonFrame {
   track: SimTrack;
   frame: SimFrame;
   openings: readonly Opening[];
+  /** Each torpedo's hit (ship x, aft first); missing: the first hole's. */
+  hits?: readonly number[];
   t: number;
   wall: number;
   dt: number;
@@ -99,7 +106,7 @@ export class AfternoonEffects {
   private readonly launchAt = new Map<number, Vector3>();
   private launchTrack: SimTrack | null = null;
   private hitKey: unknown = null;
-  private hitAt: HitPlace | null = null;
+  private hitAt: HitPlace[] = [];
   private exKey: unknown = null;
   private exAt: (HitPlace & { deck: V3; t: number }) | null = null;
   private readonly holders = new Map<
@@ -386,23 +393,43 @@ export class AfternoonEffects {
   /**
    * The hit, at the first moment, where the torpedo struck: a column of
    * white water and coal-black spray higher than her funnels, falling back
-   * as she steams on; then, moments later, the second explosion lower down
-   * inside her, a wider burst at her side and a cloud of coal dust and
-   * steam out of her forward decks (its cause is not shown). Only while
-   * they last; their places are worked out once per run.
+   * as she steams on (more than one hit: a column each, the first at the
+   * hit and the rest a few seconds after it as the sim opens them, each
+   * where her side was then, sharing the particles); then,
+   * moments later, the second explosion lower down inside her, a wider
+   * burst at her side and a cloud of coal dust and steam out of her
+   * forward decks (its cause is not shown). Only while they last; their
+   * places are worked out once per run.
    */
   private theHit(f: AfternoonFrame) {
     const t = f.t;
     const track = f.track;
-    if (t >= 0 && t < COLUMN_S) {
-      const hole = torpedoHole(f.openings);
+    const hole = f.hits && f.hits.length > 0 ? null : torpedoHole(f.openings);
+    const hits = f.hits && f.hits.length > 0 ? f.hits : hole ? [hole.x] : [];
+    const n = hits.length;
+    if (columnOpen(t, n)) {
       const key = track.frames[0];
-      if (hole && (this.hitKey !== key || !this.hitAt)) {
-        this.hitKey = key;
-        this.hitAt = this.placeAt(track, 0, hole.x);
+      if (this.hitKey !== key || this.hitAt.length !== n) {
+        // Each where her side was as it struck (kept once the track has
+        // reached the last hit).
+        const last = track.frames[track.frames.length - 1].t;
+        this.hitKey = last >= hitTimeS(n - 1, n) ? key : null;
+        this.hitAt = hits.map((x, k) => this.placeAt(track, hitTimeS(k, n), x));
       }
-      if (hole && this.hitAt)
-        this.burst(this.hitAt, t, 460, 22, 16, 2, 7, 0.14, 1);
+      // One hit: the 1.1 column; more share them.
+      const count = Math.round(460 / Math.sqrt(n));
+      for (let k = 0; k < n; k += 1)
+        this.burst(
+          this.hitAt[k],
+          t - hitTimeS(k, n),
+          count,
+          22,
+          16,
+          2,
+          7,
+          0.14,
+          1
+        );
     }
     let ex: SimEvent | undefined;
     for (const e of track.events)

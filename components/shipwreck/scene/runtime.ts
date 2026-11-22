@@ -1,8 +1,13 @@
 import type { Group } from "three";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import type { PlaceId } from "@/lib/shipwreck/places";
+import type { StormSpec } from "@/lib/shipwreck/ships/types";
 import type { SimFrame } from "@/lib/shipwreck/sim/track";
 import type { WalkerView } from "./walkCamera";
+import {
+  boardingElevation,
+  type WaveFieldArrays,
+} from "@/lib/shipwreck/sim/waves";
 
 /**
  * What the scene's parts share each frame without React: the sampled sim
@@ -65,6 +70,31 @@ export interface SceneRuntime {
   walkInputOff: boolean;
   /** For the test hooks: where the walker is (null when not walking). */
   walkInfo: WalkInfo | null;
+  /**
+   * The storm's sea this frame (a storm ship: her track's storm, the field
+   * the sea shader draws and the time it is drawn at; real seconds, or the
+   * wall clock on the title's stage). The ship rig writes it; `storm` is
+   * null without one.
+   */
+  sea: {
+    storm: StormSpec | null;
+    scale: number;
+    field: WaveFieldArrays | null;
+    t: number;
+    /** The sea's height under the camera (the camera rig writes it). */
+    atCamera: number;
+  };
+  /** The sea's surface height (three y) at a three.js (x, z): 0 if calm. */
+  seaY(x: number, z: number): number;
+  /**
+   * Her deck lamps (three.js x, y, z each, `lampCount` of them, up to
+   * MAX_LAMPS) and their strength, for the storm's sea, spray, snow and
+   * green water to catch (0 when out). The first two are the scene's
+   * point lights; the rest light only those shaders.
+   */
+  lamps: Float32Array;
+  lampCount: number;
+  lampPower: number;
 }
 
 /** The walker for the test hooks. */
@@ -79,6 +109,9 @@ export interface WalkInfo {
   depthM: number;
   area: string | null;
 }
+
+/** Room for her deck lamps in `SceneRuntime.lamps`. */
+export const MAX_LAMPS = 8;
 
 export function createSceneRuntime(): SceneRuntime {
   const rt: SceneRuntime = {
@@ -104,6 +137,16 @@ export function createSceneRuntime(): SceneRuntime {
     walkCanReboard: false,
     walkInputOff: false,
     walkInfo: null,
+    sea: { storm: null, scale: 1, field: null, t: 0, atCamera: 0 },
+    seaY(x, z) {
+      const sea = rt.sea;
+      return sea.storm
+        ? boardingElevation(sea.storm, x, -z, sea.t, sea.scale)
+        : 0;
+    },
+    lamps: new Float32Array(3 * MAX_LAMPS),
+    lampCount: 0,
+    lampPower: 0,
   };
   return rt;
 }

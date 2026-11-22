@@ -141,12 +141,23 @@ it("shows the Shipwreck section", () => {
           minutes: 300,
           ship: "lusitania",
         }),
+        sw("shipwreck_start", {
+          mode: "real",
+          opened: 0,
+          ship: "fitzgerald",
+        }),
+        sw("shipwreck_end", {
+          mode: "real",
+          outcome: "sank",
+          minutes: 20,
+          ship: "fitzgerald",
+        }),
         sw("shipwreck_camera", { camera: "bridge" }),
       ]}
     />
   );
-  expect(screen.getByTestId("shipwreck-starts")).toHaveTextContent("2");
-  expect(screen.getByTestId("shipwreck-sank")).toHaveTextContent("1");
+  expect(screen.getByTestId("shipwreck-starts")).toHaveTextContent("3");
+  expect(screen.getByTestId("shipwreck-sank")).toHaveTextContent("2");
   expect(screen.getByTestId("shipwreck-floated")).toHaveTextContent("1");
   expect(screen.getByText("whatif · floated")).toBeInTheDocument();
   expect(screen.getByText("bridge")).toBeInTheDocument();
@@ -155,7 +166,9 @@ it("shows the Shipwreck section", () => {
   expect(screen.getByText("lusitania")).toBeInTheDocument();
   expect(screen.getByText("lusitania · floated")).toBeInTheDocument();
   expect(screen.getByText("titanic · sank")).toBeInTheDocument();
+  expect(screen.getByText("fitzgerald")).toBeInTheDocument();
+  expect(screen.getByText("fitzgerald · sank")).toBeInTheDocument();
   expect(screen.getByTestId("shipwreck-averages")).toHaveTextContent(
-    "4.0 openings per What if? · sank after 160 min on average"
+    "What if? openings: lusitania 4.0 · sank after 90 min on average"
   );
 });

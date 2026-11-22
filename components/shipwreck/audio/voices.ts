@@ -367,6 +367,90 @@ const VOICES: Record<Cue, Voice> = {
       });
     }
   },
+  // A big storm swell passing under her: a slow low swell of sea.
+  swell(e, t, l) {
+    noise(e, {
+      buffer: e.brown,
+      start: t,
+      duration: 5,
+      filter: "lowpass",
+      freq: 170,
+      gain: 0.06 * l,
+      attack: 1.4,
+    });
+    noise(e, {
+      buffer: e.white,
+      start: t,
+      duration: 4,
+      filter: "bandpass",
+      freq: 480,
+      freqEnd: 260,
+      q: 0.8,
+      gain: 0.02 * l,
+      attack: 1.5,
+    });
+  },
+  // A hatch cover giving way: a dull steel knock, then water pouring in.
+  hatch(e, t, l) {
+    tone(e, {
+      type: "triangle",
+      start: t,
+      duration: 0.5,
+      freq: 210,
+      freqEnd: 150,
+      gain: 0.04 * l,
+      filter: { type: "lowpass", freq: 500, q: 1 },
+    });
+    tone(e, {
+      type: "sine",
+      start: t,
+      duration: 0.7,
+      freq: 80,
+      freqEnd: 42,
+      gain: 0.07 * l,
+    });
+    noise(e, {
+      buffer: e.white,
+      start: t + 0.1,
+      duration: 1.4,
+      filter: "bandpass",
+      freq: 420,
+      freqEnd: 260,
+      q: 0.9,
+      gain: 0.05 * l,
+      attack: 0.15,
+    });
+  },
+  // A big sea of a wave group breaking over her.
+  waveCrash(e, t, l) {
+    noise(e, {
+      buffer: e.white,
+      start: t,
+      duration: 2.4,
+      filter: "lowpass",
+      freq: 1000,
+      freqEnd: 260,
+      gain: 0.08 * l,
+      attack: 0.25,
+    });
+    noise(e, {
+      buffer: e.brown,
+      start: t,
+      duration: 2.6,
+      filter: "lowpass",
+      freq: 150,
+      gain: 0.1 * l,
+      attack: 0.2,
+    });
+    tone(e, {
+      type: "sine",
+      start: t,
+      duration: 1,
+      freq: 62,
+      freqEnd: 34,
+      gain: 0.07 * l,
+    });
+  },
   thud(e, t, l) {
     tone(e, {
       type: "sine",

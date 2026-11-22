@@ -1,15 +1,23 @@
 import {
+  HIT_STAGGER_S,
   createPlaybackStore,
   effectiveSpeed,
+  inHitWindow,
+  hitTimeS,
   eventsSeen,
   inSlowMoWindow,
   phaseAt,
   realTimeAt,
   speedOnGoingIn,
   WATCH_HER_GO_S,
+  SLOWMO_HALF,
+  STORM_START_SPEED,
+  slowMoSpeed,
+  startSpeed,
 } from "../playback";
 import type { Speed } from "../types";
 import { walkInput } from "../walk";
+import { fitzgerald } from "../ships/fitzgerald";
 import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
 import type { SimRunner } from "../sim/run";
@@ -209,6 +217,58 @@ describe("slow-mo", () => {
     expect(effectiveSpeed({ ...base, t: 7000 }, 1000)).toBe(100);
   });
 
+  it("a storm ship: ×1 from the big seas through her bow going under, ×½ as her parts fall", () => {
+    // Her real run's times (shown = real for her).
+    const storm = {
+      ...fitzgerald.storm!,
+      groups: [{ ...fitzgerald.storm!.groups![0], t: 13314.5 }],
+    };
+    const ev = (kind: string, t: number) =>
+      ({ kind, t, realT: t }) as SimTrack["events"][number];
+    const tr = fakeTrack(13500, {
+      storm,
+      stormScale: 1,
+      brokeAtT: 13363.7,
+      sankAtT: 13365.2,
+      events: [
+        ev("collision", 0),
+        ev("bow-under", 13323),
+        ev("bow-lands", 13363.5),
+        ev("breakup", 13363.7),
+        ev("stern-under", 13365.2),
+        ev("stern-lands", 13370),
+      ],
+    });
+    const at = (t: number) => slowMoSpeed(tr, t);
+    expect(at(13250)).toBeNull();
+    // The sisters' arrival, 30 s before, through bow-under and on into
+    // the break's own window (no gap at ×100 between them).
+    for (const t of [13285, 13314.5, 13323, 13328, 13333])
+      expect(at(t)).toBe(1);
+    // The fall to the floor and the stern's roll (about 3 s) at ×½.
+    for (const t of [13361, 13363.5, 13366, 13369, 13372])
+      expect(at(t)).toBe(SLOWMO_HALF.speed);
+    expect(at(13380)).toBe(1); // the break's window, after
+    expect(at(13500)).toBeNull();
+    expect(inSlowMoWindow(tr, 13300)).toBe(true);
+    const run = { ...base, track: tr, speed: 10 as const };
+    expect(effectiveSpeed({ ...run, t: 13300 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 13366 }, 1000)).toBe(0.5);
+    expect(effectiveSpeed({ ...run, t: 9000 }, 1000)).toBe(10);
+    // A liner's windows are as they were (no ×½).
+    for (let t = 7900; t < 8200; t += 5)
+      expect([null, 1]).toContain(slowMoSpeed(track, t));
+  });
+
+  it("starts her storm at ×10 at most (the liners at the player's speed)", () => {
+    expect(STORM_START_SPEED).toBe(10);
+    expect(startSpeed(fitzgerald, 30)).toBe(10);
+    expect(startSpeed(fitzgerald, 100)).toBe(10);
+    expect(startSpeed(fitzgerald, 1)).toBe(1);
+    expect(startSpeed(titanic, 30)).toBe(30);
+    expect(startSpeed(lusitania, 100)).toBe(100);
+  });
+
   it("holds ×1 through a torpedo's run-in, its hit and the second explosion", () => {
     const hitTrack = fakeTrack(1000, {
       events: [
@@ -230,6 +290,17 @@ describe("slow-mo", () => {
     expect(effectiveSpeed({ ...run, t: 0 }, 1000)).toBe(1);
     expect(effectiveSpeed({ ...run, t: 15 }, 1000)).toBe(1);
     expect(effectiveSpeed({ ...run, t: 40 }, 1000)).toBe(100);
+    // Many hits: the ×1 window runs on to the last one's (3 s apart).
+    expect(inHitWindow(hitTrack, [hole], 25)).toBe(false);
+    expect(inHitWindow(hitTrack, [hole], 25, 7)).toBe(true);
+    expect(inHitWindow(hitTrack, [hole], 18 + 20.5, 7)).toBe(false);
+    expect(inHitWindow(hitTrack, [hole], 18 + 20, 7)).toBe(true);
+    expect(inHitWindow(hitTrack, [hole], 53, 12)).toBe(true);
+    expect(inHitWindow(hitTrack, [hole], 54, 12)).toBe(false);
+    expect(
+      effectiveSpeed({ ...run, hits: Array(7).fill(60), t: 30 }, 1000)
+    ).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 30 }, 1000)).toBe(100);
     // No hole (the title's calm ship), and the Titanic's night: as before.
     expect(effectiveSpeed({ ...run, openings: [], t: 5 }, 1000)).toBe(100);
     expect(effectiveSpeed({ ...base, openings: [hole], t: 5 }, 1000)).toBe(100);
@@ -521,5 +592,54 @@ describe("playback: walking", () => {
     const store = started();
     store.getState().setCamera("walk");
     expect(store.getState().walk.phase).toBe("deck");
+  });
+});
+
+describe("playback: more than one torpedo, and a storm (1.3)", () => {
+  it("passes the run's options to the sim, and keeps the hits for the scene", () => {
+    const made: unknown[] = [];
+    const store = createPlaybackStore({
+      createRunner: (_spec, _openings, options) => {
+        made.push(options);
+        return fakeRunner(100, 100);
+      },
+    });
+    store.getState().start(lusitania, lusitania.realNight, {
+      portholesOpen: false,
+      hits: [10, 40, 67.7],
+    });
+    expect(made[0]).toEqual({ portholesOpen: false });
+    expect(store.getState().hits).toEqual([10, 40, 67.7]);
+    // Without hits: the first hole in her side, as 1.1 drew it.
+    store.getState().start(lusitania, lusitania.realNight);
+    const first = lusitania.realNight.find(
+      (o) => o.side === "starboard" && (o.t ?? 0) === 0
+    )!;
+    expect(store.getState().hits).toEqual([first.x]);
+    // A storm ship: her storm and the run's end go to the sim; no hits.
+    store
+      .getState()
+      .start(fitzgerald, fitzgerald.realNight, { storm: "worse", endT: 5 });
+    expect(made[2]).toEqual({ storm: "worse", endT: 5 });
+    expect(store.getState().hits).toEqual([]);
+    expect(store.getState().preview).toBe(false);
+    // The title's stage: a flag for the scene, not the sim.
+    store.getState().start(fitzgerald, [], { endT: 5, preview: true });
+    expect(made[3]).toEqual({ endT: 5 });
+    expect(store.getState().preview).toBe(true);
+    store.getState().setShip("titanic");
+    expect(store.getState().hits).toEqual([]);
+    expect(store.getState().preview).toBe(false);
+  });
+
+  it("lands the first hit at the hit and the rest a few seconds after it, deterministically", () => {
+    expect(hitTimeS(0, 1)).toBe(0);
+    expect([0, 1, 2].map((k) => hitTimeS(k, 3))).toEqual([
+      0,
+      HIT_STAGGER_S,
+      2 * HIT_STAGGER_S,
+    ]);
+    expect(HIT_STAGGER_S).toBeGreaterThanOrEqual(2);
+    expect(HIT_STAGGER_S).toBeLessThanOrEqual(6);
   });
 });

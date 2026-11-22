@@ -23,6 +23,7 @@ import {
   Vector3,
 } from "three";
 import type { SceneRuntime } from "./runtime";
+import { snowAt, stormDaylight } from "./storm";
 import {
   NIGHT_DEEP_FOG,
   NIGHT_FOG,
@@ -47,7 +48,10 @@ import {
  * readable. The afternoon (the Lusitania): the sun (a directional light at
  * the computed angles) and the blue sky (hemisphere), a light haze, and
  * under the surface green water with shafts of sunlight, dimming with
- * depth, over a floor of sand and shingle.
+ * depth, over a floor of sand and shingle. The storm (the Fitzgerald): a
+ * grey overcast sky light fading from 3:30 PM to night, her deck lamps
+ * (the ship rig's), snow haze thickening in the squalls, and under the
+ * surface cold dark fresh water over a grey clay floor 162 m down.
  */
 
 const SEA_FOG = NIGHT_SEA_FOG;
@@ -162,6 +166,14 @@ export default function Environment({
   seaDepthM,
   settings,
 }: EnvironmentProps) {
+  if (settings.timeOfDay === "storm-dusk")
+    return (
+      <StormEnvironment
+        runtime={runtime}
+        seaDepthM={seaDepthM}
+        settings={settings}
+      />
+    );
   if (settings.timeOfDay === "afternoon")
     return (
       <AfternoonEnvironment
@@ -610,4 +622,182 @@ function LightShafts({
     shafts.mat.uniforms.uTime.value = state.clock.elapsedTime;
   }, -0.8);
   return <primitive object={shafts.mesh} />;
+}
+
+// ---------------------------------------------------------------------------
+// The Fitzgerald's storm.
+
+function clayTexture(): CanvasTexture | null {
+  if (typeof document === "undefined") return null;
+  const c = document.createElement("canvas");
+  c.width = 256;
+  c.height = 256;
+  const g = c.getContext("2d");
+  if (!g) return null;
+  // Lake Superior's grey glacial clay: smooth, soft blotches and silt.
+  g.fillStyle = "#8c8980";
+  g.fillRect(0, 0, 256, 256);
+  let a = 1975;
+  const rnd = () => {
+    a = (a * 1664525 + 1013904223) >>> 0;
+    return a / 4294967296;
+  };
+  for (let i = 0; i < 220; i += 1) {
+    const l = 38 + rnd() * 18;
+    g.fillStyle = `hsla(45, 5%, ${l}%, 0.12)`;
+    g.beginPath();
+    g.arc(rnd() * 256, rnd() * 256, 8 + rnd() * 30, 0, Math.PI * 2);
+    g.fill();
+  }
+  for (let i = 0; i < 3500; i += 1) {
+    const l = 30 + rnd() * 35;
+    g.fillStyle = `hsla(40, 6%, ${l}%, 0.45)`;
+    g.fillRect(rnd() * 256, rnd() * 256, 1, 1);
+  }
+  const t = new CanvasTexture(c);
+  t.wrapS = RepeatWrapping;
+  t.wrapT = RepeatWrapping;
+  t.repeat.set(CLAY_REPEAT, CLAY_REPEAT);
+  t.colorSpace = SRGBColorSpace;
+  return t;
+}
+
+/**
+ * Snow haze over the lake (exp² density): about 6 km visibility when the
+ * snow is thin, under 2 km in a squall.
+ */
+/** The clay floor's size and its texture's tile (it follows the camera). */
+const CLAY_FLOOR_M = 24000;
+const CLAY_REPEAT = 220;
+const CLAY_TILE_M = CLAY_FLOOR_M / CLAY_REPEAT;
+const STORM_FOG_CLEAR = 0.00033;
+const STORM_FOG_SQUALL = 0.0011;
+/** Cold fresh water deep down, and near the surface at night. */
+const STORM_DEEP_WATER = new Color(0x02080b);
+const STORM_NIGHT_WATER = new Color(0x041210);
+
+function StormEnvironment({
+  runtime,
+  seaDepthM: SEA_DEPTH,
+  settings,
+}: EnvironmentProps) {
+  const { scene, camera } = useThree();
+  const haze = useMemo(() => new Color(settings.fog), [settings]);
+  const shallow = useMemo(() => new Color(settings.underwaterFog), [settings]);
+  const fog = useMemo(
+    () => new FogExp2(haze.getHex(), STORM_FOG_CLEAR),
+    [haze]
+  );
+  useEffect(() => {
+    scene.fog = fog;
+    scene.background = haze.clone();
+    return () => {
+      scene.fog = null;
+      scene.background = null;
+    };
+  }, [scene, fog, haze]);
+
+  const floor = useMemo(() => {
+    const map = clayTexture();
+    // Grey glacial clay, light (albedo about a quarter).
+    const mat = new MeshStandardMaterial({
+      color: 0xdedbd2,
+      map,
+      roughness: 1,
+      metalness: 0,
+    });
+    const geo = new PlaneGeometry(CLAY_FLOOR_M, CLAY_FLOOR_M);
+    const m = new Mesh(geo, mat);
+    m.rotation.x = -Math.PI / 2;
+    m.name = "sea-floor";
+    return { m, geo, mat, map };
+  }, []);
+  useEffect(() => {
+    floor.m.position.y = -SEA_DEPTH;
+  }, [floor, SEA_DEPTH]);
+  useEffect(
+    () => () => {
+      floor.geo.dispose();
+      floor.mat.dispose();
+      floor.map?.dispose();
+    },
+    [floor]
+  );
+
+  // The overcast's light (no sun: the cloud hides it), and the lamp.
+  const lights = useMemo(() => {
+    const sky = new HemisphereLight(0xb2bcc2, 0x283230, 1);
+    sky.name = "overcast";
+    const lamp = new SpotLight(0xd8ecff, 0, 380, 0.55, 0.6, 1.1);
+    lamp.name = "submersible-lamp";
+    return {
+      sky,
+      lamp,
+      daySky: new Color(0xb2bcc2),
+      nightSky: new Color(0x26303a),
+      dayGround: new Color(0x283230),
+      nightGround: new Color(0x06090a),
+      // Under the water: the dim light of the water itself (as the night's
+      // starlight under the Titanic), so the lamp is not all there is.
+      waterSky: new Color(0x6f8f8a),
+      waterGround: new Color(0x0a1414),
+    };
+  }, []);
+
+  const water = useMemo(() => new Color(), []);
+  useFrame((state) => {
+    const y = camera.position.y;
+    const under = runtime.underwater;
+    const t = runtime.frame?.t ?? 0;
+    const d = stormDaylight(t);
+    const k = Math.min(1, Math.max(0, -y / SEA_DEPTH));
+    lights.sky.color.copy(lights.nightSky).lerp(lights.daySky, d);
+    lights.sky.groundColor.copy(lights.nightGround).lerp(lights.dayGround, d);
+    if (under) {
+      // Grey-green under the storm's surface, black toward the floor.
+      // (Lake Superior is clear: the murk is the storm's, near the top.)
+      water
+        .copy(STORM_NIGHT_WATER)
+        .lerp(shallow, d)
+        .lerp(STORM_DEEP_WATER, Math.min(1, k * 1.4));
+      fog.color.copy(water);
+      fog.density = 0.0075 - 0.0025 * k;
+      (scene.background as Color).copy(water);
+      lights.sky.color.copy(lights.waterSky);
+      lights.sky.groundColor.copy(lights.waterGround);
+      // About twice the 1.0 night's light under water: Lake Superior is
+      // clear below the storm's murk, and a child must follow the wreck.
+      lights.sky.intensity = 1.1 * (1 - 0.3 * k) + 0.5 * d * (1 - k);
+    } else {
+      fog.color.copy(haze).multiplyScalar(0.012 + 0.988 * d);
+      const snow = snowAt(t);
+      fog.density =
+        STORM_FOG_CLEAR + (STORM_FOG_SQUALL - STORM_FOG_CLEAR) * snow;
+      (scene.background as Color).copy(fog.color);
+      lights.sky.intensity = 0.45 + 1.15 * d;
+    }
+    floor.m.visible = under && y < -SEA_DEPTH + 2500;
+    // She ends 76 km from the origin: the floor follows the camera, moved
+    // in whole texture tiles so the clay's pattern stays put.
+    floor.m.position.x =
+      Math.round(camera.position.x / CLAY_TILE_M) * CLAY_TILE_M;
+    floor.m.position.z =
+      Math.round(camera.position.z / CLAY_TILE_M) * CLAY_TILE_M;
+    const lamp = lights.lamp;
+    lamp.intensity = under ? Math.min(1, -y / 40) * 760 : 0;
+    lamp.position.copy(camera.position);
+    lamp.position.y += 1.5;
+    state.camera.getWorldDirection(lamp.target.position);
+    lamp.target.position.multiplyScalar(60).add(camera.position);
+    lamp.target.updateMatrixWorld();
+  }, -0.8);
+
+  return (
+    <>
+      <primitive object={lights.sky} />
+      <primitive object={floor.m} />
+      <primitive object={lights.lamp} />
+      <primitive object={lights.lamp.target} />
+    </>
+  );
 }

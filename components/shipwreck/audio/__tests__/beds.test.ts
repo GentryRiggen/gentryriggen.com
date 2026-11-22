@@ -54,6 +54,8 @@ describe("bed targets", () => {
       steam: 0,
       rumble: 0,
       engines: 0,
+      wind: 0,
+      wash: 0,
     });
     expect(bedTargets({ ...base, ship: "titanic" }, true)).toEqual(
       bedTargets(base, true)
@@ -119,6 +121,9 @@ describe("voices", () => {
     "torpedo",
     "boom",
     "gull",
+    "swell",
+    "hatch",
+    "waveCrash",
   ];
 
   it("plays every cue under 0.2 gain and disconnects when done", () => {
@@ -209,6 +214,47 @@ describe("voices", () => {
     );
     const sum = Object.values(l).reduce((a, b) => a + b, 0);
     // The boom's three voices and a plunge's can overlap at their peaks.
+    const cues = 4 * VOICE_PEAK_MAX * CUE_BUS_LEVEL;
+    expect((cues + sum) * 0.8).toBeLessThan(0.3);
+  });
+
+  it("has a storm bed for the Fitzgerald that rises with the wind and muffles under water", () => {
+    const calm = bedTargets({ ...base, ship: "fitzgerald", wind: 0.2 }, true);
+    const gale = bedTargets(
+      { ...base, ship: "fitzgerald", wind: 1, strain: 0.5 },
+      true
+    );
+    expect(gale.wind).toBeGreaterThan(calm.wind);
+    expect(gale.wash).toBeGreaterThan(calm.wash);
+    expect(gale.sea).toBeGreaterThan(calm.sea);
+    expect(gale.engines).toBeGreaterThan(0);
+    expect(gale.hum).toBe(0);
+    expect(gale.night).toBe(0);
+    expect(gale.steam).toBe(0);
+    const under = bedTargets(
+      { ...base, ship: "fitzgerald", wind: 1, underwater: true },
+      true
+    );
+    expect(under.wind).toBe(0);
+    expect(under.wash).toBe(0);
+    expect(under.sea).toBe(0);
+    expect(under.rumble).toBeGreaterThan(0);
+  });
+
+  it("leaves the liners' beds without wind", () => {
+    for (const ship of ["titanic", "lusitania"] as const) {
+      const t = bedTargets({ ...base, ship, wind: 1 }, true);
+      expect(t.wind).toBe(0);
+      expect(t.wash).toBe(0);
+    }
+  });
+
+  it("keeps the Fitzgerald's loudest cues and beds under 0.3", () => {
+    const l = bedTargets(
+      { ...base, ship: "fitzgerald", wind: 1, strain: 1, power: 1 },
+      true
+    );
+    const sum = Object.values(l).reduce((a, b) => a + b, 0);
     const cues = 4 * VOICE_PEAK_MAX * CUE_BUS_LEVEL;
     expect((cues + sum) * 0.8).toBeLessThan(0.3);
   });

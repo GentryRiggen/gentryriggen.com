@@ -17,6 +17,21 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-11-22",
+    title: "The Edmund Fitzgerald",
+    highlights: [
+      "A third ship! Pick the Edmund Fitzgerald on the title screen. She was a long ore carrier on Lake Superior, and on 10 November 1975 she sailed into a huge storm",
+      "Watch the real storm, from her 3:30 PM report into the night: grey skies turning black, snow, spray and big waves washing over her deck. Just after 7:10 PM three giant waves come. The lake is not as deep as she was long, so her bow hits the bottom while her stern is still at the surface, and she breaks in two",
+      "The big waves play at ×1 on the movie camera and her fall to the lake floor in slow motion, so you can see what happens",
+      "Her storm has its own sounds: the wind rising, the swell, a hatch cover giving way and the big seas crashing over her",
+      "What if? Choose which hatch covers leak, whether her vents are broken and whether she scrapes the shoal, then pick the real storm, a calmer one or a worse one. Keep her safe and she can make it to Whitefish Bay",
+      "What if? now lets you pick more than one thing on every ship. The Lusitania can take several torpedoes, each with its own trail, a few seconds apart",
+      "X-ray shows her long cargo holds full of iron ore pellets and her ballast tanks. New places to visit: the Pilothouse, the Ship's Bell, Cargo Hold 1, a Ballast Tank, the Engine Room and the Hatch Crane",
+      "Walking the decks stays on the Titanic and the Lusitania",
+    ],
+  },
+  {
     version: "1.2.0",
     date: "2026-11-22",
     title: "Walk the decks",

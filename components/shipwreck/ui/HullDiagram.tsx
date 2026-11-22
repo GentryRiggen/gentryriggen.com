@@ -7,6 +7,9 @@ import type {
   Opening,
   ShipSpec,
 } from "@/lib/shipwreck/ships/types";
+import { VENTS_SPOT, shoalSpot } from "@/lib/shipwreck/sim/run";
+import { spotAria } from "@/lib/shipwreck/whatIf";
+import { cargoLayer } from "@/lib/shipwreck/xray";
 
 /**
  * The ship's side profile from her own data: hull, decks, superstructure,
@@ -25,6 +28,12 @@ const TOP_Z = 56;
 /** Room between the profile and the plan, and for the side labels. */
 const PLAN_GAP = 6;
 
+/** A storm ship's hatch coaming from above (11 ft 7 in × 54 ft), half sizes (m). */
+const HATCH_HX = 1.77;
+const HATCH_HW = 8.23;
+/** A shoal scrape's tap target on the plan (m). */
+const SHOAL_R = 4.5;
+
 /** A cell the side profile draws: the full-breadth or centre ones. */
 function inProfile(c: Compartment): boolean {
   return !c.span || c.span.side === "centre";
@@ -39,6 +48,8 @@ interface HullDiagramProps {
   pose?: BodyPose | null;
   selected?: ReadonlySet<string>;
   onToggle?: (id: string) => void;
+  /** A storm ship: the hatches (numbers) whose covers have given way. */
+  failedHatches?: ReadonlySet<number>;
   className?: string;
   title: string;
 }
@@ -50,6 +61,7 @@ export default function HullDiagram({
   pose,
   selected,
   onToggle,
+  failedHatches,
   className = "",
   title,
 }: HullDiagramProps) {
@@ -57,7 +69,18 @@ export default function HullDiagram({
   const x0 = spec.stations[0].x;
   const x1 = spec.stations[spec.stations.length - 1].x;
   const W = (x1 - x0) * S + PAD * 2;
-  const profileH = TOP_Z * S + PAD * 2;
+  // A low laker gets a profile only as tall as her funnel (a liner's is
+  // the 1.0 height).
+  const topZ =
+    spec.cause === "storm"
+      ? Math.ceil(
+          Math.max(
+            ...spec.funnels.map((f) => f.topZ),
+            ...spec.superstructure.map((b) => b.topZ)
+          ) + 2
+        )
+      : TOP_Z;
+  const profileH = topZ * S + PAD * 2;
   const hasPlan = spec.compartments.some((c) => c.span);
   // The plan's half-width: the widest section, a metre to spare.
   const halfB = Math.ceil(
@@ -70,7 +93,28 @@ export default function HullDiagram({
     .map((c, i) => ({ c, i }))
     .filter(({ c }) => inProfile(c));
   const X = (x: number) => PAD + (x - x0) * S;
-  const Z = (z: number) => PAD + (TOP_Z - z) * S;
+  const Z = (z: number) => PAD + (topZ - z) * S;
+
+  // A storm ship: her What-if spots are on her deck and her bottom (the
+  // hatch covers, the broken vents and rail split, the shoal scrapes), not
+  // her compartments; her holds carry cargo.
+  const storm = spec.cause === "storm";
+  const deckOps = storm ? (spec.deckOpenings ?? []) : [];
+  const hatches = deckOps.filter((d) => d.kind === "hatch");
+  const topside = deckOps.filter(
+    (d) => d.kind === "vent" || d.kind === "split"
+  );
+  const ventX =
+    topside.length > 0
+      ? [
+          Math.min(...topside.map((d) => d.x)) - 2,
+          Math.max(...topside.map((d) => d.x)) + 2,
+        ]
+      : null;
+  const shoal = storm ? (spec.shoalOpenings ?? []) : [];
+  const on = (id: string) => selected?.has(id) ?? false;
+  const hatchFill = (id: string, n: number) =>
+    failedHatches?.has(n) ? "#f87171" : on(id) ? "#ef4444" : "#64748b";
 
   const keel = spec.stations.map((st) => [st.x, st.offsets[0][0]] as const);
   const sheer = spec.stations.map((st) => [st.x, spec.sheerZ(st.x)] as const);
@@ -201,6 +245,22 @@ export default function HullDiagram({
       {/* The hull. */}
       <path d={hullPath} fill="#111827" stroke="#cbd5e1" strokeWidth={1.2} />
       <g clipPath={`url(#${uid}-hull)`}>
+        {profile.map(({ c }) => {
+          const cargo = cargoLayer(spec, c);
+          if (!cargo) return null;
+          return (
+            <rect
+              key={`cargo-${c.id}`}
+              data-cargo={c.id}
+              x={X(c.fromX)}
+              y={Z(cargo.topZ)}
+              width={(c.toX - c.fromX) * S}
+              height={(cargo.topZ - cargo.bottomZ) * S}
+              fill="#7c4a32"
+              opacity={0.9}
+            />
+          );
+        })}
         {profile.map(({ c, i }) => {
           const top = Math.max(c.aftBulkheadTopZ, c.fwdBulkheadTopZ);
           const fill = Math.max(0, Math.min(1, water?.[i] ?? 0));
@@ -256,6 +316,29 @@ export default function HullDiagram({
           strokeWidth={1.4}
         />
       ))}
+      {/* A storm ship's hatch coamings and broken vents on her deck. */}
+      {hatches.map((h, k) => (
+        <rect
+          key={`hc${h.id}`}
+          data-hatch={h.id}
+          x={X(h.x - HATCH_HX)}
+          y={Z(h.z + 0.5)}
+          width={HATCH_HX * 2 * S}
+          height={1.6}
+          fill={hatchFill(h.id, k + 1)}
+        />
+      ))}
+      {ventX && (
+        <line
+          x1={X(ventX[0] + 2)}
+          x2={X(ventX[1] - 2)}
+          y1={Z(spec.sheerZ((ventX[0] + ventX[1]) / 2) + 0.4)}
+          y2={Z(spec.sheerZ((ventX[0] + ventX[1]) / 2) + 0.4)}
+          stroke={on(VENTS_SPOT) ? "#f87171" : "#94a3b8"}
+          strokeWidth={1.6}
+          strokeDasharray="2 2"
+        />
+      )}
       {/* Holes: red jagged marks. */}
       {openings.map((o, i) => {
         const zMid = (o.zLow + o.zHigh) / 2;
@@ -373,6 +456,27 @@ export default function HullDiagram({
               />
             );
           })}
+          {hatches.map((h, k) => (
+            <rect
+              key={`ph${h.id}`}
+              x={X(h.x - HATCH_HX)}
+              y={PY(HATCH_HW)}
+              width={HATCH_HX * 2 * S}
+              height={HATCH_HW * 2 * S}
+              rx={0.8}
+              fill={hatchFill(h.id, k + 1)}
+              opacity={0.85}
+            />
+          ))}
+          {topside.map((d) => (
+            <circle
+              key={`pv${d.id}`}
+              cx={X(d.x)}
+              cy={PY(d.y) - 0.6}
+              r={d.kind === "vent" ? 1.6 : 0.9}
+              fill={on(VENTS_SPOT) ? "#f87171" : "#94a3b8"}
+            />
+          ))}
           <text x={X(x0) + 2} y={PY(halfB) + 9} fontSize={9} fill="#94a3b8">
             Port
           </text>
@@ -381,17 +485,69 @@ export default function HullDiagram({
           </text>
         </g>
       )}
+      {/* A storm ship's tap targets: each hatch on the plan, her vents on
+          her deck edge in the profile, each shoal scrape on its side. */}
+      {onToggle && storm && (
+        <g>
+          {hatches.map((h) => (
+            <SpotTarget
+              key={`t${h.id}`}
+              id={h.id}
+              label={spotAria(spec, h.id, on(h.id))}
+              on={on(h.id)}
+              onToggle={onToggle}
+              x={X(h.x - 3.6)}
+              y={hasPlan ? PY(HATCH_HW + 0.4) : Z(h.z + 4)}
+              width={7.2 * S}
+              height={(HATCH_HW + 0.4) * 2 * S}
+            />
+          ))}
+          {ventX && (
+            <SpotTarget
+              id={VENTS_SPOT}
+              label={spotAria(spec, VENTS_SPOT, on(VENTS_SPOT))}
+              on={on(VENTS_SPOT)}
+              onToggle={onToggle}
+              x={X(ventX[0])}
+              y={Z(spec.sheerZ(ventX[0]) + 5)}
+              width={(ventX[1] - ventX[0]) * S}
+              height={8 * S}
+            />
+          )}
+          {shoal.map((o, k) => {
+            const id = shoalSpot(k + 1);
+            // Its side's band, outboard of the hatches' targets.
+            const inner = HATCH_HW + 0.4;
+            const top = o.side === "starboard" ? -inner : halfB;
+            return (
+              <SpotTarget
+                key={`t${id}`}
+                id={id}
+                label={spotAria(spec, id, on(id))}
+                on={on(id)}
+                onToggle={onToggle}
+                x={X(o.x - SHOAL_R)}
+                y={hasPlan ? PY(top) : Z(4)}
+                width={SHOAL_R * 2 * S}
+                height={(halfB - inner) * S}
+                ring
+              />
+            );
+          })}
+        </g>
+      )}
       {/* Tap targets: each compartment's full height (and the plan's). */}
       {onToggle &&
+        !storm &&
         profile.map(({ c }) => {
           const on = selected?.has(c.id) ?? false;
           return (
             <rect
               key={`t${c.id}`}
-              role="button"
+              role="checkbox"
               tabIndex={0}
-              aria-pressed={on}
-              aria-label={`${c.label}: ${on ? "open, tap to close" : "tap to open"}`}
+              aria-checked={on}
+              aria-label={spotAria(spec, c.id, on)}
               data-testid={`shipwreck-comp-${c.id}`}
               x={X(c.fromX)}
               y={PAD}
@@ -410,6 +566,71 @@ export default function HullDiagram({
           );
         })}
     </svg>
+  );
+}
+
+interface SpotTargetProps {
+  id: string;
+  label: string;
+  on: boolean;
+  onToggle: (id: string) => void;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Draw a ring round it (a shoal scrape, which has no shape of its own). */
+  ring?: boolean;
+}
+
+/** A What-if spot's tap target on the diagram (a storm ship's). */
+function SpotTarget({
+  id,
+  label,
+  on,
+  onToggle,
+  x,
+  y,
+  width,
+  height,
+  ring = false,
+}: SpotTargetProps) {
+  return (
+    <g>
+      {ring && (
+        <rect
+          x={x + 1}
+          y={y + 1}
+          width={width - 2}
+          height={height - 2}
+          rx={height / 2}
+          fill={on ? "#ef4444" : "none"}
+          fillOpacity={0.55}
+          stroke={on ? "#fca5a5" : "#94a3b8"}
+          strokeWidth={1}
+          strokeDasharray={on ? undefined : "2 2"}
+        />
+      )}
+      <rect
+        role="checkbox"
+        tabIndex={0}
+        aria-checked={on}
+        aria-label={label}
+        data-testid={`shipwreck-spot-${id}`}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill="transparent"
+        className="cursor-pointer outline-none focus-visible:fill-sky-300/20"
+        onClick={() => onToggle(id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle(id);
+          }
+        }}
+      />
+    </g>
   );
 }
 

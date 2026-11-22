@@ -1,4 +1,11 @@
-import type { Compartment, Opening, ShipSpec } from "../ships/types";
+import {
+  type Compartment,
+  type DeckOpening,
+  type Opening,
+  type RunOpening,
+  type ShipSpec,
+  isDeckOpening,
+} from "../ships/types";
 import {
   BOX_PERMEABILITY,
   BREAK_DAMAGE_M,
@@ -15,10 +22,14 @@ import {
   PERMEABILITY,
   PORTHOLE_HEIGHT_M,
   PORTHOLE_PIECE_M,
+  PUMP_DEPTH_M,
   PUMP_M3S,
   RHO,
   SIM_STEP_S,
   SLOW_FRAME_S,
+  STERN_CAPSIZE_DEG_S,
+  DECK_SAMPLE_S,
+  STORM_SCALE,
 } from "./constants";
 import {
   type Body,
@@ -29,19 +40,26 @@ import {
   upOf,
   updateBounds,
 } from "./body";
+import { type DeckWater, makeDeckWater } from "./deckWater";
 import { stepFall, stepLanding } from "./descent";
 import {
   DYNAMO_FLOOD_M,
   FUNNEL_STAY_LIMIT_DEG,
   FUNNEL_STAY_STEP_DEG,
   FUNNEL_UNDER_M,
+  HATCH_TIGHT_FAIL_FACTOR,
   LIGHTS_FLICKER_TRIM_DEG,
   STEADY_HOLD_S,
   STEADY_INFLOW_M3S,
   type SimEvent,
   type SimEventKind,
 } from "./events";
-import { type Cell, makeCell } from "./flooding";
+import {
+  type Cell,
+  type DeckCellOpening,
+  type DeckSea,
+  makeCell,
+} from "./flooding";
 import {
   type HullModel,
   type Span,
@@ -53,11 +71,14 @@ import {
 } from "./geometry";
 import { type GirderState, girder, strengthProfile } from "./girder";
 import { R_SIZE, R_VOL, integrateSlice, upInShip } from "./hydrostatics";
+import { headwayRun } from "./headway";
 import { type MassModel, buildMass, massOf } from "./mass";
 import type { BodyPose, SimFrame, SimTrack } from "./track";
+import { GROUP_RELOCK_S, lockGroups, stormOf } from "./waves";
+import { rideWeight, waveRide } from "./waveRide";
 
 // Local bindings: global lookups are slow inside test sandboxes (vm).
-const { abs, cos, exp, floor, max, min, sin } = Math;
+const { abs, cos, floor, max, min, sin } = Math;
 
 /**
  * Running the night: build the ship, settle her, open the holes at t = 0
@@ -85,17 +106,53 @@ export interface SimOptions {
   probe?: (p: SimProbe) => void;
   /** Whether `spec.portholes` are open (default true). */
   portholesOpen?: boolean;
+  /** The storm's heights (`spec.storm`): as it was, or scaled by
+   *  STORM_SCALE (calmer 0.6, worse 1.25). Default "real". */
+  storm?: "real" | "calmer" | "worse";
+  /** Hatch covers properly clamped: no leak while intact, and they hold
+   *  HATCH_TIGHT_FAIL_FACTOR times the head. Default false. */
+  hatchesTight?: boolean;
+  /**
+   * Her topside damage: the deck openings of kind "vent" and "split" (the
+   * Fitzgerald's broken vents and the split at her deck edge). Default
+   * true; false leaves them out. Hull openings the run is given are not
+   * touched: her real run's graze on Six Fathom Shoal (R14) is hull damage
+   * and stays unless the run's openings drop it.
+   */
+  topsideDamage?: boolean;
+  /** A grounding: adds each of `spec.shoalOpenings` the run's openings do
+   *  not already hold (a real run may: the Fitzgerald's, R14). Default
+   *  false. */
+  shoal?: boolean;
 }
 
 const DEG = Math.PI / 180;
 const SETTLE_S = 300;
 
+/** A storm ship's What-if spot for her topside damage (the broken vents
+ *  and the split at her deck edge). */
+export const VENTS_SPOT = "vents";
+/** A storm ship's What-if spot for grounding strip k (from 1) of `shoalOpenings`. */
+export function shoalSpot(k: number): string {
+  return `shoal-${k}`;
+}
+
 /**
- * The compartments a What-if offers: every one for an iceberg ship; for a
- * torpedo ship the main spaces along her length (a hit at a boiler room
- * also opens its starboard side bunker), aft to forward.
+ * The spots a What-if offers. An iceberg ship: every compartment. A
+ * torpedo ship: the main spaces along her length (a hit at a boiler room
+ * also opens its starboard side bunker), aft to forward. A storm ship:
+ * each hatch (its deck opening's id, No. 1 first), her topside damage
+ * (`VENTS_SPOT`) and each grounding strip (`shoalSpot(k)`).
  */
 export function whatIfSpots(spec: ShipSpec): string[] {
+  if (spec.cause === "storm") {
+    const deck = spec.deckOpenings ?? [];
+    const spots = deck.filter((d) => d.kind === "hatch").map((d) => d.id);
+    if (deck.some(isTopsideDamage) || spec.realNight.length > 0)
+      spots.push(VENTS_SPOT);
+    (spec.shoalOpenings ?? []).forEach((_, k) => spots.push(shoalSpot(k + 1)));
+    return spots;
+  }
   return spec.compartments
     .filter(
       (c) => spec.cause !== "torpedo" || !c.span || c.span.side === "centre"
@@ -103,14 +160,18 @@ export function whatIfSpots(spec: ShipSpec): string[] {
     .map((c) => c.id);
 }
 
-/** The openings of a What-if run: the real damage where there was some. */
+/**
+ * The openings of a What-if run: the real damage where there was some.
+ * Any number of spots may be chosen for every ship.
+ */
 export function whatIfOpenings(
   spec: ShipSpec,
-  compartmentIds: readonly string[]
-): Opening[] {
-  if (spec.cause === "torpedo") return torpedoOpenings(spec, compartmentIds);
+  ids: readonly string[]
+): RunOpening[] {
+  if (spec.cause === "storm") return stormOpenings(spec, ids);
+  if (spec.cause === "torpedo") return torpedoOpenings(spec, ids);
   const out: Opening[] = [];
-  for (const id of compartmentIds) {
+  for (const id of ids) {
     const comp = spec.compartments.find((c) => c.id === id);
     if (!comp) continue;
     const real = spec.realNight.filter((o) => o.compartmentId === id);
@@ -126,6 +187,96 @@ export function whatIfOpenings(
       });
   }
   return out;
+}
+
+/**
+ * A storm What-if: every deck opening of hers, in her order, a chosen
+ * hatch as it was (leaking) and the rest `tight` (clamped: no leak, and
+ * they hold `HATCH_TIGHT_FAIL_FACTOR` times the head); her topside damage
+ * (vents and splits) and any hull damage of hers (`realNight`) if
+ * `VENTS_SPOT` is chosen; and each chosen grounding strip. So her real ids give exactly
+ * her real run, and none at all is her with every hatch tight and no
+ * damage (`hatchesTight` and `topsideDamage: false`).
+ */
+/** Is a deck opening topside damage (a broken vent, a split)? */
+function isTopsideDamage(d: DeckOpening): boolean {
+  return d.kind === "vent" || d.kind === "split";
+}
+
+function stormOpenings(spec: ShipSpec, ids: readonly string[]): RunOpening[] {
+  const chosen = new Set(ids);
+  const vents = chosen.has(VENTS_SPOT);
+  const out: RunOpening[] = [];
+  for (const d of spec.deckOpenings ?? []) {
+    if (d.kind === "hatch")
+      out.push(chosen.has(d.id) ? d : { ...d, tight: true });
+    else if (!isTopsideDamage(d) || vents) out.push(d);
+  }
+  const shoal = spec.shoalOpenings ?? [];
+  // Her hull damage that is not a grounding strip comes with the vents;
+  // each strip is its own spot (a real run may hold them: R14).
+  if (vents) out.push(...spec.realNight.filter((o) => !shoal.includes(o)));
+  shoal.forEach((o, k) => {
+    if (chosen.has(shoalSpot(k + 1))) out.push(o);
+  });
+  return out;
+}
+
+/**
+ * The What-if spots that give a ship's real damage: an iceberg ship's
+ * compartments the iceberg opened; for a torpedo ship the one spot where
+ * the real hit lands (the hit moved there is the real afternoon); for a
+ * storm ship every hatch (none was tight) and her topside damage.
+ */
+export function whatIfRealIds(spec: ShipSpec): string[] {
+  if (spec.cause === "storm") {
+    // Every hatch, her topside damage, and each grounding strip her real
+    // run holds.
+    const shoal = spec.shoalOpenings ?? [];
+    return whatIfSpots(spec).filter((id) => {
+      if (!id.startsWith("shoal-")) return true;
+      const o = shoal[Number(id.slice(6)) - 1];
+      return o !== undefined && spec.realNight.includes(o);
+    });
+  }
+  if (spec.cause !== "torpedo")
+    return [...new Set(spec.realNight.map((o) => o.compartmentId))];
+  const real = JSON.stringify(spec.realNight);
+  const spot = whatIfSpots(spec).find(
+    (id) => JSON.stringify(whatIfOpenings(spec, [id])) === real
+  );
+  return spot ? [spot] : [];
+}
+
+/** Seconds between a torpedo ship's hits (several chosen spots). */
+export const HIT_STAGGER_S = 3;
+
+/**
+ * Shown time hit k of n lands (aft first): the first at the first event,
+ * the rest a few seconds apart after it, and the sim opens hit k's holes
+ * then (`whatIfOpenings`). Deterministic; one hit lands at 0.
+ */
+export function hitTimeS(k: number, n: number): number {
+  return n > 1 ? k * HIT_STAGGER_S : 0;
+}
+
+/**
+ * Where each torpedo of a torpedo ship's run strikes (the ship-frame x of
+ * its own hole in her side, the first opening of its hit), one per chosen
+ * spot that lands one, aft first. Not a torpedo ship: none. The real
+ * spot's is her real hit's (`realNight`'s first hole).
+ */
+export function torpedoHitXs(spec: ShipSpec, ids: readonly string[]): number[] {
+  if (spec.cause !== "torpedo") return [];
+  const xs: number[] = [];
+  for (const id of whatIfSpots(spec)) {
+    if (!ids.includes(id)) continue;
+    const hole = torpedoOpenings(spec, [id]).find(
+      (o) => o.side === "starboard" && (o.t ?? 0) === 0
+    );
+    if (hole) xs.push(hole.x);
+  }
+  return xs.sort((a, b) => a - b);
 }
 
 /**
@@ -174,10 +325,11 @@ function torpedoOpenings(
   if (!firstWing) return [];
   const anchor = spotOf(firstWing.compartmentId);
   const anchorComp = byId.get(spots[anchor]) as Compartment;
-  const out: Opening[] = [];
-  for (const id of compartmentIds) {
+  /** The real hit moved to spot `id` (its openings at their own times). */
+  const movedTo = (id: string): Opening[] => {
+    const out: Opening[] = [];
     const at = spots.indexOf(id);
-    if (at < 0) continue;
+    if (at < 0) return out;
     const shift =
       ((byId.get(id) as Compartment).fromX +
         (byId.get(id) as Compartment).toX -
@@ -194,6 +346,23 @@ function torpedoOpenings(
       const x = min(into.toX - 0.5, max(into.fromX + 0.5, o.x + shift));
       out.push({ ...o, compartmentId: into.id, x, side: "starboard" });
     }
+    return out;
+  };
+  const hits = compartmentIds.map((id) => {
+    const open = movedTo(id);
+    const hole = open.find((o) => o.side === "starboard" && (o.t ?? 0) === 0);
+    return { open, x: hole ? hole.x : null };
+  });
+  // Hit k of n (aft first) lands hitTimeS(k, n) after the first: each of
+  // its openings that much later (one hit: its own times, untouched).
+  const xs = hits
+    .flatMap((h) => (h.x === null ? [] : [h.x]))
+    .sort((a, b) => a - b);
+  const out: Opening[] = [];
+  for (const h of hits) {
+    const lag = h.x === null ? 0 : hitTimeS(xs.indexOf(h.x), xs.length);
+    for (const o of h.open)
+      out.push(lag > 0 ? { ...o, t: (o.t ?? 0) + lag } : o);
   }
   return out;
 }
@@ -237,6 +406,23 @@ interface World {
   /** Forward way (none for the Titanic), lost for good at the first touch. */
   headway: ShipSpec["headway"];
   wayLost: boolean;
+  /** Steady way: real time she went under (her way decays from then). */
+  wayLostAt: number | null;
+  /** Density of the water (kg/m³). */
+  rho: number;
+  /** Deck openings: the storm they see, and every one (for the events). */
+  sea: DeckSea | null;
+  deck: DeckCellOpening[];
+  pendingDeck: { i: number; o: DeckCellOpening }[];
+  /** Wave groups (index in spec.storm.groups) still to re-lock on her. */
+  relock: number[];
+  /** Real time her bow went under (her ride fades from then), or null. */
+  bowUnderRealT: number | null;
+  /** The way down plays this many times faster than real (`descentTimeScale`). */
+  descentScale: number;
+  /** The pumps (m³/s) and the depth in a space past which they stop (m). */
+  pumps: number;
+  pumpDepth: number;
 }
 
 /** Settle her level before the collision, then open the holes at t = 0. */
@@ -253,6 +439,8 @@ function settle(w: World): void {
   body.y = 0;
   for (const c of body.cells.concat(body.boxes)) c.water = 0;
   for (const p of w.pending) body.cells[p.i].openings.push(p.o);
+  for (const p of w.pendingDeck) body.cells[p.i].deck.push(p.o);
+  if (body.deckWater) body.deckWater.vol.fill(0);
   updateBounds(body);
   // Replace the placeholder frame with the settled ship at t = 0.
   w.frames[0] = frame(w);
@@ -457,6 +645,15 @@ function makeBody(
     xTo = max(xTo, c.slice.xTo);
   }
   const light = massOf(w.mass, xFrom, xTo);
+  // Her wreck's rest rule: per part after a break (`wreckParts`), else
+  // `wreck`, else none (the 1.0 rest).
+  const parts = w.spec.wreckParts;
+  const rule =
+    part === "bow" && parts?.bow
+      ? parts.bow
+      : part === "stern" && parts?.stern
+        ? null
+        : w.spec.wreck;
   return {
     part,
     xFrom,
@@ -474,6 +671,7 @@ function makeBody(
     lightIyy: light.iyy,
     beam: w.spec.beam,
     depth: w.spec.depth,
+    rho: w.spec.waterDensity ?? RHO,
     x: 0,
     y: 0,
     z: -w.spec.draught,
@@ -512,15 +710,21 @@ function makeBody(
     grounded: false,
     touchBow: false,
     touchStern: false,
-    wreck: w.spec.wreck
+    wreck: rule
       ? {
-          rest: w.spec.wreck.restDeg * DEG,
-          min: w.spec.wreck.minListDeg * DEG,
+          rest: rule.restDeg * DEG,
+          min: rule.minListDeg * DEG,
         }
       : null,
+    capsize:
+      part === "stern" && parts?.stern?.capsize
+        ? parts.stern.restDeg * DEG
+        : null,
+    capsizeRate: (parts?.stern?.rollDegS ?? STERN_CAPSIZE_DEG_S) * DEG,
     floorN: 0,
     floorX: new Float64Array(0),
     floorF: new Float64Array(0),
+    deckWater: null,
   };
 }
 
@@ -592,11 +796,84 @@ function portholeOpenings(
   return out;
 }
 
+/**
+ * The run's deck openings as cells' openings, by the What-if's options:
+ * tight hatch covers (`tight`, or every hatch with `hatchesTight`) leak
+ * nothing and hold HATCH_TIGHT_FAIL_FACTOR times the head; without
+ * topside damage the vents and splits are left out. A hatch is numbered by its place
+ * among the ship's own hatches (No. 1 first).
+ */
+/** The deck bay at ship x, or −1. */
+function bay(deck: DeckWater | null, x: number): number {
+  if (!deck) return -1;
+  for (let i = 0; i < deck.n; i += 1)
+    if (x >= deck.x0[i] && x < deck.x1[i]) return i;
+  return -1;
+}
+
+function deckOpenings(
+  spec: ShipSpec,
+  list: readonly DeckOpening[],
+  opts: SimOptions,
+  deck: DeckWater | null
+): { i: number; o: DeckCellOpening }[] {
+  const out: { i: number; o: DeckCellOpening }[] = [];
+  const hatchIds = (spec.deckOpenings ?? [])
+    .filter((d) => d.kind === "hatch")
+    .map((d) => d.id);
+  let hatch = 0;
+  for (const d of list) {
+    if (d.kind === "hatch") hatch += 1;
+    if (isTopsideDamage(d) && opts.topsideDamage === false) continue;
+    const i = spec.compartments.findIndex((c) => c.id === d.compartmentId);
+    if (i < 0) continue;
+    const tight =
+      d.kind === "hatch" && (d.tight === true || opts.hatchesTight === true);
+    const failHead =
+      d.failHeadM === undefined
+        ? Infinity
+        : d.failHeadM * (tight ? HATCH_TIGHT_FAIL_FACTOR : 1);
+    const own = hatchIds.indexOf(d.id);
+    out.push({
+      i,
+      o: {
+        x: d.x,
+        y: d.y,
+        z: d.z,
+        area: tight ? 0 : d.areaM2,
+        failHead,
+        failedArea: d.failedAreaM2 ?? d.areaM2,
+        failed: false,
+        openT: d.t ?? 0,
+        hatch: d.kind === "hatch" ? (own >= 0 ? own + 1 : hatch) : 0,
+        // A split is in the side shell, under the deck edge: the deck's
+        // water runs past it; hatches and vents stand in it.
+        onDeck: d.kind !== "split",
+        bay: bay(deck, d.x),
+        row:
+          deck !== null &&
+          abs(d.y) < 1e-6 &&
+          bay(deck, d.x) >= 0 &&
+          abs(deck.xm[bay(deck, d.x)] - d.x) < 0.02,
+      },
+    });
+  }
+  return out;
+}
+
 function buildWorld(
   spec: ShipSpec,
-  openings: readonly Opening[],
+  given: readonly RunOpening[],
   opts: SimOptions
 ): World {
+  // Hull openings, and deck openings: the run's own if it has any, else
+  // the ship's.
+  const openings: Opening[] = [];
+  const deckGiven: DeckOpening[] = [];
+  for (const o of given)
+    if (isDeckOpening(o)) deckGiven.push(o);
+    else openings.push(o);
+  const deckList = deckGiven.length > 0 ? deckGiven : (spec.deckOpenings ?? []);
   const hull = buildHull(spec);
   const whole = hullSlice(hull, hull.xMin, hull.xMax);
   const fullArea = new Float64Array(hull.n);
@@ -630,16 +907,29 @@ function buildWorld(
       c.crossFlowM2 ?? 0
     )
   );
+  // The pumps: her own (`pumpsM3s`, every hull space, any depth) or the
+  // 1.0 ones (the machinery spaces, under PUMP_DEPTH_M).
+  const ownPumps = spec.pumpsM3s !== undefined;
   spec.compartments.forEach((c, i) => {
-    cells[i].pumped = c.kind === "boiler" || c.kind === "engine";
+    cells[i].pumped =
+      c.pumped ?? (ownPumps || c.kind === "boiler" || c.kind === "engine");
+    if (c.burstM2 !== undefined) cells[i].burst = c.burstM2;
   });
   const boxes = boxSlices.map((s) =>
     makeCell(s, -1, true, 0, 0, false, false, BOX_PERMEABILITY)
   );
   const ctx = { spec, hull, mass };
   const body = makeBody(ctx, "whole", cells, boxes);
+  // Green water on her open deck: the whole hull's (a break ends it).
+  body.deckWater = makeDeckWater(spec, hull);
 
-  const all = openings
+  // The grounding's strips, each once (a ship's real run may hold them).
+  const hullOpenings = opts.shoal
+    ? openings.concat(
+        (spec.shoalOpenings ?? []).filter((o) => !openings.includes(o))
+      )
+    : openings;
+  const all = hullOpenings
     .map((o) => ({
       t: o.t ?? 0,
       i: spec.compartments.findIndex((c) => c.id === o.compartmentId),
@@ -649,6 +939,8 @@ function buildWorld(
   const pending = all.filter((p) => p.t <= 0).map((p) => ({ i: p.i, o: p.o }));
   const timed = all.filter((p) => p.t > 0).sort((a, b) => a.t - b.t);
   if (opts.portholesOpen ?? true) pending.push(...portholeOpenings(spec, hull));
+  const pendingDeck = deckOpenings(spec, deckList, opts, body.deckWater);
+  const storm = stormOf(spec) ?? null;
 
   // Landmarks for the geometric events.
   const fwdBox = spec.superstructure
@@ -692,6 +984,21 @@ function buildWorld(
     timed,
     headway: spec.headway,
     wayLost: false,
+    wayLostAt: null,
+    rho: spec.waterDensity ?? RHO,
+    sea:
+      pendingDeck.length > 0
+        ? { storm, scale: STORM_SCALE[opts.storm ?? "real"], t: 0 }
+        : null,
+    deck: pendingDeck.map((p) => p.o),
+    pendingDeck,
+    relock: (spec.storm?.groups ?? []).flatMap((g, i) =>
+      g.x === undefined || g.y === undefined ? [i] : []
+    ),
+    bowUnderRealT: null,
+    descentScale: spec.descentTimeScale ?? DESCENT_TIME_SCALE,
+    pumps: spec.pumpsM3s ?? PUMP_M3S,
+    pumpDepth: ownPumps ? Infinity : PUMP_DEPTH_M,
     probe: opts.probe,
     forecastle: fwdBox
       ? { x: (fwdBox.fromX + fwdBox.toX) / 2, z: fwdBox.topZ }
@@ -756,6 +1063,8 @@ function frame(w: World): SimFrame {
     for (const c of b.boxes) total += c.water;
   }
   const lead = w.bodies.find((b) => b.part === "stern") ?? w.bodies[0];
+  // Her deck's green water while she is whole (the liners have none).
+  const deck = w.broken ? null : w.bodies[0].deckWater;
   return {
     t: w.t,
     realT: w.realT,
@@ -763,13 +1072,14 @@ function frame(w: World): SimFrame {
     water: water.map((v, i) =>
       w.compCapacity[i] > 0 ? min(1, v / w.compCapacity[i]) : 0
     ),
-    waterAboardT: (RHO * total) / 1000,
+    waterAboardT: (w.rho * total) / 1000,
     trimDeg: lead.pitch / DEG,
     listDeg: lead.roll / DEG,
     power: power(w),
     groundedParts: w.bodies
       .filter((b) => b.grounded || b.mode === "landing" || b.mode === "landed")
       .map((b) => b.part),
+    ...(deck ? { deckWater: Array.from(deck.vol) } : {}),
   };
 }
 
@@ -824,7 +1134,10 @@ function breakUp(w: World, xRaw: number): void {
         aft.level = c.level;
         fwd.level = c.level;
       }
+      aft.burst = c.burst;
+      fwd.burst = c.burst;
       for (const o of c.openings) (o.x < x ? aft : fwd).openings.push(o);
+      for (const o of c.deck) (o.x < x ? aft : fwd).deck.push(o);
       sternCells.push(aft);
       bowCells.push(fwd);
     }
@@ -987,7 +1300,7 @@ function watch(w: World): void {
   }
   // Funnels: base well under, or the body too steep for the stays.
   spec.funnels.forEach((f, i) => {
-    if (w.funnelFallen[i]) return;
+    if (w.funnelFallen[i] || f.falls === false) return;
     const b = w.bodies.find((p) => f.x >= p.xFrom && f.x <= p.xTo);
     if (!b || b.mode !== "float") return;
     if (
@@ -1022,13 +1335,6 @@ function cellAt(w: World, i: number, x: number): Cell | null {
   return best;
 }
 
-/** Earth x the way she still has carries her over real seconds t0..t1. */
-function headwayRun(h: ShipSpec["headway"], t0: number, t1: number): number {
-  if (!h || h.startMs === 0) return 0;
-  const k = Math.LN2 / h.halfLifeS;
-  return (h.startMs / k) * (exp(-k * t0) - exp(-k * t1));
-}
-
 /** Floor contact afloat: the first touch of each end is its landing. */
 function touched(w: World, b: Body): void {
   if (!b.grounded) return;
@@ -1054,11 +1360,30 @@ function step(w: World): void {
   const dt = w.steady
     ? SIM_STEP_S
     : compressed
-      ? FAST_STEP_S * DESCENT_TIME_SCALE
+      ? FAST_STEP_S * w.descentScale
       : w.fast
         ? FAST_STEP_S
         : SIM_STEP_S;
-  const way = headwayRun(w.headway, w.realT, w.realT + dt);
+  // Steady way lasts until she goes under (the bow first).
+  if (w.wayLostAt === null && w.fired.has("bow-under")) w.wayLostAt = w.realT;
+  const way = headwayRun(w.headway, w.realT, w.realT + dt, w.wayLostAt);
+  if (w.bowUnderRealT === null && w.fired.has("bow-under"))
+    w.bowUnderRealT = w.realT;
+  if (w.sea) {
+    w.sea.t = w.realT;
+    relockGroups(w);
+    rideFor(w, dt);
+  }
+  // Steady way carries a hull that has settled too (her engine still
+  // turns); decaying way (1.1) never needed it.
+  if (
+    way !== 0 &&
+    !w.wayLost &&
+    w.headway !== undefined &&
+    w.headway.halfLifeS === undefined
+  )
+    for (const b of w.bodies)
+      if (b.mode === "float" && (b.frozen || w.steady)) b.x += way;
   if (!w.steady) {
     for (const b of w.bodies) {
       if (b.mode === "float" && b.frozen) continue;
@@ -1072,8 +1397,10 @@ function step(w: World): void {
           dt,
           girderNow,
           DRIFT_MPS,
-          w.lightsOut ? 0 : PUMP_M3S,
-          -spec.seaDepthM
+          w.lightsOut ? 0 : w.pumps,
+          -spec.seaDepthM,
+          w.sea,
+          w.pumpDepth
         );
         touched(w, b);
         updateBounds(b);
@@ -1110,7 +1437,7 @@ function step(w: World): void {
     }
   }
   w.realT += dt;
-  w.t += compressed ? dt / DESCENT_TIME_SCALE : dt;
+  w.t += compressed ? dt / w.descentScale : dt;
   if (!w.broken && w.girderState.worst >= 1 && w.bodies[0].mode === "float") {
     breakUp(w, w.girderState.worstX);
     emit(w, "breakup");
@@ -1120,6 +1447,9 @@ function step(w: World): void {
     }
   }
   watch(w);
+  for (const o of w.deck)
+    if (o.failed && o.hatch > 0 && !w.fired.has(`hatch${o.hatch}`))
+      once(w, `hatch${o.hatch}`, "hatch-fails", o.hatch);
   const whole = w.bodies[0];
   if (
     !w.fast &&
@@ -1132,7 +1462,8 @@ function step(w: World): void {
   // Floating steady? Each floating body freezes once it has stopped moving
   // and taking water; when nothing is left moving the run holds its pose
   // to the end.
-  if (!w.steady && w.t > 1800) {
+  // Not in a storm: the next wave over her deck can always come.
+  if (!w.steady && w.t > 1800 && !(w.sea && w.sea.storm)) {
     for (const b of w.bodies) {
       if (b.mode !== "float" || b.frozen) continue;
       // A torpedo's holes (tens of m²) trade water with the sea in a slow
@@ -1174,6 +1505,16 @@ function step(w: World): void {
   if (w.bodies.every((b) => b.mode === "landed")) {
     w.done = true;
     w.outcome = "sank";
+  } else if (
+    spec.shelter &&
+    w.t >= spec.shelter.t &&
+    !w.broken &&
+    whole.mode === "float"
+  ) {
+    // Still afloat and whole when she would reach shelter: she made it.
+    emit(w, "sheltered");
+    w.done = true;
+    w.outcome = "floated";
   } else if (w.t >= w.endT) {
     w.done = true;
     w.outcome = w.bodies.some((b) => b.mode === "float") ? "floated" : "sank";
@@ -1191,6 +1532,71 @@ export interface SimRunner {
   track(): SimTrack;
 }
 
+/**
+ * Re-lock each wave group of hers onto the crest where she really is,
+ * `GROUP_RELOCK_S` before its time: her own path from here (her position,
+ * her way and surge, the drift), not the prediction `stormOf` made before
+ * the run. Only while she floats whole; else the prediction stands.
+ */
+function relockGroups(w: World): void {
+  const sea = w.sea;
+  const raw = w.spec.storm?.groups;
+  if (!sea || !sea.storm || !raw || w.relock.length === 0) return;
+  const b = w.bodies[0];
+  const now = w.realT;
+  const due = w.relock.filter((i) => raw[i].t - GROUP_RELOCK_S <= now);
+  if (due.length === 0) return;
+  w.relock = w.relock.filter((i) => !due.includes(i));
+  if (w.broken || b.mode !== "float") return;
+  const x0 = b.x;
+  const y0 = b.y;
+  const vx = b.vx;
+  const path = (t: number): readonly [number, number] => [
+    x0 + vx * (t - now) + headwayRun(w.headway, now, t, w.wayLostAt),
+    y0 + DRIFT_MPS * (t - now),
+  ];
+  const groups = (sea.storm.groups ?? []).slice();
+  for (const i of due)
+    groups[i] = (lockGroups({ ...sea.storm, groups: [raw[i]] }, path).groups ??
+      [])[0];
+  sea.storm = { ...sea.storm, groups };
+}
+
+/** Ride samples per step: heave, pitch, roll for each deck sample. */
+const rideBuf = new Float64Array(3 * 64);
+const rideOne = new Float64Array(3);
+
+/**
+ * Her ride on the waves (`waveRide`) at each of this step's deck samples,
+ * for the deck openings (`DeckSea.ride`): only while she floats whole,
+ * weighted by `rideWeight` (fading once her bow is under).
+ */
+function rideFor(w: World, dt: number): void {
+  const sea = w.sea as DeckSea;
+  sea.rideN = 0;
+  const b = w.bodies[0];
+  const storm = sea.storm;
+  if (!storm || w.broken || b.mode !== "float") return;
+  const n = max(1, Math.round(dt / DECK_SAMPLE_S));
+  if (3 * n > rideBuf.length) return;
+  for (let j = 0; j < n; j += 1) {
+    const ts = w.realT + ((j + 0.5) * dt) / n;
+    const k = rideWeight(ts, w.bowUnderRealT);
+    if (k <= 0) {
+      rideBuf[3 * j] = 0;
+      rideBuf[3 * j + 1] = 0;
+      rideBuf[3 * j + 2] = 0;
+      continue;
+    }
+    waveRide(storm, sea.scale, b.x, b.y, w.spec, ts, rideOne);
+    rideBuf[3 * j] = k * rideOne[0];
+    rideBuf[3 * j + 1] = k * rideOne[1];
+    rideBuf[3 * j + 2] = k * rideOne[2];
+  }
+  sea.ride = rideBuf;
+  sea.rideN = n;
+}
+
 function trackOf(w: World): SimTrack {
   return {
     frames: w.frames,
@@ -1200,6 +1606,7 @@ function trackOf(w: World): SimTrack {
     brokeAtT: w.brokeAtT,
     breakX: w.breakX,
     endT: w.t,
+    ...(w.sea?.storm ? { storm: w.sea.storm, stormScale: w.sea.scale } : {}),
   };
 }
 
@@ -1208,7 +1615,7 @@ const now = () =>
 
 export function createSimRunner(
   spec: ShipSpec,
-  openings: readonly Opening[],
+  openings: readonly RunOpening[],
   opts: SimOptions = {}
 ): SimRunner {
   let world: World | null = null;
@@ -1232,7 +1639,8 @@ export function createSimRunner(
     progress() {
       if (!world) return 0;
       if (world.done) return 1;
-      return min(0.99, world.t / world.endT);
+      // A run that ends in shelter ends then.
+      return min(0.99, world.t / min(world.endT, spec.shelter?.t ?? Infinity));
     },
     track() {
       if (!world) world = buildWorld(spec, openings, opts);
@@ -1245,7 +1653,7 @@ export function createSimRunner(
 /** The whole run at once. */
 export function simulate(
   spec: ShipSpec,
-  openings: readonly Opening[],
+  openings: readonly RunOpening[],
   opts: SimOptions = {}
 ): SimTrack {
   const runner = createSimRunner(spec, openings, opts);

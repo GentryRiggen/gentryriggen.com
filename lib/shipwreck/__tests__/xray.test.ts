@@ -1,4 +1,5 @@
 import {
+  FITZGERALD_PLACE_IDS,
   LUSITANIA_PLACE_IDS,
   PLACE_IDS,
   PLACES,
@@ -6,6 +7,7 @@ import {
   placeFor,
   waterHereText,
 } from "../places";
+import { fitzgerald } from "../ships/fitzgerald";
 import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
 import { buildHull, hullHalfBreadth } from "../sim/geometry";
@@ -225,5 +227,60 @@ describe("side bunkers in the X-ray", () => {
     expect(spanRange(stbd, 12)).toEqual([-12, -9.5]);
     // Narrower than the bulkhead is out: no wing there.
     expect(spanRange(stbd, 8)).toEqual([-8, -8]);
+  });
+});
+
+describe("the Fitzgerald's places", () => {
+  const fHull = buildHull(fitzgerald);
+  const places = PLACES_BY_SHIP.fitzgerald;
+  const comp = (id: string | null) =>
+    fitzgerald.compartments.find((c) => c.id === id);
+
+  it("are her pilothouse, bell, a cargo hold, a ballast tank, the engine room and the hatch crane", () => {
+    expect(places.map((p) => p.id)).toEqual([...FITZGERALD_PLACE_IDS]);
+    expect(placeFor("fitzgerald", "cargo-hold-1")?.compartmentId).toBe("hold1");
+    expect(placeFor("fitzgerald", "engine-room")?.compartmentId).toBe("engine");
+    // The tank where her vents broke: starboard, beside No. 1 hold.
+    const tank = comp(placeFor("fitzgerald", "ballast-tank")!.compartmentId);
+    expect(tank?.span?.side).toBe("starboard");
+    expect(
+      fitzgerald
+        .deckOpenings!.filter((d) => d.kind === "vent")
+        .map((d) => d.compartmentId)
+    ).toContain(tank!.id);
+    expect(placeFor("fitzgerald", "bridge")).toBeNull();
+    // The Titanic's engine room is still hers.
+    expect(placeFor("titanic", "engine-room")).toBe(PLACES["engine-room"]);
+  });
+
+  it("each sits inside her hull or on her decks, in a compartment she has", () => {
+    for (const p of places) {
+      const [x, y, z] = p.at;
+      expect(p.fact.length).toBeGreaterThan(30);
+      expect(p.floorZ).toBeLessThanOrEqual(z);
+      expect(x).toBeGreaterThan(fHull.xMin);
+      expect(x).toBeLessThan(fHull.xMax);
+      if (p.compartmentId) {
+        const c = comp(p.compartmentId);
+        expect(c).toBeDefined();
+        expect(p.interior).toBe(true);
+        expect(x).toBeGreaterThanOrEqual(c!.fromX);
+        expect(x).toBeLessThanOrEqual(c!.toX);
+        expect(z).toBeLessThan(fitzgerald.sheerZ(x));
+        const [lo, hi] = spanRange(c!, hullHalfBreadth(fHull, x, z));
+        expect(y).toBeGreaterThan(lo);
+        expect(y).toBeLessThan(hi);
+        // Its floor is inside the hull too.
+        expect(Math.abs(y)).toBeLessThan(
+          hullHalfBreadth(fHull, x, Math.max(p.floorZ, 0.05)) + 1e-6
+        );
+      } else {
+        // On her decks: within her breadth, over her spar deck, under the
+        // top of her houses and the crane (a few metres up).
+        expect(Math.abs(y)).toBeLessThan(fitzgerald.beam / 2);
+        expect(z).toBeGreaterThan(fitzgerald.sheerZ(x));
+        expect(z).toBeLessThan(fitzgerald.sheerZ(x) + 12);
+      }
+    }
   });
 });

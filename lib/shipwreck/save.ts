@@ -27,15 +27,33 @@ export interface ShipwreckSave {
   whatIfByShip?: Partial<Record<ShipId, ShipWhatIf>>;
 }
 
-/** A ship's last What if?: where it was opened, and its portholes. */
+/**
+ * A ship's last What if?: the spots chosen (any number, for every ship:
+ * compartments, torpedo hits, or a storm ship's hatches, vents and shoal
+ * strips), her portholes and her storm.
+ */
 export interface ShipWhatIf {
   ids: string[];
   /** Torpedo ships: whether the portholes were open (default true). */
   portholesOpen?: boolean;
+  /** Storm ships: the storm as it was, calmer or worse (default "real"). */
+  storm?: WhatIfStorm;
 }
 
+/** A storm ship's What-if storm. */
+export type WhatIfStorm = "real" | "calmer" | "worse";
+export const WHAT_IF_STORMS: readonly WhatIfStorm[] = [
+  "real",
+  "calmer",
+  "worse",
+];
+
 /** The ships a save may name (kept here so the save needs no ship data). */
-export const SAVE_SHIP_IDS: readonly ShipId[] = ["titanic", "lusitania"];
+export const SAVE_SHIP_IDS: readonly ShipId[] = [
+  "titanic",
+  "lusitania",
+  "fitzgerald",
+];
 
 export const SAVE_KEY = "shipwreck:v1";
 /** Prefix of the backups of saves that could not be read in full. */
@@ -114,6 +132,8 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
       const entry: ShipWhatIf = { ids: parseIds(value.ids) };
       if (typeof value.portholesOpen === "boolean")
         entry.portholesOpen = value.portholesOpen;
+      if ((WHAT_IF_STORMS as readonly unknown[]).includes(value.storm))
+        entry.storm = value.storm as WhatIfStorm;
       byShip[ship] = entry;
     }
     if (Object.keys(byShip).length > 0) save.whatIfByShip = byShip;

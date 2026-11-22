@@ -17,7 +17,8 @@ interface SceneCheckProps {
  * only): the real night on the playback store, no UI. Drive it with
  * `window.__shipwreck.seek / setCamera / setXray / flyToPlace`. Add
  * `&quality=high|medium|low` to pin a tier (the frame-rate monitor is off),
- * `&ship=lusitania` for her real afternoon (default the Titanic's night).
+ * `&ship=lusitania` for her real afternoon, `&ship=fitzgerald` for her
+ * storm (default the Titanic's night).
  */
 export default function SceneCheck({ runtime }: SceneCheckProps) {
   const params =
@@ -25,8 +26,9 @@ export default function SceneCheck({ runtime }: SceneCheckProps) {
       ? null
       : new URLSearchParams(window.location.search);
   const pinned = params?.get("quality") ?? null;
+  const asked = params?.get("ship");
   const ship: ShipId =
-    params?.get("ship") === "lusitania" ? "lusitania" : "titanic";
+    asked === "lusitania" || asked === "fitzgerald" ? asked : "titanic";
 
   useEffect(() => {
     const s = playback.getState();

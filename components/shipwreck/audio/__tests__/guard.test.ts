@@ -1,6 +1,11 @@
 import fs from "node:fs";
 import path from "node:path";
-import { CUE_GAP_S, EVENT_CUES, LUSITANIA_EVENT_CUES } from "../cues";
+import {
+  CUE_GAP_S,
+  EVENT_CUES,
+  FITZGERALD_EVENT_CUES,
+  LUSITANIA_EVENT_CUES,
+} from "../cues";
 
 /**
  * The game's sound is made in the browser (Web Audio oscillators and
@@ -44,6 +49,7 @@ describe("the sound stays synthesised and has no voices", () => {
       ...Object.keys(CUE_GAP_S),
       ...Object.values(EVENT_CUES),
       ...Object.values(LUSITANIA_EVENT_CUES),
+      ...Object.values(FITZGERALD_EVENT_CUES),
     ]);
     expect(cues.size).toBeGreaterThan(5);
     for (const cue of cues)

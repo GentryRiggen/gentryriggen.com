@@ -211,3 +211,73 @@ describe("save: ships (1.1)", () => {
     expect([...SAVE_SHIP_IDS]).toEqual([...SHIP_IDS]);
   });
 });
+
+describe("save: What if for every ship (1.3)", () => {
+  const BASE = {
+    v: 1,
+    settings: { sound: true, speed: 30, camera: "orbit" },
+    seen: { realNight: true, endings: [] },
+    lastWhatIf: [],
+  };
+
+  it("still loads a 1.1 save holding one Lusitania spot", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        ...BASE,
+        ship: "lusitania",
+        whatIfByShip: { lusitania: { ids: ["br1"], portholesOpen: true } },
+      })
+    );
+    const { save, writable } = loadSaveResult(NOW, storage);
+    expect(writable).toBe(true);
+    expect(whatIfOf(save, "lusitania")).toEqual({
+      ids: ["br1"],
+      portholesOpen: true,
+    });
+  });
+
+  it("round-trips three Lusitania torpedo hits", () => {
+    const save = withWhatIf(parseSaveSalvaging(BASE)!.save, "lusitania", {
+      ids: ["br1", "br3", "turbine"],
+      portholesOpen: false,
+    });
+    const storage = new MemoryStorage();
+    writeSave(save, storage);
+    expect(whatIfOf(loadSave(NOW, storage), "lusitania")).toEqual({
+      ids: ["br1", "br3", "turbine"],
+      portholesOpen: false,
+    });
+  });
+
+  it("round-trips the Fitzgerald's spots and storm", () => {
+    const save = withWhatIf(parseSaveSalvaging(BASE)!.save, "fitzgerald", {
+      ids: ["hatch-1", "vents", "shoal-2"],
+      storm: "calmer",
+    });
+    const storage = new MemoryStorage();
+    writeSave(save, storage);
+    const back = loadSave(NOW, storage);
+    expect(back).toEqual(save);
+    expect(whatIfOf(back, "fitzgerald")).toEqual({
+      ids: ["hatch-1", "vents", "shoal-2"],
+      storm: "calmer",
+    });
+  });
+
+  it("defaults junk storm values (the real storm) and keeps her spots", () => {
+    for (const storm of ["hurricane", 3, null, true, {}]) {
+      const parsed = parseSaveSalvaging({
+        ...BASE,
+        whatIfByShip: { fitzgerald: { ids: ["hatch-2", 9], storm } },
+      })!.save;
+      expect(whatIfOf(parsed, "fitzgerald")).toEqual({ ids: ["hatch-2"] });
+    }
+    const worse = parseSaveSalvaging({
+      ...BASE,
+      whatIfByShip: { fitzgerald: { ids: [], storm: "worse" } },
+    })!.save;
+    expect(whatIfOf(worse, "fitzgerald")).toEqual({ ids: [], storm: "worse" });
+  });
+});

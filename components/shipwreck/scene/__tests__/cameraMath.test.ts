@@ -3,7 +3,10 @@ import { applyBodyPose } from "@/components/shipwreck/model/pose";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import { earthZ } from "@/lib/shipwreck/xray";
 import {
+  aboveWaves,
+  cinematicHit,
   cinematicShot,
+  fitAcross,
   clampAboveFloor,
   dampSpring,
   HULL_BOXES,
@@ -21,6 +24,7 @@ import {
   type ShotContext,
   type ShotId,
 } from "../cameraMath";
+import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 
 const pose = (p: Partial<BodyPose> = {}): BodyPose => ({
@@ -287,6 +291,162 @@ describe("the Lusitania's camera", () => {
   });
 });
 
+describe("the Fitzgerald's camera", () => {
+  const SEA = fitzgerald.seaDepthM; // 162 m
+  const boxes = hullBoxesFor("fitzgerald");
+  const deg = Math.PI / 180;
+
+  it("sizes her hull boxes from her data: hull, after house, forecastle", () => {
+    const xs = boxes.flatMap((b) => b.x);
+    const stations = fitzgerald.stations.map((st) => st.x);
+    expect(Math.min(...xs)).toBeLessThanOrEqual(Math.min(...stations));
+    expect(Math.max(...xs)).toBeGreaterThanOrEqual(Math.max(...stations));
+    expect(Math.max(...xs) - Math.min(...xs)).toBeLessThan(fitzgerald.loa + 3);
+    const ys = boxes.flatMap((b) => b.y);
+    expect(Math.max(...ys)).toBeGreaterThanOrEqual(fitzgerald.beam / 2);
+    expect(Math.max(...ys)).toBeLessThan(fitzgerald.beam / 2 + 1);
+    // Her houses stand above the spar deck at her ends, not amidships.
+    const tall = boxes.filter((b) => b.z[1] > fitzgerald.depth + 1);
+    expect(tall.length).toBeGreaterThanOrEqual(2);
+    for (const b of tall) expect(b.x[0] > 60 || b.x[1] < -60).toBe(true);
+  });
+
+  it("keeps the camera clear of the local wave surface, either side of it", () => {
+    // Meant above the sea (y ≥ 0): over the crest under it.
+    expect(aboveWaves(3, 4.5, 1.5)).toBe(6);
+    expect(aboveWaves(12, 4.5, 1.5)).toBe(12);
+    expect(aboveWaves(0.5, -3, 1.5)).toBe(0.5);
+    // Meant under it: below the trough over it.
+    expect(aboveWaves(-2, -3.5, 1.5)).toBe(-5);
+    expect(aboveWaves(-40, 2, 1.5)).toBe(-40);
+    // And never under her 162 m floor.
+    expect(clampAboveFloor([0, -170, 0], SEA, 2)[1]).toBe(-160);
+  });
+
+  const pm = (h: number, m: number) => (h + 12 - 15) * 3600 + (m - 30) * 60;
+  const track = {
+    brokeAtT: 13363.7,
+    sankAtT: 13365.2,
+    events: [
+      { kind: "collision" as const, t: 0, realT: 0 },
+      { kind: "radio" as const, t: 2400, realT: 2400, index: 0 },
+      { kind: "hatch-fails" as const, t: 13297, realT: 13297, index: 15 },
+      { kind: "bow-under" as const, t: 13323, realT: 13323 },
+      { kind: "bow-lands" as const, t: 13363.5, realT: 13363.5 },
+      { kind: "breakup" as const, t: 13363.7, realT: 13363.7 },
+      { kind: "stern-under" as const, t: 13365.2, realT: 13365.2 },
+      { kind: "stern-lands" as const, t: 13370, realT: 13370 },
+    ],
+  };
+
+  it("follows her storm: from astern, on the deck, the big seas, the dive, the floor", () => {
+    const at = (t: number) => cinematicShot(track, t, "fitzgerald");
+    expect(cinematicShot(track, 0, "fitzgerald", false)).toBe("storm");
+    expect(at(0)).toBe("storm");
+    const early = new Set([0, 900, 1800, 2700, 3600, 4500, 5400, 7200].map(at));
+    expect(early).toEqual(new Set(["storm", "storm-beam", "deck"]));
+    expect(at(pm(5, 30))).toBe("deck");
+    // Aft at the Anderson's lights when the snow thins in the dark.
+    expect(at(pm(5, 55))).toBe("astern");
+    expect(at(pm(6, 36))).toBe("astern");
+    expect(at(pm(6, 20))).not.toBe("astern");
+    expect(at(pm(7, 5))).toBe("sisters");
+    expect(at(13323 - 10)).toBe("going");
+    expect(at(13323 + 12)).toBe("dive");
+    expect(at(13363.5)).toBe("strike");
+    expect(at(13366)).toBe("stern-roll");
+    expect(at(13380)).toBe("parts");
+    // The others' shots are as they were.
+    expect(cinematicShot(track, 100)).toBe("establishing");
+  });
+
+  it("frames every shot above her floor, outside her hull, clear of the seas", () => {
+    const breakX = 17.9;
+    const whole = (p: Partial<BodyPose>) => [pose({ z: -8.3, ...p })];
+    const parts = (bow: Partial<BodyPose>, stern: Partial<BodyPose>) => [
+      pose({ part: "stern", ...stern }),
+      pose({ part: "bow", ...bow }),
+    ];
+    const cases: [ShotId, BodyPose[]][] = [
+      ["storm", whole({})],
+      ["astern", whole({ x: 52000, roll: 5 * deg, z: -9.2 })],
+      ["storm-beam", whole({ x: 20000, roll: 2 * deg })],
+      ["deck", whole({ x: 41000, roll: 5 * deg, z: -9 })],
+      ["sisters", whole({ x: 72000, roll: 7 * deg, z: -9.5 })],
+      ["going", whole({ x: 76100, roll: 8 * deg, pitch: 6 * deg, z: -14 })],
+      ["dive", whole({ x: 76250, pitch: 25 * deg, z: -70 })],
+      [
+        "strike",
+        parts(
+          { x: 76420, z: -150, pitch: 30 * deg },
+          { x: 76430, z: -60, pitch: 30 * deg, roll: 40 * deg }
+        ),
+      ],
+      [
+        "stern-roll",
+        parts(
+          { x: 76428, z: -164 },
+          { x: 76440, z: -110, pitch: 10 * deg, roll: 120 * deg }
+        ),
+      ],
+      [
+        "parts",
+        parts(
+          { x: 76428, y: 268, z: -164 },
+          { x: 76443, y: 267, z: -151, roll: Math.PI }
+        ),
+      ],
+    ];
+    for (const [shot, bodies] of cases) {
+      for (const wall of [0, 40, 200]) {
+        const ctx: ShotContext = {
+          t: 6000,
+          wall,
+          bodies,
+          breakX: bodies.length > 1 ? breakX : null,
+          seaDepthM: SEA,
+          ship: "fitzgerald",
+        };
+        const v = shotView(shot, ctx);
+        expect(v.pos[1]).toBeGreaterThanOrEqual(-SEA + 2);
+        expect(v.target[1]).toBeGreaterThanOrEqual(-SEA);
+        for (const b of bodies) {
+          const local = inShipFrame(b, v.pos);
+          expect(pushOutOfHull(local, 0, boxes)).toEqual(local);
+        }
+        // Above the seas (her crests reach about 8 m, the three sisters'
+        // a few more), or well under them and close enough to see in
+        // the dark water (60–100 m: drift audit B).
+        if (["dive", "strike", "stern-roll", "parts"].includes(shot)) {
+          expect(v.pos[1]).toBeLessThan(-12);
+          const d = Math.hypot(
+            v.pos[0] - v.target[0],
+            v.pos[1] - v.target[1],
+            v.pos[2] - v.target[2]
+          );
+          expect(d).toBeGreaterThan(45);
+          expect(d).toBeLessThan(100);
+        } else expect(v.pos[1]).toBeGreaterThan(14);
+      }
+    }
+    // Her presets: the underwater and boat cameras.
+    const ctx: ShotContext = {
+      t: 13380,
+      wall: 10,
+      bodies: cases[8][1],
+      breakX,
+      seaDepthM: SEA,
+      ship: "fitzgerald",
+    };
+    const u = underwaterView(ctx).pos[1];
+    expect(u).toBeGreaterThanOrEqual(-SEA + 2);
+    expect(u).toBeLessThan(-12);
+    expect(lifeboatView({ ...ctx, bodies: whole({}) }).pos[1]).toBeGreaterThan(
+      14
+    );
+  });
+});
+
 /** A three.js point in a pose's ship frame (the inverse of shipToThree). */
 function inShipFrame(
   p: BodyPose,
@@ -315,5 +475,30 @@ describe("no-allocation helpers", () => {
     expect(trackSpeedAt(frames, 4, 2)).toBeCloseTo(9, 6);
     expect(trackSpeedAt(frames, 0, 2)).toBe(0);
     expect(trackSpeedAt([], 3)).toBe(0);
+  });
+});
+
+describe("fitting her across a narrow screen", () => {
+  it("pulls a wide shot back until 1.15 × her length fits across", () => {
+    // Landscape (1133 × 744) at 360 m: she fits already.
+    expect(fitAcross(1133 / 744, 42, 360, 1.15 * fitzgerald.loa)).toBe(1);
+    // Portrait (744 × 1133) at 175 m (her beam shot): about 2.9×.
+    const k = fitAcross(744 / 1133, 42, 175, 1.15 * fitzgerald.loa);
+    const halfW = Math.tan((21 * Math.PI) / 180) * (744 / 1133) * 175 * k;
+    expect(2 * halfW).toBeCloseTo(1.15 * fitzgerald.loa, 6);
+    expect(k).toBeGreaterThan(2.5);
+  });
+});
+
+describe("cinematicHit", () => {
+  it("a storm run follows her story even with no hull openings", () => {
+    expect(cinematicHit(0, "storm", false)).toBe(true);
+    expect(cinematicHit(2, "storm", false)).toBe(true);
+  });
+  it("the title's calm stage and a hole-less other ship stay calm", () => {
+    expect(cinematicHit(0, "storm", true)).toBe(false);
+    expect(cinematicHit(0, "torpedo", false)).toBe(false);
+    expect(cinematicHit(0, "iceberg", false)).toBe(false);
+    expect(cinematicHit(1, "torpedo", false)).toBe(true);
   });
 });

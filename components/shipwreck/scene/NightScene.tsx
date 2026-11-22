@@ -12,11 +12,7 @@ import { ToneMappingMode } from "postprocessing";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, type Object3D, type WebGLRenderer } from "three";
 import { useStore } from "zustand";
-import {
-  QUALITY_TIERS,
-  type PlaybackStore,
-  type QualityTier,
-} from "@/lib/shipwreck/playback";
+import type { PlaybackStore, QualityTier } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import CameraRig from "./CameraRig";
@@ -27,10 +23,14 @@ import Iceberg from "./Iceberg";
 import PlacePins from "./PlacePins";
 import Sea from "./Sea";
 import { ShipOnStage } from "./ShipRig";
-import Sky, { DaySky } from "./Sky";
+import GreenWater from "./GreenWater";
+import Sky, { DaySky, StormSky } from "./Sky";
+import StormSea from "./StormSea";
 import Torpedo from "./Torpedo";
 import WalkRunner from "./WalkRunner";
+import Wreckage from "./Wreckage";
 import XRay from "./XRay";
+import { stepQuality } from "./quality";
 import { createSceneRuntime, type SceneRuntime } from "./runtime";
 import { SCENE_SETTINGS, sunDirection, type SceneSettings } from "./settings";
 
@@ -86,6 +86,7 @@ export default function NightScene({
   const spec = getShip(useStore(store, (s) => s.ship));
   const settings = SCENE_SETTINGS[spec.id];
   const day = settings.timeOfDay === "afternoon";
+  const storm = settings.storm === true;
   const haze = useMemo(() => new Color(settings.fog), [settings]);
   const sunDir = useMemo(
     () =>
@@ -139,11 +140,12 @@ export default function NightScene({
           <PerformanceMonitor
             bounds={() => [44, 57]}
             flipflops={4}
-            onDecline={() => step(store, 1)}
+            // Not while her run is still computing (`stepQuality`).
+            onDecline={() => stepQuality(store, 1)}
             // Touch devices (the iPad) never step up on their own: each
             // step up and back down again is a visible stutter.
             onIncline={() => {
-              if (!isTouchDevice()) step(store, -1);
+              if (!isTouchDevice()) stepQuality(store, -1);
             }}
           />
         )}
@@ -154,12 +156,24 @@ export default function NightScene({
           seaDepthM={spec.seaDepthM}
           settings={settings}
         />
-        {day ? <DaySky sunDir={sunDir} horizon={haze} /> : <Sky dpr={dpr} />}
+        {day ? (
+          <DaySky sunDir={sunDir} horizon={haze} />
+        ) : storm ? (
+          <StormSky runtime={runtime} fog={settings.fog} dpr={dpr} />
+        ) : (
+          <Sky dpr={dpr} />
+        )}
         {settings.coast && <Coast />}
         {/* Another ship builds her own model, disposing the old. */}
         <ShipOnStage store={store} runtime={runtime} />
         {settings.iceberg && <Iceberg store={store} />}
         {spec.cause === "torpedo" && <Torpedo store={store} />}
+        {storm && (
+          <>
+            <GreenWater store={store} runtime={runtime} spec={spec} />
+            <Wreckage store={store} seaDepthM={spec.seaDepthM} />
+          </>
+        )}
         <Effects
           store={store}
           runtime={runtime}
@@ -174,10 +188,11 @@ export default function NightScene({
         <EffectComposer multisampling={4}>
           <Bloom
             // By day the sunlit paint must not glow: only the sun, its
-            // glitter on the sea and the flashes bloom.
+            // glitter on the sea and the flashes bloom. In the storm her
+            // lights and the far lights bloom, as at night.
             luminanceThreshold={day ? 1.6 : 1}
             luminanceSmoothing={0.25}
-            intensity={day ? 0.9 : 1.25}
+            intensity={day ? 0.9 : storm ? 1 : 1.25}
             mipmapBlur
             resolutionScale={quality === "high" ? 0.5 : 0.35}
           />
@@ -197,13 +212,6 @@ function isTouchDevice(): boolean {
   );
 }
 
-function step(store: PlaybackStore, by: 1 | -1) {
-  const s = store.getState();
-  const i = QUALITY_TIERS.indexOf(s.quality);
-  const next = QUALITY_TIERS[Math.max(0, Math.min(2, i + by))];
-  if (next !== s.quality) s.setQuality(next);
-}
-
 function SeaFromStore({
   store,
   runtime,
@@ -215,6 +223,18 @@ function SeaFromStore({
 }) {
   const quality = useStore(store, (s) => s.quality);
   const xray = useStore(store, (s) => s.xray);
+  const ship = useStore(store, (s) => s.ship);
+  // The storm's sea is her track's waves (no mirror: trap 3).
+  if (settings.storm)
+    return (
+      <StormSea
+        runtime={runtime}
+        quality={quality}
+        xray={xray}
+        settings={settings}
+        spec={getShip(ship)}
+      />
+    );
   return (
     <Sea runtime={runtime} quality={quality} xray={xray} settings={settings} />
   );

@@ -72,6 +72,7 @@ export default function Hud({
 }: HudProps) {
   const ship = getShip(useStore(store, (s) => s.ship));
   const realMinute = useStore(store, (s) => Math.floor(s.realT / 60));
+  const hits = useStore(store, (s) => s.hits.length);
   const playing = useStore(store, (s) => s.playing);
   const speed = useStore(store, (s) => s.speed);
   const camera = useStore(store, (s) => s.camera);
@@ -169,7 +170,7 @@ export default function Hud({
                 {clockText(realMinute * 60, ship.clockStartS)}
               </span>
               <span className="text-sm text-slate-300 sm:text-base">
-                {sinceText(realMinute * 60, ship)}
+                {sinceText(realMinute * 60, ship, hits)}
               </span>
             </div>
             {chips && <div className="mt-2">{chips}</div>}

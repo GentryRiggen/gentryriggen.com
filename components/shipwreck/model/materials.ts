@@ -71,6 +71,13 @@ export interface HullPaint {
   bootTop: number;
   /** The line just under the sheer, or null (sRGB hex). */
   sheerLine: number | null;
+  /**
+   * Topsides and bottom colours (default the liners' black over red
+   * antifouling) and the plating's relief (default 1).
+   */
+  topsides?: number;
+  bottom?: number;
+  relief?: number;
 }
 
 /** The Titanic's. */
@@ -92,19 +99,24 @@ function hullMaterial(
     side: DoubleSide,
     map: tex.weathering,
     normalMap: rivets ? tex.plateNormal : null,
-    normalScale: new Vector2(0.55, 0.55),
+    normalScale: new Vector2(
+      0.55 * (paint.relief ?? 1),
+      0.55 * (paint.relief ?? 1)
+    ),
   });
   // The weathering spans the whole hull (uv1); the plates tile (uv).
   tex.weathering.channel = 1;
   tex.plateNormal.channel = 0;
-  // No sheer line: paint it the topsides' black.
+  // No sheer line: paint it the topsides' colour.
+  const topsides = paint.topsides ?? 0x121315;
   const uniforms = {
     uLoadWL: { value: paint.loadWaterline },
     uBootTop: { value: paint.bootTop },
-    uRed: { value: linear(0x6a2419) },
-    uBoot: { value: linear(0xd8d4c8) },
-    uBlack: { value: linear(0x121315) },
-    uGold: { value: linear(paint.sheerLine ?? 0x121315) },
+    uRed: { value: linear(paint.bottom ?? 0x6a2419) },
+    // No boot-top: its line is the topsides' colour, not a white hairline.
+    uBoot: { value: linear(paint.bootTop > 0 ? 0xd8d4c8 : topsides) },
+    uBlack: { value: linear(topsides) },
+    uGold: { value: linear(paint.sheerLine ?? topsides) },
   };
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
@@ -225,7 +237,12 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vWarm * 0.4, clamp(vLight, 0.0, 1.0));`
 
 export function createShipMaterials(
   tex: ShipTextures,
-  options: { rivets: boolean; hull?: HullPaint }
+  options: {
+    rivets: boolean;
+    hull?: HullPaint;
+    /** Painted letters (not gilt): the name boards are not metallic. */
+    paintedNames?: boolean;
+  }
 ): ShipMaterials {
   const light = createLightUniforms();
   const hull = hullMaterial(
@@ -254,8 +271,8 @@ export function createShipMaterials(
     map: tex.names,
     transparent: true,
     alphaTest: 0.35,
-    roughness: 0.4,
-    metalness: 0.6,
+    roughness: options.paintedNames ? 0.7 : 0.4,
+    metalness: options.paintedNames ? 0.05 : 0.6,
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2,

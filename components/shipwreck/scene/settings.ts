@@ -17,7 +17,12 @@ export interface SunAngles {
 }
 
 export interface SceneSettings {
-  timeOfDay: "night" | "afternoon";
+  /**
+   * "storm-dusk" (the Fitzgerald): a November storm from grey late
+   * afternoon to black night (`storm.ts`): no sun disc, the light from
+   * `stormDaylight`, the sea from her track's storm.
+   */
+  timeOfDay: "night" | "afternoon" | "storm-dusk";
   sun: SunAngles | null;
   /** The haze at the horizon above the sea (sRGB hex). */
   fog: string;
@@ -27,6 +32,10 @@ export interface SceneSettings {
   iceberg: boolean;
   /** Her true heading at the first event (the scene's +x), degrees. */
   headingDeg?: number;
+  /** The sea drawn from her track's storm (`SimTrack.storm`), no mirror. */
+  storm?: true;
+  /** Snow squalls drifting on the wind (`snowAt`). */
+  snow?: true;
 }
 
 // --- The night of 14–15 April 1912 (1.0's constants).
@@ -41,6 +50,9 @@ export const NIGHT_FOG = new Color().setRGB(
 /** Just under the surface, and deep down. */
 export const NIGHT_SEA_FOG = new Color(0x02121c);
 export const NIGHT_DEEP_FOG = new Color(0x020a14);
+
+/** The Fitzgerald's course for Whitefish Point, true (USCG, NTSB). */
+export const FITZGERALD_HEADING_DEG = 141;
 
 // --- The afternoon of 7 May 1915.
 
@@ -131,13 +143,21 @@ export function sunDirection(
   sun: SunAngles,
   headingDeg: number
 ): [number, number, number] {
+  return sunDirectionInto(sun, headingDeg, [0, 0, 0]);
+}
+
+/** As `sunDirection`, written into `out` (no allocation). */
+export function sunDirectionInto(
+  sun: SunAngles,
+  headingDeg: number,
+  out: [number, number, number]
+): [number, number, number] {
   const rel = (sun.azimuthDeg - headingDeg) * RAD;
   const el = sun.elevationDeg * RAD;
-  return [
-    Math.cos(rel) * Math.cos(el),
-    Math.sin(el),
-    Math.sin(rel) * Math.cos(el),
-  ];
+  out[0] = Math.cos(rel) * Math.cos(el);
+  out[1] = Math.sin(el);
+  out[2] = Math.sin(rel) * Math.cos(el);
+  return out;
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -169,5 +189,18 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
     coast: true,
     iceberg: false,
     headingDeg: LUSITANIA_HIT.headingDeg,
+  },
+  // 3:30 PM to night on Lake Superior, 10 November 1975 (`storm.ts`): an
+  // overcast with no sun disc, grey snow haze, cold dark fresh water.
+  fitzgerald: {
+    timeOfDay: "storm-dusk",
+    sun: null,
+    fog: "#6b7377",
+    underwaterFog: "#1d302d",
+    coast: false,
+    iceberg: false,
+    headingDeg: FITZGERALD_HEADING_DEG,
+    storm: true,
+    snow: true,
   },
 };

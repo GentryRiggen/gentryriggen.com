@@ -1,3 +1,4 @@
+import type { StormSpec } from "../ships/types";
 import {
   BOX_FLOOD_M2_PER_M,
   CD_OPENING,
@@ -42,6 +43,9 @@ const { abs, max, min, pow, sqrt } = Math;
  * - across a longitudinal bulkhead (wing bunker to the space beside it):
  *   the orifice law through the cells' cross-flow area, both directions.
  *
+ * - deck openings (hatches, vents): the orifice law under the storm's own
+ *   wave surface, `head = η − z` at the opening's earth position (below).
+ *
  * A wing or centre cell (a compartment with a `span`) is its share of each
  * section. The deck edge belongs to the centre cell (hatches and stairways
  * lead down into the main space, not into the bunkers beside it); a wing's
@@ -56,6 +60,53 @@ export interface CellOpening {
   area: number;
 }
 
+/**
+ * An opening in the deck (ship frame: its lip), reached by the sea only
+ * where a wave stands over it (or once she is under).
+ */
+export interface DeckCellOpening {
+  x: number;
+  y: number;
+  z: number;
+  /** Open area now (m²): the leak, then the failed cover's opening. */
+  area: number;
+  /** Head of water over the lip at which the cover gives way (Infinity: never). */
+  failHead: number;
+  failedArea: number;
+  failed: boolean;
+  /** Real seconds after the first event it starts to leak. */
+  openT: number;
+  /** Hatch number (from 1, spec order), 0 if not a hatch. */
+  hatch: number;
+  /**
+   * Its lip stands on the open deck (a hatch coaming, a vent), so the
+   * green water on deck (`deckWater.ts`) reaches it; false for a split in
+   * the side shell. Default true.
+   */
+  onDeck?: boolean;
+  /** The deck bay it stands in (`DeckWater`), or −1. */
+  bay?: number;
+  /** It stands at its bay's sample point on the centre line (reads the
+   *  bay row's sea). */
+  row?: boolean;
+}
+
+/** The sea a step's deck openings see: the storm (null: still water), when. */
+export interface DeckSea {
+  storm: StormSpec | null;
+  scale: number;
+  /** Real seconds after the first event at the start of the step. */
+  t: number;
+  /**
+   * Her ride on the waves (`waveRide.ts`) at each of the step's deck
+   * samples: heave, pitch, roll per sample (3 values each), for `rideN`
+   * samples; 0 (the default) means none (still-water pose). The run fills
+   * it for the body that floats whole.
+   */
+  ride?: Float64Array;
+  rideN?: number;
+}
+
 export interface Cell {
   /** Index of the original compartment, or -1 for a superstructure box. */
   comp: number;
@@ -68,6 +119,8 @@ export interface Cell {
   aftWall: boolean;
   fwdWall: boolean;
   openings: CellOpening[];
+  /** Deck openings into this cell (hatches, vents). */
+  deck: DeckCellOpening[];
   /** Can the pumps work this space (machinery)? */
   pumped: boolean;
   /** Permeability: the share of the space water can fill; and so its capacity. */
@@ -100,8 +153,17 @@ export interface Cell {
   footprint: number;
   /** Net inflow this step, m³/s (for the steady test and the HUD). */
   inflow: number;
+  /**
+   * Water let in so far (m³, the inflows only): through its deck openings
+   * (`deckIn`, the waves over her deck) and through everything else
+   * (`seaIn`: hull openings, the deck edge, bursts). For the storm's share.
+   */
+  deckIn: number;
+  seaIn: number;
   /** Open area to the cell(s) beside it across a longitudinal bulkhead, m². */
   cross: number;
+  /** The opening once its deck is VENT_BURST_M under (m²). */
+  burst: number;
 }
 
 export function makeCell(
@@ -135,7 +197,9 @@ export function makeCell(
     aftWall,
     fwdWall,
     openings: [],
+    deck: [],
     pumped: false,
+    burst: VENT_BURST_M2,
     perm,
     cap: slice.capacity * perm,
     water: 0,
@@ -156,6 +220,8 @@ export function makeCell(
     waterArea: new Float64Array(slice.n),
     footprint: max(1, footprint * 0.8),
     inflow: 0,
+    deckIn: 0,
+    seaIn: 0,
     cross,
   };
 }
@@ -307,7 +373,7 @@ export function headLevel(c: Cell): number {
   return c.level;
 }
 
-function orifice(area: number, dh: number): number {
+export function orifice(area: number, dh: number): number {
   const a = abs(dh);
   const q =
     a < HEAD_EPS
@@ -383,7 +449,7 @@ export function seaInflow(
   // that still held the air in: a large opening at the deepest deck point.
   if (deepest < -VENT_BURST_M) {
     const hi = max(0, inside - deepest);
-    q += orifice(VENT_BURST_M2, -deepest - hi);
+    q += orifice(c.burst, -deepest - hi);
   }
   return q;
 }

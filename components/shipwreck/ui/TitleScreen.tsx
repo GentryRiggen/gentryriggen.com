@@ -18,7 +18,23 @@ interface TitleScreenProps {
   onWhatIf: () => void;
 }
 
-const COMING = ["Britannic", "Edmund Fitzgerald"];
+const COMING = ["Britannic"];
+
+/** The What if? button's words and icon, by what sank her. */
+const WHAT_IF: Record<
+  "iceberg" | "torpedo" | "storm",
+  { label: string; icon: "iceberg" | "torpedo" | "storm" }
+> = {
+  iceberg: {
+    label: "What if? Choose where the iceberg opens the hull",
+    icon: "iceberg",
+  },
+  torpedo: { label: "What if? Choose where torpedoes hit", icon: "torpedo" },
+  storm: {
+    label: "What if? Choose what lets the lake in, and the storm",
+    icon: "storm",
+  },
+};
 
 /** The title over the slowly circling, lit ship, and the ship picker. */
 export default function TitleScreen({
@@ -29,7 +45,7 @@ export default function TitleScreen({
 }: TitleScreenProps) {
   const spec = getShip(ship);
   const story = storyOf(spec);
-  const torpedo = spec.cause === "torpedo";
+  const whatIf = WHAT_IF[spec.cause];
 
   return (
     <main
@@ -114,15 +130,11 @@ export default function TitleScreen({
           <button
             type="button"
             data-testid="shipwreck-what-if"
-            aria-label={
-              torpedo
-                ? "What if? Choose where the torpedo hits"
-                : "What if? Choose where the iceberg opens the hull"
-            }
+            aria-label={whatIf.label}
             onClick={onWhatIf}
             className={SECONDARY}
           >
-            <Icon name={torpedo ? "torpedo" : "iceberg"} className="size-8" />
+            <Icon name={whatIf.icon} className="size-8" />
             What if?
           </button>
         </div>

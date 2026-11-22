@@ -1,6 +1,14 @@
 import { BufferAttribute, BufferGeometry } from "three";
 import { COLORS, type QualitySettings } from "./buildShip";
-import { GeoBuffer, box, cylinder, rgb, type RGB } from "./geoBuffer";
+import {
+  GeoBuffer,
+  box,
+  cylinder,
+  polygon,
+  quad,
+  rgb,
+  type RGB,
+} from "./geoBuffer";
 import type { BoatKind, FunnelRecipe, ShipPaint, V3 } from "./titanicRecipe";
 
 /**
@@ -44,11 +52,19 @@ export function funnelGeometry(
   const cuts: [number, number, RGB][] = [];
   const bandH = 0.28;
   let z0 = -0.6;
-  for (const b of f.bands) {
-    const zb = H * b;
+  // Thin black bands and wide stripes, in order up the funnel.
+  const marks: [number, number, RGB][] = [
+    ...f.bands.map((b): [number, number, RGB] => [H * b, H * b + bandH, black]),
+    ...(f.stripes ?? []).map((st): [number, number, RGB] => [
+      H * st.from,
+      H * st.to,
+      rgb(st.color),
+    ]),
+  ].sort((a, b) => a[0] - b[0]);
+  for (const [zb, zt, color] of marks) {
     cuts.push([z0, zb, buff]);
-    cuts.push([zb, zb + bandH, black]);
-    z0 = zb + bandH;
+    cuts.push([zb, zt, color]);
+    z0 = zt;
   }
   cuts.push([z0, blackFrom, buff]);
   cuts.push([blackFrom, H, black]);
@@ -115,6 +131,7 @@ export function funnelGeometry(
       { start: false, end: true }
     );
   }
+  if (f.emblem) funnelEmblem(buf, f, f.emblem, H);
   if (f.hasWhistle) {
     const z = H * 0.76;
     const x = -lean * z + f.semiA + 0.75;
@@ -126,13 +143,62 @@ export function funnelGeometry(
 }
 
 /**
+ * The fleet's mark on each side of a funnel: a five-pointed star standing
+ * just proud of the surface, a letter "C" on it (an arc of short bars).
+ */
+function funnelEmblem(
+  buf: GeoBuffer,
+  f: FunnelRecipe,
+  e: NonNullable<FunnelRecipe["emblem"]>,
+  H: number
+): void {
+  const z = H * e.z;
+  const lean = Math.tan(f.rake);
+  const cx = -lean * z;
+  const star = rgb(e.star);
+  const letter = rgb(e.letter);
+  for (const s of [1, -1]) {
+    // On the side: across the funnel's curve, fore and aft (x) by up (z).
+    const at = (u: number, v: number, off: number): V3 => {
+      const yy = Math.sqrt(Math.max(0, 1 - (u / f.semiA) ** 2)) * f.semiB;
+      return [cx + u - lean * v, s * (yy + off), z + v];
+    };
+    const pts: V3[] = [];
+    for (let i = 0; i < 10; i += 1) {
+      const a = Math.PI / 2 + (i * Math.PI) / 5;
+      const rr = i % 2 === 0 ? e.r : e.r * 0.42;
+      pts.push(at(Math.cos(a) * rr, Math.sin(a) * rr, 0.04));
+    }
+    polygon(buf, pts, [0, s, 0], star);
+    // The C: an open arc of quads, its gap facing forward.
+    const R = e.r * 0.36;
+    const w = e.r * 0.1;
+    const n = 9;
+    for (let i = 0; i < n; i += 1) {
+      const a0 = Math.PI * (0.25 + (1.5 * i) / n);
+      const a1 = Math.PI * (0.25 + (1.5 * (i + 1)) / n);
+      // Its gap to the viewer's right on either side, so it reads "C".
+      const p = (a: number, r: number) =>
+        at(-s * Math.cos(a) * r, Math.sin(a) * r, 0.07);
+      quad(
+        buf,
+        [p(a0, R - w), p(a1, R - w), p(a1, R + w), p(a0, R + w)],
+        [0, s, 0],
+        letter
+      );
+    }
+  }
+}
+
+/**
  * A boat in its own frame: origin on the keel at its middle, bow +x. The
  * wooden lifeboats and cutters are white with a varnished gunwale and a
  * canvas cover; the collapsibles are low, wooden-bottomed with canvas sides.
  */
 export function boatGeometry(
   kind: BoatKind,
-  q: QualitySettings
+  q: QualitySettings,
+  paint?: { hull: number; bottom: number }
 ): BufferGeometry {
   const buf = new GeoBuffer({ color: true });
   const isCollapsible = kind === "collapsible";
@@ -152,19 +218,24 @@ export function boatGeometry(
         [0.38, 0.05],
         [0, 0],
       ];
-  const hullColor = rgb(isCollapsible ? 0xd8d2c0 : 0xf1efe8);
+  const own = !isCollapsible && paint;
+  const hullColor = rgb(own ? paint.hull : isCollapsible ? 0xd8d2c0 : 0xf1efe8);
   const gunwale = rgb(isCollapsible ? 0x7a6a52 : 0x7a5230);
-  const keelColor = rgb(isCollapsible ? 0x6d5e48 : 0xf1efe8);
+  const keelColor = rgb(
+    own ? paint.bottom : isCollapsible ? 0x6d5e48 : 0xf1efe8
+  );
+  // A painted boat's bottom colour runs up to its waterline.
+  const keelTo = own ? 0.4 : 0.15;
   const rows: { y: number; z: number; color: RGB }[] = [];
   // Port gunwale down to the keel and up to the starboard gunwale.
   rows.push({ y: 1, z: 1.08, color: gunwale });
   for (const [y, z] of shape)
-    rows.push({ y, z, color: z < 0.15 ? keelColor : hullColor });
+    rows.push({ y, z, color: z < keelTo ? keelColor : hullColor });
   for (let i = shape.length - 2; i >= 0; i -= 1)
     rows.push({
       y: -shape[i][0],
       z: shape[i][1],
-      color: shape[i][1] < 0.15 ? keelColor : hullColor,
+      color: shape[i][1] < keelTo ? keelColor : hullColor,
     });
   rows.push({ y: -1, z: 1.08, color: gunwale });
   // Starboard to port, so (row step) x (+x) faces outboard.

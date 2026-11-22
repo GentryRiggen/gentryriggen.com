@@ -4,7 +4,8 @@ import {
 } from "@/components/game-audio/primitives";
 import type { BedState } from "./cues";
 
-/** Each bed's loudest level; together under 0.16 (see the gain test). */
+/** Each bed's loudest level, each under 0.2; the output stays under 0.3
+ *  with the loudest cues on top (see the gain tests). */
 export const BED_LEVEL = {
   sea: 0.05,
   hum: 0.03,
@@ -12,6 +13,8 @@ export const BED_LEVEL = {
   steam: 0.06,
   rumble: 0.08,
   engines: 0.04,
+  wind: 0.05,
+  wash: 0.03,
 } as const;
 /** Steam is ducked from this speed up so it never drowns the rest. */
 export const STEAM_DUCK_SPEED = 10;
@@ -19,17 +22,34 @@ export const STEAM_DUCKED = 0.35;
 
 /** Target level of each bed for a state (pure, so it is testable). */
 export function bedTargets(s: BedState, on: boolean) {
-  if (!on) return { sea: 0, hum: 0, night: 0, steam: 0, rumble: 0, engines: 0 };
+  if (!on)
+    return {
+      sea: 0,
+      hum: 0,
+      night: 0,
+      steam: 0,
+      rumble: 0,
+      engines: 0,
+      wind: 0,
+      wash: 0,
+    };
   const above = s.underwater ? 0 : 1;
   // The Lusitania's afternoon: engines turning (fading with her steam)
   // instead of the Titanic's hum and cold night tone.
-  const day = s.ship === "lusitania";
+  const storm = s.ship === "fitzgerald";
+  const day = s.ship === "lusitania" || storm;
   const p2 = s.power * s.power;
+  const wind = storm ? (s.wind ?? 0) : 0;
   return {
-    sea: BED_LEVEL.sea * above,
+    // The storm's breaking seas are a little louder than a calm sea.
+    sea: BED_LEVEL.sea * above * (1 + 0.2 * wind),
     hum: day ? 0 : BED_LEVEL.hum * above * p2,
     night: day ? 0 : BED_LEVEL.night,
-    engines: day ? BED_LEVEL.engines * above * p2 : 0,
+    // Her engines are a lower thrum, a little under the liners'.
+    engines: day ? BED_LEVEL.engines * above * p2 * (storm ? 0.75 : 1) : 0,
+    // The wind howls with the sea; the deck washes as she lays over.
+    wind: BED_LEVEL.wind * above * wind,
+    wash: BED_LEVEL.wash * above * wind * (0.4 + 0.6 * s.strain),
     steam:
       BED_LEVEL.steam *
       (s.steam ? 1 : 0) *
@@ -148,20 +168,57 @@ export function createBeds(engine: VoiceEngine): Beds {
   nodes.push(beat, beatDepth);
   stoppers.push(beat);
 
+  // The storm's wind: a howl whose pitch climbs with its strength.
+  const wind = level();
+  const windSrc = loopingNoise(ctx, engine.white);
+  const windFilter = ctx.createBiquadFilter();
+  windFilter.type = "bandpass";
+  windFilter.frequency.value = 400;
+  windFilter.Q.value = 1.4;
+  const windGust = ctx.createGain();
+  windGust.gain.value = 0.75;
+  windSrc.connect(windFilter).connect(windGust).connect(wind);
+  nodes.push(windSrc, windFilter, windGust);
+  const gust = ctx.createOscillator();
+  gust.frequency.value = 0.17;
+  const gustDepth = ctx.createGain();
+  gustDepth.gain.value = 0.25;
+  gust.connect(gustDepth).connect(windGust.gain);
+  gust.start();
+  nodes.push(gust, gustDepth);
+  stoppers.push(windSrc, gust);
+
+  // Water washing along her deck: a slow swell of mid noise.
+  const wash = level();
+  const washSwell = ctx.createGain();
+  washSwell.gain.value = 0.6;
+  washSwell.connect(wash);
+  nodes.push(washSwell);
+  const washSrc = loopingNoise(ctx, engine.brown);
+  filtered(washSrc, "lowpass", 700, 0.6, washSwell);
+  const washLfo = ctx.createOscillator();
+  washLfo.frequency.value = 0.22;
+  const washDepth = ctx.createGain();
+  washDepth.gain.value = 0.4;
+  washLfo.connect(washDepth).connect(washSwell.gain);
+  washLfo.start();
+  nodes.push(washLfo, washDepth);
+  stoppers.push(washSrc, washLfo);
+
   // Under water: a muffled low rumble.
   const rumble = level();
   const rumbleSrc = loopingNoise(ctx, engine.brown);
   filtered(rumbleSrc, "lowpass", 110, 0.9, rumble);
   stoppers.push(rumbleSrc);
 
-  const gains = { sea, hum, night, steam, rumble, engines };
+  const gains = { sea, hum, night, steam, rumble, engines, wind, wash };
   let last = "";
 
   return {
     apply(s, on) {
       const t = bedTargets(s, on);
       // Only touch the graph when a level moved enough to matter.
-      const key = `${t.sea.toFixed(3)}|${t.hum.toFixed(3)}|${t.steam.toFixed(3)}|${t.rumble.toFixed(3)}|${t.night.toFixed(3)}|${t.engines.toFixed(3)}`;
+      const key = `${t.sea.toFixed(3)}|${t.hum.toFixed(3)}|${t.steam.toFixed(3)}|${t.rumble.toFixed(3)}|${t.night.toFixed(3)}|${t.engines.toFixed(3)}|${t.wind.toFixed(3)}|${t.wash.toFixed(3)}`;
       if (key === last) return;
       last = key;
       const now = ctx.currentTime;
@@ -171,6 +228,10 @@ export function createBeds(engine: VoiceEngine): Beds {
       gains.steam.gain.setTargetAtTime(t.steam, now, 0.5);
       gains.rumble.gain.setTargetAtTime(t.rumble, now, 1);
       gains.engines.gain.setTargetAtTime(t.engines, now, 0.6);
+      gains.wind.gain.setTargetAtTime(t.wind, now, 0.8);
+      gains.wash.gain.setTargetAtTime(t.wash, now, 0.8);
+      // The howl climbs in pitch as the wind rises.
+      windFilter.frequency.setTargetAtTime(350 + 650 * (s.wind ?? 0), now, 0.8);
     },
     dispose() {
       for (const src of stoppers) {
