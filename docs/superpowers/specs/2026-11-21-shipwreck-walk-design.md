@@ -22,6 +22,13 @@ now, rooms later.
 - **When the water reaches you or you slide off, you end up in the water.**
   You bob at the surface, can paddle slowly, and watch her go down from sea
   level.
+- **Controls for kids who don't read well yet** (Gentry, 2026-11-21: "these
+  are 6 and 8 year olds who don't read great. They need obvious and good
+  layout"). Every walk control is a big picture button, understood without
+  reading; words only as `aria-label` and tiny captions. See Controls.
+- **You can watch her go to the bottom from the water.** A Look under button
+  dips your eyes just below the surface to follow her down (see Look
+  under).
 - **Next release, be ready:** the kids will ask to "go down with the ship".
   Build 1.3 so that is a small follow-up (see Later).
 
@@ -46,7 +53,8 @@ now, rooms later.
 
 ## Goals
 
-- A **Walk** choice in the camera picker, on the Titanic and the Lusitania.
+- A big **Walk** button on the right rail (see Controls), on the Titanic
+  and the Lusitania.
 - Hand-marked **walkable areas** per ship (ship data, not model geometry):
   the boat deck, the forward well deck and forecastle, the aft well deck
   and poop deck (Titanic); the boat deck, forecastle and stern decks
@@ -88,6 +96,51 @@ now, rooms later.
   lights them; no extra lights for the walker beyond a faint ambient lift
   so a child can see where they are walking.
 
+## Controls (a 6-year-old, no reading)
+
+- **Walk button on the right rail**, always visible while she is on the
+  surface, not hidden in the camera picker: a big round button (at least
+  64 px, the rail's largest) with a walking-figure pictogram. One tap puts
+  you on the boat deck. It glows/pulses once the first time the game shows.
+  It is also listed in the camera picker for completeness.
+- **While walking**, the screen shows only:
+  - a **drawn joystick** bottom-left (a visible ring with a thumb knob and
+    four arrow chevrons, always there, not invisible-until-touched), and
+  - a **look hint** on the right: a faint hand-with-arrows pictogram that
+    fades after the first drag,
+  - one big **Fly button** (the free camera's icon) top-right to leave walk
+    mode,
+  - play/pause and speed stay as they are; other rail buttons hide to cut
+    clutter.
+- **In the water**: the joystick stays (paddle), plus two big picture
+  buttons: **Back on deck** (ship with an up arrow, only while her boat
+  deck is above water) and **Look under** (eye with a down arrow / wave
+  line).
+- **Feedback over words:** sliding shows downhill arrows at the screen edge
+  and a creak/scrape sound; going in plays a splash and a ripple wipe. No
+  text pop-ups.
+- Touch targets ≥ 64 px, high contrast on the night scene, thumbs never
+  cover the joystick and look areas at the same time. iPad portrait and
+  landscape both work.
+
+## Look under (from the water)
+
+From the surface at night you could not really see her sink; she would
+vanish within metres. To let the kids watch her go to the bottom:
+
+- **Look under** puts your eyes ~1 m under the surface, still floating with
+  you, using the underwater camera's look (fog, colour). Tap again (or
+  paddle) to come back up.
+- While looking under, visibility is stretched (a kid-mode clearer water,
+  the underwater camera's fog distance raised) and her lit hull keeps
+  faint lights as she falls, so she stays visible as a dim shape going
+  down and away. The view tilts down to keep her in frame automatically
+  as she sinks, until she is out of sight in the dark; then a gentle
+  "she's on the bottom" is shown by a picture card with the wreck (the
+  existing end-card art), not text.
+- This is the honest bit stretched for kids: a call Gentry may revisit.
+  It also is the first half of "go down with the ship".
+
 ## Non-goals (1.3)
 
 - Rooms or anything below the open decks.
@@ -126,8 +179,8 @@ now, rooms later.
 - Pure, unit-tested walk maths in `lib/shipwreck/walk/` (step, collide,
   slope, slide, on-deck/in-water checks), no three.js imports, so it can be
   tested headless against real sim tracks.
-- Touch: left half of the screen is a floating joystick (appears where the
-  thumb lands); right half drags to look. Desktop: WASD/arrows to walk,
+- Touch: a drawn joystick bottom-left (see Controls); the rest of the
+  screen drags to look. Desktop: WASD/arrows to walk,
   drag or mouse to look. Eye height 1.6 m.
 - In the water: camera at the sea surface (waves from `Sea`), slow bob,
   joystick paddles at ~0.5 m/s, never under the surface.
@@ -164,6 +217,7 @@ now, rooms later.
 
 - Exact polygons, blockers and stairs from the general arrangement plans
   (cite them in the ship data).
-- Joystick look and the one-line hint text.
+- Exact pictogram drawings (in `ui/Icon.tsx`'s style); they must read with
+  no words. A screenshot check-in with Gentry before merge.
 - Collision details (slide along walls, step-up limit at stairs).
 - The perf scene's exact framing.
