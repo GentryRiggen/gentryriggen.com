@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.3.0",
+    date: "2026-11-21",
+    title: "Walk the decks",
+    highlights: [
+      "Walk on the deck of the Titanic or the Lusitania! Tap the walking button, then push the stick to walk and drag anywhere else to look around",
+      "As she sinks, her deck tilts. A little tilt pushes you downhill, and when it gets too steep you slide, with arrows showing which way",
+      "If the sea comes over the deck, or you slide off, you end up floating in the water. Paddle with the stick, or tap the ship button to get back on while you still can",
+      "Look under: tap the eye button while floating to put your head under the water and watch her go down. Going into the water slows the time to ×1 so you can watch; speed it up again whenever you like",
+      "Tap the bird button to fly the free camera again",
+      "Splashes and the scrape of the deck under your feet, and no words needed: every walk button is a big picture",
+    ],
+  },
+  {
     version: "1.1.1",
     date: "2026-11-21",
     title: "Tidier ship buttons",
