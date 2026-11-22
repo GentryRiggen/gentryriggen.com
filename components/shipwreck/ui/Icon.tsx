@@ -18,6 +18,7 @@ export type IconName =
   | "underwater"
   | "cinematic"
   | "walk"
+  | "fly"
   | "on-deck"
   | "look-under"
   | "drag-look"
@@ -60,6 +61,8 @@ const PATHS: Record<IconName, string> = {
     "M3 7c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M7 14a1.5 1.5 0 1 0 0 .1M13 17a1 1 0 1 0 0 .1M17 12a2 2 0 1 0 0 .1",
   cinematic: "M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5",
   walk: "M13 4.5a1.5 1.5 0 1 0 0 .1M9 21l2-6-2-2 1-5 3 2 3 1M11 15l3 2 1 4M10 8l-3 2",
+  // A gull in the air over a swoosh rising up and away: fly.
+  fly: "M3 7c2.5-2 5-2 9 2 4-4 6.5-4 9-2M3 21c6 0 11-3 14-8M13.5 12.5H17.5V16.5",
   // A ship with an up arrow over her: back on her deck.
   "on-deck": "M3 15h18l-3 5H6zM7 15v-2.5h4V15M12 11V2.5M8.5 6L12 2.5 15.5 6",
   // An eye over a wave line, an arrow going down under it.

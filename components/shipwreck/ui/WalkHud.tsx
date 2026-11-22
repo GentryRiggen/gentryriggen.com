@@ -172,7 +172,7 @@ export default function WalkHud({
         onClick={() => store.getState().leaveWalk()}
         className={`absolute right-[calc(max(1rem,env(safe-area-inset-right))+4.75rem)] top-[max(0.75rem,env(safe-area-inset-top))] ${BIG_OFF}`}
       >
-        <Icon name="orbit" className="size-11" />
+        <Icon name="fly" className="size-11" />
       </button>
 
       <div

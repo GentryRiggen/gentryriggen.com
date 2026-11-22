@@ -84,8 +84,12 @@ export default function WalkJoystick() {
 
   function onDown(e: React.PointerEvent<HTMLDivElement>) {
     if (pointerRef.current !== null) return;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
     pointerRef.current = e.pointerId;
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {
+      // A stale pointer (NotFoundError): drag on without the capture.
+    }
     setIsDragging(true);
     update(e);
   }

@@ -135,7 +135,7 @@ export interface PlaybackActions {
   startWalk(): void;
   /** Back to the orbit camera; zeroes the walk controls. */
   leaveWalk(): void;
-  /** The walker went into the water. */
+  /** The walker went into the water (from the deck: speed ×1). */
   wentInWater(): void;
   /** The walker is back on the deck. */
   backOnDeck(): void;
@@ -383,7 +383,14 @@ export function createPlaybackStore(
       wentInWater() {
         const s = get();
         if (s.walk.phase === "off") return;
-        set({ walk: { ...s.walk, phase: "water" } });
+        // Into the water from the deck: ×1, so Look under lasts long enough
+        // to watch her go down (the player can speed up again).
+        set({
+          walk: { ...s.walk, phase: "water" },
+          ...(s.walk.phase === "deck"
+            ? { speed: 1 as const, slowMo: false }
+            : {}),
+        });
       },
       backOnDeck() {
         const s = get();

@@ -27,8 +27,12 @@ export default function WalkLookLayer() {
 
   function onDown(e: React.PointerEvent<HTMLDivElement>) {
     if (drag.current) return;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
     drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    } catch {
+      // A stale pointer (NotFoundError): drag on without the capture.
+    }
   }
 
   function onMove(e: React.PointerEvent<HTMLDivElement>) {

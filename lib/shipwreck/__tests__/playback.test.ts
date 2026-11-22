@@ -455,6 +455,18 @@ describe("playback: walking", () => {
     expect(store.getState().walk.phase).toBe("off");
   });
 
+  it("going into the water drops the speed to x1; the player can speed up again", () => {
+    const store = started();
+    store.getState().setSpeed(100);
+    store.getState().startWalk();
+    expect(store.getState().speed).toBe(100);
+    store.getState().wentInWater();
+    expect(store.getState().speed).toBe(1);
+    store.getState().setSpeed(30);
+    store.getState().wentInWater();
+    expect(store.getState().speed).toBe(30);
+  });
+
   it("setCamera('walk') starts the walk", () => {
     const store = started();
     store.getState().setCamera("walk");

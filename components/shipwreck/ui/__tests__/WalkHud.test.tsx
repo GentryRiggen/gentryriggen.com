@@ -186,6 +186,48 @@ describe("walking", () => {
     expect(walkInput.strafe).toBe(0);
   });
 
+  it("a stale pointer that cannot be captured still drags the stick and the view", () => {
+    // jsdom has no pointer capture: one that throws, as a stale pointer does.
+    const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+    const had = Object.getOwnPropertyDescriptor(proto, "setPointerCapture");
+    proto.setPointerCapture = () => {
+      throw new DOMException("stale", "NotFoundError");
+    };
+    try {
+      setup();
+      fireEvent.click(walkButton()!);
+      const stick = screen.getByTestId("shipwreck-walk-stick");
+      stick.getBoundingClientRect = () =>
+        ({ left: 0, top: 0, width: 144, height: 144 }) as DOMRect;
+      fireEvent.pointerDown(stick, { pointerId: 1, clientX: 72, clientY: 0 });
+      expect(walkInput.forward).toBeGreaterThan(0.9);
+      fireEvent.pointerMove(stick, { pointerId: 1, clientX: 72, clientY: 144 });
+      expect(walkInput.forward).toBeLessThan(-0.9);
+      const look = screen.getByTestId("shipwreck-walk-look");
+      fireEvent.pointerDown(look, { pointerId: 2, clientX: 100, clientY: 100 });
+      fireEvent.pointerMove(look, { pointerId: 2, clientX: 120, clientY: 100 });
+      expect(walkInput.lookDx).toBe(20);
+    } finally {
+      if (had) Object.defineProperty(proto, "setPointerCapture", had);
+      else delete proto.setPointerCapture;
+    }
+  });
+
+  it("hides the timeline's event marks while walking; the bar, play and speeds stay", () => {
+    const { store } = setup();
+    const marks = () => screen.queryAllByTestId(/^shipwreck-mark-/);
+    expect(marks().length).toBeGreaterThan(0);
+    fireEvent.click(walkButton()!);
+    expect(marks()).toHaveLength(0);
+    act(() => store.getState().wentInWater());
+    expect(marks()).toHaveLength(0);
+    expect(screen.getByTestId("shipwreck-timeline")).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-play")).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-speed-1")).toBeInTheDocument();
+    act(() => store.getState().leaveWalk());
+    expect(marks().length).toBeGreaterThan(0);
+  });
+
   it("dragging the look layer turns the view and fades the hint", () => {
     const { store } = setup();
     fireEvent.click(walkButton()!);
