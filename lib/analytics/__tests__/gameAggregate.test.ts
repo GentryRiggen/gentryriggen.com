@@ -270,6 +270,29 @@ describe("summarizeShipwreck", () => {
     expect(summary.cameras[0]).toEqual({ key: "bridge", views: 2 });
   });
 
+  it("splits starts and ends by ship, counting a missing ship as the Titanic", () => {
+    const summary = summarizeShipwreck([
+      ev("shipwreck_start", { mode: "real", opened: 0 }),
+      ev("shipwreck_start", { mode: "real", opened: 0, ship: "titanic" }),
+      ev("shipwreck_start", { mode: "whatif", opened: 1, ship: "lusitania" }),
+      ev("shipwreck_end", { mode: "real", outcome: "sank", minutes: 18 }),
+      ev("shipwreck_end", {
+        mode: "whatif",
+        outcome: "floated",
+        minutes: 30,
+        ship: "lusitania",
+      }),
+    ]);
+    expect(summary.ships).toEqual([
+      { key: "titanic", views: 2 },
+      { key: "lusitania", views: 1 },
+    ]);
+    expect(summary.shipEnds).toEqual([
+      { key: "lusitania · floated", views: 1 },
+      { key: "titanic · sank", views: 1 },
+    ]);
+  });
+
   it("has empty answers with no events", () => {
     const empty = summarizeShipwreck([]);
     expect(empty.starts).toBe(0);

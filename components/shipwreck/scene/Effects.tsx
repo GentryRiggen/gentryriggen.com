@@ -8,6 +8,7 @@ import {
   BufferAttribute,
   BufferGeometry,
   Matrix4,
+  NormalBlending,
   Points,
   Quaternion,
   ShaderMaterial,
@@ -15,11 +16,17 @@ import {
 } from "three";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildHull, hullHalfBreadth } from "@/lib/shipwreck/sim/geometry";
 import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
 import { shipToThree } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
+import type { SceneSettings } from "./settings";
+import {
+  AfternoonEffects,
+  DAY_PARTICLES,
+  type AfternoonFrame,
+} from "./afternoonEffects";
 
 /**
  * The night's events, all worked out from the shown time `t` (so seeking
@@ -67,12 +74,52 @@ const fragment = /* glsl */ `
   }
 `;
 
+/**
+ * Daylight particles (the afternoon): smoke, steam, spray, blended over
+ * the scene (additive light cannot make dark coal smoke). One more draw.
+ */
+const DAY_POOL = DAY_PARTICLES.high.pool;
+const dayVertex = /* glsl */ `
+  attribute vec4 aColor;
+  attribute float aSize;
+  uniform float uScale;
+  uniform float uMaxPx;
+  varying vec4 vColor;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mv;
+    vColor = aColor;
+    gl_PointSize = clamp(aSize * uScale / max(1.0, -mv.z), 1.5, uMaxPx);
+  }
+`;
+const dayFragment = /* glsl */ `
+  varying vec4 vColor;
+  void main() {
+    vec2 p = gl_PointCoord - 0.5;
+    float r = dot(p, p) * 4.0;
+    if (r > 1.0) discard;
+    float a = vColor.a * (1.0 - r) * (1.0 - r * 0.4);
+    if (a < 0.004) discard;
+    gl_FragColor = vec4(vColor.rgb, a);
+  }
+`;
+
 interface EffectsProps {
   store: PlaybackStore;
   runtime: SceneRuntime;
+  /** The ship on the stage (her hull, for the foam). */
+  spec: ShipSpec;
+  /** Her scene: the afternoon has smoke, the hit and boats hanging plumb. */
+  settings: SceneSettings;
 }
 
-export default function Effects({ store, runtime }: EffectsProps) {
+export default function Effects({
+  store,
+  runtime,
+  spec,
+  settings,
+}: EffectsProps) {
+  const day = settings.timeOfDay === "afternoon";
   const pts = useMemo(() => {
     const g = new BufferGeometry();
     const pos = new BufferAttribute(new Float32Array(POOL * 3), 3);
@@ -104,7 +151,54 @@ export default function Effects({ store, runtime }: EffectsProps) {
     [pts]
   );
 
-  const hull = useMemo(() => buildHull(titanic), []);
+  const dayPts = useMemo(() => {
+    const g = new BufferGeometry();
+    const pos = new BufferAttribute(new Float32Array(DAY_POOL * 3), 3);
+    const col = new BufferAttribute(new Float32Array(DAY_POOL * 4), 4);
+    const size = new BufferAttribute(new Float32Array(DAY_POOL), 1);
+    g.setAttribute("position", pos);
+    g.setAttribute("aColor", col);
+    g.setAttribute("aSize", size);
+    g.setDrawRange(0, 0);
+    const mat = new ShaderMaterial({
+      vertexShader: dayVertex,
+      fragmentShader: dayFragment,
+      transparent: true,
+      depthWrite: false,
+      blending: NormalBlending,
+      uniforms: {
+        uScale: { value: 600 },
+        uMaxPx: { value: DAY_PARTICLES.high.maxPx },
+      },
+    });
+    const points = new Points(g, mat);
+    points.frustumCulled = false;
+    points.renderOrder = 31;
+    points.name = "effects-day";
+    return { g, pos, col, size, mat, points };
+  }, []);
+  useEffect(
+    () => () => {
+      dayPts.g.dispose();
+      dayPts.mat.dispose();
+    },
+    [dayPts]
+  );
+  const hull = useMemo(() => buildHull(spec), [spec]);
+  // The afternoon's smoke, steam, the hit and her hanging boats.
+  const afternoon = useMemo(
+    () =>
+      new AfternoonEffects(
+        spec,
+        hull,
+        dayPts.pos.array as Float32Array,
+        dayPts.col.array as Float32Array,
+        dayPts.size.array as Float32Array
+      ),
+    [spec, hull, dayPts]
+  );
+  const dayFrame = useMemo(() => ({}) as AfternoonFrame, []);
+  const lastSnap = useRef(-1);
   // Per track: where each boat touched the water (sampled once).
   const launch = useRef<{ track: SimTrack | null; at: Map<number, Vector3> }>({
     track: null,
@@ -121,7 +215,7 @@ export default function Effects({ store, runtime }: EffectsProps) {
     []
   );
 
-  useFrame((state) => {
+  useFrame((state, dt) => {
     const s = store.getState();
     const track = s.track;
     const frame = runtime.frame;
@@ -155,9 +249,13 @@ export default function Effects({ store, runtime }: EffectsProps) {
           ((state.camera as { fov?: number }).fov ?? 42) * (Math.PI / 360)
         ));
 
+    dayPts.mat.uniforms.uScale.value = pts.mat.uniforms.uScale.value;
+    dayPts.points.visible = day;
+
     runtime.flash = 0;
     if (!track || !frame) {
       pts.g.setDrawRange(0, 0);
+      dayPts.g.setDrawRange(0, 0);
       return;
     }
     const t = s.t;
@@ -201,7 +299,7 @@ export default function Effects({ store, runtime }: EffectsProps) {
     for (const e of events)
       if (e.kind === "boat-lowered" && e.index !== undefined)
         lowered.set(e.index, e.t);
-    for (const mdl of models) {
+    for (const mdl of day ? [] : models) {
       for (let i = 0; i < mdl.boats.count; i += 1) {
         const tb = lowered.get(i);
         if (tb === undefined || t < tb) {
@@ -255,8 +353,33 @@ export default function Effects({ store, runtime }: EffectsProps) {
         }
       }
     }
+    // The afternoon: every boat in davits swung out (the day before),
+    // hanging plumb from its falls as she lists.
+    let dn = 0;
+    if (day) {
+      const f = dayFrame;
+      f.track = track;
+      f.frame = frame;
+      f.openings = s.openings;
+      f.t = t;
+      f.wall = wall;
+      f.dt = Math.min(0.1, dt);
+      f.snapped = s.snapId !== lastSnap.current;
+      f.models = models;
+      f.visible = visible;
+      f.fell = fell;
+      f.lowered = lowered;
+      f.wakeDx = runtime.wake.dx;
+      f.wakeDz = runtime.wake.dz;
+      f.wakeAmount = runtime.wake.amount;
+      f.quality = s.quality;
+      // Point size capped per tier (framebuffer pixels, as the night's 96).
+      dayPts.mat.uniforms.uMaxPx.value = DAY_PARTICLES[s.quality].maxPx;
+      dn = afternoon.update(f);
+    }
+    lastSnap.current = s.snapId;
     // Lanterns of boats still on the falls.
-    if (visible) {
+    if (visible && !day) {
       for (let i = 0; i < visible.boats.count; i += 1) {
         const tb = lowered.get(i);
         if (tb === undefined || t < tb || t - tb >= SWING_S + LOWER_S) continue;
@@ -290,7 +413,7 @@ export default function Effects({ store, runtime }: EffectsProps) {
       events.find((e) => e.kind === "steam-stop")?.t ?? -Infinity;
     const steaming = t >= steamStart && t < steamStop;
     const firesLit = track.brokeAtT === null || t < track.brokeAtT;
-    if (visible && firesLit) {
+    if (visible && firesLit && !day) {
       for (let i = 0; i < 3; i += 1) {
         const f = visible.funnels[i];
         if (!f || (fell.has(i) && t >= (fell.get(i) ?? 0))) continue;
@@ -441,10 +564,12 @@ export default function Effects({ store, runtime }: EffectsProps) {
             z = (-body.z + sp * x - cp * sr * y) / (cp * cr);
             y = side * hullHalfBreadth(hull, x, z);
           }
-          if (z <= 0.3 || z >= titanic.sheerZ(x) || y === 0) continue;
+          if (z <= 0.3 || z >= spec.sheerZ(x) || y === 0) continue;
           const w = shipToThree(body, [x, y * 1.04, z]);
           const fl = 0.7 + 0.3 * Math.sin(wall * 2.3 + k * 1.7 + side);
-          const b = (0.035 + 0.08 * power) * fl;
+          const b = day
+            ? (0.06 + 0.2 * runtime.wake.amount) * fl
+            : (0.035 + 0.08 * power) * fl;
           emit(w[0], 0.05, w[2], b, b * 1.05, b * 1.1, 1.3);
         }
       }
@@ -468,7 +593,18 @@ export default function Effects({ store, runtime }: EffectsProps) {
     pts.col.needsUpdate = true;
     pts.size.needsUpdate = true;
     pts.g.setDrawRange(0, n);
+    if (day) {
+      dayPts.pos.needsUpdate = true;
+      dayPts.col.needsUpdate = true;
+      dayPts.size.needsUpdate = true;
+    }
+    dayPts.g.setDrawRange(0, dn);
   }, -1.5);
 
-  return <primitive object={pts.points} />;
+  return (
+    <>
+      <primitive object={pts.points} />
+      <primitive object={dayPts.points} />
+    </>
+  );
 }

@@ -580,4 +580,6 @@ export const titanic: ShipSpec = {
   }),
   decks: TITANIC_DECKS,
   seaDepthM: 3800,
+  clockStartS: 23 * 3600 + 40 * 60, // 11:40 PM, the collision
+  cause: "iceberg",
 };

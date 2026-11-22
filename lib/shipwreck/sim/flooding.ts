@@ -38,7 +38,14 @@ const { abs, max, min, pow, sqrt } = Math;
  *   it pours in through hatches, doors and portholes, DOWNFLOOD_M2_PER_M of
  *   open area per metre of deck edge under water (both sides);
  * - a superstructure box fills the same way over its lower edge, and while
- *   it is still dry it is buoyant.
+ *   it is still dry it is buoyant;
+ * - across a longitudinal bulkhead (wing bunker to the space beside it):
+ *   the orifice law through the cells' cross-flow area, both directions.
+ *
+ * A wing or centre cell (a compartment with a `span`) is its share of each
+ * section. The deck edge belongs to the centre cell (hatches and stairways
+ * lead down into the main space, not into the bunkers beside it); a wing's
+ * deck corner only counts toward the burst vents.
  */
 
 export interface CellOpening {
@@ -93,6 +100,8 @@ export interface Cell {
   footprint: number;
   /** Net inflow this step, m³/s (for the steady test and the HUD). */
   inflow: number;
+  /** Open area to the cell(s) beside it across a longitudinal bulkhead, m². */
+  cross: number;
 }
 
 export function makeCell(
@@ -103,12 +112,20 @@ export function makeCell(
   fwdTopZ: number,
   aftWall: boolean,
   fwdWall: boolean,
-  perm: number
+  perm: number,
+  cross = 0
 ): Cell {
   let footprint = 0;
-  for (let i = 0; i < slice.n - 1; i += 1)
-    footprint +=
-      (slice.hbMax[i] + slice.hbMax[i + 1]) * (slice.xs[i + 1] - slice.xs[i]);
+  const width = slice.width;
+  if (width)
+    // A wing or centre: its own breadth (it is not symmetric about y = 0).
+    for (let i = 0; i < slice.n - 1; i += 1)
+      footprint +=
+        ((width[i] + width[i + 1]) / 2) * (slice.xs[i + 1] - slice.xs[i]);
+  else
+    for (let i = 0; i < slice.n - 1; i += 1)
+      footprint +=
+        (slice.hbMax[i] + slice.hbMax[i + 1]) * (slice.xs[i + 1] - slice.xs[i]);
   return {
     comp,
     box,
@@ -139,6 +156,7 @@ export function makeCell(
     waterArea: new Float64Array(slice.n),
     footprint: max(1, footprint * 0.8),
     inflow: 0,
+    cross,
   };
 }
 
@@ -220,7 +238,7 @@ export function solveLevel(
     c.water = c.cap;
     c.level = c.zMax;
     c.wx = s.cx;
-    c.wy = 0;
+    c.wy = s.cy;
     c.wz = s.cz;
     c.fsArea = 0;
     if (areas)
@@ -333,11 +351,15 @@ export function seaInflow(
   }
   // The deck edge (hull cells) or the lower edge (boxes): sections' corner
   // vertices. Hull sections: port top is vertex nl-1, starboard top nl.
+  // A centre cell takes the hull's own deck edges; a wing takes none.
   const s = c.slice;
   const nv = s.nv;
   const perM = c.box ? BOX_FLOOD_M2_PER_M : DOWNFLOOD_M2_PER_M;
   const iPort = c.box ? 0 : nv / 2 - 1;
   const iStbd = c.box ? nv - 1 : nv / 2;
+  const span = s.span;
+  const edge = span && span.side === "centre" ? s.edgeHb : undefined;
+  const wing = span !== undefined && span.side !== "centre";
   let deepest = 0;
   for (let i = 0; i < s.n; i += 1) {
     const dx =
@@ -348,9 +370,11 @@ export function seaInflow(
     const base = z0 + nx * s.xs[i];
     for (let side = 0; side < 2; side += 1) {
       const v = i * nv + (side === 0 ? iPort : iStbd);
-      const ze = base + ny * s.ys[v] + nz * s.zs[v];
+      const y = edge ? (side === 0 ? edge[i] : -edge[i]) : s.ys[v];
+      const ze = base + ny * y + nz * s.zs[v];
       if (ze >= 0) continue;
       deepest = min(deepest, ze);
+      if (wing) continue;
       const hi = max(0, inside - ze);
       q += orifice(perM * dx, -ze - hi);
     }
@@ -389,9 +413,12 @@ export function spill(
   nx: number,
   nz: number,
   z0: number,
-  dt: number
+  dt: number,
+  ny = 0,
+  yb = 0
 ): number {
-  const zt = z0 + nx * xb + nz * topZ;
+  let zt = z0 + nx * xb + nz * topZ;
+  if (yb !== 0) zt += ny * yb;
   const ha = headLevel(a);
   const hb = headLevel(b);
   if (ha <= zt && hb <= zt) return 0;
@@ -408,6 +435,47 @@ export function spill(
   // One step may not more than half-equalise the two sides.
   const downSurface = down.water > 0 ? down.level : down.zMin;
   const dh = hUp - max(downSurface, zt);
+  const aUp = max(up.fsArea, 1);
+  const aDown = max(down.fsArea, 1);
+  const eq = (dh * aUp * aDown) / (aUp + aDown);
+  const limit = min(max(0, eq) * FLOW_CAP, up.water, down.cap - down.water);
+  q = min(q, limit / dt);
+  return up === a ? q : -q;
+}
+
+/**
+ * Flow across a longitudinal bulkhead between two cells side by side (a
+ * wing bunker and the space beside it) through `area` m² of coal doors and
+ * leaks low on the bulkhead at ship-frame (xd, yd, zd): q = Cd·A·√(2g·Δh),
+ * Δh the higher surface less the lower one (or the door, if that is
+ * higher). Capped like a spill: one step may only half-equalise the two.
+ * Returns m³/s from a to b.
+ */
+export function crossFlow(
+  a: Cell,
+  b: Cell,
+  area: number,
+  xd: number,
+  yd: number,
+  zd: number,
+  nx: number,
+  ny: number,
+  nz: number,
+  z0: number,
+  dt: number
+): number {
+  const ha = headLevel(a);
+  const hb = headLevel(b);
+  if (ha === hb) return 0;
+  const up = ha > hb ? a : b;
+  const down = up === a ? b : a;
+  const hUp = up === a ? ha : hb;
+  const zDoor = z0 + nx * xd + ny * yd + nz * zd;
+  if (hUp <= zDoor || down.water >= down.cap) return 0;
+  const downSurface = down.water > 0 ? down.level : down.zMin;
+  const dh = hUp - max(downSurface, zDoor);
+  if (dh <= 0) return 0;
+  let q = orifice(area, dh);
   const aUp = max(up.fsArea, 1);
   const aDown = max(down.fsArea, 1);
   const eq = (dh * aUp * aDown) / (aUp + aDown);

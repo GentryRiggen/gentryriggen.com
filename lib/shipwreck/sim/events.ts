@@ -2,6 +2,7 @@
 
 export const SIM_EVENT_KINDS = [
   "collision",
+  "explosion",
   "steam-start",
   "steam-stop",
   "rocket",
@@ -48,3 +49,5 @@ export const DYNAMO_FLOOD_M = 4;
 /** Floating steady: inflow and motion this small for this long. */
 export const STEADY_INFLOW_M3S = 0.05;
 export const STEADY_HOLD_S = 300;
+/** The inflow is also judged averaged over about this long (s). */
+export const STEADY_AVG_S = 120;

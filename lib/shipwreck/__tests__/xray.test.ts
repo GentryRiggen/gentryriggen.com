@@ -1,6 +1,14 @@
-import { PLACE_IDS, PLACES, waterHereText } from "../places";
+import {
+  LUSITANIA_PLACE_IDS,
+  PLACE_IDS,
+  PLACES,
+  PLACES_BY_SHIP,
+  placeFor,
+  waterHereText,
+} from "../places";
+import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
-import { buildHull } from "../sim/geometry";
+import { buildHull, hullHalfBreadth } from "../sim/geometry";
 import type { BodyPose } from "../sim/track";
 import {
   compartmentSamples,
@@ -8,6 +16,7 @@ import {
   earthZ,
   partAt,
   partCompartments,
+  spanRange,
   waterLevel,
 } from "../xray";
 
@@ -128,5 +137,93 @@ describe("places", () => {
     expect(waterHereText(0)).toBe("Dry here");
     expect(waterHereText(2.13)).toBe("Water here: 2.1 m deep");
     expect(waterHereText(14.6)).toBe("Water here: 15 m deep");
+  });
+});
+
+describe("the Lusitania's places", () => {
+  const lHull = buildHull(lusitania);
+  const places = PLACES_BY_SHIP.lusitania;
+  const comp = (id: string | null) =>
+    lusitania.compartments.find((c) => c.id === id);
+
+  it("are her bridge, dining saloon, the torpedo's boiler room, a starboard bunker and the turbines", () => {
+    expect(places.map((p) => p.id)).toEqual([...LUSITANIA_PLACE_IDS]);
+    expect(placeFor("lusitania", "boiler-room-1")?.compartmentId).toBe("br1");
+    expect(placeFor("lusitania", "turbine-room")?.compartmentId).toBe(
+      "turbine"
+    );
+    // The torpedo hit there: her real damage opens that boiler room.
+    expect(lusitania.realNight.map((o) => o.compartmentId)).toContain("br1");
+    expect(
+      comp(placeFor("lusitania", "starboard-bunker")!.compartmentId)?.span?.side
+    ).toBe("starboard");
+    expect(placeFor("lusitania", "grand-staircase")).toBeNull();
+    expect(placeFor("titanic", "grand-staircase")).toBe(
+      PLACES["grand-staircase"]
+    );
+  });
+
+  it("each sits inside her hull, in a compartment she has", () => {
+    for (const p of places) {
+      const [x, y, z] = p.at;
+      expect(p.fact.length).toBeGreaterThan(30);
+      expect(p.interior).toBe(true);
+      expect(p.floorZ).toBeLessThanOrEqual(z);
+      expect(x).toBeGreaterThan(lHull.xMin);
+      expect(x).toBeLessThan(lHull.xMax);
+      if (p.compartmentId) {
+        const c = comp(p.compartmentId);
+        expect(c).toBeDefined();
+        expect(x).toBeGreaterThanOrEqual(c!.fromX);
+        expect(x).toBeLessThanOrEqual(c!.toX);
+        // Below the deck edge, inside the shell and her share of it.
+        expect(z).toBeLessThan(lusitania.sheerZ(x));
+        const [lo, hi] = spanRange(c!, hullHalfBreadth(lHull, x, z));
+        expect(y).toBeGreaterThan(lo);
+        expect(y).toBeLessThan(hi);
+      } else {
+        // Over the decks (the bridge, the saloon): within her breadth.
+        expect(Math.abs(y)).toBeLessThan(lusitania.beam / 2);
+      }
+    }
+  });
+
+  it("the Titanic's are 1.0's", () => {
+    expect(PLACES_BY_SHIP.titanic.map((p) => p.id)).toEqual([...PLACE_IDS]);
+  });
+});
+
+describe("side bunkers in the X-ray", () => {
+  const lHull = buildHull(lusitania);
+  const stbd = lusitania.compartments.find((c) => c.id === "br2-stbd")!;
+  const centre = lusitania.compartments.find((c) => c.id === "br2")!;
+
+  it("samples only the bunker's wing, and the room between the walls", () => {
+    const s = compartmentSamples(lHull, stbd);
+    const c = compartmentSamples(lHull, centre);
+    for (let i = 0; i < s.weights.length; i += 1) {
+      if (s.weights[i] > 0) expect(s.points[i * 3 + 1]).toBeLessThan(-9.4);
+      expect(Math.abs(c.points[i * 3 + 1])).toBeLessThan(9.6);
+    }
+    // The wing is a narrow share of the section.
+    expect(s.total).toBeGreaterThan(0);
+    expect(s.total).toBeLessThan(c.total / 2);
+  });
+
+  it("the water in a listed bunker stands level with the sea", () => {
+    const s = compartmentSamples(lHull, stbd);
+    const pose = level({ z: -9, roll: (15 * Math.PI) / 180 });
+    const a = waterLevel(s, pose, 0.3);
+    const b = waterLevel(s, pose, 0.7);
+    expect(b).toBeGreaterThan(a);
+    expect(Number.isFinite(a)).toBe(true);
+  });
+
+  it("splits a section by the bulkheads, or not at all", () => {
+    expect(spanRange({}, 12)).toEqual([-12, 12]);
+    expect(spanRange(centre, 12)).toEqual([-9.5, 9.5]);
+    expect(spanRange(stbd, 12)).toEqual([-12, -9.5]);
+    // Narrower than the bulkhead is out: no wing there.
+    expect(spanRange(stbd, 8)).toEqual([-8, -8]);
   });
 });

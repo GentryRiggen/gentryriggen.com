@@ -17,9 +17,16 @@ import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
 import { trackEnd, trackStart, type RunMode } from "@/lib/shipwreck/analytics";
 import { playback } from "@/lib/shipwreck/playback";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
+import { shipOf, whatIfOf, withWhatIf } from "@/lib/shipwreck/save";
+import { SHIP_IDS, getShip } from "@/lib/shipwreck/ships";
+import type { ShipId } from "@/lib/shipwreck/ships/types";
 import { whatIfOpenings } from "@/lib/shipwreck/sim/run";
-import { endWords, outcomeOf, storyEndT } from "@/lib/shipwreck/story";
+import {
+  endWords,
+  historyNote,
+  outcomeOf,
+  storyEndT,
+} from "@/lib/shipwreck/story";
 import {
   TEST_HOOKS_ENABLED,
   installTestHooks,
@@ -27,7 +34,10 @@ import {
   type ShipwreckScreen,
 } from "@/lib/shipwreck/testHooks";
 import type { Speed } from "@/lib/shipwreck/types";
-import { useShipwreckSave } from "@/lib/shipwreck/useSave";
+import {
+  currentShipwreckSave,
+  useShipwreckSave,
+} from "@/lib/shipwreck/useSave";
 import { useShipwreckSound } from "./audio/useShipwreckSound";
 import { sceneHooks } from "./scene/sceneHooks";
 import EndCard from "./ui/EndCard";
@@ -36,7 +46,10 @@ import NightPanels from "./ui/NightPanels";
 import ShipwreckErrorBoundary from "./ui/ShipwreckErrorBoundary";
 import TitleScreen from "./ui/TitleScreen";
 import { useAtStoryEnd } from "./ui/useTimelineEnd";
-import WhatIfEditor, { REAL_NIGHT_IDS } from "./ui/WhatIfEditor";
+import WhatIfEditor, {
+  realWhatIfIds,
+  type WhatIfChoice,
+} from "./ui/WhatIfEditor";
 
 // The model viewer (`/shipwreck?model`) and the scene check
 // (`/shipwreck?scene`) are for checking the 3D in dev and e2e builds; the
@@ -58,17 +71,25 @@ function readFlag(name: string): boolean {
 const readModelFlag = () => readFlag("model");
 const readSceneFlag = () => readFlag("scene");
 
-/** The wreck from above the bow's port side (ship frame, on the bow). */
-const WRECK_VIEW = {
-  target: [60, 0, 12] as [number, number, number],
-  cam: [-20, -120, 50] as [number, number, number],
+type V3 = [number, number, number];
+/**
+ * Each wreck from above (ship frame): the Titanic's bow from its port side;
+ * the Lusitania from over her port side, which faces up as she lies on her
+ * starboard side (and still clear of the floor if she lands upright).
+ */
+const WRECK_VIEW: Record<ShipId, { target: V3; cam: V3 }> = {
+  titanic: { target: [60, 0, 12], cam: [-20, -120, 50] },
+  lusitania: { target: [40, 0, 10], cam: [-40, 60, 45] },
 };
 
 interface Run {
   id: number;
+  ship: ShipId;
   mode: RunMode;
   /** Compartments opened. */
   holes: number;
+  /** The What if's choice (the real run's for a real one). */
+  choice: WhatIfChoice;
   startedAtMs: number;
 }
 
@@ -100,6 +121,9 @@ export default function Shipwreck() {
   const hasTrack = useStore(playback, (s) => s.track !== null);
   const showEnd = screen === "night" && run !== null && atEnd && !endDismissed;
 
+  // The chosen ship: the save's (a 1.0 save has none: the Titanic).
+  const ship = shipOf(save);
+  const spec = getShip(ship);
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;
@@ -109,42 +133,68 @@ export default function Shipwreck() {
     screenRef.current = showEnd ? "end" : screen;
   });
 
-  // Behind the title and the editor: the lit ship before the collision,
-  // slowly circled by the movie camera.
+  // Behind the title and the editor: the chosen ship, lit, before the
+  // first event, slowly circled by the movie camera.
+  // The ship is read from the save as it is now, not from this render: on
+  // the first commit the save hook has just loaded it (its effect runs
+  // first) but `ship` is still the server snapshot's Titanic, which would
+  // build the Titanic once before a saved Lusitania.
   useEffect(() => {
     if (!isGame || screen === "night") return;
     const s = playback.getState();
-    if (s.track === null || s.openings.length > 0 || s.t > 0) {
-      s.start(titanic, []);
+    const id = shipOf(currentShipwreckSave());
+    if (s.ship !== id || s.track === null || s.openings.length > 0 || s.t > 0) {
+      s.start(getShip(id), []);
       s.setXray(false);
       s.flyToPlace(null, false);
     }
     s.pause();
     s.setCamera("cinematic");
-  }, [isGame, screen]);
+  }, [isGame, screen, ship]);
+
+  const shipRef = useRef(ship);
+  useEffect(() => {
+    shipRef.current = ship;
+  });
+
+  const pickShip = useCallback(
+    (id: ShipId) => {
+      update((v) => ({ ...v, ship: id }));
+      playback.getState().setShip(id);
+      persist();
+    },
+    [update, persist]
+  );
 
   const startRun = useCallback(
-    (mode: RunMode, ids: readonly string[]) => {
+    (mode: RunMode, choice: WhatIfChoice) => {
       const s = playback.getState();
+      const id = shipRef.current;
+      const runSpec = getShip(id);
       const openings =
-        mode === "real" ? titanic.realNight : whatIfOpenings(titanic, ids);
-      s.start(titanic, openings);
+        mode === "real"
+          ? runSpec.realNight
+          : whatIfOpenings(runSpec, choice.ids);
+      const portholesOpen = mode === "real" || choice.portholesOpen !== false;
+      s.start(runSpec, openings, { portholesOpen });
       s.flyToPlace(null, false);
       s.setXray(false);
       s.setCamera("cinematic");
       s.setSpeed(saveRef.current.settings.speed, -Infinity);
       s.play();
       const holes = new Set(openings.map((o) => o.compartmentId)).size;
-      trackStart(mode, mode === "real" ? 0 : ids.length);
+      trackStart(mode, mode === "real" ? 0 : choice.ids.length, id);
       update((v) =>
         mode === "real"
           ? { ...v, seen: { ...v.seen, realNight: true } }
-          : { ...v, lastWhatIf: [...ids] }
+          : withWhatIf(v, id, choice)
       );
       setRun((r) => ({
         id: (r?.id ?? 0) + 1,
+        ship: id,
         mode,
         holes,
+        choice: { ...choice, ids: [...choice.ids] },
         startedAtMs: Date.now(),
       }));
       recorded.current = null;
@@ -165,7 +215,7 @@ export default function Shipwreck() {
     const outcome = outcomeOf(tr);
     const end = storyEndT(tr, true) ?? tr.endT;
     const sank = tr.events.find((e) => e.kind === "stern-under");
-    trackEnd(run.mode, outcome, (sank?.realT ?? end) / 60);
+    trackEnd(run.mode, outcome, (sank?.realT ?? end) / 60, run.ship);
     const isNew = !saveRef.current.seen.endings.includes(outcome);
     setNewEnding(isNew);
     if (isNew)
@@ -197,12 +247,18 @@ export default function Shipwreck() {
           s.t >= s.track.sankAtT
             ? "sank"
             : "floated";
-        trackEnd(run.mode, outcome, s.realT / 60);
+        // Minutes from the hit (a pre-roll counts as none).
+        trackEnd(run.mode, outcome, Math.max(0, s.realT) / 60, run.ship);
       }
       recorded.current = run.id;
     }
     persist();
   }, [run, persist]);
+
+  const leaveRef = useRef(leaveNight);
+  useEffect(() => {
+    leaveRef.current = leaveNight;
+  });
 
   const goTitle = useCallback(() => {
     leaveNight();
@@ -232,15 +288,24 @@ export default function Shipwreck() {
       undefined,
       sceneHooks(playback),
       {
-        startReal: () => startRun("real", REAL_NIGHT_IDS),
-        startWhatIf: (ids) => startRun("whatif", ids),
+        setShip: (id) => {
+          if (!(SHIP_IDS as readonly string[]).includes(id)) return;
+          leaveRef.current();
+          pickShip(id as ShipId);
+          setScreen("title");
+        },
+        ship: () => shipRef.current,
+        startReal: () =>
+          startRun("real", { ids: realWhatIfIds(getShip(shipRef.current)) }),
+        startWhatIf: (ids, portholesOpen) =>
+          startRun("whatif", { ids, portholesOpen }),
         getOutcome: () => {
           const s = playback.getState();
           return s.done && s.track ? outcomeOf(s.track) : null;
         },
       }
     );
-  }, [isModelView, isSceneView, startRun]);
+  }, [isModelView, isSceneView, startRun, pickShip]);
 
   useVisibilityPause({ onPersist: persist });
 
@@ -256,8 +321,8 @@ export default function Shipwreck() {
     [soundOn, toggleSound]
   );
   const panels = useMemo(
-    () => <NightPanels store={playback} spec={titanic} />,
-    []
+    () => <NightPanels store={playback} spec={spec} />,
+    [spec]
   );
 
   useGameServiceWorker("shipwreck");
@@ -271,8 +336,11 @@ export default function Shipwreck() {
 
   // At the end the run is done, so the track no longer changes.
   const endTrack = showEnd && hasTrack ? playback.getState().track : null;
+  const runSpec = run ? getShip(run.ship) : spec;
   const words = endTrack
-    ? endWords(endTrack, titanic.name, titanic.seaDepthM, run!.holes)
+    ? endWords(endTrack, runSpec, run!.holes, {
+        portholesOpen: run!.choice.portholesOpen,
+      })
     : null;
 
   return (
@@ -285,15 +353,21 @@ export default function Shipwreck() {
       </div>
       {screen === "title" && (
         <TitleScreen
-          onRealNight={() => startRun("real", REAL_NIGHT_IDS)}
+          ship={ship}
+          onShip={pickShip}
+          onRealNight={() =>
+            startRun("real", { ids: realWhatIfIds(spec), portholesOpen: true })
+          }
           onWhatIf={() => setScreen("editor")}
         />
       )}
       {screen === "editor" && (
         <WhatIfEditor
-          initial={save.lastWhatIf}
+          key={ship}
+          spec={spec}
+          initial={whatIfOf(save, ship)}
           onBack={() => setScreen("title")}
-          onGo={(ids) => startRun("whatif", ids)}
+          onGo={(choice) => startRun("whatif", choice)}
         />
       )}
       {screen === "night" && run && (
@@ -311,19 +385,16 @@ export default function Shipwreck() {
       {words && (
         <EndCard
           words={words}
+          history={historyNote(runSpec)}
+          cause={runSpec.cause}
           isNew={newEnding}
           onLook={() => {
             setEndDismissed(true);
             if (words.outcome === "floated")
               playback.getState().setCamera("orbit");
-            else playback.getState().flyToView(WRECK_VIEW);
+            else playback.getState().flyToView(WRECK_VIEW[runSpec.id]);
           }}
-          onWatchAgain={() =>
-            startRun(
-              run!.mode,
-              run!.mode === "real" ? REAL_NIGHT_IDS : save.lastWhatIf
-            )
-          }
+          onWatchAgain={() => startRun(run!.mode, run!.choice)}
           onWhatIf={goEditor}
         />
       )}

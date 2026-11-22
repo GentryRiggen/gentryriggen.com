@@ -10,24 +10,28 @@ import {
 } from "@react-three/postprocessing";
 import { ToneMappingMode } from "postprocessing";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { WebGLRenderer } from "three";
+import { Color, type Object3D, type WebGLRenderer } from "three";
 import { useStore } from "zustand";
 import {
   QUALITY_TIERS,
   type PlaybackStore,
   type QualityTier,
 } from "@/lib/shipwreck/playback";
+import { getShip } from "@/lib/shipwreck/ships";
 import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import CameraRig from "./CameraRig";
+import Coast from "./Coast";
 import Effects from "./Effects";
 import Environment from "./Environment";
 import Iceberg from "./Iceberg";
 import PlacePins from "./PlacePins";
 import Sea from "./Sea";
-import ShipRig from "./ShipRig";
-import Sky from "./Sky";
+import { ShipOnStage } from "./ShipRig";
+import Sky, { DaySky } from "./Sky";
+import Torpedo from "./Torpedo";
 import XRay from "./XRay";
 import { createSceneRuntime, type SceneRuntime } from "./runtime";
+import { SCENE_SETTINGS, sunDirection, type SceneSettings } from "./settings";
 
 /**
  * The night: the sky, the sea, the ship from the track, the effects and
@@ -52,6 +56,8 @@ export interface RenderInfo {
   camera: [number, number, number];
   quality: QualityTier;
   dpr: number;
+  /** Whether a named object (and every parent) is visible, for tests. */
+  isShown: (name: string) => boolean;
 }
 
 declare global {
@@ -72,6 +78,17 @@ export default function NightScene({
 }: NightSceneProps) {
   const runtime = useMemo(() => createSceneRuntime(), []);
   const quality = useStore(store, (s) => s.quality);
+  const spec = getShip(useStore(store, (s) => s.ship));
+  const settings = SCENE_SETTINGS[spec.id];
+  const day = settings.timeOfDay === "afternoon";
+  const haze = useMemo(() => new Color(settings.fog), [settings]);
+  const sunDir = useMemo(
+    () =>
+      settings.sun
+        ? sunDirection(settings.sun, settings.headingDeg ?? 90)
+        : ([0, 1, 0] as [number, number, number]),
+    [settings]
+  );
   // A lost WebGL context that does not come back stops the scene: thrown
   // here so the error boundary around it offers a fresh start.
   const [isLost, setLost] = useState(false);
@@ -127,20 +144,34 @@ export default function NightScene({
         )}
         <Driver store={store} />
         {TEST_HOOKS_ENABLED && <RenderInfoProbe quality={quality} dpr={dpr} />}
-        <Environment runtime={runtime} />
-        <Sky dpr={dpr} />
-        <ShipRig store={store} runtime={runtime} />
-        <Iceberg store={store} />
-        <Effects store={store} runtime={runtime} />
-        <XRay store={store} runtime={runtime} />
-        <SeaFromStore store={store} runtime={runtime} />
-        <CameraRig store={store} runtime={runtime} />
+        <Environment
+          runtime={runtime}
+          seaDepthM={spec.seaDepthM}
+          settings={settings}
+        />
+        {day ? <DaySky sunDir={sunDir} horizon={haze} /> : <Sky dpr={dpr} />}
+        {settings.coast && <Coast />}
+        {/* Another ship builds her own model, disposing the old. */}
+        <ShipOnStage store={store} runtime={runtime} />
+        {settings.iceberg && <Iceberg store={store} />}
+        {spec.cause === "torpedo" && <Torpedo store={store} />}
+        <Effects
+          store={store}
+          runtime={runtime}
+          spec={spec}
+          settings={settings}
+        />
+        <XRay store={store} runtime={runtime} spec={spec} />
+        <SeaFromStore store={store} runtime={runtime} settings={settings} />
+        <CameraRig store={store} runtime={runtime} spec={spec} />
         {/* Fixed MSAA: changing it rebuilds the composer (a hitch on a tier step). */}
         <EffectComposer multisampling={4}>
           <Bloom
-            luminanceThreshold={1}
+            // By day the sunlit paint must not glow: only the sun, its
+            // glitter on the sea and the flashes bloom.
+            luminanceThreshold={day ? 1.6 : 1}
             luminanceSmoothing={0.25}
-            intensity={1.25}
+            intensity={day ? 0.9 : 1.25}
             mipmapBlur
             resolutionScale={quality === "high" ? 0.5 : 0.35}
           />
@@ -170,13 +201,17 @@ function step(store: PlaybackStore, by: 1 | -1) {
 function SeaFromStore({
   store,
   runtime,
+  settings,
 }: {
   store: PlaybackStore;
   runtime: SceneRuntime;
+  settings: SceneSettings;
 }) {
   const quality = useStore(store, (s) => s.quality);
   const xray = useStore(store, (s) => s.xray);
-  return <Sea runtime={runtime} quality={quality} xray={xray} />;
+  return (
+    <Sea runtime={runtime} quality={quality} xray={xray} settings={settings} />
+  );
 }
 
 /** Advances the runner (≤ 6 ms a frame) and the shown time. */
@@ -187,6 +222,17 @@ function Driver({ store }: { store: PlaybackStore }) {
     s.tick(Math.min(dt, 0.1), performance.now() / 1000);
   }, -3);
   return null;
+}
+
+/** Whether the named object and every parent of it are visible. */
+function shownIn(root: Object3D, name: string): boolean {
+  const o = root.getObjectByName(name);
+  if (!o) return false;
+  let visible = true;
+  o.traverseAncestors((a) => {
+    if (!a.visible) visible = false;
+  });
+  return visible && o.visible;
 }
 
 /**
@@ -202,6 +248,9 @@ function RenderInfoProbe({
 }) {
   const gl = useThree((s) => s.gl);
   const camera = useThree((s) => s.camera);
+  const scene = useThree((s) => s.scene);
+  // Looked up only when a test asks, never per frame.
+  const isShown = useCallback((name: string) => shownIn(scene, name), [scene]);
   useEffect(() => {
     gl.info.autoReset = false;
     return () => {
@@ -216,6 +265,7 @@ function RenderInfoProbe({
       camera: [camera.position.x, camera.position.y, camera.position.z],
       quality,
       dpr,
+      isShown,
     };
     gl.info.reset();
   }, -10);

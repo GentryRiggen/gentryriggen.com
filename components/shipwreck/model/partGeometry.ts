@@ -1,7 +1,7 @@
 import { BufferAttribute, BufferGeometry } from "three";
 import { COLORS, type QualitySettings } from "./buildShip";
 import { GeoBuffer, box, cylinder, rgb, type RGB } from "./geoBuffer";
-import type { BoatKind, FunnelRecipe, V3 } from "./titanicRecipe";
+import type { BoatKind, FunnelRecipe, ShipPaint, V3 } from "./titanicRecipe";
 
 /**
  * Geometry for the separately moving or instanced parts: funnels (each its
@@ -17,14 +17,16 @@ import type { BoatKind, FunnelRecipe, V3 } from "./titanicRecipe";
  */
 export function funnelGeometry(
   f: FunnelRecipe,
-  q: QualitySettings
+  q: QualitySettings,
+  paint?: Pick<ShipPaint, "funnel" | "funnelTop">
 ): BufferGeometry {
   const buf = new GeoBuffer({ color: true });
   const H = f.topZ - f.baseZ;
   const lean = Math.tan(f.rake);
   const seg = q.funnelSeg;
-  const buff = rgb(COLORS.buff);
-  const black = rgb(COLORS.black);
+  // Buff and black unless the ship says otherwise.
+  const buff = rgb(paint?.funnel ?? COLORS.buff);
+  const black = rgb(paint?.funnelTop ?? COLORS.black);
   const ringAt = (z: number, grow = 0): V3[] => {
     const out: V3[] = [];
     for (let i = 0; i < seg; i += 1) {
@@ -221,8 +223,14 @@ export function boatGeometry(
   return buf.toGeometry();
 }
 
-/** A cowl ventilator, about 3 m tall at scale 1, mouth facing +x. */
-export function ventGeometry(q: QualitySettings): BufferGeometry {
+/**
+ * A cowl ventilator, about 3 m tall at scale 1, mouth facing +x; its
+ * mouth lined `lining` (default near black, the Titanic's).
+ */
+export function ventGeometry(
+  q: QualitySettings,
+  lining = 0x2a1a14
+): BufferGeometry {
   const buf = new GeoBuffer({ color: true });
   const white = rgb(COLORS.white);
   const seg = Math.max(8, q.cylSeg);
@@ -243,16 +251,40 @@ export function ventGeometry(q: QualitySettings): BufferGeometry {
     end: false,
   });
   // The mouth's dark inside.
-  cylinder(
-    buf,
-    [0.8, 0, 2.74],
-    [0.84, 0, 2.75],
-    0.66,
-    0.68,
-    seg,
-    rgb(0x2a1a14),
-    { start: false, end: true }
-  );
+  cylinder(buf, [0.8, 0, 2.74], [0.84, 0, 2.75], 0.66, 0.68, seg, rgb(lining), {
+    start: false,
+    end: true,
+  });
+  return buf.toGeometry();
+}
+
+/**
+ * A drum ("oil-drum") ventilator, about 2.7 m tall at scale 1: a fat
+ * cylinder under a flat cap, the air drawn in through the dark gap.
+ */
+export function drumVentGeometry(
+  q: QualitySettings,
+  lining = 0x2a1a14
+): BufferGeometry {
+  const buf = new GeoBuffer({ color: true });
+  const white = rgb(COLORS.white);
+  const seg = Math.max(10, q.cylSeg + 2);
+  cylinder(buf, [0, 0, 0], [0, 0, 0.3], 1.0, 0.95, seg, white, {
+    start: false,
+    end: true,
+  });
+  cylinder(buf, [0, 0, 0.3], [0, 0, 2.2], 0.82, 0.82, seg, white, {
+    start: false,
+    end: false,
+  });
+  cylinder(buf, [0, 0, 2.2], [0, 0, 2.45], 0.7, 0.7, seg, rgb(lining), {
+    start: false,
+    end: false,
+  });
+  cylinder(buf, [0, 0, 2.45], [0, 0, 2.7], 1.08, 1.0, seg, white, {
+    start: true,
+    end: true,
+  });
   return buf.toGeometry();
 }
 

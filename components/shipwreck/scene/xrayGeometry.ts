@@ -9,8 +9,19 @@ import {
   Color,
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { PLACES, deckZAt, type PlaceId } from "@/lib/shipwreck/places";
-import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
+import {
+  LUSITANIA_PLACES,
+  PLACES,
+  deckZAt,
+  type PlaceId,
+} from "@/lib/shipwreck/places";
+import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import type {
+  Compartment,
+  Opening,
+  ShipId,
+  ShipSpec,
+} from "@/lib/shipwreck/ships/types";
 import { hullHalfBreadth, type HullModel } from "@/lib/shipwreck/sim/geometry";
 import { compartmentTopZ } from "@/lib/shipwreck/xray";
 
@@ -18,7 +29,9 @@ import { compartmentTopZ } from "@/lib/shipwreck/xray";
  * Geometry for the X-ray cutaway, in the ship frame written in three.js
  * axes (three.x = x, three.y = z, three.z = -y): each compartment's water
  * as a closed loft of hull sections (the shader cuts it at the sim's level),
- * the bulkheads' outlines, the openings and the four places' blockouts.
+ * (a side bunker's only across its wing, between the longitudinal bulkhead
+ * and the shell), the bulkheads' outlines, the openings and the places'
+ * blockouts.
  */
 
 const NX = 6;
@@ -26,15 +39,46 @@ const NZ = 10;
 /** The water sits just inside the shell so the ghost hull stays on top. */
 const INSET = 0.96;
 
-/** Ring of a section at x from the keel to `top`: port up, starboard down. */
-function sectionRing(hull: HullModel, x: number, top: number): number[][] {
+/** How far a cell's water stands in from a longitudinal bulkhead (m). */
+const WALL_GAP = 0.1;
+
+/**
+ * A cell's share of a section of inset half-breadth `hb` (ship y, to port):
+ * the whole breadth, or its side of the longitudinal bulkheads.
+ */
+function cellSpan(
+  c: Pick<Compartment, "span"> | undefined,
+  hb: number
+): [lo: number, hi: number] {
+  const sp = c?.span;
+  if (!sp) return [-hb, hb];
+  if (sp.side === "centre") {
+    const y = Math.min(hb, sp.y - WALL_GAP);
+    return [-y, y];
+  }
+  const y = Math.min(hb, sp.y + WALL_GAP);
+  return sp.side === "port" ? [y, hb] : [-hb, -y];
+}
+
+/**
+ * Ring of a section at x from the keel to `top`: port up, starboard down
+ * (across the cell's share of the breadth).
+ */
+function sectionRing(
+  hull: HullModel,
+  x: number,
+  top: number,
+  cell?: Pick<Compartment, "span">
+): number[][] {
   const port: number[][] = [];
   const star: number[][] = [];
   for (let j = 0; j <= NZ; j += 1) {
     const z = 0.05 + ((top - 0.05) * j) / NZ;
     const hb = Math.max(0.05, hullHalfBreadth(hull, x, z) * INSET);
-    port.push([x, z, -hb]);
-    star.push([x, z, hb]);
+    const [lo, hi] = cellSpan(cell, hb);
+    // three.z = -y
+    port.push([x, z, -hi]);
+    star.push([x, z, -lo]);
   }
   return port.concat(star.reverse());
 }
@@ -61,7 +105,7 @@ export function waterGeometry(
       const x = piece.fromX + ((piece.toX - piece.fromX) * i) / NX;
       // A hair in from each bulkhead so neighbours don't z-fight.
       const xi = Math.min(piece.toX - 0.15, Math.max(piece.fromX + 0.15, x));
-      rings.push(sectionRing(hull, xi, compartmentTopZ(c, x)));
+      rings.push(sectionRing(hull, xi, compartmentTopZ(c, x), c));
     }
     const n = rings[0].length;
     for (let i = 0; i < NX; i += 1) {
@@ -80,8 +124,12 @@ export function waterGeometry(
     ] as const) {
       const cx = ring[0][0];
       let cy = 0;
-      for (const p of ring) cy += p[1];
-      const center = [cx, cy / n, 0];
+      let cz = 0;
+      for (const p of ring) {
+        cy += p[1];
+        cz += p[2];
+      }
+      const center = [cx, cy / n, cz / n];
       for (let k = 0; k < n; k += 1) {
         const k2 = (k + 1) % n;
         if (flip) tri(center, ring[k2], ring[k], slot);
@@ -121,6 +169,26 @@ export function bulkheadLines(
     const mid = top / 2;
     const hb = hullHalfBreadth(hull, x, mid);
     pts.push(x, mid, -hb, x, mid, hb);
+  }
+  // The longitudinal bulkheads beside the side bunkers: their top and
+  // bottom edges and a line at mid-height, along the bunker.
+  for (const c of spec.compartments) {
+    const sp = c.span;
+    if (!sp || sp.side === "centre") continue;
+    const a = Math.max(c.fromX, fromX);
+    const b = Math.min(c.toX, toX);
+    if (b - a < 0.1) continue;
+    const zt = (c.aftBulkheadTopZ + c.fwdBulkheadTopZ) / 2;
+    // Where the shell is first wider than the bulkhead is out.
+    let zb = zt;
+    for (let z = 0.2; z < zt; z += 0.25) {
+      if (hullHalfBreadth(hull, (a + b) / 2, z) >= sp.y) {
+        zb = z;
+        break;
+      }
+    }
+    const tz = sp.side === "port" ? -sp.y : sp.y; // three.z = -y
+    for (const z of [zb, (zb + zt) / 2, zt]) pts.push(a, z, tz, b, z, tz);
   }
   const g = new BufferGeometry();
   g.setAttribute("position", new BufferAttribute(new Float32Array(pts), 3));
@@ -191,11 +259,13 @@ function box(
 }
 
 function bridgeParts(): Part[] {
-  const p = PLACES.bridge;
-  const x = 69.2;
-  const deck = p.floorZ;
+  return bridgeAt(68.6, 69.2, PLACES.bridge.floorZ);
+}
+
+/** The wheelhouse's floor centred at `floorX`, the wheel at `x`. */
+function bridgeAt(floorX: number, x: number, deck: number): Part[] {
   const parts: Part[] = [
-    { g: box(68.6, 0, deck + 0.1, 4.6, 9.4, 0.2), color: 0x8a6a45 },
+    { g: box(floorX, 0, deck + 0.1, 4.6, 9.4, 0.2), color: 0x8a6a45 },
     // The wheel (a ship's wheel on its stand) and the compass binnacle.
     {
       g: at(new TorusGeometry(0.55, 0.06, 6, 20), x, 0, deck + 1.35, {
@@ -277,19 +347,30 @@ function staircaseParts(): Part[] {
 }
 
 function boilerParts(): Part[] {
-  const x0 = 62.5;
-  const zc = 1.6 + 2.55;
-  const parts: Part[] = [{ g: box(x0, 0, 1.6, 16, 20, 0.15), color: 0x3a3a3a }];
   // Four double-ended boilers across the beam, furnaces at both ends.
-  for (const y of [-8.4, -2.8, 2.8, 8.4]) {
+  return boilersAt(62.5, [-8.4, -2.8, 2.8, 8.4], 2.4, 20);
+}
+
+/** Double-ended boilers across the room at `ys` (radius r), on the tank top. */
+function boilersAt(
+  x0: number,
+  ys: readonly number[],
+  r: number,
+  floorWidth: number
+): Part[] {
+  const zc = 1.6 + r + 0.15;
+  const parts: Part[] = [
+    { g: box(x0, 0, 1.6, 16, floorWidth, 0.15), color: 0x3a3a3a },
+  ];
+  for (const y of ys) {
     parts.push({
-      g: at(new CylinderGeometry(2.4, 2.4, 6.1, 18), x0, y, zc, {
+      g: at(new CylinderGeometry(r, r, 6.1, 18), x0, y, zc, {
         z: Math.PI / 2,
       }),
       color: 0x5a3a2a,
     });
     // The uptake to the funnel.
-    parts.push({ g: box(x0, y, zc + 3.4, 1.6, 1.6, 2.2), color: 0x4a4a4a });
+    parts.push({ g: box(x0, y, zc + r + 1, 1.6, 1.6, 2.2), color: 0x4a4a4a });
     for (const end of [-1, 1]) {
       for (const dy of [-1.3, 0, 1.3]) {
         parts.push({
@@ -354,11 +435,146 @@ function engineParts(): Part[] {
   return parts;
 }
 
-const BUILDERS: Record<PlaceId, () => Part[]> = {
-  bridge: bridgeParts,
-  "grand-staircase": staircaseParts,
-  "boiler-room-6": boilerParts,
-  "engine-room": engineParts,
+// The Lusitania's places.
+
+function lusitaniaBridgeParts(): Part[] {
+  const p = LUSITANIA_PLACES.bridge;
+  return bridgeAt(p.at[0], p.at[0] + 0.6, p.floorZ);
+}
+
+function saloonParts(): Part[] {
+  const p = LUSITANIA_PLACES["dining-saloon"];
+  const x0 = p.at[0];
+  const floor = p.floorZ;
+  const upper = deckZAt("C", x0, lusitania);
+  const top = deckZAt("B", x0, lusitania);
+  const parts: Part[] = [
+    { g: box(x0, 0, floor + 0.1, 22, 20, 0.2), color: 0xb89a6a },
+  ];
+  // Round tables with white cloths, in rows.
+  for (let x = x0 - 8; x <= x0 + 8.01; x += 3.2) {
+    for (const y of [-7, -3.5, 0, 3.5, 7]) {
+      parts.push({
+        g: at(new CylinderGeometry(0.8, 0.8, 0.12, 14), x, y, floor + 0.8),
+        color: 0xf3ece0,
+      });
+      parts.push({
+        g: at(new CylinderGeometry(0.12, 0.2, 0.7, 6), x, y, floor + 0.4),
+        color: 0x8a6a45,
+      });
+    }
+  }
+  // The gallery round the well, one deck up, on white columns.
+  for (const [dx, dy, lx, ly] of [
+    [0, 8.5, 22, 3],
+    [0, -8.5, 22, 3],
+    [9.5, 0, 3, 14],
+    [-9.5, 0, 3, 14],
+  ]) {
+    parts.push({
+      g: box(x0 + dx, dy, upper + 0.1, lx, ly, 0.25),
+      color: 0xe8dcc0,
+    });
+  }
+  for (const x of [x0 - 8, x0 - 4, x0, x0 + 4, x0 + 8]) {
+    for (const y of [-7, 7]) {
+      parts.push({
+        g: at(
+          new CylinderGeometry(0.22, 0.22, upper - floor, 10),
+          x,
+          y,
+          (floor + upper) / 2
+        ),
+        color: 0xf2ead8,
+      });
+    }
+  }
+  // The painted dome over the well, lit.
+  const dome = new SphereGeometry(1, 20, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+  dome.applyMatrix4(m.makeScale(6, 1.6, 5));
+  parts.push({ g: at(dome, x0, 0, top - 0.2), color: 0x6a5a40, glow: true });
+  return parts;
+}
+
+function lusitaniaBoilerParts(): Part[] {
+  // Three across: her forward boiler room is narrow low down.
+  return boilersAt(
+    LUSITANIA_PLACES["boiler-room-1"].at[0],
+    [-5.2, 0, 5.2],
+    2.3,
+    14
+  );
+}
+
+function bunkerParts(): Part[] {
+  const p = LUSITANIA_PLACES["starboard-bunker"];
+  const [x0, y0] = p.at;
+  const parts: Part[] = [
+    // The coal left six days out of New York: a low heap along the wing.
+    { g: box(x0, y0 + 0.2, 2.8, 20, 2.6, 1.4), color: 0x1c1c1f },
+    { g: box(x0 - 4, y0 + 0.3, 3.8, 7, 2.0, 0.8), color: 0x26262a },
+    // A coal door in the bulkhead, to the boiler room.
+    { g: box(x0 + 3, -9.45, 5.2, 1.4, 0.15, 1.6), color: 0x7a6a50 },
+  ];
+  for (const x of [x0 - 6, x0 + 6]) {
+    parts.push({
+      g: at(new SphereGeometry(0.25, 8, 6), x, y0, 9),
+      color: 0xffd9a0,
+      glow: true,
+    });
+  }
+  return parts;
+}
+
+function turbineParts(): Part[] {
+  const x0 = LUSITANIA_PLACES["turbine-room"].at[0];
+  const parts: Part[] = [{ g: box(x0, 0, 1.6, 18, 18, 0.15), color: 0x3a3a3a }];
+  // Four turbines, one to each propeller: the low-pressure ones inboard,
+  // the high-pressure ones outboard.
+  for (const [y, r, len] of [
+    [-2.8, 2.0, 13],
+    [2.8, 2.0, 13],
+    [-7.2, 1.5, 9],
+    [7.2, 1.5, 9],
+  ]) {
+    parts.push({
+      g: at(new CylinderGeometry(r, r * 0.9, len, 18), x0, y, 5, {
+        z: Math.PI / 2,
+      }),
+      color: 0x3d4a44,
+    });
+    // The shaft aft to its propeller.
+    parts.push({
+      g: at(new CylinderGeometry(0.3, 0.3, 56, 8), x0 - len / 2 - 28, y, 4, {
+        z: Math.PI / 2,
+      }),
+      color: 0x9a9a8a,
+    });
+  }
+  for (const x of [x0 - 6, x0, x0 + 6]) {
+    parts.push({
+      g: at(new SphereGeometry(0.3, 8, 6), x, 0, 10.5),
+      color: 0xffe0a0,
+      glow: true,
+    });
+  }
+  return parts;
+}
+
+const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
+  titanic: {
+    bridge: bridgeParts,
+    "grand-staircase": staircaseParts,
+    "boiler-room-6": boilerParts,
+    "engine-room": engineParts,
+  },
+  lusitania: {
+    bridge: lusitaniaBridgeParts,
+    "dining-saloon": saloonParts,
+    "boiler-room-1": lusitaniaBoilerParts,
+    "starboard-bunker": bunkerParts,
+    "turbine-room": turbineParts,
+  },
 };
 
 function colored(parts: Part[]): BufferGeometry | null {
@@ -382,11 +598,14 @@ function colored(parts: Part[]): BufferGeometry | null {
 }
 
 /** A place's blockout: solid shapes and glowing ones (lamps, furnaces). */
-export function placeGeometry(id: PlaceId): {
+export function placeGeometry(
+  ship: ShipId,
+  id: PlaceId
+): {
   solid: BufferGeometry | null;
   glow: BufferGeometry | null;
 } {
-  const parts = BUILDERS[id]();
+  const parts = BUILDERS[ship][id]?.() ?? [];
   return {
     solid: colored(parts.filter((p) => !p.glow)),
     glow: colored(parts.filter((p) => p.glow)),

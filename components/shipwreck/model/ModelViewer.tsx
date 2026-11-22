@@ -18,6 +18,9 @@ import {
 import { Color, PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { titanic } from "@/lib/shipwreck/ships/titanic";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type {
   ModelInfo,
   ModelViewOptions,
@@ -28,9 +31,9 @@ import type { TitanicHandles } from "./shipModel";
 
 /**
  * A neutral stage for checking the model (`/shipwreck?model`, dev and e2e
- * builds only): orbit controls, a day light or the night with bloom, and
- * `window.__shipwreck.setModelView` to set the break, lights, quality and
- * a camera preset.
+ * builds only; `&ship=lusitania` for her): orbit controls, a day light or
+ * the night with bloom, and `window.__shipwreck.setModelView` to set the
+ * break, lights, quality and a camera preset.
  */
 
 type Required3 = Required<ModelViewOptions>;
@@ -59,7 +62,24 @@ const CAMERAS: Record<
   "stern-close": { pos: [-176, 22, 52], target: [-118, 16, 0] },
   astern: { pos: [-172, 17, 0], target: [-130, 15.5, 0] },
   "break-close": { pos: [-2, 34, 72], target: [-27, 14, 0] },
+  "boat-deck": { pos: [52, 40, 52], target: [18, 26, 6] },
 };
+
+/** Presets reframed for a ship whose stern is not the Titanic's. */
+const SHIP_CAMERAS: Partial<Record<ShipSpec["id"], Partial<typeof CAMERAS>>> = {
+  lusitania: {
+    stern: { pos: [-205, 2, 120], target: [-62, 13, 0] },
+    "stern-close": { pos: [-168, 20, 56], target: [-104, 12, 0] },
+    astern: { pos: [-160, 17, 0], target: [-118, 15.5, 0] },
+  },
+};
+
+/** The ship named by `?ship=` (the Titanic by default). */
+function shipFromUrl(): ShipSpec {
+  if (typeof window === "undefined") return titanic;
+  const id = new URLSearchParams(window.location.search).get("ship");
+  return id === "lusitania" ? lusitania : titanic;
+}
 
 interface ModelViewerProps {
   hooksRef: RefObject<ShipwreckModelHooks | null>;
@@ -67,6 +87,7 @@ interface ModelViewerProps {
 
 export default function ModelViewer({ hooksRef }: ModelViewerProps) {
   const [view, setView] = useState<Required3>(DEFAULT_VIEW);
+  const [spec] = useState(shipFromUrl);
   const info = useRef<ModelInfo>({
     ready: false,
     calls: 0,
@@ -104,7 +125,7 @@ export default function ModelViewer({ hooksRef }: ModelViewerProps) {
         camera={{ fov: 30, near: 1, far: 4000, position: [215, 58, 190] }}
         gl={{ antialias: true }}
       >
-        <Stage view={view} onInfo={onInfo} />
+        <Stage view={view} spec={spec} onInfo={onInfo} />
       </Canvas>
     </div>
   );
@@ -112,10 +133,11 @@ export default function ModelViewer({ hooksRef }: ModelViewerProps) {
 
 interface StageProps {
   view: Required3;
+  spec: ShipSpec;
   onInfo(patch: Partial<ModelInfo>): void;
 }
 
-function Stage({ view, onInfo }: StageProps) {
+function Stage({ view, spec, onInfo }: StageProps) {
   const get = useThree((s) => s.get);
   const controls = useRef<OrbitControlsImpl>(null);
   const handles = useRef<TitanicHandles | null>(null);
@@ -138,12 +160,13 @@ function Stage({ view, onInfo }: StageProps) {
 
   useEffect(() => {
     const { camera } = get();
-    const c = CAMERAS[view.camera];
+    // The presets frame the Titanic; some are reframed for other ships.
+    const c = SHIP_CAMERAS[spec.id]?.[view.camera] ?? CAMERAS[view.camera];
     camera.position.set(c.pos[0], c.pos[1], c.pos[2]);
     controls.current?.target.set(c.target[0], c.target[1], c.target[2]);
     controls.current?.update();
     camera.lookAt(new Vector3(c.target[0], c.target[1], c.target[2]));
-  }, [get, view.camera]);
+  }, [get, view.camera, spec]);
 
   const apply = useCallback(
     (h: TitanicHandles) => {
@@ -213,12 +236,14 @@ function Stage({ view, onInfo }: StageProps) {
         </>
       )}
       <TitanicModel
+        spec={spec}
         breakX={view.breakX}
         quality={view.quality}
         onReady={(h) => {
           onInfo({
             modelTriangles: modelTriangles(h),
             buildMs: Math.round(h.stats.buildMs),
+            ship: h.recipe.spec.id,
           });
           onReady(h);
         }}

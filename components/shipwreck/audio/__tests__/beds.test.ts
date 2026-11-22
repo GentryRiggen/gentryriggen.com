@@ -46,6 +46,39 @@ describe("bed targets", () => {
     expect(t.steam).toBe(0);
   });
 
+  it("keeps the Titanic's targets as they were (no engines, no gulls bed)", () => {
+    expect(bedTargets(base, true)).toEqual({
+      sea: BED_LEVEL.sea,
+      hum: BED_LEVEL.hum,
+      night: BED_LEVEL.night,
+      steam: 0,
+      rumble: 0,
+      engines: 0,
+    });
+    expect(bedTargets({ ...base, ship: "titanic" }, true)).toEqual(
+      bedTargets(base, true)
+    );
+  });
+
+  it("gives the Lusitania an afternoon: open sea and engines, no night tone", () => {
+    const l = { ...base, ship: "lusitania" as const };
+    const t = bedTargets(l, true);
+    expect(t.sea).toBe(BED_LEVEL.sea);
+    expect(t.engines).toBe(BED_LEVEL.engines);
+    expect(t.night).toBe(0);
+    expect(t.hum).toBe(0);
+  });
+
+  it("fades her engines as steam fails, and under water", () => {
+    const l = { ...base, ship: "lusitania" as const };
+    const half = bedTargets({ ...l, power: 0.5 }, true).engines;
+    expect(half).toBeLessThan(BED_LEVEL.engines);
+    expect(half).toBeGreaterThan(0);
+    expect(bedTargets({ ...l, power: 0 }, true).engines).toBe(0);
+    expect(bedTargets({ ...l, underwater: true }, true).engines).toBe(0);
+    expect(bedTargets(l, false).engines).toBe(0);
+  });
+
   it("keeps every bed well under 0.2", () => {
     for (const v of Object.values(BED_LEVEL)) expect(v).toBeLessThan(0.2);
   });
@@ -83,6 +116,9 @@ describe("voices", () => {
     "breakup",
     "plunge",
     "thud",
+    "torpedo",
+    "boom",
+    "gull",
   ];
 
   it("plays every cue under 0.2 gain and disconnects when done", () => {
@@ -151,13 +187,30 @@ describe("voices", () => {
     for (let t = 0; t < 6; t += 0.01) worstCues = Math.max(worstCues, at(t));
     // The held beds at their loudest above water (steam not ducked).
     const beds = bedTargets({ ...base, steam: true, power: 1, speed: 1 }, true);
-    const bedSum = beds.sea + beds.hum + beds.night + beds.steam + beds.rumble;
+    const bedSum =
+      beds.sea +
+      beds.hum +
+      beds.night +
+      beds.steam +
+      beds.rumble +
+      beds.engines;
     // The kit's master gain (0.8) sits between the bus and the limiter.
     const total = (worstCues * CUE_BUS_LEVEL + bedSum) * 0.8;
     console.log(
       `Shipwreck worst-case sum: cues ${worstCues.toFixed(3)} x ${CUE_BUS_LEVEL} + beds ${bedSum.toFixed(3)}, x 0.8 = ${total.toFixed(3)}`
     );
     expect(total).toBeLessThanOrEqual(0.3);
+  });
+
+  it("keeps her loudest cues and beds under 0.3 too", () => {
+    const l = bedTargets(
+      { ...base, ship: "lusitania", steam: true, power: 1 },
+      true
+    );
+    const sum = Object.values(l).reduce((a, b) => a + b, 0);
+    // The boom's three voices and a plunge's can overlap at their peaks.
+    const cues = 4 * VOICE_PEAK_MAX * CUE_BUS_LEVEL;
+    expect((cues + sum) * 0.8).toBeLessThan(0.3);
   });
 
   it("builds the beds once and tears them down", () => {

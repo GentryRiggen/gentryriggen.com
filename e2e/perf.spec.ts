@@ -145,6 +145,10 @@ const SCENES = [
   "shipwreck-breakup-cinematic",
   "shipwreck-xray-staircase",
   "shipwreck-underwater",
+  "shipwreck-lusitania-hit",
+  "shipwreck-lusitania-list",
+  "shipwreck-lusitania-grounded",
+  "shipwreck-lusitania-wreck",
 ] as const;
 
 test.afterAll(() => {
@@ -525,7 +529,73 @@ test.describe("Shipwreck budget", () => {
       })
     );
     // The spec's ceiling at the top tier, apart from the budget.
-    for (const scene of SCENES.filter((s) => s.startsWith("shipwreck-"))) {
+    for (const scene of SCENES.filter(
+      (s) => s.startsWith("shipwreck-") && !s.startsWith("shipwreck-lusitania")
+    )) {
+      const m = JSON.parse(
+        fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")
+      ) as Measurement;
+      expect(m.calls, `${scene}: draw calls`).toBeLessThanOrEqual(160);
+      expect(m.triangles, `${scene}: triangles`).toBeLessThanOrEqual(450_000);
+    }
+  });
+});
+
+test.describe("Shipwreck budget: the Lusitania", () => {
+  test.setTimeout(420_000);
+
+  test("her afternoon at the top tier: the hit, the list, the bow on the floor, the wreck", async ({
+    page,
+  }) => {
+    await page.goto("/shipwreck?scene&ship=lusitania&quality=high");
+    await page.waitForFunction(
+      () => window.__shipwreck?.getState?.().done === true,
+      null,
+      { timeout: 300_000 }
+    );
+    const at = async (setup: () => void, settleMs = 2500) => {
+      await page.evaluate(setup);
+      await page.waitForTimeout(settleMs);
+      return measure(page, "__shipwreckRenderInfo");
+    };
+    record(
+      "shipwreck-lusitania-hit",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.pause!();
+        h.seek!(2); // the column of water at 2:10 PM
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-lusitania-list",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.seek!(10 * 60); // 2:20 PM: the list, the boats
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-lusitania-grounded",
+      await at(() => {
+        const h = window.__shipwreck!;
+        const e = h.getEvents!().find((x) => x.kind === "bow-lands")!;
+        h.seek!(e.t + 10); // the bow on the floor, the stern in the air
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-lusitania-wreck",
+      await at(() => {
+        const h = window.__shipwreck!;
+        const e = h.getEvents!().find((x) => x.kind === "stern-under")!;
+        h.seek!(e.t + 90); // on her starboard side, 93 m down
+        h.setCamera!("underwater");
+      })
+    );
+    for (const scene of SCENES.filter((s) =>
+      s.startsWith("shipwreck-lusitania")
+    )) {
       const m = JSON.parse(
         fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")
       ) as Measurement;

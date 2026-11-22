@@ -23,7 +23,8 @@ export interface ModelViewOptions {
     | "bow-close"
     | "stern-close"
     | "astern"
-    | "break-close";
+    | "break-close"
+    | "boat-deck";
   stage?: "day" | "night";
 }
 
@@ -37,6 +38,8 @@ export interface ModelInfo {
   modelTriangles: number;
   /** How long the last model build took, ms. */
   buildMs: number;
+  /** Which ship is on the stage (`spec.id`). */
+  ship?: string;
 }
 
 export interface ShipwreckModelHooks {
@@ -46,6 +49,8 @@ export interface ShipwreckModelHooks {
 
 /** What `getState()` reports about the night's playback. */
 export interface ScenePlaybackInfo {
+  /** The ship on the stage ("titanic" | "lusitania"). */
+  ship: string;
   t: number;
   realT: number;
   phase: string;
@@ -87,13 +92,22 @@ export interface ShipwreckSceneHooks {
     triangles: number;
     camera: [number, number, number];
   } | null;
+  /** Whether a named scene object ("iceberg", "coast") is on screen. */
+  isShown(name: string): boolean;
 }
 
 /** The game's own hooks: start a run, read where it is and how it ended. */
 export interface ShipwreckGameHooks {
+  /** Picks a ship as the title screen does (and shows the title). */
+  setShip(id: string): void;
+  /** The ship chosen ("titanic" | "lusitania"). */
+  ship(): string;
   startReal(): void;
-  /** Starts a What if with these compartment ids open. */
-  startWhatIf(ids: string[]): void;
+  /**
+   * Starts a What if with these compartment ids open (a torpedo ship: where
+   * it hits), and for a torpedo ship whether the portholes are open.
+   */
+  startWhatIf(ids: string[], portholesOpen?: boolean): void;
   /** "sank" | "floated" | "broke-in-two" once the run is done, else null. */
   getOutcome(): string | null;
 }

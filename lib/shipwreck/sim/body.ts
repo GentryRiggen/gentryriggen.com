@@ -3,6 +3,9 @@ import {
   AXIAL_ADDED_MASS,
   AXIAL_CD,
   DRAG_CD,
+  FLOOR_DAMP_S,
+  FLOOR_FRICTION,
+  FLOOR_SLIP_MS,
   GRAV,
   HEAVE_ZETA,
   PITCH_ZETA,
@@ -13,11 +16,13 @@ import {
   ROLL_ZETA,
   VERTICAL_GYRATION,
 } from "./constants";
+import { STEADY_AVG_S } from "./events";
 import {
   type Cell,
   capSeaFlow,
   cellBounds,
   cellSea,
+  crossFlow,
   seaInflow,
   solveLevel,
   spill,
@@ -51,6 +56,29 @@ const { abs, cos, max, min, sin, sqrt } = Math;
 export type BodyPart = "whole" | "bow" | "stern";
 export type BodyMode = "float" | "fall" | "landing" | "landed";
 
+/** Water spilling over a bulkhead top between cells[a] (aft) and cells[b]. */
+export interface SpillLink {
+  a: number;
+  b: number;
+  /** Ship frame: the bulkhead's x, its top, and the middle of the shared breadth. */
+  x: number;
+  topZ: number;
+  y: number;
+  /** Breadth the two cells share at the top (m). */
+  breadth: number;
+}
+
+/** Cells side by side across a longitudinal bulkhead (coal doors). */
+export interface CrossLink {
+  a: number;
+  b: number;
+  area: number;
+  /** Ship frame: the doors, low on the bulkhead. */
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface Body {
   part: BodyPart;
   xFrom: number;
@@ -60,8 +88,16 @@ export interface Body {
   boxes: Cell[];
   /** cells then boxes (one list for the hot loops). */
   all: Cell[];
-  /** Spill breadth at each bulkhead between cells[i] and cells[i+1] (0: none). */
-  walls: number[];
+  /** Where water can spill over a bulkhead top from one cell to the next. */
+  links: SpillLink[];
+  /** Cells side by side, joined through a longitudinal bulkhead. */
+  crosses: CrossLink[];
+  /**
+   * Full-breadth stand-ins for each run of wing and centre cells: the cut
+   * quantities that do not add across a longitudinal bulkhead (waterplane
+   * inertia, added mass, the axial front) come from these instead.
+   */
+  cuts: Cell[];
   lightMass: number;
   lightCx: number;
   lightCy: number;
@@ -93,10 +129,14 @@ export interface Body {
   /** Sea inflow, m³/s, and the net change of water aboard (after the pumps). */
   inflow: number;
   netFlow: number;
+  /** netFlow averaged over the last STEADY_AVG_S or so (Infinity: none yet). */
+  flowAvg: number;
   mode: BodyMode;
   /** Highest / lowest earth z of the body (hull and boxes). */
   top: number;
   bottom: number;
+  /** Her wreck's rest rule in radians (`spec.wreck`), or null (1.0). */
+  wreck: { rest: number; min: number } | null;
   /** Afloat and still for this long (s); frozen once steady. */
   steadyFor: number;
   frozen: boolean;
@@ -107,6 +147,24 @@ export interface Body {
   contactT: number;
   contactPitch: number;
   restPitch: number;
+  restRoll: number;
+  /** How deep the contact already was when it landed afloat (m). */
+  contactD0: number;
+  /** Landed from afloat (grounded when she went under): no further plough,
+   * and her lowest hull point kept at that depth in the mud as she turns. */
+  seated: boolean;
+  /** Hull vertices for the floor while afloat: x, y, z, length (m) each. */
+  floorPts: Float64Array;
+  /** Floor stiffness per metre of hull per vertex (N/m per m). */
+  floorK: number;
+  /** Touching the floor this step (afloat), and which end touched. */
+  grounded: boolean;
+  touchBow: boolean;
+  touchStern: boolean;
+  /** This step's floor forces (N, earth up) and where (ship-frame x). */
+  floorN: number;
+  floorX: Float64Array;
+  floorF: Float64Array;
 }
 
 /** Earth up in the ship frame. */
@@ -252,7 +310,8 @@ export function stepFloat(
   dt: number,
   areas: boolean,
   drift: number,
-  pumps = 0
+  pumps = 0,
+  floorZ = -Infinity
 ): void {
   const [nx, ny, nz] = upOf(b);
   updateBounds(b);
@@ -275,6 +334,7 @@ export function stepFloat(
     bmx += c.seaMx;
     bmy += c.seaMy;
     bmz += c.seaMz;
+    if (c.slice.span) continue;
     const o = c.seaCut;
     ch += o[R_CH];
     chx += o[R_CHX];
@@ -285,6 +345,18 @@ export function stepFloat(
     s2xx += o[R_S2XX];
     if (!c.box)
       for (let i = 0; i < c.slice.n; i += 1) front = max(front, c.seaArea[i]);
+  }
+  for (const c of b.cuts) {
+    cellSea(c, nx, ny, nz, b.z, true);
+    const o = c.seaCut;
+    ch += o[R_CH];
+    chx += o[R_CHX];
+    chxx += o[R_CHXX];
+    cht += o[R_CHT];
+    s2 += o[R_S2];
+    s2x += o[R_S2X];
+    s2xx += o[R_S2XX];
+    for (let i = 0; i < c.slice.n; i += 1) front = max(front, c.seaArea[i]);
   }
   // Water surfaces.
   for (const c of b.all) solveLevel(c, nx, ny, nz, b.z, areas);
@@ -302,14 +374,39 @@ export function stepFloat(
     inflow += q;
     dw[i] = q * dt;
   }
-  for (let i = 0; i < b.cells.length - 1; i += 1) {
-    const breadth = b.walls[i];
-    if (breadth <= 0) continue;
-    const a = b.cells[i];
-    const c = b.cells[i + 1];
-    const q = spill(a, c, a.slice.xTo, a.fwdTopZ, breadth, nx, nz, b.z, dt);
-    dw[i] -= q * dt;
-    dw[i + 1] += q * dt;
+  for (const l of b.links) {
+    const q = spill(
+      b.cells[l.a],
+      b.cells[l.b],
+      l.x,
+      l.topZ,
+      l.breadth,
+      nx,
+      nz,
+      b.z,
+      dt,
+      ny,
+      l.y
+    );
+    dw[l.a] -= q * dt;
+    dw[l.b] += q * dt;
+  }
+  for (const l of b.crosses) {
+    const q = crossFlow(
+      b.cells[l.a],
+      b.cells[l.b],
+      l.area,
+      l.x,
+      l.y,
+      l.z,
+      nx,
+      ny,
+      nz,
+      b.z,
+      dt
+    );
+    dw[l.a] -= q * dt;
+    dw[l.b] += q * dt;
   }
   // Pumps, aftmost machinery space first, while the water there is shallow.
   let pumpLeft = pumps * dt;
@@ -331,6 +428,9 @@ export function stepFloat(
   }
   b.inflow = inflow;
   b.netFlow = (after - before) / dt;
+  b.flowAvg = Number.isFinite(b.flowAvg)
+    ? b.flowAvg + (b.netFlow - b.flowAvg) * min(1, dt / STEADY_AVG_S)
+    : b.netFlow;
 
   // Forces and moments about G.
   const c = cos(b.pitch);
@@ -399,12 +499,19 @@ export function stepFloat(
   const ct = 0.5 * RHO * AXIAL_CD * front * abs(vt);
   const vt2 = (mt * vt + ft * dt) / (mt + ct * dt);
   const wr2 = (ir * b.wr + tauR * dt) / (ir + cr0 * dt);
+  const wp0 = b.wp;
   b.an = (vn2 - vn) / dt;
-  b.alpha = (wp2 - b.wp) / dt;
+  b.alpha = (wp2 - wp0) / dt;
   b.vx = vn2 * s + vt2 * c;
   b.vz = vn2 * c - vt2 * s;
   b.wp = wp2;
   b.wr = wr2;
+  b.grounded = false;
+  b.floorN = 0;
+  if (b.bottom < floorZ && floorContact(b, dt, floorZ, mt, mn, ipe, ir)) {
+    b.an = (b.vx * s + b.vz * c - vn) / dt;
+    b.alpha = (b.wp - wp0) / dt;
+  }
 
   // Move the centre of mass, turn about it, and place the origin.
   const g0 = rotate(b.pitch, b.roll, b.gx, b.gy, b.gz);
@@ -417,4 +524,200 @@ export function stepFloat(
   b.x = gex - g1[0];
   b.y = gey - g1[1];
   b.z = gez - g1[2];
+}
+
+// Scratch for the floor contact (grown as needed).
+let fIdx = new Int32Array(64);
+let fD = new Float64Array(64);
+let fK = new Float64Array(64);
+let fC = new Float64Array(64);
+let fCf = new Float64Array(64);
+let fR = new Float64Array(64 * 3);
+const fA = new Float64Array(16);
+const fRhs = new Float64Array(4);
+const fQ = new Float64Array(4);
+
+function growFloor(n: number): void {
+  if (fIdx.length >= n) return;
+  const m = n * 2;
+  fIdx = new Int32Array(m);
+  fD = new Float64Array(m);
+  fK = new Float64Array(m);
+  fC = new Float64Array(m);
+  fCf = new Float64Array(m);
+  fR = new Float64Array(m * 3);
+}
+
+/** Solve the 4×4 system a·x = r in place (Gaussian elimination, pivoting). */
+function solve4(a: Float64Array, r: Float64Array, x: Float64Array): boolean {
+  for (let col = 0; col < 4; col += 1) {
+    let piv = col;
+    for (let row = col + 1; row < 4; row += 1)
+      if (abs(a[row * 4 + col]) > abs(a[piv * 4 + col])) piv = row;
+    if (abs(a[piv * 4 + col]) < 1e-30) return false;
+    if (piv !== col) {
+      for (let k = 0; k < 4; k += 1) {
+        const t = a[col * 4 + k];
+        a[col * 4 + k] = a[piv * 4 + k];
+        a[piv * 4 + k] = t;
+      }
+      const t = r[col];
+      r[col] = r[piv];
+      r[piv] = t;
+    }
+    for (let row = col + 1; row < 4; row += 1) {
+      const f = a[row * 4 + col] / a[col * 4 + col];
+      if (f === 0) continue;
+      for (let k = col; k < 4; k += 1) a[row * 4 + k] -= f * a[col * 4 + k];
+      r[row] -= f * r[col];
+    }
+  }
+  for (let row = 3; row >= 0; row -= 1) {
+    let v = r[row];
+    for (let k = row + 1; k < 4; k += 1) v -= a[row * 4 + k] * x[k];
+    x[row] = v / a[row * 4 + row];
+  }
+  return true;
+}
+
+/**
+ * The sea floor under a floating body: every hull vertex below `floorZ`
+ * pushes back with a spring (its depth into the mud) and a damper, and drags
+ * along the floor with regularised Coulomb friction. Applied implicitly to
+ * the velocities this step has just found (heave and surge of G, pitch and
+ * roll rates), so a stiff floor stays stable at any step: with q = (vx, vz,
+ * wp, wr) and each contact's Jacobians Jz (vertical) and Jx (along),
+ *   (M + dt·Σ[(k·dt + c)·Jz·Jzᵀ + cf·Jx·Jxᵀ]) q' = M·q + dt·Σ k·d·Jz,
+ * and a contact that would pull is dropped and the system solved again.
+ * Roll: the contacts' forces act in roll like any other (no rule by list).
+ * There is no sideways friction: with no sway in the model it would lock
+ * her roll instead of letting her turn about the keel where it touches.
+ * Returns true if anything touched.
+ */
+function floorContact(
+  b: Body,
+  dt: number,
+  floorZ: number,
+  mt: number,
+  mn: number,
+  ipe: number,
+  ir: number
+): boolean {
+  const [nx, ny, nz] = upOf(b);
+  const pts = b.floorPts;
+  const np = pts.length / 4;
+  growFloor(np);
+  const cp = cos(b.pitch);
+  const sp = sin(b.pitch);
+  const mid = (b.xFrom + b.xTo) / 2;
+  let n = 0;
+  for (let p = 0; p < np; p += 1) {
+    const x = pts[p * 4];
+    const y = pts[p * 4 + 1];
+    const z = pts[p * 4 + 2];
+    const d = floorZ - (b.z + nx * x + ny * y + nz * z);
+    if (d <= 0) continue;
+    const r = rotate(b.pitch, b.roll, x - b.gx, y - b.gy, z - b.gz);
+    fIdx[n] = p;
+    fD[n] = d;
+    fK[n] = b.floorK * pts[p * 4 + 3];
+    fC[n] = fK[n] * FLOOR_DAMP_S;
+    fR[n * 3] = r[0];
+    fR[n * 3 + 1] = r[1];
+    fR[n * 3 + 2] = r[2];
+    n += 1;
+  }
+  if (n === 0) return false;
+  // Generalised mass: the hull's axial and normal masses turned to earth.
+  const mxx = mt * cp * cp + mn * sp * sp;
+  const mzz = mt * sp * sp + mn * cp * cp;
+  const mxz = (mn - mt) * sp * cp;
+  const q0 = [b.vx, b.vz, b.wp, b.wr];
+  // Friction coefficients from the force each contact carries now.
+  for (let i = 0; i < n; i += 1) {
+    const rx = fR[i * 3];
+    const ry = fR[i * 3 + 1];
+    const rz = fR[i * 3 + 2];
+    const uz = q0[1] - rx * q0[2] + cp * ry * q0[3];
+    const ux = q0[0] + rz * q0[2] + sp * ry * q0[3];
+    const f0 = max(0, fK[i] * fD[i] - fC[i] * uz);
+    fCf[i] = (FLOOR_FRICTION * f0) / max(FLOOR_SLIP_MS, abs(ux));
+  }
+  const active = new Uint8Array(n).fill(1);
+  for (let pass = 0; pass < 4; pass += 1) {
+    fA.fill(0);
+    fA[0] = mxx;
+    fA[1] = mxz;
+    fA[4] = mxz;
+    fA[5] = mzz;
+    fA[10] = ipe;
+    fA[15] = ir;
+    fRhs[0] = mxx * q0[0] + mxz * q0[1];
+    fRhs[1] = mxz * q0[0] + mzz * q0[1];
+    fRhs[2] = ipe * q0[2];
+    fRhs[3] = ir * q0[3];
+    for (let i = 0; i < n; i += 1) {
+      if (!active[i]) continue;
+      const rx = fR[i * 3];
+      const ry = fR[i * 3 + 1];
+      const rz = fR[i * 3 + 2];
+      const jz1 = 1;
+      const jz2 = -rx;
+      const jz3 = cp * ry;
+      const kz = dt * (fK[i] * dt + fC[i]);
+      // Jz = (0, 1, -rx, cp·ry)
+      fA[5] += kz * jz1 * jz1;
+      fA[6] += kz * jz1 * jz2;
+      fA[7] += kz * jz1 * jz3;
+      fA[9] += kz * jz2 * jz1;
+      fA[10] += kz * jz2 * jz2;
+      fA[11] += kz * jz2 * jz3;
+      fA[13] += kz * jz3 * jz1;
+      fA[14] += kz * jz3 * jz2;
+      fA[15] += kz * jz3 * jz3;
+      const push = dt * fK[i] * fD[i];
+      fRhs[1] += push * jz1;
+      fRhs[2] += push * jz2;
+      fRhs[3] += push * jz3;
+      // Jx = (1, 0, rz, sp·ry)
+      const kx = dt * fCf[i];
+      const jx = [1, 0, rz, sp * ry];
+      for (let r = 0; r < 4; r += 1)
+        for (let c = 0; c < 4; c += 1) fA[r * 4 + c] += kx * jx[r] * jx[c];
+    }
+    if (!solve4(fA, fRhs, fQ)) return false;
+    let dropped = false;
+    for (let i = 0; i < n; i += 1) {
+      if (!active[i]) continue;
+      const uz = fQ[1] - fR[i * 3] * fQ[2] + cp * fR[i * 3 + 1] * fQ[3];
+      if (fK[i] * fD[i] - (fK[i] * dt + fC[i]) * uz < 0) {
+        active[i] = 0;
+        dropped = true;
+      }
+    }
+    if (!dropped) break;
+  }
+  b.vx = fQ[0];
+  b.vz = fQ[1];
+  b.wp = fQ[2];
+  b.wr = fQ[3];
+  if (b.floorX.length < n) {
+    b.floorX = new Float64Array(np);
+    b.floorF = new Float64Array(np);
+  }
+  let m = 0;
+  for (let i = 0; i < n; i += 1) {
+    if (!active[i]) continue;
+    const uz = fQ[1] - fR[i * 3] * fQ[2] + cp * fR[i * 3 + 1] * fQ[3];
+    const f = fK[i] * fD[i] - (fK[i] * dt + fC[i]) * uz;
+    const x = pts[fIdx[i] * 4];
+    b.floorX[m] = x;
+    b.floorF[m] = f;
+    m += 1;
+    if (x >= mid) b.touchBow = true;
+    else b.touchStern = true;
+  }
+  b.floorN = m;
+  b.grounded = m > 0;
+  return true;
 }

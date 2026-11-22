@@ -2,10 +2,11 @@
 /**
  * Screenshots and draw-call counts for the Shipwreck model.
  *
- *   node scripts/shipwreck-model-shots.mjs <baseURL> <outDir>
+ *   node scripts/shipwreck-model-shots.mjs <baseURL> <outDir> [ship]
  *
  * Needs a running dev server (`npx next dev --webpack`) at baseURL. Opens
- * the model viewer (`/shipwreck?model`) at 1133x744, sets each view with
+ * the model viewer (`/shipwreck?model`, `&ship=lusitania` when given) at
+ * 1133x744, sets each view with
  * `window.__shipwreck.setModelView`, saves `<outDir>/<id>.png` and writes
  * the last frame's draw calls and triangles to `<outDir>/render-info.json`.
  * Software WebGL, like the other shot scripts, so numbers compare run to run.
@@ -14,18 +15,23 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "@playwright/test";
 
-const [baseURL = "http://localhost:3000", outDir = ".screenshots/task-3"] =
-  process.argv.slice(2);
+const [
+  baseURL = "http://localhost:3000",
+  outDir = ".screenshots/task-3",
+  ship = "titanic",
+] = process.argv.slice(2);
 
-const BREAK_X = -27.1;
+const BREAK_X = ship === "lusitania" ? 4 : -27.1;
 const SHOTS = [
   { id: "bow-day", view: { camera: "bow" } },
   { id: "stern-day", view: { camera: "stern" } },
   { id: "side-day", view: { camera: "side" } },
   { id: "top-day", view: { camera: "top" } },
   { id: "bridge-day", view: { camera: "bridge" } },
+  { id: "boat-deck-day", view: { camera: "boat-deck" } },
   { id: "bow-close-day", view: { camera: "bow-close" } },
   { id: "stern-close-day", view: { camera: "stern-close" } },
+  { id: "astern-day", view: { camera: "astern" } },
   { id: "broken-day", view: { camera: "break", breakX: BREAK_X } },
   {
     id: "broken-close-day",
@@ -58,7 +64,9 @@ try {
   page.on("console", (m) => {
     if (m.type() === "error") console.error("console", m.text());
   });
-  await page.goto(`${baseURL}/shipwreck?model`);
+  await page.goto(
+    `${baseURL}/shipwreck?model${ship === "titanic" ? "" : `&ship=${ship}`}`
+  );
   // The dev build's corner badge is not part of the model.
   await page.addStyleTag({
     content: "nextjs-portal { display: none !important; }",

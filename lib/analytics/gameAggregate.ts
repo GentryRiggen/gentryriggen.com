@@ -106,6 +106,10 @@ export interface ShipwreckSummary {
   averageSinkMinutes: number | null;
   /** Sampled (about 1 in 4), so only the proportions mean anything. */
   cameras: Count[];
+  /** Runs started per ship (events from before the Lusitania count as Titanic). */
+  ships: Count[];
+  /** Runs ended by ship and outcome, e.g. "lusitania · sank". */
+  shipEnds: Count[];
 }
 
 function average(values: number[]): number | null {
@@ -132,6 +136,11 @@ function num(event: GameEvent, key: string): number {
 
 function str(event: GameEvent, key: string): string {
   return String(event.props[key]);
+}
+
+/** The ship of a Shipwreck event; 1.0 clients sent none, and had only one. */
+function shipOf(event: GameEvent): string {
+  return event.props.ship === undefined ? "titanic" : str(event, "ship");
 }
 
 function summarizeWorld(
@@ -284,5 +293,7 @@ export function summarizeShipwreck(events: GameEvent[]): ShipwreckSummary {
     cameras: tally(
       ofName(events, "shipwreck_camera").map((e) => str(e, "camera"))
     ),
+    ships: tally(starts.map(shipOf)),
+    shipEnds: tally(ends.map((e) => `${shipOf(e)} · ${str(e, "outcome")}`)),
   };
 }

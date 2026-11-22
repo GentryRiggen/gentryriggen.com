@@ -1,7 +1,7 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
-import { PLACES, type PlaceId } from "./places";
-import type { Opening, ShipSpec } from "./ships/types";
-import { createSimRunner, type SimRunner } from "./sim/run";
+import { placeFor, type PlaceId } from "./places";
+import type { Opening, ShipId, ShipSpec } from "./ships/types";
+import { createSimRunner, type SimOptions, type SimRunner } from "./sim/run";
 import { sampleTrack, type SimTrack } from "./sim/track";
 import type { CameraId, Speed } from "./types";
 
@@ -20,6 +20,13 @@ export const QUALITY_TIERS: readonly QualityTier[] = ["high", "medium", "low"];
 /** Seconds around the break and the plunge played at ×1 on the cinematic camera. */
 export const SLOWMO_BREAK = { before: 30, after: 45 } as const;
 export const SLOWMO_PLUNGE = { before: 45, after: 15 } as const;
+/**
+ * A torpedo's hit (a track with a second explosion, and holes): its first
+ * seconds at ×1 on the cinematic camera, through the second explosion.
+ */
+export const SLOWMO_HIT_S = 20;
+/** And the last seconds of its run-in before the hit. */
+export const SLOWMO_HIT_BEFORE_S = 20;
 /** A speed the player touched this recently (s) overrides the slow-mo. */
 export const SPEED_TOUCH_HOLD_S = 10;
 /** The runner's wall-time budget per frame (ms; the sim may run ~0.5 ms over). */
@@ -33,7 +40,12 @@ export interface ShipView {
   snap?: boolean;
 }
 
+/** What a run is started with beyond its openings. */
+export type RunOptions = Pick<SimOptions, "portholesOpen">;
+
 export interface PlaybackState {
+  /** The ship on the stage (the title's choice, then the run's). */
+  ship: ShipId;
   /** The track so far (live arrays while computing), or null before a run. */
   track: SimTrack | null;
   /** The holes this run was started with (the real night's or a What if). */
@@ -46,8 +58,13 @@ export interface PlaybackState {
   done: boolean;
   /** 0..1, how far the runner has got. */
   progress: number;
-  /** Shown seconds after the collision. */
+  /** Shown seconds after the collision (negative in a pre-roll). */
   t: number;
+  /**
+   * Where this run's time starts: 0, or minus the ship's pre-roll for a
+   * run with holes (a torpedo's run-in before the hit).
+   */
+  minT: number;
   /**
    * Real seconds after the collision at `t` (the sim's frame time). Equal to
    * `t` until both parts are under; the way down plays faster than real time.
@@ -73,8 +90,20 @@ export interface PlaybackState {
 }
 
 export interface PlaybackActions {
-  /** Starts a new run (the real night or a What if). Resets the time to 0. */
-  start(spec: ShipSpec, openings: readonly Opening[]): void;
+  /**
+   * Starts a new run (the real night or a What if) of `spec`, which becomes
+   * the ship on the stage. Resets the time to 0.
+   */
+  start(
+    spec: ShipSpec,
+    openings: readonly Opening[],
+    options?: RunOptions
+  ): void;
+  /**
+   * Puts another ship on the stage: a different one drops the run (the
+   * game then starts her own; the scene rebuilds the model).
+   */
+  setShip(ship: ShipId): void;
   /** Steps the runner for up to `budgetMs`; call once per frame until done. */
   pump(budgetMs?: number): void;
   /**
@@ -85,7 +114,7 @@ export interface PlaybackActions {
   play(): void;
   pause(): void;
   setSpeed(speed: Speed, nowS?: number): void;
-  /** Jumps to `t`, clamped to [0, computedT]. */
+  /** Jumps to `t`, clamped to [minT, computedT]. */
   seek(t: number): void;
   setCamera(camera: CameraId): void;
   /** Switches to the free camera from the current view, without a snap. */
@@ -104,6 +133,7 @@ export interface PlaybackActions {
 export type PlaybackStore = StoreApi<PlaybackState & PlaybackActions>;
 
 const INITIAL: PlaybackState = {
+  ship: "titanic",
   track: null,
   openings: [],
   placeWaterM: 0,
@@ -112,6 +142,7 @@ const INITIAL: PlaybackState = {
   progress: 0,
   t: 0,
   realT: 0,
+  minT: 0,
   playing: false,
   speed: 10,
   slowMo: false,
@@ -138,19 +169,40 @@ export function inSlowMoWindow(track: SimTrack | null, t: number): boolean {
   );
 }
 
+/** True in the first seconds after a torpedo's hit (see SLOWMO_HIT_S). */
+export function inHitWindow(
+  track: SimTrack | null,
+  openings: readonly Opening[] | undefined,
+  t: number
+): boolean {
+  return (
+    track !== null &&
+    (openings?.length ?? 0) > 0 &&
+    t <= SLOWMO_HIT_S &&
+    t >= -SLOWMO_HIT_BEFORE_S &&
+    track.events.some((e) => e.kind === "explosion")
+  );
+}
+
 /** The speed playback actually runs at. */
 export function effectiveSpeed(
-  s: Pick<PlaybackState, "track" | "t" | "speed" | "camera" | "speedTouchedAt">,
+  s: Pick<
+    PlaybackState,
+    "track" | "t" | "speed" | "camera" | "speedTouchedAt"
+  > & { openings?: readonly Opening[] },
   nowS: number
 ): number {
   if (s.camera !== "cinematic") return s.speed;
   if (nowS - s.speedTouchedAt < SPEED_TOUCH_HOLD_S) return s.speed;
-  return inSlowMoWindow(s.track, s.t) ? 1 : s.speed;
+  return inSlowMoWindow(s.track, s.t) || inHitWindow(s.track, s.openings, s.t)
+    ? 1
+    : s.speed;
 }
 
 /** The real time at shown time `t` (the sim's frames carry both). */
 export function realTimeAt(track: SimTrack | null, t: number): number {
-  if (!track || track.frames.length === 0) return t;
+  // Before the first event (a pre-roll) the clock simply runs.
+  if (t < 0 || !track || track.frames.length === 0) return t;
   return sampleTrack(track, t).realT;
 }
 
@@ -161,7 +213,11 @@ function lastT(track: SimTrack | null): number {
 
 export interface PlaybackOptions {
   /** Makes the runner (tests pass a fake). */
-  createRunner?: (spec: ShipSpec, openings: readonly Opening[]) => SimRunner;
+  createRunner?: (
+    spec: ShipSpec,
+    openings: readonly Opening[],
+    options: RunOptions
+  ) => SimRunner;
 }
 
 export function createPlaybackStore(
@@ -169,24 +225,49 @@ export function createPlaybackStore(
 ): PlaybackStore {
   const makeRunner =
     options.createRunner ??
-    ((spec: ShipSpec, openings: readonly Opening[]) =>
-      createSimRunner(spec, openings));
+    ((spec: ShipSpec, openings: readonly Opening[], o: RunOptions) =>
+      createSimRunner(spec, openings, o));
   let runner: SimRunner | null = null;
 
   return createStore<PlaybackState & PlaybackActions>()((set, get) => ({
     ...INITIAL,
-    start(spec, openings) {
-      runner = makeRunner(spec, openings);
+    start(spec, openings, options = {}) {
+      runner = makeRunner(spec, openings, options);
+      const pre = openings.length > 0 ? (spec.preRollS ?? 0) : 0;
+      const minT = pre > 0 ? -pre : 0;
       set({
+        ship: spec.id,
         track: null,
         openings,
         computedT: 0,
         done: false,
         progress: 0,
-        t: 0,
-        realT: 0,
+        t: minT,
+        realT: minT,
+        minT,
         slowMo: false,
         place: null,
+        snapId: get().snapId + 1,
+      });
+    },
+    setShip(ship) {
+      if (ship === get().ship) return;
+      runner = null;
+      set({
+        ship,
+        track: null,
+        openings: [],
+        computedT: 0,
+        done: false,
+        progress: 0,
+        t: 0,
+        realT: 0,
+        minT: 0,
+        playing: false,
+        slowMo: false,
+        place: null,
+        placeWaterM: 0,
+        flyView: null,
         snapId: get().snapId + 1,
       });
     },
@@ -222,7 +303,7 @@ export function createPlaybackStore(
       const s = get();
       // Playing from the end starts the night again.
       if (s.done && s.t >= s.computedT)
-        set({ t: 0, realT: 0, snapId: s.snapId + 1 });
+        set({ t: s.minT, realT: s.minT, snapId: s.snapId + 1 });
       set({ playing: true });
     },
     pause() {
@@ -233,7 +314,7 @@ export function createPlaybackStore(
     },
     seek(t) {
       const s = get();
-      const clamped = Math.max(0, Math.min(s.computedT, t));
+      const clamped = Math.max(s.minT, Math.min(s.computedT, t));
       set({
         t: clamped,
         realT: realTimeAt(s.track, clamped),
@@ -257,7 +338,7 @@ export function createPlaybackStore(
       set({
         place,
         camera: place ? "orbit" : s.camera,
-        xray: xray ?? (place && PLACES[place].interior ? true : s.xray),
+        xray: xray ?? (placeFor(s.ship, place)?.interior ? true : s.xray),
         flyId: s.flyId + 1,
         flyView: null,
       });

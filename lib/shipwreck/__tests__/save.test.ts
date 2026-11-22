@@ -2,12 +2,17 @@ import {
   BACKUPS_KEPT,
   CORRUPT_PREFIX,
   SAVE_KEY,
+  SAVE_SHIP_IDS,
   emptySave,
   loadSave,
   loadSaveResult,
   parseSaveSalvaging,
+  shipOf,
+  whatIfOf,
+  withWhatIf,
   writeSave,
 } from "../save";
+import { SHIP_IDS } from "../ships";
 
 class MemoryStorage {
   data = new Map<string, string>();
@@ -134,5 +139,75 @@ describe("save", () => {
     };
     expect(loadSaveResult(NOW, broken).writable).toBe(false);
     expect(writeSave(emptySave(), broken)).toBe(false);
+  });
+});
+
+describe("save: ships (1.1)", () => {
+  /** A save as 1.0 wrote it: no ship, the Titanic's ids in lastWhatIf. */
+  const V1 = {
+    v: 1,
+    settings: { sound: true, speed: 30, camera: "orbit" },
+    seen: { realNight: true, endings: ["broke-in-two"] },
+    lastWhatIf: ["br6", "br5"],
+  };
+
+  it("reads a 1.0 save as the Titanic's, its What if? still hers", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SAVE_KEY, JSON.stringify(V1));
+    const { save, writable } = loadSaveResult(NOW, storage);
+    expect(writable).toBe(true);
+    expect(save.ship).toBeUndefined();
+    expect(shipOf(save)).toBe("titanic");
+    expect(whatIfOf(save, "titanic")).toEqual({ ids: ["br6", "br5"] });
+    // The Titanic's ids never reach the Lusitania's editor.
+    expect(whatIfOf(save, "lusitania")).toEqual({ ids: [] });
+  });
+
+  it("keeps a Lusitania What if? under her own name", () => {
+    const v1 = parseSaveSalvaging(V1)!.save;
+    const next = withWhatIf({ ...v1, ship: "lusitania" }, "lusitania", {
+      ids: ["turbine"],
+      portholesOpen: false,
+    });
+    expect(next.lastWhatIf).toEqual(["br6", "br5"]);
+    expect(next.whatIfByShip).toEqual({
+      lusitania: { ids: ["turbine"], portholesOpen: false },
+    });
+    const storage = new MemoryStorage();
+    writeSave(next, storage);
+    const back = loadSave(NOW, storage);
+    expect(back).toEqual(next);
+    expect(shipOf(back)).toBe("lusitania");
+    expect(whatIfOf(back, "lusitania")).toEqual({
+      ids: ["turbine"],
+      portholesOpen: false,
+    });
+    // The Titanic's What if? still goes where 1.0 kept it.
+    expect(withWhatIf(back, "titanic", { ids: ["hold1"] }).lastWhatIf).toEqual([
+      "hold1",
+    ]);
+  });
+
+  it("drops unknown ships and bad entries", () => {
+    const parsed = parseSaveSalvaging({
+      ...V1,
+      ship: "britannic",
+      whatIfByShip: {
+        britannic: { ids: ["x"] },
+        titanic: { ids: ["br6"] },
+        lusitania: { ids: ["br1", 4, "br1"], portholesOpen: "no" },
+      },
+    })!.save;
+    expect(parsed.ship).toBeUndefined();
+    expect(parsed.whatIfByShip).toEqual({ lusitania: { ids: ["br1"] } });
+    expect(
+      parseSaveSalvaging({ ...V1, whatIfByShip: { britannic: {} } })!.save
+        .whatIfByShip
+    ).toBeUndefined();
+    expect(parseSaveSalvaging({ ...V1, ship: 7 })!.save.ship).toBeUndefined();
+  });
+
+  it("knows every ship the game does", () => {
+    expect([...SAVE_SHIP_IDS]).toEqual([...SHIP_IDS]);
   });
 });

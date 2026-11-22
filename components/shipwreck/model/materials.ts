@@ -64,9 +64,26 @@ function linear(hex: number): Color {
  * the gilt line under the sheer. Inside faces (seen through the break) are
  * dark rust.
  */
+export interface HullPaint {
+  /** The paint line (top of the red antifouling) above the keel, m. */
+  loadWaterline: number;
+  /** Height of the white boot-top above it, m. */
+  bootTop: number;
+  /** The line just under the sheer, or null (sRGB hex). */
+  sheerLine: number | null;
+}
+
+/** The Titanic's. */
+export const TITANIC_HULL_PAINT: HullPaint = {
+  loadWaterline: 10.54,
+  bootTop: 0.2,
+  sheerLine: 0xc9a03a,
+};
+
 function hullMaterial(
   tex: ShipTextures,
-  rivets: boolean
+  rivets: boolean,
+  paint: HullPaint
 ): MeshStandardMaterial {
   const m = new MeshStandardMaterial({
     color: 0xffffff,
@@ -80,13 +97,14 @@ function hullMaterial(
   // The weathering spans the whole hull (uv1); the plates tile (uv).
   tex.weathering.channel = 1;
   tex.plateNormal.channel = 0;
+  // No sheer line: paint it the topsides' black.
   const uniforms = {
-    uLoadWL: { value: 10.54 },
-    uBootTop: { value: 0.2 },
+    uLoadWL: { value: paint.loadWaterline },
+    uBootTop: { value: paint.bootTop },
     uRed: { value: linear(0x6a2419) },
     uBoot: { value: linear(0xd8d4c8) },
     uBlack: { value: linear(0x121315) },
-    uGold: { value: linear(0xc9a03a) },
+    uGold: { value: linear(paint.sheerLine ?? 0x121315) },
   };
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
@@ -207,10 +225,14 @@ diffuseColor.rgb = mix(diffuseColor.rgb, vWarm * 0.4, clamp(vLight, 0.0, 1.0));`
 
 export function createShipMaterials(
   tex: ShipTextures,
-  options: { rivets: boolean }
+  options: { rivets: boolean; hull?: HullPaint }
 ): ShipMaterials {
   const light = createLightUniforms();
-  const hull = hullMaterial(tex, options.rivets);
+  const hull = hullMaterial(
+    tex,
+    options.rivets,
+    options.hull ?? TITANIC_HULL_PAINT
+  );
   const paint = new MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.72,

@@ -2,6 +2,7 @@ import { act, render } from "@testing-library/react";
 import { createFakeAudio } from "@/components/game-audio/testing/fakeAudio";
 import type { VoiceEngine } from "@/components/game-audio/primitives";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
+import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { useShipwreckSound } from "../useShipwreckSound";
 
@@ -100,5 +101,15 @@ describe("useShipwreckSound", () => {
     jest.useRealTimers();
     expect(audio.sources.length).toBe(sources);
     for (const s of audio.sources) expect(s.stop).not.toHaveBeenCalled();
+  });
+
+  it("plays her afternoon's cues and engines bed for the Lusitania", () => {
+    const store = createPlaybackStore();
+    render(<Probe store={store} active enabled />);
+    act(() => store.getState().start(lusitania, lusitania.realNight));
+    const before = audio.sources.length;
+    act(() => store.getState().pump(1));
+    // The torpedo thud (t = 0) sounds, with beds built on the same engine.
+    expect(audio.sources.length).toBeGreaterThan(before);
   });
 });

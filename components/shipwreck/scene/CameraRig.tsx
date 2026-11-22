@@ -15,19 +15,20 @@ import {
   type Group,
 } from "three";
 import { OrbitControls } from "three-stdlib";
-import { PLACES } from "@/lib/shipwreck/places";
+import { placeFor } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { titanic } from "@/lib/shipwreck/ships/titanic";
+import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { partAt } from "@/lib/shipwreck/xray";
 import {
   cinematicShot,
   clampAboveFloor,
   dampSpring,
-  HULL_BOXES,
+  hullBoxesFor,
+  keepClear,
   lifeboatView,
   nearFor,
-  pushOutOfHull,
   shipToThree as shipThree,
+  shipToThreeInto,
   portraitPullBack,
   shotView,
   underwaterView,
@@ -36,6 +37,7 @@ import {
   type View,
 } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
+import { torpedoHole } from "./Torpedo";
 
 /**
  * Every camera. `orbit` is the free camera: one finger orbits, pinch or the
@@ -54,7 +56,6 @@ interface Fly {
   cam: Vector3;
 }
 
-const SEA_DEPTH = titanic.seaDepthM;
 const FLY_DISTANCE = 26;
 const DOUBLE_TAP_MS = 320;
 const DOUBLE_TAP_PX = 28;
@@ -62,13 +63,17 @@ const DOUBLE_TAP_PX = 28;
 interface CameraRigProps {
   store: PlaybackStore;
   runtime: SceneRuntime;
+  /** The ship on the stage (her sea floor and places). */
+  spec: ShipSpec;
 }
 
 /** A place's camera stays at least this far above the sea (m). */
 const PIN_SEA_CLEARANCE_M = 2.5;
 
-export default function CameraRig({ store, runtime }: CameraRigProps) {
+export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
   const { camera, gl } = useThree();
+  const SEA_DEPTH = spec.seaDepthM;
+  const boxes = hullBoxesFor(spec.id);
   const controls = useMemo(() => {
     const c = new OrbitControls(camera, gl.domElement);
     c.enableDamping = true;
@@ -110,6 +115,13 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
       typeof window !== "undefined" &&
       typeof window.matchMedia === "function" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    []
+  );
+  const hitScratch = useMemo(
+    () => ({
+      p: [0, -13.4, 9] as [number, number, number],
+      out: [0, 0, 0] as V3,
+    }),
     []
   );
   const tmp = useMemo(
@@ -220,7 +232,7 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
       g.updateMatrixWorld();
       tmp.inv.copy(g.matrixWorld).invert();
       tmp.localRay.copy(tmp.ray.ray).applyMatrix4(tmp.inv);
-      for (const b of HULL_BOXES) {
+      for (const b of boxes) {
         let x0 = b.x[0];
         let x1 = b.x[1];
         if (n === "bow" && breakX !== null) x0 = Math.max(x0, breakX);
@@ -271,8 +283,8 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
       st.current.flySnap = v.snap === true;
       return;
     }
-    if (!id) return;
-    const place = PLACES[id];
+    const place = placeFor(spec.id, id);
+    if (!place) return;
     const part = partAt(
       runtime.split?.breakX ?? null,
       runtime.broken,
@@ -356,12 +368,24 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
       controls.enabled = true;
       controls.update();
     } else {
+      const hole = torpedoHole(p.openings);
       const ctx: ShotContext = {
         t: p.t,
         wall: state.clock.elapsedTime,
         bodies: frame.bodies,
         breakX: p.track?.breakX ?? null,
         seaDepthM: SEA_DEPTH,
+        ship: spec.id,
+        hitX: hole?.x,
+        // Where it struck: her first frame, into scratch arrays.
+        hitAt:
+          hole && p.track && p.track.frames.length > 0
+            ? shipToThreeInto(
+                p.track.frames[0].bodies[0],
+                setHole(hitScratch.p, hole.x),
+                hitScratch.out
+              )
+            : undefined,
       };
       let view: View;
       let cut = false;
@@ -370,7 +394,11 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
       else if (p.camera === "bridge") view = bridgeView(ctx);
       else if (p.camera === "stern") view = sternView(ctx);
       else {
-        const shot = p.track ? cinematicShot(p.track, p.t) : "establishing";
+        const shot = p.track
+          ? cinematicShot(p.track, p.t, spec.id, p.openings.length > 0)
+          : spec.id === "lusitania"
+            ? "afternoon"
+            : "establishing";
         // Reduced motion: cut between the shots instead of flying.
         if (reducedMotion && shot !== s.shot) cut = true;
         s.shot = shot;
@@ -389,7 +417,11 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
       // for landscape still fits the ship across.
       // (Across only: the height is the shot's, so a camera on the water
       // stays on the water.)
-      const back = portraitPullBack(cam.aspect);
+      // (Not so far in her green water, where 200 m is lost in the murk.)
+      const back =
+        spec.id === "lusitania" && s.pos[1] < 0
+          ? Math.min(1.2, portraitPullBack(cam.aspect))
+          : portraitPullBack(cam.aspect);
       camera.position.set(
         s.tgt[0] + (s.pos[0] - s.tgt[0]) * back,
         s.pos[1],
@@ -417,10 +449,13 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
       for (const n of ["whole", "bow", "stern"] as PartName[]) {
         const g = runtime.part(n);
         if (!g) continue;
+        const pose = frame.bodies.find((b) => b.part === n) ?? frame.bodies[0];
         const l = g.worldToLocal(tmp.a.copy(camera.position));
         // Local three axes to ship frame and back.
         const ship: V3 = [l.x, -l.z, l.y];
-        const out = pushOutOfHull(ship);
+        // Out of her and never through the sea floor (a wreck on her side
+        // has a face on the floor).
+        const out = keepClear(ship, pose, SEA_DEPTH, boxes, 0.6, 3);
         if (out[0] !== ship[0] || out[1] !== ship[1] || out[2] !== ship[2]) {
           g.localToWorld(tmp.a.set(out[0], out[2], -out[1]));
           camera.position.copy(tmp.a);
@@ -445,6 +480,13 @@ export default function CameraRig({ store, runtime }: CameraRigProps) {
 
 function bridgeView(ctx: ShotContext): View {
   const b = ctx.bodies.find((x) => x.part === "bow") ?? ctx.bodies[0];
+  if (ctx.ship === "lusitania")
+    // Her starboard bridge wing (the bridge at 68 m, over the boat deck),
+    // looking aft along the boats.
+    return {
+      pos: shipThree(b, [69, -14.6, 28.4]),
+      target: shipThree(b, [-30, -10, 25]),
+    };
   return {
     pos: shipThree(b, [74, -15.5, 31.5]),
     target: shipThree(b, [-30, -10, 29]),
@@ -453,8 +495,23 @@ function bridgeView(ctx: ShotContext): View {
 
 function sternView(ctx: ShotContext): View {
   const b = ctx.bodies.find((x) => x.part === "stern") ?? ctx.bodies[0];
+  if (ctx.ship === "lusitania")
+    // Her open Shelter deck aft (no raised poop), looking forward.
+    return {
+      pos: shipThree(b, [-116, 0, 22.5]),
+      target: shipThree(b, [10, 0, 24]),
+    };
   return {
     pos: shipThree(b, [-130, 0, 26]),
     target: shipThree(b, [10, 0, 26]),
   };
+}
+
+/** A hole's ship-frame point (its x at her side, under the waterline). */
+function setHole(
+  p: [number, number, number],
+  x: number
+): [number, number, number] {
+  p[0] = x;
+  return p;
 }

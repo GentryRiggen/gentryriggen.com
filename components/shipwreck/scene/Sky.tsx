@@ -8,11 +8,13 @@ import {
   BackSide,
   BufferAttribute,
   BufferGeometry,
+  Color,
   Group,
   Mesh,
   Points,
   ShaderMaterial,
   SphereGeometry,
+  Vector3,
 } from "three";
 
 /**
@@ -225,4 +227,82 @@ export default function Sky({ dpr }: SkyProps) {
   }, -0.7);
 
   return <primitive object={sky.group} />;
+}
+
+// ---------------------------------------------------------------------------
+// The afternoon of 7 May 1915: a clear spring sky over a light haze.
+
+const daySkyFragment = /* glsl */ `
+  varying vec3 vDir;
+  uniform vec3 uSunDir;
+  uniform vec3 uSunColor;
+  uniform vec3 uZenith;
+  uniform vec3 uHorizon;
+  void main() {
+    vec3 d = normalize(vDir);
+    float h = max(d.y, 0.0);
+    // Deep blue overhead, paling to the haze at the horizon.
+    vec3 c = mix(uHorizon, uZenith, pow(h, 0.32));
+    c = mix(c, uHorizon * 1.04, exp(-h * 30.0) * 0.6);
+    // Brighter toward the sun (forward scattering in the haze).
+    float cs = max(dot(d, uSunDir), 0.0);
+    c += uSunColor * (0.06 * pow(cs, 4.0) + 0.22 * pow(cs, 48.0) + 1.2 * pow(cs, 900.0));
+    // The disc (0.27° across), bright enough to bloom.
+    c += uSunColor * 24.0 * smoothstep(0.99997, 0.999989, cs);
+    // Below the horizon (the sea's edge from under it): the haze.
+    if (d.y < 0.0) c = uHorizon * mix(1.0, 0.75, clamp(-d.y * 4.0, 0.0, 1.0));
+    gl_FragColor = vec4(c, 1.0);
+  }
+`;
+
+interface DaySkyProps {
+  /** Toward the sun (unit, scene axes). */
+  sunDir: readonly [number, number, number];
+  /** The haze at the horizon (linear; the fog's colour). */
+  horizon: Color;
+}
+
+/**
+ * The sky of a sunny afternoon: blue overhead, a pale haze at the horizon
+ * the fog fades into, the sun's glow and disc. No stars. One draw call.
+ */
+export function DaySky({ sunDir, horizon }: DaySkyProps) {
+  const sky = useMemo(() => {
+    const geo = new SphereGeometry(RADIUS * 1.05, 32, 16);
+    const mat = new ShaderMaterial({
+      vertexShader: domeVertex,
+      fragmentShader: daySkyFragment,
+      side: BackSide,
+      depthWrite: false,
+      uniforms: {
+        uSunDir: { value: new Vector3() },
+        uSunColor: { value: new Color().setRGB(1, 0.93, 0.82) },
+        uZenith: { value: new Color().setRGB(0.045, 0.16, 0.55) },
+        uHorizon: { value: new Color() },
+      },
+    });
+    const dome = new Mesh(geo, mat);
+    dome.name = "day-sky";
+    dome.renderOrder = -10;
+    dome.frustumCulled = false;
+    return { dome, geo, mat };
+  }, []);
+  useEffect(() => {
+    (sky.mat.uniforms.uSunDir.value as Vector3)
+      .set(sunDir[0], sunDir[1], sunDir[2])
+      .normalize();
+    (sky.mat.uniforms.uHorizon.value as Color).copy(horizon);
+  }, [sky, sunDir, horizon]);
+  useEffect(
+    () => () => {
+      sky.geo.dispose();
+      sky.mat.dispose();
+    },
+    [sky]
+  );
+  useFrame((state) => {
+    sky.dome.position.copy(state.camera.position);
+    sky.dome.visible = state.camera.position.y >= 0;
+  }, -0.7);
+  return <primitive object={sky.dome} />;
 }

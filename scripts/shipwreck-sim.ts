@@ -4,16 +4,29 @@
  *   npx tsx scripts/shipwreck-sim.ts                 # the real night
  *   npx tsx scripts/shipwreck-sim.ts hold1 hold2     # What if? these open
  *   npx tsx scripts/shipwreck-sim.ts --first=5       # What if? first 5 forward
- *   add --water for each compartment's fill every 10 minutes
+ *   npx tsx scripts/shipwreck-sim.ts --ship=lusitania          # her afternoon
+ *   npx tsx scripts/shipwreck-sim.ts --ship=lusitania br3      # torpedo at br3
+ *   add --water for each compartment's fill at each line, --shut to keep
+ *   the portholes shut, --every=<s> for the line interval (default 10
+ *   minutes, 1 minute for a torpedo ship)
  */
-import { titanic } from "../lib/shipwreck/ships/titanic";
-import { simulate, whatIfOpenings } from "../lib/shipwreck/sim/run";
+import { SHIPS, type ShipId } from "../lib/shipwreck/ships";
+import {
+  simulate,
+  whatIfOpenings,
+  whatIfSpots,
+} from "../lib/shipwreck/sim/run";
 import { sampleTrack } from "../lib/shipwreck/sim/track";
 
-const CLOCK_START_S = 23 * 3600 + 40 * 60;
+const args = process.argv.slice(2);
+const option = (name: string) =>
+  args.find((a) => a.startsWith(`--${name}=`))?.split("=")[1];
+const shipId = (option("ship") ?? "titanic") as ShipId;
+const spec = SHIPS[shipId];
+if (!spec) throw new Error(`unknown ship ${shipId}`);
 
 function clock(t: number): string {
-  const s = Math.round(CLOCK_START_S + t) % 86400;
+  const s = Math.round(spec.clockStartS + t) % 86400;
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const sec = s % 60;
@@ -21,16 +34,16 @@ function clock(t: number): string {
   return `${h12}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 
-const args = process.argv.slice(2);
 const showWater = args.includes("--water");
-const first = args.find((a) => a.startsWith("--first="));
+const portholesOpen = !args.includes("--shut");
+const first = option("first");
+const every = Number(option("every") ?? (spec.cause === "torpedo" ? 60 : 600));
 const ids = args.filter((a) => !a.startsWith("--"));
-const spec = titanic;
-let label = "The real night";
+let label = spec.cause === "torpedo" ? "The real afternoon" : "The real night";
 let openings = spec.realNight;
 if (first) {
-  const n = Number(first.split("=")[1]);
-  const forward = spec.compartments.slice(-n).map((c) => c.id);
+  const n = Number(first);
+  const forward = whatIfSpots(spec).slice(-n);
   openings = whatIfOpenings(spec, forward);
   label = `What if: the first ${n} forward (${forward.join(", ")})`;
 } else if (ids.length > 0) {
@@ -39,10 +52,17 @@ if (first) {
 }
 
 const t0 = performance.now();
-const track = simulate(spec, openings);
+const track = simulate(spec, openings, { portholesOpen });
 const ms = performance.now() - t0;
 
-console.log(`${label}`);
+console.log(
+  `${spec.name}: ${label}` +
+    (spec.portholes
+      ? portholesOpen
+        ? ", portholes open"
+        : ", portholes shut"
+      : "")
+);
 console.log(
   `  openings: ${openings.map((o) => `${o.compartmentId} ${o.areaM2} m²`).join(", ")}` +
     ` (total ${openings.reduce((a, o) => a + o.areaM2, 0).toFixed(2)} m²)`
@@ -58,10 +78,10 @@ for (const e of track.events) {
       `  (trim ${frame.trimDeg.toFixed(1)}°, list ${frame.listDeg.toFixed(1)}°)`
   );
 }
-console.log("\nEvery 10 minutes:");
+console.log(`\nEvery ${every >= 60 ? `${every / 60} min` : `${every} s`}:`);
 const names = spec.compartments.map((c) => c.id);
 const lastT = track.brokeAtT ?? track.endT;
-for (let t = 0; t <= lastT + 1; t += 600) {
+for (let t = 0; t <= lastT + 1; t += every) {
   const f = sampleTrack(track, Math.min(t, lastT));
   const whole = f.bodies[0];
   let line =

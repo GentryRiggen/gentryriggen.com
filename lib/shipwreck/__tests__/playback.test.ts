@@ -6,6 +6,7 @@ import {
   phaseAt,
   realTimeAt,
 } from "../playback";
+import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
 import type { SimRunner } from "../sim/run";
 import type { SimFrame, SimTrack } from "../sim/track";
@@ -20,6 +21,7 @@ function frame(t: number, realT = t): SimFrame {
     trimDeg: 0,
     listDeg: 0,
     power: 1,
+    groundedParts: [],
   };
 }
 
@@ -141,6 +143,42 @@ describe("playback store", () => {
     expect(store.getState().camera).toBe("orbit");
   });
 
+  it("starts a torpedo ship's run before the hit (the pre-roll); the Titanic at the collision", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(1000, 1000),
+    });
+    const pre = lusitania.preRollS ?? 0;
+    expect(pre).toBeGreaterThanOrEqual(30);
+    store.getState().start(lusitania, lusitania.realNight);
+    expect(store.getState().t).toBe(-pre);
+    expect(store.getState().minT).toBe(-pre);
+    // Before the hit the real clock runs with it (no sim frames yet).
+    expect(store.getState().realT).toBe(-pre);
+    store.getState().pump();
+    store.getState().setSpeed(10, 0);
+    store.getState().play();
+    store.getState().tick(1, 100);
+    expect(store.getState().t).toBe(-pre + 10);
+    expect(store.getState().realT).toBe(-pre + 10);
+    // Seeks reach back to the pre-roll, no further.
+    store.getState().seek(-1000);
+    expect(store.getState().t).toBe(-pre);
+    // Playing again from the end starts at the pre-roll.
+    store.getState().seek(1000);
+    store.getState().play();
+    expect(store.getState().t).toBe(-pre);
+    // The title's calm ship (no hole) and the Titanic have none.
+    store.getState().start(lusitania, []);
+    expect(store.getState().t).toBe(0);
+    expect(store.getState().minT).toBe(0);
+    store.getState().start(titanic, titanic.realNight);
+    expect(store.getState().t).toBe(0);
+    expect(store.getState().minT).toBe(0);
+    store.getState().pump();
+    store.getState().seek(-50);
+    expect(store.getState().t).toBe(0);
+  });
+
   it("plays from the start again after the end", () => {
     const store = started(1000, 1000);
     store.getState().pump();
@@ -165,6 +203,32 @@ describe("slow-mo", () => {
     expect(inSlowMoWindow(track, 7000)).toBe(false);
     expect(effectiveSpeed({ ...base, t: 8010 }, 1000)).toBe(1);
     expect(effectiveSpeed({ ...base, t: 7000 }, 1000)).toBe(100);
+  });
+
+  it("holds ×1 through a torpedo's run-in, its hit and the second explosion", () => {
+    const hitTrack = fakeTrack(1000, {
+      events: [
+        { kind: "collision", t: 0, realT: 0 },
+        { kind: "explosion", t: 8, realT: 8 },
+      ],
+    });
+    const hole = {
+      compartmentId: "br1",
+      areaM2: 6,
+      zLow: 2,
+      zHigh: 6,
+      x: 60,
+      side: "starboard" as const,
+    };
+    const run = { ...base, track: hitTrack, openings: [hole] };
+    expect(effectiveSpeed({ ...run, t: -35 }, 1000)).toBe(100);
+    expect(effectiveSpeed({ ...run, t: -15 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 0 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 15 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 40 }, 1000)).toBe(100);
+    // No hole (the title's calm ship), and the Titanic's night: as before.
+    expect(effectiveSpeed({ ...run, openings: [], t: 5 }, 1000)).toBe(100);
+    expect(effectiveSpeed({ ...base, openings: [hole], t: 5 }, 1000)).toBe(100);
   });
 
   it("not on other cameras, nor within 10 s of a speed change", () => {
@@ -230,5 +294,56 @@ describe("story helpers", () => {
     track.frames = [frame(0), frame(10, 10), frame(20, 70)];
     expect(realTimeAt(track, 15)).toBeCloseTo(40);
     expect(realTimeAt(null, 15)).toBe(15);
+  });
+});
+
+describe("playback: the ship on the stage", () => {
+  it("starts with the Titanic; a run puts its ship on the stage", () => {
+    const made: { ship: string; portholesOpen?: boolean }[] = [];
+    const store = createPlaybackStore({
+      createRunner: (spec, _o, options) => {
+        made.push({ ship: spec.id, portholesOpen: options.portholesOpen });
+        return fakeRunner(100, 100);
+      },
+    });
+    expect(store.getState().ship).toBe("titanic");
+    store
+      .getState()
+      .start(lusitania, lusitania.realNight, { portholesOpen: false });
+    expect(store.getState().ship).toBe("lusitania");
+    expect(made).toEqual([{ ship: "lusitania", portholesOpen: false }]);
+    store.getState().start(titanic, []);
+    expect(made[1]).toEqual({ ship: "titanic", portholesOpen: undefined });
+  });
+
+  it("setShip drops the other ship's run, and keeps her own", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    store.getState().start(titanic, titanic.realNight);
+    store.getState().pump();
+    store.getState().play();
+    store.getState().setShip("titanic");
+    expect(store.getState().track).not.toBeNull();
+    store.getState().setShip("lusitania");
+    const s = store.getState();
+    expect(s.ship).toBe("lusitania");
+    expect(s.track).toBeNull();
+    expect(s.openings).toEqual([]);
+    expect(s.playing).toBe(false);
+    expect(s.t).toBe(0);
+    // Nothing to pump until she is started.
+    s.pump();
+    expect(store.getState().track).toBeNull();
+  });
+
+  it("flies to her own places", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    store.getState().start(lusitania, []);
+    store.getState().flyToPlace("starboard-bunker");
+    expect(store.getState().place).toBe("starboard-bunker");
+    expect(store.getState().xray).toBe(true);
   });
 });

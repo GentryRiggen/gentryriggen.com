@@ -126,6 +126,7 @@ export function useShipwreckSound(
         snapId: s.snapId,
         underwater: s.camera === "underwater",
         now,
+        ship: s.ship,
       });
       if (now - lastBedAt < BED_EVERY_S) return;
       lastBedAt = now;

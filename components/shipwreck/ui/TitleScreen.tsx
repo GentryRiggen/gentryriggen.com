@@ -2,23 +2,35 @@
 
 import Link from "next/link";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
+import { SHIP_IDS, getShip } from "@/lib/shipwreck/ships";
+import type { ShipId } from "@/lib/shipwreck/ships/types";
+import { storyOf } from "@/lib/shipwreck/story";
 import { SHIPWRECK_VERSION } from "@/lib/shipwreck/version";
-import { PARENT_LINE } from "../parentLine";
+import { PARENT_LINES } from "../parentLine";
 import Icon from "./Icon";
 import { FOCUS, PANEL, PRIMARY, SECONDARY } from "./styles";
 
 interface TitleScreenProps {
+  /** The chosen ship. */
+  ship: ShipId;
+  onShip: (ship: ShipId) => void;
   onRealNight: () => void;
   onWhatIf: () => void;
 }
 
-const COMING = ["Britannic", "Lusitania", "Edmund Fitzgerald"];
+const COMING = ["Britannic", "Edmund Fitzgerald"];
 
-/** The title over the slowly circling, lit ship. */
+/** The title over the slowly circling, lit ship, and the ship picker. */
 export default function TitleScreen({
+  ship,
+  onShip,
   onRealNight,
   onWhatIf,
 }: TitleScreenProps) {
+  const spec = getShip(ship);
+  const story = storyOf(spec);
+  const torpedo = spec.cause === "torpedo";
+
   return (
     <main
       data-testid="shipwreck-screen"
@@ -31,20 +43,50 @@ export default function TitleScreen({
         >
           Shipwreck
         </h1>
-        <p className="max-w-md rounded-xl bg-slate-950/50 px-3 py-1 text-sm text-slate-300 backdrop-blur-sm">
-          {PARENT_LINE}
+        <p
+          data-testid="shipwreck-parent-line"
+          className="max-w-md rounded-xl bg-slate-950/50 px-3 py-1 text-sm text-slate-300 backdrop-blur-sm"
+        >
+          {PARENT_LINES[ship]}
         </p>
       </div>
 
       <div className="flex w-full max-w-2xl flex-col items-center gap-4 pb-2">
-        <div className="flex w-full justify-center gap-2 overflow-x-auto px-1 pb-1">
-          <div
-            className={`${PANEL} flex shrink-0 flex-col items-start border-sky-300/70 px-4 py-2 ring-2 ring-sky-400/60`}
-            aria-label="Ship: Titanic, 1912, 269 metres long"
-          >
-            <span className="text-xl font-semibold text-white">Titanic</span>
-            <span className="text-sm text-slate-300">1912 · 269 m long</span>
-          </div>
+        <div
+          role="radiogroup"
+          aria-label="Choose a ship"
+          className="flex w-full justify-center gap-2 overflow-x-auto px-1 pb-1"
+        >
+          {SHIP_IDS.map((id) => {
+            const s = getShip(id);
+            const on = id === ship;
+            const length = Math.round(s.loa);
+            return (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                aria-label={`Ship: ${s.name}, ${s.year}, ${length} metres long`}
+                data-testid={`shipwreck-ship-${id}`}
+                onClick={() => onShip(id)}
+                className={`${PANEL} pointer-events-auto flex min-h-16 shrink-0 touch-manipulation flex-col items-start px-4 py-2 text-left active:scale-95 ${
+                  on
+                    ? "border-sky-300/70 ring-2 ring-sky-400/60"
+                    : "opacity-80 hover:opacity-100"
+                } ${FOCUS}`}
+              >
+                <span
+                  className={`text-xl font-semibold ${on ? "text-white" : "text-slate-200"}`}
+                >
+                  {s.name}
+                </span>
+                <span className="text-sm text-slate-300">
+                  {s.year} · {length} m long
+                </span>
+              </button>
+            );
+          })}
           {COMING.map((name) => (
             <div
               key={name}
@@ -62,21 +104,25 @@ export default function TitleScreen({
           <button
             type="button"
             data-testid="shipwreck-real-night"
-            aria-label="The real night: watch what happened"
+            aria-label={`${story.realLabel}: watch what happened`}
             onClick={onRealNight}
             className={PRIMARY}
           >
             <Icon name="clock" className="size-8" />
-            The real night
+            {story.realLabel}
           </button>
           <button
             type="button"
             data-testid="shipwreck-what-if"
-            aria-label="What if? Choose where the iceberg opens the hull"
+            aria-label={
+              torpedo
+                ? "What if? Choose where the torpedo hits"
+                : "What if? Choose where the iceberg opens the hull"
+            }
             onClick={onWhatIf}
             className={SECONDARY}
           >
-            <Icon name="iceberg" className="size-8" />
+            <Icon name={torpedo ? "torpedo" : "iceberg"} className="size-8" />
             What if?
           </button>
         </div>

@@ -38,6 +38,15 @@ function load() {
   emit();
 }
 
+/**
+ * The save as it stands right now (after the first load, the stored one),
+ * for effects that run in the same commit as the load, before React has
+ * re-rendered with it.
+ */
+export function currentShipwreckSave(): ShipwreckSave {
+  return current;
+}
+
 /** Test seam: forget what was loaded so the next mount reads storage again. */
 export function resetSaveStore(): void {
   current = SERVER_SNAPSHOT;

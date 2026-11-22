@@ -1,3 +1,4 @@
+import type { ShipId } from "@/lib/shipwreck/ships/types";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 
@@ -11,6 +12,15 @@ export type V3 = [number, number, number];
 
 /** A ship-frame point under a sim pose, in three.js axes. */
 export function shipToThree(pose: BodyPose, p: readonly number[]): V3 {
+  return shipToThreeInto(pose, p, [0, 0, 0]);
+}
+
+/** As `shipToThree`, written into `out` (no allocation). */
+export function shipToThreeInto(
+  pose: BodyPose,
+  p: readonly number[],
+  out: V3
+): V3 {
   const [x, y, z] = p;
   const cy = Math.cos(pose.yaw);
   const sy = Math.sin(pose.yaw);
@@ -27,10 +37,45 @@ export function shipToThree(pose: BodyPose, p: readonly number[]): V3 {
   // Rz(yaw)
   const x3 = cy * x2 - sy * y1;
   const y3 = sy * x2 + cy * y1;
-  const ex = pose.x + x3;
-  const ey = pose.y + y3;
-  const ez = pose.z + z2;
-  return [ex, ez, -ey];
+  out[0] = pose.x + x3;
+  out[1] = pose.z + z2;
+  out[2] = -(pose.y + y3);
+  return out;
+}
+
+/**
+ * The first body's speed over the sea (m/s) between `t - span` and `t`,
+ * read off the track's frames (their last at or before each time), with
+ * no allocation. 0 when they are the same frame.
+ */
+export function trackSpeedAt(
+  frames: readonly { t: number; bodies: readonly BodyPose[] }[],
+  t: number,
+  span = 2
+): number {
+  const at = (time: number): number => {
+    let lo = 0;
+    let hi = frames.length - 1;
+    if (hi < 0 || time <= frames[0].t) return 0;
+    if (time >= frames[hi].t) return hi;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (frames[mid].t <= time) lo = mid;
+      else hi = mid;
+    }
+    return lo;
+  };
+  const i = at(t);
+  const j = at(t - span);
+  if (i === j) return 0;
+  const a = frames[i];
+  const b = frames[j];
+  const dt = a.t - b.t;
+  if (!(dt > 0)) return 0;
+  return (
+    Math.hypot(a.bodies[0].x - b.bodies[0].x, a.bodies[0].y - b.bodies[0].y) /
+    dt
+  );
 }
 
 /**
@@ -55,24 +100,103 @@ export function dampSpring(
   }
 }
 
-/** Box regions the camera must stay out of (ship frame: x, y, z ranges). */
-export const HULL_BOXES: readonly {
+/** A box region the camera must stay out of (ship frame: x, y, z ranges). */
+export interface HullBox {
   x: [number, number];
   y: [number, number];
   z: [number, number];
-}[] = [
+}
+
+/** The Titanic's hull boxes (1.0). */
+export const HULL_BOXES: readonly HullBox[] = [
   // The hull to C deck, then the long superstructure to the boat deck.
   { x: [-138.5, 130], y: [-14.2, 14.2], z: [-0.5, 21] },
   { x: [-126, 105], y: [-13, 13], z: [21, 29.3] },
 ];
 
 /**
+ * The Lusitania's (lib/shipwreck/ships/lusitania.ts): the hull from the
+ * counter's end (-123.2) to the stem (116.6), 26.7 m across, to the
+ * Shelter deck with its sheer; then the house from the second class
+ * house's after end (-104.3) forward, with the foredeck plated up to B,
+ * to the boat deck's top (24 m and its houses).
+ */
+export const LUSITANIA_HULL_BOXES: readonly HullBox[] = [
+  { x: [-123.4, 116.8], y: [-13.5, 13.5], z: [-0.5, 19.8] },
+  { x: [-104.3, 116.8], y: [-13.2, 13.2], z: [19.8, 25.4] },
+];
+
+/** The hull boxes of a ship (the camera's bounds and the double-tap proxies). */
+export function hullBoxesFor(ship: ShipId): readonly HullBox[] {
+  return ship === "lusitania" ? LUSITANIA_HULL_BOXES : HULL_BOXES;
+}
+
+function insideBox(p: readonly number[], b: HullBox, margin: number): boolean {
+  return (
+    p[0] > b.x[0] - margin &&
+    p[0] < b.x[1] + margin &&
+    p[1] > b.y[0] - margin &&
+    p[1] < b.y[1] + margin &&
+    p[2] > b.z[0] - margin &&
+    p[2] < b.z[1] + margin
+  );
+}
+
+/**
+ * Keeps a ship-frame camera point out of the hull boxes and above the sea
+ * floor: through the nearest face that leaves it outside every box and at
+ * least `clearance` over the floor (a hull lying on its side has a face on
+ * the floor, which `pushOutOfHull` could push it through). Unchanged when
+ * it is outside; `pushOutOfHull`'s answer when no face will do.
+ */
+export function keepClear(
+  p: V3,
+  pose: BodyPose,
+  seaDepthM: number,
+  boxes: readonly HullBox[],
+  margin = 0.6,
+  clearance = 2
+): V3 {
+  if (!boxes.some((b) => insideBox(p, b, margin))) return [p[0], p[1], p[2]];
+  const floor = -seaDepthM + clearance;
+  let best: V3 | null = null;
+  let bestD = Infinity;
+  for (const b of boxes) {
+    if (!insideBox(p, b, margin)) continue;
+    const faces: [number, number][] = [
+      [0, b.x[0] - margin],
+      [0, b.x[1] + margin],
+      [1, b.y[0] - margin],
+      [1, b.y[1] + margin],
+      [2, b.z[0] - margin],
+      [2, b.z[1] + margin],
+    ];
+    for (const [axis, to] of faces) {
+      const d = Math.abs(to - p[axis]);
+      if (d >= bestD) continue;
+      const q: V3 = [p[0], p[1], p[2]];
+      // Just past the face, so the margin's own test counts it outside.
+      q[axis] = to + Math.sign(to - p[axis]) * 1e-6;
+      if (boxes.some((o) => insideBox(q, o, margin))) continue;
+      if (shipToThree(pose, q)[1] < floor) continue;
+      best = q;
+      bestD = d;
+    }
+  }
+  return best ?? pushOutOfHull(p, margin, boxes);
+}
+
+/**
  * Pushes a ship-frame point out of the hull boxes through the nearest face
  * (with `margin`). Returns the point unchanged when it is outside.
  */
-export function pushOutOfHull(p: V3, margin = 0.6): V3 {
+export function pushOutOfHull(
+  p: V3,
+  margin = 0.6,
+  boxes: readonly HullBox[] = HULL_BOXES
+): V3 {
   const out: V3 = [p[0], p[1], p[2]];
-  for (const b of HULL_BOXES) {
+  for (const b of boxes) {
     const inside =
       out[0] > b.x[0] - margin &&
       out[0] < b.x[1] + margin &&
@@ -123,7 +247,18 @@ export type ShotId =
   | "break"
   | "plunge"
   | "follow-bow"
-  | "wreck";
+  | "wreck"
+  // The Lusitania's afternoon.
+  | "afternoon"
+  | "run-in"
+  | "hit"
+  | "list"
+  | "boats"
+  | "port-boats"
+  | "bow-down"
+  | "grounded"
+  | "grounded-below"
+  | "on-floor";
 
 export interface View {
   pos: V3;
@@ -137,6 +272,12 @@ export interface ShotContext {
   bodies: readonly BodyPose[];
   breakX: number | null;
   seaDepthM: number;
+  /** The ship on the stage (default the Titanic). */
+  ship?: ShipId;
+  /** Ship-frame x where the torpedo struck (her shots aim there). */
+  hitX?: number;
+  /** Where it struck on the sea (three.js), fixed where it happened. */
+  hitAt?: V3;
 }
 
 function body(
@@ -163,8 +304,11 @@ export function lifeboatView(ctx: ShotContext, distance = 420): View {
   const tgt = shipToThree(s, [-10, 0, 14]);
   // Keep looking at the surface where she went down, a little above the
   // ship so the rockets' bursts are in the frame.
-  tgt[1] = Math.max(tgt[1], 6) + 22;
-  const a = (215 * Math.PI) / 180 + drift / distance;
+  // (The Lusitania fired none: just over her. Her boats got away from
+  // the starboard side, so her boat camera is off the starboard quarter.)
+  const lusitania = ctx.ship === "lusitania";
+  tgt[1] = Math.max(tgt[1], 6) + (lusitania ? 6 : 22);
+  const a = ((lusitania ? 145 : 215) * Math.PI) / 180 + drift / distance;
   // Around where she is (the hull drifts a little through the night).
   const o = shipToThree(s, [-60, 0, 10]);
   return {
@@ -179,6 +323,7 @@ export function lifeboatView(ctx: ShotContext, distance = 420): View {
 
 /** Follows the bow down (under water), then circles the wreck. */
 export function underwaterView(ctx: ShotContext): View {
+  if (ctx.ship === "lusitania") return lusitaniaUnderwater(ctx);
   const b = bowBody(ctx);
   const mid = ctx.breakX !== null && b.part === "bow" ? ctx.breakX + 70 : 60;
   const tgt = shipToThree(b, [mid, 0, 6]);
@@ -203,8 +348,12 @@ export function underwaterView(ctx: ShotContext): View {
 /** Which scripted shot plays at `t` (cinematic camera). */
 export function cinematicShot(
   track: Pick<SimTrack, "events" | "brokeAtT" | "sankAtT">,
-  t: number
+  t: number,
+  ship: ShipId = "titanic",
+  /** False for a run with no holes (the title's calm ship). */
+  hit = true
 ): ShotId {
+  if (ship === "lusitania") return hit ? lusitaniaShot(track, t) : "afternoon";
   const firstOf = (kind: string): number | null => {
     for (const e of track.events) if (e.kind === kind) return e.t;
     return null;
@@ -227,6 +376,17 @@ export function shotView(shot: ShotId, ctx: ShotContext): View {
   const w = bowBody(ctx);
   const s = sternBody(ctx);
   switch (shot) {
+    case "afternoon":
+    case "run-in":
+    case "hit":
+    case "list":
+    case "boats":
+    case "port-boats":
+    case "bow-down":
+    case "grounded":
+    case "grounded-below":
+    case "on-floor":
+      return lusitaniaView(shot, ctx);
     case "establishing": {
       const a = 0.55 + ctx.t * 0.0006 + ctx.wall * 0.004;
       const tgt = shipToThree(w, [10, 0, 16]);
@@ -262,4 +422,151 @@ export function shotView(shot: ShotId, ctx: ShotContext): View {
     case "wreck":
       return underwaterView(ctx);
   }
+}
+
+// ---------------------------------------------------------------------------
+// The Lusitania's afternoon (93 m of water, the bow on the floor while the
+// stern is still up, the wreck on her starboard side).
+
+/**
+ * A point beside a body, level: [x along her heading, y to port] from the
+ * body's origin (turned with her yaw, not her list or trim) at height `h`
+ * over the still sea. Shots stand here so a list never tips them under.
+ */
+export function levelToThree(pose: BodyPose, p: readonly number[]): V3 {
+  const cy = Math.cos(pose.yaw);
+  const sy = Math.sin(pose.yaw);
+  const ex = pose.x + cy * p[0] - sy * p[1];
+  const ey = pose.y + sy * p[0] + cy * p[1];
+  return [ex, p[2], -ey];
+}
+
+function lusitaniaShot(
+  track: Pick<SimTrack, "events" | "brokeAtT" | "sankAtT">,
+  t: number
+): ShotId {
+  const firstOf = (kind: string): number | null => {
+    for (const e of track.events) if (e.kind === kind) return e.t;
+    return null;
+  };
+  const sternUnder = firstOf("stern-under") ?? track.sankAtT;
+  const landed = firstOf("bow-lands");
+  if (t < 0) return "run-in";
+  if (sternUnder !== null && t >= sternUnder + 6) return "on-floor";
+  if (landed !== null && t >= landed - 4) {
+    // Her bow on the floor while her stern is still up: above, then below.
+    const end = sternUnder ?? landed + 60;
+    return t < landed + (end - landed) * 0.55 ? "grounded" : "grounded-below";
+  }
+  const going =
+    firstOf("forecastle-under") ??
+    (sternUnder !== null ? sternUnder - 120 : null);
+  if (going !== null && t >= going + 20) return "bow-down";
+  if (t < 40) return "hit";
+  const firstBoat = firstOf("boat-lowered");
+  if (firstBoat === null || t < firstBoat) return "list";
+  // The boats (starboard swung far out), then the port side's against her
+  // hull, then the starboard boats again.
+  if (t >= firstBoat + 240 && t < firstBoat + 390) return "port-boats";
+  return "boats";
+}
+
+function lusitaniaView(shot: ShotId, ctx: ShotContext): View {
+  const b = bowBody(ctx);
+  const floor = -ctx.seaDepthM;
+  const hitX = ctx.hitX ?? 63.7;
+  const drift = ctx.wall * 0.004;
+  switch (shot) {
+    case "afternoon": {
+      // Circling slowly from her starboard bow: the coast behind her.
+      const a = 0.55 + drift;
+      return {
+        pos: levelToThree(b, [Math.cos(a) * 320, -Math.sin(a) * 320, 42]),
+        target: shipToThree(b, [5, 0, 18]),
+      };
+    }
+    case "run-in": {
+      // Before the hit: standing well ahead of where the torpedo will
+      // strike, off her starboard bow, looking back along her course. She
+      // steams toward us from the distance; the white track streaks in
+      // from the left; they meet at the hit.
+      const h = ctx.hitAt ?? shipToThree(b, [hitX, -13.4, 9]);
+      const drift = Math.sin(ctx.wall * 0.05) * 6;
+      return {
+        pos: [h[0] + 300 + drift, 75, h[2] + 260],
+        target: [h[0] - 90, 0, h[2] + 110],
+      };
+    }
+    case "hit": {
+      // Low off her starboard bow, looking aft at the hit: the track runs
+      // in from the right, the column goes up; slowly pulling back.
+      const k = 1 + Math.min(Math.max(0, ctx.t), 40) / 60;
+      return {
+        pos: levelToThree(b, [hitX + 120 * k, -150 * k, 12 + 6 * k]),
+        target: shipToThree(b, [hitX - 25, -8, 16]),
+      };
+    }
+    case "list":
+      // Ahead on the starboard bow: she leans toward us, smoking.
+      return {
+        pos: levelToThree(b, [190, -250, 44]),
+        target: shipToThree(b, [0, 0, 18]),
+      };
+    case "boats": {
+      // Low on the starboard side, close: the boats hanging far out.
+      const x = 10 + Math.sin(ctx.wall * 0.03) * 30;
+      const tgt = shipToThree(b, [x - 10, -14, 20]);
+      tgt[1] = Math.max(tgt[1], 4);
+      return { pos: levelToThree(b, [x + 50, -165, 7]), target: tgt };
+    }
+    case "port-boats": {
+      // High on the port quarter: her port side lifted, the boats in
+      // against the hull.
+      const tgt = shipToThree(b, [10, 12, 16]);
+      return { pos: levelToThree(b, [-70, 120, 18]), target: tgt };
+    }
+    case "bow-down": {
+      const tgt = shipToThree(b, [30, 0, 10]);
+      tgt[1] = Math.max(tgt[1], 3);
+      return { pos: levelToThree(b, [230, -200, 30]), target: tgt };
+    }
+    case "grounded": {
+      // Off the starboard quarter, low: her stern and screws in the air.
+      const tgt = shipToThree(b, [-75, 0, 8]);
+      tgt[1] = Math.max(tgt[1], 8);
+      return { pos: levelToThree(b, [-190, -150, 9]), target: tgt };
+    }
+    case "grounded-below": {
+      // Under water on her starboard side: the bow dug into the floor, the
+      // hull rising to the surface.
+      const tgt = shipToThree(b, [55, 0, 6]);
+      tgt[1] = Math.min(-8, Math.max(tgt[1], floor + 8));
+      return {
+        pos: levelToThree(b, [120, -125, Math.max(floor + 22, -60)]),
+        target: tgt,
+      };
+    }
+    default:
+      return lusitaniaUnderwater(ctx);
+  }
+}
+
+/** Under water with her: following her bow down, then circling the wreck. */
+function lusitaniaUnderwater(ctx: ShotContext): View {
+  const b = bowBody(ctx);
+  const floor = -ctx.seaDepthM;
+  const tgt = shipToThree(b, [10, 4, 12]);
+  tgt[1] = Math.min(-6, Math.max(tgt[1], floor + 6));
+  // Swinging slowly to and fro off her starboard side, where her decks
+  // face once she lies on that side (a starboard list turns them so).
+  const a = Math.PI / 2 + 0.35 + Math.sin(ctx.wall * 0.03) * 0.6;
+  const r = 115;
+  return {
+    pos: [
+      tgt[0] + Math.cos(a) * r,
+      Math.min(-6, Math.max(floor + 24, tgt[1] + 16)),
+      tgt[2] + Math.sin(a) * r,
+    ],
+    target: tgt,
+  };
 }

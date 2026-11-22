@@ -129,12 +129,17 @@ it("shows the Shipwreck section", () => {
     <GamesView
       events={[
         sw("shipwreck_start", { mode: "real", opened: 0 }),
-        sw("shipwreck_start", { mode: "whatif", opened: 4 }),
+        sw("shipwreck_start", {
+          mode: "whatif",
+          opened: 4,
+          ship: "lusitania",
+        }),
         sw("shipwreck_end", { mode: "real", outcome: "sank", minutes: 160 }),
         sw("shipwreck_end", {
           mode: "whatif",
           outcome: "floated",
           minutes: 300,
+          ship: "lusitania",
         }),
         sw("shipwreck_camera", { camera: "bridge" }),
       ]}
@@ -145,6 +150,11 @@ it("shows the Shipwreck section", () => {
   expect(screen.getByTestId("shipwreck-floated")).toHaveTextContent("1");
   expect(screen.getByText("whatif · floated")).toBeInTheDocument();
   expect(screen.getByText("bridge")).toBeInTheDocument();
+  // An event without a ship is from before the Lusitania: the Titanic.
+  expect(screen.getByText("titanic")).toBeInTheDocument();
+  expect(screen.getByText("lusitania")).toBeInTheDocument();
+  expect(screen.getByText("lusitania · floated")).toBeInTheDocument();
+  expect(screen.getByText("titanic · sank")).toBeInTheDocument();
   expect(screen.getByTestId("shipwreck-averages")).toHaveTextContent(
     "4.0 openings per What if? · sank after 160 min on average"
   );

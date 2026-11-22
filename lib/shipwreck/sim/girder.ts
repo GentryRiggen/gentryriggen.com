@@ -118,6 +118,9 @@ export function girder(
       deposit(q, model, s.xs[k], (buoy - wm * (GRAV * c + a)) * dx);
     }
   }
+  // The sea floor, where a hull afloat touches it.
+  for (let k = 0; k < b.floorN; k += 1)
+    deposit(q, model, b.floorX[k], b.floorF[k] * c);
   // Shear and moment, stern to bow.
   const hog = out.hog.length === n ? out.hog : (out.hog = new Float64Array(n));
   let shear = 0;

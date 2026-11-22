@@ -1,7 +1,7 @@
 "use client";
 
 import { useStore } from "zustand";
-import { PLACE_IDS, PLACES } from "@/lib/shipwreck/places";
+import { PLACES_BY_SHIP } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { SceneRuntime } from "./runtime";
 
@@ -17,9 +17,10 @@ interface PlacePinsProps {
  */
 export default function PlacePins({ store, runtime }: PlacePinsProps) {
   const place = useStore(store, (s) => s.place);
+  const ship = useStore(store, (s) => s.ship);
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {PLACE_IDS.map((id) => {
+      {PLACES_BY_SHIP[ship].map(({ id, label }) => {
         const selected = place === id;
         return (
           <button
@@ -38,7 +39,7 @@ export default function PlacePins({ store, runtime }: PlacePinsProps) {
                 : "border-white/40 bg-slate-900/60 text-slate-100 dark:bg-slate-900/60"
             }`}
           >
-            <span>{PLACES[id].label}</span>
+            <span>{label}</span>
             <span
               data-water
               className={`text-xs font-normal text-sky-50 ${selected ? "" : "hidden"}`}

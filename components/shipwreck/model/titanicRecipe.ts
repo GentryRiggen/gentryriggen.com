@@ -118,6 +118,17 @@ export interface BoatRecipe {
   deckZ: number;
 }
 
+/**
+ * The ship-frame y of a boat's middle swung out over the side on its
+ * davits (+ to port): just clear of the deck edge.
+ */
+export function swungOutY(
+  b: Pick<BoatRecipe, "side" | "edgeY" | "beam">
+): number {
+  const s = b.side === "port" ? 1 : -1;
+  return s * (Math.abs(b.edgeY) + 0.35 + b.beam / 2 + 0.7);
+}
+
 export interface DavitRecipe {
   boat: number;
   x: number;
@@ -192,6 +203,64 @@ export interface ShipLayout {
   bootTop: number;
 }
 
+/**
+ * A ship's paint, where it differs from the Titanic's (sRGB hex). A recipe
+ * without one is painted as the Titanic: buff funnels with black tops, the
+ * gilt line, "TITANIC".
+ */
+export interface ShipPaint {
+  funnel: number;
+  /** The top and the thin bands. */
+  funnelTop: number;
+  /** The line just under the sheer (a gilt or gold band), or null. */
+  sheerLine: number | null;
+  /** The name on the bows and the counter (with "LIVERPOOL" there). */
+  name: string;
+  /** Masts and derricks (default the Titanic's varnished brown). */
+  mast?: number;
+  /** The inside of the cowl ventilators' mouths (default near black). */
+  ventLining?: number;
+}
+
+/**
+ * A length of superstructure, flush with the side or set in from it, that
+ * follows the sheer: the Lusitania's tiers (the Titanic's are built by
+ * hand in `buildShip.ts`).
+ */
+export interface Block {
+  id: string;
+  x0: number;
+  x1: number;
+  /** Floor: this deck's height (it follows the sheer) plus `dz`. */
+  deck: string;
+  dz?: number;
+  h: number;
+  /** Side walls this far in from the deck edge (default 0). */
+  inset?: number;
+  /** Or at this fixed half-width. */
+  halfWidth?: number;
+  /** Only a strip this wide inboard of each side wall (a bulwark). */
+  strip?: number;
+  /** The forward end rounded in plan over this length, m. */
+  roundFwd?: number;
+  /** plating: the hull's own black plates; shade: a wall in a promenade. */
+  wall: "white" | "plating" | "shade";
+  roof: "pine" | "pitch" | "paint" | "skylight" | "none";
+  /** Draw the underside (a deck seen from below). */
+  under?: boolean;
+  /** Close the ends (default true). */
+  ends?: boolean;
+}
+
+/** A painted box: stanchions, the bridge wings, a breakwater, derricks. */
+export interface BoxPart {
+  c: V3;
+  size: V3;
+  color: number;
+  yaw?: number;
+  pitch?: number;
+}
+
 export interface ShipRecipe {
   spec: ShipSpec;
   hull: HullSurface;
@@ -217,11 +286,38 @@ export interface ShipRecipe {
   funnelGuys: Wire[][];
   propellers: Propeller[];
   /** The rudder's outline in (x, z), and its thickness. */
-  rudder: { outline: [number, number][]; thickness: number };
+  rudder: {
+    outline: [number, number][];
+    thickness: number;
+    /** Inside the blade, for which half holds it (default the Titanic's). */
+    centre?: V3;
+    /** Stock and heel boxes (default the Titanic's post and sole piece). */
+    posts?: { c: V3; size: V3 }[];
+    /** Thickness at the leading and trailing edges (default `thickness`). */
+    taper?: { lead: number; trail: number };
+    /** A round stock up the leading edge, faired into the blade. */
+    stock?: { x: number; z0: number; z1: number; r: number };
+  };
   /** Shaft bossings: from inside the hull aft to the wing propellers. */
   bossings: { from: V3; to: V3; r0: number; r1: number }[];
   anchors: { p: V3; side: "port" | "starboard" }[];
   names: NameBoard[];
+  // Optional: a recipe without them is built as the Titanic.
+  paint?: ShipPaint;
+  /** Superstructure tiers; when given, they replace the Titanic's. */
+  blocks?: Block[];
+  boxes?: BoxPart[];
+  /** Drum ("oil-drum") ventilators, flat-topped. */
+  drums?: Placement[];
+  /** Decks torn open at a break (default the Titanic's C to Orlop). */
+  ledgeDecks?: string[];
+  /** Jack and ensign staffs (default on B deck at the stem and stern). */
+  staffs?: { foot: V3; top: V3 }[];
+  /**
+   * Height the line under the sheer is painted from at x (default the
+   * sheer); far above the hull where the line stops.
+   */
+  sheerLineZ?: (x: number) => number;
 }
 
 const TO_RAD = Math.PI / 180;

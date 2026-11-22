@@ -89,6 +89,15 @@ function lowestPoint(b: Body): [number, number, number] {
 export function stepFall(b: Body, dt: number, floorZ: number): boolean {
   // Flooded: every cell full.
   for (const c of b.all) c.water = c.cap;
+  // Already on the floor (it grounded while afloat): it settles from where
+  // it lies, its contact as deep in the mud as it already is.
+  const onFloor = b.grounded;
+  if (!onFloor && !fall(b, dt, floorZ)) return false;
+  return touch(b, floorZ, onFloor);
+}
+
+/** One step of the fall itself; true once it reaches the floor. */
+function fall(b: Body, dt: number, floorZ: number): boolean {
   const env = envelope(b);
   const g = floodedCentre(b);
   const ge = earthOf(b, g[0], g[1], g[2]);
@@ -121,16 +130,33 @@ export function stepFall(b: Body, dt: number, floorZ: number): boolean {
   placeAbout(b, g, ge);
   updateBounds(b);
   if (b.bottom > floorZ) return false;
-  // Touched: from here it turns about the point in the mud.
-  b.mode = "landing";
   b.z += floorZ - b.bottom;
+  return true;
+}
+
+/** Touched: from here it turns about the point in the mud. */
+function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
+  b.mode = "landing";
   const p = lowestPoint(b);
   const e = earthOf(b, p[0], p[1], p[2]);
   b.contactP = p;
   b.contactE = [e[0], e[1], floorZ];
+  b.contactD0 = onFloor ? max(0, floorZ - e[2]) : 0;
+  b.seated = onFloor;
   b.contactT = 0;
   b.contactPitch = b.pitch;
+  // The rest (a rule): a ship with a surveyed wreck (spec.wreck) lies over
+  // to it if she lands listed toward it, else keeps her list; any other
+  // ship rights (the 1.0 rest).
+  const w = b.wreck;
+  if (!w) b.restRoll = b.part === "stern" ? 0.05 : 0;
+  else if (b.roll * w.rest > 0 && abs(b.roll) >= w.min)
+    b.restRoll = (w.rest > 0 ? 1 : -1) * max(abs(b.roll), abs(w.rest));
+  else b.restRoll = b.roll;
   if (b.part === "stern") b.restPitch = -0.02;
+  else if (onFloor)
+    // Already on the floor, no nose dive into it: she settles along it.
+    b.restPitch = 0;
   else {
     // Nose deep in the mud, the after end bedded: a slight bow-down rest.
     const lever = max(20, abs(p[0] - b.xFrom));
@@ -147,7 +173,7 @@ export function stepFall(b: Body, dt: number, floorZ: number): boolean {
  */
 export function stepLanding(b: Body, dt: number): boolean {
   const bow = b.part !== "stern";
-  const restRoll = bow ? 0 : 0.05;
+  const restRoll = b.restRoll;
   const tau = bow ? 5 : 2.5;
   b.contactT += dt;
   b.pitch = relax(b.pitch, b.restPitch, dt, tau);
@@ -157,15 +183,31 @@ export function stepLanding(b: Body, dt: number): boolean {
   b.vx = 0;
   b.vz = 0;
   b.wp = 0;
-  const depth =
-    (bow ? BOW_PLOUGH_M : STERN_CRUSH_M) *
-    (1 - exp(-b.contactT / PLOUGH_TIME_S));
+  // A body that fell ploughs (or crushes) in; one that was already on the
+  // floor when she went under is as deep in the mud as she will go.
+  const depth = b.seated
+    ? b.contactD0
+    : max(
+        b.contactD0,
+        (bow ? BOW_PLOUGH_M : STERN_CRUSH_M) *
+          (1 - exp(-b.contactT / PLOUGH_TIME_S))
+      );
   placeAbout(b, b.contactP, [
     b.contactE[0],
     b.contactE[1],
     b.contactE[2] - depth,
   ]);
   updateBounds(b);
+  if (b.seated) {
+    // Turning to her rest about the contact would drive her other side
+    // into the floor (lying over, her deck edge swings down by most of her
+    // beam): re-seat her lowest hull point at that same depth.
+    const seat = b.contactE[2] - b.contactD0;
+    if (b.bottom < seat) {
+      b.z += seat - b.bottom;
+      updateBounds(b);
+    }
+  }
   const rest =
     b.contactT > 5 * PLOUGH_TIME_S &&
     abs(b.pitch - b.restPitch) < 0.004 &&

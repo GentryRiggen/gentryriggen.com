@@ -11,6 +11,7 @@ export const BED_LEVEL = {
   night: 0.01,
   steam: 0.06,
   rumble: 0.08,
+  engines: 0.04,
 } as const;
 /** Steam is ducked from this speed up so it never drowns the rest. */
 export const STEAM_DUCK_SPEED = 10;
@@ -18,12 +19,17 @@ export const STEAM_DUCKED = 0.35;
 
 /** Target level of each bed for a state (pure, so it is testable). */
 export function bedTargets(s: BedState, on: boolean) {
-  if (!on) return { sea: 0, hum: 0, night: 0, steam: 0, rumble: 0 };
+  if (!on) return { sea: 0, hum: 0, night: 0, steam: 0, rumble: 0, engines: 0 };
   const above = s.underwater ? 0 : 1;
+  // The Lusitania's afternoon: engines turning (fading with her steam)
+  // instead of the Titanic's hum and cold night tone.
+  const day = s.ship === "lusitania";
+  const p2 = s.power * s.power;
   return {
     sea: BED_LEVEL.sea * above,
-    hum: BED_LEVEL.hum * above * s.power * s.power,
-    night: BED_LEVEL.night,
+    hum: day ? 0 : BED_LEVEL.hum * above * p2,
+    night: day ? 0 : BED_LEVEL.night,
+    engines: day ? BED_LEVEL.engines * above * p2 : 0,
     steam:
       BED_LEVEL.steam *
       (s.steam ? 1 : 0) *
@@ -113,20 +119,49 @@ export function createBeds(engine: VoiceEngine): Beds {
   filtered(steamSrc, "bandpass", 1100, 0.5, steam);
   stoppers.push(steamSrc);
 
+  // Her engines (afternoon): a low throb, a slow beat of turning screws.
+  const engines = level();
+  const engSwell = ctx.createGain();
+  engSwell.gain.value = 0.7;
+  engSwell.connect(engines);
+  nodes.push(engSwell);
+  const engFilter = ctx.createBiquadFilter();
+  engFilter.type = "lowpass";
+  engFilter.frequency.value = 160;
+  engFilter.connect(engSwell);
+  nodes.push(engFilter);
+  for (const freq of [38, 57.4]) {
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = freq;
+    osc.connect(engFilter);
+    osc.start();
+    nodes.push(osc);
+    stoppers.push(osc);
+  }
+  const beat = ctx.createOscillator();
+  beat.frequency.value = 1.9;
+  const beatDepth = ctx.createGain();
+  beatDepth.gain.value = 0.3;
+  beat.connect(beatDepth).connect(engSwell.gain);
+  beat.start();
+  nodes.push(beat, beatDepth);
+  stoppers.push(beat);
+
   // Under water: a muffled low rumble.
   const rumble = level();
   const rumbleSrc = loopingNoise(ctx, engine.brown);
   filtered(rumbleSrc, "lowpass", 110, 0.9, rumble);
   stoppers.push(rumbleSrc);
 
-  const gains = { sea, hum, night, steam, rumble };
+  const gains = { sea, hum, night, steam, rumble, engines };
   let last = "";
 
   return {
     apply(s, on) {
       const t = bedTargets(s, on);
       // Only touch the graph when a level moved enough to matter.
-      const key = `${t.sea.toFixed(3)}|${t.hum.toFixed(3)}|${t.steam.toFixed(3)}|${t.rumble.toFixed(3)}|${t.night.toFixed(3)}`;
+      const key = `${t.sea.toFixed(3)}|${t.hum.toFixed(3)}|${t.steam.toFixed(3)}|${t.rumble.toFixed(3)}|${t.night.toFixed(3)}|${t.engines.toFixed(3)}`;
       if (key === last) return;
       last = key;
       const now = ctx.currentTime;
@@ -135,6 +170,7 @@ export function createBeds(engine: VoiceEngine): Beds {
       gains.night.gain.setTargetAtTime(t.night, now, 1);
       gains.steam.gain.setTargetAtTime(t.steam, now, 0.5);
       gains.rumble.gain.setTargetAtTime(t.rumble, now, 1);
+      gains.engines.gain.setTargetAtTime(t.engines, now, 0.6);
     },
     dispose() {
       for (const src of stoppers) {

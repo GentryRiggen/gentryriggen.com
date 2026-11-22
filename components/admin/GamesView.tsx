@@ -345,6 +345,12 @@ export default function GamesView({ events }: GamesViewProps) {
             ` · sank after ${Math.round(wreck.averageSinkMinutes)} min on average`}
         </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <BreakdownList title="Ships" rows={wreck.ships} unit="runs" />
+          <BreakdownList
+            title="How each ship's runs ended"
+            rows={wreck.shipEnds}
+            unit="runs"
+          />
           <BreakdownList title="Modes" rows={wreck.modes} unit="runs" />
           <BreakdownList title="How runs ended" rows={wreck.ends} unit="runs" />
           <BreakdownList

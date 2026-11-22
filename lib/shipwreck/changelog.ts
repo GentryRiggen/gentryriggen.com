@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.1.0",
+    date: "2026-11-21",
+    title: "The Lusitania",
+    highlights: [
+      "A second ship! Pick the Lusitania on the title screen. On a sunny May afternoon in 1915, off the coast of Ireland, a torpedo hit her",
+      "Watch her real afternoon: the torpedo's trail streaks in, it hits, a second explosion follows, and she leans fast to one side. Her bow hits the sea floor, only 93 m down, while her stern is still up in the air. She is gone in about 18 minutes and ends up lying on her side",
+      "Her afternoon has its own look: a bright sky, a blue sea and the green Irish coast on the horizon, plus its own sounds",
+      "X-ray shows her side coal bunkers, the long rooms along her sides that filled with water and made her lean",
+      "What if? Choose where the torpedo hits, and whether her portholes (the round windows) are open or shut. Shut them at the real spot and see what happens",
+      "New places to visit on her: the Bridge, the Dining Saloon, Boiler Room 1, a Coal Bunker and the Turbine Room",
+      "Titanic fixes: the name on her stern reads properly again, and the free camera can no longer slip inside the ship or under the sea floor",
+    ],
+  },
+  {
     version: "1.0.0",
     date: "2026-11-21",
     title: "The Titanic's last night",

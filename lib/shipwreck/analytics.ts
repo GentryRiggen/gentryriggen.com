@@ -1,4 +1,5 @@
 import { trackGame } from "@/lib/analytics/trackGame";
+import type { ShipId } from "./ships/types";
 import type { CameraId, OutcomeId } from "./types";
 
 /**
@@ -11,9 +12,12 @@ export type RunMode = "real" | "whatif";
 const clamp = (n: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, Math.floor(Number.isFinite(n) ? n : lo)));
 
-/** A run began; `opened` is how many openings the player made (0 to 16). */
-export function trackStart(mode: RunMode, opened: number): void {
-  trackGame("shipwreck_start", { mode, opened: clamp(opened, 0, 16) });
+/**
+ * A run began on `ship`; `opened` is how many openings the player made (0 to
+ * 16, the most any ship offers).
+ */
+export function trackStart(mode: RunMode, opened: number, ship: ShipId): void {
+  trackGame("shipwreck_start", { mode, opened: clamp(opened, 0, 16), ship });
 }
 
 /**
@@ -24,12 +28,14 @@ export function trackStart(mode: RunMode, opened: number): void {
 export function trackEnd(
   mode: RunMode,
   outcome: OutcomeId,
-  minutes: number
+  minutes: number,
+  ship: ShipId
 ): void {
   trackGame("shipwreck_end", {
     mode,
     outcome: outcome === "floated" ? "floated" : "sank",
     minutes: clamp(minutes, 0, 600),
+    ship,
   });
 }
 

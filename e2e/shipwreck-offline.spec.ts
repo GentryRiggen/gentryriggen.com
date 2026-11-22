@@ -51,4 +51,26 @@ test("shows the title screen with no network after one visit", async ({
   await page.waitForFunction(() => Boolean(window.__shipwreck));
   await expect(page.getByTestId("shipwreck-title")).toBeVisible();
   await expect(page.getByText(/More than 1,500 people died/)).toBeVisible();
+
+  // Her afternoon too: the Lusitania is in the same stored files.
+  await page.getByTestId("shipwreck-ship-lusitania").click();
+  await expect(page.getByTestId("shipwreck-parent-line")).toContainText(
+    "Lusitania"
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "lusitania"
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("coast")), {
+      timeout: 30_000,
+    })
+    .toBe(true);
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__shipwreck!.getState!().computedT),
+      { timeout: 30_000 }
+    )
+    .toBeGreaterThan(0);
 });

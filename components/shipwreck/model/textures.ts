@@ -202,10 +202,10 @@ function plankMap(): Texture {
 }
 
 /**
- * The name: "TITANIC" for the bows (top half), "TITANIC / LIVERPOOL" for
- * the counter (bottom half), in gilt letters.
+ * The name: e.g. "TITANIC" for the bows (top half), "TITANIC / LIVERPOOL"
+ * for the counter (bottom half), in gilt letters.
  */
-function nameMap(): Texture {
+function nameMap(name: string): Texture {
   const W = 1024;
   const H = 512;
   const [c, ctx] = canvas(W, H);
@@ -222,16 +222,26 @@ function nameMap(): Texture {
     track: number
   ) => {
     ctx.font = font(px);
-    const widths = Array.from(text).map((ch) => ctx.measureText(ch).width);
-    const total = widths.reduce((a, b) => a + b, 0) + track * (text.length - 1);
+    let widths = Array.from(text).map((ch) => ctx.measureText(ch).width);
+    let total = widths.reduce((a, b) => a + b, 0) + track * (text.length - 1);
+    // A long name is set smaller to fit (the Titanic's always fits).
+    const room = W * 0.96;
+    if (total > room) {
+      const k = room / total;
+      px = Math.floor(px * k);
+      track *= k;
+      ctx.font = font(px);
+      widths = Array.from(text).map((ch) => ctx.measureText(ch).width);
+      total = widths.reduce((a, b) => a + b, 0) + track * (text.length - 1);
+    }
     let at = x - total / 2;
     Array.from(text).forEach((ch, i) => {
       ctx.fillText(ch, at + widths[i] / 2, y);
       at += widths[i] + track;
     });
   };
-  spaced("TITANIC", W / 2, H * 0.25, 170, 34);
-  spaced("TITANIC", W / 2, H * 0.62, 104, 30);
+  spaced(name, W / 2, H * 0.25, 170, 34);
+  spaced(name, W / 2, H * 0.62, 104, 30);
   spaced("LIVERPOOL", W / 2, H * 0.86, 86, 22);
   const t = new CanvasTexture(c);
   t.colorSpace = SRGBColorSpace;
@@ -241,33 +251,59 @@ function nameMap(): Texture {
   return t;
 }
 
-let cache: ShipTextures | null = null;
+type Shared = Omit<ShipTextures, "names">;
+let cache: Shared | null = null;
 let users = 0;
+const nameCache = new Map<string, { texture: Texture; users: number }>();
 
-/** The shared textures (made on first use, freed when the last user goes). */
-export function acquireShipTextures(): ShipTextures {
+/**
+ * The shared textures (made on first use, freed when the last user goes),
+ * with the name boards of the ship `name`.
+ */
+export function acquireShipTextures(name = "TITANIC"): ShipTextures {
   users += 1;
-  if (cache) return cache;
-  const plateNormal = plateNormalMap();
-  const weathering = weatheringMap();
-  const planks = plankMap();
-  const names = nameMap();
-  cache = {
-    plateNormal,
-    weathering,
-    planks,
-    names,
+  if (!cache) {
+    const plateNormal = plateNormalMap();
+    const weathering = weatheringMap();
+    const planks = plankMap();
+    cache = {
+      plateNormal,
+      weathering,
+      planks,
+      dispose() {
+        plateNormal.dispose();
+        weathering.dispose();
+        planks.dispose();
+      },
+    };
+  }
+  let names = nameCache.get(name);
+  if (!names) {
+    names = { texture: nameMap(name), users: 0 };
+    nameCache.set(name, names);
+  }
+  names.users += 1;
+  const shared = cache;
+  const board = names.texture;
+  return {
+    ...shared,
+    names: board,
+    // Shared: only frees them when no one else holds them.
     dispose() {
-      plateNormal.dispose();
-      weathering.dispose();
-      planks.dispose();
-      names.dispose();
+      releaseShipTextures(name);
     },
   };
-  return cache;
 }
 
-export function releaseShipTextures(): void {
+export function releaseShipTextures(name = "TITANIC"): void {
+  const names = nameCache.get(name);
+  if (names) {
+    names.users -= 1;
+    if (names.users <= 0) {
+      names.texture.dispose();
+      nameCache.delete(name);
+    }
+  }
   users = Math.max(0, users - 1);
   if (users === 0 && cache) {
     cache.dispose();

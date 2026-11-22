@@ -26,6 +26,19 @@ export interface SceneRuntime {
   underwater: boolean;
   /** The place pins' DOM (PlacePins registers, XRay positions them). */
   pins: Map<PlaceId, { el: HTMLElement; label: HTMLElement }>;
+  /**
+   * Her wake while she has way (a ship with `headway`): the stern on the
+   * sea (three x, z), her heading (unit, three x, z), 0..1 of her starting
+   * speed, and how far she has come (m). The ship rig writes it.
+   */
+  wake: {
+    x: number;
+    z: number;
+    dx: number;
+    dz: number;
+    amount: number;
+    length: number;
+  };
 }
 
 export function createSceneRuntime(): SceneRuntime {
@@ -43,6 +56,7 @@ export function createSceneRuntime(): SceneRuntime {
     reflecting: false,
     underwater: false,
     pins: new Map(),
+    wake: { x: 0, z: 0, dx: 1, dz: 0, amount: 0, length: 0 },
   };
   return rt;
 }
