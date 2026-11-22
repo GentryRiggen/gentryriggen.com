@@ -341,7 +341,7 @@ jobs:
           # Shipwreck is WebGL too (its later specs render the 3D scene). WebKit
           # and the iPad run its @smoke tests.
           - name: WebGL shipwreck
-            files: e2e/shipwreck.spec.ts e2e/shipwreck-offline.spec.ts
+            files: e2e/shipwreck.spec.ts e2e/shipwreck-offline.spec.ts e2e/shipwreck-walk.spec.ts
             args: --project=chromium --project=webkit --project=ipad
             workers: 1
             browsers: chromium webkit
