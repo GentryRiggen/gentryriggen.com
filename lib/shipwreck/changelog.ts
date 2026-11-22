@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.1.1",
+    date: "2026-11-21",
+    title: "Tidier ship buttons",
+    highlights: [
+      "The ship you pick on the title screen no longer has the top of its button cut off",
+    ],
+  },
+  {
     version: "1.1.0",
     date: "2026-11-21",
     title: "The Lusitania",
