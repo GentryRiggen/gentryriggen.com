@@ -39,12 +39,14 @@ import {
   useShipwreckSave,
 } from "@/lib/shipwreck/useSave";
 import { useShipwreckSound } from "./audio/useShipwreckSound";
+import { createSceneRuntime } from "./scene/runtime";
 import { sceneHooks } from "./scene/sceneHooks";
 import EndCard from "./ui/EndCard";
 import Hud from "./ui/Hud";
 import NightPanels from "./ui/NightPanels";
 import ShipwreckErrorBoundary from "./ui/ShipwreckErrorBoundary";
 import TitleScreen from "./ui/TitleScreen";
+import WalkHud from "./ui/WalkHud";
 import { useAtStoryEnd } from "./ui/useTimelineEnd";
 import WhatIfEditor, {
   realWhatIfIds,
@@ -108,6 +110,8 @@ export default function Shipwreck() {
     () => false
   );
   const modelHooks = useRef<ShipwreckModelHooks | null>(null);
+  // The scene's runtime, shared with the walk controls over it.
+  const runtime = useMemo(() => createSceneRuntime(), []);
   const isGame = !isModelView && !isSceneView;
 
   const [screen, setScreen] = useState<Screen>("title");
@@ -349,7 +353,7 @@ export default function Shipwreck() {
       {/* safe-area-ok: the full-bleed 3D stage; the UI above pads itself */}
       <div className="absolute inset-0" data-testid="shipwreck-stage">
         <ShipwreckErrorBoundary>
-          <NightScene store={playback} />
+          <NightScene store={playback} runtime={runtime} />
         </ShipwreckErrorBoundary>
       </div>
       {screen === "title" && (
@@ -370,6 +374,9 @@ export default function Shipwreck() {
           onBack={() => setScreen("title")}
           onGo={(choice) => startRun("whatif", choice)}
         />
+      )}
+      {screen === "night" && run && (
+        <WalkHud store={playback} runtime={runtime} hidden={showEnd} />
       )}
       {screen === "night" && run && (
         <Hud

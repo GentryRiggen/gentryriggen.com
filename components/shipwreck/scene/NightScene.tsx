@@ -71,13 +71,17 @@ interface NightSceneProps {
   store: PlaybackStore;
   /** Let the frame rate move the quality tier (off to pin a tier for tests). */
   autoQuality?: boolean;
+  /** The scene's shared runtime, when the DOM over it reads it too (walking). */
+  runtime?: SceneRuntime;
 }
 
 export default function NightScene({
   store,
   autoQuality = true,
+  runtime: given,
 }: NightSceneProps) {
-  const runtime = useMemo(() => createSceneRuntime(), []);
+  const own = useMemo(() => createSceneRuntime(), []);
+  const runtime = given ?? own;
   const quality = useStore(store, (s) => s.quality);
   const spec = getShip(useStore(store, (s) => s.ship));
   const settings = SCENE_SETTINGS[spec.id];

@@ -8,6 +8,8 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose, SimFrame } from "@/lib/shipwreck/sim/track";
 import {
+  canReboard,
+  deckSlope,
   floorZ,
   partFor,
   placeWalker,
@@ -52,6 +54,8 @@ const LOOK_UNDER_SIGHT_M = 600;
 const FOLLOW_RATE = 2;
 /** Paddling harder than this comes back up from Look under. */
 const PADDLE_UP = 0.3;
+/** Seconds between the checks whether Back on deck can put them on her. */
+const REBOARD_EVERY_S = 0.25;
 /** How quickly the look levels out after coming up from Look under (1/s). */
 const SURFACE_RATE = 3;
 
@@ -73,6 +77,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     /** Just came up from Look under: the look levels out. */
     surfacing: false,
     wasUnder: false,
+    /** Seconds until the next Back-on-deck check. */
+    reboardIn: 0,
   });
   // Written in place every frame (no per-frame allocations).
   const scratch = useMemo(
@@ -119,6 +125,9 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     runtime.walker = null;
     runtime.walkLookUnder = false;
     runtime.walkSlide = 0;
+    runtime.walkDownhill[0] = 0;
+    runtime.walkDownhill[1] = 0;
+    runtime.walkCanReboard = false;
     runtime.walkInfo = null;
   }, [walking, runtime]);
   useEffect(
@@ -126,6 +135,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       runtime.walker = null;
       runtime.walkLookUnder = false;
       runtime.walkSlide = 0;
+      runtime.walkCanReboard = false;
       runtime.walkInfo = null;
     },
     [runtime]
@@ -192,6 +202,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     // Start, seek or Back on deck: on the boat deck, or in the sea.
     if (p.walk.seq !== s.seq) {
       s.seq = p.walk.seq;
+      s.reboardIn = 0;
       s.pitch = 0;
       const w = placeWalker(map, spec, frame, breakX, FLAT_SEA);
       if (w) {
@@ -265,6 +276,13 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
           scratch.view
         );
         runtime.walkLookUnder = false;
+        runtime.walkCanReboard = false;
+        // Downhill on screen: along the walker's right and ahead.
+        const { downhill } = deckSlope(pose);
+        const cy = Math.cos(r.state.yaw);
+        const sy = Math.sin(r.state.yaw);
+        runtime.walkDownhill[0] = downhill[0] * sy - downhill[1] * cy;
+        runtime.walkDownhill[1] = downhill[0] * cy + downhill[1] * sy;
         runtime.walkSlide = r.state.sliding
           ? 1
           : Math.max(
@@ -335,6 +353,13 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     );
     runtime.walkLookUnder = under;
     runtime.walkSlide = 0;
+    // Back on deck: only while her boat deck is above water (a few times a
+    // second; placing is cheap maths, but not needed every frame).
+    s.reboardIn -= dt;
+    if (s.reboardIn <= 0) {
+      s.reboardIn = REBOARD_EVERY_S;
+      runtime.walkCanReboard = canReboard(map, spec, frame, breakX, FLAT_SEA);
+    }
     const info = scratch.info;
     info.phase = "water";
     info.part = null;
