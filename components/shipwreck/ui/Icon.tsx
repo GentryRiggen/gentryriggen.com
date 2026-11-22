@@ -17,6 +17,7 @@ export type IconName =
   | "lifeboat"
   | "underwater"
   | "cinematic"
+  | "walk"
   | "rocket"
   | "boat"
   | "lights"
@@ -54,6 +55,7 @@ const PATHS: Record<IconName, string> = {
   underwater:
     "M3 7c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M7 14a1.5 1.5 0 1 0 0 .1M13 17a1 1 0 1 0 0 .1M17 12a2 2 0 1 0 0 .1",
   cinematic: "M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5",
+  walk: "M13 4.5a1.5 1.5 0 1 0 0 .1M9 21l2-6-2-2 1-5 3 2 3 1M11 15l3 2 1 4M10 8l-3 2",
   rocket: "M12 21v-7M12 3l2.5 5h-5zM6 9l2 2M18 9l-2 2M5 14h2M17 14h2",
   boat: "M3 14h18l-3 5H6zM8 14v-3M16 14v-3M7 11h10",
   lights: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9V16h7v-2.1A6 6 0 0 0 12 3z",

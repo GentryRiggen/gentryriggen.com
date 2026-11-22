@@ -593,7 +593,7 @@ service cloud.firestore {
           && (!('ship' in p) || p.ship in ['titanic', 'lusitania']))
         || (name == 'shipwreck_camera'
           && p.keys().hasOnly(['camera']) && p.keys().hasAll(['camera'])
-          && p.camera in ['orbit', 'bridge', 'stern', 'lifeboat', 'underwater', 'cinematic']);
+          && p.camera in ['orbit', 'bridge', 'stern', 'lifeboat', 'underwater', 'cinematic', 'walk']);
     }
 
     // The client sends its UTC day, which must be the server's UTC day.

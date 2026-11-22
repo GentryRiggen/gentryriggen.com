@@ -28,6 +28,7 @@ export const CAMERA_LABEL: Record<CameraId, string> = {
   lifeboat: "Lifeboat",
   underwater: "Under water",
   cinematic: "Movie camera",
+  walk: "Walk the deck",
 };
 
 const CAMERA_ICON: Record<CameraId, IconName> = {
@@ -37,6 +38,7 @@ const CAMERA_ICON: Record<CameraId, IconName> = {
   lifeboat: "lifeboat",
   underwater: "underwater",
   cinematic: "cinematic",
+  walk: "walk",
 };
 
 interface HudProps {
@@ -200,7 +202,8 @@ export default function Hud({
                 className={`${PANEL} pointer-events-auto grid grid-cols-2 gap-1.5 p-2`}
                 data-testid="shipwreck-cameras"
               >
-                {CAMERA_IDS.map((id) => (
+                {/* Walking has its own button (not on every ship). */}
+                {CAMERA_IDS.filter((id) => id !== "walk").map((id) => (
                   <button
                     key={id}
                     type="button"

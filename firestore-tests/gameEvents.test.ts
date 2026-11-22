@@ -707,6 +707,7 @@ describe("shipwreck specifics", () => {
       "lifeboat",
       "underwater",
       "cinematic",
+      "walk",
     ]) {
       await assertSucceeds(create(anon(), camera(name)));
     }
