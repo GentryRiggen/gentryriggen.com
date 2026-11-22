@@ -27,10 +27,7 @@ async function feed(page: Page) {
 
 /** A reload lands on the shelf; open the one pet. */
 async function openPip(page: Page) {
-  await page.evaluate(() => {
-    window.__flamelings!.setNow(new Date(2026, 10, 17, 12).getTime());
-    window.__flamelings!.quietHappenings();
-  });
+  await page.evaluate(() => window.__flamelings!.quietHappenings());
   await expect(page.getByTestId("pet-card")).toContainText("Pip");
   await page.getByTestId("pet-card").click();
   await expect(
@@ -102,6 +99,15 @@ test("plays with no network after one visit, and friends come back online", asyn
       ).length;
     })
   ).toBeGreaterThan(3);
+
+  // A reload resets the game's test clock, and the save catches up to the
+  // real date before a test could set it again: once the real date was days
+  // past the fixed one, Pip faded to an ember and a Log only went towards
+  // relighting. So from here the browser's own clock carries on from the
+  // game's. (Installed only now: installed before the first visit, too few
+  // chunks reached the worker's cache.)
+  const gameNow = await page.evaluate(() => window.__flamelings!.now());
+  await page.clock.install({ time: gameNow });
 
   // Offline: the game loads from the worker and still plays.
   isOffline = true;
