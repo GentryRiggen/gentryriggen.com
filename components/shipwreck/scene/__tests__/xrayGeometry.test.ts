@@ -104,6 +104,21 @@ describe("the Fitzgerald's X-ray", () => {
   });
 });
 
+describe("the Lusitania's X-ray holes", () => {
+  it("each opens at its own time: the first pair at the hit, the second pair 8 s later", () => {
+    const g = openingGeometry(buildHull(lusitania), lusitania.realNight);
+    const openT = g.getAttribute("aOpenT");
+    const times = new Set<number>();
+    for (let i = 0; i < openT.count; i += 1) times.add(openT.getX(i));
+    expect([...times].sort((a, b) => a - b)).toEqual([0, 8]);
+    // Every vertex of a hole shares its opening's time (none open early).
+    lusitania.realNight.forEach((o, k) => {
+      for (let v = 0; v < 6; v += 1)
+        expect(openT.getX(k * 6 + v)).toBe(o.t ?? 0);
+    });
+  });
+});
+
 describe("the Carpathia's X-ray", () => {
   const hull = buildHull(carpathia);
 

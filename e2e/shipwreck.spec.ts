@@ -934,3 +934,16 @@ test("What if? on the Carpathia with one forward hole and no finisher floats to 
     "floated"
   );
 });
+
+test("the What if? Go button keeps its full size on screen at 1133x744", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-what-if").click();
+  await expect(page.getByTestId("shipwreck-editor")).toBeVisible();
+  const box = await page.getByTestId("shipwreck-go").boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  expect(box!.y + box!.height).toBeLessThanOrEqual(744);
+});

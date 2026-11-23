@@ -57,6 +57,9 @@ import {
   STEADY_HOLD_S,
   STEADY_INFLOW_M3S,
   STEADY_MINE_ROLL_RADS,
+  STEADY_POSE_DEG,
+  STEADY_POSE_M,
+  STEADY_POSE_S,
   type SimEvent,
   type SimEventKind,
 } from "./events";
@@ -1739,6 +1742,10 @@ function step(w: World): void {
         abs(b.vz) < 1e-3;
       b.steadyFor = still ? b.steadyFor + dt : 0;
       if (b.steadyFor >= STEADY_HOLD_S) b.frozen = true;
+      // Settled (1.5): only a ship whose U-boat comes back (the Carpathia's
+      // forward peak trades water in a cycle too slow for the rate test);
+      // every other ship keeps the rate test exactly.
+      else if (w.spec.torpedo?.finisher && settled(b, w.t)) b.frozen = true;
     }
     if (
       w.bodies.some((b) => b.frozen) &&
@@ -1910,6 +1917,38 @@ export function createSimRunner(
     },
   };
   return runner;
+}
+
+/**
+ * The steady test's second way (1.5): her pose has stayed inside a tiny
+ * box (STEADY_POSE_DEG, STEADY_POSE_M) for STEADY_POSE_S with the averaged
+ * inflow small, though the step-by-step rates still flicker (a small
+ * flooded peak trading water with the sea in a slow cycle).
+ */
+function settled(b: Body, t: number): boolean {
+  if (!(abs(b.flowAvg) < STEADY_INFLOW_M3S)) {
+    b.poseBox = undefined;
+    return false;
+  }
+  const pose: [number, number, number] = [b.pitch, b.roll, b.z];
+  const box = b.poseBox;
+  if (box) {
+    for (let i = 0; i < 3; i += 1) {
+      box.lo[i] = min(box.lo[i], pose[i]);
+      box.hi[i] = max(box.hi[i], pose[i]);
+    }
+  }
+  const deg = STEADY_POSE_DEG * DEG;
+  if (
+    !box ||
+    box.hi[0] - box.lo[0] >= deg ||
+    box.hi[1] - box.lo[1] >= deg ||
+    box.hi[2] - box.lo[2] >= STEADY_POSE_M
+  ) {
+    b.poseBox = { t, lo: [...pose], hi: [...pose] };
+    return false;
+  }
+  return t - box.t >= STEADY_POSE_S;
 }
 
 /** The whole run at once. */

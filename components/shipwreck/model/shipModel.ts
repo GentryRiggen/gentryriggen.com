@@ -371,17 +371,38 @@ function liveryShapeError(id: string, what: string): Error {
   );
 }
 
+interface ModelOptions {
+  quality: ModelQuality;
+  breakX: number | null;
+  /**
+   * The livery to show first (default hers). Any id her recipe knows
+   * (the Carpathia's `grey-1918` too); others ignore it.
+   */
+  livery?: string | null;
+}
+
+/**
+ * Builds a ship's model. If the build throws (a livery that moves a shape,
+ * say), everything it had already taken (shared textures, the dazzle
+ * texture, materials, geometries) is released before the error goes on.
+ */
 export function createTitanicModel(
   spec: ShipSpec,
-  options: {
-    quality: ModelQuality;
-    breakX: number | null;
-    /**
-     * The livery to show first (default hers). Any id her recipe knows
-     * (the Carpathia's `grey-1918` too); others ignore it.
-     */
-    livery?: string | null;
+  options: ModelOptions
+): TitanicModel {
+  const undo: Array<() => void> = [];
+  try {
+    return buildModel(spec, options, undo);
+  } catch (err) {
+    for (const u of undo.reverse()) u();
+    throw err;
   }
+}
+
+function buildModel(
+  spec: ShipSpec,
+  options: ModelOptions,
+  undo: Array<() => void>
 ): TitanicModel {
   const { quality, breakX } = options;
   const started = performance.now();
@@ -420,6 +441,7 @@ export function createTitanicModel(
       throw liveryShapeError(a.id, "name");
   }
   const textures = acquireShipTextures(shipName, nameStyle);
+  undo.push(() => releaseShipTextures(shipName, nameStyle));
   // Dazzle: one texture along the hull, from the keel to the houses' tops,
   // when any of her liveries has it (switched off in the others).
   const dazzled = [recipe, ...alts.map((a) => a.r)].some(
@@ -428,6 +450,7 @@ export function createTitanicModel(
   const dazzleTexture = dazzled
     ? acquireDazzleTexture(dazzleFrame(recipe))
     : null;
+  if (dazzleTexture) undo.push(() => releaseDazzleTexture(dazzleTexture));
   const hullPaintOf = (r: ShipRecipe): HullPaint | undefined =>
     r.paint && {
       loadWaterline: r.layout.loadWaterline,
@@ -447,22 +470,20 @@ export function createTitanicModel(
           }
         : {}),
     };
-  // The materials hold the dazzle texture: release it if they fail.
-  let mats: ShipMaterials;
-  try {
-    mats = createShipMaterials(textures, {
-      rivets: q.rivets,
-      hull: hullPaintOf(recipe),
-      paintedNames: letters !== undefined,
-    });
-  } catch (err) {
-    if (dazzleTexture) releaseDazzleTexture(dazzleTexture);
-    throw err;
-  }
+  const mats = createShipMaterials(textures, {
+    rivets: q.rivets,
+    hull: hullPaintOf(recipe),
+    paintedNames: letters !== undefined,
+  });
+  undo.push(() => mats.dispose());
   const geometries: BufferGeometry[] = [];
   // Instanced meshes hold their instance buffers on the mesh, not the
   // geometry: three frees those only on the mesh's own dispose.
   const instancedMeshes: InstancedMesh[] = [];
+  undo.push(() => {
+    for (const m of instancedMeshes) m.dispose();
+    for (const g of geometries) g.dispose();
+  });
   const own = <T extends BufferGeometry>(g: T): T => {
     geometries.push(g);
     return g;

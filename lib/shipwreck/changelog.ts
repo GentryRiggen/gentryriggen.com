@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.6.1",
+    date: "2026-11-22",
+    title: "Carpathia fixes",
+    highlights: [
+      "The Carpathia's distress rockets look right in daylight now: a smoke trail and a puff of smoke, not night-time stars",
+      "Every What if? on the Carpathia now comes to an end. If she stays afloat, you see it once she stops sinking, not hours later",
+      "The words at the top now match the moment you jump to on the timeline",
+      "The Go button in What if? fits on the screen again on iPads held sideways",
+    ],
+  },
+  {
     version: "1.6.0",
     date: "2026-11-22",
     title: "Walk the Britannic",

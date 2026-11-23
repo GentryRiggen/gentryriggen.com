@@ -20,6 +20,9 @@ import {
   columnOpenAt,
   columnSideY,
   DAY_PARTICLES,
+  DAY_ROCKET,
+  dayRocketParticles,
+  dayRocketShows,
   hasSecondExplosion,
   hitColumnTimes,
   MINE_BOAT_LOWER_S,
@@ -27,6 +30,7 @@ import {
   mineBoatAt,
   mineBoatHoldUntil,
   mineBoatPoseT,
+  rocketFlash,
 } from "../afternoonEffects";
 import { hasTorpedoTrack } from "../Torpedo";
 
@@ -325,5 +329,89 @@ describe("the Britannic's boats on the water", () => {
         expect(
           Math.hypot(list[a].x - list[b].x, list[a].z - list[b].z)
         ).toBeGreaterThan(4);
+  });
+});
+
+describe("a distress rocket by day (the Carpathia's)", () => {
+  function draw(age: number, share = 1, index = 0) {
+    const smoke: { y: number; c: number; a: number; size: number }[] = [];
+    const pops: { b: number }[] = [];
+    dayRocketParticles(age, index, -1.5, -0.25, share, {
+      smoke: (_x, y, _z, c, a, size) => smoke.push({ y, c, a, size }),
+      pop: (_x, _y, _z, b) => pops.push({ b }),
+    });
+    return { smoke, pops };
+  }
+  const top = (ps: { y: number }[]) => Math.max(...ps.map((p) => p.y));
+
+  it("lays a thin smoke trail that climbs as it rises", () => {
+    const early = draw(1);
+    const at2 = draw(2);
+    expect(at2.smoke.length).toBeGreaterThan(early.smoke.length);
+    expect(top(at2.smoke)).toBeGreaterThan(top(early.smoke));
+    expect(top(at2.smoke)).toBeGreaterThan(100);
+    expect(top(at2.smoke)).toBeLessThan(DAY_ROCKET.heightM);
+    // Thin and pale grey-white: never dark, never a glowing light.
+    for (const p of at2.smoke) {
+      expect(p.size).toBeLessThan(5);
+      expect(p.c).toBeGreaterThan(0.5);
+      expect(p.c).toBeLessThanOrEqual(1);
+    }
+    expect(at2.pops).toHaveLength(0);
+  });
+
+  it("lays the trail close enough to read as one streak at every tier", () => {
+    for (const share of [1, 0.55, 0.35]) {
+      const heights = draw(3.9, share)
+        .smoke.map((p) => p.y)
+        .sort((a, b) => a - b);
+      // The trail's bits (under the puff's), from the ground up.
+      const trail = heights.filter((y) => y < DAY_ROCKET.heightM - 25);
+      let widest = 0;
+      for (let i = 1; i < trail.length; i += 1)
+        widest = Math.max(widest, trail[i] - trail[i - 1]);
+      // Under the particles' 3.5 m size: they overlap, no beads.
+      expect(widest).toBeLessThan(2.5);
+    }
+  });
+
+  it("pops briefly at the top, then a puff spreads and fades", () => {
+    const pop = draw(4.1);
+    expect(pop.pops.length).toBeGreaterThan(0);
+    expect(pop.pops.length).toBeLessThanOrEqual(DAY_ROCKET.popN);
+    expect(draw(4 + DAY_ROCKET.popS + 0.01).pops).toHaveLength(0);
+    expect(DAY_ROCKET.popS).toBeLessThan(0.3);
+    // The puff, at the top, with the trail still under it.
+    const puff = pop.smoke.filter((p) => p.y > DAY_ROCKET.heightM - 20);
+    expect(puff.length).toBeGreaterThan(50);
+    const later = draw(12).smoke.filter((p) => p.size > 5);
+    expect(later.length).toBeGreaterThan(0);
+    const alpha = (age: number) =>
+      draw(age).smoke.reduce((sum, p) => sum + p.a, 0);
+    expect(alpha(20)).toBeLessThan(alpha(8));
+  });
+
+  it("is gone by 25 s, and draws nothing before launch", () => {
+    expect(draw(25)).toEqual({ smoke: [], pops: [] });
+    expect(draw(-0.1)).toEqual({ smoke: [], pops: [] });
+    expect(dayRocketShows(25)).toBe(false);
+  });
+
+  it("draws fewer particles at the iPad's tiers", () => {
+    const high = draw(6, DAY_PARTICLES.high.share).smoke.length;
+    const medium = draw(6, DAY_PARTICLES.medium.share).smoke.length;
+    const low = draw(6, DAY_PARTICLES.low.share).smoke.length;
+    expect(medium).toBeLessThan(high);
+    expect(low).toBeLessThan(medium);
+    // Within the medium tier's pool beside her funnel smoke.
+    expect(medium).toBeLessThan(DAY_PARTICLES.medium.pool / 4);
+  });
+
+  it("never flashes the scene by day; the night's flash is unchanged", () => {
+    for (const age of [0, 2, 4, 4.1, 5, 10, 20])
+      expect(rocketFlash(age, true)).toBe(0);
+    expect(rocketFlash(3.9, false)).toBe(0);
+    expect(rocketFlash(4, false)).toBe(1);
+    expect(rocketFlash(5, false)).toBeCloseTo(Math.exp(-2.2), 10);
   });
 });

@@ -437,13 +437,7 @@ float causticAt(vec2 p) {
       sun,
       sky,
       lamp,
-      warm: new Color(
-        own
-          ? own.sunColor
-          : look === DAY_LOOKS_AFTERNOON
-            ? 0xfff1dc
-            : look.sunColor
-      ),
+      warm: new Color(own ? own.sunColor : look.warm),
       under: new Color(own?.sunUnder ?? look.sunUnder),
     };
   }, [look, own, sunColor, sunIntensity, skyIntensity]);

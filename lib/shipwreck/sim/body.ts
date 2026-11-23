@@ -151,6 +151,13 @@ export interface Body {
   /** Afloat and still for this long (s); frozen once steady. */
   steadyFor: number;
   frozen: boolean;
+  /** The settled test's window (`STEADY_POSE_S`): when it began and the
+   *  pose's range since (pitch and roll in radians, z in m). */
+  poseBox?: {
+    t: number;
+    lo: [number, number, number];
+    hi: [number, number, number];
+  };
   /** Landing: the first point to touch (ship frame), where it touched
    * (earth), when, the pitch then, and the pitch it settles to. */
   contactP: [number, number, number];

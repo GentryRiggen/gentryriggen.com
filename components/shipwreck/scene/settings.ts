@@ -302,6 +302,8 @@ export interface DayLook {
   /** The water deep down (under-water fog toward the floor). */
   deepWater: number;
   sunColor: number;
+  /** The sun's colour above the water (the afternoon's a touch paler). */
+  warm: number;
   sunIntensity: number;
   /** The sun's colour under water. */
   sunUnder: number;
@@ -337,6 +339,7 @@ export const DAY_LOOKS: Record<"afternoon" | "morning", DayLook> = {
     fogDensity: 0.000027,
     deepWater: 0x0c3a33,
     sunColor: 0xfff0d8,
+    warm: 0xfff1dc,
     sunIntensity: 4,
     sunUnder: 0x9fe0cf,
     skyColor: 0xa9c8ee,
@@ -360,6 +363,7 @@ export const DAY_LOOKS: Record<"afternoon" | "morning", DayLook> = {
     fogDensity: 0.000036,
     deepWater: 0x06244a,
     sunColor: 0xffdcb0,
+    warm: 0xffdcb0,
     sunIntensity: 3.6,
     sunUnder: 0x9fd0f0,
     skyColor: 0xb4cbe8,

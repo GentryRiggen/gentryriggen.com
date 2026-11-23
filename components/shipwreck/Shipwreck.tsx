@@ -506,6 +506,7 @@ export default function Shipwreck() {
           side={panels}
           hidden={showEnd}
           onLivery={saveLivery}
+          savedLivery={savedLivery}
         />
       )}
       {words && (

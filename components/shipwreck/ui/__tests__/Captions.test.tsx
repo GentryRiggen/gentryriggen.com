@@ -126,4 +126,53 @@ describe("Captions", () => {
     act(() => night.setState({ t: -1 }));
     expect(screen.getAllByTestId("shipwreck-caption")).toHaveLength(1);
   });
+
+  describe("after a seek", () => {
+    const track = {
+      frames: [],
+      events: [
+        { kind: "collision" as const, t: 0, realT: 0 },
+        { kind: "lights-out" as const, t: 1000, realT: 1000 },
+      ],
+      outcome: "sank" as const,
+      sankAtT: null,
+      brokeAtT: null,
+      breakX: null,
+      endT: 3000,
+    };
+    const caption = () =>
+      screen.queryByTestId("shipwreck-caption")?.textContent ?? null;
+
+    it("shows the earlier event after a backward seek, never the later one", () => {
+      const store = createPlaybackStore();
+      act(() => store.setState({ track, t: 999 }));
+      render(<Captions store={store} />);
+      act(() => store.setState({ t: 1001 }));
+      expect(caption()).toMatch(/lights/i);
+      // Back to just after the collision.
+      act(() => store.setState({ t: 5 }));
+      expect(caption()).toMatch(/iceberg/i);
+      expect(caption()).not.toMatch(/lights/i);
+    });
+
+    it("shows nothing after a seek back to a quiet moment", () => {
+      const store = createPlaybackStore();
+      act(() => store.setState({ track, t: 999 }));
+      render(<Captions store={store} />);
+      act(() => store.setState({ t: 1001 }));
+      expect(caption()).not.toBeNull();
+      act(() => store.setState({ t: 500 }));
+      expect(caption()).toBeNull();
+    });
+
+    it("shows the latest recent event after a long forward jump", () => {
+      const store = createPlaybackStore();
+      act(() => store.setState({ track, t: 5 }));
+      render(<Captions store={store} />);
+      act(() => store.setState({ t: 1010 }));
+      expect(caption()).toMatch(/lights/i);
+      act(() => store.setState({ t: 2500 }));
+      expect(caption()).toBeNull();
+    });
+  });
 });

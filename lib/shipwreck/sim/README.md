@@ -2085,13 +2085,24 @@ uses `sternFirst`. See "The way down".
   Carpathia's data". The ending is sensitive to the draught and the coal
   doors (7.9 m: gone at 11:04; 8.0 m: 11:03; 8.1 m: 10:50, before the
   third torpedo).
-- Fourteen of her What-ifs never log `floating-steady`: thirteen with a
-  torpedo in the forward peak (the hole fills a small, fine-ended space
-  that trades water with the sea in a slow cycle, her pitch rate just over
-  the steady test's 1e-5 rad/s) and boiler room plus No. 3 (the coal doors
-  still letting water through). Each holds its pose afloat to `END_T`
-  (3:35 PM on her clock; `carpathiaWhatIf.test.ts` checks that she does
-  not move in its last hour). A fix needs the shared steady test changed.
+- Her steady test has a second way (1.5, `STEADY_POSE_*` in `events.ts`):
+  a torpedo in her forward peak fills a small, fine-ended space that
+  trades water with the sea in a slow cycle (about 70 minutes), rocking
+  her pitch by under 0.002° with rates just over the rate test's 1e-5
+  rad/s, so the rate test never passes. A floating hull also counts as
+  steady once her pose has stayed inside a box of 0.01° of pitch, 0.01°
+  of roll and 1 cm of height for 600 s with the inflow, averaged, under
+  `STEADY_INFLOW_M3S`. Only a ship whose U-boat comes back
+  (`spec.torpedo.finisher`) uses it; every other ship keeps the rate test
+  exactly. Every afloat What-if of hers now logs `floating-steady`: with
+  the forward peak hit by 9:55 AM (11:00–11:12 AM after the return), and
+  with the boiler room hit 1:18–2:00 PM (her coal bunkers' doors let water
+  through for hours as she sinks by centimetres and rights herself;
+  boiler room plus No. 3 at 1:47 PM, as the boiler room alone at 1:40).
+  Two runs that were already steady log it earlier: No. 1 and No. 2 with
+  the forward peak (10:11 and 10:22 AM before, 9:55 now). No outcome
+  changed. `carpathiaWhatIf.test.ts` checks every afloat run logs it (by
+  11:30 AM, or 2:30 PM with the boiler room hit).
 - Her three torpedoes make the same hole. The third strikes the run of
   her hull aft, where it is narrower; its area is not reduced.
 - The Britannic lists only from her 2 cm TCG until her last minutes

@@ -32,3 +32,25 @@ describe("Hud sound button", () => {
     expect(screen.getByRole("button", { name: "Sound off" })).toBeTruthy();
   });
 });
+
+describe("Hud paint button", () => {
+  it("shows the next paint after her saved one before the store has it", () => {
+    const store = createPlaybackStore();
+    store.getState().setShip("carpathia");
+    expect(store.getState().livery).toBeNull();
+    const { rerender } = render(
+      <Hud store={store} onBack={() => {}} runId={1} />
+    );
+    const plain = screen.getByTestId("shipwreck-livery").dataset.next;
+    // Her default is first, so the next one differs from the default's next.
+    rerender(
+      <Hud
+        store={store}
+        onBack={() => {}}
+        runId={1}
+        savedLivery={plain ?? null}
+      />
+    );
+    expect(screen.getByTestId("shipwreck-livery").dataset.next).not.toBe(plain);
+  });
+});
