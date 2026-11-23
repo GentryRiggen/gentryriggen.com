@@ -84,6 +84,7 @@ describe("each ship's torpedo tracks (Task 6)", () => {
     const poses = new TrackPoses();
     const y = trackSideY(carpathia, "port");
     // Just outside her side (half her 19.66 m beam), to port (+y).
+    expect(Math.sign(y)).toBe(1);
     expect(y).toBeCloseTo(9.9, 6);
     hits.forEach((h, k) => {
       const p = poses.poseOf(track, k, h.t, h.x, y);
@@ -108,7 +109,10 @@ describe("each ship's torpedo tracks (Task 6)", () => {
   });
 
   it("keeps the Lusitania's on her starboard side, 13.4 m out, at 1.1's times", () => {
-    expect(trackSideY(lusitania, "starboard")).toBe(-13.4);
+    // By sign (starboard is -y) and size, never an exact float.
+    const y = trackSideY(lusitania, "starboard");
+    expect(Math.sign(y)).toBe(-1);
+    expect(y).toBeCloseTo(-13.4, 6);
     const hits = torpedoHits(lusitania, ["br1", "br2", "br3"]);
     expect(hits).toHaveLength(3);
     expect(hits.every((h) => h.side === "starboard")).toBe(true);
@@ -121,6 +125,15 @@ describe("each ship's torpedo tracks (Task 6)", () => {
     expect(oz).toBeGreaterThan(0.99);
     // Her run-in starts at the 40 s pre-roll: the wake shows from then.
     expect(trackShows(0, -40)).toBe(true);
+  });
+
+  it("rounds a half-way beam up on both sides (float-safe)", () => {
+    for (const beam of [19.6, 25.9, 13.3, 27.7]) {
+      const half = Math.round((beam / 2 + 0.05) * 10 + 1e-9) / 10;
+      expect(trackSideY({ beam }, "port")).toBe(half);
+      expect(trackSideY({ beam }, "starboard")).toBe(-half);
+      expect(half).toBeGreaterThan(beam / 2);
+    }
   });
 });
 

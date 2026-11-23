@@ -8,13 +8,21 @@ import {
   whatIfSpots,
 } from "../run";
 import type { SimTrack } from "../track";
+import { storyEndT } from "../../story";
+
+/** Shown seconds after 9:15 AM: 11:30 AM, and 2:30 PM for a run with the
+ *  boiler room hit (her coal bunkers' doors pass water for hours). */
+const STEADY_BY = 2 * 3600 + 15 * 60;
+const BOILER_STEADY_BY = 5 * 3600 + 15 * 60;
 
 /**
  * The Carpathia's What-if matrix (sims lane: about a minute of runs):
  * every single spot, every pair, all nine, each with and without the
  * U-boat's return, and the return alone. Every run is finite and ends
- * inside END_T, afloat and still or with every part on the floor; no single torpedo sinks her sooner than her real morning;
- * three or more hits sink her no later than the same set's first two.
+ * inside END_T, afloat and logged steady (by 11:30 AM, or 2:30 PM with the
+ * boiler room hit) or with every part on the floor; no single torpedo
+ * sinks her sooner than her real morning; three or more hits sink her no
+ * later than the same set's first two.
  */
 
 const spots = whatIfSpots(carpathia).filter((id) => id !== FINISHER_SPOT);
@@ -67,18 +75,14 @@ describe("the Carpathia's What if?", () => {
       expect(bad).toBeUndefined();
       const last = track.frames[track.frames.length - 1];
       if (track.outcome === "floated") {
-        // Afloat: steady, or (a torpedo hole in a small peak trades water
-        // with the sea in a slow cycle that keeps her pitch rate just over
-        // the steady test: README, "Known limits") holding her pose
-        // through her last hour.
-        if (!track.events.some((e) => e.kind === "floating-steady")) {
-          expect(track.endT).toBeCloseTo(END_T, 6);
-          const hour = track.frames.filter((f) => f.t >= END_T - 3600);
-          const trims = hour.map((f) => f.trimDeg);
-          const zs = hour.map((f) => f.bodies[0].z);
-          expect(Math.max(...trims) - Math.min(...trims)).toBeLessThan(0.2);
-          expect(Math.max(...zs) - Math.min(...zs)).toBeLessThan(0.2);
-        }
+        // Afloat: every one reaches a clear end (README, "the steady
+        // test"), the timeline stopping there, not at END_T.
+        const steady = track.events.find((e) => e.kind === "floating-steady");
+        expect(steady).toBeDefined();
+        expect(steady!.t).toBeLessThan(
+          ids.includes("boiler") ? BOILER_STEADY_BY : STEADY_BY
+        );
+        expect(storyEndT(track, true)).toBeLessThan(END_T);
       } else expect(last.groundedParts).toEqual(last.bodies.map((b) => b.part));
     },
     30000

@@ -60,6 +60,11 @@ interface HudProps {
   hidden?: boolean;
   /** The paint button chose a livery (the game remembers it). */
   onLivery?: (id: string) => void;
+  /**
+   * Her saved livery: what the paint button shows for the one frame before
+   * the store has it (never the default's swatch for a ship wearing another).
+   */
+  savedLivery?: string | null;
 }
 
 /** The night's controls, all on the edges of the screen. */
@@ -73,6 +78,7 @@ export default function Hud({
   sound,
   hidden = false,
   onLivery,
+  savedLivery = null,
 }: HudProps) {
   const ship = getShip(useStore(store, (s) => s.ship));
   const realMinute = useStore(store, (s) => Math.floor(s.realT / 60));
@@ -85,7 +91,7 @@ export default function Hud({
   const camera = useStore(store, (s) => s.camera);
   const xray = useStore(store, (s) => s.xray);
   const place = useStore(store, (s) => s.place);
-  const livery = useStore(store, (s) => s.livery);
+  const livery = useStore(store, (s) => s.livery) ?? savedLivery;
   // Walking: only play, speeds, the timeline (and sound) stay.
   const walking = camera === "walk";
   // "Walk the deck" is in the picker only for a ship you can walk on, and

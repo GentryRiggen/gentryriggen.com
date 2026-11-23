@@ -59,7 +59,8 @@ export function trackSideY(
   spec: Pick<ShipSpec, "beam">,
   side: "port" | "starboard"
 ): number {
-  const half = Math.round((spec.beam / 2 + 0.05) * 10) / 10;
+  const half = // The epsilon keeps a half-way beam from rounding the other way.
+    Math.round((spec.beam / 2 + 0.05) * 10 + 1e-9) / 10;
   return side === "port" ? half : -half;
 }
 

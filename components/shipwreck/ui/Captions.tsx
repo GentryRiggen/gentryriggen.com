@@ -68,8 +68,13 @@ export default function Captions({ store }: CaptionsProps) {
         if (run) setText(`${clockText(s.t, ship.clockStartS)} — ${run}`);
         return;
       }
-      if (!s.track || !(s.t > prev.t)) return;
-      const evs = eventsBetween(s.track, prev.t, s.t);
+      if (!s.track || s.t < 0) return;
+      // A seek (back, or a jump past what is recent): drop the caption and
+      // show the latest event just before `s.t`, or none. Never a later one.
+      const seek = s.t < prev.t || s.t - prev.t > CAPTION_RECENT_S;
+      if (!(s.t > prev.t) && !seek) return;
+      const from = seek ? s.t - CAPTION_RECENT_S : prev.t;
+      const evs = eventsBetween(s.track, from, s.t);
       for (let i = evs.length - 1; i >= 0; i -= 1) {
         // After a long seek, only what just happened.
         if (s.t - evs[i].t > CAPTION_RECENT_S) break;
@@ -83,6 +88,7 @@ export default function Captions({ store }: CaptionsProps) {
           return;
         }
       }
+      if (seek) setText(null);
     });
   }, [store]);
 

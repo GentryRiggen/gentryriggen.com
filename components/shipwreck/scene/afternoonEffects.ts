@@ -1,6 +1,7 @@
 import { Matrix4, Quaternion, Vector3, type Group } from "three";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import { swungOutY } from "@/components/shipwreck/model/titanicRecipe";
+import { placeFor } from "@/lib/shipwreck/places";
 import { hitTimeS, type QualityTier } from "@/lib/shipwreck/playback";
 import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { SimTrack as Track } from "@/lib/shipwreck/sim/track";
@@ -230,6 +231,159 @@ function hash(a: number, b = 0): number {
   return s - Math.floor(s);
 }
 
+/**
+ * A distress rocket by day (the Carpathia's, GOL: fired to call the patrol
+ * vessels). Against a morning sky a socket signal's stars barely show;
+ * what reads is its smoke: a thin white-grey trail up `heightM` in
+ * `riseS`, a brief small pop at the top (a few additive points, under
+ * `popS`, no scene flash), then a grey-white puff that spreads, drifts
+ * downwind and fades over `puffS`. The night's rockets (stars falling,
+ * the flash) are `Effects`' own.
+ */
+export const DAY_ROCKET = {
+  riseS: 4,
+  heightM: 200,
+  popS: 0.25,
+  /** The trail hangs this long after it was laid (s). */
+  trailS: 16,
+  puffS: 20,
+  /** Particles at the high tier (× the tier's share). */
+  /**
+   * Dense enough that the soft points overlap into one streak (about
+   * 0.7 m apart at the top tier, under 2 m at the lowest), not a string of
+   * beads.
+   */
+  trailN: 300,
+  puffN: 150,
+  popN: 6,
+} as const;
+
+/** Where `dayRocketParticles` puts its particles (relative to the origin). */
+export interface DayRocketSink {
+  /** A blended smoke particle: offset (m), grey (linear), opacity, size (m). */
+  smoke(
+    dx: number,
+    dy: number,
+    dz: number,
+    c: number,
+    a: number,
+    size: number
+  ): void;
+  /** An additive point of the pop: offset (m), brightness, size (m). */
+  pop(dx: number, dy: number, dz: number, b: number, size: number): void;
+}
+
+/** The rocket's height `s` after launch (eases out to `heightM`). */
+function rocketHeight(s: number): number {
+  const u = Math.min(1, Math.max(0, s / DAY_ROCKET.riseS));
+  return DAY_ROCKET.heightM * (1 - (1 - u) * (1 - u));
+}
+
+/** True while a day rocket `age` s old still shows anything. */
+export function dayRocketShows(age: number): boolean {
+  const R = DAY_ROCKET;
+  return age >= 0 && age < R.riseS + Math.max(R.puffS, R.trailS);
+}
+
+/**
+ * A day rocket `age` s after launch (`index` varies its shape), into
+ * `sink`, offsets from where it was fired; `windX`/`windZ` the drift
+ * (m/s, three). `share`: the tier's share of the particles. Pure.
+ */
+export function dayRocketParticles(
+  age: number,
+  index: number,
+  windX: number,
+  windZ: number,
+  share: number,
+  sink: DayRocketSink
+): void {
+  if (!dayRocketShows(age)) return;
+  const R = DAY_ROCKET;
+  const seed = index * 13 + 5;
+  // The trail: laid evenly in height as she climbed, each bit drifting
+  // and widening from when it was laid; thin and pale.
+  const trailN = Math.max(8, Math.round(R.trailN * share));
+  // Overlapping points add up: fewer points (a lower tier) each show a
+  // little more, so the streak is as pale at every tier.
+  const trailA = 0.08 / (0.4 + 0.6 * share);
+  const climbed = rocketHeight(age);
+  for (let k = 0; k < trailN; k += 1) {
+    const h = (R.heightM * (k + 0.5)) / trailN;
+    if (h > climbed) break;
+    // When the rocket passed this height (inverse of rocketHeight).
+    const laid = R.riseS * (1 - Math.sqrt(1 - h / R.heightM));
+    const a = age - laid;
+    if (a < 0 || a > R.trailS) continue;
+    const u = a / R.trailS;
+    // A gentle wander as it climbed, and each bit's own jitter.
+    const wob =
+      Math.sin(h * 0.045 + index * 1.7) * 2 +
+      (hash(k, seed) - 0.5) * (0.6 + a * 0.35);
+    const fade = Math.pow(1 - u, 1.4) * Math.min(1, a * 4 + 0.3);
+    sink.smoke(
+      windX * a + wob,
+      h + a * 0.3,
+      windZ * a + (hash(k, seed + 1) - 0.5) * (0.6 + a * 0.35),
+      0.78 + 0.1 * hash(k, seed + 2),
+      trailA * fade,
+      3.5 + a * 0.7
+    );
+  }
+  const ba = age - R.riseS;
+  if (ba < 0) return;
+  const top = R.heightM;
+  // The pop: a few bright points for a moment (bloom), no scene flash.
+  if (ba < R.popS) {
+    const fl = 1 - ba / R.popS;
+    for (let k = 0; k < R.popN; k += 1) {
+      const th = hash(k, seed + 3) * Math.PI * 2;
+      const r = 1.5 + ba * 30 * hash(k, seed + 4);
+      sink.pop(
+        Math.cos(th) * r,
+        top + (hash(k, seed + 5) - 0.5) * r,
+        Math.sin(th) * r,
+        6 * fl,
+        2.2
+      );
+    }
+  }
+  // The puff: thrown out fast, slowed by the air, then spreading and
+  // drifting downwind; grey at its heart, paler at its edge, fading out.
+  if (ba >= R.puffS) return;
+  const puffN = Math.max(12, Math.round(R.puffN * share));
+  const u = ba / R.puffS;
+  const open = 1 - Math.exp(-ba * 2.5);
+  for (let k = 0; k < puffN; k += 1) {
+    const th = hash(k, seed + 6) * Math.PI * 2;
+    const ph = Math.acos(hash(k, seed + 7) * 2 - 1);
+    const reach = (5 + 9 * hash(k, seed + 8)) * open + ba * 0.45;
+    const sx = Math.sin(ph) * Math.cos(th);
+    const sy = Math.cos(ph);
+    const sz = Math.sin(ph) * Math.sin(th);
+    const edge = hash(k, seed + 9);
+    const fade = Math.pow(1 - u, 1.3) * Math.min(1, ba * 8);
+    sink.smoke(
+      sx * reach + windX * ba,
+      top + sy * reach * 0.8 - ba * 0.15,
+      sz * reach + windZ * ba,
+      0.5 + 0.22 * edge + 0.1 * sy + 0.08 * u,
+      0.32 * fade,
+      6 + ba * 1.1 + 3 * edge
+    );
+  }
+}
+
+/**
+ * The rocket's flash on the scene (`runtime.flash`) `age` s after launch:
+ * the night's burst (it lights the sea and the sky); by day none (a
+ * flash against the sun would read as a light switching on).
+ */
+export function rocketFlash(age: number, daylit: boolean): number {
+  if (daylit || age < DAY_ROCKET.riseS) return 0;
+  return Math.exp(-(age - DAY_ROCKET.riseS) * 2.2);
+}
+
 /** What `update` needs each frame (filled in place by the caller). */
 export interface AfternoonFrame {
   track: SimTrack;
@@ -269,6 +423,12 @@ interface HitPlace {
 export class AfternoonEffects {
   /** Particles written this frame. */
   n = 0;
+  /**
+   * The day rockets' pops this frame, for the additive buffer (`Effects`
+   * draws them): x, y, z (three), brightness, size; `popN` of them.
+   */
+  readonly pops = new Float32Array(DAY_ROCKET.popN * 2 * 5);
+  popN = 0;
   /** This frame's share of each effect's particles, and the pool. */
   private share = 1;
   private pool = 0;
@@ -314,6 +474,13 @@ export class AfternoonEffects {
   private readonly mine: boolean;
   private readonly swingS: number;
   private readonly lowerS: number;
+  /** Where her rockets go up (ship frame): her starboard bridge wing. */
+  private readonly rocketAt: readonly [number, number, number];
+  private readonly rocketO: V3 = [0, 0, 0];
+  private readonly sink: DayRocketSink;
+  /** Each rocket's launch place (three), per run (keyed by its time). */
+  private readonly rocketFrom = new Map<number, V3>();
+  private rocketTrack: unknown = null;
 
   constructor(
     private readonly spec: ShipSpec,
@@ -325,6 +492,35 @@ export class AfternoonEffects {
     this.mine = spec.cause === "mine";
     this.swingS = this.mine ? MINE_BOAT_SWING_S : SWING_S;
     this.lowerS = this.mine ? MINE_BOAT_LOWER_S : LOWER_S;
+    const bridge = placeFor(spec.id, "bridge");
+    this.rocketAt = bridge
+      ? [bridge.at[0], -(spec.beam / 2 + 0.5), bridge.at[2]]
+      : [70, -14, 31];
+    const o = this.rocketO;
+    this.sink = {
+      smoke: (dx, dy, dz, c, a, size) =>
+        this.emit(
+          o[0] + dx,
+          o[1] + dy,
+          o[2] + dz,
+          c,
+          c * 1.01,
+          c * 1.04,
+          a,
+          size
+        ),
+      pop: (dx, dy, dz, b, size) => {
+        const k = this.popN;
+        if (k * 5 >= this.pops.length) return;
+        const P = this.pops;
+        P[k * 5] = o[0] + dx;
+        P[k * 5 + 1] = o[1] + dy;
+        P[k * 5 + 2] = o[2] + dz;
+        P[k * 5 + 3] = b;
+        P[k * 5 + 4] = size;
+        this.popN = k + 1;
+      },
+    };
   }
 
   /** Draws this frame's afternoon; returns the particle count. */
@@ -350,7 +546,46 @@ export class AfternoonEffects {
     for (const mdl of f.models) this.hangBoats(f, mdl);
     if (f.visible) this.funnelSmoke(f, f.visible);
     if (f.openings.length > 0) this.theHit(f);
+    this.rockets(f);
     return this.n;
+  }
+
+  /**
+   * Her distress rockets by day (`dayRocketParticles`): fired from her
+   * bridge wing as she lay then, drifting the way her smoke does when
+   * she lies stopped (the funnel smoke's 1.5 m/s astern and 0.25 m/s
+   * across).
+   */
+  private rockets(f: AfternoonFrame) {
+    this.popN = 0;
+    if (this.rocketTrack !== f.track.frames[0]) {
+      this.rocketTrack = f.track.frames[0];
+      this.rocketFrom.clear();
+    }
+    for (const e of f.track.events) {
+      if (e.kind !== "rocket") continue;
+      const age = f.t - e.t;
+      if (!dayRocketShows(age)) continue;
+      // Where she was as it went up (the trail stays where it was laid),
+      // once the track has reached its launch.
+      let at = this.rocketFrom.get(e.t);
+      if (!at) {
+        const last = f.track.frames[f.track.frames.length - 1].t;
+        at = shipToThree(sampleTrack(f.track, e.t).bodies[0], this.rocketAt);
+        if (last >= e.t) this.rocketFrom.set(e.t, at);
+      }
+      this.rocketO[0] = at[0];
+      this.rocketO[1] = at[1];
+      this.rocketO[2] = at[2];
+      dayRocketParticles(
+        age,
+        e.index ?? 0,
+        -f.wakeDx * 1.5,
+        -f.wakeDz * 1.5 - 0.25,
+        this.share,
+        this.sink
+      );
+    }
   }
 
   /** A daylight particle: colour (linear), opacity, size (m). */

@@ -28,6 +28,7 @@ import { isDaylit, type SceneSettings } from "./settings";
 import {
   AfternoonEffects,
   DAY_PARTICLES,
+  rocketFlash,
   type AfternoonFrame,
 } from "./afternoonEffects";
 import { STORM_MIN_PX, STORM_PARTICLES } from "./storm";
@@ -536,9 +537,26 @@ export default function Effects({
       }
     }
 
-    // --- Rockets: rise ~200 m in 4 s, burst, stars fall for 7 s.
+    // --- Rockets: rise ~200 m in 4 s, burst, stars fall for 7 s. By day
+    // the afternoon draws their smoke (no stars, no flash); only the pop
+    // at the top is light, here.
+    if (day) {
+      const P2 = afternoon.pops;
+      for (let k = 0; k < afternoon.popN; k += 1) {
+        const b = P2[k * 5 + 3];
+        emit(
+          P2[k * 5],
+          P2[k * 5 + 1],
+          P2[k * 5 + 2],
+          b,
+          b * 0.92,
+          b * 0.8,
+          P2[k * 5 + 4]
+        );
+      }
+    }
     for (const e of events) {
-      if (e.kind !== "rocket") continue;
+      if (e.kind !== "rocket" || day) continue;
       const age = t - e.t;
       if (age < 0 || age > 12) continue;
       const pose = frame.bodies[0];
@@ -555,8 +573,7 @@ export default function Effects({
       }
       const ba = age - riseT;
       const top = o[1] + 200;
-      const flash = Math.exp(-ba * 2.2);
-      runtime.flash = Math.max(runtime.flash, flash);
+      runtime.flash = Math.max(runtime.flash, rocketFlash(age, day));
       for (let k = 0; k < 70; k += 1) {
         const th = hash(k, e.index ?? 0) * Math.PI * 2;
         const ph = Math.acos(hash(k + 50, e.index ?? 0) * 2 - 1);

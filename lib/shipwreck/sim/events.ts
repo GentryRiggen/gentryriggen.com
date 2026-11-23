@@ -66,6 +66,18 @@ export const STEADY_AVG_S = 120;
  */
 export const STEADY_MINE_ROLL_RADS = 2e-4;
 /**
+ * Settled (the steady test's second way, 1.5): a hull whose pose stays
+ * inside a box this small (pitch and roll within STEADY_POSE_DEG, her
+ * height within STEADY_POSE_M) for STEADY_POSE_S, with the averaged
+ * inflow under STEADY_INFLOW_M3S, has stopped, though a small flooded
+ * space still trades water in a slow cycle that rocks her by a few
+ * thousandths of a degree. Only for a ship whose U-boat comes back
+ * (`spec.torpedo.finisher`, the Carpathia); the others keep the rate test.
+ */
+export const STEADY_POSE_S = 600;
+export const STEADY_POSE_DEG = 0.01;
+export const STEADY_POSE_M = 0.01;
+/**
  * `hatch-fails`: a hatch cover gives way once the water over its lip
  * reaches its `failHeadM` (ship data); a tight cover (`SimOptions
  * .hatchesTight`, Kestner clamps all done up) holds this many times that.

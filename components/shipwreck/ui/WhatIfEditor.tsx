@@ -303,7 +303,11 @@ export default function WhatIfEditor({
             title={words.diagram}
             // A mine ship's three toggles need the room: a shorter plan.
             className={
-              mine ? "block h-auto max-h-[28vh] w-full" : "block h-auto w-full"
+              mine
+                ? "block h-auto max-h-[28vh] w-full"
+                : // On a short landscape screen (an iPad mini's 744 px) the
+                  // plan gives way so Go keeps its full size on screen.
+                  "block h-auto w-full [@media(max-height:800px)]:max-h-[32vh]"
             }
           />
           <p className="px-1 pt-1 text-xs text-slate-400 sm:text-sm">
