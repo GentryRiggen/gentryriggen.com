@@ -2,6 +2,7 @@ import { act, render } from "@testing-library/react";
 import { Group } from "three";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -19,7 +20,13 @@ interface FakeModel {
   ship: string;
   breakX: number | null;
   dispose: jest.Mock;
-  handles: { root: Group; setTime: () => void };
+  handles: {
+    root: Group;
+    breakX: number | null;
+    setTime: () => void;
+    setLivery: jest.Mock;
+    warmLiveries: jest.Mock;
+  };
 }
 const mockBuilt: FakeModel[] = [];
 
@@ -32,7 +39,13 @@ jest.mock("../../model/shipModel", () => ({
       ship: spec.id,
       breakX: opts.breakX,
       dispose: jest.fn(),
-      handles: { root: new Group(), setTime: () => {} },
+      handles: {
+        root: new Group(),
+        breakX: opts.breakX,
+        setTime: () => {},
+        setLivery: jest.fn(),
+        warmLiveries: jest.fn((compile: () => void) => compile()),
+      },
     };
     mockBuilt.push(model);
     return model;
@@ -137,6 +150,90 @@ describe("the ship on the stage", () => {
     expect(fitz.dispose).toHaveBeenCalledTimes(1);
     expect(mockBuilt[2].dispose).not.toHaveBeenCalled();
     expect(runtime.whole?.root).toBe(mockBuilt[2].handles.root);
+  });
+});
+
+describe("switching to and from the Carpathia", () => {
+  it("disposes the old model going Carpathia → Lusitania → Carpathia", () => {
+    const store = createPlaybackStore({ createRunner: () => idle });
+    const runtime = createSceneRuntime();
+    act(() => store.getState().setShip("carpathia"));
+    act(() => store.getState().start(carpathia, []));
+    render(<ShipOnStage store={store} runtime={runtime} />);
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual(["carpathia"]);
+    const first = mockBuilt[0];
+
+    act(() => store.getState().setShip("lusitania"));
+    act(() => store.getState().start(lusitania, []));
+    act(() => jest.runAllTimers());
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    const lus = mockBuilt[1];
+    expect(lus.ship).toBe("lusitania");
+
+    act(() => store.getState().setShip("carpathia"));
+    act(() => store.getState().start(carpathia, []));
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual([
+      "carpathia",
+      "lusitania",
+      "carpathia",
+    ]);
+    expect(lus.dispose).toHaveBeenCalledTimes(1);
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    expect(mockBuilt[2].dispose).not.toHaveBeenCalled();
+    expect(runtime.whole?.root).toBe(mockBuilt[2].handles.root);
+  });
+});
+
+describe("her livery, switched live", () => {
+  it("repaints the built model from the store, never rebuilding it", () => {
+    const store = createPlaybackStore({ createRunner: () => idle });
+    const runtime = createSceneRuntime();
+    act(() => store.getState().setShip("carpathia"));
+    act(() => store.getState().start(carpathia, []));
+    render(<ShipOnStage store={store} runtime={runtime} />);
+    act(() => jest.runAllTimers());
+    const [model] = mockBuilt;
+    // Built: painted in her default, her other paints' parts warmed.
+    expect(model.handles.setLivery).toHaveBeenLastCalledWith("dazzle-1918");
+    expect(model.handles.warmLiveries).toHaveBeenCalledTimes(1);
+    act(() => store.getState().setLivery("cunard-1912"));
+    expect(model.handles.setLivery).toHaveBeenLastCalledWith("cunard-1912");
+    // An id she does not have: her default.
+    act(() => store.getState().setLivery("war-1915"));
+    expect(model.handles.setLivery).toHaveBeenLastCalledWith("dazzle-1918");
+    expect(mockBuilt).toHaveLength(1);
+    expect(model.dispose).not.toHaveBeenCalled();
+  });
+
+  it("warms her other paints on the halves too, once they are built", () => {
+    // Her no-finisher What if breaks: the first paint swap after the break
+    // must not wait on the halves' shaders or textures.
+    const broken: SimRunner = {
+      ...idle,
+      track: () => ({ ...idle.track(), breakX: -20 }),
+    };
+    const store = createPlaybackStore({ createRunner: () => broken });
+    const runtime = createSceneRuntime();
+    act(() => store.getState().setShip("carpathia"));
+    act(() => store.getState().start(carpathia, carpathia.realNight));
+    act(() => store.getState().pump());
+    render(<ShipOnStage store={store} runtime={runtime} />);
+    act(() => jest.runAllTimers());
+    const halves = mockBuilt.find((m) => m.breakX === -20);
+    expect(halves).toBeDefined();
+    expect(runtime.split?.root).toBe(halves!.handles.root);
+    expect(halves!.handles.setLivery).toHaveBeenLastCalledWith("dazzle-1918");
+    expect(halves!.handles.warmLiveries).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a ship with one paint alone", () => {
+    const store = createPlaybackStore({ createRunner: () => idle });
+    const runtime = createSceneRuntime();
+    render(<ShipOnStage store={store} runtime={runtime} />);
+    act(() => store.getState().setLivery("cunard-1912"));
+    expect(mockBuilt[0].handles.setLivery).not.toHaveBeenCalled();
   });
 });
 

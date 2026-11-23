@@ -584,13 +584,13 @@ service cloud.firestore {
           && p.keys().hasOnly(['mode', 'opened', 'ship']) && p.keys().hasAll(['mode', 'opened'])
           && p.mode in ['real', 'whatif']
           && p.opened is int && p.opened >= 0 && p.opened <= 25
-          && (!('ship' in p) || p.ship in ['titanic', 'lusitania', 'fitzgerald', 'britannic']))
+          && (!('ship' in p) || p.ship in ['titanic', 'lusitania', 'fitzgerald', 'carpathia', 'britannic']))
         || (name == 'shipwreck_end'
           && p.keys().hasOnly(['mode', 'outcome', 'minutes', 'ship']) && p.keys().hasAll(['mode', 'outcome', 'minutes'])
           && p.mode in ['real', 'whatif']
           && p.outcome in ['sank', 'floated']
           && p.minutes is int && p.minutes >= 0 && p.minutes <= 600
-          && (!('ship' in p) || p.ship in ['titanic', 'lusitania', 'fitzgerald', 'britannic']))
+          && (!('ship' in p) || p.ship in ['titanic', 'lusitania', 'fitzgerald', 'carpathia', 'britannic']))
         || (name == 'shipwreck_camera'
           && p.keys().hasOnly(['camera']) && p.keys().hasAll(['camera'])
           && p.camera in ['orbit', 'bridge', 'stern', 'lifeboat', 'underwater', 'cinematic', 'walk']);

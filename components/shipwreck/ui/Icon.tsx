@@ -40,7 +40,8 @@ export type IconName =
   | "hull"
   | "camera"
   | "sound"
-  | "mute";
+  | "mute"
+  | "brush";
 
 const PATHS: Record<IconName, string> = {
   back: "M15 5l-7 7 7 7",
@@ -102,6 +103,9 @@ const PATHS: Record<IconName, string> = {
   sound: "M4 9v6h4l5 4V5L8 9zM16.5 9a4 4 0 0 1 0 6M19 6.5a8 8 0 0 1 0 11",
   mute: "M4 9v6h4l5 4V5L8 9zM17 9.5l5 5M22 9.5l-5 5",
   camera: "M4 8h3l2-3h6l2 3h3v11H4zM12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  // A paint brush: the handle, its band, the bristles with a drip of paint.
+  brush:
+    "M20.5 3.5l-8 8M15 9l1.8 1.8M11.4 12.6c-2.4-.6-4.6.9-4.7 3.4-.1 1.6-1.3 2.6-3.2 3 2.7 1.4 6.4 1.1 8-.7 1.3-1.4 1.3-3.6-.1-5.7z",
 };
 
 const FILLED: ReadonlySet<IconName> = new Set(["play"]);

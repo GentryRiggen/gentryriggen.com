@@ -154,6 +154,9 @@ const SCENES = [
   "shipwreck-fitzgerald-storm",
   "shipwreck-fitzgerald-dive",
   "shipwreck-fitzgerald-wreck",
+  "shipwreck-carpathia-hit",
+  "shipwreck-carpathia-settled",
+  "shipwreck-carpathia-wreck",
   "shipwreck-britannic-blast",
   "shipwreck-britannic-boats",
   "shipwreck-britannic-grounded",
@@ -568,6 +571,7 @@ test.describe("Shipwreck budget", () => {
         s.startsWith("shipwreck-") &&
         !s.startsWith("shipwreck-lusitania") &&
         !s.startsWith("shipwreck-fitzgerald") &&
+        !s.startsWith("shipwreck-carpathia") &&
         !s.startsWith("shipwreck-britannic")
     )) {
       const m = JSON.parse(
@@ -689,6 +693,61 @@ test.describe("Shipwreck budget: the Fitzgerald", () => {
     );
     for (const scene of SCENES.filter((s) =>
       s.startsWith("shipwreck-fitzgerald")
+    )) {
+      const m = JSON.parse(
+        fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")
+      ) as Measurement;
+      expect(m.calls, `${scene}: draw calls`).toBeLessThanOrEqual(160);
+      expect(m.triangles, `${scene}: triangles`).toBeLessThanOrEqual(450_000);
+    }
+  });
+});
+
+test.describe("Shipwreck budget: the Carpathia", () => {
+  test.setTimeout(420_000);
+
+  test("her morning at the top tier: the first hit, 10:00 AM settled, the wreck", async ({
+    page,
+  }) => {
+    await page.goto("/shipwreck?scene&ship=carpathia&quality=high");
+    await page.waitForFunction(
+      () => window.__shipwreck?.getState?.().done === true,
+      null,
+      { timeout: 300_000 }
+    );
+    const at = async (setup: () => void, settleMs = 2500) => {
+      await page.evaluate(setup);
+      await page.waitForTimeout(settleMs);
+      return measure(page, "__shipwreckRenderInfo");
+    };
+    record(
+      "shipwreck-carpathia-hit",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.pause!();
+        h.seek!(2); // the first column of water at 9:15 AM
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-carpathia-settled",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.seek!(45 * 60); // 10:00 AM: settled by the head, her boats away
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-carpathia-wreck",
+      await at(() => {
+        const h = window.__shipwreck!;
+        const e = h.getEvents!().find((x) => x.kind === "stern-lands")!;
+        h.seek!(e.t + 30); // upright on the floor, 150 m down
+        h.setCamera!("underwater");
+      })
+    );
+    for (const scene of SCENES.filter((s) =>
+      s.startsWith("shipwreck-carpathia")
     )) {
       const m = JSON.parse(
         fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")

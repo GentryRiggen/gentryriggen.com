@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.5.0",
+    date: "2026-11-22",
+    title: "The Carpathia and a paint brush",
+    highlights: [
+      'A new ship! The Carpathia is the ship that rescued the Titanic\'s survivors in 1912. Six years later, in the First World War, she wore black, white and grey "dazzle" stripes to confuse submarines',
+      "Watch her real morning, 17 July 1918, off Ireland: two torpedoes hit her side at 9:15, her boats row away, and a third torpedo comes at 10:50. She goes down bow first and lands upright on the sea floor, 150 m down",
+      "What if? Tap where torpedoes hit her, one or more, and choose whether the last torpedo comes",
+      "New paint brush button! Tap it while a ship sinks to switch her paint and back: the Carpathia's 1912 Cunard colours from the Titanic rescue, the Lusitania's red Cunard funnels from 1907, and the Britannic's black-hulled White Star colours, the ones she was built for but never wore",
+      "Fly to her Wireless Room, where the Titanic's call for help was heard in 1912",
+    ],
+  },
+  {
     version: "1.4.0",
     date: "2026-11-22",
     title: "The Britannic",

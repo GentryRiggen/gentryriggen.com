@@ -5,6 +5,7 @@ import {
   type Opening,
   type RunOpening,
   type ShipSpec,
+  type TorpedoSpec,
   hullOpenings,
   isDeckOpening,
 } from "../ships/types";
@@ -44,7 +45,7 @@ import {
   updateBounds,
 } from "./body";
 import { type DeckWater, makeDeckWater } from "./deckWater";
-import { stepFall, stepLanding } from "./descent";
+import { stepFall, stepLanding, sternDown } from "./descent";
 import { doorLinks, openDoors } from "./doors";
 import {
   DYNAMO_FLOOD_M,
@@ -148,12 +149,16 @@ export function shoalSpot(k: number): string {
   return `shoal-${k}`;
 }
 
+/** A torpedo ship's What-if spot for her later torpedo (`TorpedoSpec.finisher`). */
+export const FINISHER_SPOT = "finisher";
+
 /**
  * The spots a What-if offers. An iceberg ship: every compartment. A
  * torpedo ship: the main spaces along her length (a hit at a boiler room
- * also opens its starboard side bunker), aft to forward. A storm ship:
- * each hatch (its deck opening's id, No. 1 first), her topside damage
- * (`VENTS_SPOT`) and each grounding strip (`shoalSpot(k)`).
+ * also opens its starboard side bunker), aft to forward, then her later
+ * torpedo (`FINISHER_SPOT`) if she has one (`spec.torpedo.finisher`). A
+ * storm ship: each hatch (its deck opening's id, No. 1 first), her topside
+ * damage (`VENTS_SPOT`) and each grounding strip (`shoalSpot(k)`).
  */
 export function whatIfSpots(spec: ShipSpec): string[] {
   if (spec.cause === "storm") {
@@ -164,7 +169,7 @@ export function whatIfSpots(spec: ShipSpec): string[] {
     (spec.shoalOpenings ?? []).forEach((_, k) => spots.push(shoalSpot(k + 1)));
     return spots;
   }
-  return spec.compartments
+  const spots = spec.compartments
     .filter(
       (c) =>
         (spec.cause !== "torpedo" && spec.cause !== "mine") ||
@@ -172,6 +177,9 @@ export function whatIfSpots(spec: ShipSpec): string[] {
         c.span.side === "centre"
     )
     .map((c) => c.id);
+  if (spec.cause === "torpedo" && spec.torpedo?.finisher)
+    spots.push(FINISHER_SPOT);
+  return spots;
 }
 
 /**
@@ -183,7 +191,10 @@ export function whatIfOpenings(
   ids: readonly string[]
 ): RunOpening[] {
   if (spec.cause === "storm") return stormOpenings(spec, ids);
-  if (spec.cause === "torpedo") return torpedoOpenings(spec, ids);
+  if (spec.cause === "torpedo")
+    return spec.torpedo
+      ? specOpenings(spec, spec.torpedo, ids)
+      : torpedoOpenings(spec, ids);
   if (spec.cause === "mine") return mineOpenings(spec, whatIfSpots(spec), ids);
   const out: Opening[] = [];
   for (const id of ids) {
@@ -239,9 +250,10 @@ function stormOpenings(spec: ShipSpec, ids: readonly string[]): RunOpening[] {
 
 /**
  * The What-if spots that give a ship's real damage: an iceberg ship's
- * compartments the iceberg opened; for a torpedo ship the one spot where
- * the real hit lands (the hit moved there is the real afternoon); for a
- * storm ship every hatch (none was tight) and her topside damage.
+ * compartments the iceberg opened; for a torpedo ship her own
+ * `torpedo.realSpots`, else the one spot where the real hit lands (the hit
+ * moved there is the real afternoon); for a storm ship every hatch (none
+ * was tight) and her topside damage.
  */
 export function whatIfRealIds(spec: ShipSpec): string[] {
   if (spec.cause === "storm") {
@@ -256,6 +268,7 @@ export function whatIfRealIds(spec: ShipSpec): string[] {
   }
   if (spec.cause !== "torpedo" && spec.cause !== "mine")
     return [...new Set(spec.realNight.map((o) => o.compartmentId))];
+  if (spec.torpedo) return [...spec.torpedo.realSpots];
   const real = JSON.stringify(spec.realNight);
   const spot = whatIfSpots(spec).find(
     (id) => JSON.stringify(whatIfOpenings(spec, [id])) === real
@@ -279,10 +292,15 @@ export function hitTimeS(k: number, n: number): number {
  * Where each torpedo of a torpedo ship's run strikes (the ship-frame x of
  * its own hole in her side, the first opening of its hit), one per chosen
  * spot that lands one, aft first. Not a torpedo ship: none. The real
- * spot's is her real hit's (`realNight`'s first hole).
+ * spot's is her real hit's (`realNight`'s first hole). A ship with her own
+ * hits (`spec.torpedo`): each hit's x (`torpedoHits`), aft first.
  */
 export function torpedoHitXs(spec: ShipSpec, ids: readonly string[]): number[] {
   if (spec.cause !== "torpedo" && spec.cause !== "mine") return [];
+  if (spec.torpedo)
+    return plannedHits(spec, spec.torpedo, ids)
+      .map((h) => h.x)
+      .sort((a, b) => a - b);
   const xs: number[] = [];
   for (const id of whatIfSpots(spec)) {
     if (!ids.includes(id)) continue;
@@ -292,6 +310,141 @@ export function torpedoHitXs(spec: ShipSpec, ids: readonly string[]): number[] {
     if (hole) xs.push(hole.x);
   }
   return xs.sort((a, b) => a - b);
+}
+
+/** One torpedo of a run: where it strikes (ship-frame x) and when (shown s). */
+export interface TorpedoHit {
+  x: number;
+  t: number;
+  side: "port" | "starboard";
+  /** Her later torpedo (`FINISHER_SPOT`). */
+  finisher: boolean;
+}
+
+/**
+ * Every torpedo of a run, in landing order. A ship with her own hits
+ * (`spec.torpedo`): one per chosen spot, on her side, at its time. Else
+ * (the Lusitania): `torpedoHitXs`, aft first, hit k at `hitTimeS(k, n)`
+ * on her starboard side. Not a torpedo ship: none.
+ */
+export function torpedoHits(
+  spec: ShipSpec,
+  ids: readonly string[]
+): TorpedoHit[] {
+  if (spec.cause !== "torpedo") return [];
+  if (spec.torpedo) {
+    const side = spec.torpedo.side;
+    return plannedHits(spec, spec.torpedo, ids).map((h) => ({
+      x: h.x,
+      t: h.t,
+      side,
+      finisher: h.finisher,
+    }));
+  }
+  const xs = torpedoHitXs(spec, ids);
+  return xs.map((x, k) => ({
+    x,
+    t: hitTimeS(k, xs.length),
+    side: "starboard",
+    finisher: false,
+  }));
+}
+
+interface PlannedHit {
+  /** The compartment it strikes. */
+  comp: Compartment;
+  x: number;
+  t: number;
+  finisher: boolean;
+}
+
+/**
+ * A `spec.torpedo` ship's hits for chosen spots, in landing order: one per
+ * chosen compartment spot (repeats and unknown ids add none) at
+ * `hitX[id]`, else the compartment's middle, ordered along her length by
+ * `order` and hit k landing k·staggerS after the first; then her later
+ * torpedo if `FINISHER_SPOT` is chosen, at `finisher.spotId` and
+ * `finisher.t`. Sorted by time (stable), so a finisher that came early
+ * would still land in its turn.
+ */
+function plannedHits(
+  spec: ShipSpec,
+  torpedo: TorpedoSpec,
+  ids: readonly string[]
+): PlannedHit[] {
+  const chosen = new Set(ids);
+  const spots = whatIfSpots(spec);
+  const xOf = (c: Compartment) => torpedo.hitX?.[c.id] ?? (c.fromX + c.toX) / 2;
+  const comps: Compartment[] = [];
+  for (const id of spots) {
+    if (id === FINISHER_SPOT || !chosen.has(id)) continue;
+    const c = spec.compartments.find((k) => k.id === id);
+    if (c) comps.push(c);
+  }
+  const along = comps.map((comp) => ({ comp, x: xOf(comp) }));
+  along.sort((a, b) => (torpedo.order === "fwd-first" ? b.x - a.x : a.x - b.x));
+  const hits: PlannedHit[] = along.map((h, k) => ({
+    ...h,
+    t: k * torpedo.staggerS,
+    finisher: false,
+  }));
+  const fin = torpedo.finisher;
+  const finComp =
+    fin && chosen.has(FINISHER_SPOT)
+      ? spec.compartments.find((c) => c.id === fin.spotId)
+      : undefined;
+  if (fin && finComp)
+    hits.push({ comp: finComp, x: xOf(finComp), t: fin.t, finisher: true });
+  return hits.sort((a, b) => a.t - b.t);
+}
+
+/**
+ * A `spec.torpedo` ship's What-if openings: each hit's hole (`hole`), its
+ * `lengthM` centred on the hit's x and split across every compartment on
+ * her struck side it overlaps, the area shared by overlap length (a hole
+ * across a bulkhead opens both spaces). A compartment is on her struck
+ * side if it spans her full breadth or is a wing on that side; each piece
+ * sits at the middle of its overlap, at least 0.5 m inside its
+ * compartment. A hole that overlaps none (off her ends) opens the hit's own
+ * compartment. Each piece opens at its hit's time (none at 0).
+ */
+function specOpenings(
+  spec: ShipSpec,
+  torpedo: TorpedoSpec,
+  ids: readonly string[]
+): Opening[] {
+  const { areaM2, zLow, zHigh, lengthM } = torpedo.hole;
+  const side = torpedo.side;
+  const struck = spec.compartments.filter(
+    (c) => !c.span || c.span.side === side
+  );
+  const out: Opening[] = [];
+  for (const h of plannedHits(spec, torpedo, ids)) {
+    const lo = h.x - lengthM / 2;
+    const hi = h.x + lengthM / 2;
+    const pieces: { comp: Compartment; from: number; to: number }[] = [];
+    for (const c of struck) {
+      const from = max(lo, c.fromX);
+      const to = min(hi, c.toX);
+      if (to - from > X_EPS) pieces.push({ comp: c, from, to });
+    }
+    if (pieces.length === 0) pieces.push({ comp: h.comp, from: lo, to: hi });
+    const total = pieces.reduce((s, p) => s + (p.to - p.from), 0);
+    for (const p of pieces) {
+      const c = p.comp;
+      const mid = (p.from + p.to) / 2;
+      const o: Opening = {
+        compartmentId: c.id,
+        areaM2: (areaM2 * (p.to - p.from)) / total,
+        zLow,
+        zHigh,
+        x: min(c.toX - 0.5, max(c.fromX + 0.5, mid)),
+        side,
+      };
+      out.push(h.t > 0 ? { ...o, t: h.t } : o);
+    }
+  }
+  return out;
 }
 
 /**
@@ -401,6 +554,8 @@ interface World {
   steadyFor: number;
   steady: boolean;
   scriptedNext: number;
+  /** Her scripted events play this much later (`scriptedFromFirstHit`). */
+  scriptedShift: number;
   funnelFallen: boolean[];
   fired: Set<string>;
   events: SimEvent[];
@@ -418,6 +573,10 @@ interface World {
   pending: { i: number; o: Cell["openings"][number] }[];
   /** Openings that open later (shown seconds), soonest first. */
   timed: { t: number; i: number; o: Cell["openings"][number] }[];
+  /** A `spec.torpedo` ship's later hits (shown s, soonest first) still to
+   *  land, and the next one's number (`torpedo-hit` index). */
+  hitTimes: number[];
+  nextHit: number;
   /** Forward way (none for the Titanic), lost for good at the first touch. */
   headway: ShipSpec["headway"];
   wayLost: boolean;
@@ -725,6 +884,8 @@ function makeBody(
     restRoll: 0,
     contactD0: 0,
     seated: false,
+    sternFirst: false,
+    pivotDrag: w.spec.pivotDrag === true,
     floorPts: floorPoints(w.hull, xFrom, xTo),
     floorK: (light.mass * GRAV) / (2 * max(1, xTo - xFrom) * FLOOR_SINK_M),
     grounded: false,
@@ -911,7 +1072,7 @@ function buildWorld(
     fullArea[i] = whole.fullA[k];
   }
   const boxSlices = spec.superstructure.map((s) =>
-    boxSlice(hull, spec.sheerZ, s.fromX, s.toX, s.topZ)
+    boxSlice(hull, spec.sheerZ, s.fromX, s.toX, s.topZ, s.halfBreadthM)
   );
   const mass = buildMass(spec, hull, fullArea, boxSlices);
   const cells = spec.compartments.map((c, i) =>
@@ -963,6 +1124,12 @@ function buildWorld(
     .filter((p) => p.i >= 0);
   const pending = all.filter((p) => p.t <= 0).map((p) => ({ i: p.i, o: p.o }));
   const timed = all.filter((p) => p.t > 0).sort((a, b) => a.t - b.t);
+  // A ship with her own hits: each later time her holes open is a torpedo
+  // (each hit's pieces share its time), numbered on from the first event's.
+  const hitTimes = spec.torpedo
+    ? [...new Set(timed.map((p) => p.t))].sort((a, b) => a - b)
+    : [];
+  const nextHit = all.some((p) => p.t <= 0) ? 2 : 1;
   if (opts.portholesOpen ?? true) pending.push(...portholeOpenings(spec, hull));
   // Hull openings and portholes at or forward of `ram.fromX` see the ram head.
   const ramX = spec.headway?.ram?.fromX;
@@ -999,6 +1166,11 @@ function buildWorld(
     steadyFor: 0,
     steady: false,
     scriptedNext: 0,
+    // Counted from her first hit when it comes late (the U-boat alone).
+    scriptedShift:
+      spec.scriptedFromFirstHit && all.length > 0
+        ? min(...all.map((p) => p.t))
+        : 0,
     funnelFallen: spec.funnels.map(() => false),
     fired: new Set(),
     events: [{ t: 0, realT: 0, kind: "collision" }],
@@ -1011,6 +1183,8 @@ function buildWorld(
     settleLeft: SETTLE_S,
     pending,
     timed,
+    hitTimes,
+    nextHit,
     headway: headwayOf(spec.headway, opts),
     wayLost: false,
     wayLostAt: null,
@@ -1180,7 +1354,7 @@ function breakUp(w: World, xRaw: number): void {
     else if (s.fromX >= x) bowBoxes.push(c);
     else {
       const aft = makeCell(
-        boxSlice(w.hull, w.spec.sheerZ, s.fromX, x, s.topZ),
+        boxSlice(w.hull, w.spec.sheerZ, s.fromX, x, s.topZ, s.halfBreadthM),
         -1,
         true,
         0,
@@ -1190,7 +1364,7 @@ function breakUp(w: World, xRaw: number): void {
         BOX_PERMEABILITY
       );
       const fwd = makeCell(
-        boxSlice(w.hull, w.spec.sheerZ, x, s.toX, s.topZ),
+        boxSlice(w.hull, w.spec.sheerZ, x, s.toX, s.topZ, s.halfBreadthM),
         -1,
         true,
         0,
@@ -1291,7 +1465,7 @@ function watch(w: World): void {
     const scripted = spec.scripted;
     while (
       w.scriptedNext < scripted.length &&
-      scripted[w.scriptedNext].t <= w.t
+      scripted[w.scriptedNext].t + w.scriptedShift <= w.t
     ) {
       const e = scripted[w.scriptedNext];
       emit(w, e.kind, e.index);
@@ -1377,6 +1551,11 @@ function touched(w: World, b: Body): void {
   if (stern) once(w, "stern-lands", "stern-lands");
 }
 
+/** R22 (`spec.pivotDrag`): a whole hull landing on its bow swings down. */
+function swingsDown(b: Body): boolean {
+  return b.pivotDrag && b.part === "whole" && !b.sternFirst;
+}
+
 function step(w: World): void {
   if (w.settleLeft > 0) {
     settle(w);
@@ -1386,6 +1565,13 @@ function step(w: World): void {
   while (w.timed.length > 0 && w.timed[0].t <= w.t) {
     const p = w.timed.shift() as World["timed"][number];
     cellAt(w, p.i, p.o.x)?.openings.push(p.o);
+  }
+  // A torpedo that lands while some part of her still floats.
+  while (w.hitTimes.length > 0 && w.hitTimes[0] <= w.t) {
+    w.hitTimes.shift();
+    if (w.bodies.some((b) => b.mode === "float"))
+      emit(w, "torpedo-hit", w.nextHit);
+    w.nextHit += 1;
   }
   const compressed = w.bodies.every((b) => b.mode !== "float");
   const dt = w.steady
@@ -1483,10 +1669,14 @@ function step(w: World): void {
           // An intact hull is both: it lands as one (unless an end already
           // touched while she was afloat).
           if (b.part !== "stern") once(w, "bow-lands", "bow-lands");
-          if (b.part !== "bow") once(w, "stern-lands", "stern-lands");
+          // R22: a hull swinging down about its bow lands its stern later.
+          if (b.part !== "bow" && !swingsDown(b))
+            once(w, "stern-lands", "stern-lands");
         }
       } else if (b.mode === "landing") {
         stepLanding(b, dt);
+        if (swingsDown(b) && sternDown(b, -spec.seaDepthM))
+          once(w, "stern-lands", "stern-lands");
       }
     }
   }
@@ -1526,8 +1716,15 @@ function step(w: World): void {
   // Floating steady? Each floating body freezes once it has stopped moving
   // and taking water; when nothing is left moving the run holds its pose
   // to the end.
-  // Not in a storm: the next wave over her deck can always come.
-  if (!w.steady && w.t > 1800 && !(w.sea && w.sea.storm)) {
+  // Not in a storm: the next wave over her deck can always come. Not while
+  // a torpedo is still to come (`spec.torpedo.finisher`): a frozen hull
+  // would never take its water.
+  if (
+    !w.steady &&
+    w.t > 1800 &&
+    !(w.sea && w.sea.storm) &&
+    w.timed.length === 0
+  ) {
     for (const b of w.bodies) {
       if (b.mode !== "float" || b.frozen) continue;
       // A torpedo's holes (tens of m²) trade water with the sea in a slow

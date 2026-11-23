@@ -2,7 +2,9 @@
 
 Each ship's last hours in three.js: the Titanic's night of 14–15 April 1912
 (a moonless sky, a glassy sea), the Lusitania's afternoon of 7 May 1915
-(sun, haze, the Cork coast, 93 m of green water) and the Edmund
+(sun, haze, the Cork coast, 93 m of green water), the Carpathia's morning
+of 17 July 1918 (the open Atlantic, the sun in the east, 150 m of blue
+water: "The Carpathia's morning" below) and the Edmund
 Fitzgerald's November storm on Lake Superior, 10 November 1975 (grey 3:30
 PM light to black night, the sim's own storm waves, snow, spray, 162 m of
 cold fresh water: "The Fitzgerald's storm" below), the ship posed from the
@@ -15,9 +17,9 @@ from one **playback store** (`lib/shipwreck/playback.ts`); the DOM UI
 
 | File              | What                                                                                                                                                                                                                                                                                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `settings.ts`     | `SCENE_SETTINGS` per ship (time of day, sun, fog, under-water colour, coast, iceberg; the Titanic's are 1.0's constants), `sunPosition` (NOAA), `sunDirection`, `LUSITANIA_HIT` (place, time, heading).                                                                                                                                                               |
+| `settings.ts`     | `SCENE_SETTINGS` per ship (time of day, sun, fog, under-water colour, coast, iceberg, a daylight ship's own colours `daylight`; the Titanic's are 1.0's constants), `LUSITANIA_DAYLIGHT`, `sunPosition` (NOAA), `sunDirection`, `LUSITANIA_HIT` and `CARPATHIA_HIT` (place, time, heading).                                                                           |
 | `Coast.tsx`       | The south Cork coast from Galley Head to Ballycotton from real coordinates, the Old Head and its lighthouse (heights ×2.5). One draw.                                                                                                                                                                                                                                 |
-| `Torpedo.tsx`     | The torpedo's bubble track (square to her course, from 700 m out, bubbles 1.6 s behind the torpedo, fading over 150 s). One draw.                                                                                                                                                                                                                                     |
+| `Torpedo.tsx`     | Each torpedo's bubble track (square to her course on the side it struck, from 700 m out, bubbles 1.6 s behind the torpedo, shown from `RUN_IN_S` before its own hit, fading over 150 s). One draw a track.                                                                                                                                                            |
 | `NightScene.tsx`  | The `<Canvas>`: renderer, quality tiers (PerformanceMonitor), bloom + ACES tone mapping, the frame driver, `RenderInfoProbe`.                                                                                                                                                                                                                                         |
 | `ShipRig.tsx`     | Samples the track at `t`, poses the model; builds the whole ship and the two halves up front, warms the halves, swaps them at the break.                                                                                                                                                                                                                              |
 | `Sky.tsx`         | Star dome (6,000 stars, twinkle, Milky Way, horizon glow); `DaySky`: blue to haze, the sun's glow and disc. Follows the camera.                                                                                                                                                                                                                                       |
@@ -104,7 +106,9 @@ camera snaps), `setCamera(id)`, `takeControl()` (free camera from the
 current view, no jump), `setQuality(tier)`, `setXray(on)`,
 `flyToPlace(placeId | null)` (free camera, X-ray on for interior places),
 `flyToView({ target, cam, snap? })` (ship-frame points, e.g. "Look at the
-wreck"), `reset()`.
+wreck"), `setLivery(id | null)` (her paint, `livery` in the state; nothing
+else changes; `ShipRig` repaints the built models live: model README,
+"Liveries"; `setShip` puts it back to null, her default), `reset()`.
 
 Helpers: `phaseAt(track, t)` (`settling`, `lifeboats`, `final-plunge`,
 `breakup`, `descent`, `wreck`, `afloat`), `eventsSeen(track, t)`,
@@ -129,7 +133,8 @@ draw calls and triangles over every pass, and the camera position).
 `window.__shipwreckRenderInfo` has the same plus the tier and DPR. Walking:
 `startWalk()`, `setWalkInput(forward, strafe)`, `turnWalk(yawRad)`,
 `setLookUnder(on)`, `getWalk()` (phase, part, x, y, slope, depth, look under;
-read from the runtime's `walkInfo`). `pump(ms)` computes ahead (e2e). Installed
+read from the runtime's `walkInfo`). `pump(ms)` computes ahead (e2e). The
+game's own: `setLivery(id)` and `livery()` (her paint, as the paint button). Installed
 with `installTestHooks(getScreen, undefined, sceneHooks(playback, runtime))`.
 
 ## Cameras
@@ -288,6 +293,76 @@ shot framed for landscape still fits the ship.
   worked out again only for a new field.
 - **Ruling R16**: no "New ending found!" on her real run
   (`showsNewEnding`, story.ts); her What-ifs keep it.
+
+## The Carpathia's morning (Task 6, the MVP cut)
+
+The Lusitania's daylight pipeline (`timeOfDay: "afternoon"`, a 1.1 name
+kept so the other ships' settings stay deep-equal) with her own place,
+sun and colours. Added nothing beyond what she needs to read right.
+
+- **Place and sun** (`CARPATHIA_HIT`, spec R6): her wreck's surveyed
+  position, 49°30.03′ N 10°43.04′ W, at 9:15 AM BST = 08:15 GMT on 17
+  July 1918: the sun 29.93° up at 91.60° (due east, low-ish). Read as GMT
+  it would be 39.56° at 103.95°. Heading 270° (west for Boston; the great
+  circle leaves at about 284°, the rhumb line at 260°; no source gives
+  her course: ours), so her port side faces south and the sun is nearly
+  astern. No coast, no iceberg.
+- **Look** (`SceneSettings.daylight`, R7 visual only): a greyer haze
+  (`#b3bcc4`, density 0.000055 against the Lusitania's 0.000027) and a
+  paler, greyer sky overhead for the cloudy-bright morning; a deep blue
+  sea, its ripple about twice the Lusitania's (0.75, a define in the sea
+  shader: a moderate sea breaking up the reflections; the Lusitania's
+  program is unchanged). No clouds and no whitecaps: the sky and sea
+  have none to give without new shader work (follow-up). Under water:
+  blue (`#1e5a82`) darkening to `#04121f` at her 150 m floor, exp² 0.0062
+  to 0.0082 (clearer open-ocean water than the Celtic Sea's, so she is
+  seen about 120 m off on the way down and on the floor), blue shafts,
+  a grey-brown floor tint over the sand texture, the sun's ripples on it
+  all but gone (0.035).
+- **Light** (`daylight.sunColor`, `sunIntensity`, `skyColor`,
+  `skyGround`, `skyIntensity`, named as the Britannic branch's `DayLook`;
+  the Lusitania's are 1.1's 0xfff0d8 × 4 and 0xa9c8ee / 0x2f4a4c × 0.75):
+  the low sun nearly astern left her port side in shade and the dazzle
+  read near black, so her sky fill is stronger (× 1.5, a grey-blue sky
+  over light off the sea, 0x7c8d9a) and her sun a little softer (× 3.6,
+  broken cloud): the dazzle reads black, white and grey from port, the
+  sunnier side not washed out.
+- **Torpedoes** (`PlaybackState.torpedoes`, from `torpedoHits` in the
+  game and in `?scene`): each track lands at its own time on the side it
+  struck: hers from port (`trackSideY`: her half-breadth plus 0.05 m,
+  9.9 m) at 0, 8 and 5700 s; each shows from `RUN_IN_S` (40.5 s) before
+  its hit, so the 10:50 AM wake runs in then, not at 9:15. `preRollS:
+40` on her spec (scene only) plays the first two running in; a run with
+  no hit at the first moment (the U-boat alone) has no pre-roll. The hit
+  columns (`columnOpenAt`, `columnSideY`: 10.1 m to port) rise at each
+  hit's time. She has no second explosion (no `explosion` event), so no
+  coal-dust cloud or steam; her one funnel's smoke thins as her steam
+  fails (the existing headway rule, her 60 s half-life). The Lusitania's
+  tracks and columns are 1.1's (13.4 / 13.6 m to starboard, `hitTimeS`).
+- **×1 at each hit** (`PlaybackState.hitTimesS`, `inOwnHitWindow`): on
+  the cinematic camera her hits play at ×1 from 20 s before to 20 s after
+  each, the 10:50 AM one too. The Lusitania keeps `inHitWindow`.
+- **Boats**: port boats 8 and 10 (`wreckedAtT` in `CARPATHIA_BOATS`,
+  carried on `BoatRecipe.wreckedAtT`) are hidden from the engine-room hit
+  at 8 s (`boatWreckedAt`: a torpedo at that time on that side within
+  8 m); a What if that spares the engine room spares them.
+- **Cameras** (`carpathiaShot`, `carpathiaView`): `run-in` high off her
+  port side beside the track's far end, looking in at the hit (again for
+  the 10:50 AM torpedo, `torpedoInView`), `hit` low off her port bow,
+  `list`, `boats` (high off her port quarter) / `port-boats` (her
+  starboard side's), `list` again once all are away, `bow-down`,
+  `grounded` (her stern up, off the port quarter), `grounded-below`
+  (under water off her port beam as she swings down, R22: from 3 s after
+  stern-under to 8 s after `stern-lands`, 16 s after `bow-lands`),
+  `on-floor` (circling the upright wreck off her port side). Bridge: her
+  port wing; stern: over her stern deckhouse; boat: low off her port
+  quarter. `CARPATHIA_HULL_BOXES` from her data. Every view stays above
+  −150 + 2 m and outside her boxes (tested over her whole run).
+- **The white water** where her stern goes under is 10 m in from her
+  stern (`max(-100, sternX + 10)`; the other ships' stay at −100).
+- **Not in this cut** (follow-ups): the convoy (R12), daytime rocket
+  visuals (R13; the night's rockets still burst over her), her own sound,
+  steam from her waste pipe, clouds and whitecaps.
 
 ## Performance (see the task 4 report for numbers)
 

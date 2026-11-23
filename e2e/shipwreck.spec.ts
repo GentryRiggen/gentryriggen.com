@@ -785,3 +785,152 @@ test("the title screen shows all four ships, tappable, at iPad mini portrait @sm
     path: "test-results/britannic-title-portrait.png",
   });
 });
+
+test("the Carpathia's real morning reaches the end card at ×100 @smoke", async ({
+  page,
+}) => {
+  test.setTimeout(540_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-carpathia").click();
+  await expect(page.getByTestId("shipwreck-ship-carpathia")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  expect(await page.evaluate(() => window.__shipwreck!.ship!())).toBe(
+    "carpathia"
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "carpathia"
+  );
+  // Her morning: open sea, no coast, no iceberg, no storm sky.
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("day-sky")))
+    .toBe(true);
+  for (const name of ["coast", "iceberg", "storm-sky"])
+    expect(
+      await page.evaluate((n) => window.__shipwreck!.isShown!(n), name),
+      name
+    ).toBe(false);
+
+  // Her runs start 40 s early (the wakes run in); played to the end.
+  await page.getByTestId("shipwreck-speed-100").click();
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toBeVisible({ timeout: 480_000 });
+  await expect(end).toHaveAttribute("data-outcome", "sank");
+  expect(errors).toEqual([]);
+});
+
+test("the Carpathia's paint button swaps her livery without restarting the run", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-carpathia").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  // Let the run get going, then freeze it and read the clock.
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.getState!().t))
+    .toBeGreaterThan(-39);
+  await page.evaluate(() => window.__shipwreck!.pause!());
+  const before = await page.evaluate(() => window.__shipwreck!.livery!());
+  const paint = page.getByTestId("shipwreck-livery");
+  await expect(paint).toBeVisible();
+  const next = await paint.getAttribute("data-next");
+  expect(next).not.toBe(before);
+  const t0 = await page.evaluate(() => window.__shipwreck!.getState!().t);
+  await paint.click();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.livery!()))
+    .toBe(next);
+  // Straight after the swap: no restart (the clock is where it was), still
+  // paused, still on the night.
+  const after = await page.evaluate(() => window.__shipwreck!.getState!());
+  expect(after.t).toBeGreaterThanOrEqual(t0);
+  expect(after.playing).toBe(false);
+  expect(await page.evaluate(() => window.__shipwreck!.getScreen())).toBe(
+    "night"
+  );
+  // Then it keeps going.
+  await page.evaluate(() => window.__shipwreck!.play!());
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.getState!().t))
+    .toBeGreaterThan(t0);
+});
+
+test("switching Carpathia, Lusitania, Carpathia shows the right scenes each time", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-carpathia").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("day-sky")))
+    .toBe(true);
+  await page.evaluate(() => window.__shipwreck!.setShip!("lusitania"));
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "lusitania"
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("coast")))
+    .toBe(true);
+  await page.evaluate(() => window.__shipwreck!.setShip!("carpathia"));
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "carpathia"
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("day-sky")))
+    .toBe(true);
+  expect(await page.evaluate(() => window.__shipwreck!.isShown!("coast"))).toBe(
+    false
+  );
+});
+
+test("What if? on the Carpathia with one forward hole and no finisher floats to an end", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-carpathia").click();
+  await page.getByTestId("shipwreck-what-if").click();
+  await expect(page.getByTestId("shipwreck-editor")).toHaveAttribute(
+    "data-ship",
+    "carpathia"
+  );
+  await page.getByTestId("shipwreck-preset-clear").click();
+  const hold1 = page.getByTestId("shipwreck-chip-hold1");
+  await hold1.click();
+  await expect(hold1).toHaveAttribute("aria-checked", "true");
+  // The finishing torpedo is off (it is on in her real morning).
+  const finisher = page.getByTestId("shipwreck-finisher");
+  if ((await finisher.getAttribute("aria-checked")) === "true")
+    await finisher.click();
+  await expect(finisher).toHaveAttribute("aria-checked", "false");
+  await page.getByTestId("shipwreck-go").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await computeAll(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT);
+  });
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toBeVisible();
+  await expect(end).toHaveAttribute("data-outcome", "floated");
+  expect(await page.evaluate(() => window.__shipwreck!.getOutcome!())).toBe(
+    "floated"
+  );
+});

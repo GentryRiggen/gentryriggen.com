@@ -11,17 +11,20 @@ import {
   UniformsLib,
   UniformsUtils,
 } from "three";
-import { hitTimeS, type PlaybackStore } from "@/lib/shipwreck/playback";
+import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import { getShip } from "@/lib/shipwreck/ships";
 import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
 import TrackPoses from "./torpedoPose";
 
 /**
  * The torpedoes' tracks: a line of white bubbles on the calm sea for each
- * hit, running in from out of frame on her starboard side, square to her
- * course (U-20's diary: "angle of intersection 90°", fired at about 700 m),
- * to where it struck. More than one hit (a What if): the first at the hit,
- * the rest a few seconds after it (`hitTimeS`, when the sim opens them),
- * each where her side was then. The
+ * hit, running in from out of frame on the side it struck (the Lusitania's
+ * starboard, the Carpathia's port), square to her course (U-20's diary:
+ * "angle of intersection 90°", fired at about 700 m), to where it struck.
+ * Each lands at its own time (`PlaybackState.torpedoes`): the Lusitania's
+ * What-if hits a few seconds apart (`hitTimeS`, when the sim opens them),
+ * the Carpathia's 8 s apart and her third at 10:50 AM, its wake running in
+ * for the 40 s before it; each where her side was then. The
  * torpedo itself (3 m down) is not shown, nor the U-boat. The bubbles
  * surface a moment behind the torpedo, so the white head is still running
  * in for a second or two after the hit; then the track spreads and fades
@@ -35,6 +38,30 @@ export const TORPEDO_RANGE_M = 700;
 export const BUBBLE_LAG_S = 1.6;
 /** Seconds the track stays on the sea. */
 const TRACK_LIFE_S = 150;
+/** Seconds before its hit that a track's far end first breaks the surface. */
+export const RUN_IN_S = TORPEDO_RANGE_M / TORPEDO_MPS + BUBBLE_LAG_S;
+
+/**
+ * Whether a track struck at `at` (shown s) is on the sea at `t`: from its
+ * far end first breaking the surface (`RUN_IN_S` before the hit) until it
+ * has faded (`TRACK_LIFE_S` after).
+ */
+export function trackShows(at: number, t: number): boolean {
+  return t >= at - RUN_IN_S && t - at <= TRACK_LIFE_S;
+}
+
+/**
+ * Where a torpedo meets her side across her (ship-frame y, + to port): a
+ * little outside her half-breadth, on its side (the Lusitania's 1.1 13.4 m
+ * to starboard).
+ */
+export function trackSideY(
+  spec: Pick<ShipSpec, "beam">,
+  side: "port" | "starboard"
+): number {
+  const half = Math.round((spec.beam / 2 + 0.05) * 10) / 10;
+  return side === "port" ? half : -half;
+}
 
 /** The torpedo's own hole (the first opening at the first moment). */
 /**
@@ -176,20 +203,24 @@ export default function Torpedo({ store }: TorpedoProps) {
 
   useFrame(() => {
     const s = store.getState();
-    const hole = s.hits.length > 0 ? null : torpedoHole(s.openings);
-    const n = s.hits.length > 0 ? s.hits.length : hole ? 1 : 0;
+    const torpedoes = s.torpedoes;
+    const hole = torpedoes.length > 0 ? null : torpedoHole(s.openings);
+    const n = torpedoes.length > 0 ? torpedoes.length : hole ? 1 : 0;
     const ready = s.track !== null && s.track.frames.length > 0;
+    const spec = getShip(s.ship);
     // Where they struck, on the sea at the moment of each hit (they stay
     // there as she steams on).
     for (let k = 0; k < Math.max(n, rig.tracks.length); k += 1) {
       const m = k < n ? rig.trackFor(k) : rig.tracks[k];
-      const at = hitTimeS(k, n);
-      if (!ready || k >= n || s.t - at > TRACK_LIFE_S) {
+      const hit = torpedoes.length > 0 ? torpedoes[k] : null;
+      const at = hit ? hit.t : 0;
+      if (!ready || k >= n || !trackShows(at, s.t)) {
         m.visible = false;
         continue;
       }
-      const x = s.hits.length > 0 ? s.hits[k] : hole!.x;
-      const pose = rig.poses.poseOf(s.track!, k, at, x);
+      const x = hit ? hit.x : hole!.x;
+      const y = trackSideY(spec, hit ? hit.side : "starboard");
+      const pose = rig.poses.poseOf(s.track!, k, at, x, y);
       m.position.set(pose.x, 0.06, pose.z);
       // The plane's +y (in its own frame) lies along the track, flat on the sea.
       m.rotation.set(-Math.PI / 2, 0, pose.rotZ);

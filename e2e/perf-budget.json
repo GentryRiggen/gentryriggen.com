@@ -93,14 +93,26 @@
   },
   "shipwreck-britannic-blast": {
     "calls": 90,
-    "triangles": 327671
+    "triangles": 328183
   },
   "shipwreck-britannic-boats": {
-    "calls": 86,
-    "triangles": 327479
+    "calls": 84,
+    "triangles": 327207
   },
   "shipwreck-britannic-grounded": {
     "calls": 67,
-    "triangles": 300951
+    "triangles": 301207
+  },
+  "shipwreck-carpathia-hit": {
+    "calls": 60,
+    "triangles": 163811
+  },
+  "shipwreck-carpathia-settled": {
+    "calls": 55,
+    "triangles": 163551
+  },
+  "shipwreck-carpathia-wreck": {
+    "calls": 35,
+    "triangles": 80697
   }
 }

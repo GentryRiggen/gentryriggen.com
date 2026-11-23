@@ -7,6 +7,8 @@ import type { ShipId } from "@/lib/shipwreck/ships/types";
  * constants live here and the scene reads them); the Lusitania's afternoon
  * is 2:10 PM on 7 May 1915, about 11 nautical miles south of the Old Head
  * of Kinsale, with the sun worked out for the place and the hour; the
+ * Carpathia's morning is 9:15 AM on 17 July 1918 at her wreck, west of
+ * Fastnet, on the same daylight pipeline in her own colours; the
  * Britannic's morning is 8:12 AM on 21 November 1916 in the Kea Channel.
  */
 
@@ -17,8 +19,80 @@ export interface SunAngles {
   azimuthDeg: number;
 }
 
+/** A linear RGB colour (as three.js `setRGB` in the linear space). */
+export type LinearRGB = readonly [number, number, number];
+
+/**
+ * A daylight scene's colours and haze where a ship's differ from the
+ * Lusitania's afternoon (`LUSITANIA_DAYLIGHT`, the 1.1 values the scene
+ * kept as constants). Visual only: the sim's water is calm.
+ */
+export interface DaylightLook {
+  /** The sky overhead, and the high sky the sea reflects (linear). */
+  zenith: LinearRGB;
+  /** The haze's exp² density over the sea (1/m). */
+  hazeDensity: number;
+  /** The sea's body, its sunlit scatter and the light seen under it (linear). */
+  seaDeep: LinearRGB;
+  seaScatter: LinearRGB;
+  seaUnder: LinearRGB;
+  /** Under water: the colour toward the floor (sRGB hex). */
+  deepWater: string;
+  /** Under water: the exp² density just under the surface and at the floor. */
+  underDensity: readonly [number, number];
+  /** The sun's colour under water (sRGB hex). */
+  sunUnder: string;
+  /** The shafts of sunlight under water (linear, additive). */
+  shafts: LinearRGB;
+  /** The floor's tint over its sand texture (sRGB hex). */
+  floor: string;
+  /** The sunlight's ripples on the floor (emissive strength at the top). */
+  caustics: number;
+  /** The sun (a directional light) above the water: colour and strength. */
+  sunColor: number;
+  sunIntensity: number;
+  /**
+   * The sky light (the "skylight" hemisphere) above the water: sky and
+   * ground colours and strength. A low morning sun leaves the side away
+   * from it in shade; a stronger fill, with light off the sea from below,
+   * keeps her shaded side's paint reading (the Britannic branch's
+   * `DayLook` uses the same names).
+   */
+  skyColor: number;
+  skyGround: number;
+  skyIntensity: number;
+  /**
+   * The sea's ripple strength (the shader's slope scale; the Lusitania's
+   * calm afternoon 0.34). Missing: 0.34. A look only: the sea stays flat.
+   */
+  ripple?: number;
+}
+
+/** The Lusitania's afternoon (1.1's constants, written out once). */
+export const LUSITANIA_DAYLIGHT: DaylightLook = {
+  zenith: [0.045, 0.16, 0.55],
+  hazeDensity: 0.000027,
+  seaDeep: [0.008, 0.036, 0.05],
+  seaScatter: [0.012, 0.05, 0.05],
+  seaUnder: [0.22, 0.5, 0.44],
+  deepWater: "#0c3a33",
+  underDensity: [0.0085, 0.0125],
+  sunUnder: "#9fe0cf",
+  shafts: [0.55, 0.85, 0.7],
+  floor: "#c8bc9e",
+  caustics: 0.12,
+  sunColor: 0xfff0d8,
+  sunIntensity: 4,
+  skyColor: 0xa9c8ee,
+  skyGround: 0x2f4a4c,
+  skyIntensity: 0.75,
+};
+
 export interface SceneSettings {
   /**
+   * "afternoon" is the daylight pipeline (the Lusitania's afternoon, and
+   * the Carpathia's morning: the name is 1.1's, kept so the other ships'
+   * settings do not move): the sun from `sun`, the day sky, the sunlit sea.
    * "storm-dusk" (the Fitzgerald): a November storm from grey late
    * afternoon to black night (`storm.ts`): no sun disc, the light from
    * `stormDaylight`, the sea from her track's storm. "morning" (the
@@ -39,6 +113,8 @@ export interface SceneSettings {
   storm?: true;
   /** Snow squalls drifting on the wind (`snowAt`). */
   snow?: true;
+  /** Daylight colours of her own (missing: `LUSITANIA_DAYLIGHT`). */
+  daylight?: DaylightLook;
 }
 
 // --- The night of 14–15 April 1912 (1.0's constants).
@@ -78,6 +154,31 @@ export const LUSITANIA_HIT = {
    * the Old Head (Mersey inquiry), so the coast lies on her port beam.
    */
   headingDeg: 93,
+} as const;
+
+// --- The morning of 17 July 1918.
+
+/**
+ * Where and when the first torpedo struck the Carpathia: her wreck's
+ * surveyed position, 49°30.03′ N 10°43.04′ W (cunardshipwrecks.com dive
+ * data; spec R6: the Snowdrop's, uboat.net's and GOL's positions are in
+ * the sim README), at 9:15 AM read as British Summer Time (GMT+1, in force
+ * in 1918): 08:15 GMT. The sun is then about 30° up, due east. (Read as
+ * GMT, 9:15 AM would put it about 39.6° up at 104°.) She sank about 500 m
+ * east of where she was struck, close enough for one place.
+ */
+export const CARPATHIA_HIT = {
+  latDeg: 49 + 30.03 / 60,
+  lonDeg: -(10 + 43.04 / 60),
+  utcMs: Date.UTC(1918, 6, 17, 8, 15),
+  /**
+   * Due west: bound for Boston from Liverpool, zig-zagging with what was
+   * left of convoy OL 24 (no source gives her course; ours). The great
+   * circle to Boston leaves the place at about 284°, the rhumb line at
+   * about 260°; 270° lies between, so her port side, where the torpedoes
+   * struck, faces south and the morning sun is nearly astern.
+   */
+  headingDeg: 270,
 } as const;
 
 /** Degrees and radians. */
@@ -289,6 +390,11 @@ const HIT_SUN = sunPosition(
   LUSITANIA_HIT.lonDeg,
   LUSITANIA_HIT.utcMs
 );
+const CARPATHIA_SUN = sunPosition(
+  CARPATHIA_HIT.latDeg,
+  CARPATHIA_HIT.lonDeg,
+  CARPATHIA_HIT.utcMs
+);
 
 const MINE_SUN = sunPosition(
   BRITANNIC_MINE.latDeg,
@@ -331,6 +437,51 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
     headingDeg: FITZGERALD_HEADING_DEG,
     storm: true,
     snow: true,
+  },
+  // 9:15 AM on 17 July 1918 in the open Atlantic west of Fastnet (spec
+  // R6, R7): no land, the sun about 30° up in the east, a cloudy-bright
+  // morning (the one photograph of her sinking shows broken grey cloud
+  // and a moderate sea): a paler, greyer sky and a thicker haze than the
+  // Lusitania's afternoon, a deep blue ocean, and under it blue water
+  // darkening to her 150 m floor of grey-brown sand and mud (the survey
+  // gives no colour: ours). Visual only: the sim's water is calm.
+  carpathia: {
+    timeOfDay: "afternoon",
+    sun: {
+      elevationDeg: round2(CARPATHIA_SUN.elevationDeg),
+      azimuthDeg: round2(CARPATHIA_SUN.azimuthDeg),
+    },
+    fog: "#b3bcc4",
+    underwaterFog: "#1e5a82",
+    coast: false,
+    iceberg: false,
+    headingDeg: CARPATHIA_HIT.headingDeg,
+    daylight: {
+      zenith: [0.11, 0.2, 0.42],
+      hazeDensity: 0.000055,
+      seaDeep: [0.004, 0.02, 0.06],
+      seaScatter: [0.005, 0.026, 0.07],
+      seaUnder: [0.12, 0.3, 0.52],
+      deepWater: "#04121f",
+      underDensity: [0.0062, 0.0082],
+      sunUnder: "#a4cbe6",
+      shafts: [0.45, 0.65, 0.9],
+      floor: "#8e877b",
+      // 150 m down the sun's ripples are all but gone.
+      caustics: 0.035,
+      // A 30° sun through broken cloud, nearly astern: a little softer
+      // than the Lusitania's, and a brighter grey-blue sky fill with the
+      // sea's light from below, so her dazzle reads black, white and grey
+      // on her shaded port side, the sunlit side not washed out.
+      sunColor: 0xfff1dc,
+      sunIntensity: 3.6,
+      skyColor: 0xc8d4e2,
+      skyGround: 0x7c8d9a,
+      skyIntensity: 1.5,
+      // A fresh breeze over a moderate sea (R7): about twice the
+      // Lusitania's ripple, breaking up the reflections.
+      ripple: 0.75,
+    },
   },
   // 8:12 AM in the Kea Channel, 21 November 1916: the sun 10° up in the
   // south-east (125°, worked out above), a light haze, clear blue water.

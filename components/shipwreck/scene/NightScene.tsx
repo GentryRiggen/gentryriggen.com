@@ -163,7 +163,12 @@ export default function NightScene({
           settings={settings}
         />
         {day ? (
-          <DaySky sunDir={sunDir} horizon={haze} look={dayLookOf(settings)} />
+          <DaySky
+            sunDir={sunDir}
+            horizon={haze}
+            look={dayLookOf(settings)}
+            zenith={settings.daylight?.zenith}
+          />
         ) : storm ? (
           <StormSky runtime={runtime} fog={settings.fog} dpr={dpr} />
         ) : (

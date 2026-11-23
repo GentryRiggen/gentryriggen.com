@@ -1,13 +1,15 @@
 import {
   Color,
   DoubleSide,
+  Vector3,
   LineBasicMaterial,
   MeshStandardMaterial,
   Vector2,
   type Material,
+  type Texture,
 } from "three";
 import { COLORS } from "./buildShip";
-import type { ShipTextures } from "./textures";
+import type { DazzleFrame, ShipTextures } from "./textures";
 import type { HullBand } from "./titanicRecipe";
 
 /**
@@ -51,7 +53,15 @@ export interface ShipMaterials {
   decal: MeshStandardMaterial;
   pane: MeshStandardMaterial;
   lines: LineBasicMaterial;
+  /** Dazzle-painted walls, when the hull paint has dazzle. */
+  dazzle?: MeshStandardMaterial;
   light: LightUniforms;
+  /**
+   * Repaints the hull (a livery: its colours, lines and relief, and the
+   * dazzle on or off when the materials were made with one). Uniforms
+   * only: no shader is recompiled.
+   */
+  setHullPaint(paint: HullPaint): void;
   dispose(): void;
 }
 
@@ -63,7 +73,7 @@ function linear(hex: number): Color {
  * Hull paint by height, so the lines are crisp at any mesh density: red
  * antifouling below the load waterline, a white boot-top, black topsides,
  * the gilt line under the sheer. Inside faces (seen through the break) are
- * dark rust.
+ * dark rust. With `dazzle`, the topsides are the dazzle texture instead.
  */
 export interface HullPaint {
   /** The paint line (top of the red antifouling) above the keel, m. */
@@ -79,11 +89,55 @@ export interface HullPaint {
   topsides?: number;
   bottom?: number;
   relief?: number;
+  /** The boot-top's colour (default white). */
+  boot?: number;
+  /**
+   * Dazzle over the topsides (the Carpathia's): `texture` from
+   * `acquireDazzleTexture`, mapped by `frame` (port half over starboard).
+   */
+  dazzle?: { texture: Texture; frame: DazzleFrame };
+  /**
+   * With `dazzle`: whether it shows (default true). A ship with a dazzle
+   * livery and a plain one is built with the dazzle and switches it.
+   */
+  dazzleOn?: boolean;
   /**
    * A hospital ship's band and crosses (`HullBand`), with the sheer's
    * height amidships (the band follows the sheer from there).
    */
   band?: HullBand & { sheer0: number };
+}
+
+/**
+ * The GLSL that reads the dazzle at a point in the ship (three.js axes:
+ * x forward, y up, z to starboard): the port half of the texture for the
+ * port side, the starboard half for the other.
+ */
+const DAZZLE_GLSL = `
+uniform sampler2D uDazzle;
+uniform vec3 uDazzleFrame;
+uniform float uDazzleOn;
+vec3 dazzleAt(vec3 p) {
+  float u = (p.x - uDazzleFrame.x) / uDazzleFrame.y;
+  float v = clamp(p.y / uDazzleFrame.z, 0.01, 0.99) * 0.5;
+  // Port (ship y > 0) is three.js z < 0: the texture's upper half.
+  v += p.z < 0.0 ? 0.5 : 0.0;
+  // The texture holds sRGB bytes (raw): decode them to linear here.
+  vec3 c = texture2D(uDazzle, vec2(u, v)).rgb;
+  return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c));
+}`;
+
+function dazzleUniforms(
+  d: NonNullable<HullPaint["dazzle"]>,
+  on: { value: number }
+) {
+  return {
+    uDazzle: { value: d.texture },
+    uDazzleFrame: {
+      value: new Vector3(d.frame.x0, d.frame.length, d.frame.height),
+    },
+    uDazzleOn: on,
+  };
 }
 
 /** Room for the band's crosses in the shader. */
@@ -96,11 +150,27 @@ export const TITANIC_HULL_PAINT: HullPaint = {
   sheerLine: 0xc9a03a,
 };
 
+/** The hull shader's paint uniforms' values for `paint`. */
+function hullValues(paint: HullPaint) {
+  const topsides = paint.topsides ?? 0x121315;
+  return {
+    uLoadWL: paint.loadWaterline,
+    uBootTop: paint.bootTop,
+    uRed: linear(paint.bottom ?? 0x6a2419),
+    // No boot-top: its line is the topsides' colour, not a white hairline.
+    uBoot: linear(paint.bootTop > 0 ? (paint.boot ?? 0xd8d4c8) : topsides),
+    uBlack: linear(topsides),
+    // No sheer line: paint it the topsides' colour.
+    uGold: linear(paint.sheerLine ?? topsides),
+  };
+}
+
 function hullMaterial(
   tex: ShipTextures,
   rivets: boolean,
-  paint: HullPaint
-): MeshStandardMaterial {
+  paint: HullPaint,
+  dazzleOn: { value: number }
+): { m: MeshStandardMaterial; set(paint: HullPaint): void } {
   const m = new MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.62,
@@ -116,17 +186,17 @@ function hullMaterial(
   // The weathering spans the whole hull (uv1); the plates tile (uv).
   tex.weathering.channel = 1;
   tex.plateNormal.channel = 0;
-  // No sheer line: paint it the topsides' colour.
-  const topsides = paint.topsides ?? 0x121315;
+  const v = hullValues(paint);
   const uniforms = {
-    uLoadWL: { value: paint.loadWaterline },
-    uBootTop: { value: paint.bootTop },
-    uRed: { value: linear(paint.bottom ?? 0x6a2419) },
-    // No boot-top: its line is the topsides' colour, not a white hairline.
-    uBoot: { value: linear(paint.bootTop > 0 ? 0xd8d4c8 : topsides) },
-    uBlack: { value: linear(topsides) },
-    uGold: { value: linear(paint.sheerLine ?? topsides) },
+    uLoadWL: { value: v.uLoadWL },
+    uBootTop: { value: v.uBootTop },
+    uRed: { value: v.uRed },
+    uBoot: { value: v.uBoot },
+    uBlack: { value: v.uBlack },
+    uGold: { value: v.uGold },
+    ...(paint.dazzle ? dazzleUniforms(paint.dazzle, dazzleOn) : {}),
   };
+  const dazzled = paint.dazzle !== undefined;
   const band = paint.band;
   const bandUniforms = band && {
     uGreen: { value: linear(band.color) },
@@ -208,7 +278,7 @@ uniform float uCrossX[${MAX_CROSSES}];`
         }
 varying vec3 vShip;
 varying float vSheer;
-float hullGlossy = 0.0;`
+float hullGlossy = 0.0;${dazzled ? DAZZLE_GLSL : ""}`
       )
       .replace(
         "#include <color_fragment>",
@@ -216,7 +286,7 @@ float hullGlossy = 0.0;`
 {
   float z = vShip.y;
   float aa = fwidth(z) * 0.75 + 1e-4;
-  vec3 paint = uBlack;
+  vec3 paint = ${dazzled ? "mix(uBlack, dazzleAt(vShip), uDazzleOn)" : "uBlack"};
   hullGlossy = 1.0;
   float red = 1.0 - smoothstep(uLoadWL - aa, uLoadWL + aa, z);
   float boot = smoothstep(uLoadWL - aa, uLoadWL + aa, z) *
@@ -238,9 +308,61 @@ roughnessFactor = mix(0.85, 0.48, hullGlossy);`
       );
   };
   m.customProgramCacheKey = () =>
-    `shipwreck-hull-${rivets ? 1 : 0}${band ? "-band" : ""}`;
-  // For `setHullPaint`: the shader reads these objects every frame.
+    `shipwreck-hull-${rivets ? 1 : 0}${dazzled ? "-dazzle" : ""}${band ? "-band" : ""}`;
+  // The shader reads these objects every frame (tests read them too).
   m.userData.hullUniforms = { ...uniforms, ...bandUniforms };
+  return {
+    m,
+    set(next) {
+      const n = hullValues(next);
+      uniforms.uLoadWL.value = n.uLoadWL;
+      uniforms.uBootTop.value = n.uBootTop;
+      uniforms.uRed.value.copy(n.uRed);
+      uniforms.uBoot.value.copy(n.uBoot);
+      uniforms.uBlack.value.copy(n.uBlack);
+      uniforms.uGold.value.copy(n.uGold);
+      const r = 0.55 * (next.relief ?? 1);
+      m.normalScale.set(r, r);
+      dazzleOn.value = next.dazzle && next.dazzleOn !== false ? 1 : 0;
+      if (bandUniforms) setBand(bandUniforms, next.band);
+    },
+  };
+}
+
+/**
+ * Painted steel in dazzle (the houses' walls): the vertex colour (white,
+ * or a shade inside a promenade) times the dazzle at the point, so the
+ * shapes run on from the hull across the houses unbroken.
+ */
+function dazzleMaterial(
+  d: NonNullable<HullPaint["dazzle"]>,
+  on: { value: number }
+): MeshStandardMaterial {
+  const m = new MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.72,
+    metalness: 0.0,
+  });
+  const uniforms = dazzleUniforms(d, on);
+  m.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, uniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nvarying vec3 vShip;")
+      .replace(
+        "#include <begin_vertex>",
+        "#include <begin_vertex>\nvShip = position;"
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        `#include <common>\nvarying vec3 vShip;${DAZZLE_GLSL}`
+      )
+      .replace(
+        "#include <color_fragment>",
+        "#include <color_fragment>\ndiffuseColor.rgb *= mix(vec3(1.0), dazzleAt(vShip), uDazzleOn);"
+      );
+  };
+  m.customProgramCacheKey = () => "shipwreck-dazzle";
   return m;
 }
 
@@ -315,11 +437,17 @@ export function createShipMaterials(
   }
 ): ShipMaterials {
   const light = createLightUniforms();
-  const hull = hullMaterial(
+  // The dazzle's switch, shared by the hull and the dazzle walls.
+  const dazzleOn = {
+    value: options.hull?.dazzle && options.hull.dazzleOn !== false ? 1 : 0,
+  };
+  const hullPaint = hullMaterial(
     tex,
     options.rivets,
-    options.hull ?? TITANIC_HULL_PAINT
+    options.hull ?? TITANIC_HULL_PAINT,
+    dazzleOn
   );
+  const hull = hullPaint.m;
   const paint = new MeshStandardMaterial({
     vertexColors: true,
     roughness: 0.72,
@@ -351,6 +479,10 @@ export function createShipMaterials(
   const pane = paneMaterial(light);
   const lines = new LineBasicMaterial({ vertexColors: true });
   const all: Material[] = [hull, paint, deck, bronze, decal, pane, lines];
+  const dazzle = options.hull?.dazzle
+    ? dazzleMaterial(options.hull.dazzle, dazzleOn)
+    : undefined;
+  if (dazzle) all.push(dazzle);
   return {
     hull,
     paint,
@@ -359,7 +491,9 @@ export function createShipMaterials(
     decal,
     pane,
     lines,
+    ...(dazzle ? { dazzle } : {}),
     light,
+    setHullPaint: hullPaint.set,
     dispose() {
       for (const m of all) m.dispose();
     },
@@ -367,31 +501,19 @@ export function createShipMaterials(
 }
 
 /**
- * Repaints a hull material made here, in place: its colours, paint line
- * and band change with no new shader (the same rules as `hullMaterial`).
- * A band can be taken off any hull but put on only one built with a band
- * (a ship with a hospital livery builds with it: `britannicLivery.ts`).
+ * A hospital ship's band and crosses onto a hull built with one (`band`
+ * missing: taken off, as a liner). The same rules as `hullMaterial`.
  */
-export function setHullPaint(m: MeshStandardMaterial, paint: HullPaint): void {
-  type Uniform<T> = { value: T };
-  const u = m.userData.hullUniforms as
-    | (Record<
-        "uRed" | "uBoot" | "uBlack" | "uGold" | "uGreen" | "uCrossRed",
-        Uniform<Color>
-      > &
-        Record<"uLoadWL" | "uBootTop", Uniform<number>> &
-        Record<"uBand" | "uCross" | "uCrossX", Uniform<number[]>>)
-    | undefined;
-  if (!u) return;
-  const topsides = paint.topsides ?? 0x121315;
-  u.uLoadWL.value = paint.loadWaterline;
-  u.uBootTop.value = paint.bootTop;
-  u.uRed.value.setHex(paint.bottom ?? 0x6a2419);
-  u.uBoot.value.setHex(paint.bootTop > 0 ? 0xd8d4c8 : topsides);
-  u.uBlack.value.setHex(topsides);
-  u.uGold.value.setHex(paint.sheerLine ?? topsides);
-  if (!u.uBand) return;
-  const band = paint.band;
+function setBand(
+  u: {
+    uGreen: { value: Color };
+    uCrossRed: { value: Color };
+    uBand: { value: number[] };
+    uCross: { value: number[] };
+    uCrossX: { value: number[] };
+  },
+  band: HullPaint["band"]
+): void {
   if (!band) {
     // No band: none of it is ever nearer than a negative half height, and
     // no crosses.
@@ -399,8 +521,8 @@ export function setHullPaint(m: MeshStandardMaterial, paint: HullPaint): void {
     u.uCross.value = [0, 0, 0, 0];
     return;
   }
-  u.uGreen.value.setHex(band.color);
-  u.uCrossRed.value.setHex(band.crossColor);
+  u.uGreen.value.copy(linear(band.color));
+  u.uCrossRed.value.copy(linear(band.crossColor));
   u.uBand.value = [band.z, band.sheer0, band.follow, band.height / 2];
   u.uCross.value = [
     band.crossSize / 2,

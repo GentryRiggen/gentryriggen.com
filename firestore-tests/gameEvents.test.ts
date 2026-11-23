@@ -625,7 +625,13 @@ describe("shipwreck specifics", () => {
   });
 
   it("takes every ship on a start and an end, and an old client's event without one", async () => {
-    for (const ship of ["titanic", "lusitania", "fitzgerald", "britannic"]) {
+    for (const ship of [
+      "titanic",
+      "lusitania",
+      "fitzgerald",
+      "carpathia",
+      "britannic",
+    ]) {
       await assertSucceeds(
         create(
           anon(),
@@ -651,6 +657,7 @@ describe("shipwreck specifics", () => {
       "Britannic",
       "britannic ",
       "Titanic",
+      "Carpathia",
       "titanic ",
       "",
       1,

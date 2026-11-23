@@ -8,7 +8,7 @@ import { helpFor } from "@/lib/shipwreck/help";
 import { PLACES_BY_SHIP, type PlaceId } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
-import { clockText, sinceText } from "@/lib/shipwreck/story";
+import { clockText, firstHitS, sinceText } from "@/lib/shipwreck/story";
 import { walkMapFor } from "@/lib/shipwreck/walk";
 import {
   CAMERA_IDS,
@@ -19,6 +19,7 @@ import {
 import Captions from "./Captions";
 import HelpCard from "./HelpCard";
 import Icon, { type IconName } from "./Icon";
+import LiveryButton from "./LiveryButton";
 import Timeline from "./Timeline";
 import WalkButton, { beginWalk } from "./WalkButton";
 import { FOCUS, PANEL, ROUND, ROUND_ON } from "./styles";
@@ -57,6 +58,8 @@ interface HudProps {
   sound?: { isOn: boolean; onToggle: () => void };
   /** Hidden under the end card (kept mounted so captions and panels stay). */
   hidden?: boolean;
+  /** The paint button chose a livery (the game remembers it). */
+  onLivery?: (id: string) => void;
 }
 
 /** The night's controls, all on the edges of the screen. */
@@ -69,15 +72,20 @@ export default function Hud({
   runId,
   sound,
   hidden = false,
+  onLivery,
 }: HudProps) {
   const ship = getShip(useStore(store, (s) => s.ship));
   const realMinute = useStore(store, (s) => Math.floor(s.realT / 60));
   const hits = useStore(store, (s) => s.hits.length);
+  // A first torpedo that comes later (the Carpathia's U-boat alone): the
+  // clock's line counts down to it.
+  const firstHit = useStore(store, (s) => firstHitS(s.openings));
   const playing = useStore(store, (s) => s.playing);
   const speed = useStore(store, (s) => s.speed);
   const camera = useStore(store, (s) => s.camera);
   const xray = useStore(store, (s) => s.xray);
   const place = useStore(store, (s) => s.place);
+  const livery = useStore(store, (s) => s.livery);
   // Walking: only play, speeds, the timeline (and sound) stay.
   const walking = camera === "walk";
   // "Walk the deck" is in the picker only for a ship you can walk on, and
@@ -170,7 +178,7 @@ export default function Hud({
                 {clockText(realMinute * 60, ship.clockStartS)}
               </span>
               <span className="text-sm text-slate-300 sm:text-base">
-                {sinceText(realMinute * 60, ship, hits)}
+                {sinceText(realMinute * 60, ship, hits, firstHit)}
               </span>
             </div>
             {chips && <div className="mt-2">{chips}</div>}
@@ -266,6 +274,14 @@ export default function Hud({
               )}
               {!walking && (
                 <>
+                  <LiveryButton
+                    spec={ship}
+                    livery={livery}
+                    onChange={(id) => {
+                      store.getState().setLivery(id);
+                      onLivery?.(id);
+                    }}
+                  />
                   <button
                     type="button"
                     aria-label={

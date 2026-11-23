@@ -2,7 +2,7 @@ import { LUSITANIA_BOATS, lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { TEAR_AMPLITUDE, sideOf } from "../breakCut";
 import { buildShipPart, type ShipPartData } from "../buildShip";
-import { PEACETIME_PAINT, lusitaniaRecipe } from "../lusitaniaRecipe";
+import { lusitaniaRecipe } from "../lusitaniaRecipe";
 import { recipeFor } from "../shipModel";
 import { swungOutY, type V3 } from "../titanicRecipe";
 
@@ -25,8 +25,9 @@ describe("Lusitania recipe", () => {
     expect(recipeFor(titanic).paint).toBeUndefined();
   });
 
-  it("is painted as on 7 May 1915 unless the switch says peacetime", () => {
-    expect(PEACETIME_PAINT).toBe(false);
+  it("is painted as on 7 May 1915 in her default livery", () => {
+    expect(lusitania.liveries?.find((l) => l.default)?.id).toBe("war-1915");
+    expect(recipeFor(lusitania)).toBe(recipeFor(lusitania, "war-1915"));
     const p = r.paint!;
     // Funnels painted out dark, tops and bands painted over (each channel
     // within 5%), the gilt band round the superstructure.

@@ -1,6 +1,6 @@
 import { PLACES_BY_SHIP } from "./places";
 import { titanic } from "./ships/titanic";
-import type { ShipSpec } from "./ships/types";
+import { resolveLivery, type ShipSpec } from "./ships/types";
 import type { SimFrame } from "./sim/track";
 import { walkMapFor } from "./walk";
 
@@ -11,6 +11,45 @@ function walkLines(ship: ShipSpec): string[] {
         "The walking button puts you on her deck: the stick walks, drag to look. If she sinks under you, you float; the eye button looks under the water, and the bird button goes back to flying.",
       ]
     : [];
+}
+
+/** The controls card's paint line (a ship with more than one livery). */
+function liveryLines(ship: ShipSpec): string[] {
+  return resolveLivery(ship, null) !== null
+    ? [
+        "The paint brush changes her paint, even while she sinks: her colours on the day, or her colours from another year.",
+      ]
+    : [];
+}
+
+/** What each livery was, in a young player's words. */
+const LIVERY_WORDS: Readonly<Record<string, string>> = {
+  "war-1915":
+    "In 1915 there was a war. She sailed with her funnels painted dark, so she was harder to see. Her name stayed on her bow in gold letters.",
+  "cunard-1907":
+    "When she was new in 1907 she wore Cunard's colours: red funnels with black tops and black bands, a black hull and white decks.",
+  "dazzle-1918":
+    "In the war, ships were painted in wild stripes called dazzle. The stripes made it hard to tell which way a ship was going.",
+  "cunard-1912":
+    "In 1912, when she rescued the Titanic's survivors, she wore Cunard's colours: a red funnel with a black top, a black hull and white decks.",
+  hospital:
+    "In 1916 she was a hospital ship, painted white with a green stripe and big red crosses, so every ship could see what she was.",
+  liner:
+    "She was built to carry passengers in White Star's colours, like her sisters: a black hull, white decks and buff funnels with black tops. She never sailed in them.",
+};
+
+/** What the paint brush says when tapped: the livery she is in now. */
+export function liveryHelp(ship: ShipSpec, id: string | null): Help | null {
+  const now = resolveLivery(ship, id);
+  const livery = ship.liveries?.find((l) => l.id === now);
+  if (!livery) return null;
+  return {
+    title: livery.label,
+    lines: [
+      LIVERY_WORDS[livery.id] ?? `${ship.name} as she was in ${livery.year}.`,
+      "Tap the paint brush again to change her paint.",
+    ],
+  };
 }
 
 /** What a help card says. Short words: the players are young. */
@@ -63,12 +102,44 @@ function placeList(ship: ShipSpec): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
+/**
+ * The lines that differ between the torpedo ships: the Lusitania's (1.1)
+ * by default, the Carpathia's own.
+ */
+function torpedoLines(ship: ShipSpec): {
+  lean: string;
+  power: string;
+  speed: string;
+  extra: string[];
+} {
+  if (ship.id === "carpathia")
+    return {
+      lean: "The first torpedo let the sea into a coal bunker on her port side, so she leaned a little to port. As the water spread inside her, she came nearly upright again.",
+      power:
+        "On the real morning the second torpedo flooded her engine room: her engines stopped, and the lights went out at once.",
+      speed:
+        "Play and pause, and choose how fast the morning goes: ×1 is real time. She stays afloat for more than an hour and a half, so try ×30.",
+      extra: [
+        "The torpedo on the timeline jumps to 10:50 AM, when the U-boat came back.",
+      ],
+    };
+  return {
+    lean: "Long coal bunkers ran down both her sides. When the sea filled the ones on the starboard side, she leaned over a long way, fast.",
+    power:
+      "On the real afternoon the steam failed a few minutes after the torpedo, and the lights went out.",
+    speed:
+      "Play and pause, and choose how fast the afternoon goes: ×1 is real time.",
+    extra: [],
+  };
+}
+
 /** The torpedo ship's cards (the Titanic's are below, as in 1.0). */
 function torpedoHelp(
   topic: HelpTopic,
   frame: SimFrame | null,
   ship: ShipSpec
 ): Help {
+  const own = torpedoLines(ship);
   switch (topic) {
     case "water":
       return {
@@ -94,7 +165,7 @@ function torpedoHelp(
         now: frame ? leanText(frame) : undefined,
         lines: [
           "How far the ship leans to one side. Port is the left side looking forward, starboard the right.",
-          "Long coal bunkers ran down both her sides. When the sea filled the ones on the starboard side, she leaned over a long way, fast.",
+          own.lean,
         ],
       };
     case "power":
@@ -103,7 +174,7 @@ function torpedoHelp(
         now: frame ? powerText(frame) : undefined,
         lines: [
           "The boilers made the steam that turned the engines and the dynamos that made the electricity.",
-          "On the real afternoon the steam failed a few minutes after the torpedo, and the lights went out.",
+          own.power,
         ],
       };
     case "controls":
@@ -112,11 +183,13 @@ function torpedoHelp(
         title: "How to watch",
         lines: [
           "Drag to look around the ship. Pinch to zoom in and out. Two fingers move the view. Double-tap the ship to fly close.",
-          "Play and pause, and choose how fast the afternoon goes: ×1 is real time.",
+          own.speed,
           "Drag the timeline, or tap an icon on it, to jump to that moment.",
+          ...own.extra,
           `X-ray shows the water inside. The pins fly you to ${placeList(ship)}.`,
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
           ...walkLines(ship),
+          ...liveryLines(ship),
         ],
       };
   }
@@ -176,6 +249,7 @@ function mineHelp(
           `X-ray shows the water inside. The pins fly you to ${placeList(ship)}.`,
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
           ...walkLines(ship),
+          ...liveryLines(ship),
         ],
       };
   }
@@ -234,6 +308,7 @@ function stormHelp(
           "Drag the timeline, or tap an icon on it, to jump to that moment.",
           `X-ray shows the water inside, and her cargo of iron ore pellets. The pins fly you to ${placeList(ship)}.`,
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
+          ...liveryLines(ship),
         ],
       };
   }
@@ -296,6 +371,7 @@ export function helpFor(
           "X-ray shows the water inside. The pins fly you to the Bridge, the Grand Staircase, Boiler Room 6 and the Engine Room.",
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
           ...walkLines(ship),
+          ...liveryLines(ship),
         ],
       };
   }

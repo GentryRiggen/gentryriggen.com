@@ -1,8 +1,11 @@
 import {
   BRITANNIC_PLACE_IDS,
+  CARPATHIA_PLACE_IDS,
   FITZGERALD_PLACE_IDS,
 } from "@/lib/shipwreck/places";
 import { SHIP_IDS, SHIPS } from "@/lib/shipwreck/ships";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
+import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { buildHull } from "@/lib/shipwreck/sim/geometry";
@@ -15,6 +18,7 @@ import {
   XRAY_SLOTS,
   cargoGeometry,
   doubleBottomLines,
+  openingGeometry,
   placeGeometry,
 } from "../xrayGeometry";
 
@@ -96,6 +100,38 @@ describe("the Fitzgerald's X-ray", () => {
       const { solid, glow } = placeGeometry("fitzgerald", id);
       if (id === "hatch-crane") expect(solid).toBeNull();
       else expect(solid ?? glow).not.toBeNull();
+    }
+  });
+});
+
+describe("the Carpathia's X-ray", () => {
+  const hull = buildHull(carpathia);
+
+  it("shows her torpedo holes on her port side, each from when it opens", () => {
+    const g = openingGeometry(hull, carpathia.realNight);
+    const pos = g.getAttribute("position");
+    const openT = g.getAttribute("aOpenT");
+    expect(pos.count).toBe(carpathia.realNight.length * 6);
+    // three.z = -ship y: port (y > 0) is three.z < 0.
+    for (let i = 0; i < pos.count; i += 1) expect(pos.getZ(i)).toBeLessThan(0);
+    const times = new Set<number>();
+    for (let i = 0; i < openT.count; i += 1) times.add(openT.getX(i));
+    expect([...times].sort((a, b) => a - b)).toEqual([0, 8, 5700]);
+    // The Lusitania's stay on her starboard side, each from its own time.
+    const l = openingGeometry(buildHull(lusitania), lusitania.realNight);
+    for (let i = 0; i < l.getAttribute("position").count; i += 1) {
+      expect(l.getAttribute("position").getZ(i)).toBeGreaterThan(0);
+      expect(l.getAttribute("aOpenT").getX(i)).toBe(
+        lusitania.realNight[Math.floor(i / 6)].t ?? 0
+      );
+    }
+  });
+
+  it("has a blockout at each of her places", () => {
+    for (const id of CARPATHIA_PLACE_IDS) {
+      const { solid, glow } = placeGeometry("carpathia", id);
+      expect(solid).not.toBeNull();
+      expect(solid ?? glow).not.toBeNull();
     }
   });
 });

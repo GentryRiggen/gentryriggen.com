@@ -304,13 +304,13 @@ describe("Britannic recipe", () => {
   it("hangs her anchors from the hawse pipes, below the band", () => {
     expect(r.anchors).toHaveLength(2);
     for (const a of r.anchors) {
-      expect(a.hawse).toBe(true);
+      expect(a.stockless).toEqual({ size: 4.0 });
       expect(a.pocket).toBeUndefined();
       const [x, , z] = a.p;
       const zc = band.z + band.follow * (sheer(x) - sheer(0));
-      // The pipe's mouth (1.4 m over p) above the band, the crown under it.
-      expect(z + 1.4).toBeGreaterThan(zc + band.height / 2);
-      expect(z - 2.6).toBeLessThan(zc - band.height / 2);
+      // The pipe's mouth (p) above the band, the crown under it.
+      expect(z).toBeGreaterThan(zc + band.height / 2);
+      expect(z - a.stockless!.size).toBeLessThan(zc - band.height / 2);
       expect(x).toBeGreaterThan(r.masts[0].x + 20);
     }
   });
@@ -470,7 +470,7 @@ describe("Britannic liveries (R23)", () => {
     expect(recipeFor(britannic)).toBe(recipeFor(britannic, "hospital"));
     expect(recipeFor(britannic, "liner").paint?.band).toBeUndefined();
     expect(recipeFor(britannic, "liner")).toBe(recipeFor(britannic, "liner"));
-    for (const s of [titanic, lusitania, fitzgerald])
+    for (const s of [titanic, fitzgerald])
       expect(recipeFor(s, "liner")).toBe(recipeFor(s));
   });
 });

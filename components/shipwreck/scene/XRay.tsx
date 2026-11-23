@@ -174,7 +174,9 @@ const surfaceFragment = /* glsl */ `
 
 const gashFragment = /* glsl */ `
   varying vec2 vUv;
+  varying float vOpenT;
   uniform float uTime;
+  uniform float uT;
   float hash(float n) { return fract(sin(n) * 43758.5453); }
   float noise(float x) {
     float i = floor(x);
@@ -182,6 +184,8 @@ const gashFragment = /* glsl */ `
     return mix(hash(i), hash(i + 1.0), f * f * (3.0 - 2.0 * f));
   }
   void main() {
+    // Not open yet (a later torpedo's hole): nothing.
+    if (uT < vOpenT) discard;
     // A jagged slit along the plate seam.
     float centre = 0.5 + (noise(vUv.x * 9.0) - 0.5) * 0.55;
     float w = 0.10 + 0.08 * noise(vUv.x * 23.0 + 4.0);
@@ -192,9 +196,12 @@ const gashFragment = /* glsl */ `
   }
 `;
 const gashVertex = /* glsl */ `
+  attribute float aOpenT;
   varying vec2 vUv;
+  varying float vOpenT;
   void main() {
     vUv = uv;
+    vOpenT = aOpenT;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `;
@@ -256,7 +263,7 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
       vertexShader: gashVertex,
       fragmentShader: gashFragment,
       side: DoubleSide,
-      uniforms: { uTime: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uT: { value: 0 } },
     });
     const solid = new MeshStandardMaterial({
       vertexColors: true,
@@ -394,6 +401,8 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
     const s = store.getState();
     const on = s.xray;
     mats.gash.uniforms.uTime.value = state.clock.elapsedTime;
+    // Holes show once open (the shown time; a pre-roll shows none).
+    mats.gash.uniforms.uT.value = s.t;
 
     // Ghost or restore the ship's materials when X-ray or the models change.
     const models = [runtime.whole, runtime.split];

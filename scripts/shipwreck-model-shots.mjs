@@ -2,11 +2,12 @@
 /**
  * Screenshots and draw-call counts for the Shipwreck model.
  *
- *   node scripts/shipwreck-model-shots.mjs <baseURL> <outDir> [ship] [paint]
+ *   node scripts/shipwreck-model-shots.mjs <baseURL> <outDir> [ship] [livery]
  *
  * Needs a running dev server (`npx next dev --webpack`) at baseURL. Opens
- * the model viewer (`/shipwreck?model`, `&ship=<id>` when given, the
- * Britannic's `&paint=hospital|liner`) at
+ * the model viewer (`/shipwreck?model`, `&ship=<id>` when given, and
+ * `&livery=<id>`, e.g. `cunard-1907`, the Carpathia's `grey-1918` or the
+ * Britannic's `liner`) at
  * 1133x744, sets each view with
  * `window.__shipwreck.setModelView`, saves `<outDir>/<id>.png` and writes
  * the last frame's draw calls and triangles to `<outDir>/render-info.json`.
@@ -20,11 +21,13 @@ const [
   baseURL = "http://localhost:3000",
   outDir = ".screenshots/task-3",
   ship = "titanic",
-  paint = "",
+  livery = "",
 ] = process.argv.slice(2);
 
 // Where each ship's sim breaks her (the Fitzgerald near hatch No. 9).
 const BREAK_X = { lusitania: 4, fitzgerald: 18 }[ship] ?? -27.1;
+// The Carpathia does not break (her girder holds): no broken shots.
+const UNBROKEN = new Set(["carpathia"]);
 const COMMON = [
   { id: "bow-day", view: { camera: "bow" } },
   { id: "stern-day", view: { camera: "stern" } },
@@ -54,7 +57,12 @@ const BRITANNIC = [
   { id: "bent-bow-day", view: { camera: "bow-port", bowBend: 0.2 } },
   { id: "bent-bow-close-day", view: { camera: "break-close", bowBend: 0.2 } },
 ];
-const SHOTS = ship === "britannic" ? BRITANNIC : COMMON;
+const SHOTS =
+  ship === "britannic"
+    ? BRITANNIC
+    : UNBROKEN.has(ship)
+      ? COMMON.filter((s) => s.view.breakX === undefined)
+      : COMMON;
 const BASE = {
   breakX: null,
   power: 0,
@@ -80,7 +88,7 @@ try {
   });
   await page.goto(
     `${baseURL}/shipwreck?model${ship === "titanic" ? "" : `&ship=${ship}`}${
-      paint ? `&paint=${paint}` : ""
+      livery ? `&livery=${livery}` : ""
     }`
   );
   // The dev build's corner badge is not part of the model.

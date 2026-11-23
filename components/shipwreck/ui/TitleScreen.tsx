@@ -3,11 +3,16 @@
 import Link from "next/link";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
 import { SHIP_IDS, getShip } from "@/lib/shipwreck/ships";
-import type { ShipId } from "@/lib/shipwreck/ships/types";
+import {
+  funnelPaintOf,
+  type ShipId,
+  type ShipSpec,
+} from "@/lib/shipwreck/ships/types";
 import { storyOf } from "@/lib/shipwreck/story";
 import { SHIPWRECK_VERSION } from "@/lib/shipwreck/version";
 import { PARENT_LINES } from "../parentLine";
 import Icon from "./Icon";
+import LiveryButton from "./LiveryButton";
 import { FOCUS, PANEL, PRIMARY, SECONDARY } from "./styles";
 
 interface TitleScreenProps {
@@ -16,6 +21,9 @@ interface TitleScreenProps {
   onShip: (ship: ShipId) => void;
   onRealNight: () => void;
   onWhatIf: () => void;
+  /** The chosen ship's livery (null: hers) and the paint button's choice. */
+  livery?: string | null;
+  onLivery?: (id: string) => void;
 }
 
 const COMING: string[] = [];
@@ -41,12 +49,89 @@ const WHAT_IF: Record<
   },
 };
 
+/**
+ * A small side picture of a ship from her own data (bow to the right): her
+ * hull to the deck edge, her superstructure and her funnels, so each card
+ * shows which ship it is without reading (one tall funnel, four, or a
+ * laker's long low hull).
+ */
+interface ShipPictureProps {
+  spec: ShipSpec;
+  /** Her livery (null: hers): the funnels' paint. */
+  livery?: string | null;
+}
+
+function ShipPicture({ spec, livery = null }: ShipPictureProps) {
+  const funnelPaint = funnelPaintOf(spec, livery);
+  const x0 = spec.stations[0].x;
+  const x1 = spec.stations[spec.stations.length - 1].x;
+  const top = Math.max(
+    ...spec.funnels.map((f) => f.topZ),
+    ...spec.superstructure.map((b) => b.topZ),
+    ...spec.stations.map((st) => spec.sheerZ(st.x))
+  );
+  // One scale for every ship: a longer ship is a longer picture.
+  const S = 0.42;
+  const W = (x1 - x0) * S;
+  const H = top * S;
+  const X = (x: number) => (x - x0) * S;
+  const Z = (z: number) => (top - z) * S;
+  const keel = spec.stations.map(
+    (st) => `${X(st.x).toFixed(1)},${Z(st.offsets[0][0]).toFixed(1)}`
+  );
+  const sheer = spec.stations.map(
+    (st) => `${X(st.x).toFixed(1)},${Z(spec.sheerZ(st.x)).toFixed(1)}`
+  );
+  return (
+    <svg
+      viewBox={`0 0 ${W.toFixed(1)} ${H.toFixed(1)}`}
+      aria-hidden="true"
+      data-testid={`shipwreck-ship-picture-${spec.id}`}
+      className="h-6 w-auto max-w-28"
+    >
+      {spec.superstructure.map((b, i) => (
+        <rect
+          key={`s${i}`}
+          x={X(b.fromX)}
+          y={Z(b.topZ)}
+          width={(b.toX - b.fromX) * S}
+          height={(b.topZ - spec.sheerZ((b.fromX + b.toX) / 2)) * S + 0.5}
+          className="fill-slate-200"
+        />
+      ))}
+      {spec.funnels.map((f, i) => (
+        <rect
+          key={`f${i}`}
+          data-funnel={i}
+          x={X(f.x - 2.5)}
+          y={Z(f.topZ)}
+          width={5 * S}
+          height={(f.topZ - f.baseZ) * S + 2}
+          // Her own funnel paint in her livery (the Carpathia's 1918
+          // grey), else buff.
+          fill={
+            funnelPaint
+              ? `#${funnelPaint.funnel.toString(16).padStart(6, "0")}`
+              : "#e0a85a"
+          }
+        />
+      ))}
+      <path
+        d={`M${sheer.join("L")}L${[...keel].reverse().join("L")}Z`}
+        className="fill-slate-400"
+      />
+    </svg>
+  );
+}
+
 /** The title over the slowly circling, lit ship, and the ship picker. */
 export default function TitleScreen({
   ship,
   onShip,
   onRealNight,
   onWhatIf,
+  livery = null,
+  onLivery,
 }: TitleScreenProps) {
   const spec = getShip(ship);
   const story = storyOf(spec);
@@ -72,7 +157,7 @@ export default function TitleScreen({
         </p>
       </div>
 
-      <div className="flex w-full max-w-3xl flex-col items-center gap-4 pb-2">
+      <div className="flex w-full max-w-4xl flex-col items-center gap-4 pb-2">
         <div
           role="radiogroup"
           aria-label="Choose a ship"
@@ -97,6 +182,7 @@ export default function TitleScreen({
                     : "opacity-80 hover:opacity-100"
                 } ${FOCUS}`}
               >
+                <ShipPicture spec={s} livery={on ? livery : null} />
                 <span
                   className={`text-xl font-semibold ${on ? "text-white" : "text-slate-200"}`}
                 >
@@ -142,6 +228,16 @@ export default function TitleScreen({
             <Icon name={whatIf.icon} className="size-8" />
             What if?
           </button>
+          {onLivery && (
+            <div className="self-center">
+              <LiveryButton
+                spec={spec}
+                livery={livery}
+                onChange={onLivery}
+                bubble="above"
+              />
+            </div>
+          )}
         </div>
         <Link
           href="/shipwreck/versions"

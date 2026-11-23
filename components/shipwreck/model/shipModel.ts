@@ -10,8 +10,11 @@ import {
   Quaternion,
   Vector3,
   type Material,
+  type MeshStandardMaterial,
+  type Object3D,
+  type Texture,
 } from "three";
-import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { defaultLivery, type ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { ShipPart } from "./breakCut";
 import {
   QUALITY,
@@ -22,12 +25,15 @@ import {
   type ModelQuality,
   type ShipPartData,
 } from "./buildShip";
+import type { GeoBuffer } from "./geoBuffer";
 import {
   createShipMaterials,
+  TITANIC_HULL_PAINT,
+  type HullPaint,
   type LightUniforms,
   type ShipMaterials,
 } from "./materials";
-import { BRITANNIC_PAINT } from "@/lib/shipwreck/ships/britannic";
+import { carpathiaRecipe } from "./carpathiaRecipe";
 import {
   attachBritannicLivery,
   britannicModelRecipe,
@@ -48,8 +54,11 @@ import {
   windowPaneGeometry,
 } from "./partGeometry";
 import {
+  acquireDazzleTexture,
   acquireShipTextures,
+  releaseDazzleTexture,
   releaseShipTextures,
+  type DazzleFrame,
   type NameStyle,
 } from "./textures";
 import {
@@ -63,7 +72,8 @@ import {
 } from "./titanicRecipe";
 
 /**
- * A ship (the Titanic, the Lusitania or the Edmund Fitzgerald) as a three.js object tree, plus the
+ * A ship (the Titanic, the Lusitania, the Edmund Fitzgerald or the
+ * Carpathia) as a three.js object tree, plus the
  * handles the scene drives each frame without React. See README.md for the
  * handle API.
  */
@@ -118,14 +128,30 @@ export interface TitanicHandles {
   boats: BoatControls;
   recipe: ShipRecipe;
   quality: ModelQuality;
-  /** Triangles in the model (instances counted) and the build time. */
-  stats: { triangles: number; buildMs: number };
   /**
-   * Wears another of the ship's liveries in place (no geometry rebuilt;
-   * `recipe` becomes that look's). A no-op for a look she lacks and for
-   * ships with one livery.
+   * Repaints her in livery `id` (one of `liveries`; others are ignored):
+   * swaps vertex colours, the hull's uniforms and which small paint-only
+   * parts show (a funnel's bands, the name boards). Never builds or frees
+   * geometry, so it is safe mid-run (README, "Liveries").
    */
-  setPaint?(look: string): void;
+  setLivery(id: string): void;
+  /** The livery shown (null: a ship with one paint). */
+  readonly livery: string | null;
+  /** The liveries she can show (empty: one paint). */
+  liveries: readonly string[];
+  /**
+   * Runs `compile` (e.g. `gl.compile(scene, camera)`) with every livery's
+   * parts shown, then hands each of their textures to `upload` (e.g.
+   * `gl.initTexture`), so a first swap neither compiles a shader nor
+   * uploads a texture (the Carpathia's name boards are drawn in 1912
+   * only).
+   */
+  warmLiveries(compile: () => void, upload?: (texture: Texture) => void): void;
+  /**
+   * Triangles in the model (instances counted), the build time, and the
+   * last livery swap's time (ms, main thread).
+   */
+  stats: { triangles: number; buildMs: number; liveryMs: number };
 }
 
 export interface TitanicModel {
@@ -137,41 +163,54 @@ export interface TitanicModel {
 
 const recipes = new WeakMap<ShipSpec, Map<string, ShipRecipe>>();
 /**
- * The ship's detail recipe, built once per spec (and paint: the
- * Britannic's `paint` picks hospital or liner; the others have one).
+ * The ship's detail recipe in livery `livery` (default her default
+ * livery; a ship with one paint ignores it), built once per spec and
+ * livery. The Carpathia's recipe also knows `grey-1918`, which the game
+ * does not offer; the Britannic's livery is her paint (`BritannicPaint`).
  */
-export function recipeFor(spec: ShipSpec, paint?: BritannicPaint): ShipRecipe {
-  let byPaint = recipes.get(spec);
-  if (!byPaint) {
-    byPaint = new Map();
-    recipes.set(spec, byPaint);
+export function recipeFor(spec: ShipSpec, livery?: string | null): ShipRecipe {
+  let byLivery = recipes.get(spec);
+  if (!byLivery) {
+    byLivery = new Map();
+    recipes.set(spec, byLivery);
   }
-  const key = spec.id === "britannic" ? (paint ?? BRITANNIC_PAINT) : "";
-  let r = byPaint.get(key);
+  const own = defaultLivery(spec);
+  const key = own === null ? "" : (livery ?? own);
+  let r = byLivery.get(key);
   if (!r) {
+    const id = key || undefined;
     r =
       spec.id === "lusitania"
-        ? lusitaniaRecipe(spec)
+        ? lusitaniaRecipe(spec, id)
         : spec.id === "fitzgerald"
           ? fitzgeraldRecipe(spec)
-          : spec.id === "britannic"
-            ? britannicRecipe(spec, paint)
-            : titanicRecipe(spec);
-    byPaint.set(key, r);
+          : spec.id === "carpathia"
+            ? carpathiaRecipe(spec, id)
+            : spec.id === "britannic"
+              ? britannicRecipe(spec, id as BritannicPaint)
+              : titanicRecipe(spec);
+    byLivery.set(key, r);
   }
   return r;
 }
 
 /** The Britannic's model recipe (both liveries' geometry), per spec. */
 const liveryRecipes = new WeakMap<ShipSpec, ShipRecipe>();
-function modelRecipeFor(spec: ShipSpec, paint?: BritannicPaint): ShipRecipe {
-  if (spec.id !== "britannic") return recipeFor(spec, paint);
+function modelRecipeFor(spec: ShipSpec, livery?: string | null): ShipRecipe {
+  if (spec.id !== "britannic") return recipeFor(spec, livery);
   let r = liveryRecipes.get(spec);
   if (!r) {
     r = britannicModelRecipe(spec);
     liveryRecipes.set(spec, r);
   }
   return r;
+}
+
+/** The dazzle's frame: the whole hull, keel to above the boat deck houses. */
+export function dazzleFrame(r: ShipRecipe): DazzleFrame {
+  const x0 = Math.round(r.hull.xMin * 100) / 100;
+  const length = Math.round((r.hull.xMax - r.hull.xMin) * 100) / 100;
+  return { x0, length, height: 28 };
 }
 
 const m4 = new Matrix4();
@@ -261,18 +300,96 @@ function triCount(g: BufferGeometry): number {
   return (g.index ? g.index.count : g.getAttribute("position").count) / 3;
 }
 
+/** The merged triangle lists of a part, each its own mesh. */
+const MERGED = [
+  "hull",
+  "paint",
+  "deck",
+  "bronze",
+  "decal",
+  "dazzle",
+  "variant",
+] as const;
+type MergedKey = (typeof MERGED)[number];
+/** Their meshes' names. */
+const MERGED_NAME: Record<MergedKey, string> = {
+  hull: "hull",
+  paint: "paint",
+  deck: "decks",
+  bronze: "propellers",
+  decal: "names",
+  dazzle: "dazzle",
+  variant: "livery-parts",
+};
+
+function sameNumbers(a: ArrayLike<number>, b: ArrayLike<number>): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+/** Whether two lists are the same triangles (their colours aside). */
+function sameShape(a: GeoBuffer, b: GeoBuffer): boolean {
+  return (
+    sameNumbers(a.pos, b.pos) &&
+    sameNumbers(a.idx, b.idx) &&
+    sameNumbers(a.uv, b.uv) &&
+    sameNumbers(a.uv1, b.uv1) &&
+    sameNumbers(a.extra, b.extra)
+  );
+}
+
+/** Whether two geometries are the same triangles (colours aside). */
+function sameGeometry(a: BufferGeometry, b: BufferGeometry): boolean {
+  const ia = a.index;
+  const ib = b.index;
+  if ((ia === null) !== (ib === null)) return false;
+  return (
+    sameNumbers(
+      a.getAttribute("position").array,
+      b.getAttribute("position").array
+    ) &&
+    (ia === null || sameNumbers(ia.array, ib!.array))
+  );
+}
+
+/** Thrown when a livery moves something only a rebuild could move. */
+function liveryShapeError(id: string, what: string): Error {
+  return new Error(
+    `livery ${id} changes the ${what}'s shape: a livery is paint only (README, "Liveries")`
+  );
+}
+
 export function createTitanicModel(
   spec: ShipSpec,
   options: {
     quality: ModelQuality;
     breakX: number | null;
-    /** The Britannic's paint (default `BRITANNIC_PAINT`); others ignore it. */
-    paint?: BritannicPaint;
+    /**
+     * The livery to show first (default hers). Any id her recipe knows
+     * (the Carpathia's `grey-1918` too); others ignore it.
+     */
+    livery?: string | null;
   }
 ): TitanicModel {
   const { quality, breakX } = options;
   const started = performance.now();
-  const recipe = modelRecipeFor(spec, options.paint);
+  // Her liveries: the default is built as always; each other one is built
+  // too (its recipe and its triangle lists) to take its colours, so a
+  // swap is a copy of numbers, never a rebuild. (The Britannic swaps her
+  // two paints her own way: britannicLivery.ts.)
+  const listed =
+    spec.id !== "britannic" && spec.liveries && spec.liveries.length >= 2
+      ? spec.liveries.map((l) => l.id)
+      : [];
+  const base = listed.length > 0 ? defaultLivery(spec) : null;
+  const liveryIds = [...listed];
+  if (base !== null && options.livery && !liveryIds.includes(options.livery))
+    liveryIds.push(options.livery);
+  const recipe = modelRecipeFor(spec, base);
+  const alts = liveryIds
+    .filter((id) => id !== base)
+    .map((id) => ({ id, r: recipeFor(spec, id) }));
   const q = QUALITY[quality];
   const shipName = recipe.paint?.name ?? "TITANIC";
   const letters = recipe.paint?.letters;
@@ -280,22 +397,57 @@ export function createTitanicModel(
     ...letters,
     port: recipe.paint?.port ?? "LIVERPOOL",
   };
+  // Every livery shares the name boards' texture (only whether they show
+  // changes).
+  for (const a of alts) {
+    const p = a.r.paint;
+    if (
+      (p?.name ?? "TITANIC") !== shipName ||
+      JSON.stringify(p?.letters ?? null) !== JSON.stringify(letters ?? null) ||
+      (p?.port ?? "LIVERPOOL") !== (recipe.paint?.port ?? "LIVERPOOL")
+    )
+      throw liveryShapeError(a.id, "name");
+  }
   const textures = acquireShipTextures(shipName, nameStyle);
-  const mats: ShipMaterials = createShipMaterials(textures, {
-    rivets: q.rivets,
-    hull: recipe.paint && {
-      loadWaterline: recipe.layout.loadWaterline,
-      bootTop: recipe.layout.bootTop,
-      sheerLine: recipe.paint.sheerLine,
-      topsides: recipe.paint.hull?.topsides,
-      bottom: recipe.paint.hull?.bottom,
-      relief: recipe.paint.hull?.relief,
-      ...(recipe.paint.band && {
-        band: { ...recipe.paint.band, sheer0: spec.sheerZ(0) },
+  // Dazzle: one texture along the hull, from the keel to the houses' tops,
+  // when any of her liveries has it (switched off in the others).
+  const dazzled = [recipe, ...alts.map((a) => a.r)].some(
+    (r) => r.paint?.dazzle
+  );
+  const dazzleTexture = dazzled
+    ? acquireDazzleTexture(dazzleFrame(recipe))
+    : null;
+  const hullPaintOf = (r: ShipRecipe): HullPaint | undefined =>
+    r.paint && {
+      loadWaterline: r.layout.loadWaterline,
+      bootTop: r.layout.bootTop,
+      sheerLine: r.paint.sheerLine,
+      topsides: r.paint.hull?.topsides,
+      bottom: r.paint.hull?.bottom,
+      relief: r.paint.hull?.relief,
+      boot: r.paint.hull?.boot,
+      ...(r.paint.band && {
+        band: { ...r.paint.band, sheer0: spec.sheerZ(0) },
       }),
-    },
-    paintedNames: letters !== undefined,
-  });
+      ...(dazzleTexture
+        ? {
+            dazzle: { texture: dazzleTexture, frame: dazzleFrame(recipe) },
+            dazzleOn: r.paint.dazzle === true,
+          }
+        : {}),
+    };
+  // The materials hold the dazzle texture: release it if they fail.
+  let mats: ShipMaterials;
+  try {
+    mats = createShipMaterials(textures, {
+      rivets: q.rivets,
+      hull: hullPaintOf(recipe),
+      paintedNames: letters !== undefined,
+    });
+  } catch (err) {
+    if (dazzleTexture) releaseDazzleTexture(dazzleTexture);
+    throw err;
+  }
   const geometries: BufferGeometry[] = [];
   // Instanced meshes hold their instance buffers on the mesh, not the
   // geometry: three frees those only on the mesh's own dispose.
@@ -318,15 +470,21 @@ export function createTitanicModel(
   const holders: Record<ShipPart, Group> = { whole, bow, stern };
 
   // Shared fitting geometry.
+  const sharedOf = (r: ShipRecipe) => ({
+    vent: ventGeometry(q, r.paint?.ventLining, r.paint?.vent),
+    drum: drumVentGeometry(q, r.paint?.ventLining, r.paint?.vent),
+    lifeboat: boatGeometry("lifeboat", q, r.paint?.boat),
+  });
+  const painted = sharedOf(recipe);
   const shared = {
-    vent: own(ventGeometry(q, recipe.paint?.ventLining)),
-    drum: own(drumVentGeometry(q, recipe.paint?.ventLining)),
+    vent: own(painted.vent),
+    drum: own(painted.drum),
     bench: own(benchGeometry()),
     bollard: own(bollardGeometry(q)),
     post: own(postGeometry()),
     porthole: own(portholePaneGeometry()),
     window: own(windowPaneGeometry()),
-    lifeboat: own(boatGeometry("lifeboat", q, recipe.paint?.boat)),
+    lifeboat: own(painted.lifeboat),
     collapsible: own(boatGeometry("collapsible", q)),
   };
 
@@ -349,13 +507,23 @@ export function createTitanicModel(
   const funnels: Group[] = [];
   const funnelGuys: (LineSegments | null)[] = [];
   const boatHolder: Group[] = [];
+  // Each part's meshes and lines, and each funnel's mesh (for liveries).
+  const partMeshes: Partial<Record<MergedKey, Mesh>>[] = [];
+  const partLines: (LineSegments | null)[] = [];
+  const funnelMeshes: (Mesh | null)[] = [];
 
-  function addMesh(group: Group, g: BufferGeometry, m: Material, name: string) {
-    if (g.getAttribute("position").count === 0) return;
+  function addMesh(
+    group: Group,
+    g: BufferGeometry,
+    m: Material,
+    name: string
+  ): Mesh | null {
+    if (g.getAttribute("position").count === 0) return null;
     const mesh = new Mesh(own(g), m);
     mesh.name = name;
     group.add(mesh);
     triangles += triCount(g);
+    return mesh;
   }
   function addInstanced(
     group: Group,
@@ -422,12 +590,28 @@ export function createTitanicModel(
     }
   }
 
-  partData.forEach(({ d, group }) => {
-    addMesh(group, d.hull.toGeometry(), mats.hull, "hull");
-    addMesh(group, d.paint.toGeometry(), mats.paint, "paint");
-    addMesh(group, d.deck.toGeometry(), mats.deck, "decks");
-    addMesh(group, d.bronze.toGeometry(), mats.bronze, "propellers");
-    addMesh(group, d.decal.toGeometry(), mats.decal, "names");
+  /** A merged list's material (the variant parts are painted). */
+  function materialOf(key: MergedKey): Material | undefined {
+    return key === "variant" ? mats.paint : mats[key];
+  }
+
+  partData.forEach(({ d, group }, pi) => {
+    const meshes: Partial<Record<MergedKey, Mesh>> = {};
+    const put = (key: MergedKey, mesh: Mesh | null) => {
+      if (mesh) meshes[key] = mesh;
+    };
+    for (const key of MERGED) {
+      const material = materialOf(key);
+      // The dazzle list only for a ship with a dazzle livery; the variant
+      // parts only for a ship with some.
+      if (
+        !material ||
+        ((key === "dazzle" || key === "variant") && d[key].vertexCount === 0)
+      )
+        continue;
+      put(key, addMesh(group, d[key].toGeometry(), material, MERGED_NAME[key]));
+    }
+    partMeshes[pi] = meshes;
     const portholes = paneMesh(shared.porthole, mats.pane, d.portholes);
     const windows = paneMesh(shared.window, mats.pane, d.windows);
     if (portholes) own(portholes.geometry);
@@ -469,12 +653,18 @@ export function createTitanicModel(
       lines.name = "rails-and-rigging";
       group.add(lines);
     }
+    partLines[pi] = lines;
     for (const i of d.funnels) {
       const f = recipe.funnels[i];
       const fg = new Group();
       fg.name = `funnel-${i}`;
       toThree([f.x, 0, f.baseZ], fg.position);
-      addMesh(fg, funnelGeometry(f, q, recipe.paint), mats.paint, "funnel");
+      funnelMeshes[i] = addMesh(
+        fg,
+        funnelGeometry(f, q, recipe.paint),
+        mats.paint,
+        "funnel"
+      );
       group.add(fg);
       funnels[i] = fg;
       const guys = q.rigging
@@ -500,6 +690,140 @@ export function createTitanicModel(
     false,
     "boats-afloat"
   );
+
+  // ---------------------------------------------------------------------
+  // Liveries: each other livery's colours for every list of the same
+  // shape, and its own (hidden) mesh where the shape differs (a funnel's
+  // bands, the name boards). Instances, lines and boats must not move.
+  /** A colour attribute and its numbers in each livery that differs. */
+  const swaps: { attr: BufferAttribute; by: Map<string, Float32Array> }[] = [];
+  /** A mesh shown in some liveries only. */
+  const variants: { obj: Object3D; ids: Set<string> }[] = [];
+  const hullPaints = new Map<string, HullPaint | undefined>();
+  if (base !== null) hullPaints.set(base, hullPaintOf(recipe));
+
+  /** Takes `id`'s colours for `attr` when they differ from the base's. */
+  function swapColors(
+    attr: BufferAttribute | undefined,
+    id: string,
+    colors: ArrayLike<number>
+  ) {
+    if (!attr) return;
+    const next = Float32Array.from(colors);
+    if (sameNumbers(attr.array, next)) return;
+    let s = swaps.find((w) => w.attr === attr);
+    if (!s) {
+      s = { attr, by: new Map([[base!, Float32Array.from(attr.array)]]) };
+      swaps.push(s);
+    }
+    s.by.set(id, next);
+  }
+  function colorOf(obj: Mesh | LineSegments): BufferAttribute | undefined {
+    return obj.geometry.getAttribute("color") as BufferAttribute | undefined;
+  }
+  /** Shows `obj` in every livery but `id` (it differs there). */
+  function notIn(obj: Object3D, id: string) {
+    let v = variants.find((w) => w.obj === obj);
+    if (!v) {
+      v = { obj, ids: new Set(liveryIds) };
+      variants.push(v);
+    }
+    v.ids.delete(id);
+  }
+  function onlyIn(obj: Object3D, id: string) {
+    obj.visible = false;
+    variants.push({ obj, ids: new Set([id]) });
+  }
+
+  for (const a of alts) {
+    hullPaints.set(a.id, hullPaintOf(a.r));
+    if (JSON.stringify(a.r.boats) !== JSON.stringify(recipe.boats))
+      throw liveryShapeError(a.id, "boats");
+    const altShared = sharedOf(a.r);
+    for (const key of ["vent", "drum", "lifeboat"] as const) {
+      const g = altShared[key];
+      if (!sameGeometry(shared[key], g)) throw liveryShapeError(a.id, key);
+      swapColors(
+        shared[key].getAttribute("color") as BufferAttribute,
+        a.id,
+        g.getAttribute("color").array
+      );
+      g.dispose();
+    }
+    parts.forEach((part, pi) => {
+      const { d, group } = partData[pi];
+      const ad = buildShipPart(a.r, part, breakX, quality);
+      for (const list of [
+        "portholes",
+        "windows",
+        "vents",
+        "drums",
+        "benches",
+        "bollards",
+        "posts",
+      ] as const)
+        if (d[list].length !== ad[list].length)
+          throw liveryShapeError(a.id, list);
+      for (const key of MERGED) {
+        const mesh = partMeshes[pi][key];
+        if (sameShape(d[key], ad[key])) {
+          if (mesh && d[key].opts.color)
+            swapColors(colorOf(mesh), a.id, ad[key].col);
+          continue;
+        }
+        // Another shape in this livery: its own mesh, shown only in it.
+        if (mesh) notIn(mesh, a.id);
+        if (ad[key].vertexCount === 0) continue;
+        const material = materialOf(key);
+        if (!material) continue;
+        const alt = new Mesh(own(ad[key].toGeometry()), material);
+        alt.name = `${MERGED_NAME[key]}-${a.id}`;
+        group.add(alt);
+        onlyIn(alt, a.id);
+      }
+      const lines = partLines[pi];
+      if (!sameNumbers(d.lines.pos, ad.lines.pos))
+        throw liveryShapeError(a.id, "rails");
+      if (lines) swapColors(colorOf(lines), a.id, ad.lines.col);
+      for (const i of d.funnels) {
+        const fm = funnelMeshes[i];
+        const g = funnelGeometry(a.r.funnels[i], q, a.r.paint);
+        if (
+          JSON.stringify(a.r.funnelGuys[i]) !==
+          JSON.stringify(recipe.funnelGuys[i])
+        )
+          throw liveryShapeError(a.id, "funnel guys");
+        if (fm && sameGeometry(fm.geometry, g)) {
+          swapColors(colorOf(fm), a.id, g.getAttribute("color").array);
+          g.dispose();
+          continue;
+        }
+        if (fm) notIn(fm, a.id);
+        const alt = new Mesh(own(g), mats.paint);
+        alt.name = `funnel-${a.id}`;
+        funnels[i].add(alt);
+        onlyIn(alt, a.id);
+      }
+    });
+  }
+  // Variants first shown only in another livery start hidden; the base's
+  // own show (they are in every livery but those that differ).
+  let livery = base;
+  let liveryMs = 0;
+  function setLivery(id: string) {
+    if (livery === null || id === livery || !liveryIds.includes(id)) return;
+    const t0 = performance.now();
+    for (const s of swaps) {
+      const next = s.by.get(id) ?? s.by.get(base!)!;
+      (s.attr.array as Float32Array).set(next);
+      s.attr.needsUpdate = true;
+    }
+    for (const v of variants) v.obj.visible = v.ids.has(id);
+    mats.setHullPaint(hullPaints.get(id) ?? TITANIC_HULL_PAINT);
+    livery = id;
+    liveryMs = performance.now() - t0;
+    handles.stats.liveryMs = liveryMs;
+  }
 
   function put(map: Map<number, BoatSlot>, i: number, m: Matrix4) {
     const s = map.get(i);
@@ -543,11 +867,14 @@ export function createTitanicModel(
     },
   };
 
-  // A ship with two liveries (the Britannic): the look-only parts, and the
-  // swap (britannicLivery.ts).
-  let livery: Livery | null = null;
+  // The Britannic swaps her two paints her own way (britannicLivery.ts:
+  // the look-only parts, the hull's band, the funnels' tops, the names)
+  // behind the same handles as every ship's livery.
+  let britLivery: Livery | null = null;
+  const britIds =
+    spec.id === "britannic" ? (spec.liveries ?? []).map((l) => l.id) : [];
   if (spec.id === "britannic")
-    livery = attachBritannicLivery(
+    britLivery = attachBritannicLivery(
       {
         spec,
         recipeOf: (look) => recipeFor(spec, look),
@@ -569,8 +896,17 @@ export function createTitanicModel(
           return group.children[group.children.length - 1] as Mesh;
         },
       },
-      options.paint
+      options.livery ?? undefined
     );
+  /** Any ship's livery swap (the Britannic's through her own). */
+  function wear(id: string) {
+    if (!britLivery) return setLivery(id);
+    if (id === britLivery.wearing || !britIds.includes(id)) return;
+    const t0 = performance.now();
+    if (!britLivery.setPaint(id)) return;
+    handles.recipe = recipeFor(spec, id);
+    handles.stats.liveryMs = performance.now() - t0;
+  }
 
   const light = mats.light;
   const handles: TitanicHandles = {
@@ -597,14 +933,38 @@ export function createTitanicModel(
       light.uTime.value = t;
     },
     boats,
-    recipe: livery ? recipeFor(spec, options.paint) : recipe,
+    recipe: britLivery ? recipeFor(spec, britLivery.wearing) : recipe,
     quality,
-    stats: { triangles, buildMs: performance.now() - started },
-    setPaint(look) {
-      if (livery?.setPaint(look))
-        handles.recipe = recipeFor(spec, look as BritannicPaint);
+    setLivery: wear,
+    warmLiveries(compile, upload) {
+      if (britLivery) {
+        // Her look-only parts share the painted material; the liner's gilt
+        // name board is the one texture a first swap would upload.
+        compile();
+        if (upload) for (const t of britLivery.textures) upload(t);
+        return;
+      }
+      if (variants.length === 0) return;
+      for (const v of variants) v.obj.visible = true;
+      try {
+        compile();
+        if (upload)
+          for (const v of variants) {
+            const map = ((v.obj as Mesh).material as MeshStandardMaterial)?.map;
+            if (map) upload(map);
+          }
+      } finally {
+        for (const v of variants)
+          v.obj.visible = livery !== null && v.ids.has(livery);
+      }
     },
+    get livery() {
+      return britLivery ? britLivery.wearing : livery;
+    },
+    liveries: britLivery ? britIds : base === null ? [] : liveryIds,
+    stats: { triangles, buildMs: performance.now() - started, liveryMs },
   };
+  if (options.livery) setLivery(options.livery);
 
   return {
     handles,
@@ -614,7 +974,8 @@ export function createTitanicModel(
       for (const g of geometries) g.dispose();
       mats.dispose();
       releaseShipTextures(shipName, nameStyle);
-      livery?.dispose();
+      if (dazzleTexture) releaseDazzleTexture(dazzleTexture);
+      britLivery?.dispose();
     },
   };
 }

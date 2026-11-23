@@ -29,6 +29,7 @@ import {
   dayLookOf,
   isDaylit,
   sunDirection,
+  type LinearRGB,
   type SceneSettings,
 } from "./settings";
 
@@ -86,7 +87,11 @@ const fragment = /* glsl */ `
   uniform vec2 uPath[8];
   uniform float uPathN;
   #endif
+  #ifdef DAY_RIPPLE
+  #define RIPPLE DAY_RIPPLE
+  #else
   #define RIPPLE 0.34
+  #endif
   #else
   #define RIPPLE 0.18
   #endif
@@ -219,6 +224,7 @@ interface SeaProps {
 
 export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
   const day = settings ? isDaylit(settings) : false;
+  const ripple = settings?.daylight?.ripple;
   // Her turn for Kea: the morning's wake follows her stern's path.
   const curved = settings?.timeOfDay === "morning";
   const size = REFLECTION_SIZE[quality];
@@ -244,7 +250,17 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
         fragmentShader: fragment,
         side: DoubleSide,
         fog: true,
-        defines: day ? (curved ? { DAY: "", WAKE_PATH: "" } : { DAY: "" }) : {},
+        // A ship's own ripple strength (`DaylightLook.ripple`) is a define:
+        // the Lusitania's program stays 1.1's.
+        defines: day
+          ? {
+              DAY: "",
+              ...(ripple !== undefined
+                ? { DAY_RIPPLE: ripple.toFixed(3) }
+                : {}),
+              ...(curved ? { WAKE_PATH: "" } : {}),
+            }
+          : {},
         uniforms: UniformsUtils.merge([
           UniformsLib.fog,
           {
@@ -285,23 +301,24 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
           },
         ]),
       }),
-    [day, curved]
+    [day, ripple, curved]
   );
   // The afternoon's colours (linear): the haze at the horizon, the blue
   // overhead, the water and the light under it.
   useEffect(() => {
     if (!day || !settings) return;
     const u = material.uniforms;
-    // (The afternoon's are 1.1's; the morning's a deeper Aegean blue.)
+    // (The afternoon's are 1.1's; the morning's a deeper Aegean blue; a
+    // ship's own `daylight` over either.)
     const look = dayLookOf(settings);
-    (u.uDeep.value as Color).setRGB(...look.seaDeep, LinearSRGBColorSpace);
-    (u.uScatter.value as Color).setRGB(
-      ...look.seaScatter,
-      LinearSRGBColorSpace
-    );
+    const own = settings.daylight;
+    const lin = (c: Color, v: LinearRGB) =>
+      c.setRGB(v[0], v[1], v[2], LinearSRGBColorSpace);
+    lin(u.uDeep.value as Color, own?.seaDeep ?? look.seaDeep);
+    lin(u.uScatter.value as Color, own?.seaScatter ?? look.seaScatter);
     (u.uSkyLow.value as Color).set(settings.fog);
-    (u.uSkyHigh.value as Color).setRGB(...look.zenith, LinearSRGBColorSpace);
-    (u.uUnder.value as Color).setRGB(...look.seaUnder, LinearSRGBColorSpace);
+    lin(u.uSkyHigh.value as Color, own?.zenith ?? look.zenith);
+    lin(u.uUnder.value as Color, own?.seaUnder ?? look.seaUnder);
     (u.uSunColor.value as Color).setRGB(...look.skySun);
     const d = settings.sun
       ? sunDirection(settings.sun, settings.headingDeg ?? 90)

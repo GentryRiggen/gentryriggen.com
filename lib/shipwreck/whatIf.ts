@@ -1,6 +1,7 @@
 import type { WhatIfStorm } from "./save";
 import type { ShipSpec } from "./ships/types";
-import { VENTS_SPOT, whatIfSpots } from "./sim/run";
+import { FINISHER_SPOT, VENTS_SPOT, whatIfSpots } from "./sim/run";
+import { clockText } from "./story";
 
 /**
  * Words for a What-if's spots (shared by the editor and the hull diagram):
@@ -16,8 +17,18 @@ function shoalWhere(spec: ShipSpec, k: number): string {
   return `${part}, ${o.side}`;
 }
 
+/** The U-boat's return (`FINISHER_SPOT`): its toggle's label. */
+export const FINISHER_LABEL = "The U-boat comes back";
+
+/** When a torpedo ship's later torpedo lands, on her clock ("10:50 AM"). */
+export function finisherClock(spec: ShipSpec): string | null {
+  const fin = spec.torpedo?.finisher;
+  return fin ? clockText(fin.t, spec.clockStartS) : null;
+}
+
 /** A spot's short label: "Hatch 3", "Vents and railing", "Boiler room 1". */
 export function spotLabel(spec: ShipSpec, id: string): string {
+  if (id === FINISHER_SPOT && spec.torpedo?.finisher) return FINISHER_LABEL;
   if (spec.cause === "storm") {
     if (id === VENTS_SPOT) return "Vents and railing";
     const hatch = /^hatch-(\d+)$/.exec(id);
@@ -38,6 +49,11 @@ export function spotAria(spec: ShipSpec, id: string, on: boolean): string {
       return `${label} cover: ${on ? "leaking" : "sealed tight"}`;
     const k = Number(id.slice(6));
     return `${label}, ${shoalWhere(spec, k)}, where she may have touched Six Fathom Shoal: ${on ? "scraped" : "not touched"}`;
+  }
+  if (spec.cause === "torpedo" && spec.torpedo) {
+    if (id === FINISHER_SPOT)
+      return `${label}: ${on ? `a last torpedo at ${finisherClock(spec)}` : "no last torpedo"}`;
+    return `${label}: ${on ? `a torpedo hits her ${spec.torpedo.side} side here` : "no torpedo"}`;
   }
   if (spec.cause === "torpedo")
     return `${label}: ${on ? "a torpedo hits here" : "no torpedo"}`;

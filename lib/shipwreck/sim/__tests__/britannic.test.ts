@@ -50,7 +50,8 @@ describe("the Britannic's data", () => {
   it("is in the registry, last, a mine in the morning in 120 m", () => {
     expect(getShip("britannic")).toBe(britannic);
     expect(SHIP_IDS[SHIP_IDS.length - 1]).toBe("britannic");
-    expect(SHIP_IDS.indexOf("fitzgerald")).toBe(SHIP_IDS.length - 2);
+    expect(SHIP_IDS.indexOf("carpathia")).toBe(SHIP_IDS.length - 2);
+    expect(SHIP_IDS.indexOf("fitzgerald")).toBe(SHIP_IDS.length - 3);
     expect(SHIPS.britannic).toBe(britannic);
     expect(britannic.cause).toBe("mine");
     expect(britannic.clockStartS).toBe(8 * 3600 + 12 * 60);

@@ -1,6 +1,7 @@
 import type {
   Compartment,
   HullStation,
+  Livery,
   Opening,
   PortholeRow,
   ShipSpec,
@@ -607,20 +608,56 @@ function scripted(): ShipSpec["scripted"] {
  */
 const FUNNEL_X = [51.2, 25.3, -0.6, -26.4];
 
-/**
- * The paint switch. false: as she was on 7 May 1915 (funnels painted out
- * dark; the model also adds the gilt band round the base of the
- * superstructure). true: her peacetime Cunard colours (red funnels with
- * black tops). The model's README ("Her paint in May 1915") cites both.
- */
-export const LUSITANIA_PEACETIME_PAINT = false;
-
-/** Her funnels' paint, either way (sRGB; plain numbers, no three.js). */
+/** Her funnels' paint in each livery (sRGB; plain numbers, no three.js). */
 export const LUSITANIA_FUNNEL_PAINT = {
   // Painted over: the top and bands barely differ from the rest.
   war: { funnel: 0x2e2f32, top: 0x2c2d30 },
-  cunard: { funnel: 0xb5461f, top: 0x141416 },
+  // Cunard red as the period saw it, orange more than red: J. Kent Layton
+  // (TRMA, "Building the Lusitania") takes R234 G114 B48 from the
+  // hand-tinted 1907 postcards. Drawn a shade deeper in the same hue
+  // (0xcc5a28): the model's daylight washed his value to peach (README).
+  // Black top and bands.
+  cunard: { funnel: 0xcc5a28, top: 0x141416 },
 } as const;
+
+/**
+ * Her paints (R28; the model README, "The Lusitania's liveries", cites
+ * every detail). `war-1915` is the default: as on 7 May 1915, the look 1.1
+ * built. `cunard-1907`: her original colours.
+ */
+export const LUSITANIA_LIVERIES: readonly Livery[] = [
+  {
+    id: "war-1915",
+    label: "Her colours on 7 May 1915",
+    year: 1915,
+    default: true,
+    sources: [
+      "Schwieger, U-20 war diary, 7 May 1915",
+      "Wikipedia, Sinking of the RMS Lusitania (after Layton 2010)",
+      "Wikimedia Commons, Lusitania Leaving NY Harbor on Last Voyage (1 May 1915)",
+      "rmslusitania.info, Lusitania at war",
+      "linerdesigns.com, Lusitania 1915",
+    ],
+    swatches: [LUSITANIA_FUNNEL_PAINT.war.funnel, 0xb8913f],
+    funnelPaint: LUSITANIA_FUNNEL_PAINT.war,
+  },
+  {
+    id: "cunard-1907",
+    label: "Her first Cunard colours, 1907",
+    year: 1907,
+    sources: [
+      "Library of Congress LCCN2013646024, Lusitania (American Photograph Co., 1907)",
+      "Wikimedia Commons, RMS Lusitania coming into port, possibly in New York, 1907-13",
+      "Wikimedia Commons, RMS Lusitania docks in New York, September 13, 1907",
+      "titanicinquiry.org, Lusitania particulars: funnels red, black top, three narrow black bands",
+      "J. Kent Layton, Building the Lusitania (TRMA): paint and Cunard red",
+      "rmslusitania.info, The Cunard Company: vermilion red with black bands and a black top",
+      "Wikipedia, RMS Lusitania: the gold band added only in 1914",
+    ],
+    swatches: [LUSITANIA_FUNNEL_PAINT.cunard.funnel, 0x141416],
+    funnelPaint: LUSITANIA_FUNNEL_PAINT.cunard,
+  },
+];
 
 export const lusitania: ShipSpec = {
   id: "lusitania",
@@ -694,7 +731,6 @@ export const lusitania: ShipSpec = {
   // listed to starboard (18–67° over the calibration sweep: the physics of
   // her last minute is touchy); the survey, not the sim, lays her over.
   wreck: { restDeg: 75, minListDeg: 10 },
-  funnelPaint: LUSITANIA_PEACETIME_PAINT
-    ? LUSITANIA_FUNNEL_PAINT.cunard
-    : LUSITANIA_FUNNEL_PAINT.war,
+  funnelPaint: LUSITANIA_FUNNEL_PAINT.war,
+  liveries: LUSITANIA_LIVERIES,
 };

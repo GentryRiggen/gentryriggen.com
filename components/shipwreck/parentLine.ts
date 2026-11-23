@@ -8,6 +8,8 @@ export const PARENT_LINES: Record<ShipId, string> = {
     "This is the Lusitania in 1915. A torpedo sank her in 18 minutes during the First World War, and more than 1,190 people died. This game shows only the ship. You can walk her open decks.",
   fitzgerald:
     "This is the Edmund Fitzgerald, an ore carrier on Lake Superior. She sank in a storm on 10 November 1975, and all 29 of her crew died. This game shows only the ship.",
+  carpathia:
+    "This is the Carpathia, the ship that rescued the Titanic's survivors in 1912. During the First World War, on 17 July 1918, a U-boat's torpedoes sank her off Ireland, and five of her crew died. This game shows only the ship.",
   britannic:
     "This is the Britannic in 1916, a hospital ship in the First World War. A mine sank her in 55 minutes, and 30 people died. This game shows only the ship.",
 };

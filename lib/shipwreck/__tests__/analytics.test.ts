@@ -125,6 +125,42 @@ describe("shipwreck analytics", () => {
     expect(GAME_EVENTS.shipwreck_start.props.opened.max).toBe(most);
   });
 
+  it("sends the Carpathia's runs, and rejects a wrong case", () => {
+    trackStart("whatif", 10, "carpathia");
+    trackEnd("real", "sank", 104, "carpathia");
+    expect(trackGame).toHaveBeenNthCalledWith(1, "shipwreck_start", {
+      mode: "whatif",
+      opened: 10,
+      ship: "carpathia",
+    });
+    expect(trackGame).toHaveBeenNthCalledWith(2, "shipwreck_end", {
+      mode: "real",
+      outcome: "sank",
+      minutes: 104,
+      ship: "carpathia",
+    });
+    for (const [name, props] of trackGame.mock.calls) {
+      expect(isValidGameProps(name, props)).toBe(true);
+    }
+    for (const ship of ["Carpathia", "andrea-doria"]) {
+      expect(
+        isValidGameProps("shipwreck_start", { mode: "real", opened: 0, ship })
+      ).toBe(false);
+      expect(
+        isValidGameProps("shipwreck_end", {
+          mode: "real",
+          outcome: "sank",
+          minutes: 1,
+          ship,
+        })
+      ).toBe(false);
+    }
+  });
+
+  it("counts her finishing torpedo as one spot: spots stay within the schema max", () => {
+    expect(whatIfSpots(SHIPS.carpathia).length).toBeLessThanOrEqual(10);
+  });
+
   it("sends the Fitzgerald's runs", () => {
     trackStart("whatif", 25, "fitzgerald");
     trackEnd("real", "sank", 20, "fitzgerald");

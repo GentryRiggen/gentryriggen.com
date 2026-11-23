@@ -1,3 +1,4 @@
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import type { ShipId, ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
@@ -179,9 +180,37 @@ function lakerBoxes(spec: ShipSpec): HullBox[] {
 
 export const FITZGERALD_HULL_BOXES: readonly HullBox[] = lakerBoxes(fitzgerald);
 
+/**
+ * The Carpathia's (lib/shipwreck/ships/carpathia.ts): the hull from her
+ * stern to her stem, her beam across, to her sheer's highest (the
+ * forecastle head); then each house from her data (the stern deckhouse
+ * inboard of its walkways, the long bridge deck house, the bridge house
+ * and the forecastle) to its top with 2.5 m more for the boat deck's
+ * boats, rails and the navigating bridge.
+ */
+function carpathiaBoxes(spec: ShipSpec): HullBox[] {
+  const xs = spec.stations.map((st) => st.x);
+  const stern = Math.min(...xs) - 0.2;
+  const stem = Math.max(...xs) + 0.2;
+  const half = spec.beam / 2 + 0.1;
+  const sheer = Math.max(spec.sheerZ(stern + 0.2), spec.sheerZ(stem - 0.2));
+  return [
+    { x: [stern, stem], y: [-half, half], z: [-0.5, sheer] },
+    ...spec.superstructure.map((b): HullBox => ({
+      x: [b.fromX, b.toX],
+      y: [-(b.halfBreadthM ?? half), b.halfBreadthM ?? half],
+      z: [sheer - 1, b.topZ + 2.5],
+    })),
+  ];
+}
+
+export const CARPATHIA_HULL_BOXES: readonly HullBox[] =
+  carpathiaBoxes(carpathia);
+
 /** The hull boxes of a ship (the camera's bounds and the double-tap proxies). */
 export function hullBoxesFor(ship: ShipId): readonly HullBox[] {
   if (ship === "fitzgerald") return FITZGERALD_HULL_BOXES;
+  if (ship === "carpathia") return CARPATHIA_HULL_BOXES;
   if (ship === "britannic") return BRITANNIC_HULL_BOXES;
   return ship === "lusitania" ? LUSITANIA_HULL_BOXES : HULL_BOXES;
 }
@@ -387,6 +416,8 @@ export interface ShotContext {
   hitX?: number;
   /** Where it struck on the sea (three.js), fixed where it happened. */
   hitAt?: V3;
+  /** When it struck (shown s; default the first moment). */
+  hitT?: number;
 }
 
 function body(
@@ -409,6 +440,7 @@ function bowBody(ctx: ShotContext): BodyPose {
 /** The classic view: low on the water off the port quarter, drifting. */
 export function lifeboatView(ctx: ShotContext, distance = 420): View {
   if (ctx.ship === "fitzgerald") return fitzgeraldBoatView(ctx);
+  if (ctx.ship === "carpathia") return carpathiaBoatView(ctx);
   const drift = Math.sin(ctx.t / 900) * 12 + ctx.wall * 0.15;
   const s = sternBody(ctx);
   const tgt = shipToThree(s, [-10, 0, 14]);
@@ -436,6 +468,7 @@ export function lifeboatView(ctx: ShotContext, distance = 420): View {
 export function underwaterView(ctx: ShotContext): View {
   if (ctx.ship === "lusitania" || ctx.ship === "britannic")
     return lusitaniaUnderwater(ctx);
+  if (ctx.ship === "carpathia") return carpathiaUnderwater(ctx);
   if (ctx.ship === "fitzgerald") return fitzgeraldUnderwater(ctx);
   const b = bowBody(ctx);
   const mid = ctx.breakX !== null && b.part === "bow" ? ctx.breakX + 70 : 60;
@@ -481,6 +514,7 @@ export function cinematicShot(
   hit = true
 ): ShotId {
   if (ship === "lusitania") return hit ? lusitaniaShot(track, t) : "afternoon";
+  if (ship === "carpathia") return hit ? carpathiaShot(track, t) : "afternoon";
   if (ship === "britannic") return hit ? britannicShot(track, t) : "morning";
   if (ship === "fitzgerald") return hit ? fitzgeraldShot(track, t) : "storm";
   const firstOf = (kind: string): number | null => {
@@ -515,6 +549,9 @@ export function shotView(shot: ShotId, ctx: ShotContext): View {
     case "grounded":
     case "grounded-below":
     case "on-floor":
+      return ctx.ship === "carpathia"
+        ? carpathiaView(shot, ctx)
+        : lusitaniaView(shot, ctx);
     case "morning":
     case "turn":
       return lusitaniaView(shot, ctx);
@@ -911,6 +948,194 @@ function fitzgeraldBoatView(ctx: ShotContext): View {
   const a = 0.6 + Math.sin(ctx.wall * 0.02) * 0.1;
   return {
     pos: levelToThree(s, [-320 * Math.cos(a), -320 * Math.sin(a), 17]),
+    target: tgt,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The Carpathia's morning (150 m of water; her torpedoes into her port
+// side; upright on the floor). Her shots are the Lusitania's turned to her
+// port side and her 170 m, with a second run-in and hit for the U-boat's
+// torpedo at 10:50 AM.
+
+/** Seconds before a torpedo's hit its run-in shot starts (its wake's 40 s). */
+export const CARPATHIA_RUN_IN_S = 45;
+
+/** Her torpedo hits after the first moment's pair (the U-boat's return). */
+function lateHitOf(track: Pick<SimTrack, "events">, t: number): number | null {
+  let late: number | null = null;
+  for (const e of track.events)
+    if (e.kind === "torpedo-hit" && e.t > 60 && e.t - CARPATHIA_RUN_IN_S <= t)
+      late = e.t;
+  return late;
+}
+
+/**
+ * The torpedo her shots aim at, at `t` (index into the run's torpedoes in
+ * landing order): the last whose run-in has begun, else the first.
+ */
+export function torpedoInView(
+  torpedoes: readonly { t: number }[],
+  t: number
+): number {
+  let k = 0;
+  for (let i = 0; i < torpedoes.length; i += 1)
+    if (torpedoes[i].t - CARPATHIA_RUN_IN_S <= t) k = i;
+  return k;
+}
+
+function carpathiaShot(
+  track: Pick<SimTrack, "events" | "brokeAtT" | "sankAtT">,
+  t: number
+): ShotId {
+  const firstOf = (kind: string): number | null => {
+    for (const e of track.events) if (e.kind === kind) return e.t;
+    return null;
+  };
+  if (t < 0) return "run-in";
+  const sternUnder = firstOf("stern-under") ?? track.sankAtT;
+  const sternLands = firstOf("stern-lands");
+  // Her way down (R22): her stern up as it goes, then under water as she
+  // swings down to the floor, then circling the wreck.
+  if (sternUnder !== null) {
+    const landed = sternLands ?? sternUnder + 20;
+    if (t >= landed + 8) return "on-floor";
+    if (t >= sternUnder + 3) return "grounded-below";
+    if (t >= sternUnder - 25) return "grounded";
+  }
+  const bowUnder = firstOf("bow-under");
+  if (bowUnder !== null && t >= bowUnder - 20) return "bow-down";
+  // The U-boat's torpedo at 10:50 AM: its run-in, then its hit.
+  const late = lateHitOf(track, t);
+  if (late !== null)
+    return t < late ? "run-in" : t < late + 40 ? "hit" : "list";
+  if (t < 40) return "hit";
+  const firstBoat = firstOf("boat-lowered");
+  if (firstBoat === null || t < firstBoat) return "list";
+  const lastBoat = firstOf("last-boat");
+  // The boats on her port side (the hits' side), a while on her starboard
+  // side's, then (all away) her settling with the boats clear of her.
+  if (lastBoat !== null && t >= lastBoat + 180) return "list";
+  if (t >= firstBoat + 240 && t < firstBoat + 390) return "port-boats";
+  return "boats";
+}
+
+function carpathiaView(shot: ShotId, ctx: ShotContext): View {
+  const b = bowBody(ctx);
+  const floor = -ctx.seaDepthM;
+  const hitX = ctx.hitX ?? 12;
+  const drift = ctx.wall * 0.004;
+  switch (shot) {
+    case "afternoon": {
+      // Circling slowly from her port bow (the title).
+      const a = 0.55 + drift;
+      return {
+        pos: levelToThree(b, [Math.cos(a) * 240, Math.sin(a) * 240, 32]),
+        target: shipToThree(b, [0, 0, 16]),
+      };
+    }
+    case "run-in": {
+      // High over the sea off her port side, beside the far end of the
+      // torpedo's track and a little ahead of it, looking in at where it
+      // will strike: the white track streaks up the frame to her side.
+      const h = ctx.hitAt ?? shipToThree(b, [hitX, 9.9, 9]);
+      const sway = Math.sin(ctx.wall * 0.05) * 5;
+      return {
+        pos: [h[0] + 110 + sway, 85, h[2] - 640],
+        target: [h[0] - 10, 4, h[2] - 140],
+      };
+    }
+    case "hit": {
+      // Low off her port bow, looking aft at the hit: the column goes up;
+      // slowly pulling back.
+      const since = ctx.t - (ctx.hitT ?? 0);
+      const k = 1 + Math.min(Math.max(0, since), 40) / 60;
+      return {
+        pos: levelToThree(b, [hitX + 95 * k, 120 * k, 10 + 5 * k]),
+        target: shipToThree(b, [hitX - 20, 6, 14]),
+      };
+    }
+    case "list": {
+      // Ahead on her port bow: down by the head, leaning toward us.
+      const tgt = shipToThree(b, [0, 0, 15]);
+      tgt[1] = Math.max(tgt[1], 5);
+      return { pos: levelToThree(b, [150, 200, 36]), target: tgt };
+    }
+    case "boats": {
+      // High off her port quarter: her boats on their falls, and those
+      // away pulling clear of her on the sea between.
+      const x = Math.sin(ctx.wall * 0.03) * 15;
+      const tgt = shipToThree(b, [x - 15, 40, 6]);
+      tgt[1] = Math.max(tgt[1], 3);
+      return { pos: levelToThree(b, [x - 150, 200, 48]), target: tgt };
+    }
+    case "port-boats": {
+      // High on her starboard quarter: that side's boats going down.
+      const tgt = shipToThree(b, [0, -10, 14]);
+      tgt[1] = Math.max(tgt[1], 4);
+      return { pos: levelToThree(b, [-60, -110, 18]), target: tgt };
+    }
+    case "bow-down": {
+      const tgt = shipToThree(b, [10, 0, 10]);
+      tgt[1] = Math.max(tgt[1], 3);
+      return { pos: levelToThree(b, [170, 170, 26]), target: tgt };
+    }
+    case "grounded": {
+      // Off her port quarter, low: her stern up, the screws in the air.
+      const tgt = shipToThree(b, [-60, 0, 8]);
+      tgt[1] = Math.max(tgt[1], 8);
+      return { pos: levelToThree(b, [-150, 130, 10]), target: tgt };
+    }
+    case "grounded-below": {
+      // Under water off her port beam, between the surface and the floor:
+      // her bow on the floor, her hull swinging down to it.
+      const tgt = shipToThree(b, [-10, 0, 8]);
+      tgt[1] = clamp(tgt[1], floor + 12, -20);
+      return {
+        pos: levelToThree(b, [10, 125, clamp(tgt[1] + 6, floor + 20, -30)]),
+        target: tgt,
+      };
+    }
+    default:
+      return carpathiaUnderwater(ctx);
+  }
+}
+
+/** Under water with her: following her bow down, then circling the wreck. */
+function carpathiaUnderwater(ctx: ShotContext): View {
+  const b = bowBody(ctx);
+  const floor = -ctx.seaDepthM;
+  const tgt = shipToThree(b, [0, 0, 10]);
+  tgt[1] = Math.min(-6, Math.max(tgt[1], floor + 8));
+  // Swinging slowly to and fro off her port side (her list to port turns
+  // her decks a little toward it).
+  const a = -Math.PI / 2 - 0.4 + Math.sin(ctx.wall * 0.03) * 0.6;
+  const r = 105;
+  return {
+    pos: [
+      tgt[0] + Math.cos(a) * r,
+      Math.min(-6, Math.max(floor + 22, tgt[1] + 14)),
+      tgt[2] + Math.sin(a) * r,
+    ],
+    target: tgt,
+  };
+}
+
+/**
+ * Her boat camera: low on the water off her port quarter, among her boats,
+ * a little above her so the rockets are in frame.
+ */
+function carpathiaBoatView(ctx: ShotContext): View {
+  const s = sternBody(ctx);
+  const tgt = shipToThree(s, [-10, 0, 12]);
+  tgt[1] = Math.max(tgt[1], 6) + 14;
+  const a = 0.75 + Math.sin(ctx.t / 900) * 0.08 + ctx.wall * 0.0004;
+  return {
+    pos: levelToThree(s, [
+      -300 * Math.cos(a),
+      300 * Math.sin(a),
+      2.2 + Math.sin(ctx.wall * 0.7) * 0.15,
+    ]),
     target: tgt,
   };
 }

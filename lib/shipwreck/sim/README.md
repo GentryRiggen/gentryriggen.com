@@ -55,10 +55,12 @@ while she is afloat and in one piece.
 `npx tsx scripts/shipwreck-sim.ts hold1 br4` or `--first=5` (What if), add
 `--water` for each compartment's fill every 10 minutes.
 `--ship=lusitania` runs her afternoon (a line a minute), `--shut` with
-the portholes shut.
-`--ship=britannic` runs her morning (a line a minute); `--doors-closed`
-shuts every watertight door and `--engines-stopped` stops her engines at
-the mine (no run for Kea).
+the portholes shut. `--ship=carpathia` runs her morning; `--spots=a,b`
+names What-if spots (as the bare ids do) and `--no-finisher` leaves out
+her third torpedo (`FINISHER_SPOT`), from her real spots when none are
+named. `--ship=britannic` runs her morning (a line a minute);
+`--doors-closed` shuts every watertight door and `--engines-stopped` stops
+her engines at the mine (no run for Kea).
 
 ## The model
 
@@ -467,7 +469,35 @@ depth eases in over a couple of seconds (15 m for the bow, 4 m for the
 stern; `PLOUGH_TIME_S` 5 s real, about 0.8 s on screen at the ×6 descent); the rest of the body turns about that
 point and comes down. The bow settles upright with a slight bow-down rest
 (its after end bedded 3 m), the stern level (the 1.0 rest: a rule, the
-mud not modelled). A ship with a surveyed wreck (`spec.wreck`: the
+mud not modelled). A whole hull that falls onto its after half (1.4: a
+stern-first plunge in water shallower than she is long: some Carpathia
+What-ifs) lands as a stern does, crushed 4 m in and settling along the floor
+(`sternFirst`); the bow's nose-down rest about its stern would swing her
+bow some 60 m into the floor. **Her way down is seen (R22, `pivotDrag`,
+the Carpathia only).** A whole hull that lands on its bow in water
+shallower than she is long (170 m in 150 m) would, by the plough rule's
+5 s ease, swing from 57° to level in a couple of seconds, her stern's top
+at some 75 m/s. With `pivotDrag` it swings about the contact no faster
+than the water lets it: her weight in water W′ = m g (1 − 0.2) acts at
+her centre of mass, an arm d = |x_G − x_c| cos θ from the contact, and
+each metre of hull r out from the contact meets pressure drag ½ ρ Cd B
+(ω r)² (B her mean breadth, plan area over length, Cd `DRAG_CD` 1), whose
+moment over her length L is ⅛ ρ Cd B ω² L⁴. They balance at
+ω = √(8 W′ d / (ρ Cd B L⁴)) (`pivotRate` in `descent.ts`): for her
+about 0.06 rad/s at 57°, 0.08 at level, so her stern's top comes down at
+up to about 12 m/s (its terminal speed; added mass only shortens the
+approach to it), and the 1.0 ease takes over within a few degrees of
+rest. Her `stern-lands` then comes when the lowest point of her after
+quarter reaches the floor (16 s after stern-under), not as her bow
+touches; with `descentTimeScale` 1 (the Fitzgerald's R11) the way down
+plays in real time: 31 s from stern-under to rest on the real morning.
+Missing `pivotDrag`, every other ship keeps the plough rule exactly
+(`seabed.test.ts`: a 200 m box in 150 m of sea, with and without). A hull already on the floor when she went
+under keeps the 1.0 rule, and no other ship's real run lands this way
+(`seabed.test.ts`: a 200 m box flooded aft through 250 m of sea). The rule
+is not hers alone: any ship's What-if hull that lands whole and stern first
+in `touch()` (`descent.ts`) now rests this way too, and the goldens do not
+pin those runs (they cover the real runs only). A ship with a surveyed wreck (`spec.wreck`: the
 Lusitania lies on her starboard side) rests by that survey instead, **a
 rule, not physics**: landing listed at least `minListDeg` (10°) toward
 the wreck's side, she eases over to `restDeg` (75°) or keeps her list if
@@ -499,7 +529,11 @@ instant value settle. An iceberg ship keeps the 1.0 test exactly: on it,
 boiler room 5's What-if never settles because of its pump, and 1.0 holds
 it that way); when every part is frozen or on the floor the run
 logs `floating-steady` and holds its pose to `END_T` at one frame a
-second.
+second. Not while a torpedo is still to come (1.4: openings with a later
+`t` not yet open, the Carpathia's `finisher`): a frozen hull would never
+take its water, so the U-boat's return alone, at 10:50 AM, did nothing.
+The Lusitania's last timed hole opens at 8 s, long before the 30-minute
+earliest freeze, so her runs are unchanged.
 
 **Events.** `forecastle-under`: the deck of the foremost superstructure box
 (the forecastle), at its middle, reaches the sea. `bridge-under`: the boat
@@ -682,6 +716,46 @@ collision. Scripted events fire only while she is afloat and whole;
   later (`Opening.t`), so the scene's water columns and the flooding
   agree. One hit is untouched (the real afternoon stays bit-identical:
   `lusitaniaGolden`).
+  `torpedoHits(spec, ids)` gives every torpedo of a run in landing order
+  (`x`, `t`, `side`, `finisher`); for the Lusitania it is `torpedoHitXs`
+  at `hitTimeS`, on her starboard side.
+- **Torpedo ships with their own hits** (`spec.torpedo`, a `TorpedoSpec`;
+  the Carpathia's). Missing on a torpedo ship: the rule above, unchanged
+  (`__tests__/torpedoSpec.test.ts` holds `whatIfOpenings` for every
+  Lusitania set of one to three spots to `fixtures/lusitaniaWhatIf.json`,
+  written by the 1.3 code). The format: the `side` she was struck on,
+  the `order` hits land along her length (`aft-first` or `fwd-first`),
+  `staggerS` between them, one torpedo's `hole` (`areaM2`, `zLow`,
+  `zHigh` above the keel, and `lengthM` along her side), an optional
+  `hitX` per spot (the ship-frame x of the hole's middle; missing, the
+  compartment's middle), an optional `finisher` (a later torpedo:
+  `spotId`, the compartment it strikes, and its shown time `t`) and the
+  `realSpots` that give her real run.
+  - `whatIfSpots`: every compartment without a side span (full breadth or
+    centre), aft to forward, then `FINISHER_SPOT` ("finisher") if she has
+    a `finisher`. `whatIfRealIds` is `realSpots`, so her `realNight` is
+    `whatIfOpenings(spec, realSpots)` and her real ids give it back.
+  - `whatIfOpenings`: one hit per chosen compartment spot (repeats and
+    unknown ids add none), ordered by `order` and hit k landing
+    `k·staggerS` after the first (which lands at 0); `FINISHER_SPOT` adds
+    one hit at `finisher.spotId` at `finisher.t`. Each hit's hole runs
+    `lengthM` centred on its x and is **split by overlap**: every
+    compartment on the struck side it overlaps (full breadth, or a wing on
+    that side; not a centre space behind a wing) gets a piece with the
+    hole's heights and side and the area shared by overlap length (they
+    sum to `areaM2`), at the middle of its overlap and at least 0.5 m
+    inside the compartment. A hole across a bulkhead opens both spaces.
+    A hole off her ends (overlapping nothing) opens the hit's own space.
+    Pieces open at their hit's time (`Opening.t`, none at 0).
+  - Events: for these ships only, the sim logs `torpedo-hit` when a later
+    hit lands (each distinct later time her holes open is one torpedo),
+    while some part of her still floats; `index` is the hit number, the
+    hit at the first event being 1 (`collision`), so the second torpedo is 2. A run whose only hit comes later (the finisher alone) logs it as 1.
+    The Lusitania and the other ships never log one.
+  - A full-breadth hold floods level, so a hit there gives her no list of
+    its own: a list toward the struck side needs a wing on that side (or
+    her own `tcg`); `torpedoSpec.test.ts` checks a port wing lists her to
+    port and the mirror to starboard.
 - `__tests__/fitzgeraldGolden.test.ts` holds the Fitzgerald's real
   afternoon and one What-if (her real damage with `hatchesTight`) to the
   1.3 sim the same way, against `fixtures/fitzgeraldGolden.<arch>.json`
@@ -1116,6 +1190,275 @@ put it to the covers collapsing under boarding seas.
   and one of 5.0 m none at the sisters: the afternoon's worst head over a
   coaming is about 2.6–2.7 m, the sisters' 4.5–5.0 m.
 
+## The Carpathia's data and sources
+
+Sources: _The Engineer_, 8 August 1902, p. 136, "A floating dock and a new
+Cunarder" (the launch report, read from the page scan on Grace's Guide:
+558 ft long by 64 ft 3 in beam, about 12,900 tons gross, "four complete
+steel decks, a steel orlop deck in Nos. 1 and 2 holds, and a bridge deck
+290 ft long" with "a boat deck" above it, third-class cabins "on the main
+deck" in "the whole of the space forward of the boiler-room", "about
+12,000 tons dead weight", two quadruple-expansion engines, "seven large
+single-ended boilers" with Howden's forced draught at 210 lb);
+titanicinquiry.org's particulars (540.0 ft, 64.2 ft, "Draft (or Depth):
+37.4 ft", 13,603 gross, "one funnel, four masts; twin screws; 3 decks, 8
+bulkheads", funnel red with a black top and three black rings); Tyne
+Built Ships (540.0 × 64.5 × 37.4 ft, 13,555 grt; her last voyage
+"Liverpool to Boston in ballast", torpedoed "170 miles WxN of Bishop
+Rock"); Maritimequest (558 ft, 64 ft 5 in, "41 (depth)", 13,555 grt);
+Wikipedia, "RMS Carpathia" (LOA 558 ft, beam 64 ft 6 in, load draught
+34 ft 7 in, 20 lifeboats in 1912, seven single-ended boilers, four masts
+with cranes; the morning: the torpedo track on the port side, the hit
+"near the No. 3 hatch", the engines disabled by the second, the wireless
+and two boats wrecked, rockets, "settle by the head and list to port", 11
+boats, a third torpedo "near the gunner's rooms", sunk at 11:00 AM, upright
+in about 150 m); thegreatoceanliners.com (GOL: between "No. 4 hold and the
+stoke hold", the second "within seconds" in the engine room, rockets, the
+convoy scattering, eleven boats, two wrecked, the third "near No. 5 hatch"
+an hour later, "about ten minutes" to sink); _Advanced Diver Magazine_,
+"RMS Carpathia: the last voyage of Titanic's rescuer" (a narrative; used
+only for the bunker beside the struck hold and the watertight doors
+"ordered closed"); **the one photograph of her sinking** ("R.m.s
+carpathia Sinking.jpg", Wikimedia Commons, public domain, very likely
+taken from U-55's deck): she goes down **by the head**, her forward part
+under with only a mast top showing, the funnel low, the two after masts
+upright, the stern raised clear, no list to see; her photographs on
+Wikimedia Commons: "RMS-Carpathia.jpg"
+(starboard side, before 1914, nearly broadside), "Steamship CARPATHIA -
+broadside view.png" (port side, 19 April 1912, Library of Congress),
+"RMS Carpathia.jpg" (starboard bow quarter) and "Carpathia Malta.jpg"
+(1912, from aft), with a 2017 profile drawing ("RMS Carpathia
+drawing.png", not a primary source) to cross-check. Her general
+arrangement (Swan, Hunter & Wigham Richardson, 1903) is in the Osher Map
+Library's Morse collection (University of Southern Maine, barcodes
+2000043 and 2000228), not online; where it would settle a figure, ours is
+argued below and marked as an estimate. Where they disagree:
+
+- **Length and breadth.** LOA 558 ft (170.08 m: _The Engineer_,
+  Wikipedia, Maritimequest); LBP 540 ft (164.59 m), the registered length
+  (titanicinquiry, Tyne Built Ships). Beam 64 ft 6 in (19.66 m: Wikipedia,
+  Tyne Built Ships' 64.5 ft); _The Engineer_'s 64 ft 3 in at launch and
+  titanicinquiry's 64.2 ft are within 0.08 m. The stem stands 1 m before
+  the forward perpendicular at the upper deck; the counter overhangs the
+  after one by 4.5 m (her photographs).
+- **Depth and decks.** Three figures: 37.4 ft (titanicinquiry, Tyne Built
+  Ships), 41 ft (Maritimequest) and her 34 ft 7 in load draught. 37.4 ft
+  leaves under 3 ft of freeboard at 34 ft 7 in, so it is not a depth to her
+  top deck: we read it as the registered depth of hold, and 41 ft (12.50 m)
+  as her moulded depth to the **main deck**, her freeboard deck (6 ft 5 in
+  of freeboard at load, with a long bridge deck and a forecastle). The main
+  deck must be above the waterline, since _The Engineer_ puts third-class
+  cabins on it; her photographs show two rows of ports in the black hull
+  under the white bridge deck house, one 'tween deck each. So her four
+  complete steel decks are, from the top: **Upper** 15.10 m (the top of the
+  hull and the well decks), **Main** 12.50 m (41 ft), **Lower** 9.90 m and a
+  **Fourth** deck 7.30 m, 8 ft 6 in apart; the **Orlop** (holds 1 and 2)
+  4.50 m; the **Tank top** 1.52 m over a 5 ft double bottom. The
+  forecastle and the **Bridge** deck are one tier over the upper deck
+  (17.70 m), the **Boat** deck one more (20.30 m). She has no poop (R21,
+  below): abaft the bridge deck house the upper deck runs open to the
+  stern. "Main" and "Bridge"
+  are her names (_The Engineer_); "Upper", "Lower", "Fourth" and the deck
+  spacing are ours. Sheer 1.8 m forward and 0.9 m aft (estimates from her
+  photographs).
+- **Hull form.** Generated in `carpathia.ts` like the Lusitania's: a
+  14-knot intermediate liner (Froude number 0.18), parallel middle body
+  x −30…+22 m, fuller ends than the express ships, a 2 m bilge radius, a
+  nearly plumb stem with a rounded forefoot, a counter stern. Block
+  coefficient 0.717 at her 34 ft 7 in load draught (25,074 t), 0.698 at her
+  ballast draught; KM 7.74 m there, the waterplane 2,479 m², LCB −0.91 m.
+- **Lightship and her ballast draught.** No source gives her
+  displacement (an "8,600 tons" in some infoboxes is her net tonnage,
+  8,660). At her load draught the hull displaces 25,074 t; less her
+  12,000 tons (12,192 t) dead weight (_The Engineer_) her lightship is
+  about 12,880 t. On 17 July she was two days out of Liverpool for Boston
+  "in ballast" (Tyne Built Ships; uboat.net, as the spec cites it) with 57 passengers: about
+  1,500 t of coal (some 10 days' steaming at 14 knots and 110–160 t a day,
+  less two days burnt), about 700 t of fresh water, stores and people, and
+  her double-bottom and peak tanks full of water ballast (about 3,400 t:
+  the double bottom under the holds is about 2,600 m³ at 5 ft deep, the
+  peaks most of the rest). That is 18,500 t, a draught of 8.00 m (26 ft
+  3 in) on an even keel, under the
+  load draught (the upper bound) and a ballast ship's usual 0.7 of it. The
+  draught is a tuned value inside the 7.4–8.4 m these estimates allow
+  (calibration below).
+- **Stability.** No source gives her GM. KG 6.60 m gives GM 1.14 m in
+  ballast (the test allows a liner's 0.3–1.5 m): her lightship's centre
+  (about 0.54 of the 15.1 m depth, 8.2 m) brought down by some 5,600 t of
+  water ballast, coal and stores low in her. LCG −0.91 m, over the centre
+  of buoyancy (no trim in still water). TCG 0.02 m to port (see the
+  calibration): undamaged she floats 1.0° to port.
+- **Her profile** (measured off the photographs, scaled to the 290 ft
+  bridge deck, each to about ±5 m; feet aft of the stem head): forecastle
+  0–42 ft (to x 70.48 m; the 1912 starboard view gives about 42 ft, the
+  2017 drawing about 26 ft; Task 2's 60 ft was at the README's ±5 m edge);
+  the forward well to 145 ft (39.08 m), the foremast in it at 95 ft
+  (54.32 m); the 290 ft bridge deck house from 145 to 435 ft (39.08 to
+  −49.31 m), the mainmast on it at 200 ft (22.32 m) and the mizzen at
+  382 ft (−33.15 m); the bridge house on the boat deck from 217 to 262 ft
+  (17.14 to 3.42 m: its front some 17 ft abaft the mainmast, 45 ft long, a
+  gap of about 16 ft with cowls before the funnel's casing, as the 1912
+  starboard view and the LoC broadside show; Task 2 had the bridge at
+  250 ft, hard against the funnel), the boat deck from its front aft to
+  the house's end; the funnel at 290 ft (−5.11 m; the photographs put it
+  0.47–0.50 of her length from the stern).
+- **No raised poop (R21).** Three photographs agree (the 1912 starboard
+  view, "RMS-Carpathia.jpg"; the Malta view from aft, "Carpathia
+  Malta.jpg"; the 2017 drawing): abaft the bridge deck house one
+  continuous planked deck at the upper deck's height runs to the stern
+  behind open rails, and the black hull stops at it. On it stand the
+  jigger mast at 493 ft (−66.99 m; the LoC broadside gives about 493 ft,
+  the drawing 497 ft; Task 2 had 470 ft), a boat platform on stanchions
+  just forward of it (488–467 ft, −65.46 to −59.06 m, a tier up: the
+  Malta view), No. 5 hatch forward of that (x −57) and a white deckhouse
+  at the stern, 510–540 ft (−72.17 to −81.31 m), one tier high, its walls
+  4.6 m either side of the centre line with a walkway outside them (the
+  Malta view; its length from the drawing, about 30 ft; ours to ±2 m).
+  `CARPATHIA_BRIDGE_DECK`, `CARPATHIA_BOAT_DECK`, `CARPATHIA_BRIDGE_HOUSE`,
+  `CARPATHIA_WELLS` (the forward well), `CARPATHIA_AFTER_DECK`,
+  `CARPATHIA_STERN_HOUSE`, `CARPATHIA_BOAT_PLATFORM`, `CARPATHIA_MASTS`
+  and `CARPATHIA_SUPERSTRUCTURE` export them for the model and the walk
+  map. Sim boxes (they may not overlap: each runs up from the upper deck
+  edge): the stern deckhouse to the bridge deck, at its own footprint
+  (`halfBreadthM` 4.6: a deckhouse inboard of an open deck; the sim's
+  hull is finer at the counter than the model's, so the box is clipped to
+  the sim's deck abaft about −76 m: about 175 m³, the house's own
+  9.1 × 9.2 × 2.6 m is 218 m³); the house forward of the bridge to the
+  bridge deck; the house under the boat deck half a tier higher (the
+  boat deck's houses); the forecastle to its deck. The bridge house
+  itself and the boat platform are look only.
+- **Funnel.** One, on the boat deck at x −5.11 m, its top 41 m over the
+  keel (about 20 m from its base: in the photographs her tall, slender
+  funnel stands some 3.4 times its 19½ ft width over the boat deck, and
+  its top about 0.7 of the way from the water to the main truck; an
+  estimate, ±2 m; the model README has the measurements). `topZ` is look
+  only: the sim reads the funnel's `baseZ` (the funnel-falls rule), so
+  Task 3 raised it from the first draft's 36 m without moving the sim.
+  Stayed, so the liners' stays rule applies
+  (`falls` missing): on the real morning it goes at 11:02:22 (10° by
+  the head), as the sea reaches its base on the boat deck. Paint (`CARPATHIA_LIVERIES`, `CARPATHIA_FUNNEL_PAINTS`): her default
+  livery `dazzle-1918` (the model's README cites the 1918 dazzle;
+  Wikipedia: her funnel "apparently painted battle grey") with a dark
+  battle-grey funnel `0x4a4f55` (the 1918 sinking photograph shows it
+  nearly black against her hull); `cunard-1912` Cunard red `0xcc5a28`
+  with a black top `0x141416` (titanicinquiry; the shade after Layton,
+  model README "Liveries"); the recipe's `grey-1918` a lighter battle
+  grey `0x7d8289` all over.
+- **Subdivision.** Eight bulkheads, nine compartments (titanicinquiry: "8
+  bulkheads"). The general arrangement is not online, so the positions are
+  ours, argued from her hatches, masts and machinery and the accounts:
+  collision bulkhead 74.0 (5% of LBP from the FP); No. 1 hold to 52.0 and
+  No. 2 to 33.0 (their hatches either side of the foremast in the forward
+  well, the orlop in both); No. 3 to 12.0 (its hatch under the mainmast's
+  derricks through the house front); the boiler room to −8.0 (seven large
+  single-ended boilers in two rows, 20 m, under the bridge and the funnel:
+  GOL's "stoke hold below the bridge"); the engine room (two
+  quadruple-expansion sets side by side, 17 m) to −25.0; No. 4 hold to
+  −48.0 (under the mizzen's derricks); No. 5 to −62.0 (its hatch on the
+  after deck, x −57); the after peak from there to the stern, under the
+  boat platform and the stern deckhouse, with the steering gear: 25 m (a
+  tuned value, below; the first draft's −73.0 made No. 5 25 m long and
+  the after peak 14 m). Hold numbering: holds
+  1–3 forward and 4–5 aft. GOL's "between the No. 4 hold and the stoke
+  hold" for the first hit would number the holds 1–4 forward of the boiler
+  room; Wikipedia's "near the No. 3 hatch" fits ours, and two holds aft fit
+  her length (one hold from the engine room to the after peak would be
+  48 m). Ruling R3 is kept: the first hit at the boiler room's forward
+  bulkhead, opening No. 3 hold (Wikipedia's hatch) and the stokehold
+  (GOL's); GOL's "No. 4" is noted as the disagreement. The third torpedo
+  strikes "about No. 5 hatch" (GOL), aft under the after deck, near "the
+  gunners' rooms" (Wikipedia), which we put in the stern deckhouse.
+- **Bulkhead tops.** None is sourced. Forward of the engine room they stop
+  at the main deck (12.50 m plus sheer): the 'tween deck over Nos. 1–3 and
+  the boiler room is one third-class space (_The Engineer_: "the whole of
+  the space forward of the boiler-room on the main deck"). The collision
+  bulkhead, and the bulkheads abaft the engine room under her after cargo
+  'tween decks, go to the upper deck (an assumption the calibration needs:
+  below).
+- **Side bunkers.** Seven large single-ended boilers (a 1903 Scotch boiler
+  of 210 lb is about 15½ ft across) cannot stand four abreast inside her
+  64½ ft, so they stand at most three abreast (about 50 ft with their
+  gaps), leaving about 6 ft each side: the side coal bunkers usual beside
+  a single-ended boiler room of the day (the Lusitania's; _Advanced Diver_
+  also has "the adjacent coal bunker" beside the struck hold). The boiler
+  room is a centre cell with a port and a starboard wing, the inner
+  bulkheads 7.9 m from the centre line (`CARPATHIA_WING_Y`), mirroring each
+  other. Bunker permeability 0.4: two days out the bunkers were nearly full
+  and only the voids between the coal take water. Coal doors open while
+  she steamed and jammed by the coal (the Lusitania's; Mersey: they could
+  not be closed) leave 0.07 m² per bunker (`crossFlowM2`): the room and
+  then the starboard bunker fill slowly through them, which is her settle
+  through the morning (GOL: "now sinking more rapidly") and why her port
+  list eases to about 1° by 10:50 (the photograph shows none). This is how
+  she lists to port: the hit floods the port bunker and the starboard
+  bunker stays dry (Task 1: a full-breadth space floods level and gives no
+  list).
+- **Permeability.** Holds 0.95: empty in ballast (void spaces; her
+  refrigerated holds' insulation is not counted). Boiler room 0.8 and
+  engine room 0.85 (the defaults). Peaks 0.95.
+- **The torpedoes** (`torpedo`): port side, forward first, 8 s apart
+  (R4: GOL "just seconds later"). One 1918 torpedo's hole (a First World War
+  U-boat torpedo's warhead of about 200 kg: an estimate): 20 m² over 7 m of her side
+  (inside the 15–25 m² and 5–8 m of a merchant ship's torpedo damage),
+  4 m high, centred at a U-boat's usual 3 m running depth below her
+  waterline (Schwieger set 3 m for the Lusitania): 3.00–7.00 m over the
+  keel. `hitX`: the first at the boiler room's forward bulkhead (12.0: 10 m²
+  into No. 3 hold, 10 m² into the port bunker), the third about No. 5 hatch
+  (−57). The second strikes the engine room's middle (−16.5, 20 m²). The
+  third (`finisher`) at 10:50 AM (R5): `realSpots` boiler, engine,
+  `FINISHER_SPOT`, and `realNight` is `whatIfOpenings(carpathia,
+realSpots)`, built in her file.
+- **Headway.** 10 knots (5.14 m/s), halving every 60 s (R9: an assumption;
+  she was zig-zagging at convoy speed, her engine room flooded by the
+  second hit): about 450 m before she stops.
+- **No portholes** (R10): a darkened ship in convoy, her side scuttles shut.
+- **Boats.** Twenty lifeboats, ten a side (Wikipedia, 1912; her 1918 count
+  is not in our sources), odd numbers to starboard, 1 and 2 forward: a pair
+  on the bridge deck's forward house (x 30), seven pairs along the boat
+  deck from the bridge aft (x 2 to −45), a pair on the boat platform
+  forward of the jigger (x −62.26: the Malta view and the 1912 starboard
+  view show a boat there) and the tenth pair on the stern deckhouse's
+  roof (x −77: no photograph shows where it went; ours); each boat's keel
+  1 m over its deck, the forward pair's deck the forward house's roof,
+  level with the boat deck (as the photographs show them; Task 3 moved
+  them up from the bridge deck), the after pairs' a tier over the after
+  deck (`CARPATHIA_BOATS`; the model may refine them from photographs,
+  keeping the indices). Eleven away (GOL, Wikipedia) from 9:25 to
+  9:55 AM, both sides: 13, 15, 1, 16, 11, 3, 14, 2, 5, 12, 4. Two were
+  wrecked by the second hit (GOL): we mark port boats 8 and 10, abreast
+  the engine room where it struck (`wreckedAtT` 8 s, the second hit's
+  time in the real morning; ours, the accounts do not number them) for
+  the scene to hide or break. Those, port boat 6 and the two after pairs
+  are not lowered. Order and times are ours. In a What if whose first
+  torpedo comes late (the U-boat's return alone) her steam, rockets and
+  boats count from that hit (`scriptedFromFirstHit`), not from 9:15 AM.
+- **Steam and rockets.** `steam-start` at 10 s, `steam-stop` at 9:25 AM
+  (her broken boilers and lines: no source times it). Four `rocket`s at
+  9:17, 9:20, 9:24 and 9:29 AM (GOL: rockets to call the patrol vessels;
+  R13). No `radio` (R14: the wireless was wrecked).
+- **Floor and clock.** 150 m of sea (Wikipedia, ET; cunardshipwrecks.com
+  150 m, the stern shallowest at 143 m; GOL 514 ft). The clock from 9:15 AM
+  (R6 reads it as British Summer Time). Her wreck is upright with the stern
+  "perfectly intact with a list to port" (cunardshipwrecks.com): `wreck:
+{ restDeg: -4, minListDeg: 0 }`, a rule: landing listed to port at all,
+  she lies at 4° (or her list, if more); landing to starboard she would
+  keep it (the TCG below decides it). **The 4° is ours**: no source gives
+  her list in degrees.
+- **How deep she lies in the floor** (the real morning at rest, roll
+  −4.0°, 4.3° bow down: the bow plough rule puts her stem 15 m into the
+  mud and her after end bedded): her keel is about 11.3 m under the floor
+  amidships, 17.4 m at the stem and 5.2 m at the sternpost; the screw
+  hubs about 1.9 m under, so her screws, rudder and bilge are hidden in
+  the wreck shot. Her main deck stands about 1.1 m over the floor
+  amidships, the boat deck about 8.9 m (the survey: midships "nearly 10 m
+  off the sea bed", a match), the stern's top about 13 m (about 137 m
+  deep; the survey has the stern the shallowest part at 143 m: ours is
+  about 6 m shallower). The mud is not modelled (a rule, like the rest).
+- **Girder.** hog 1.9 GN·m, sag 1.7 GN·m: the Lusitania's scaled by her
+  section (breadth × depth², 0.50) and mild steel's 250 MPa for the
+  Lusitania's 330. The real morning's peak afloat is 0.88 of it (10:59 AM,
+  as her bow goes): she does not break.
+
 ## The Britannic's data and sources
 
 Sources (keys as in the spec): Chirnside, "The 'Olympic' Class Ships"
@@ -1449,72 +1792,175 @@ Shared by any ship with a storm; the Fitzgerald's own values are hers.
 | Green water on deck   | bays, dam break on, critical off     | A laker's open deck (`openDeck`): onto it over the edge (8/27)·√g·h^1.5 per metre, off it √g·(2h/3)^1.5, along it by the same weir; its weight not in her trim and list.                                                     |
 | Ramp                  | the ship's own (`StormSpec.ramp`)    | A storm builds: the Fitzgerald's follows the hindcast. The groups keep their own heights.                                                                                                                                    |
 
+### The Carpathia's calibration
+
+Every value below is physical; no time is scripted but the steam, the
+rockets and the boats. Tuned against the history (a list to port of a few
+degrees, settled by the head, afloat 95 minutes until the third torpedo,
+then gone **bow first** within minutes, as the sinking photograph shows,
+upright on the floor listed to port) and the spec's pass criteria, all
+other things fixed. The first draft (ballast draught 7.44 m, KG 7.2 m,
+holds 0.85, bunkers 0.6, coal doors 0.1 m², the boiler room at −12…8 m,
+every bulkhead to the main deck, No. 5 hold to −73 m) listed 20° 13 s
+after the hit, trimmed 0.3° by the head, and after the third torpedo went
+down stern first in under 3 minutes (10:53 AM), breaking as her stern
+struck the floor. A second round (7.80 m, coal doors shut, No. 5 hold to
+−73 m) met every criterion but went down stern first at −58° (11:00:27
+AM): the photograph rules that out. The table's alternatives change one
+value from the final set.
+
+**What decides which end goes first.** No. 5 hold's water (the third
+torpedo's) is about 2,000–3,000 t abaft her centre of flotation and comes
+in within a minute; what is left forward of the boiler room (Nos. 1 and 2,
+the peak) is buoyant and dry unless the water in No. 3 has started over
+its forward bulkhead. So she goes bow first only if her forward holds are
+already filling when the third torpedo comes, and her end then has to be
+steep enough to beat the stern down but not so steep that her bow strikes
+the 150 m floor (she is 170 m long) while her stern still floats: a plunge
+past about 58° does that, and the impact breaks her girder at any honest
+strength (it takes over 4 times hers). Her settle through the coal doors
+times the first; the length of No. 5 hold sets the second.
+
+| Parameter           | Value                     | Why                                                                                                                                                                                                                                                                                                                                                                                                           |
+| ------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ballast draught     | 8.00 m (18,500 t)         | Inside the 7.4–8.4 m her lightship, coal, stores and tanks allow. 7.9 m: gone at 11:04:08 (doors 0.08); 8.1 m: her forward holds overflow before 10:50 and she is gone at 10:50:16 (bow strike, breaks).                                                                                                                                                                                                      |
+| Coal doors          | 0.07 m² per bunker        | Jammed open with coal (the Lusitania's 0.1). They settle her through the morning (sinkage 11.15 m at 9:25, 12.38 at 10:50, No. 3's water just under its forward bulkhead's top). 0.06: gone at 11:04:17; 0.08: 10:59:46; 0.088: 10:55:15 and the dip down to 0.05°, but no later than without the third torpedo (and with No. 5 a metre shorter her bow strikes the floor and she breaks); shut: stern first. |
+| After peak bulkhead | −62 m (No. 5 hold 14 m)   | Under the boat platform (Task 2 had it near a poop front at −64.6, which R21 removed). At −64.5 she goes down stern first at −48°; at −73 (the first draft), −55°. A shorter No. 5 (G at −50 or −51) takes the dip away but steepens her end past 60°: her bow strikes the floor and she breaks.                                                                                                              |
+| KG (GM)             | 6.60 m (1.14 m)           | The first minute's list (the port bunker floods in seconds): 9.7° at 6.60 m; at 7.80 m draught (the second round) 9.0° at 6.5 m, 12.7° at 6.75 m, 15.6° at 6.9 m (past the spec's 15°).                                                                                                                                                                                                                       |
+| Bunker permeability | 0.4                       | Nearly full of coal two days out. At 0.6 (second round): 13.3° in the first minute, and she lands listed to starboard.                                                                                                                                                                                                                                                                                        |
+| Hold permeability   | 0.95                      | Empty in ballast. At 0.85 (second round) she trims 0.6° by the head (0.8° at 0.95) and the third torpedo does not sink her.                                                                                                                                                                                                                                                                                   |
+| Machinery positions | boiler room −8…12 m       | The first draft (−12…8) trimmed her 0.3° by the head; 4 m forward (still under the bridge and the funnel) 0.8°.                                                                                                                                                                                                                                                                                               |
+| After bulkhead tops | the upper deck (F, G, H)  | At the main deck No. 5 hold's water spills into No. 4 and the after peak at once and she goes down by the stern.                                                                                                                                                                                                                                                                                              |
+| TCG                 | 0.02 m to port            | She lands with almost no list; without it she lands to starboard (the rule keeps it). Coal drawn from her starboard bunkers first, or stores: an assumption. Undamaged she floats 1.0° to port.                                                                                                                                                                                                               |
+| Torpedo hole        | 20 m², 7 m long, 4 m high | Not tuned: 15 m² ends within 2 minutes of 20 m², and the dip after the third torpedo is the same (the hold fills in about a minute either way).                                                                                                                                                                                                                                                               |
+| Rest                | `wreck`: −4°, from 0°     | A rule, not tuned: upright, a little to port (cunardshipwrecks.com).                                                                                                                                                                                                                                                                                                                                          |
+
+**Fourth round (Task 4b: R21 and R22).** Her boxes changed with her
+profile: the poop box (full breadth, −86.8 to −64.55 m, 22 m) became the
+stern deckhouse (−81.31 to −72.17 m, 4.6 m either side); the forecastle
+box shortened from 60 to 42 ft (its after end 64.99 → 70.48 m); the
+boat deck's front (the box boundary under it) moved from 250 to 217 ft
+(7.08 → 17.14 m). No tuned value moved: the boxes only bear once she is
+going, and the ending barely changes (stern-under 6,469.2 → 6,468.0 s,
+57.2° by the head at it both times, the dip the same 0.77° for 494 s,
+peak girder use 0.87 → 0.88). One at a time from the final set: no stern
+house at all 6,468.0 s and 57.7°; the stern house at full breadth
+6,467.9 s and 57.4°; the old poop box 6,468.1 s and 57.6°; the 60 ft
+forecastle 6,472.2 s and 56.9°; the bridge at 250 ft 6,465.0 s and
+56.7°. None breaks her. The way down is the new `pivotDrag` rule (see
+"The way down") with `descentTimeScale` 1.
+
+The real morning: −3.6° at 9:25, easing to −1.0° by 10:50; 0.8–1.0° by
+the head until 10:50 (sinkage 12.38 m); the third torpedo brings her to
+**0.8° by the stern from 10:50:13 to 10:58:26** while No. 5 hold fills
+and her forward holds start to take No. 3's water; by the head again from
+10:58:26, her bow under at 11:00:48, the forecastle at 11:01:33, the
+bridge at 11:02:08, the funnel at 11:02:22, and her stern the last part
+under at 11:02:48 AM (6,468 s) with her bow down 57°; her bow strikes
+the floor as her stern goes, and her stern comes down to it 16 s later
+(at most about 12 m/s), at rest 31 s after stern-under. No breakup (peak
+0.88). At rest −4.0° to port, 4.3° bow down (her stem in the mud), the
+lowest point at −167 m. Without the third torpedo she goes down by the
+head at 11:15:51 AM (in that What-if her bow strikes the floor first and
+she breaks at 11:15:35).
+
+The spec's bow-first criterion first asked for her by the head at every
+frame; the eight minutes at up to 0.8° by the stern after the third
+torpedo did not meet it. No configuration we found inside honest ranges
+met it and the rest together: a by-the-head trim before 10:50 large
+enough to absorb No. 5's water (about 1.7°) comes only in the last few
+minutes before her forward holds overflow, so she sinks before 10:55 or
+before the third torpedo, and a shorter No. 5 hold makes her end steep
+enough to strike the floor. Ruling R20 allows the dip (up to 1° by the
+stern for at most 10 minutes after the third torpedo): **met**, 0.77°
+for 8 min 14 s (`carpathiaMorning.test.ts`, the R20 envelope).
+
+The two shared changes she needed (no-ops for the other ships: every golden
+and their What-if tests pass unchanged): a run does not freeze as steady
+while a torpedo is still to come (the U-boat's return alone was otherwise
+never taken in; `torpedoSpec.test.ts` checks it on the torpedo test ship),
+and a whole hull that falls onto its after half settles as a stern does
+(`sternFirst`; `seabed.test.ts` on a box). Her bow-first end no longer
+uses `sternFirst`. See "The way down".
+
 ## Pass criteria (enforced by `__tests__/`)
 
-| Criterion                                           | Result                                              |
-| --------------------------------------------------- | --------------------------------------------------- |
-| Undamaged: floats at her draught ±0.1 m, trim ±0.2° | 9.82 m, trim 0.00° (list 1.4° to port from the TCG) |
-| Displacement within 3%, GM 0.6–2.5 m                | +0.1%, GM 0.80 m                                    |
-| Breakup 2:05–2:25 AM                                | 2:14:01 AM (±5% strength: 2:12:06, 2:15:51)         |
-| Break 35–45% of LBP from the stern, funnels 3–4     | x = −27.1 m, 39.5%                                  |
-| Trim at the break 8°–25°                            | 10.8°                                               |
-| Stern under 2:10–2:30 AM                            | 2:15:52 AM                                          |
-| List under 10° before the break                     | at most 1.5° (to port)                              |
-| What if 1–4 forward (every subset): afloat, whole   | all 15 float, steady by 12:30 AM                    |
-| What if 5 forward: later than the real night        | sinks 2:52:48 AM (breaks 2:50:58)                   |
-| What if 7 forward: sooner                           | sinks 1:12:23 AM                                    |
-| Every single compartment, first 1–8, mixed sets     | float steady, or sink with every part on the floor  |
-| Deterministic                                       | two runs deep-equal                                 |
-| Whole real night `simulate`                         | about 0.8–1.2 s (test allows 3 s and logs it)       |
-| `advance(8)`                                        | slowest call about 8.5 ms                           |
-| Lusitania: displacement within 2%, GM 0.5–1.2 m     | 35,654 t (+0.0%), GM 0.84 m; Cb 0.610 at load       |
-| Lusitania: list ≥ 12° by 2:15, at most 15–30°       | 21.7° at 2:15, at most 24.8°                        |
-| Lusitania: down by the head from 2:12               | trim > 0 from 2:12 on (1.5° then)                   |
-| Lusitania: bow on the floor, stern in the air       | bow lands 2:27:25 PM, trim 26°                      |
-| Lusitania: gone at 2:25–2:32 PM (real 2:28)         | 2:28:05 PM, no breakup                              |
-| Lusitania: at rest on her starboard side (≥ 45°)    | 75° (she goes under at 59°; the survey's rule)      |
-| Titanic What-ifs as 1.0                             | 83 checked frame by frame against e5fd6da4: same    |
-| Lusitania: explosion within 30 s                    | 8 s                                                 |
-| Lusitania What-if: 12 spots × portholes open/shut   | all finite, all float steady or rest on the floor   |
-| Lusitania portholes shut at the real spot           | floats (open: sinks at 2:28:05 PM)                  |
-| Lusitania real afternoon `simulate`                 | about 0.5–0.9 s (the Titanic's 3 s budget)          |
-| Lusitania tracks as 1.1                             | 3 runs, every 50th frame to 1e-9: same              |
-| Storm field: 4σ of a 6 h record                     | within 5% of Hs at three places                     |
-| Fresh water: same mass floats deeper                | 1025/1000 by volume                                 |
-| Box laker: calmer ships less, worse more            | < 0.5×, > 1.5× the real storm's water in 30 min     |
-| Box laker: a hatch fails under its head of water    | `hatch-fails`, then > 5× the inflow                 |
-| Box in 120 m: bow upright, stern upside down        | bow 0°, stern 180°, 5 m apart, none in the floor    |
-| Fitzgerald: LOA, beam, depth, displacement, GM      | 222.2 m, 22.86 m, 11.89 m; 34,750 t, 3.80 m         |
-| Fitzgerald: freeboard 3.2–3.8 m, cargo 26,535 t     | 3.56 m; 26,535 t (41.1/15.5/43.4% by hold)          |
-| Fitzgerald: starboard list 1–8° at 5:30 PM (R14)    | 5.0° (topside alone: 0.0°)                          |
-| Fitzgerald: water rising, afloat at 7:10            | 754 / 1,349 / 1,795 / 2,031+ t at 4:30–7:10         |
-| Fitzgerald: storm's water over her deck, by 7:00    | 490 m³ (her holds'); the graze the tanks'           |
-| Fitzgerald: still water, all damage: afloat 9:00 PM | floats, 1,568 t, list 6.0°                          |
-| Fitzgerald: sisters' time inside 7:00–7:15 PM (R15) | 7:11:55 PM (re-locked); the table above             |
-| Fitzgerald: still water sinks nothing by 9:00 PM    | floats, no cover fails                              |
-| Fitzgerald: a cover fails, bow under 7:10–7:25      | first cover 7:11:37 PM, bow under 7:12:03 PM        |
-| Fitzgerald: bow lands ≤ 3 min, stern top ≥ −5 m     | 7:12:44 PM (41 s), house +2.6 m, hull +0.8 m        |
-| Fitzgerald: stern under ≤ 5 s after the bow lands   | 1.7 s                                               |
-| Fitzgerald: breaks after the bow lands              | as it strikes, x = 17.9 m, before the stern lands   |
-| Fitzgerald: stern rolls in the water (R10)          | 180° as it first touches; 0° more on the floor      |
-| Fitzgerald: rests                                   | bow 0.1°, stern 180°; sections 35 m apart           |
-| Green water: on and off her deck in seconds         | a 4.2 m swell: yes; still water, a 1 m sea: none    |
-| Fitzgerald: funnel stays; dive in real time (R11)   | no `funnel-falls`; shown t = real t                 |
-| Fitzgerald ride: pitch ≤ 6°, roll ≤ 10°             | at most 2.0°, 0.6°                                  |
-| Fitzgerald What-if: 24 runs                         | all finite, inside endT; no damage sinks later      |
-| Fitzgerald: real spots = real run; none + calmer    | identical tracks; she reaches Whitefish Bay         |
-| Britannic: LOA, beam; displacement, GM              | 269.1 m, 28.65 m; 52,653 t (+0.0%), 0.80 m          |
-| Britannic: explosion at the mine                    | 8:12:01 AM (1 s)                                    |
-| Britannic: added list ≥ 2° by 8:30, growing to 8:55 | not met (−0.7°, −0.9°): `it.failing`, Known limits  |
-| Britannic: adds 8–30° of list before the bow lands  | 25.0° (as the bow strikes, 9:03:55)                 |
-| Britannic: down by the head from 8:17 AM            | yes (1.5° at 8:17, 3.4° at 8:27)                    |
-| Britannic: E-deck portholes under 10–22 min         | 12:28 after the mine (real about 15)                |
-| Britannic: bow lands before the stern is under      | bow 9:03:55, stern 9:06:01 (up then)                |
-| Britannic: gone in 45–65 min (real 55), whole       | 54:01 (9:06:01 AM); girder peak 0.97                |
-| Britannic: rests on her starboard side (≥ 60°)      | 89.9°                                               |
-| Britannic: funnels fall one after another           | 9:00:26, 9:02:33, 9:03:29 (dummy 9:04:05)           |
-| Britannic What-if: 8 toggle combinations            | all finite, in endT; any one fixed: later           |
-| Britannic: a mine in a boiler room's double skin    | floats steady (each of the six)                     |
+| Criterion                                           | Result                                                                                  |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Undamaged: floats at her draught ±0.1 m, trim ±0.2° | 9.82 m, trim 0.00° (list 1.4° to port from the TCG)                                     |
+| Displacement within 3%, GM 0.6–2.5 m                | +0.1%, GM 0.80 m                                                                        |
+| Breakup 2:05–2:25 AM                                | 2:14:01 AM (±5% strength: 2:12:06, 2:15:51)                                             |
+| Break 35–45% of LBP from the stern, funnels 3–4     | x = −27.1 m, 39.5%                                                                      |
+| Trim at the break 8°–25°                            | 10.8°                                                                                   |
+| Stern under 2:10–2:30 AM                            | 2:15:52 AM                                                                              |
+| List under 10° before the break                     | at most 1.5° (to port)                                                                  |
+| What if 1–4 forward (every subset): afloat, whole   | all 15 float, steady by 12:30 AM                                                        |
+| What if 5 forward: later than the real night        | sinks 2:52:48 AM (breaks 2:50:58)                                                       |
+| What if 7 forward: sooner                           | sinks 1:12:23 AM                                                                        |
+| Every single compartment, first 1–8, mixed sets     | float steady, or sink with every part on the floor                                      |
+| Deterministic                                       | two runs deep-equal                                                                     |
+| Whole real night `simulate`                         | about 0.8–1.2 s (test allows 3 s and logs it)                                           |
+| `advance(8)`                                        | slowest call about 8.5 ms                                                               |
+| Lusitania: displacement within 2%, GM 0.5–1.2 m     | 35,654 t (+0.0%), GM 0.84 m; Cb 0.610 at load                                           |
+| Lusitania: list ≥ 12° by 2:15, at most 15–30°       | 21.7° at 2:15, at most 24.8°                                                            |
+| Lusitania: down by the head from 2:12               | trim > 0 from 2:12 on (1.5° then)                                                       |
+| Lusitania: bow on the floor, stern in the air       | bow lands 2:27:25 PM, trim 26°                                                          |
+| Lusitania: gone at 2:25–2:32 PM (real 2:28)         | 2:28:05 PM, no breakup                                                                  |
+| Lusitania: at rest on her starboard side (≥ 45°)    | 75° (she goes under at 59°; the survey's rule)                                          |
+| Titanic What-ifs as 1.0                             | 83 checked frame by frame against e5fd6da4: same                                        |
+| Lusitania: explosion within 30 s                    | 8 s                                                                                     |
+| Lusitania What-if: 12 spots × portholes open/shut   | all finite, all float steady or rest on the floor                                       |
+| Lusitania portholes shut at the real spot           | floats (open: sinks at 2:28:05 PM)                                                      |
+| Lusitania real afternoon `simulate`                 | about 0.5–0.9 s (the Titanic's 3 s budget)                                              |
+| Lusitania tracks as 1.1                             | 3 runs, every 50th frame to 1e-9: same                                                  |
+| Storm field: 4σ of a 6 h record                     | within 5% of Hs at three places                                                         |
+| Fresh water: same mass floats deeper                | 1025/1000 by volume                                                                     |
+| Box laker: calmer ships less, worse more            | < 0.5×, > 1.5× the real storm's water in 30 min                                         |
+| Box laker: a hatch fails under its head of water    | `hatch-fails`, then > 5× the inflow                                                     |
+| Box in 120 m: bow upright, stern upside down        | bow 0°, stern 180°, 5 m apart, none in the floor                                        |
+| Fitzgerald: LOA, beam, depth, displacement, GM      | 222.2 m, 22.86 m, 11.89 m; 34,750 t, 3.80 m                                             |
+| Fitzgerald: freeboard 3.2–3.8 m, cargo 26,535 t     | 3.56 m; 26,535 t (41.1/15.5/43.4% by hold)                                              |
+| Fitzgerald: starboard list 1–8° at 5:30 PM (R14)    | 5.0° (topside alone: 0.0°)                                                              |
+| Fitzgerald: water rising, afloat at 7:10            | 754 / 1,349 / 1,795 / 2,031+ t at 4:30–7:10                                             |
+| Fitzgerald: storm's water over her deck, by 7:00    | 490 m³ (her holds'); the graze the tanks'                                               |
+| Fitzgerald: still water, all damage: afloat 9:00 PM | floats, 1,568 t, list 6.0°                                                              |
+| Fitzgerald: sisters' time inside 7:00–7:15 PM (R15) | 7:11:55 PM (re-locked); the table above                                                 |
+| Fitzgerald: still water sinks nothing by 9:00 PM    | floats, no cover fails                                                                  |
+| Fitzgerald: a cover fails, bow under 7:10–7:25      | first cover 7:11:37 PM, bow under 7:12:03 PM                                            |
+| Fitzgerald: bow lands ≤ 3 min, stern top ≥ −5 m     | 7:12:44 PM (41 s), house +2.6 m, hull +0.8 m                                            |
+| Fitzgerald: stern under ≤ 5 s after the bow lands   | 1.7 s                                                                                   |
+| Fitzgerald: breaks after the bow lands              | as it strikes, x = 17.9 m, before the stern lands                                       |
+| Fitzgerald: stern rolls in the water (R10)          | 180° as it first touches; 0° more on the floor                                          |
+| Fitzgerald: rests                                   | bow 0.1°, stern 180°; sections 35 m apart                                               |
+| Green water: on and off her deck in seconds         | a 4.2 m swell: yes; still water, a 1 m sea: none                                        |
+| Fitzgerald: funnel stays; dive in real time (R11)   | no `funnel-falls`; shown t = real t                                                     |
+| Fitzgerald ride: pitch ≤ 6°, roll ≤ 10°             | at most 2.0°, 0.6°                                                                      |
+| Fitzgerald What-if: 24 runs                         | all finite, inside endT; no damage sinks later                                          |
+| Fitzgerald: real spots = real run; none + calmer    | identical tracks; she reaches Whitefish Bay                                             |
+| Carpathia: LOA, LBP, beam; displacement, GM         | 170.08, 164.59, 19.66 m; 18,509 t (+0.0%), 1.14 m                                       |
+| Carpathia: hits at 0, 8 and 5,700 s, port side      | `torpedo-hit` 2 at 8 s, 3 at 5,700 s (10:50 AM)                                         |
+| Carpathia: list to port 0.5–10° at 9:25, ≤ 15°      | 3.6° at 9:25 (1.0° by 10:50); at most 9.7° (15 s)                                       |
+| Carpathia: down by the head 9:25–10:50              | 0.82° at 9:25, 1.02° at 10:50                                                           |
+| Carpathia: afloat at 10:50, forecastle edge out     | sinkage 12.38 m (from 8.00), 11,387 t aboard                                            |
+| Carpathia: stern under 10:55–11:50 AM               | 11:02:48 AM (6,468 s)                                                                   |
+| Carpathia: bow first, stern last (the photograph)   | bow down 57° at stern-under; met under R20 (≤ 0.8° by the stern, 8 min 14 s)            |
+| Carpathia: her way down is seen (R22)               | 31 s stern-under to rest in real time; stern ≤ 12.2 m/s; stern lands 16 s after the bow |
+| Carpathia: no breakup afloat; rests upright to port | none; roll −4.0°, pitch +4.3°, lowest −167.1 m                                          |
+| Carpathia: without the third torpedo                | sinks later, 11:15:51 AM; all nine single hits float                                    |
+| Carpathia What-if: 97 runs (sims lane)              | all finite, inside `END_T`; 3+ hits ≤ the first two                                     |
+| Carpathia real morning `simulate`                   | about 0.45 s (the test allows 4.5 s)                                                    |
+| Britannic: LOA, beam; displacement, GM              | 269.1 m, 28.65 m; 52,653 t (+0.0%), 0.80 m                                              |
+| Britannic: explosion at the mine                    | 8:12:01 AM (1 s)                                                                        |
+| Britannic: added list ≥ 2° by 8:30, growing to 8:55 | not met (−0.7°, −0.9°): `it.failing`, Known limits                                      |
+| Britannic: adds 8–30° of list before the bow lands  | 25.0° (as the bow strikes, 9:03:55)                                                     |
+| Britannic: down by the head from 8:17 AM            | yes (1.5° at 8:17, 3.4° at 8:27)                                                        |
+| Britannic: E-deck portholes under 10–22 min         | 12:28 after the mine (real about 15)                                                    |
+| Britannic: bow lands before the stern is under      | bow 9:03:55, stern 9:06:01 (up then)                                                    |
+| Britannic: gone in 45–65 min (real 55), whole       | 54:01 (9:06:01 AM); girder peak 0.97                                                    |
+| Britannic: rests on her starboard side (≥ 60°)      | 89.9°                                                                                   |
+| Britannic: funnels fall one after another           | 9:00:26, 9:02:33, 9:03:29 (dummy 9:04:05)                                               |
+| Britannic What-if: 8 toggle combinations            | all finite, in endT; any one fixed: later                                               |
+| Britannic: a mine in a boiler room's double skin    | floats steady (each of the six)                                                         |
 
 ## Known limits
 
@@ -1603,6 +2049,42 @@ Shared by any ship with a storm; the Fitzgerald's own values are hers.
 - The Lusitania's lower spaces under the bulkhead deck are whole
   compartments: water through an E-deck porthole goes straight into the
   compartment (or side bunker) under it, not onto E deck first.
+- After the Carpathia's third torpedo she lies up to 0.8° by the stern for
+  about eight minutes (10:50:13–10:58:26) while No. 5 hold fills and her
+  forward holds begin to take No. 3's water, then goes down by the head
+  (the sinking photograph shows her by the head; ruling R20 allows the
+  dip). See "The Carpathia's calibration" for why no honest set found
+  avoids it. Her end is near two edges: a little more settling
+  before 10:50 and she sinks before the third torpedo; a shorter No. 5
+  hold and her bow strikes the floor while her stern floats, which breaks
+  her (as it does in the What-if without the third torpedo).
+- Her bow strikes the 150 m floor as her stern goes under (she is 170 m
+  long): her wreck's flattened bow (cunardshipwrecks.com) fits that, but
+  the bow's collapse is not modelled (the spec's non-goal). Her stern then
+  swings down about it at the water's pace (`pivotDrag`, R22): the mud's
+  resistance to her ploughing stem, the water squeezed from under her as
+  she nears the floor, and the ballast water in her (neutral in the sea,
+  counted as steel by `STEEL_BUOYANCY`) are not modelled. Her stern's top
+  still comes down at up to about 12 m/s: a hull pivoting on one end
+  moves fastest at the other.
+- She rests deep in the floor (her keel 11 m under it amidships, the
+  screws hidden; "How deep she lies in the floor" under her data), from
+  the plough rule; her stern's top is about 6 m shallower than the
+  survey's 143 m.
+- Her bulkhead positions and tops, her profile and her ballast condition
+  are estimates (her general arrangement is not online): see "The
+  Carpathia's data". The ending is sensitive to the draught and the coal
+  doors (7.9 m: gone at 11:04; 8.0 m: 11:03; 8.1 m: 10:50, before the
+  third torpedo).
+- Fourteen of her What-ifs never log `floating-steady`: thirteen with a
+  torpedo in the forward peak (the hole fills a small, fine-ended space
+  that trades water with the sea in a slow cycle, her pitch rate just over
+  the steady test's 1e-5 rad/s) and boiler room plus No. 3 (the coal doors
+  still letting water through). Each holds its pose afloat to `END_T`
+  (3:35 PM on her clock; `carpathiaWhatIf.test.ts` checks that she does
+  not move in its last hour). A fix needs the shared steady test changed.
+- Her three torpedoes make the same hole. The third strikes the run of
+  her hull aft, where it is narrower; its area is not reduced.
 - The Britannic lists only from her 2 cm TCG until her last minutes
   (0.77° at 8:27 AM, at most 1.9°, against "a serious list to starboard"
   [WP]): her forward spaces are full breadth, so the water levels across

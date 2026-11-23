@@ -194,6 +194,71 @@ export function stormShip(more: Partial<BoxShip> = {}): ShipSpec {
   return { ...base, displacementT: (200 * 24 * draught * 1000) / 1000 };
 }
 
+/** The torpedo ship's bulkheads, aft to forward (m). */
+export const TORPEDO_BULKHEADS = [
+  -75, -58, -41, -24, -8, 8, 24, 41, 58, 75,
+] as const;
+
+/**
+ * 150 m × 20 m × 14 m, draught 6 m: nine full-breadth holds `c0` (aft) to
+ * `c8`, struck on the port side, forward first, 8 s apart. A hit at `c5`
+ * strikes 1 m forward of its after bulkhead (its 8 m hole spans the
+ * bulkhead, 5 m in `c5` and 3 m in `c4`); a last torpedo hits `c1` at
+ * t = 600. Her real run: `c5`, `c6` and the finisher.
+ */
+export function torpedoShip(more: Partial<BoxShip> = {}): ShipSpec {
+  const b = TORPEDO_BULKHEADS;
+  return boxShip({
+    length: 150,
+    beam: 20,
+    depth: 14,
+    draught: 6,
+    kg: 7,
+    compartments: Array.from({ length: 9 }, (_, i) =>
+      compartment(`c${i}`, b[i], b[i + 1], 12)
+    ),
+    ...more,
+    extra: {
+      torpedo: {
+        side: "port",
+        order: "fwd-first",
+        staggerS: 8,
+        hole: { areaM2: 6, zLow: 3, zHigh: 7, lengthM: 8 },
+        hitX: { c5: b[5] + 1 },
+        finisher: { spotId: "c1", t: 600 },
+        realSpots: ["c5", "c6", "finisher"],
+      },
+      ...more.extra,
+    },
+  });
+}
+
+/**
+ * The torpedo ship with `c4` (amidships) a centre space between a port and
+ * a starboard wing bunker (`WING_Y` out): a full-breadth hold floods level
+ * (no list), a wing on the struck side does not.
+ */
+export function torpedoWingShip(more: Partial<BoxShip> = {}): ShipSpec {
+  const base = torpedoShip(more);
+  const [from, to] = [TORPEDO_BULKHEADS[4], TORPEDO_BULKHEADS[5]];
+  const compartments = base.compartments.flatMap((c) =>
+    c.id !== "c4"
+      ? [c]
+      : [
+          compartment("c4", from, to, 12, {
+            span: { side: "centre", y: WING_Y },
+          }),
+          compartment("c4-port", from, to, 12, {
+            span: { side: "port", y: WING_Y },
+          }),
+          compartment("c4-stbd", from, to, 12, {
+            span: { side: "starboard", y: WING_Y },
+          }),
+        ]
+  );
+  return { ...base, compartments };
+}
+
 /**
  * 120 m × 20 m × 12 m, draught 5 m: three equal holds A, B, C aft to
  * forward (bulkheads at x −20 and 20, to the deck), for watertight doors,

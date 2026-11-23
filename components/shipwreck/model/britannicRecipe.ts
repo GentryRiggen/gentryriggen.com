@@ -81,6 +81,8 @@ const DECK_CROSS_X = [35, -24];
  * "attached to the rest of the hull only by some pieces of C deck" [WP]).
  */
 const HINGE_X = 87;
+/** Her hawse pipes' mouths over her sister's anchor points (m). */
+const HAWSE_LIFT = 1.4;
 
 /**
  * Where a hospital band paints the hull at (x, z): "red" on a cross,
@@ -446,8 +448,14 @@ export function britannicRecipe(
     boxes,
     gantries,
     // Her sister's hawse pipes (the same frames): on her white bows the
-    // anchors hang dark from the pipes' mouths, no dark recess round them.
-    anchors: base.anchors.map((a) => ({ ...a, hawse: true })),
+    // anchors hang dark from the pipes' mouths, 1.4 m over her sister's
+    // anchor point, no dark recess round them; 4 m from the lip to the
+    // crown (a 7¾-ton side bower, README).
+    anchors: base.anchors.map((a) => ({
+      ...a,
+      p: [a.p[0], a.p[1], a.p[2] + HAWSE_LIFT] as V3,
+      stockless: { size: 4.0 },
+    })),
     hinge: { x: HINGE_X, z: deckZ("C", HINGE_X) },
     paint,
   };

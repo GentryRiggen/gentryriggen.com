@@ -128,13 +128,15 @@ describe("the Lusitania's words", () => {
       }
     }
     // She fired no rockets; her lights failed early, then went out; she
-    // had no storm (no hatch covers to fail, no shelter to reach).
+    // had no storm (no hatch covers to fail, no shelter to reach); her
+    // torpedoes all land in the collision caption (no `torpedo-hit`).
     expect([...new Set(none)].sort()).toEqual([
       "hatch-fails",
       "lights-flicker",
       "radio",
       "rocket",
       "sheltered",
+      "torpedo-hit",
     ]);
   });
 

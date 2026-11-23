@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { playback } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
+import { torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
 import type { ShipId } from "@/lib/shipwreck/ships/types";
 import NightScene from "./NightScene";
 import type { SceneRuntime } from "./runtime";
@@ -18,7 +19,9 @@ interface SceneCheckProps {
  * `window.__shipwreck.seek / setCamera / setXray / flyToPlace`. Add
  * `&quality=high|medium|low` to pin a tier (the frame-rate monitor is off),
  * `&ship=lusitania` for her real afternoon, `&ship=fitzgerald` for her
- * storm, `&ship=britannic` for her morning (default the Titanic's night).
+ * storm, `&ship=carpathia` for her summer morning, `&ship=britannic` for
+ * hers (default the Titanic's night). A torpedo ship's hits are her real
+ * run's (`torpedoHits`), as the game starts them.
  */
 export default function SceneCheck({ runtime }: SceneCheckProps) {
   const params =
@@ -28,7 +31,10 @@ export default function SceneCheck({ runtime }: SceneCheckProps) {
   const pinned = params?.get("quality") ?? null;
   const asked = params?.get("ship");
   const ship: ShipId =
-    asked === "lusitania" || asked === "fitzgerald" || asked === "britannic"
+    asked === "lusitania" ||
+    asked === "fitzgerald" ||
+    asked === "carpathia" ||
+    asked === "britannic"
       ? asked
       : "titanic";
 
@@ -37,7 +43,9 @@ export default function SceneCheck({ runtime }: SceneCheckProps) {
     if (pinned === "high" || pinned === "medium" || pinned === "low")
       s.setQuality(pinned);
     const spec = getShip(ship);
-    s.start(spec, spec.realNight);
+    s.start(spec, spec.realNight, {
+      torpedoes: torpedoHits(spec, whatIfRealIds(spec)),
+    });
     s.play();
     // Checking only: compute the night in bigger chunks than the frame loop
     // (software WebGL can run at a frame a second).

@@ -15,7 +15,7 @@ import { titanicRecipe, type ShipRecipe } from "../titanicRecipe";
  * was written by the 1.0 recipe before the Lusitania (1.1) touched any
  * shared model code, the Lusitania's by the 1.1 recipe before the
  * Fitzgerald (1.3) did, the Fitzgerald's by the 1.3 recipe before the
- * Britannic touched it: every later change must leave their placements,
+ * Carpathia and the Britannic touched it: every later change must leave their placements,
  * layout and hull exactly as they were. Regenerate only on purpose:
  * `UPDATE_RECIPE_SNAPSHOT=1 npx jest titanicRecipeSnapshot`.
  *

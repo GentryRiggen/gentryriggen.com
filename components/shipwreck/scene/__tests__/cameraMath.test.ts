@@ -19,16 +19,20 @@ import {
   shipToThree,
   shipToThreeInto,
   shotView,
+  torpedoInView,
   trackSpeedAt,
   underwaterView,
+  CARPATHIA_HULL_BOXES,
   type ShotContext,
   type ShotId,
 } from "../cameraMath";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
-import { simulate } from "@/lib/shipwreck/sim/run";
+import { simulate, torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
 import { sampleTrack } from "@/lib/shipwreck/sim/track";
+import { trackSideY } from "../Torpedo";
 import { BRITANNIC_HULL_BOXES } from "../cameraMath";
 
 const pose = (p: Partial<BodyPose> = {}): BodyPose => ({
@@ -462,6 +466,124 @@ function inShipFrame(
   const l = g.worldToLocal(new Vector3(w[0], w[1], w[2]));
   return [l.x, -l.z, l.y];
 }
+
+describe("the Carpathia's camera (Task 6)", () => {
+  const SEA = carpathia.seaDepthM; // 150 m
+  const track = simulate(carpathia, carpathia.realNight);
+  const real = torpedoHits(carpathia, whatIfRealIds(carpathia));
+  const eventT = (kind: string) => track.events.find((e) => e.kind === kind)!.t;
+
+  it("sizes her hull boxes from her data: 170 m, her beam, her houses", () => {
+    expect(hullBoxesFor("carpathia")).toBe(CARPATHIA_HULL_BOXES);
+    const [hull, ...houses] = CARPATHIA_HULL_BOXES;
+    expect(hull.x[0]).toBeCloseTo(-87, 0);
+    expect(hull.x[1]).toBeCloseTo(83.5, 0);
+    expect(hull.y[1]).toBeCloseTo(carpathia.beam / 2 + 0.1, 6);
+    expect(houses).toHaveLength(carpathia.superstructure.length);
+    // The stern deckhouse inboard of its walkways.
+    expect(houses[0].y[1]).toBeCloseTo(4.6, 6);
+  });
+
+  it("follows her morning: two hits, the boats, the 10:50 AM torpedo, her way down", () => {
+    const at = (t: number) => cinematicShot(track, t, "carpathia");
+    expect(at(-40)).toBe("run-in");
+    expect(at(0)).toBe("hit");
+    expect(at(20)).toBe("hit");
+    expect(at(300)).toBe("list");
+    expect(at(700)).toBe("boats");
+    expect(at(900)).toBe("port-boats");
+    expect(at(1200)).toBe("boats");
+    // Her boats all away: settled by the head, the boats clear of her.
+    expect(at(3000)).toBe("list");
+    // The U-boat's torpedo: its run-in, its hit.
+    expect(at(5700 - 30)).toBe("run-in");
+    expect(at(5700)).toBe("hit");
+    expect(at(5730)).toBe("hit");
+    expect(at(5800)).toBe("list");
+    const bowUnder = eventT("bow-under");
+    const sternUnder = eventT("stern-under");
+    const sternLands = eventT("stern-lands");
+    expect(at(bowUnder)).toBe("bow-down");
+    expect(at(sternUnder - 10)).toBe("grounded");
+    // Her way down (R22) is watched under water, then the wreck circled.
+    expect(at(sternUnder + 5)).toBe("grounded-below");
+    expect(at(sternLands + 4)).toBe("grounded-below");
+    expect(at(sternLands + 10)).toBe("on-floor");
+    // The title: her morning, wide.
+    expect(cinematicShot(track, 0, "carpathia", false)).toBe("afternoon");
+    // The shots aim at the torpedo whose run-in has begun.
+    expect(torpedoInView(real, -40)).toBe(0);
+    expect(torpedoInView(real, 3000)).toBe(1);
+    expect(torpedoInView(real, 5700 - 40)).toBe(2);
+  });
+
+  it("frames the run-in on her port side, the wake's far end near the camera", () => {
+    const h = real[0];
+    const body = sampleTrack(track, 0).bodies[0];
+    const hitAt = shipToThree(body, [h.x, trackSideY(carpathia, "port"), 9]);
+    const v = shotView("run-in", {
+      t: -20,
+      wall: 0,
+      bodies: [body],
+      breakX: null,
+      seaDepthM: SEA,
+      ship: "carpathia",
+      hitX: h.x,
+      hitT: h.t,
+      hitAt,
+    });
+    // Port is three -z: the camera stands out there, beyond most of the
+    // 700 m track, looking in at the hit.
+    expect(v.pos[2]).toBeLessThan(hitAt[2] - 400);
+    expect(v.target[2]).toBeLessThan(hitAt[2]);
+    expect(v.target[2]).toBeGreaterThan(v.pos[2]);
+    expect(v.pos[1]).toBeGreaterThan(20);
+  });
+
+  it("keeps every camera above her 150 m floor and outside her, all morning", () => {
+    const ts: number[] = [];
+    for (let t = 0; t < track.endT; t += 97) ts.push(t);
+    const su = eventT("stern-under");
+    for (let t = su - 40; t <= track.endT; t += 1.5) ts.push(t);
+    const boxes = hullBoxesFor("carpathia");
+    for (const t of ts) {
+      const frame = sampleTrack(track, t);
+      const k = torpedoInView(real, t);
+      const hitBody = sampleTrack(track, real[k].t).bodies[0];
+      const ctx: ShotContext = {
+        t,
+        wall: 0,
+        bodies: frame.bodies,
+        breakX: track.breakX,
+        seaDepthM: SEA,
+        ship: "carpathia",
+        hitX: real[k].x,
+        hitT: real[k].t,
+        hitAt: shipToThree(hitBody, [real[k].x, 9.9, 9]),
+      };
+      for (const wall of [0, 40, 200]) {
+        const c = { ...ctx, wall };
+        const shot = cinematicShot(track, t, "carpathia");
+        for (const v of [
+          shotView(shot, c),
+          underwaterView(c),
+          lifeboatView(c),
+        ]) {
+          expect(v.pos[1]).toBeGreaterThanOrEqual(-SEA + 2);
+          expect(v.target[1]).toBeGreaterThanOrEqual(-SEA);
+          for (const body of frame.bodies) {
+            const local = inShipFrame(body, v.pos);
+            expect(pushOutOfHull(local, 0, boxes)).toEqual(local);
+          }
+        }
+        // Under water once she is down; over it before.
+        if (shot === "grounded-below" || shot === "on-floor")
+          expect(shotView(shot, c).pos[1]).toBeLessThan(-3);
+        else expect(shotView(shot, c).pos[1]).toBeGreaterThan(2);
+      }
+    }
+  });
+});
 
 describe("no-allocation helpers", () => {
   it("shipToThreeInto writes what shipToThree returns", () => {

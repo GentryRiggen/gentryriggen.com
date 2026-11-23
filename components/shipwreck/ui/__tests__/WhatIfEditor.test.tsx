@@ -7,11 +7,13 @@ import {
 } from "@testing-library/react";
 import type { ShipWhatIf } from "@/lib/shipwreck/save";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { isDeckOpening } from "@/lib/shipwreck/ships/types";
 import {
+  FINISHER_SPOT,
   simulate,
   whatIfOpenings,
   whatIfRealIds,
@@ -294,6 +296,140 @@ describe("the end of a What if that never sinks", () => {
     );
     // Her stern went down first here: no line about the bow landing first.
     expect(words.lines).toHaveLength(1);
+  });
+});
+
+describe("What if? for the Carpathia (her own torpedoes, the U-boat's return)", () => {
+  const group = () =>
+    screen.getByRole("group", { name: "Where torpedoes hit" });
+
+  it("shows her nine spots plus the U-boat's return as its own big toggle, the real run to start", () => {
+    editor(carpathia);
+    const chips = within(group()).getAllByRole("checkbox");
+    expect(chips).toHaveLength(9);
+    // Bow first; no bunker chips, no finisher chip.
+    expect(chips.map((c) => c.dataset.testid)).toEqual(
+      [...whatIfSpots(carpathia)]
+        .filter((id) => id !== FINISHER_SPOT)
+        .reverse()
+        .map((id) => `shipwreck-chip-${id}`)
+    );
+    expect(screen.queryByTestId("shipwreck-chip-finisher")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-chip-boiler-port")).toBeNull();
+    // Each spot is a tap target on her side too.
+    for (const id of whatIfSpots(carpathia).filter((x) => x !== FINISHER_SPOT))
+      expect(screen.getByTestId(`shipwreck-comp-${id}`)).toBeInTheDocument();
+    const fin = screen.getByTestId("shipwreck-finisher");
+    expect(fin).toHaveAttribute("role", "switch");
+    expect(fin).toHaveAttribute("aria-checked", "true");
+    expect(fin).toHaveAccessibleName(
+      "The U-boat comes back: a last torpedo at 10:50 AM"
+    );
+    expect(fin).toHaveTextContent("The U-boat comes back");
+    // Defaults = the real run: the boiler room, the engine room, the U-boat.
+    for (const id of whatIfSpots(carpathia).filter((x) => x !== FINISHER_SPOT))
+      expect(screen.getByTestId(`shipwreck-chip-${id}`)).toHaveAttribute(
+        "aria-checked",
+        String(id === "boiler" || id === "engine")
+      );
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "2 torpedoes · then 10:50 AM"
+    );
+    // Her port side, her morning; no portholes (shut: R10).
+    expect(
+      screen.getByText("Tap where torpedoes hit her port side. Will she float?")
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Torpedoes come from port/)).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveTextContent(
+      "Like the real morning"
+    );
+    expect(screen.queryByTestId("shipwreck-portholes")).toBeNull();
+    expect(screen.getByTestId("shipwreck-struck-side")).toHaveAttribute(
+      "data-side",
+      "port"
+    );
+  });
+
+  it("goes with only the U-boat's return; Clear clears the spots and the U-boat", () => {
+    const onGo = editor(carpathia);
+    fireEvent.click(screen.getByTestId("shipwreck-chip-boiler"));
+    fireEvent.click(screen.getByTestId("shipwreck-chip-engine"));
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "Only the 10:50 AM torpedo"
+    );
+    expect(screen.getByTestId("shipwreck-go")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(onGo).toHaveBeenLastCalledWith({ ids: [FINISHER_SPOT] });
+    // Its holes open at 10:50 AM, in No. 5 hold, on her port side.
+    const holes = whatIfOpenings(carpathia, [FINISHER_SPOT]);
+    expect(holes.every((o) => "t" in o && o.t === 5700)).toBe(true);
+    fireEvent.click(screen.getByTestId("shipwreck-finisher"));
+    expect(screen.getByTestId("shipwreck-finisher")).toHaveAttribute(
+      "aria-checked",
+      "false"
+    );
+    expect(screen.getByTestId("shipwreck-go")).toBeDisabled();
+    fireEvent.click(screen.getByTestId("shipwreck-chip-hold1"));
+    fireEvent.click(screen.getByTestId("shipwreck-finisher"));
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "Hits: Hold 1 · then 10:50 AM"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-preset-clear"));
+    expect(screen.getByTestId("shipwreck-finisher")).toHaveAttribute(
+      "aria-checked",
+      "false"
+    );
+    expect(
+      within(group())
+        .getAllByRole("checkbox")
+        .filter((c) => c.getAttribute("aria-checked") === "true")
+    ).toHaveLength(0);
+    expect(screen.getByTestId("shipwreck-go")).toBeDisabled();
+    // Like the real morning puts it all back.
+    fireEvent.click(screen.getByTestId("shipwreck-preset-real"));
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(onGo).toHaveBeenLastCalledWith({
+      ids: [...whatIfRealIds(carpathia)],
+    });
+  });
+
+  it("remembers her saved ids, the U-boat's return among them, and drops ids she has not got", () => {
+    editor(carpathia, { ids: ["hold2", FINISHER_SPOT, "br1", "junk"] });
+    expect(screen.getByTestId("shipwreck-chip-hold2")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-finisher")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "Hits: Hold 2 · then 10:50 AM"
+    );
+    cleanup();
+    // Only junk: back to the real run.
+    editor(carpathia, { ids: ["br1", "turbine"] });
+    expect(screen.getByTestId("shipwreck-chip-boiler")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+  });
+
+  it("keeps the Lusitania's words and her portholes (1.1)", () => {
+    editor(lusitania);
+    expect(
+      screen.getByText("Tap where torpedoes hit. Will she float?")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Torpedoes come from starboard/)
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-portholes")).toBeInTheDocument();
+    expect(screen.queryByTestId("shipwreck-finisher")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-struck-side")).toBeNull();
   });
 });
 

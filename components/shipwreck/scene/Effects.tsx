@@ -297,6 +297,7 @@ export default function Effects({
       launch.current = { track, at: new Map() };
     }
     const events = track.events;
+    const sternX = spec.stations[0]?.x ?? -138.5;
     const main =
       frame.bodies.find((b) => b.part === "stern") ?? frame.bodies[0];
     const models: TitanicHandles[] = [];
@@ -418,6 +419,7 @@ export default function Effects({
       f.track = track;
       f.frame = frame;
       f.openings = s.openings;
+      f.torpedoes = s.torpedoes;
       f.hits = s.hits;
       f.t = t;
       f.wall = wall;
@@ -604,7 +606,8 @@ export default function Effects({
         at.bodies.find(
           (b) => b.part === (e.kind === "bow-under" ? "bow" : "stern")
         ) ?? at.bodies[0];
-      const x0 = e.kind === "bow-under" ? 60 : -100;
+      // (Near her stern: no further aft than 10 m in from it.)
+      const x0 = e.kind === "bow-under" ? 60 : Math.max(-100, sternX + 10);
       const c = shipToThree(body, [x0, 0, 10]);
       const fade = Math.min(1, age * 2) * (1 - age / 40);
       // On the storm's sea, where it is now.

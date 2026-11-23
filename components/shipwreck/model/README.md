@@ -2,31 +2,34 @@
 
 The procedural ships: each built at load from its ship data
 (`lib/shipwreck/ships/titanic.ts`, `lusitania.ts`, `fitzgerald.ts`,
-`britannic.ts`) and a detail recipe (`titanicRecipe.ts`,
-`lusitaniaRecipe.ts`, `fitzgeraldRecipe.ts`, `britannicRecipe.ts`;
-`recipeFor(spec)` picks by `spec.id`). Nothing is downloaded: every texture is drawn into a canvas
-once.
+`carpathia.ts`, `britannic.ts`) and a detail recipe (`titanicRecipe.ts`,
+`lusitaniaRecipe.ts`, `fitzgeraldRecipe.ts`, `carpathiaRecipe.ts`,
+`britannicRecipe.ts`; `recipeFor(spec, livery?)` picks by `spec.id`, and by
+livery for a ship with more than one: see "Liveries" below). Nothing is
+downloaded: every texture is drawn into a canvas once.
 
 ## Files
 
-| File                  | What                                                                                                                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `hullSurface.ts`      | The hull from the spec's offsets, interpolated with monotone cubics (smooth, exact at the stations); rounds the counter in plan.                                               |
-| `titanicRecipe.ts`    | Where everything goes: decks, houses, funnels, masts, boats, davits, 2,000+ portholes and windows, fittings, rails, wires, underwater gear. The recipe types.                  |
-| `lusitaniaRecipe.ts`  | The Lusitania's: her tiers (`blocks`), houses, funnels, 48 boats, 44 davits, lights, the forest of ventilators, four propellers; `PEACETIME_PAINT`.                            |
-| `fitzgeraldRecipe.ts` | The Edmund Fitzgerald's: forecastle, texas house and pilothouse, the after house, 21 hatch covers on coamings, the hatch crane, one funnel, boats, one propeller; `FENCE_GAP`. |
-| `britannicRecipe.ts`  | The Britannic's: her sister's recipe with the hospital paint (`bandPaintAt`), five gantry davit sets, Welin davits, A/B deck screens, "G.618", the bow's hinge.                |
-| `britannicLivery.ts`  | Her two paints on one built model (R23): `britannicModelRecipe`, `attachBritannicLivery`, `handles.setPaint("hospital" \| "liner")`.                                           |
-| `bowBend.ts`          | The bent bow (R12): `hardLandingAt`, `bowBend(t, landedAt)`, `bendShipPoint`, `applyBowBend`.                                                                                  |
-| `breakCut.ts`         | The jagged tear through `breakX` and which half a point belongs to.                                                                                                            |
-| `buildShip.ts`        | Recipe to merged triangle lists per material, instance lists and line lists, for the whole ship or one half; quality tiers.                                                    |
-| `partGeometry.ts`     | Funnels, boats, cowl vents, benches, bitts, rail posts, porthole and window panes.                                                                                             |
-| `materials.ts`        | Hull paint by height in the shader, painted steel (vertex colours), planks, bronze, the name boards, the lit panes and their uniforms.                                         |
-| `textures.ts`         | Plate seams and rivets (normal map), weathering, planks, the name.                                                                                                             |
-| `shipModel.ts`        | Assembles the three.js tree and the handles.                                                                                                                                   |
-| `TitanicModel.tsx`    | The R3F component (any ship: `spec`).                                                                                                                                          |
-| `pose.ts`             | `applyBodyPose`: a sim `BodyPose` onto a part.                                                                                                                                 |
-| `ModelViewer.tsx`     | The checking stage at `/shipwreck?model` (`&ship=lusitania`, `&ship=fitzgerald` or `&ship=britannic`; dev and e2e builds only).                                                |
+| File                  | What                                                                                                                                                                                                                                                             |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hullSurface.ts`      | The hull from the spec's offsets, interpolated with monotone cubics (smooth, exact at the stations); rounds the counter in plan.                                                                                                                                 |
+| `titanicRecipe.ts`    | Where everything goes: decks, houses, funnels, masts, boats, davits, 2,000+ portholes and windows, fittings, rails, wires, underwater gear. The recipe types.                                                                                                    |
+| `lusitaniaRecipe.ts`  | The Lusitania's: her tiers (`blocks`), houses, funnels, 48 boats, 44 davits, lights, the forest of ventilators, four propellers; her liveries `war-1915` and `cunard-1907`.                                                                                      |
+| `fitzgeraldRecipe.ts` | The Edmund Fitzgerald's: forecastle, texas house and pilothouse, the after house, 21 hatch covers on coamings, the hatch crane, one funnel, boats, one propeller; `FENCE_GAP`.                                                                                   |
+| `carpathiaRecipe.ts`  | The Carpathia's: forecastle, two wells, the bridge deck house and promenade, the boat deck and its houses, one funnel, four masts with derricks, 20 boats, twin screws, the stern gun; liveries `dazzle-1918`, `cunard-1912` (and `grey-1918`, a recipe option). |
+| `dazzle.ts`           | Her 1918 dazzle scheme as shapes (pure data; port and starboard differ).                                                                                                                                                                                         |
+| `britannicRecipe.ts`  | The Britannic's: her sister's recipe with the hospital paint (`bandPaintAt`), five gantry davit sets, Welin davits, A/B deck screens, "G.618", the bow's hinge.                                                                                                  |
+| `britannicLivery.ts`  | Her two paints on one built model (R23): `britannicModelRecipe`, `attachBritannicLivery`, her `handles.setLivery("hospital" \| "liner")`.                                                                                                                        |
+| `bowBend.ts`          | The bent bow (R12): `hardLandingAt`, `bowBend(t, landedAt)`, `bendShipPoint`, `applyBowBend`.                                                                                                                                                                    |
+| `breakCut.ts`         | The jagged tear through `breakX` and which half a point belongs to.                                                                                                                                                                                              |
+| `buildShip.ts`        | Recipe to merged triangle lists per material, instance lists and line lists, for the whole ship or one half; quality tiers.                                                                                                                                      |
+| `partGeometry.ts`     | Funnels, boats, cowl vents, benches, bitts, rail posts, porthole and window panes.                                                                                                                                                                               |
+| `materials.ts`        | Hull paint by height in the shader, painted steel (vertex colours), planks, bronze, the name boards, the lit panes and their uniforms.                                                                                                                           |
+| `textures.ts`         | Plate seams and rivets (normal map), weathering, planks, the name; the dazzle texture (`acquireDazzleTexture`).                                                                                                                                                  |
+| `shipModel.ts`        | Assembles the three.js tree and the handles.                                                                                                                                                                                                                     |
+| `TitanicModel.tsx`    | The R3F component (any ship: `spec`).                                                                                                                                                                                                                            |
+| `pose.ts`             | `applyBodyPose`: a sim `BodyPose` onto a part.                                                                                                                                                                                                                   |
+| `ModelViewer.tsx`     | The checking stage at `/shipwreck?model` (`&ship=lusitania`, `fitzgerald`, `carpathia` or `britannic`, `&livery=<id>`, e.g. `cunard-1907` or `grey-1918`; `setModelView({ livery })` repaints live; dev and e2e builds only).                                    |
 
 Frames: built in the ship frame (x forward, y to port, z up from the keel at
 midships) and written in three.js axes (`three.x = x`, `three.y = z`,
@@ -81,6 +84,8 @@ ledges, a dark bulkhead a few metres in.
 | `boats.hide(i)`, `info(i)`, `holderOf(i)` | Hide it; its kind, side, stowed place and size; the part group it rides on while aboard.                                                                                                                                                                                                                        |
 | `bend`                                    | The bow forward of the recipe's `hinge` (a child of `whole`), or null: pose it with `applyBowBend(bend, bowBend(t, hardLandingAt(track)), recipe.hinge)`.                                                                                                                                                       |
 | `recipe`                                  | The detail recipe (positions of everything, for effects: funnel tops for steam, davit heads, boat lanterns).                                                                                                                                                                                                    |
+| `setLivery(id)`, `livery`, `liveries`     | Repaint her live (see "Liveries"): an id in `liveries` (empty for a ship with one paint); others are ignored. `livery` is the one shown.                                                                                                                                                                        |
+| `warmLiveries(compile, upload?)`          | Shows every livery's own parts while `compile` runs (`gl.compile(scene, camera)`), then hands their textures to `upload` (`gl.initTexture`), so a first swap compiles and uploads nothing big. The scene calls it once per built model.                                                                         |
 
 The lit panes are HDR (`uIntensity` 5): with a bloom pass (threshold 1) the
 windows glow. The scene should not tone-map the panes away: use the
@@ -104,22 +109,29 @@ funnels and boats.
 
 `npx next dev --webpack`, then `/shipwreck?model` (orbit with the mouse) or
 `node scripts/shipwreck-model-shots.mjs http://localhost:3000 .screenshots/task-3`
-for the standard views and the draw counts (add `lusitania` or
-`fitzgerald` as a third argument, and `&ship=<id>` to the viewer's URL,
-for them).
+for the standard views and the draw counts (add `lusitania`,
+`fitzgerald` or `carpathia` as a third argument, and `&ship=<id>` to the
+viewer's URL, for them; a fourth argument is a livery id, `&livery=`,
+e.g. `cunard-1907`, `cunard-1912` or `grey-1918`; the Carpathia does
+not break, so her set has no broken views).
 
-The Titanic's and the Lusitania's recipes are frozen:
+The Titanic's, the Lusitania's and the Fitzgerald's recipes are frozen:
 `__tests__/titanicRecipeSnapshot.test.ts` compares each field by field
 with a fixture (the Titanic's written before the Lusitania touched the
-shared code, the Lusitania's before the Fitzgerald did). Everything a
+shared code, the Lusitania's before the Fitzgerald did, the Fitzgerald's
+before the Carpathia did). Everything a
 later ship needed is an optional recipe field (`paint`, `blocks`, `boxes`,
 `drums`, `ledgeDecks`, `staffs`, the rudder's `centre` and `posts`; for
 the Fitzgerald `bells`, a block's `wallColor`, `roofColor` and `camber`,
 a hatch's `color` and `coaming`, a funnel's `stripes` and `emblem`, a
 rail's `color`, the paint's `port`, `letters`, `hull` and `boat`, a
 centre-line boat, a name board's `rows`, `createHullSurface`'s bow
-rounding with its `tip` and its propeller `aperture`) whose absence
-builds the earlier ships exactly as before.
+rounding with its `tip` and its propeller `aperture`; for the Carpathia
+the paint's `dazzle`, `fittings`, `vent` and the hull's `boot`, a block's
+or house's `dazzle`, a house's `wallColor`, an anchor's `stockless`, the
+masts' `mizzen` and `jigger` ids, `ventGeometry`'s body colour, and the
+part's `dazzle` list) whose absence builds the earlier ships exactly as
+before.
 
 ## Departures from the ship data
 
@@ -161,11 +173,12 @@ hawse pipes (28 ft), the propellers and rudder (from the AP).
 
 ### Her paint in May 1915
 
-`LUSITANIA_PEACETIME_PAINT` (one constant in her data,
-`lib/shipwreck/ships/lusitania.ts`, re-exported by the recipe as
-`PEACETIME_PAINT`) switches to her 1907–1914 colours. Her funnel colours
-live there too (`LUSITANIA_FUNNEL_PAINT`, `spec.funnelPaint`), so the hull
-diagram and the model paint them alike. Off, she is painted as on the day:
+Her default livery, `war-1915` (`LUSITANIA_LIVERIES` in her data,
+`lib/shipwreck/ships/lusitania.ts`); her 1907 colours are the other
+livery, below ("The Lusitania's liveries"). Her funnel colours live there
+too (`LUSITANIA_FUNNEL_PAINT`, `spec.funnelPaint` and each livery's
+`funnelPaint`), so the hull diagram and the model paint them alike. She
+is painted as on the day:
 
 - **Funnels painted out dark.** Schwieger's war diary (U-20, 7 May): "The
   funnels were painted black, no flag was set astern." Wikipedia's
@@ -194,8 +207,7 @@ diagram and the model paint them alike. Off, she is painted as on the day:
   bridge), red antifouling to the 33 ft 6 in load line with a thin white
   boot-top (both visible in the 1 May photograph and her peacetime ones).
 
-Peacetime (switch on): Cunard red-orange funnels with black tops and three
-thin black bands, no gilt band.
+Her 1907 livery: see "The Lusitania's liveries" under "Liveries".
 
 ### Her shape (from her plans and photographs)
 
@@ -270,8 +282,10 @@ rmslusitania.info (Mauretania "Design and construction"), linerdesigns.com
 - The drawn counter is rounder in plan above 10.5 m than the offsets (an
   ellipse from x −85 m, as for the Titanic), and the stern decks' rails
   follow it.
-- Estimates: funnel section 25 × 21 ft, three thin bands in peacetime,
-  boats 30, 27 and 23 ft, propellers 4.7 m across.
+- Estimates: funnel section 25 × 21 ft, boats 30, 27 and 23 ft,
+  propellers 4.7 m across. The 1915 funnels keep 1.1's band places (an
+  estimate, barely seen under the dark paint); the 1907 livery's are
+  measured (below).
 
 ### The name on the counter
 
@@ -332,11 +346,12 @@ tank top.
   (Commons).
 - **Hull**: Columbia Transportation's dark brick red to the spar deck
   edge, the same red to the keel (no boot-top shows in any photograph):
-  `0x611f1f`, darker below her 27 ft 6 in draught (an assumption). She
-  was launched with a black hull (1958 photographs, the builder's model);
-  by 1971 she was red (the slides), and divers describe the wreck's
-  stern as deep red, so red it is ("launched black": a Finescale forum
-  thread on her launching film).
+  `0x611f1f`, darker below her 27 ft 6 in draught (an assumption). Red
+  from her first season (the 1971 slides, and divers describe the
+  wreck's stern as deep red); for her launch and fitting out she may
+  have worn black and red for the cameras (a fan wiki, below), which is
+  not a livery she sailed in. One livery, no paint button: see
+  "Liveries".
 - **Houses**: off-white (some modellers say "coffee with cream"): the
   forecastle flush with the sides, its plating white over the red, a
   solid bulwark round the bow; the texas house with a rounded front; the
@@ -448,6 +463,396 @@ tank top.
   each tank's pair at the deck edge between the hatches nearest its ends.
   Mushroom vents, 18 in high (data), drawn as small drum vents.
 - **Plating**: welded, so the seams' relief is a third of the liners'.
+
+## The Carpathia
+
+`carpathiaRecipe.ts`, as she was on the morning of 17 July 1918, in a
+livery (`CARPATHIA_LIVERIES`: `dazzle-1918`, the default, and
+`cunard-1912`; the recipe also knows `grey-1918`, plain battle grey). The house ends, wells, masts,
+funnel and boats are her data's (`CARPATHIA_*`, `carpathia.funnels`),
+so the model moves with the data; the rest is measured off the
+photographs below. At `high`: 16 draws (day stage, no post; 15 before
+the stern gun got its own list, Task 6), about 81k triangles, built in about 45 ms (the Titanic's 76 ms) on an M-series
+laptop.
+
+### Sources (photographs and plans)
+
+- **P1** Wikimedia Commons, "RMS-Carpathia.jpg": starboard side at sea,
+  before 1914. Her profile: the forecastle, the wells, the bridge deck
+  house with its row of portholes and the open promenade over it, the
+  boat deck from the bridge aft, the bridge house and wheelhouse just
+  forward of the funnel, the forward deckhouse with boats on its roof,
+  four masts, the funnel's height and width.
+- **P2** Commons, "Carpathia Malta.jpg" (1912, from aft, starboard
+  quarter): the open after deck at the upper deck's height (no poop: the
+  black hull stops at it), the white stern deckhouse with a walkway
+  outside it, the jigger, a boat on a platform on stanchions forward of
+  the jigger, the bridge deck house's after end, boats along the whole
+  boat deck under curved (radial) davits, the mizzen on the boat deck's
+  after part, the big cowls round the funnel, four masts nearly upright.
+- **P3** Commons, "Steamship CARPATHIA - broadside view.png" (Library of
+  Congress, Bain, 29 April 1912, port side) and "Steamship CARPATHIA -
+  bow view with 2 tugboats at bow" (LoC LCCN2001704339): the same
+  profile from the port side and the bow.
+- **P4** Commons, "Carpathia port.jpg" (at Pier 54, New York): the bow
+  close: the forecastle's black plating with two rows of portholes, the
+  stockless anchor hove up in its hawse pipe near the stem, the
+  foremast's crow's nest and derricks.
+- **P5** Commons, "Color postcard of R. M. S Carpathia, ca. 1912" (DPLA):
+  1912 colours: black hull, red bottom, white houses, red funnel with a
+  black top, buff masts.
+- **P6** Commons, "RMS Carpathia drawing.png" (a modern profile
+  drawing, not a builder's plan): the four masts' derricks topped up, the
+  stays from each mast to the deck fore and aft, the aerial between the
+  main and mizzen mastheads, the funnel's two thin bands. Used only where
+  the photographs agree with it (its boat deck has gaps the photographs do
+  not show: set aside).
+- **P7** The only photograph of her sinking (1918, from U-55's deck:
+  `.superpowers/sdd/2026-11-22-shipwreck-carpathia/ref-carpathia-sinking-1918.jpg`):
+  one funnel (dark, nearly black against her hull), the two after masts
+  upright, a raised stern. Funnel to mizzen, mizzen to jigger and jigger
+  to stern read about equal (135, 145 and 120 px in a 5× crop), as the
+  data's 28.0, 26.8 and 26.8 m.
+- **Text**: Wikipedia, "RMS Carpathia" ("four masts fitted with cranes",
+  "a boat deck located right above the bridge deck", "the forward
+  deckhouse on the bridge (A) deck", 20 lifeboats in 1912, "sometime prior
+  to March 1918, the entire ship was painted in wartime dazzle
+  camouflage", "her long-faded red funnel, custom of the Cunard Line, was
+  painted in battle grey", the third torpedo "near the gunner's rooms");
+  titanicinquiry.org's particulars (one funnel, four masts, twin screws;
+  funnel "red; black top; 3 narrow black rings").
+
+### Her shape
+
+- **Hull and tiers.** Straight, nearly plumb stem and a counter stern
+  (the data). The forecastle (stem to 42 ft: P1; the drawing P6 has
+  about 26 ft) is her plating carried up a tier (`wall: "plating"`, the
+  hull material); the forward well (42–145 ft) is the upper deck behind
+  waist-high bulwarks; the 290 ft bridge deck house is flush with her
+  sides (P1, P3: white in 1912, a row of portholes). **No raised poop
+  (R21; P1, P2, P6):** abaft the house the upper deck runs open to the
+  stern behind rails, the black hull stopping at it, with the white stern
+  deckhouse (510–540 ft from the stem, one tier, its walls 4.6 m either
+  side of the centre line, a walkway outside: P2), the jigger at 493 ft
+  (P3; P6 497 ft) and a boat platform on stanchions just forward of it
+  (467–488 ft, one a side, a tier up: P2). Task 3's poop (its plating a
+  tier up from 485 ft, a third porthole row aft) was wrong against all
+  three. Over it, from the bridge aft, the bridge deck
+  promenade (open between stanchions, closed at both ends, its front
+  rounded) under the boat deck (P1). Forward of the bridge the bridge
+  deck is open, with No. 3 hatch, the mainmast and the forward deckhouse
+  (148–192 ft from the stem, ±5 m: P1; Wikipedia's officers' house) with
+  a pair of boats on its roof (P1).
+- **Boat deck.** The bridge house (chart room) at its front, 217–262 ft
+  from the stem (P1, P3: its front about 17 ft abaft the mainmast, 45 ft
+  long), the navigating bridge on its roof with wings out to the sides
+  and the wheelhouse on that; a gap of about 16 ft with cowls (P1) before
+  the funnel's casing (Task 3 had the bridge at 250 ft, hard against
+  it); a long deckhouse abaft the funnel with a skylight (P2); the
+  mizzen on the open after part; a small after deckhouse (P2). Positions
+  of the houses on the boat deck are ours, ±3 m.
+- **The funnel** (R2, P1, P2): one, tall and slender, nearly round. P1
+  and P2 put its height over the boat deck at 2.9–3.6 times its width
+  (the ratio is the one measure a round funnel keeps in any view), and
+  its top about 0.7 of the way from the water to the main truck (P1:
+  0.70; P2: 0.73). No source gives a dimension, so the width is 19½ by
+  18½ ft (P1 against the masts' spacing, ±2 ft) and the height about
+  20 m over the boat deck (ratio 3.4): its top 41 m over the keel. The
+  first draft's 36 m read short and stubby; `carpathia.funnels[0].topZ`
+  is look only (the sim's funnel-falls rule reads `baseZ`), so it was
+  raised in the data. Raked 4° (P1). Two steam pipes and a whistle on its
+  front.
+- **Masts and derricks.** Four at the data's places: the fore in the
+  forward well (crow's nest, P4), the main on the bridge deck forward of
+  the bridge, the mizzen through the boat deck's after part (P2), the
+  jigger on the after deck at 493 ft; nearly upright (3°, P1–P3). Trucks 52, 54,
+  52 and 45 m over the keel: P1 and P2 put the main truck about 1.4
+  times the funnel top's height over the water. Two derricks at each
+  mast ("four masts fitted with cranes", Wikipedia; P4, P6), fore and
+  aft, topped up where nothing is below (the jigger's steeply, clear of
+  the boat platform), winches at their heels, a topping lift to each
+  head.
+- **Rigging** (P1, P6):
+  shrouds from each mast to the deck edge abaft it; the forestay from
+  the fore to the stem; the main's stay down forward to the bridge deck,
+  the mizzen's down aft to the boat deck, the jigger's backstay to the
+  after deck at the stern; the wireless aerial between the main and mizzen mastheads (P6)
+  with its lead down to the long deckhouse (its place ours). No stays
+  from masthead to masthead but the aerial (the first draft's looked
+  wrong against P1).
+- **Boats.** The data's twenty (`CARPATHIA_BOATS`, Wikipedia 1912), in
+  its order: the forward pair on the forward deckhouse's roof (P1: Task 3
+  moved their keels there from the bridge deck, in the data), seven pairs
+  along the boat deck's edges from the bridge aft, a pair on the boat
+  platform forward of the jigger (P1, P2) and the tenth pair on the stern
+  deckhouse's roof (no photograph shows where it went: ours). Port boats
+  8 and 10 carry `wreckedAtT` (the second torpedo wrecked two, GOL: the
+  scene's to hide or break). About 20 ft long: the data's 6.5 m spacing leaves no room for the
+  26–28 ft boats usual on a ship her size (a known simplification; P1–P2
+  show boats close together). Two davits each, curved (radial) davits
+  (P2); swung out in 1918 (the war zone's practice, an assumption), in
+  over the boats in 1912.
+- **Under water.** Twin screws (titanicinquiry), three-bladed
+  (thegreatoceanliners.com: "two three-bladed"; Task 3's four blades
+  contradicted it), 2.3 m radius on short bossings, the hubs 3.6 m forward of
+  the after perpendicular; one rudder hung on the sternpost under the
+  counter, a round stock up its leading edge. The counter is drawn
+  rounder in plan than the data's offsets (a superellipse from x −58 m,
+  faded in from 9.5 to 13 m over the keel, above her 8 m draught).
+- **Anchors.** Stockless (P4), about 3 m from the hawse pipe's lip to
+  the crown (a 7 t anchor's size, an estimate), hove up near the stem
+  (`anchors[].stockless`): the lip and its dark mouth, the shank, the
+  crown, two flukes with their palms. The first draft's simple anchor
+  read as a "T" on the pale dazzle.
+- **The stern gun** (1918 looks only; in `variantBoxes`, so her 1912
+  colours hide it): a gun on a platform on the stern
+  deckhouse's roof, aft. Her gunners are in the accounts (Wikipedia: "the gunners",
+  "the gunner's rooms"; merchant ships in convoy then carried a stern
+  gun); the gun, its size and place are ours.
+- **Fittings.** Big cowls beside the funnel and before it (P1, P2),
+  smaller ones in the well, on the forecastle, the after deck and the
+  stern house; hatches Nos. 1 and 2 either side of the foremast, No. 3 on
+  the bridge deck between the bridge and the mainmast, No. 5 on the after
+  deck just forward of the boat platform (the data's No. 5 hatch); bitts,
+  the windlass and capstans (the stern's on the after deck abaft the
+  stern house); rails on every open deck edge; portholes in two rows
+  along her 'tween decks, in the bridge deck house and the forecastle,
+  windows in the promenade's inner wall and the deckhouses.
+
+### Her paint
+
+- **1918: dazzle (R2), the pattern ours.** Wikipedia (citing the IWM film
+  _The Way of a Ship on the Sea_, March 1918) says the entire ship was in
+  dazzle; no photograph of her scheme is known, so `dazzle.ts` is a scheme
+  in the style of 1918 British merchant dazzle (Norman Wilkinson's Dazzle
+  Section): big hard-edged slanted bands in fans, cut by wedges, in black,
+  white, two greys and a blue-grey, her two sides different, as the real
+  schemes were. **It is ours, not hers.** One texture (1024 × 256, port
+  over starboard, drawn once from the shapes, deterministic) mapped by
+  ship x and height over the hull's topsides (in the hull's shader) and
+  every house wall (`dazzle` walls drawn into their own list with a
+  dazzle material), so the shapes run on unbroken from the hull across
+  the houses. Roofs and decks stay unpainted. The masts and derricks are
+  battle grey; the funnel a darker battle grey, `0x4a4f55` (Wikipedia:
+  "her long-faded red funnel ... was painted in battle grey"; P7 shows it
+  nearly black against her hull; `CARPATHIA_FUNNEL_PAINTS.dazzle`), the
+  boats
+  and fittings a lighter grey. Along the waterline a dark grey boot-top
+  (7.5–8.6 m, over her 8.0 m ballast draught) with the dazzle down to it
+  and dark red-brown antifouling under it: the usual finish of 1918
+  dazzle ships (the dazzle to the waterline over a dark boot-top; the
+  bottom colour an assumption). Her name and port painted out (wartime
+  practice; an assumption: no photograph shows her in 1918).
+- **`grey-1918`**: the same, plain battle grey (`0x7d8289`, the funnel
+  too) instead of the dazzle.
+- **`cunard-1912` (her other livery, P1–P5; see "Liveries"):** black
+  hull to the upper deck (and the forecastle's plating), red antifouling
+  under the 34 ft 7 in load line (Wikipedia's draught) with a white
+  boot-top (P1), white bridge deck house and deckhouses, buff masts and
+  derricks (P5), the Cunard red funnel with a black top and three narrow
+  black rings, her name in gilt on the bows and with LIVERPOOL on the
+  counter. **The rings, settled (Task 4c):** P1, enlarged, shows the
+  black top over about the top fifth of the funnel above the boat deck
+  and three narrow rings below it, at about 39, 59 and 79 % of the way
+  down (the lowest faint); titanicinquiry says "3 narrow black rings";
+  the 1912 colour postcard (P5) shows a deeper black top (about 27 %) and
+  two rings above its boats (a third would be behind them); the modern
+  drawing P6 draws two. We follow P1 and titanicinquiry: three rings at
+  0.21, 0.41 and 0.61 of the funnel's height from its foot, the black top
+  4.2 m (Task 3 had 3.6 m and rings at 0.36–0.64, from P6).
+- **`grey-1918`**: a recipe option only (the viewer's `&livery=grey-1918`),
+  not offered in the game.
+- **One shape for every livery, but the gun.** The livery is paint
+  only: her davits are swung out in 1912 colours too (the 1918 ship
+  repainted; davits swung in for 1912 is a follow-up), her walls are
+  drawn into the dazzle list in every livery (white in 1912, the dazzle
+  switched off by a uniform), so a swap rebuilds nothing. The 1918 stern
+  gun is the one part only some liveries carry: it is drawn from its own
+  small list (`variantBoxes`), empty in `cunard-1912`, so a swap only
+  hides that mesh (the 1912 ship had no gun). (Task 3's 1912 look had
+  the davits in over the boats and no gun.)
+
+### Assumptions and departures
+
+- The forward pair of boats moved from the bridge deck to the forward
+  deckhouse's roof (a look-only change to `CARPATHIA_BOATS`; the sim reads
+  only their indices) and the funnel top from 36 to 41 m (look only, see
+  above): both in her data so the walk map and the scene agree.
+- The well bulwarks are painted strips (`strip`), not the hull's plating
+  (the inside faces would read black in the plating material).
+- No portholes are left out for R10 (her scuttles shut in convoy): that
+  rule is the sim's; the model's panes light only with `setPower`.
+
+## Liveries (paint switched live)
+
+R23–R28 of the Carpathia spec. A ship may be shown in more than one
+paint (a livery), switched by the paint button while she sinks, with no
+rebuild and no hitch.
+
+### The API (for a new ship, e.g. the Britannic's "liner")
+
+1. **Data.** List them on the spec: `liveries: readonly Livery[]`
+   (`lib/shipwreck/ships/types.ts`): `{ id, label, year, default?: true,
+sources, swatches, funnelPaint? }`, exactly one `default`, the
+   default first. `label` is what the button says (aria) and the help
+   card's title; `swatches` are the button's two colour dots (sRGB);
+   `funnelPaint` paints the hull diagram's and the title picture's
+   funnels. Missing, or one entry: no choice, no button.
+   `defaultLivery`, `resolveLivery` (an unknown id gives the default),
+   `nextLivery` and `funnelPaintOf` are the helpers.
+2. **Recipe.** Give her recipe a second argument, the livery id
+   (defaulting to her default), and map it to paint:
+   `myRecipe(spec, livery = "war-1916")`. Add her to `recipeFor` in
+   `shipModel.ts` (it passes the id and caches a recipe per livery). The
+   default livery's recipe must stay exactly the old one (the recipe
+   fixtures).
+3. **Paint only.** A livery may change any colour (`ShipPaint`, a
+   block's or house's `wallColor`, `roofColor`, a box's or hatch's or
+   rail's `color`), the hull's paint (`paint.hull`, `sheerLine`,
+   `layout.loadWaterline` and `bootTop`, which are uniforms),
+   `paint.dazzle` (switched by a uniform; put every wall that is ever
+   dazzled into the dazzle list in every livery with `dazzle: true`),
+   the funnels (`blackTop`, `bands`, colours), the name boards
+   (`names`: present or not) and the `variantBoxes` (painted boxes only
+   some liveries carry, in their own small list: the Carpathia's 1918
+   stern gun, empty in 1912). It must not move the boats, the davits'
+   boats, the instanced fittings (vents, drums, benches, bitts, posts,
+   portholes, windows: their counts are checked), the rails and rigging
+   (`lines`) or the funnel guys, and the name's text, letters and port
+   must match (one name texture); `createTitanicModel` throws if one
+   does ("a livery is paint only").
+4. **Nothing else to wire.** The store (`playback.livery`,
+   `setLivery`), the save (`liveryByShip`, never a reset: an older save
+   or an unknown id shows the default), the HUD's and the title's paint
+   button (`ui/LiveryButton.tsx`), the help words (`liveryHelp` in
+   `lib/shipwreck/help.ts`: add a line to `LIVERY_WORDS` for each new id,
+   else a plain "as she was in <year>" line shows), the hull diagram and
+   the scene (`ShipRig` repaints both models on a change, and warms each
+   model's livery parts at build) all read `spec.liveries`.
+
+### How the swap works (`shipModel.ts`)
+
+`createTitanicModel` builds her default livery exactly as before (the
+same meshes, draw calls and triangles), then builds each other livery's
+recipe and triangle lists to take what differs: for each list of the
+same shape, its vertex colours (kept as a `Float32Array` per livery); for
+a list whose shape differs (a funnel with other bands, the name boards),
+a hidden mesh of its own, shown only in that livery; and the hull's
+paint (`HullPaint`) per livery. `setLivery(id)` copies the colour arrays
+into the attributes (`needsUpdate`), flips those meshes' visibility and
+sets the hull's uniforms (`materials.setHullPaint`; the dazzle by
+`uDazzleOn`). No geometry is made or freed and no object is added
+(tested); the first swap uploads the swapped colours and the hidden
+parts' small buffers (`warmLiveries` compiles their shaders and uploads
+their textures at build).
+
+| Ship      | Liveries                     | Extra build (high) | Hidden parts              | Swap, CPU  | First swap, frame (M4 Pro) |
+| --------- | ---------------------------- | ------------------ | ------------------------- | ---------- | -------------------------- |
+| Lusitania | `war-1915`, `cunard-1907`    | about +25 ms       | 4 funnels (1907 bands)    | ≈ 0.1 ms   | none measurable (8.2 ms)   |
+| Carpathia | `dazzle-1918`, `cunard-1912` | about +15–20 ms    | 1 funnel, the name boards | ≈ 0.1 ms   | 14.9 ms once, then 8 ms    |
+| Britannic | `hospital`, `liner`          | her own swap       | the hospital marks        | ≈ 0.004 ms | not measured               |
+
+Measured in the dev server: `handles.stats.buildMs` 85–89 ms for the
+Lusitania (61 before) and 61–65 ms for the Carpathia (45 before), each
+first build in a fresh page; the swap's main-thread time
+(`stats.liveryMs`) about 0.1 ms; frame gaps on a 120 Hz M4 Pro in Chrome
+(Metal) with the game running: about 8.3 ms with or without a swap, the
+Carpathia's first swap 14.9 ms (her names and 1912 funnel uploaded).
+The default draw calls and triangles are unchanged (day stage, high:
+Titanic 24 / 146,576, Lusitania 25 / 146,940, Fitzgerald 17 / 74,270,
+Carpathia 15 / 80,932); the Carpathia in 1912 draws one more (her names,
+16 / 81,508). Since Task 6 her 1918 stern gun is its own small list
+(`ShipRecipe.variantBoxes`, the mesh "livery-parts"), so the Carpathia
+draws 16 in both paints (the gun's in 1918, her names in 1912; same
+triangles in 1918). The iPad mini 6 is not measured here (expect two to three
+times the build; the swap is a buffer copy).
+
+### Each ship's liveries (R28, the research)
+
+**The Titanic: one livery.** She sailed only in April 1912, in White
+Star's colours (black hull, white superstructure, buff funnels with black
+tops), the look 1.0 built. The one other paint in her story is her
+sister's: the Olympic was launched in 1910 in a light (grey or white)
+paint for the photographers (Irish Times, "The launch of a leviathan";
+Wikimedia Commons' Olympic launch captions disagree on the shade); the
+Titanic was launched in her black (Wikimedia Commons, "RMS Titanic ready
+for launch, 1911"; Naval Marine Archive, "Titanic in white", which itself
+warns its white photograph may show the Olympic). No toggle.
+
+**The Edmund Fitzgerald: one livery.** No source found shows a different
+paint in service: she sailed for Columbia Transportation (Oglebay
+Norton) in their red hull and red stack with the buff band and star from
+her first season to 1975 (the 1971 slides; the company history above).
+For her launch on 7 June 1958 and fitting out, a fan wiki (boatnerd,
+"Edmund Fitzgerald") says she was "painted black and red to be seen on
+camera easier" and then "painted red" with "a yellow-red funnel"; the
+Detroit Historical Society holds the launch film (silent, colour) but
+its catalogue does not describe the paint. A launch paint for the
+cameras is not a livery she sailed in, and no photograph we could see
+shows it, so: no toggle. (The 1.3 README's "launched with a black hull"
+rested on one forum thread; this replaces it.)
+
+**The Lusitania: `war-1915` (default) and `cunard-1907`.** Her default
+is 1.1's look, unchanged (fixture). Her first colours, as she entered
+service in September 1907, each detail from a source:
+
+- **Photographs used**: Library of Congress LCCN2013646024 ("Lusitania",
+  American Photograph Co., 1907; the panorama, both ends' funnels sharp);
+  Wikimedia Commons "RMS Lusitania coming into port, possibly in New
+  York, 1907-13" and "RMS Lusitania docks in New York, September 13,
+  1907"; "14 10 1907 lusitania postcard" (a postcard of her trials paint).
+- **Funnels: Cunard red.** "Vermilion red with black bands and a black
+  top" (rmslusitania.info, "The Cunard Company"); "Red; black top; three
+  narrow black bands" (titanicinquiry.org, Lusitania particulars). The
+  shade: J. Kent Layton ("Building the Lusitania – A Modeler's Guide",
+  TRMA) takes R234 G114 B48 from hand-tinted 1907 postcards and says the
+  old Cunard red was "not really red, as it is today", "something like a
+  basketball". In the model's daylight that value washed to peach, so we
+  keep its hue a shade deeper: `0xcc5a28` (also the Carpathia's 1912).
+- **The black top and bands, measured.** In the LoC panorama the
+  funnels show, over the boat deck house, a black top of about 26 % of
+  the visible funnel, then three narrow black bands at about 45, 64 and
+  83 % of the way down, evenly spaced (the forward and the after funnel
+  agree). Drawn: the black top 5.6 m (of 21.7 m over the house) and the
+  bands at 0.23, 0.41 and 0.58 of the funnel's height from its foot.
+  (1.1's 1915 funnels keep their 4.4 m top and 0.36–0.68 bands, painted
+  over.) The funnel guys stay where 1.1 has them (rigging, not paint).
+- **Hull and boot-top.** Black topsides; in service the black ran up to
+  the B deck bulwark (her C deck plating was painted black at her
+  pre-maiden-voyage drydocking; the white C deck strip to the prow was
+  her trials paint only: Layton; linerdesigns.com, "Lusitania 1907 sea
+  trials"); red antifouling below a thin white waterline band (Layton's
+  "waterline white band"; the 1907–13 photograph shows the white line).
+  The model's hull paint already runs this way (1.1).
+- **No gilt band.** The bronze/gold band round the base of the
+  superstructure was an addition of 1914–15 ("a gold-colored band was
+  added", rmslusitania.info, "Lusitania at war"; "One alteration was the
+  addition of a bronze/gold coloured band", Wikipedia "RMS Lusitania";
+  Layton: painted when she was "repainted in more traditional colors"
+  in the autumn of 1914). So `sheerLine` is off in 1907.
+- **White superstructure** (Layton; every photograph) and white rails
+  ("All of the rails along the ship were painted white from 1907-1914",
+  Layton).
+- **Her name**: LUSITANIA in gilt letters on the bows near the stem
+  (the 1907–13 photograph shows the light letters on the black plating,
+  as 1.1 places them) and with LIVERPOOL on the counter; the same boards
+  in both liveries.
+- Masts buff, as 1.1 (no source for the shade).
+
+**The Carpathia: `dazzle-1918` (default) and `cunard-1912`.** See "Her
+paint" above (the 1912 rings settled there).
+
+**The Britannic: `hospital` (default) and `liner`** (1.5, from the
+1.4 branch's swap): `BRITANNIC_LIVERIES` in her data (labels, sources,
+swatches and funnel paints from "Her intended liner paint (R23)" below).
+Her ids are her looks' own names (the model's `BritannicPaint`), not
+`<name>-<year>`. Her model does not use the generic builder above (her
+liner's funnels are cut differently and her hull carries the hospital
+band): `createTitanicModel` attaches her own swap (`britannicLivery.ts`)
+and exposes it through the same handles, so `setLivery`, `livery`,
+`liveries` and `warmLiveries` (which uploads the gilt name board) work as
+for every ship, and the store, the save, the paint button, the help words
+and `ShipRig`'s repaint after a rebuild need nothing of their own.
 
 ## The Britannic
 
@@ -660,8 +1065,8 @@ of the hospital ship, an artist's impression, not a source.)
 **The swap** (`britannicLivery.ts`): the model is built once from
 `britannicModelRecipe` (the hospital recipe with each funnel cut at both
 looks' black tops, and the painted boxes taken out), and
-`handles.setPaint(look)` changes, in place, the hull shader's uniforms
-(`setHullPaint` in `materials.ts`: colours, paint line, gold line, the
+`handles.setLivery(look)` changes, in place, the hull shader's uniforms
+(`mats.setHullPaint` in `materials.ts`: colours, paint line, gold line, the
 band and crosses turned off by a negative half height and no crosses),
 the funnels' vertex colours (copied from arrays made at build), the
 painted boxes' mesh (shown only as a hospital ship) and the name boards'
@@ -670,9 +1075,10 @@ replaced, the shaders are not recompiled (the hull is always built with
 the band's program), and `handles.recipe` becomes the look's
 (`recipeFor(spec, look)`). A swap takes about 0.004 ms (median of 200 in
 node, 0.03 ms worst); the gilt board uploads to the GPU on the first
-frame after the first swap. `createTitanicModel(spec, { paint })` builds
-in either look; `?model&ship=britannic&paint=liner` shows it, and
-`setModelView({ paint })` swaps it live.
+frame after the first swap (`warmLiveries` uploads it at build).
+`createTitanicModel(spec, { livery })` builds in either look;
+`?model&ship=britannic&livery=liner` (or 1.4's `&paint=liner`) shows it,
+and `setModelView({ livery })` swaps it live.
 
 - Medium and low drop the rivets, rails and rigging as for the others;
   the gantries and crosses stay.

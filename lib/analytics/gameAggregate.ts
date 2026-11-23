@@ -286,6 +286,7 @@ const SHIPWRECK_SHIP_ORDER = [
   "titanic",
   "lusitania",
   "fitzgerald",
+  "carpathia",
   "britannic",
 ];
 

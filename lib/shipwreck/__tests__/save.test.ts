@@ -4,15 +4,19 @@ import {
   SAVE_KEY,
   SAVE_SHIP_IDS,
   emptySave,
+  liveryOf,
   loadSave,
   loadSaveResult,
   parseSaveSalvaging,
   shipOf,
   whatIfOf,
+  withLivery,
   withWhatIf,
   writeSave,
 } from "../save";
-import { SHIP_IDS } from "../ships";
+import { SHIP_IDS, getShip } from "../ships";
+import { resolveLivery } from "../ships/types";
+import { FINISHER_SPOT } from "../sim/run";
 
 class MemoryStorage {
   data = new Map<string, string>();
@@ -279,6 +283,120 @@ describe("save: What if for every ship (1.3)", () => {
       whatIfByShip: { fitzgerald: { ids: [], storm: "worse" } },
     })!.save;
     expect(whatIfOf(worse, "fitzgerald")).toEqual({ ids: [], storm: "worse" });
+  });
+});
+
+describe("save: the Carpathia's What if (1.4)", () => {
+  const V1 = {
+    v: 1,
+    settings: { sound: true, speed: 30, camera: "orbit" },
+    seen: { realNight: true, endings: [] },
+    lastWhatIf: ["br6"],
+  };
+
+  it("keeps her ids, the U-boat's return among them, and drops junk", () => {
+    const v1 = parseSaveSalvaging(V1)!.save;
+    const next = withWhatIf({ ...v1, ship: "carpathia" }, "carpathia", {
+      ids: ["boiler", "hold3", FINISHER_SPOT],
+    });
+    const storage = new MemoryStorage();
+    writeSave(next, storage);
+    const back = loadSave(NOW, storage);
+    expect(shipOf(back)).toBe("carpathia");
+    expect(whatIfOf(back, "carpathia")).toEqual({
+      ids: ["boiler", "hold3", "finisher"],
+    });
+    // Not strings, repeats and empty ids go; the editor drops ids she has
+    // not got (WhatIfEditor.test).
+    const junk = parseSaveSalvaging({
+      ...V1,
+      ship: "carpathia",
+      whatIfByShip: {
+        carpathia: {
+          ids: [FINISHER_SPOT, 3, "", null, FINISHER_SPOT, "engine"],
+        },
+      },
+    })!.save;
+    expect(whatIfOf(junk, "carpathia")).toEqual({
+      ids: ["finisher", "engine"],
+    });
+  });
+});
+
+describe("save: each ship's paint (1.4, liveryByShip)", () => {
+  /** A save as 1.3 wrote it: no liveryByShip. */
+  const V13 = {
+    v: 1,
+    settings: { sound: true, speed: 30, camera: "orbit" },
+    seen: { realNight: true, endings: ["sank"] },
+    lastWhatIf: ["br6"],
+    ship: "lusitania",
+    whatIfByShip: { lusitania: { ids: ["boiler1"], portholesOpen: true } },
+  };
+
+  it("loads an older save with every ship in her default paint, nothing reset", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(SAVE_KEY, JSON.stringify(V13));
+    const r = loadSaveResult(NOW, storage);
+    expect(r.writable).toBe(true);
+    expect(storage.backups()).toEqual([]);
+    expect(r.save.liveryByShip).toBeUndefined();
+    // Everything else as it was.
+    expect(shipOf(r.save)).toBe("lusitania");
+    expect(r.save.seen.endings).toEqual(["sank"]);
+    expect(whatIfOf(r.save, "lusitania").ids).toEqual(["boiler1"]);
+    for (const id of SHIP_IDS) {
+      expect(liveryOf(r.save, id)).toBeNull();
+      const spec = getShip(id);
+      expect(resolveLivery(spec, liveryOf(r.save, id))).toBe(
+        spec.liveries?.find((l) => l.default)?.id ?? null
+      );
+    }
+  });
+
+  it("remembers a ship's paint and reads it back", () => {
+    const storage = new MemoryStorage();
+    const v = withLivery(
+      withLivery(parseSaveSalvaging(V13)!.save, "carpathia", "cunard-1912"),
+      "lusitania",
+      "cunard-1907"
+    );
+    writeSave(v, storage);
+    const back = loadSave(NOW, storage);
+    expect(liveryOf(back, "carpathia")).toBe("cunard-1912");
+    expect(liveryOf(back, "lusitania")).toBe("cunard-1907");
+    expect(
+      resolveLivery(getShip("carpathia"), liveryOf(back, "carpathia"))
+    ).toBe("cunard-1912");
+  });
+
+  it("falls back to her default for a junk or unknown id, keeping the rest", () => {
+    const back = parseSaveSalvaging({
+      ...V13,
+      liveryByShip: {
+        carpathia: "rainbow-2030",
+        lusitania: 7,
+        titanic: "<script>",
+        britannic: "liner",
+        fitzgerald: "x".repeat(80),
+      },
+    })!.save;
+    // Shaped like an id: kept (the ship decides); others dropped.
+    expect(back.liveryByShip).toEqual({
+      carpathia: "rainbow-2030",
+      britannic: "liner",
+    });
+    expect(
+      resolveLivery(getShip("carpathia"), liveryOf(back, "carpathia"))
+    ).toBe("dazzle-1918");
+    expect(
+      resolveLivery(getShip("lusitania"), liveryOf(back, "lusitania"))
+    ).toBe("war-1915");
+    expect(shipOf(back)).toBe("lusitania");
+    // A liveryByShip that is not an object is ignored, not a reset.
+    expect(
+      parseSaveSalvaging({ ...V13, liveryByShip: "cunard" })!.save.ship
+    ).toBe("lusitania");
   });
 });
 

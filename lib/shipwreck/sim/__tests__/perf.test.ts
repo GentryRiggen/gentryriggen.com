@@ -1,5 +1,5 @@
 import { RUNNER_BUDGET_MS } from "../../playback";
-import { fitzgerald, titanic } from "../../ships";
+import { carpathia, fitzgerald, titanic } from "../../ships";
 import { createSimRunner, simulate } from "../run";
 
 /**
@@ -49,6 +49,25 @@ describe("performance", () => {
     expect(track!.brokeAtT).not.toBeNull();
     console.log(
       `Shipwreck Fitzgerald simulated in ${ms.toFixed(0)} ms (runs: ${times
+        .map((t) => t.toFixed(0))
+        .join(", ")} ms)`
+    );
+    if (GATE) expect(ms).toBeLessThan(1.5 * 3000);
+  });
+
+  it("simulates the Carpathia's morning within 1.5× the night's budget", () => {
+    // About 1 h 45 min of shown time, most of it quiet at 1 s steps.
+    simulate(carpathia, carpathia.realNight, { endT: 600 }); // warm up
+    let track: ReturnType<typeof simulate> | null = null;
+    const times = [0, 1].map(() => {
+      const t0 = performance.now();
+      track = simulate(carpathia, carpathia.realNight);
+      return performance.now() - t0;
+    });
+    const ms = Math.min(...times);
+    expect(track!.outcome).toBe("sank");
+    console.log(
+      `Shipwreck Carpathia simulated in ${ms.toFixed(0)} ms (runs: ${times
         .map((t) => t.toFixed(0))
         .join(", ")} ms)`
     );

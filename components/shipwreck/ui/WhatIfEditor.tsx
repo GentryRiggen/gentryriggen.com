@@ -14,13 +14,16 @@ import {
   isDeckOpening,
 } from "@/lib/shipwreck/ships/types";
 import {
+  FINISHER_SPOT,
   whatIfOpenings,
   whatIfRealIds,
   whatIfSpots,
 } from "@/lib/shipwreck/sim/run";
 import {
+  FINISHER_LABEL,
   MINE_TOGGLES,
   STORM_LABEL,
+  finisherClock,
   type MineToggle,
   spotAria,
   spotLabel,
@@ -94,6 +97,24 @@ function wordsOf(spec: ShipSpec) {
         go: "Go: start the morning with these choices",
       };
     case "torpedo":
+      if (spec.torpedo) {
+        // A ship with her own torpedoes (the Carpathia): her side, her
+        // morning, and the U-boat's return as its own toggle.
+        const side = spec.torpedo.side;
+        const plan = side === "port" ? "the top" : "the bottom";
+        return {
+          lead: `Tap where torpedoes hit her ${side} side. Will she float?`,
+          group: "Where torpedoes hit",
+          diagram: `${spec.name}'s side, bow to the right, and her plan from above. Tap where torpedoes hit her ${side} side.`,
+          note: `Stern ← · → Bow. Torpedoes come from ${side} (${plan} of the plan). White lines: watertight walls and her side coal bunkers.`,
+          real: "Like the real morning",
+          realAria:
+            "Like the real morning: torpedoes by the boiler room and into the engine room, and the U-boat comes back",
+          clear: "Clear: no torpedoes, and the U-boat stays away",
+          icon: "torpedo" as const,
+          go: "Go: start the morning with these torpedoes",
+        };
+      }
       return {
         lead: "Tap where torpedoes hit. Will she float?",
         group: "Where torpedoes hit",
@@ -139,6 +160,9 @@ export default function WhatIfEditor({
   // Hits along her starboard side, with a plan from above.
   const side = torpedo || mine;
   const storm = spec.cause === "storm";
+  // Portholes to open or shut: only a torpedo ship that has them (the
+  // Lusitania; a mine ship's are among her toggles).
+  const hasPortholes = torpedo && (spec.portholes?.length ?? 0) > 0;
   const helpId = useId();
   const words = wordsOf(spec);
   const spots = useMemo(() => whatIfSpots(spec), [spec]);
@@ -167,6 +191,10 @@ export default function WhatIfEditor({
     engines: () => setRunForKea((v) => !v),
   };
   const selected = useMemo(() => new Set(ids), [ids]);
+  // The U-boat's return (`FINISHER_SPOT`): its own big toggle, not a chip.
+  const hasFinisher = spots.includes(FINISHER_SPOT);
+  const finisherOn = selected.has(FINISHER_SPOT);
+  const hitIds = ids.filter((id) => id !== FINISHER_SPOT);
   const openings = useMemo(() => whatIfOpenings(spec, ids), [spec, ids]);
   const toggle = (id: string) => {
     if (!spots.includes(id)) return;
@@ -175,12 +203,14 @@ export default function WhatIfEditor({
     );
   };
   // Bow first: the order a player reads the ship from the hit side.
-  const chips = storm ? spots : [...spots].reverse();
+  const chips = storm
+    ? spots
+    : [...spots].reverse().filter((id) => id !== FINISHER_SPOT);
   const groups = storm ? stormSpotGroups(spec) : null;
   const isReal =
     ids.length === real.length &&
     ids.every((id) => real.includes(id)) &&
-    (!side || portholesOpen) &&
+    (!(hasPortholes || mine) || portholesOpen) &&
     (!mine || (doorsStuck && runForKea)) &&
     (!storm || sea === "real");
   // No damage at all is a storm ship's question too (every cover tight).
@@ -212,14 +242,18 @@ export default function WhatIfEditor({
 
   let count: string;
   if (storm) count = stormChoiceText(spec, ids);
-  else if (torpedo)
+  else if (torpedo) {
     count =
-      ids.length === 0
-        ? "Choose where they hit"
-        : ids.length === 1
-          ? `Hits: ${spotLabel(spec, ids[0])}`
-          : `${ids.length} torpedoes`;
-  else if (mine)
+      hitIds.length === 0
+        ? finisherOn
+          ? `Only the ${finisherClock(spec)} torpedo`
+          : "Choose where they hit"
+        : hitIds.length === 1
+          ? `Hits: ${spotLabel(spec, hitIds[0])}`
+          : `${hitIds.length} torpedoes`;
+    if (finisherOn && hitIds.length > 0)
+      count += ` · then ${finisherClock(spec)}`;
+  } else if (mine)
     count =
       ids.length === 0
         ? "Choose where they hit"
@@ -300,7 +334,34 @@ export default function WhatIfEditor({
               </div>
             </>
           ) : (
-            chips.map((id) => chip(id))
+            <>
+              {chips.map((id) => chip(id))}
+              {/* The U-boat's return: its own big toggle, not a hull spot. */}
+              {hasFinisher && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={finisherOn}
+                  data-testid="shipwreck-finisher"
+                  aria-label={spotAria(spec, FINISHER_SPOT, finisherOn)}
+                  onClick={() => toggle(FINISHER_SPOT)}
+                  className={`${finisherOn ? PRIMARY : SECONDARY} min-h-16 px-5 text-base sm:text-lg`}
+                >
+                  <span className="flex items-center gap-1" aria-hidden="true">
+                    <Icon name="torpedo" className="size-7" />
+                    <Icon name="clock" className="size-7" />
+                  </span>
+                  <span className="flex flex-col items-start leading-tight">
+                    <span>{FINISHER_LABEL}</span>
+                    <span className="text-sm font-normal opacity-80">
+                      {finisherOn
+                        ? `A last torpedo at ${finisherClock(spec)}`
+                        : "It stays away"}
+                    </span>
+                  </span>
+                </button>
+              )}
+            </>
           )}
         </div>
 
@@ -400,7 +461,7 @@ export default function WhatIfEditor({
               <Icon name={words.icon} className="size-6" />
               {words.real}
             </button>
-            {torpedo && (
+            {hasPortholes && (
               <button
                 type="button"
                 data-testid="shipwreck-portholes"
@@ -450,7 +511,7 @@ export default function WhatIfEditor({
                         doorsClosed: !doorsStuck,
                         enginesStopped: !runForKea,
                       }
-                    : torpedo
+                    : hasPortholes
                       ? { ids, portholesOpen }
                       : storm
                         ? { ids, storm: sea }

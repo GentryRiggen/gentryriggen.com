@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import { CARPATHIA_FUNNEL_PAINT } from "@/lib/shipwreck/ships/carpathia";
 import TitleScreen from "../TitleScreen";
 
-function title(ship: "titanic" | "lusitania" | "fitzgerald" | "britannic") {
+function title(
+  ship: "titanic" | "lusitania" | "fitzgerald" | "carpathia" | "britannic"
+) {
   const onShip = jest.fn();
   render(
     <TitleScreen
@@ -27,12 +30,16 @@ describe("the ship picker", () => {
     expect(screen.queryByLabelText("Lusitania: coming soon")).toBeNull();
   });
 
-  it("offers the Edmund Fitzgerald among them (1.3)", () => {
+  it("offers every ship, the Edmund Fitzgerald among them (1.3)", () => {
     const onShip = title("titanic");
     const radios = screen.getAllByRole("radio");
-    expect(radios.map((r) => r.dataset.testid)).toContain(
-      "shipwreck-ship-fitzgerald"
-    );
+    expect(radios.map((r) => r.dataset.testid)).toEqual([
+      "shipwreck-ship-titanic",
+      "shipwreck-ship-lusitania",
+      "shipwreck-ship-fitzgerald",
+      "shipwreck-ship-carpathia",
+      "shipwreck-ship-britannic",
+    ]);
     const fitz = screen.getByRole("radio", { name: /Ship: Edmund Fitzgerald/ });
     expect(fitz).toHaveTextContent("1975 · 222 m long");
     fireEvent.click(fitz);
@@ -49,6 +56,7 @@ describe("the ship picker", () => {
       "shipwreck-ship-titanic",
       "shipwreck-ship-lusitania",
       "shipwreck-ship-fitzgerald",
+      "shipwreck-ship-carpathia",
       "shipwreck-ship-britannic",
     ]);
     const brit = screen.getByRole("radio", { name: /Ship: Britannic/ });
@@ -97,5 +105,36 @@ describe("the ship picker", () => {
     expect(screen.getByTestId("shipwreck-what-if")).toHaveAccessibleName(
       "What if? Choose where torpedoes hit"
     );
+  });
+
+  it("offers the Carpathia after the Fitzgerald, with a picture of her, and her morning", () => {
+    const onShip = title("carpathia");
+    const card = screen.getByRole("radio", { name: /Ship: Carpathia, 1918/ });
+    expect(card).toHaveAttribute("aria-checked", "true");
+    expect(card).toHaveTextContent("1918 · 170 m long");
+    // Her picture: one funnel, in her 1918 grey.
+    const pic = screen.getByTestId("shipwreck-ship-picture-carpathia");
+    const funnels = pic.querySelectorAll("[data-funnel]");
+    expect(funnels).toHaveLength(1);
+    // Her 1918 funnel: dark battle grey.
+    expect(funnels[0]).toHaveAttribute(
+      "fill",
+      `#${CARPATHIA_FUNNEL_PAINT.funnel.toString(16).padStart(6, "0")}`
+    );
+    expect(
+      screen
+        .getByTestId("shipwreck-ship-picture-titanic")
+        .querySelectorAll("[data-funnel]")
+    ).toHaveLength(4);
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      "This is the Carpathia, the ship that rescued the Titanic's survivors in 1912."
+    );
+    expect(screen.getByTestId("shipwreck-real-night")).toHaveTextContent(
+      "The real morning"
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /Ship: Lusitania/ }));
+    expect(onShip).toHaveBeenCalledWith("lusitania");
+    // Nothing is still to come: the Britannic is offered too.
+    expect(screen.queryAllByText("Coming soon")).toHaveLength(0);
   });
 });
