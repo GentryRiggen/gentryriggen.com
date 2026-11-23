@@ -1,4 +1,5 @@
 import { britannicRecipe } from "@/components/shipwreck/model/britannicRecipe";
+import { carpathiaRecipe } from "@/components/shipwreck/model/carpathiaRecipe";
 import { getShip } from "../../ships";
 import {
   BRITANNIC_BOAT,
@@ -47,17 +48,29 @@ function area(map: WalkMap, id: string) {
   return a;
 }
 
-const EXPECTED: Record<"titanic" | "lusitania" | "britannic", string[]> = {
+const EXPECTED: Record<
+  "titanic" | "lusitania" | "britannic" | "carpathia",
+  string[]
+> = {
   titanic: ["boat-deck", "forward-well", "forecastle", "aft-well", "poop"],
   britannic: ["boat-deck", "forward-well", "forecastle", "aft-well", "poop"],
   lusitania: ["boat-deck", "forecastle", "stern"],
+  carpathia: [
+    "boat-deck",
+    "bridge-deck",
+    "forward-well",
+    "forecastle",
+    "after-deck",
+    "promenade-port",
+    "promenade-starboard",
+  ],
 };
 
 it("has no map for a ship without one", () => {
   expect(walkMapFor("edmund-fitzgerald" as ShipId)).toBeNull();
 });
 
-describe.each(["titanic", "lusitania", "britannic"] as const)(
+describe.each(["titanic", "lusitania", "britannic", "carpathia"] as const)(
   "the %s walk map",
   (id) => {
     const spec = getShip(id);
@@ -184,7 +197,8 @@ describe.each(["titanic", "lusitania", "britannic"] as const)(
       const deckZ =
         (spec.decks.find((d) => d.name === boat.deck)?.z ?? 0) +
         spec.sheerZ(x) -
-        (spec.decks.find((d) => d.name === "C")?.z ?? 0);
+        (spec.decks.find((d) => d.name === (id === "carpathia" ? "Upper" : "C"))
+          ?.z ?? 0);
       expect(floorZ(map, "boat-deck", x, spec)).toBeCloseTo(
         deckZ + (boat.raiseM ?? 0),
         9
@@ -340,5 +354,65 @@ describe("the Britannic's walk map", () => {
         Math.abs(x - b.x) < BRITANNIC_BOAT.length / 2 + 0.3 &&
           Math.abs(y - b.y) < BRITANNIC_BOAT.beam / 2 + 0.3
       ).toBe(false);
+  });
+});
+
+describe("the Carpathia's walk", () => {
+  const spec = getShip("carpathia");
+  const map = walkMapFor("carpathia") as WalkMap;
+  const recipe = carpathiaRecipe(spec);
+
+  it("blocks every house, mast and funnel her recipe stands on a walked deck", () => {
+    const areaOf = (x: number, z: number): string | null => {
+      const floors: [string, string, number][] = [
+        ["boat-deck", "Boat", 0],
+        ["bridge-deck", "Bridge", 0],
+        ["after-deck", "Upper", 0],
+        ["forward-well", "Upper", 0],
+      ];
+      for (const [id, deck] of floors) {
+        const a = area(map, id);
+        const xs = a.outline.map((p) => p[0]);
+        if (x < Math.min(...xs) || x > Math.max(...xs)) continue;
+        if (Math.abs(z - floorZ(map, id, x, spec)) < 0.6 && deck) return id;
+      }
+      return null;
+    };
+    const hit = (id: string, x: number, y: number) =>
+      insideBlocker(map, id, [x, y], 0);
+    for (const h of recipe.houses) {
+      const x = (h.x0 + h.x1) / 2;
+      const id = areaOf(x, h.z0);
+      if (!id) continue; // on a roof, not a floor she walks
+      expect([h.id, hit(id, x, 0)]).toEqual([h.id, true]);
+    }
+    for (const m of recipe.masts) {
+      const id = areaOf(m.x, m.baseZ);
+      expect([m.id, id]).not.toEqual([m.id, null]);
+      expect([m.id, hit(id as string, m.x, 0)]).toEqual([m.id, true]);
+    }
+    for (const f of recipe.funnels) expect(hit("boat-deck", f.x, 0)).toBe(true);
+  });
+
+  it("keeps her off the wheelhouse's footprint: the bridge house under it is blocked", () => {
+    const wh = recipe.houses.find((h) => h.id === "wheelhouse")!;
+    expect(wh).toBeDefined();
+    // On the navigating bridge (the bridge house's roof), which she does
+    // not walk; the boat deck under it is the bridge house's blocker.
+    for (const x of [wh.x0, (wh.x0 + wh.x1) / 2, wh.x1])
+      for (const y of [wh.y0, 0, wh.y1])
+        expect([x, y, insideBlocker(map, "boat-deck", [x, y], 0)]).toEqual([
+          x,
+          y,
+          true,
+        ]);
+  });
+
+  it("walks a covered promenade down each side, joined to the boat deck", () => {
+    for (const side of ["port", "starboard"]) {
+      const s = map.stairs.find((x) => x.id === `promenade-ladder-${side}`);
+      expect(s?.to.area).toBe(`promenade-${side}`);
+      expect(s?.from.area).toBe("boat-deck");
+    }
   });
 });

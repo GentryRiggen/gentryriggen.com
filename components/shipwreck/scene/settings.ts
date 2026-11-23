@@ -66,6 +66,23 @@ export interface DaylightLook {
    * calm afternoon 0.34). Missing: 0.34. A look only: the sea stays flat.
    */
   ripple?: number;
+  /**
+   * Broken cloud in the day sky: the share of it covered (0–1). Missing:
+   * a clear sky (the Lusitania's and the Britannic's programs unchanged).
+   */
+  clouds?: number;
+  /**
+   * Small whitecaps on the sea: the share of the surface white at any
+   * moment (Beaufort 4, "fairly frequent white horses", a few percent).
+   * Missing: none. A look only.
+   */
+  whitecaps?: number;
+  /**
+   * How much of the high tier's planar reflection (the ship, the clouds)
+   * the sea shows over its own sky gradient, 0–1. A moderate sea's
+   * ripples break a mirror image up. Missing: all of it (1.1's).
+   */
+  mirror?: number;
 }
 
 /** The Lusitania's afternoon (1.1's constants, written out once). */
@@ -115,6 +132,8 @@ export interface SceneSettings {
   snow?: true;
   /** Daylight colours of her own (missing: `LUSITANIA_DAYLIGHT`). */
   daylight?: DaylightLook;
+  /** Her convoy on the horizon, scattering after the hit (`convoyMotion.ts`). */
+  convoy?: true;
 }
 
 // --- The night of 14–15 April 1912 (1.0's constants).
@@ -460,6 +479,8 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
     coast: false,
     iceberg: false,
     headingDeg: CARPATHIA_HIT.headingDeg,
+    // The six others of the seven she led (R12), not at the low tier.
+    convoy: true,
     daylight: {
       zenith: [0.11, 0.2, 0.42],
       hazeDensity: 0.000055,
@@ -485,6 +506,12 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
       // A fresh breeze over a moderate sea (R7): about twice the
       // Lusitania's ripple, breaking up the reflections.
       ripple: 0.75,
+      // The sinking photograph's broken grey cloud and small whitecaps.
+      clouds: 0.5,
+      whitecaps: 0.03,
+      // A moderate sea mirrors her and the clouds only faintly (the
+      // sinking photograph's sea is grey and broken, no reflections).
+      mirror: 0.2,
     },
   },
   // 8:12 AM in the Kea Channel, 21 November 1916: the sun 10° up in the

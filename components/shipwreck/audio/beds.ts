@@ -19,6 +19,8 @@ export const BED_LEVEL = {
 /** Steam is ducked from this speed up so it never drowns the rest. */
 export const STEAM_DUCK_SPEED = 10;
 export const STEAM_DUCKED = 0.35;
+/** The Carpathia's steady breeze on the open sea (0..1 of the wind bed). */
+export const BREEZE = 0.3;
 
 /** Target level of each bed for a state (pure, so it is testable). */
 export function bedTargets(s: BedState, on: boolean) {
@@ -39,22 +41,28 @@ export function bedTargets(s: BedState, on: boolean) {
   const storm = s.ship === "fitzgerald";
   // The Britannic's morning is a day bed too: engines turning, a calm sea.
   const morning = s.ship === "britannic";
-  const day = s.ship === "lusitania" || storm || morning;
+  // The Carpathia's open Atlantic: a deeper swell, a fresh breeze, no wash.
+  const ocean = s.ship === "carpathia";
+  const day = s.ship === "lusitania" || storm || morning || ocean;
   // The Britannic's engines follow her way (off at the stop, back as she
   // gets under way again), still gated by her power.
   const p2 = s.power * s.power * (morning ? (s.way ?? 1) : 1);
   const wind = storm ? (s.wind ?? 0) : 0;
+  const breeze = ocean ? BREEZE : wind;
   return {
     // The storm's breaking seas are a little louder than a calm sea.
-    sea: BED_LEVEL.sea * above * (1 + 0.2 * wind),
+    sea: BED_LEVEL.sea * above * (1 + 0.2 * wind + (ocean ? 0.2 : 0)),
     hum: day ? 0 : BED_LEVEL.hum * above * p2,
     night: day ? 0 : BED_LEVEL.night,
     // Her engines are a lower thrum, a little under the liners'.
     engines: day
-      ? BED_LEVEL.engines * above * p2 * (storm ? 0.75 : morning ? 0.85 : 1)
+      ? BED_LEVEL.engines *
+        above *
+        p2 *
+        (storm ? 0.75 : morning || ocean ? 0.85 : 1)
       : 0,
     // The wind howls with the sea; the deck washes as she lays over.
-    wind: BED_LEVEL.wind * above * wind,
+    wind: BED_LEVEL.wind * above * breeze,
     wash: BED_LEVEL.wash * above * wind * (0.4 + 0.6 * s.strain),
     steam:
       BED_LEVEL.steam *
@@ -105,7 +113,12 @@ export function createBeds(engine: VoiceEngine): Beds {
   seaSwell.connect(sea);
   nodes.push(seaSwell);
   const seaSrc = loopingNoise(ctx, engine.brown);
-  filtered(seaSrc, "lowpass", 420, 0.7, seaSwell);
+  const seaFilter = ctx.createBiquadFilter();
+  seaFilter.type = "lowpass";
+  seaFilter.frequency.value = 420;
+  seaFilter.Q.value = 0.7;
+  seaSrc.connect(seaFilter).connect(seaSwell);
+  nodes.push(seaSrc, seaFilter);
   const lfo = ctx.createOscillator();
   lfo.frequency.value = 0.13;
   const lfoDepth = ctx.createGain();
@@ -237,7 +250,12 @@ export function createBeds(engine: VoiceEngine): Beds {
       gains.wind.gain.setTargetAtTime(t.wind, now, 0.8);
       gains.wash.gain.setTargetAtTime(t.wash, now, 0.8);
       // The howl climbs in pitch as the wind rises.
-      windFilter.frequency.setTargetAtTime(350 + 650 * (s.wind ?? 0), now, 0.8);
+      const blow = s.ship === "carpathia" ? BREEZE : (s.wind ?? 0);
+      windFilter.frequency.setTargetAtTime(350 + 650 * blow, now, 0.8);
+      // The open Atlantic's swell is deeper and slower than a calm sea's.
+      const deep = s.ship === "carpathia";
+      seaFilter.frequency.setTargetAtTime(deep ? 260 : 420, now, 0.8);
+      lfo.frequency.setTargetAtTime(deep ? 0.07 : 0.13, now, 0.8);
     },
     dispose() {
       for (const src of stoppers) {

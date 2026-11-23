@@ -536,7 +536,8 @@ laptop.
   deckhouse (510–540 ft from the stem, one tier, its walls 4.6 m either
   side of the centre line, a walkway outside: P2), the jigger at 493 ft
   (P3; P6 497 ft) and a boat platform on stanchions just forward of it
-  (467–488 ft, one a side, a tier up: P2). Task 3's poop (its plating a
+  (about 467–488 ft off P2, drawn 466–489 ft for its 24 ft boat; one a
+  side, a tier up). Task 3's poop (its plating a
   tier up from 485 ft, a third porthole row aft) was wrong against all
   three. Over it, from the bridge aft, the bridge deck
   promenade (open between stanchions, closed at both ends, its front
@@ -588,11 +589,20 @@ laptop.
   platform forward of the jigger (P1, P2) and the tenth pair on the stern
   deckhouse's roof (no photograph shows where it went: ours). Port boats
   8 and 10 carry `wreckedAtT` (the second torpedo wrecked two, GOL: the
-  scene's to hide or break). About 20 ft long: the data's 6.5 m spacing leaves no room for the
-  26–28 ft boats usual on a ship her size (a known simplification; P1–P2
-  show boats close together). Two davits each, curved (radial) davits
-  (P2); swung out in 1918 (the war zone's practice, an assumption), in
-  over the boats in 1912.
+  scene's to hide or break). **True size (Task B4):** 26 ft by 7½ ft by
+  3 ft. No source we have gives her own boats' length; 26–28 ft is the
+  usual wooden lifeboat on a liner of her date (the Lusitania's were 30,
+  27 and 23 ft, above; the Titanic's 30 ft, her cutters 25 ft), so 26 ft
+  is ours, at the short end, because seven a side must fit between her
+  bridge and the boat deck's after end. They stand 8.6 m apart there
+  (P1–P2 show them close together, end to end), the aftmost at the
+  deck's after end, the foremost alongside the bridge house clear of the
+  bridge's wings (the 1.5.0 build had them about 20 ft long,
+  6.5 m apart). The pair on the boat platform is 24 ft (the after boats a
+  size smaller, as the Lusitania's), the platform drawn 466–489 ft (P2's
+  467–488 ft, ±) so their davits stand on it, still clear of the jigger
+  and No. 5 hatch. Two davits each, curved (radial) davits (P2); swung
+  out in 1918 (the war zone's practice, an assumption).
 - **Under water.** Twin screws (titanicinquiry), three-bladed
   (thegreatoceanliners.com: "two three-bladed"; Task 3's four blades
   contradicted it), 2.3 m radius on short bossings, the hubs 3.6 m forward of
@@ -665,7 +675,13 @@ laptop.
   not offered in the game.
 - **One shape for every livery, but the gun.** The livery is paint
   only: her davits are swung out in 1912 colours too (the 1918 ship
-  repainted; davits swung in for 1912 is a follow-up), her walls are
+  repainted). In 1912 photographs (P1, P3) they stand in over the boats,
+  stowed; Task B4 left them out because it is not cheap: the davits are
+  merged into the paint list, and the morning's boats hang from
+  swung-out heads from the start, so stowed davits would need the boats
+  stowed until their turn and each pair of davits swinging out as its
+  boat goes (the davits are not separate parts), or the boats would hang
+  from nothing. A follow-up. Her walls are
   drawn into the dazzle list in every livery (white in 1912, the dazzle
   switched off by a uniform), so a swap rebuilds nothing. The 1918 stern
   gun is the one part only some liveries carry: it is drawn from its own

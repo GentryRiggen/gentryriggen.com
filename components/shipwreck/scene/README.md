@@ -312,8 +312,7 @@ sun and colours. Added nothing beyond what she needs to read right.
   paler, greyer sky overhead for the cloudy-bright morning; a deep blue
   sea, its ripple about twice the Lusitania's (0.75, a define in the sea
   shader: a moderate sea breaking up the reflections; the Lusitania's
-  program is unchanged). No clouds and no whitecaps: the sky and sea
-  have none to give without new shader work (follow-up). Under water:
+  program is unchanged); broken cloud and small whitecaps (below). Under water:
   blue (`#1e5a82`) darkening to `#04121f` at her 150 m floor, exp² 0.0062
   to 0.0082 (clearer open-ocean water than the Celtic Sea's, so she is
   seen about 120 m off on the way down and on the floor), blue shafts,
@@ -375,8 +374,54 @@ sun and colours. Added nothing beyond what she needs to read right.
   (110 trail and 150 puff at high, × the tier's share), in the two
   existing point buffers: no new draws. The Titanic's night rockets and
   the rocket sound are unchanged.
-- **Not in this cut** (follow-ups): the convoy (R12), her own sound,
-  steam from her waste pipe, clouds and whitecaps.
+- **Her convoy** (R12; `convoyMotion.ts`, pure, and `Convoy.tsx`): the
+  escort left early on 17 July and the convoy split; she was commodore
+  ship of the remaining seven (thegreatoceanliners.com, Wikipedia), so
+  six other steamers. After the first torpedo "the convoy scattered at
+  full speed" (GOL). No source gives their names, stations, paint,
+  speeds or courses: all ours. Three columns 3 km apart, she at the head
+  of the centre one, ships 2–2.6 km apart in a column (an open order,
+  wider than a close convoy's 3–5 cables: the escort had gone), 2.2–4.4
+  km from her; at her 10 knots (R9) until the first hit's time (the
+  run's first torpedo, `scatterAtOf`; a What-if starts them later), then
+  each, 40–110 s after it, turns at 1°/s (a steamer with the helm hard
+  over) 35–115° away from her and works up (0.012 m/s²) to its full
+  speed of 11.5–13 knots, the two astern of her sheering off to
+  starboard past her stopped hull. Everything is a function of the shown
+  `t` (seeking is right; tested: continuous, never within 1.2 km of her
+  or 800 m of each other). By 10:00 AM all are more than 12 km off; they
+  fade into her haze from 22 km (at 28 km it leaves under a tenth of
+  their contrast) and are not drawn past 28 km, all of them by about
+  10:30, well before the third torpedo. They sit lower with the earth's
+  curve beyond the camera's horizon (`hullDownM`, 7/6 of the earth's
+  radius for refraction). One low-detail steamer shape (about 350
+  triangles: hull with raised forecastle and poop, midships house and
+  bridge, one raked funnel, two masts thickened to hold a pixel)
+  instanced six times, scaled to 110–135 m; paint per ship in the shader:
+  plain battle grey, a darker grey, or one of two dazzle patterns (bold
+  black, white, blue-grey and grey bands whose angle flips along her and
+  differs side to side), British merchant style of 1918. Their smoke: one
+  camera-facing ribbon each (75 s of drift on the wind less their way,
+  rising 34 m and widening to 45 m, heavier at full speed). Two draws
+  (hulls, smoke), four with the high tier's reflection; none at the low
+  tier or under water.
+- **Broken cloud and whitecaps** (R7, from the sinking photograph:
+  `DaylightLook.clouds` 0.5, `whitecaps` 0.03; shader defines, so the
+  other ships' sky and sea programs are unchanged; no new draws). The sky:
+  value-noise cumulus on a layer, half the sky covered, grey underneath,
+  lit at the edges toward the sun, thinning into the haze at the horizon;
+  cloud over the sun hides its disc. The sea: small whitecaps in 14 m
+  cells breaking in groups (where a 140 m noise is high), each a ragged
+  crest across the wind that flares in a second, spreads downwind and
+  fades over a few (a 7–12 s cycle per cell); past 700 m only their
+  average whitening is left, so they never flicker as pixels.
+- **A faint sea mirror** (`DaylightLook.mirror` 0.2, the `DAY_MIRROR`
+  define; Task B4): at the high tier the planar reflection is blended at
+  a fifth over the sea's own sky gradient, so her moderate, wind-broken
+  sea no longer mirrors the clouds and her hull like a calm one (the
+  sinking photograph's sea is grey and broken, with no reflections; the
+  other ships keep the full mirror, and no draws change).
+- **Not in this cut** (follow-ups): steam from her waste pipe.
 
 ## Performance (see the task 4 report for numbers)
 

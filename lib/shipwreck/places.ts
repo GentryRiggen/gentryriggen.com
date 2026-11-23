@@ -103,7 +103,9 @@ export function deckZAt(
   spec: Pick<ShipSpec, "decks" | "sheerZ"> = titanic
 ): number {
   const z = (name: string) => spec.decks.find((d) => d.name === name)?.z ?? 0;
-  return z(deck) + (spec.sheerZ(x) - z("C"));
+  // The Carpathia has no C deck: her upper deck is the top of the hull.
+  const top = spec.decks.some((d) => d.name === "C") ? z("C") : z("Upper");
+  return z(deck) + (spec.sheerZ(x) - top);
 }
 
 const BRIDGE_X = 68.6;

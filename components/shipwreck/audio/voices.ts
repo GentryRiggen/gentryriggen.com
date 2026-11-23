@@ -356,6 +356,64 @@ const VOICES: Record<Cue, Voice> = {
         });
     }
   },
+  // The Carpathia's torpedo: a hard double thud (two blows a heartbeat
+  // apart) with a short low rumble under them.
+  hardHit(e, t, l) {
+    for (const k of [0, 0.35])
+      tone(e, {
+        type: "sine",
+        start: t + k,
+        duration: 0.7,
+        freq: 62,
+        freqEnd: 30,
+        gain: 0.1 * l,
+        attack: 0.012,
+      });
+    noise(e, {
+      buffer: e.brown,
+      start: t,
+      duration: 1.8,
+      filter: "lowpass",
+      freq: 95,
+      freqEnd: 55,
+      gain: 0.09 * l,
+      attack: 0.015,
+    });
+  },
+  // Her going down (bow first; stern first in a What-if): one long groan of the hull, air and water
+  // rushing as the bow goes, then it fades to quiet.
+  bowDown(e, t, l) {
+    tone(e, {
+      type: "sawtooth",
+      start: t,
+      duration: 9,
+      freq: 48,
+      freqEnd: 30,
+      gain: 0.07 * l,
+      attack: 1.5,
+      filter: { type: "bandpass", freq: 150, q: 9 },
+    });
+    noise(e, {
+      buffer: e.white,
+      start: t + 1,
+      duration: 8,
+      filter: "lowpass",
+      freq: 600,
+      freqEnd: 2200,
+      gain: 0.09 * l,
+      attack: 2.5,
+    });
+    noise(e, {
+      buffer: e.brown,
+      start: t + 1,
+      duration: 8,
+      filter: "lowpass",
+      freq: 200,
+      freqEnd: 90,
+      gain: 0.1 * l,
+      attack: 2,
+    });
+  },
   // A gull, far off: a thin whistle that rises, falls and fades. A bird
   // on the wind, not a voice.
   gull(e, t, l) {

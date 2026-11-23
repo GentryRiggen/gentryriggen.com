@@ -122,6 +122,8 @@ describe("voices", () => {
     "boom",
     "mine",
     "whistle",
+    "hardHit",
+    "bowDown",
     "gull",
     "swell",
     "hatch",
@@ -323,5 +325,41 @@ describe("the Britannic's engines follow her way", () => {
       expect(bedTargets({ ...base, ship, way: 0.1 }, true)).toEqual(
         bedTargets({ ...base, ship }, true)
       );
+  });
+});
+
+describe("the Carpathia's open-Atlantic bed", () => {
+  const car = { ...base, ship: "carpathia" } as const;
+  it("has a deeper sea, a fresh breeze and engines, no coast wash or hum", () => {
+    const t = bedTargets(car, true);
+    expect(t.sea).toBeGreaterThan(BED_LEVEL.sea);
+    expect(t.wind).toBeGreaterThan(0);
+    expect(t.wind).toBeLessThan(BED_LEVEL.wind * 0.5);
+    expect(t.engines).toBeGreaterThan(0);
+    expect(t.wash).toBe(0);
+    expect(t.hum).toBe(0);
+    expect(t.night).toBe(0);
+    expect(bedTargets({ ...car, power: 0 }, true).engines).toBe(0);
+  });
+
+  it("goes to the low rumble under water and is silent when off", () => {
+    const u = bedTargets({ ...car, underwater: true }, true);
+    expect(u.sea).toBe(0);
+    expect(u.wind).toBe(0);
+    expect(u.rumble).toBe(BED_LEVEL.rumble);
+    const off = bedTargets(car, false);
+    expect(Object.values(off).every((v) => v === 0)).toBe(true);
+  });
+
+  it("keeps her loudest cues and beds under 0.3", () => {
+    const l = bedTargets({ ...car, steam: true }, true);
+    const sum = Object.values(l).reduce((a, b) => a + b, 0);
+    expect((4 * VOICE_PEAK_MAX * CUE_BUS_LEVEL + sum) * 0.8).toBeLessThan(0.3);
+  });
+
+  it("leaves every other ship's mix as it was", () => {
+    for (const ship of ["titanic", "lusitania", "fitzgerald"] as const)
+      expect(bedTargets({ ...base, ship }, true).wind).toBe(0);
+    expect(bedTargets(base, true).sea).toBe(BED_LEVEL.sea);
   });
 });

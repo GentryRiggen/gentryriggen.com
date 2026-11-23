@@ -155,7 +155,12 @@ const fragment = /* glsl */ `
       // Blur grows with distance and ripple slope (mip bias).
       float bias = clamp(log2(dist / 120.0), 0.0, 3.0);
       vec3 mirror = texture2D(uReflection, uv, bias).rgb;
+      #ifdef DAY_MIRROR
+      // A rougher sea (DaylightLook.mirror): the mirror image faint.
+      refl = mix(sky, mirror + sky * 0.15, DAY_MIRROR);
+      #else
       refl = mirror + sky * 0.15;
+      #endif
     }
     #ifdef DAY
     // The sea in the sun: blue-green water lit from within, the sky's
@@ -203,6 +208,36 @@ const fragment = /* glsl */ `
       }
       foam *= uWakeAmt;
     }
+    #ifdef WHITECAPS
+    // Small whitecaps (a ship's own, DaylightLook.whitecaps): in cells of
+    // 14 m a few break at any moment, each a ragged white crest across
+    // the wind (it blows along x) that flares in a second, then spreads
+    // downwind and thins over a few. Far off, where one would be a
+    // flickering pixel, only their average whitening is left.
+    {
+      vec2 wp = vWorld.xz / 14.0;
+      vec2 cell = floor(wp);
+      vec2 f = fract(wp) - 0.5;
+      float r1 = hash(cell + 17.0);
+      float r2 = hash(cell + 41.0);
+      float r3 = hash(cell + 73.0);
+      float cyc = uTime / (7.0 + 5.0 * r2) + r1;
+      float life = fract(cyc);
+      // They break in groups, where the bigger waves of the sea are.
+      float group = smoothstep(0.3, 0.8, noise(vWorld.xz / 140.0 + vec2(uTime * 0.02, 0.0)));
+      float breaks = step(hash(cell + floor(cyc) * 1.7), WHITECAPS * 14.0 * group);
+      vec2 o = (f - (vec2(r1, r2) - 0.5) * 0.4) / (0.5 + 0.7 * r3);
+      o.x -= life * 0.3;
+      float shape = length(o * vec2(5.0 - life * 2.5, 1.5));
+      float tex = noise(vWorld.xz * 0.9 + r1 * 50.0) * 0.6
+        + noise(vWorld.xz * 2.7 + r2 * 30.0) * 0.4;
+      float flare = smoothstep(0.0, 0.05, life) * (1.0 - smoothstep(0.05, 0.6, life));
+      float body = smoothstep(0.6, 0.22, shape + (tex - 0.5) * 0.55);
+      float cap = breaks * body * flare * (0.45 + 0.55 * tex) * (0.6 + 0.4 * r3);
+      float near = smoothstep(700.0, 120.0, dist);
+      foam = max(foam, mix(WHITECAPS * 1.2, cap * 0.8, near));
+    }
+    #endif
     c = mix(c, vec3(0.8, 0.86, 0.88), clamp(foam, 0.0, 0.8));
     gl_FragColor = vec4(c, uOpacity);
     #else
@@ -225,6 +260,8 @@ interface SeaProps {
 export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
   const day = settings ? isDaylit(settings) : false;
   const ripple = settings?.daylight?.ripple;
+  const whitecaps = settings?.daylight?.whitecaps;
+  const mirrorAmt = settings?.daylight?.mirror;
   // Her turn for Kea: the morning's wake follows her stern's path.
   const curved = settings?.timeOfDay === "morning";
   const size = REFLECTION_SIZE[quality];
@@ -259,6 +296,12 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
                 ? { DAY_RIPPLE: ripple.toFixed(3) }
                 : {}),
               ...(curved ? { WAKE_PATH: "" } : {}),
+              ...(whitecaps !== undefined
+                ? { WHITECAPS: whitecaps.toFixed(3) }
+                : {}),
+              ...(mirrorAmt !== undefined
+                ? { DAY_MIRROR: mirrorAmt.toFixed(3) }
+                : {}),
             }
           : {},
         uniforms: UniformsUtils.merge([
@@ -301,7 +344,7 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
           },
         ]),
       }),
-    [day, ripple, curved]
+    [day, ripple, curved, whitecaps, mirrorAmt]
   );
   // The afternoon's colours (linear): the haze at the horizon, the blue
   // overhead, the water and the light under it.
