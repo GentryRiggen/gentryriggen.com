@@ -214,7 +214,10 @@ const fragment = /* glsl */ `
     // the wind (it blows along x) that flares in a second, then spreads
     // downwind and thins over a few. Far off, where one would be a
     // flickering pixel, only their average whitening is left.
-    {
+    // Past 700 m only the average is left: skip the per-cell work there.
+    if (dist >= 700.0) {
+      foam = max(foam, WHITECAPS * 1.2);
+    } else {
       vec2 wp = vWorld.xz / 14.0;
       vec2 cell = floor(wp);
       vec2 f = fract(wp) - 0.5;

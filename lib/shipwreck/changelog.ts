@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.8.1",
+    date: "2026-11-23",
+    title: "A lighter sea",
+    highlights: [
+      "The Carpathia's morning is a little easier on iPads: the far-off sea and the ships in her convoy take less work to draw",
+    ],
+  },
+  {
     version: "1.8.0",
     date: "2026-11-22",
     title: "Walk the Carpathia",

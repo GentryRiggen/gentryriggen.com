@@ -113,15 +113,31 @@ export interface ConvoyPose {
  * steams on), then a turn at `TURN_DEG_S` onto her scatter course, then
  * working up to full speed on it.
  */
+function setPose(
+  out: ConvoyPose,
+  x: number,
+  z: number,
+  heading: number,
+  speed: number
+): ConvoyPose {
+  out.x = x;
+  out.z = z;
+  out.heading = heading;
+  out.speed = speed;
+  return out;
+}
+
+/** Pass `out` to reuse one pose object (the per-frame path). */
 export function convoyPose(
   ship: ConvoyShip,
   t: number,
-  scatterAtS: number | null
+  scatterAtS: number | null,
+  out: ConvoyPose = { x: 0, z: 0, heading: 0, speed: 0 }
 ): ConvoyPose {
   const v0 = CONVOY_MPS;
   const [sx, sz] = ship.station;
   const turnAt = scatterAtS === null ? Infinity : scatterAtS + ship.reactS;
-  if (t <= turnAt) return { x: sx + v0 * t, z: sz, heading: 0, speed: v0 };
+  if (t <= turnAt) return setPose(out, sx + v0 * t, sz, 0, v0);
   const x0 = sx + v0 * turnAt;
   const w = (TURN_DEG_S * Math.PI) / 180;
   const s = Math.sign(ship.scatterDeg) || 1;
@@ -130,16 +146,19 @@ export function convoyPose(
   const tau = t - turnAt;
   // The turn: an arc of radius v0 / w at convoy speed.
   const r = v0 / w;
-  const arc = (a: number) => ({
-    x: x0 + r * Math.sin(a),
-    z: sz + s * r * (1 - Math.cos(a)),
-  });
   if (tau <= turnS) {
     const a = w * tau;
-    const p = arc(a);
-    return { x: p.x, z: p.z, heading: s * a, speed: v0 };
+    return setPose(
+      out,
+      x0 + r * Math.sin(a),
+      sz + s * r * (1 - Math.cos(a)),
+      s * a,
+      v0
+    );
   }
-  const end = arc(Math.abs(final));
+  const fa = Math.abs(final);
+  const endX = x0 + r * Math.sin(fa);
+  const endZ = sz + s * r * (1 - Math.cos(fa));
   // Then straight on her course, working up to full speed.
   const u = tau - turnS;
   const rampS = Math.max(0, (ship.fullMps - v0) / ACCEL_MPS2);
@@ -149,12 +168,13 @@ export function convoyPose(
       : v0 * rampS +
         0.5 * ACCEL_MPS2 * rampS * rampS +
         ship.fullMps * (u - rampS);
-  return {
-    x: end.x + d * Math.cos(final),
-    z: end.z + d * Math.sin(final),
-    heading: final,
-    speed: u <= rampS ? v0 + ACCEL_MPS2 * u : ship.fullMps,
-  };
+  return setPose(
+    out,
+    endX + d * Math.cos(final),
+    endZ + d * Math.sin(final),
+    final,
+    u <= rampS ? v0 + ACCEL_MPS2 * u : ship.fullMps
+  );
 }
 
 /** The earth's radius with standard refraction (7/6 of 6371 km). */
