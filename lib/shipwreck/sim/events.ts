@@ -23,6 +23,7 @@ export const SIM_EVENT_KINDS = [
   "sheltered",
   "radio",
   "torpedo-hit",
+  "aground",
 ] as const;
 
 export type SimEventKind = (typeof SIM_EVENT_KINDS)[number];

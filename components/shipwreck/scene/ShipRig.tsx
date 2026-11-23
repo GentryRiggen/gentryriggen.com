@@ -3,7 +3,7 @@
 
 import { useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PointLight } from "three";
+import { LineBasicMaterial, PointLight, type Mesh, type Object3D } from "three";
 import { useStore } from "zustand";
 import TitanicModel from "@/components/shipwreck/model/TitanicModel";
 import {
@@ -12,6 +12,10 @@ import {
   hardLandingAt,
 } from "@/components/shipwreck/model/bowBend";
 import { applyBodyPose } from "@/components/shipwreck/model/pose";
+import {
+  createRockMesh,
+  disposeRockMesh,
+} from "@/components/shipwreck/model/rock";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
@@ -21,8 +25,11 @@ import {
   sampleTrackInto,
   type BodyPose,
   type SimFrame,
+  type SimTrack,
 } from "@/lib/shipwreck/sim/track";
+import type { SimEvent } from "@/lib/shipwreck/sim/events";
 import { earthZ } from "@/lib/shipwreck/xray";
+import { rockLodgedT } from "./giglio";
 import { seaFieldOf } from "./seaWaves";
 import { ridePose } from "./stormRide";
 import { shipToThreeInto, trackSpeedAt, type V3 } from "./cameraMath";
@@ -103,6 +110,74 @@ export function deckLightsOf(spec: ShipSpec): [number, number, number][] {
  */
 const DAY_LIGHTS = 0.025;
 
+/** How long her lights flicker at the blackout before going out (shown s). */
+export const BLACKOUT_FLICKER_S = 2.5;
+
+/** Her lights in the flicker: dips and comebacks from a hash of the time. */
+export function blackoutFlicker(since: number): number {
+  const k = Math.floor(since * 8);
+  const h = (((k * 2654435761) >>> 0) % 1000) / 1000;
+  return (h < 0.45 ? 0.05 : 0.6 + 0.4 * h) * (1 - since / BLACKOUT_FLICKER_S);
+}
+
+/** Each model's rails-and-rigging lines' material (looked up once). */
+const railMats = new WeakMap<object, LineBasicMaterial | null>();
+
+/** Sets a model's unlit rail lines to `level` of their colour (0–1). */
+export function dimRails(model: { root: Object3D }, level: number): void {
+  let m = railMats.get(model);
+  if (m === undefined) {
+    const o = model.root.getObjectByName("rails-and-rigging") as
+      (Object3D & { material?: unknown }) | undefined;
+    m = o?.material instanceof LineBasicMaterial ? o.material : null;
+    railMats.set(model, m);
+  }
+  if (m && m.color.r !== level) m.color.setScalar(level);
+}
+
+/** Shown time of the track's `lights-out` (null: none). */
+export function lightsOutAt(track: {
+  events: readonly SimEvent[];
+}): number | null {
+  for (const e of track.events) if (e.kind === "lights-out") return e.t;
+  return null;
+}
+
+/**
+ * Her lights at shown time `t`: `power` (the frame's, times the day's
+ * share) with the liners' flicker while it dips; for a ship with a
+ * `blackout`, from the track's `lights-out` a `BLACKOUT_FLICKER_S`
+ * flicker, then off, with her emergency panes at the spec's level (0
+ * before `lights-out`, so a seek back before it has none). Written into
+ * `into` when given (the frame loop's scratch), else a new object.
+ */
+export interface BlackoutLights {
+  lit: number;
+  flicker: number;
+  emergency: number;
+}
+export function blackoutLights(
+  spec: Pick<ShipSpec, "blackout">,
+  track: { events: readonly SimEvent[] },
+  t: number,
+  power: number,
+  into: BlackoutLights = { lit: 0, flicker: 0, emergency: 0 }
+): BlackoutLights {
+  const out = spec.blackout ? lightsOutAt(track) : null;
+  if (!spec.blackout || out === null || t < out) {
+    into.lit = power;
+    into.flicker = power > 0 && power < 1 ? 0.6 : 0;
+    into.emergency = 0;
+    return into;
+  }
+  const since = t - out;
+  const on = since < BLACKOUT_FLICKER_S;
+  into.lit = on ? blackoutFlicker(since) : 0;
+  into.flicker = on ? 0.6 : 0;
+  into.emergency = spec.blackout.emergencyLight;
+  return into;
+}
+
 /**
  * The models are built once, at high detail (rigging wires and rails: they
  * are what make her read as the Titanic): the render tier (which the
@@ -160,6 +235,10 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
       lamp: [0, 0, 0] as V3,
       past: createFrame(),
       pathP: [0, 0, 0] as V3,
+      lights: { lit: 0, flicker: 0, emergency: 0 } as BlackoutLights,
+      // When the struck rock lodged in her side, per track (`rockLodgedT`).
+      lodgedFor: null as SimTrack | null,
+      lodgedT: undefined as number | null | undefined,
     }),
     []
   );
@@ -232,11 +311,33 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
       ),
     [gl, scene, camera]
   );
+  // The rock stuck in her side from the strike on (R21; the Concordia's
+  // `recipe.rock`): its own small mesh on the whole ship.
+  const rock = useRef<Mesh | null>(null);
+  useEffect(
+    () => () => {
+      if (rock.current) disposeRockMesh(rock.current);
+      rock.current = null;
+    },
+    []
+  );
   const onWhole = useCallback(
     (h: TitanicHandles) => {
       paint(h);
       runtime.whole = h;
       warmPaints(h);
+      if (rock.current) {
+        rock.current.removeFromParent();
+        disposeRockMesh(rock.current);
+        rock.current = null;
+      }
+      // (Test doubles of the handles may carry no recipe.)
+      const stuck = h.recipe?.rock;
+      if (stuck) {
+        rock.current = createRockMesh(stuck);
+        rock.current.visible = false;
+        h.whole.add(rock.current);
+      }
     },
     [runtime, paint, warmPaints]
   );
@@ -325,18 +426,56 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     runtime.broken = two && split !== null;
     // Halves kept from an earlier run that has not broken (yet): hidden.
     if (!split && runtime.split) runtime.split.root.visible = false;
-    const lit = frame.power * lightShare;
-    const flicker = lit > 0 && lit < 1 ? 0.6 : 0;
+    // A ship with a blackout (the Concordia): after `lights-out` a short
+    // flicker, then only her emergency lights; before it none of them.
+    const lights = blackoutLights(
+      spec,
+      track,
+      s.t,
+      frame.power * lightShare,
+      scratch.lights
+    );
+    const lit = lights.lit;
+    const flicker = lights.flicker;
+    const emergency = lights.emergency;
+    // Her rails are lines drawn unlit at their paint's colour (white on
+    // her): after the blackout they would glow; dim them with her lights,
+    // to her emergency level at most.
+    if (spec.blackout) {
+      const level = Math.max(lit, emergency);
+      if (whole) dimRails(whole, level);
+      if (runtime.split) dimRails(runtime.split, level);
+    }
     // Looking under from the sea: her hull lights stay faintly on, so she
     // is a dim lit shape going down.
     const power = walkHullPower(lit, runtime.walkLookUnder);
 
+    // The rock: in her side from when it stuck, in a run whose gash
+    // reaches it (a What if that leaves that compartment whole has none):
+    // from when Le Scole's tip, which she runs on past, reaches it at
+    // frame 52 (`rockLodgedT`), so it reads as the islet's rock.
+    const stuck = whole?.recipe?.rock;
+    if (rock.current && stuck) {
+      let torn = false;
+      for (const o of s.openings)
+        if (o.compartmentId === stuck.compartmentId) torn = true;
+      if (scratch.lodgedFor !== track) {
+        scratch.lodgedFor = track;
+        scratch.lodgedT = undefined;
+      }
+      if (torn && scratch.lodgedT === undefined)
+        scratch.lodgedT = rockLodgedT(track, stuck.p[0]);
+      const from = Math.max(stuck.fromT, scratch.lodgedT ?? stuck.fromT);
+      rock.current.visible =
+        torn && scratch.lodgedT !== undefined && s.t >= from;
+    }
     if (whole) {
       whole.root.visible = !runtime.broken;
       if (!runtime.broken) {
         applyBodyPose(whole.whole, frame.bodies[0]);
         whole.setPower(power);
         whole.setFlicker(flicker);
+        whole.setEmergency(emergency);
       }
       // Her bow bends when it strikes the floor with her stern still up
       // (R12, a ship with a hinge: the Britannic), about the upright
@@ -359,6 +498,7 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
         }
         split.setPower(power);
         split.setFlicker(flicker);
+        split.setEmergency(emergency);
       } else {
         // Hidden, or drawn exactly under the whole ship while warming up.
         const pose = frame.bodies[0];
@@ -409,7 +549,8 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
       const w = shipToThreeInto(body, p, scratch.lamp);
       if (i < lamps.length) {
         lamps[i].position.set(w[0], w[1], w[2]);
-        lamps[i].intensity = lit * lampStrength;
+        // (Her emergency lighting keeps a little light on her decks.)
+        lamps[i].intensity = Math.max(lit, emergency * 0.25) * lampStrength;
       }
       // A lamp deep under the sea lights nothing on it (one just under a
       // breaking sea still glows through the foam over her deck).

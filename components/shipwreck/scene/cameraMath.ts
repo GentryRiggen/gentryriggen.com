@@ -1,8 +1,10 @@
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
+import { SPURS, concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import type { ShipId, ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
+import { HARBOUR_MOUTH, groundZ } from "./giglio";
 
 /**
  * Camera maths with no three.js: points are [x, y, z] in three.js axes
@@ -207,8 +209,19 @@ function carpathiaBoxes(spec: ShipSpec): HullBox[] {
 export const CARPATHIA_HULL_BOXES: readonly HullBox[] =
   carpathiaBoxes(carpathia);
 
+/**
+ * The Concordia's (lib/shipwreck/ships/concordia.ts), as the Carpathia's
+ * are made: her hull to deck 1's sheer, her beam across, then her
+ * superstructure's blocks (the aft terraces to deck 9, the main block to
+ * deck 11, the top tier to deck 14, the stepped front) to their tops with
+ * 2.5 m for the rails and glass. Her funnel and masts are not boxed.
+ */
+export const CONCORDIA_HULL_BOXES: readonly HullBox[] =
+  carpathiaBoxes(concordia);
+
 /** The hull boxes of a ship (the camera's bounds and the double-tap proxies). */
 export function hullBoxesFor(ship: ShipId): readonly HullBox[] {
+  if (ship === "concordia") return CONCORDIA_HULL_BOXES;
   if (ship === "fitzgerald") return FITZGERALD_HULL_BOXES;
   if (ship === "carpathia") return CARPATHIA_HULL_BOXES;
   if (ship === "britannic") return BRITANNIC_HULL_BOXES;
@@ -255,7 +268,9 @@ export function keepClear(
   seaDepthM: number,
   boxes: readonly HullBox[],
   margin = 0.6,
-  clearance = 2
+  clearance = 2,
+  /** A sloping floor or land (three y at three x, z): else −seaDepthM. */
+  ground?: Ground
 ): V3 {
   if (!boxes.some((b) => insideBox(p, b, margin))) return [p[0], p[1], p[2]];
   const floor = -seaDepthM + clearance;
@@ -278,7 +293,8 @@ export function keepClear(
       // Just past the face, so the margin's own test counts it outside.
       q[axis] = to + Math.sign(to - p[axis]) * 1e-6;
       if (boxes.some((o) => insideBox(q, o, margin))) continue;
-      if (shipToThree(pose, q)[1] < floor) continue;
+      const w = shipToThree(pose, q);
+      if (w[1] < (ground ? ground(w[0], w[2]) + clearance : floor)) continue;
       best = q;
       bestD = d;
     }
@@ -350,6 +366,28 @@ export const FITZGERALD_WIDE_SHOTS: readonly ShotId[] = [
   "going",
 ];
 
+/** The ground (three y) under a three.js x, z: a sloping floor, or land. */
+export type Ground = (x: number, z: number) => number;
+
+/**
+ * The ground the camera keeps over for a ship: the Concordia's island and
+ * sloping floor (`groundZ`: her seabed's `floorAt` offshore, Giglio's
+ * land inland of the same shore), else none (her flat `seaDepthM`).
+ */
+export function groundFor(ship: ShipId): Ground | undefined {
+  return ship === "concordia" ? concordiaGround : undefined;
+}
+
+/** The Concordia's ground in three axes (earth y = −z). */
+export function concordiaGround(x: number, z: number): number {
+  return groundZ(x, -z);
+}
+
+/** Keeps a three.js point `clearance` over the ground under it. */
+export function clampAboveGround(p: V3, ground: Ground, clearance = 2): V3 {
+  return [p[0], Math.max(p[1], ground(p[0], p[2]) + clearance), p[2]];
+}
+
 /** Keeps a three.js point above the sea floor (three y = -depth). */
 export function clampAboveFloor(p: V3, seaDepthM: number, clearance = 2): V3 {
   return [p[0], Math.max(p[1], -seaDepthM + clearance), p[2]];
@@ -396,7 +434,13 @@ export type ShotId =
   | "strike"
   | "stern-roll"
   | "parts"
-  | "astern";
+  | "astern"
+  // The Concordia's night by Giglio.
+  | "giglio"
+  | "giglio-strike"
+  | "giglio-drift"
+  | "giglio-boats"
+  | "giglio-aground";
 
 export interface View {
   pos: V3;
@@ -439,6 +483,7 @@ function bowBody(ctx: ShotContext): BodyPose {
 
 /** The classic view: low on the water off the port quarter, drifting. */
 export function lifeboatView(ctx: ShotContext, distance = 420): View {
+  if (ctx.ship === "concordia") return concordiaView("giglio-boats", ctx);
   if (ctx.ship === "fitzgerald") return fitzgeraldBoatView(ctx);
   if (ctx.ship === "carpathia") return carpathiaBoatView(ctx);
   const drift = Math.sin(ctx.t / 900) * 12 + ctx.wall * 0.15;
@@ -466,6 +511,7 @@ export function lifeboatView(ctx: ShotContext, distance = 420): View {
 
 /** Follows the bow down (under water), then circles the wreck. */
 export function underwaterView(ctx: ShotContext): View {
+  if (ctx.ship === "concordia") return concordiaUnderwater(ctx);
   if (ctx.ship === "lusitania" || ctx.ship === "britannic")
     return lusitaniaUnderwater(ctx);
   if (ctx.ship === "carpathia") return carpathiaUnderwater(ctx);
@@ -517,6 +563,7 @@ export function cinematicShot(
   if (ship === "carpathia") return hit ? carpathiaShot(track, t) : "afternoon";
   if (ship === "britannic") return hit ? britannicShot(track, t) : "morning";
   if (ship === "fitzgerald") return hit ? fitzgeraldShot(track, t) : "storm";
+  if (ship === "concordia") return hit ? concordiaShot(track, t) : "giglio";
   const firstOf = (kind: string): number | null => {
     for (const e of track.events) if (e.kind === kind) return e.t;
     return null;
@@ -555,6 +602,12 @@ export function shotView(shot: ShotId, ctx: ShotContext): View {
     case "morning":
     case "turn":
       return lusitaniaView(shot, ctx);
+    case "giglio":
+    case "giglio-strike":
+    case "giglio-drift":
+    case "giglio-boats":
+    case "giglio-aground":
+      return concordiaView(shot, ctx);
     case "storm":
     case "storm-beam":
     case "deck":
@@ -1138,4 +1191,259 @@ function carpathiaBoatView(ctx: ShotContext): View {
     ]),
     target: tgt,
   };
+}
+
+// ---------------------------------------------------------------------------
+// The Concordia's night off Giglio: the island close by, her lit run past
+// it, the strike, her drift back with Giglio Porto behind her, the boats
+// going in to the harbour, and her rest on her side by Punta Gabbianara.
+// Her shots stand at earth-fixed places round her (her heading swings
+// round through 210°), each kept over the island's ground and her
+// sloping floor (`concordiaGround`).
+
+/** A three.js point in a pose's ship frame (`shipToThree` undone). */
+export function threeToShip(pose: BodyPose, p: readonly number[]): V3 {
+  const x0 = p[0] - pose.x;
+  const y0 = -p[2] - pose.y;
+  const z0 = p[1] - pose.z;
+  const cy = Math.cos(pose.yaw);
+  const sy = Math.sin(pose.yaw);
+  const cp = Math.cos(pose.pitch);
+  const sp = Math.sin(pose.pitch);
+  const cr = Math.cos(pose.roll);
+  const sr = Math.sin(pose.roll);
+  // Rz(yaw)⁻¹, Ry(pitch)⁻¹, Rx(roll)⁻¹.
+  const x2 = cy * x0 + sy * y0;
+  const y1 = -sy * x0 + cy * y0;
+  const x = cp * x2 - sp * z0;
+  const z1 = sp * x2 + cp * z0;
+  return [x, cr * y1 + sr * z1, -sr * y1 + cr * z1];
+}
+
+/**
+ * Her side on the rock spurs (R9, [WPP]): when a spur lies under her
+ * (within 60 m of her hull's middle line), a low view across the shelf
+ * at the spur's granite with her hull lying on it: from 60–75 m off, on
+ * the first bearing round from her starboard beam toward her stern that
+ * is clear of her and in water deep enough to stand 3 m over the floor.
+ * Null when no spur is under her (afloat, or out at sea).
+ */
+function spurView(b: BodyPose, wall: number): View | null {
+  let best: (typeof SPURS)[number] | null = null;
+  let bestD = Infinity;
+  for (const sp of SPURS) {
+    const l = threeToShip(b, [sp[0], -sp[3], -sp[1]]);
+    const d = Math.hypot(l[1], l[2]);
+    if (Math.abs(l[0]) < concordia.loa / 2 && d < 60 && d < bestD) {
+      best = sp;
+      bestD = d;
+    }
+  }
+  if (!best) return null;
+  const [sx, sy, , top] = best;
+  // Her starboard beam and her stern on the sea's plane (earth).
+  const stbd = b.yaw - Math.PI / 2;
+  const sway = Math.sin(wall * 0.03) * 0.15;
+  for (let k = 0; k <= 8; k += 1) {
+    const a = stbd + (k * Math.PI) / 8 + sway;
+    for (const r of [60, 75]) {
+      const ex = sx + Math.cos(a) * r;
+      const ey = sy + Math.sin(a) * r;
+      const fl = groundZ(ex, ey);
+      const y = Math.max(fl + 3, -top + 3);
+      if (y > -4) continue;
+      const pos: V3 = [ex, y, -ey];
+      const l = threeToShip(b, pos);
+      if (
+        CONCORDIA_HULL_BOXES.some(
+          (h) =>
+            l[0] > h.x[0] - 3 &&
+            l[0] < h.x[1] + 3 &&
+            l[1] > h.y[0] - 3 &&
+            l[1] < h.y[1] + 3 &&
+            l[2] > h.z[0] - 3 &&
+            l[2] < h.z[1] + 3
+        )
+      )
+        continue;
+      return { pos, target: [sx, -top + 2, -sy] };
+    }
+  }
+  return null;
+}
+
+/** Giglio Porto's mouth in three axes (x, z). */
+const HARBOUR_THREE: readonly [number, number] = [
+  HARBOUR_MOUTH[0],
+  -HARBOUR_MOUTH[1],
+];
+
+function concordiaShot(
+  track: Pick<SimTrack, "events" | "brokeAtT" | "sankAtT">,
+  t: number
+): ShotId {
+  const firstOf = (kind: string): number | null => {
+    for (const e of track.events) if (e.kind === kind) return e.t;
+    return null;
+  };
+  if (t < 0) return "giglio";
+  if (t < 40) return "giglio-strike";
+  const rest = firstOf("floating-steady");
+  const sank = track.sankAtT;
+  if (rest !== null && t >= rest - 30) return "giglio-aground";
+  if (sank !== null && t >= sank - 120) return "giglio-drift";
+  const firstBoat = firstOf("boat-lowered");
+  const lastBoat = firstOf("last-boat");
+  if (firstBoat !== null && t >= firstBoat - 5) {
+    if (lastBoat === null || t < lastBoat + 90) return "giglio-boats";
+    return "giglio-aground";
+  }
+  return "giglio-drift";
+}
+
+/** A three.js point `clear` m over her ground, at least `minY`. */
+function overGround(p: V3, clear: number, minY = 1.5): V3 {
+  p[1] = Math.max(p[1], minY, concordiaGround(p[0], p[2]) + clear);
+  return p;
+}
+
+/** Unit (x, z) from a to b, or along +x when they meet. */
+function unitXZ(
+  ax: number,
+  az: number,
+  bx: number,
+  bz: number
+): [number, number] {
+  const dx = bx - ax;
+  const dz = bz - az;
+  const l = Math.hypot(dx, dz);
+  return l > 1 ? [dx / l, dz / l] : [1, 0];
+}
+
+function concordiaView(shot: ShotId, ctx: ShotContext): View {
+  const b = bowBody(ctx);
+  const mid = shipToThree(b, [0, 0, 20]);
+  const sway = Math.sin(ctx.wall * 0.03);
+  switch (shot) {
+    case "giglio": {
+      // Her lit run past the island: off her starboard bow on the open
+      // sea side, the island and its lights beyond her.
+      const a = 0.7 + sway * 0.12;
+      return {
+        pos: overGround(
+          levelToThree(b, [Math.cos(a) * 330, -Math.sin(a) * 330, 34]),
+          20
+        ),
+        target: shipToThree(b, [-10, 0, 24]),
+      };
+    }
+    case "giglio-strike": {
+      // From her port quarter, low, between her and the rocks: the white
+      // water along her side aft where the rock runs along her.
+      const tgt = shipToThree(b, [-45, 17, 6]);
+      return {
+        pos: overGround(levelToThree(b, [-150, 62, 16]), 12),
+        target: tgt,
+      };
+    }
+    case "giglio-drift": {
+      // Out to sea from her, looking in: Giglio Porto's lights behind her.
+      const [ux, uz] = unitXZ(
+        HARBOUR_THREE[0],
+        HARBOUR_THREE[1],
+        mid[0],
+        mid[2]
+      );
+      const d = 430 + sway * 25;
+      return {
+        pos: overGround([mid[0] + ux * d, 62, mid[2] + uz * d], 30),
+        target: [mid[0], Math.max(4, mid[1] - 6), mid[2]],
+      };
+    }
+    case "giglio-boats": {
+      // Off the coast between her and the harbour, low: her boats going
+      // in to Giglio Porto, her leaning hull beyond.
+      const m: V3 = [
+        mid[0] + (HARBOUR_THREE[0] - mid[0]) * 0.4,
+        6,
+        mid[2] + (HARBOUR_THREE[1] - mid[2]) * 0.4,
+      ];
+      const [ux, uz] = unitXZ(
+        HARBOUR_THREE[0],
+        HARBOUR_THREE[1],
+        mid[0],
+        mid[2]
+      );
+      // To seaward of the line from the harbour to her (the island lies
+      // on its other side: three +z is east, out to sea, here).
+      const sx = -uz;
+      const sz = ux;
+      const pos = overGround(
+        [m[0] + sx * 280 + ux * 60, 24, m[2] + sz * 280 + uz * 60],
+        15
+      );
+      return { pos, target: [m[0] + ux * 120, 6, m[2] + uz * 120] };
+    }
+    default: {
+      // On her side by the island: from the sea off her port side (her
+      // bottom to us, half out of the water), Giglio Porto's lights and
+      // the harbour beyond her.
+      const [ux, uz] = unitXZ(
+        HARBOUR_THREE[0],
+        HARBOUR_THREE[1],
+        mid[0],
+        mid[2]
+      );
+      const sx = -uz;
+      const sz = ux;
+      const pos = overGround(
+        [
+          mid[0] + ux * 250 + sx * 190,
+          44 + sway * 4,
+          mid[2] + uz * 250 + sz * 190,
+        ],
+        25
+      );
+      return {
+        pos,
+        target: [
+          mid[0] + (HARBOUR_THREE[0] - mid[0]) * 0.2,
+          6,
+          mid[2] + (HARBOUR_THREE[1] - mid[2]) * 0.2,
+        ],
+      };
+    }
+  }
+}
+
+/**
+ * Under water with her: ahead of her bow, a little to starboard (the
+ * island's side, where she lies on the spurs), looking aft along her on
+ * the granite shelf and the seagrass; kept over the floor.
+ */
+function concordiaUnderwater(ctx: ShotContext): View {
+  const b = bowBody(ctx);
+  const spur = spurView(b, ctx.wall);
+  if (spur) return spur;
+  // Her starboard bilge: the low side once she lies to starboard.
+  const tgt = shipToThree(b, [10, -17, 2]);
+  tgt[1] = Math.min(-3, Math.max(tgt[1], concordiaGround(tgt[0], tgt[2]) + 2));
+  const a = Math.sin(ctx.wall * 0.03) * 0.25;
+  const pos = levelToThree(b, [
+    95 * Math.cos(a) + 50,
+    -95 * Math.sin(a) - 25,
+    0,
+  ]);
+  // Where the shelf is too shallow there, out toward her port side
+  // (seaward once she lies on her starboard side) to deeper water.
+  const px = -Math.sin(b.yaw) * 20;
+  const pz = -Math.cos(b.yaw) * 20;
+  let fl = concordiaGround(pos[0], pos[2]);
+  for (let k = 0; k < 12 && fl > -9; k += 1) {
+    pos[0] += px;
+    pos[2] += pz;
+    fl = concordiaGround(pos[0], pos[2]);
+  }
+  pos[1] = clamp(tgt[1] + 1, fl + 3, -4);
+  return { pos, target: tgt };
 }

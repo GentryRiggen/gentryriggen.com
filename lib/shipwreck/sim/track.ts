@@ -45,7 +45,9 @@ export interface SimFrame {
 export interface SimTrack {
   frames: SimFrame[];
   events: SimEvent[];
-  outcome: "sank" | "floated";
+  /** "aground": she came to rest on the floor still afloat in part
+   *  (`spec.aground`), a lost ship that did not go under. */
+  outcome: "sank" | "floated" | "aground";
   /** When the last of her went under (s), or null. */
   sankAtT: number | null;
   brokeAtT: number | null;

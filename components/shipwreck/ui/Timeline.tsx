@@ -28,6 +28,7 @@ const MARK_SPAN_PX = 50;
 
 const MARK_ICON: Record<MarkKind, IconName> = {
   iceberg: "iceberg",
+  aground: "wreck",
   rocket: "rocket",
   boat: "boat",
   lights: "lights",

@@ -1,13 +1,21 @@
 import { act, render } from "@testing-library/react";
-import { Group } from "three";
+import { BufferGeometry, Group, LineBasicMaterial, LineSegments } from "three";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import type { SimRunner } from "@/lib/shipwreck/sim/run";
-import { ShipOnStage, deckLightsOf } from "../ShipRig";
+import type { SimEvent } from "@/lib/shipwreck/sim/events";
+import {
+  ShipOnStage,
+  deckLightsOf,
+  BLACKOUT_FLICKER_S,
+  blackoutLights,
+  dimRails,
+} from "../ShipRig";
 import { MAX_LAMPS } from "../runtime";
 import { createSceneRuntime } from "../runtime";
 
@@ -186,6 +194,28 @@ describe("switching to and from the Carpathia", () => {
   });
 });
 
+describe("switching to and from the Costa Concordia", () => {
+  it("builds her, then the Titanic, disposing her model", () => {
+    const store = createPlaybackStore({ createRunner: () => idle });
+    const runtime = createSceneRuntime();
+    act(() => store.getState().setShip("concordia"));
+    act(() => store.getState().start(concordia, []));
+    render(<ShipOnStage store={store} runtime={runtime} />);
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual(["concordia"]);
+    const first = mockBuilt[0];
+    expect(runtime.whole?.root).toBe(first.handles.root);
+
+    act(() => store.getState().setShip("titanic"));
+    act(() => store.getState().start(titanic, []));
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual(["concordia", "titanic"]);
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    expect(mockBuilt[1].dispose).not.toHaveBeenCalled();
+    expect(runtime.whole?.root).toBe(mockBuilt[1].handles.root);
+  });
+});
+
 describe("her livery, switched live", () => {
   it("repaints the built model from the store, never rebuilding it", () => {
     const store = createPlaybackStore({ createRunner: () => idle });
@@ -296,5 +326,70 @@ describe("her deck lights along the hatches (the storm's night)", () => {
     );
     expect(deckLightsOf(titanic)).toEqual([]);
     expect(deckLightsOf(lusitania)).toEqual([]);
+  });
+});
+
+describe("her blackout (the Concordia's emergency lights)", () => {
+  const ev = (t: number, kind: SimEvent["kind"]): SimEvent => ({
+    t,
+    realT: t,
+    kind,
+  });
+  const track = { events: [ev(0, "collision"), ev(58, "lights-out")] };
+
+  it("keeps her lit, no emergency panes, until lights-out (and on a seek back)", () => {
+    const l = blackoutLights(concordia, track, 57, 1);
+    expect(l).toEqual({ lit: 1, flicker: 0, emergency: 0 });
+  });
+
+  it("flickers briefly, then only her emergency panes at her level", () => {
+    const during = blackoutLights(concordia, track, 59, 0.25);
+    expect(during.flicker).toBeGreaterThan(0);
+    expect(during.emergency).toBe(concordia.blackout!.emergencyLight);
+    const after = blackoutLights(
+      concordia,
+      track,
+      58 + BLACKOUT_FLICKER_S + 1,
+      0.25
+    );
+    expect(after).toEqual({
+      lit: 0,
+      flicker: 0,
+      emergency: concordia.blackout!.emergencyLight,
+    });
+  });
+
+  it("leaves every other ship's lights as the frame's power", () => {
+    for (const p of [1, 0.4, 0])
+      expect(blackoutLights(titanic, track, 100, p)).toEqual({
+        lit: p,
+        flicker: p > 0 && p < 1 ? 0.6 : 0,
+        emergency: 0,
+      });
+  });
+
+  it("writes into the frame loop's scratch without allocating", () => {
+    const into = { lit: 0, flicker: 0, emergency: 0 };
+    expect(blackoutLights(concordia, track, 57, 1, into)).toBe(into);
+    expect(into).toEqual({ lit: 1, flicker: 0, emergency: 0 });
+    blackoutLights(concordia, track, 58 + BLACKOUT_FLICKER_S + 1, 1, into);
+    expect(into.emergency).toBe(concordia.blackout!.emergencyLight);
+    expect(into.lit).toBe(0);
+  });
+});
+
+describe("her rails after the blackout", () => {
+  it("dims the unlit rail lines to her light level", () => {
+    const root = new Group();
+    const mat = new LineBasicMaterial({ vertexColors: true });
+    const lines = new LineSegments(new BufferGeometry(), mat);
+    lines.name = "rails-and-rigging";
+    root.add(lines);
+    const model = { root };
+    dimRails(model, 1);
+    expect(mat.color.r).toBe(1);
+    dimRails(model, concordia.blackout!.emergencyLight);
+    expect(mat.color.r).toBeCloseTo(0.25, 6);
+    expect(mat.color.b).toBeCloseTo(0.25, 6);
   });
 });

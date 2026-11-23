@@ -1,6 +1,13 @@
 import { RUNNER_BUDGET_MS } from "../../playback";
-import { carpathia, fitzgerald, titanic } from "../../ships";
-import { createSimRunner, simulate } from "../run";
+import { carpathia, concordia, fitzgerald, titanic } from "../../ships";
+import type { RunOpening } from "../../ships/types";
+import {
+  type SimOptions,
+  createSimRunner,
+  simulate,
+  whatIfOpenings,
+  whatIfRealIds,
+} from "../run";
 
 /**
  * Budgets: a whole real night in under 2 s on a dev machine (the test allows
@@ -127,4 +134,62 @@ describe("performance", () => {
     if (GATE) expect(worst).toBeLessThan(8);
     expect(runs[0].track.outcome).toBe("sank");
   });
+  /**
+   * The Costa Concordia's runner at the UI's budget: her real night (about
+   * 2 h 20 min shown, 20 min of it aground in 0.6 s real steps, each
+   * looking up the floor under her hull) and her real five blown out to
+   * sea (3 h 50 min shown, two of them in 0.1 s steps once she trims past
+   * 8°: about 80,000 steps). Totals: the night within the Titanic's 3 s;
+   * the sea run within 4× it (its steps are 6× the Titanic's, each about
+   * twice the work, all physics: README "The seabed"). No call over 8 ms.
+   */
+  function concordiaRunner(
+    openings: readonly RunOpening[],
+    opts: SimOptions = {}
+  ) {
+    const runner = createSimRunner(concordia, openings, opts);
+    let worst = 0;
+    let calls = 0;
+    const t0 = performance.now();
+    while (!runner.done) {
+      const t1 = performance.now();
+      runner.advance(RUNNER_BUDGET_MS);
+      worst = Math.max(worst, performance.now() - t1);
+      calls += 1;
+    }
+    const ms = performance.now() - t0;
+    expect(runner.progress()).toBe(1);
+    return { worst, calls, ms, track: runner.track() };
+  }
+
+  it.each([
+    ["real night", concordia.realNight, {}, 3000],
+    [
+      "blown out to sea",
+      whatIfOpenings(concordia, whatIfRealIds(concordia)),
+      { toSea: true },
+      4 * 3000,
+    ],
+  ] as const)(
+    "the Concordia's %s: within its budget, no call over 8 ms",
+    (name, openings, opts, budgetMs) => {
+      const runs = [0, 1].map(() => concordiaRunner(openings, opts));
+      const ms = Math.min(...runs.map((r) => r.ms));
+      const worst = Math.min(...runs.map((r) => r.worst));
+      console.log(
+        `Shipwreck Concordia ${name} advance(${RUNNER_BUDGET_MS}): ${runs[0].calls} calls, ${ms.toFixed(
+          0
+        )} ms, slowest ${worst.toFixed(2)} ms (runs: ${runs
+          .map((r) => `${r.ms.toFixed(0)}/${r.worst.toFixed(2)}`)
+          .join(", ")} ms)`
+      );
+      expect(runs[0].track.outcome).toBe(
+        name === "real night" ? "aground" : "sank"
+      );
+      if (GATE) {
+        expect(ms).toBeLessThan(budgetMs);
+        expect(worst).toBeLessThanOrEqual(8);
+      }
+    }
+  );
 });

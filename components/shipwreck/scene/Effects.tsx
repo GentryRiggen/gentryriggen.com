@@ -22,7 +22,7 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildHull, hullHalfBreadth } from "@/lib/shipwreck/sim/geometry";
 import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
-import { shipToThree } from "./cameraMath";
+import { shipToThree, shipToThreeInto, type V3 } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
 import { isDaylit, type SceneSettings } from "./settings";
 import {
@@ -35,6 +35,7 @@ import { STORM_MIN_PX, STORM_PARTICLES } from "./storm";
 import { FUNNEL_SINK_S, FUNNEL_TOPPLE_S, layFunnel } from "./funnelWreck";
 import { poseForemast } from "./mastWreck";
 import { StormEffects, type StormFrame } from "./stormEffects";
+import { alongRoute, boatRoute, rockLodgedT, strikeSpray } from "./giglio";
 
 /**
  * The night's events, all worked out from the shown time `t` (so seeking
@@ -54,6 +55,14 @@ const SWING_S = 20;
 const LOWER_S = 120;
 /** Rowing speed (m/s) and how far out the boats go. */
 const ROW_MPS = 0.7;
+/**
+ * A harbour-bound ship's boats (the Concordia's, in to Giglio Porto): a
+ * lifeboat's 6 knots, 3 m a real second. Moved by the run's real time
+ * (`realT`), so they go 18 m a shown second while the aground clock runs
+ * at a sixth of real time (`agroundTimeScale`), and 3 m one elsewhere
+ * (blown out to sea, where shown time is real).
+ */
+const HARBOUR_BOAT_MPS = 3;
 
 function hash(a: number, b = 0): number {
   const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
@@ -235,9 +244,24 @@ export default function Effects({
   const stormFrame = useMemo(() => ({}) as StormFrame, []);
   const lastSnap = useRef(-1);
   // Per track: where each boat touched the water (sampled once).
-  const launch = useRef<{ track: SimTrack | null; at: Map<number, Vector3> }>({
+  const launch = useRef<{
+    track: SimTrack | null;
+    at: Map<number, Vector3>;
+    /** A harbour-bound ship's boats: each one's way in (earth x, y). */
+    routes: Map<number, [number, number][]>;
+    /** ...and the run's real time when each touched the water (s). */
+    afloatRealT: Map<number, number>;
+    /** A rocks ship: her earth x at the collision (null: not yet looked). */
+    strikeX: number | null;
+    /** When the rock lodged in her side (`rockLodgedT`; undefined: not yet). */
+    lodgedT: number | null | undefined;
+  }>({
     track: null,
     at: new Map(),
+    routes: new Map(),
+    afloatRealT: new Map(),
+    strikeX: null,
+    lodgedT: undefined,
   });
   const tmp = useMemo(
     () => ({
@@ -246,6 +270,10 @@ export default function Effects({
       v: new Vector3(),
       up: new Vector3(0, 1, 0),
       one: new Vector3(1, 1, 1),
+      // The strike's droplets and a boat's place on its way in.
+      sp: [0, 0, 0] as [number, number, number],
+      sw: [0, 0, 0] as V3,
+      along: [0, 0, 0] as [number, number, number],
     }),
     []
   );
@@ -296,7 +324,14 @@ export default function Effects({
     const t = s.t;
     const wall = state.clock.elapsedTime;
     if (launch.current.track !== track) {
-      launch.current = { track, at: new Map() };
+      launch.current = {
+        track,
+        at: new Map(),
+        routes: new Map(),
+        afloatRealT: new Map(),
+        strikeX: null,
+        lodgedT: undefined,
+      };
     }
     const events = track.events;
     const sternX = spec.stations[0]?.x ?? -138.5;
@@ -357,7 +392,59 @@ export default function Effects({
       poseForemast(mdl, spec, track, t);
     }
 
+    // --- The strike (a rocks ship): a rush of white water along her side
+    // at the rock as she runs on past it, until it lodges at frame 52
+    // (giglio.ts). (Where she was at the collision, and when the rock
+    // lodged: worked out once a track.)
+    const c =
+      spec.cause === "rocks"
+        ? events.find((e) => e.kind === "collision")
+        : undefined;
+    if (spec.cause === "rocks" && launch.current.strikeX === null) {
+      launch.current.strikeX = c
+        ? sampleTrack(track, c.t).bodies[0].x
+        : Number.NaN;
+    }
+    if (spec.cause === "rocks" && launch.current.lodgedT === undefined) {
+      const rockX = spec.heel?.rock?.x;
+      launch.current.lodgedT =
+        rockX === undefined ? null : rockLodgedT(track, rockX);
+    }
+    const lodgedT = launch.current.lodgedT;
+    const strike =
+      spec.cause === "rocks"
+        ? strikeSpray(
+            spec,
+            events,
+            t,
+            frame.bodies[0].x - (launch.current.strikeX ?? 0),
+            c && typeof lodgedT === "number" ? lodgedT - c.t : undefined
+          )
+        : null;
+    if (strike) {
+      const whole0 = frame.bodies[0];
+      const sp = tmp.sp;
+      const w = tmp.sw;
+      const N = 220;
+      for (let k = 0; k < N; k += 1) {
+        // Each droplet lives 0.6 s, thrown up and out from the rock's
+        // place, trailing aft along her side (she runs on past it).
+        const life = 0.6 + 0.5 * hash(k, 2);
+        const a = (((wall / life + hash(k, 1)) % 1) + 1) % 1;
+        const back = hash(k, 3) * 26 * a + hash(k, 4) * 6;
+        const up = (2 + 7 * hash(k, 5)) * a * (1.2 - a);
+        const out = 0.4 + 3 * hash(k, 6) * a;
+        sp[0] = strike.x - back;
+        sp[1] = strike.y + Math.sign(strike.y) * out;
+        sp[2] = spec.draught - 0.3 + up;
+        shipToThreeInto(whole0, sp, w);
+        const b = strike.amount * (1 - a) * (0.9 + 0.6 * hash(k, 7));
+        emit(w[0], w[1], w[2], b, b * 1.02, b * 1.05, 0.9 + 1.2 * hash(k, 8));
+      }
+    }
+
     // --- Lifeboats.
+    const harbourBound = spec.cause === "rocks";
     const lowered = new Map<number, number>();
     for (const e of events)
       if (e.kind === "boat-lowered" && e.index !== undefined)
@@ -396,23 +483,60 @@ export default function Effects({
           start = new Vector3(w[0], -0.35, w[2]);
           launch.current.at.set(i, start);
         }
-        const side = info.side === "port" ? -1 : 1; // three z: port is -z
-        const fan = (hash(i, 3) - 0.5) * 1.6;
-        const dir = tmp.v
-          .set(Math.sin(fan) * 0.8 - 0.2, 0, side * Math.cos(fan))
-          .normalize();
-        const far = 200 + hash(i, 7) * 600;
-        const d = Math.min(far, (age - SWING_S - LOWER_S) * ROW_MPS);
         const bob = Math.sin(wall * 0.9 + i) * 0.05;
-        const px = start.x + dir.x * d;
-        const pz = start.z + dir.z * d;
-        tmp.q.setFromAxisAngle(tmp.up, Math.atan2(-dir.z, dir.x));
+        let px: number;
+        let pz: number;
+        if (harbourBound) {
+          // The Concordia's boats motor in to Giglio Porto (giglio.ts),
+          // round her bow from her seaward side.
+          let route = launch.current.routes.get(i);
+          if (!route) {
+            const afloat = sampleTrack(track, tb + SWING_S + LOWER_S);
+            launch.current.afloatRealT.set(i, afloat.realT);
+            const at = afloat.bodies[0];
+            route = boatRoute(
+              [start.x, -start.z],
+              info.side === "port" ? "port" : "starboard",
+              at.x,
+              at.y,
+              at.yaw,
+              i
+            );
+            launch.current.routes.set(i, route);
+          }
+          const since =
+            frame.realT - (launch.current.afloatRealT.get(i) ?? frame.realT);
+          const at = alongRoute(
+            route,
+            Math.max(0, since) * HARBOUR_BOAT_MPS,
+            tmp.along
+          );
+          px = at[0];
+          pz = -at[1];
+          tmp.q.setFromAxisAngle(tmp.up, at[2]);
+        } else {
+          const side = info.side === "port" ? -1 : 1; // three z: port is -z
+          const fan = (hash(i, 3) - 0.5) * 1.6;
+          const dir = tmp.v
+            .set(Math.sin(fan) * 0.8 - 0.2, 0, side * Math.cos(fan))
+            .normalize();
+          const far = 200 + hash(i, 7) * 600;
+          const d = Math.min(far, (age - SWING_S - LOWER_S) * ROW_MPS);
+          px = start.x + dir.x * d;
+          pz = start.z + dir.z * d;
+          tmp.q.setFromAxisAngle(tmp.up, Math.atan2(-dir.z, dir.x));
+        }
         tmp.m.compose(tmp.v.set(px, -0.35 + bob, pz), tmp.q, tmp.one);
         mdl.boats.float(i, tmp.m);
         if (mdl === visible) {
-          // A lantern on each boat.
-          const flick = 0.85 + 0.15 * Math.sin(wall * 7 + i * 3);
-          emit(px, 1.4 + bob, pz, 6 * flick, 4.2 * flick, 1.8 * flick, 1.6);
+          if (harbourBound) {
+            // Her boats' small white lamps (a modern lifeboat's light).
+            emit(px, 2.6 + bob, pz, 4.5, 4.6, 4.2, 1.1);
+          } else {
+            // A lantern on each boat.
+            const flick = 0.85 + 0.15 * Math.sin(wall * 7 + i * 3);
+            emit(px, 1.4 + bob, pz, 6 * flick, 4.2 * flick, 1.8 * flick, 1.6);
+          }
         }
       }
     }

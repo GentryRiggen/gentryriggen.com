@@ -28,7 +28,9 @@ import type { SceneRuntime } from "./runtime";
 import {
   dayLookOf,
   isDaylit,
+  moonAt,
   sunDirection,
+  sunDirectionInto,
   type LinearRGB,
   type SceneSettings,
 } from "./settings";
@@ -93,7 +95,15 @@ const fragment = /* glsl */ `
   #define RIPPLE 0.34
   #endif
   #else
+  #ifdef NIGHT_RIPPLE
+  #define RIPPLE NIGHT_RIPPLE
+  #else
   #define RIPPLE 0.18
+  #endif
+  #endif
+  #ifdef MOON
+  uniform vec3 uMoonDir;
+  uniform float uMoonUp;
   #endif
 
   // Value noise and its gradient, for the ripples.
@@ -116,6 +126,13 @@ const fragment = /* glsl */ `
     h += noise(p * 1.30 + vec2(t * 0.09, -t * 0.07)) * 0.08;
     // The long, low swell.
     h += sin(p.x * 0.012 + p.y * 0.004 + t * 0.35) * 0.4;
+    #ifdef CHOP_DIR
+    // A ship's own wind chop (SceneSettings.chop): short waves running
+    // downwind, broken up by the noise.
+    float along = dot(p, CHOP_DIR);
+    h += sin(along * 0.75 - t * 2.2 + noise(p * 0.05) * 6.0) * 0.18;
+    h += sin(along * 1.6 + p.x * 0.3 - t * 3.1) * 0.06;
+    #endif
     return h;
   }
 
@@ -155,6 +172,17 @@ const fragment = /* glsl */ `
       // Blur grows with distance and ripple slope (mip bias).
       float bias = clamp(log2(dist / 120.0), 0.0, 3.0);
       vec3 mirror = texture2D(uReflection, uv, bias).rgb;
+      #ifdef SOFT_MIRROR
+      // A ship's own night (the Concordia's harbour lights): four more
+      // taps, stretched up and down the water as lights on a chop are,
+      // so the small bright points do not show the mips' squares.
+      vec2 so = vec2(0.0012, 0.0035) * (1.0 + bias);
+      mirror = mirror * 0.28
+        + texture2D(uReflection, uv + vec2(so.x, so.y), bias).rgb * 0.18
+        + texture2D(uReflection, uv - vec2(so.x, so.y), bias).rgb * 0.18
+        + texture2D(uReflection, uv + vec2(-so.x, so.y * 2.0), bias + 0.5).rgb * 0.18
+        + texture2D(uReflection, uv + vec2(so.x, -so.y * 2.0), bias + 0.5).rgb * 0.18;
+      #endif
       #ifdef DAY_MIRROR
       // A rougher sea (DaylightLook.mirror): the mirror image faint.
       refl = mix(sky, mirror + sky * 0.15, DAY_MIRROR);
@@ -246,6 +274,12 @@ const fragment = /* glsl */ `
     #else
     vec3 c = mix(uDeep, refl, clamp(fres * 1.15 + 0.08, 0.0, 1.0));
     c += uFlash * vec3(0.05, 0.055, 0.06) * fres;
+    #ifdef MOON
+    // The moon's path on the chop, toward the risen moon (east, away
+    // from the island).
+    float md = max(dot(r, uMoonDir), 0.0);
+    c += vec3(0.85, 0.9, 1.0) * uMoonUp * (pow(md, 500.0) * 10.0 + pow(md, 40.0) * 0.05);
+    #endif
     gl_FragColor = vec4(c, uOpacity);
     #endif
     #include <fog_fragment>
@@ -267,6 +301,11 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
   const mirrorAmt = settings?.daylight?.mirror;
   // Her turn for Kea: the morning's wake follows her stern's path.
   const curved = settings?.timeOfDay === "morning";
+  // A night with its own chop and moon (the Concordia's): defines only
+  // for her, so the Titanic's sea program stays 1.0's.
+  const chop = !day ? settings?.chop : undefined;
+  const moon = !day ? settings?.moon : undefined;
+  const heading = settings?.headingDeg ?? 90;
   const size = REFLECTION_SIZE[quality];
   const { gl, scene, camera } = useThree();
 
@@ -306,7 +345,16 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
                 ? { DAY_MIRROR: mirrorAmt.toFixed(3) }
                 : {}),
             }
-          : {},
+          : {
+              ...(chop !== undefined
+                ? {
+                    NIGHT_RIPPLE: chop.toFixed(3),
+                    // Downwind: the north-east wind blows toward 225°.
+                    CHOP_DIR: `vec2(${Math.cos(((225 - heading) * Math.PI) / 180).toFixed(4)}, ${Math.sin(((225 - heading) * Math.PI) / 180).toFixed(4)})`,
+                  }
+                : {}),
+              ...(moon ? { MOON: "", SOFT_MIRROR: "" } : {}),
+            },
         uniforms: UniformsUtils.merge([
           UniformsLib.fog,
           {
@@ -344,10 +392,12 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
               value: Array.from({ length: 8 }, () => new Vector2()),
             },
             uPathN: { value: 0 },
+            uMoonDir: { value: new Vector3(0, -1, 0) },
+            uMoonUp: { value: 0 },
           },
         ]),
       }),
-    [day, ripple, curved, whitecaps, mirrorAmt]
+    [day, ripple, curved, whitecaps, mirrorAmt, chop, moon, heading]
   );
   // The afternoon's colours (linear): the haze at the horizon, the blue
   // overhead, the water and the light under it.
@@ -396,6 +446,7 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
     return m;
   }, [geometry, material]);
 
+  const moonArr = useMemo(() => [0, 0, 0] as [number, number, number], []);
   const mirror = useMemo(
     () => ({
       camera: new PerspectiveCamera(),
@@ -445,6 +496,14 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
           path[k].set(w.path[k * 2], w.path[k * 2 + 1]);
         u.uPathN.value = w.pathN;
       }
+    }
+    if (moon) {
+      const f = runtime.frame;
+      const m = moonAt(moon, moon.utcMs + (f ? f.realT : 0) * 1000);
+      sunDirectionInto(m, heading, moonArr);
+      (u.uMoonDir.value as Vector3).set(moonArr[0], moonArr[1], moonArr[2]);
+      u.uMoonUp.value =
+        Math.min(1, Math.max(0, (m.elevationDeg + 0.5) / 3.5)) * m.lit;
     }
     // The sea follows the camera so its edge never shows.
     mesh.position.set(camera.position.x, 0, camera.position.z);

@@ -9,6 +9,7 @@ import { playback } from "@/lib/shipwreck/playback";
 import { SAVE_KEY } from "@/lib/shipwreck/save";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { currentShipwreckSave, resetSaveStore } from "@/lib/shipwreck/useSave";
@@ -598,5 +599,110 @@ describe("Shipwreck: choosing the Britannic (1.4)", () => {
     );
     expect(screen.queryByTestId("whatif-doors")).toBeNull();
     expect(screen.queryByTestId("shipwreck-portholes")).toBeNull();
+  });
+});
+
+describe("Shipwreck: choosing the Costa Concordia (1.9)", () => {
+  function hide() {
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      fireEvent(document, new Event("visibilitychange"));
+    });
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+  }
+
+  it("plays her real night on her own clock, words and places", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-concordia"));
+    expect(playback.getState().ship).toBe("concordia");
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      /This is the Costa Concordia, a cruise ship/
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    expect(playback.getState().openings).toEqual(concordia.realNight);
+    expect(playback.getState().minT).toBeLessThan(0);
+    // The run-in first, then the scrape at 9:45 PM.
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /She sails close to the island, all lit up/
+    );
+    act(() => {
+      playback.getState().pump(60_000);
+      playback.getState().seek(0);
+    });
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("9:45 PM");
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /^9:45 PM — She scrapes rocks! A long tear opens in her left side\./
+    );
+    act(() => {
+      playback.getState().pump(60_000);
+      playback.getState().seek(720);
+    });
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("9:57 PM");
+    expect(screen.getByText("12 min after the rocks")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("shipwreck-places-button"));
+    for (const id of [
+      "bridge",
+      "the-rock",
+      "motor-room",
+      "generator-room",
+      "lifeboat",
+      "funnel",
+      "pool",
+    ])
+      expect(screen.getByTestId(`shipwreck-place-${id}`)).toBeInTheDocument();
+  });
+
+  it("opens her paint box with one real paint and at least five fun ones", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-concordia"));
+    fireEvent.click(screen.getByTestId("shipwreck-livery"));
+    const tray = screen.getByTestId("shipwreck-paint-tray");
+    expect(
+      tray.querySelectorAll('[data-testid="shipwreck-paint-real"] button')
+    ).toHaveLength(1);
+    expect(
+      tray.querySelectorAll('[data-testid="shipwreck-paint-fun"] button').length
+    ).toBeGreaterThanOrEqual(5);
+  });
+
+  it("her What if: tears and the wind, remembered; the Titanic's editor is unchanged", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-concordia"));
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "concordia"
+    );
+    fireEvent.click(screen.getByTestId("whatif-to-sea"));
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(window.__shipwreck?.getScreen()).toBe("night");
+    expect(playback.getState().ship).toBe("concordia");
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+    hide();
+    const saved = JSON.parse(window.localStorage.getItem(SAVE_KEY)!);
+    expect(saved.ship).toBe("concordia");
+    expect(saved.whatIfByShip.concordia).toEqual({
+      ids: ["wtc8", "wtc7", "wtc6", "wtc5", "wtc4"],
+      toSea: true,
+    });
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("whatif-to-sea")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+    fireEvent.click(screen.getByTestId("shipwreck-ship-titanic"));
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "titanic"
+    );
+    expect(screen.queryByTestId("whatif-to-sea")).toBeNull();
   });
 });

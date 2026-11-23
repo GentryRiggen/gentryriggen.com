@@ -24,7 +24,9 @@ import { windOf } from "./seaWaves";
 import {
   FITZGERALD_HEADING_DEG,
   LUSITANIA_DAYLIGHT,
+  moonAt,
   sunDirectionInto,
+  type SceneSettings,
   type DayLook,
   type LinearRGB,
 } from "./settings";
@@ -76,6 +78,10 @@ const domeFragment = /* glsl */ `
   varying vec3 vDir;
   uniform vec3 uBand;
   uniform float uFade;
+  #ifdef MOON
+  uniform vec3 uMoonDir;
+  uniform float uMoonUp;
+  #endif
   float hash(vec3 p) {
     p = fract(p * 0.3183099 + 0.1);
     p *= 17.0;
@@ -104,6 +110,26 @@ const domeFragment = /* glsl */ `
     float dust = noise(d * 9.0) * 0.6 + noise(d * 23.0) * 0.4;
     float lanes = smoothstep(0.35, 0.75, noise(d * 14.0 + 3.1));
     c += vec3(0.016, 0.017, 0.022) * band * (0.5 + dust) * (1.0 - 0.6 * lanes * band);
+    #ifdef MOON
+    // The moon (a ship's own night, SceneSettings.moon): its glow in the
+    // haze and its disc (0.5° across), bright enough to bloom.
+    float cm = max(dot(d, uMoonDir), 0.0);
+    vec3 moonC = vec3(0.85, 0.9, 1.0);
+    c += moonC * uMoonUp * (0.004 * pow(cm, 6.0) + 0.03 * pow(cm, 120.0));
+    c += moonC * uMoonUp * 6.0 * smoothstep(0.99996, 0.99999, cm);
+    #endif
+    #ifdef CLOUDS
+    // Thin broken cloud (SceneSettings.clouds) on a layer a few km up:
+    // darker than the sky by starlight, faintly lit once the moon is up.
+    vec3 q = vec3(d.x / (d.y + 0.08), 0.0, d.z / (d.y + 0.08)) * 0.9;
+    float cl = noise(q * 1.7) * 0.6 + noise(q * 4.1 + 2.3) * 0.3 + noise(q * 9.0) * 0.1;
+    float cover = smoothstep(1.0 - CLOUDS - 0.1, 1.0 - CLOUDS + 0.15, cl) * smoothstep(0.0, 0.12, h);
+    vec3 cloudC = vec3(0.0016, 0.0019, 0.0028);
+    #ifdef MOON
+    cloudC += vec3(0.012, 0.013, 0.016) * uMoonUp * (0.4 + 0.6 * pow(cm, 3.0));
+    #endif
+    c = mix(c, cloudC, cover * 0.85);
+    #endif
     // Below the horizon (seen from under the sea surface's edge): dark.
     c *= smoothstep(-0.08, 0.0, h) * 0.9 + 0.1;
     gl_FragColor = vec4(c * uFade, 1.0);
@@ -118,6 +144,22 @@ const starVertex = /* glsl */ `
   uniform float uPixelRatio;
   varying vec3 vColor;
   varying float vAlpha;
+  #ifdef CLOUDS
+  float hash(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+  }
+  float noise(vec3 x) {
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(mix(hash(i), hash(i + vec3(1,0,0)), f.x),
+                   mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+               mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+                   mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+  }
+  #endif
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
@@ -127,6 +169,12 @@ const starVertex = /* glsl */ `
     float alt = clamp(dir.y, 0.0, 1.0);
     float ext = smoothstep(0.0, 0.25, alt);
     vAlpha = tw * (0.25 + 0.75 * ext);
+    #ifdef CLOUDS
+    // Behind the cloud (the dome's own cover, worked out per star).
+    vec3 q = vec3(dir.x / (dir.y + 0.08), 0.0, dir.z / (dir.y + 0.08)) * 0.9;
+    float cl = noise(q * 1.7) * 0.6 + noise(q * 4.1 + 2.3) * 0.3 + noise(q * 9.0) * 0.1;
+    vAlpha *= 1.0 - 0.85 * smoothstep(1.0 - CLOUDS - 0.1, 1.0 - CLOUDS + 0.15, cl) * smoothstep(0.0, 0.12, dir.y);
+    #endif
     vColor = mix(aColor * vec3(1.0, 0.85, 0.7), aColor, ext);
     gl_PointSize = aSize * uPixelRatio;
   }
@@ -193,9 +241,27 @@ function starGeometry(): BufferGeometry {
 interface SkyProps {
   /** Device pixel ratio, for the stars' point size. */
   dpr: number;
+  /** A night's moon and thin cloud (the Concordia's): see SceneSettings. */
+  moon?: SceneSettings["moon"];
+  clouds?: number;
+  /** Her true heading at the first event (the scene's +x), degrees. */
+  headingDeg?: number;
+  /** The shown frame's real seconds (the moon's clock). */
+  runtime?: SceneRuntime;
 }
 
-export default function Sky({ dpr }: SkyProps) {
+/**
+ * The moonless sky of 1912 by default; with `moon`, the moon where it
+ * stood at the shown clock (`moonPosition`, under the horizon until it
+ * rises), and with `clouds` a thin broken cloud over the stars.
+ */
+export default function Sky({
+  dpr,
+  moon,
+  clouds,
+  headingDeg = 90,
+  runtime,
+}: SkyProps) {
   const sky = useMemo(() => {
     const group = new Group();
     group.name = "sky";
@@ -205,7 +271,17 @@ export default function Sky({ dpr }: SkyProps) {
       fragmentShader: domeFragment,
       side: BackSide,
       depthWrite: false,
-      uniforms: { uBand: { value: BAND }, uFade: { value: 1 } },
+      // (Defines only for a night that has them: 1.0's program unchanged.)
+      defines: {
+        ...(moon ? { MOON: "" } : {}),
+        ...(clouds ? { CLOUDS: clouds.toFixed(3) } : {}),
+      },
+      uniforms: {
+        uBand: { value: BAND },
+        uFade: { value: 1 },
+        uMoonDir: { value: new Vector3(0, -1, 0) },
+        uMoonUp: { value: 0 },
+      },
     });
     const dome = new Mesh(domeGeo, domeMat);
     dome.renderOrder = -10;
@@ -217,6 +293,7 @@ export default function Sky({ dpr }: SkyProps) {
       blending: AdditiveBlending,
       depthWrite: false,
       transparent: true,
+      defines: clouds ? { CLOUDS: clouds.toFixed(3) } : {},
       uniforms: {
         uTime: { value: 0 },
         uPixelRatio: { value: 1 },
@@ -228,7 +305,8 @@ export default function Sky({ dpr }: SkyProps) {
     stars.frustumCulled = false;
     group.add(dome, stars);
     return { group, domeGeo, domeMat, starGeo, starMat };
-  }, []);
+  }, [moon, clouds]);
+  const moonArr = useMemo(() => [0, 0, 0] as [number, number, number], []);
 
   useEffect(
     () => () => {
@@ -246,6 +324,16 @@ export default function Sky({ dpr }: SkyProps) {
     sky.starMat.uniforms.uPixelRatio.value = dpr;
     const under = state.camera.position.y < 0;
     sky.group.visible = !under;
+    if (moon) {
+      const f = runtime?.frame;
+      const m = moonAt(moon, moon.utcMs + (f ? f.realT : 0) * 1000);
+      sunDirectionInto(m, headingDeg, moonArr);
+      const u = sky.domeMat.uniforms;
+      (u.uMoonDir.value as Vector3).set(moonArr[0], moonArr[1], moonArr[2]);
+      // Fading in as it clears the horizon's haze (about 3° up).
+      u.uMoonUp.value =
+        Math.min(1, Math.max(0, (m.elevationDeg + 0.5) / 3.5)) * m.lit;
+    }
     // Before the sea's reflection pass (-0.5), after the camera rig (-1).
   }, -0.7);
 

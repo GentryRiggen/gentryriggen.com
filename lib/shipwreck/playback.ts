@@ -86,7 +86,12 @@ const WALK_OFF: WalkState = { phase: "off", lookUnder: false, seq: 0 };
 /** What a run is started with beyond its openings. */
 export type RunOptions = Pick<
   SimOptions,
-  "portholesOpen" | "storm" | "endT" | "doorsClosed" | "enginesStopped"
+  | "portholesOpen"
+  | "storm"
+  | "endT"
+  | "doorsClosed"
+  | "enginesStopped"
+  | "toSea"
 >;
 
 /** And what the scene needs to know of it (not the sim). */
@@ -536,9 +541,12 @@ export function createPlaybackStore(
         const torpedoes =
           spec.cause !== "torpedo" ? [] : torpedoesOf(hits, torpedoesGiven);
         // The run-in plays before a hit at the first moment only (her
-        // U-boat alone strikes at 10:50 AM: no wake comes at 9:15).
+        // U-boat alone strikes at 10:50 AM: no wake comes at 9:15). A rocks
+        // ship always gets her lit passage first, whichever rooms the rock
+        // opens (even none: she sails past).
         const pre =
-          openings.length > 0 && openings.some((o) => (o.t ?? 0) <= 0)
+          spec.cause === "rocks" ||
+          (openings.length > 0 && openings.some((o) => (o.t ?? 0) <= 0))
             ? (spec.preRollS ?? 0)
             : 0;
         const minT = pre > 0 ? -pre : 0;

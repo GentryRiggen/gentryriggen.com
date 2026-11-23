@@ -28,7 +28,13 @@
  *   in all), --vent=<m²> (each broken vent), --sisters=<m>|none (the
  *   group's height), --sisters-at=<h:mm> (its time, PM); for a mine
  *   ship --doors-closed (every watertight door shut) and
- *   --engines-stopped (her engines stopped at the mine: no run for Kea)
+ *   --engines-stopped (her engines stopped at the mine: no run for Kea);
+ *   for a ship with a drift path --to-sea (drift by `headway.pathToSea`,
+ *   the What if "blown out to sea")
+ *   npx tsx scripts/shipwreck-sim.ts --ship=concordia          # her real night
+ *   npx tsx scripts/shipwreck-sim.ts --ship=concordia --to-sea # blown out to sea
+ *   npx tsx scripts/shipwreck-sim.ts --ship=concordia wtc5 wtc6 # What if? these
+ *   (her clock is real time: shown time runs 6× once she is aground)
  */
 import { SHIPS, type ShipId } from "../lib/shipwreck/ships";
 import {
@@ -112,6 +118,10 @@ function clock(t: number): string {
   return `${h12}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 
+/** Her clock: real time for a ship whose shown time runs fast aground. */
+const when = (e: { t: number; realT: number }) =>
+  spec.agroundTimeScale === undefined ? e.t : e.realT;
+
 const storm = spec.cause === "storm";
 const showWater = args.includes("--water");
 const portholesOpen = !args.includes("--shut");
@@ -170,9 +180,11 @@ const opts: SimOptions = {
   shoal: args.includes("--shoal"),
   doorsClosed: args.includes("--doors-closed"),
   enginesStopped: args.includes("--engines-stopped"),
+  toSea: args.includes("--to-sea"),
 };
 if (opts.doorsClosed) label += ", doors closed";
 if (opts.enginesStopped) label += ", engines stopped";
+if (opts.toSea) label += ", blown out to sea";
 if (storm)
   label +=
     (stormOption === "none" ? ", no storm" : `, the ${opts.storm} storm`) +
@@ -208,7 +220,7 @@ console.log("Events:");
 for (const e of track.events) {
   const frame = sampleTrack(track, e.t);
   console.log(
-    `  ${clock(e.t).padStart(11)}  ${e.kind}${e.index === undefined ? "" : ` ${e.index}`}` +
+    `  ${clock(when(e)).padStart(11)}  ${e.kind}${e.index === undefined ? "" : ` ${e.index}`}` +
       `  (trim ${frame.trimDeg.toFixed(1)}°, list ${frame.listDeg.toFixed(1)}°)`
   );
 }
@@ -219,7 +231,7 @@ for (let t = 0; t <= lastT + 1; t += every) {
   const f = sampleTrack(track, Math.min(t, lastT));
   const whole = f.bodies[0];
   let line =
-    `  ${clock(t).padStart(11)}  trim ${f.trimDeg.toFixed(2).padStart(6)}°` +
+    `  ${clock(when(f)).padStart(11)}  trim ${f.trimDeg.toFixed(2).padStart(6)}°` +
     `  list ${f.listDeg.toFixed(2).padStart(5)}°` +
     `  sinkage ${(-whole.z).toFixed(2).padStart(6)} m` +
     `  water ${Math.round(f.waterAboardT).toString().padStart(6)} t`;

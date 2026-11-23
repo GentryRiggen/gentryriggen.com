@@ -1,10 +1,14 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
-import { simulate } from "@/lib/shipwreck/sim/run";
+import { simulate, whatIfOpenings } from "@/lib/shipwreck/sim/run";
 import type { SimEvent } from "@/lib/shipwreck/sim/events";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
+// The Concordia's to-sea run takes ~8 s: its saved summary
+// (concordiaToSeaFixture, checked against the sim in the sims lane).
+import toSea from "@/lib/shipwreck/sim/__tests__/fixtures/concordiaToSea.json";
 import { endWords, historyNote } from "@/lib/shipwreck/story";
 import EndCard from "../EndCard";
 
@@ -179,5 +183,54 @@ describe("the end card for a mine ship (the Britannic)", () => {
     expect(c).toHaveTextContent(
       "Stopping her engines changed little. Her open portholes and the door that did not shut mattered most."
     );
+  });
+});
+
+describe("the Costa Concordia's end cards (1.9)", () => {
+  function rocksCard(track: SimTrack, holes: number, ctx = {}) {
+    render(
+      <EndCard
+        words={endWords(track, concordia, holes, ctx)}
+        history={historyNote(concordia)}
+        cause="rocks"
+        isNew={false}
+        onWatchAgain={() => {}}
+        onWhatIf={() => {}}
+        onLook={() => {}}
+      />
+    );
+    return screen.getByTestId("shipwreck-end");
+  }
+
+  it("reads her real night's rest from the run, with her own What if picture", () => {
+    const card = rocksCard(simulate(concordia, concordia.realNight), 5);
+    expect(card).toHaveAttribute("data-outcome", "aground");
+    expect(card).toHaveTextContent(
+      "She came to rest on her side by Giglio's harbour at 12:41 AM, 2 hours 56 minutes after the rocks."
+    );
+    expect(card).toHaveTextContent(/What really happened: the real Costa/);
+    expect(screen.getByTestId("shipwreck-look")).toHaveTextContent(
+      "Look at the wreck"
+    );
+    // The rocks' own picture, not the iceberg's.
+    const icon = screen
+      .getByTestId("shipwreck-try-what-if")
+      .querySelector("svg path")!;
+    expect(icon.getAttribute("d")).toMatch(/^M3 8h14l3-3/);
+  });
+
+  it("reads the safe sail past, and the wind out to sea", () => {
+    const none = rocksCard(
+      simulate(concordia, whatIfOpenings(concordia, [])),
+      0
+    );
+    expect(none).toHaveAttribute("data-outcome", "floated");
+    expect(none).toHaveTextContent("She sailed safely past the island.");
+    expect(none).not.toHaveTextContent("What really happened");
+    cleanup();
+    const sea = rocksCard(toSea.night as SimTrack, 5, { toSea: true });
+    expect(sea).toHaveAttribute("data-outcome", "sank");
+    expect(sea).toHaveTextContent("Blown out to sea, she sank.");
+    expect(sea).not.toHaveTextContent(/rolled|capsiz/);
   });
 });

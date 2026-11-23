@@ -1467,8 +1467,11 @@ function buildUnderwater(ctx: Ctx): void {
   const sheer = (x: number) => r.spec.sheerZ(x);
   const v = (p: V3) =>
     hullBuf.vertex(p, undefined, [0, 0], [0, 0], sheer(p[0]));
-  const rudderCentre: V3 = r.rudder.centre ?? [-134, 0, 6];
-  if (inPart(ctx, rudderCentre)) {
+  const centre0: V3 = r.rudder.centre ?? [-134, 0, 6];
+  // One rudder on the centre line, or one at each of `ys` (twin rudders).
+  for (const dy of r.rudder.ys ?? [0]) {
+    const rudderCentre: V3 = [centre0[0], centre0[1] + dy, centre0[2]];
+    if (!inPart(ctx, rudderCentre)) continue;
     const out = r.rudder.outline;
     // Half-thickness at x: even, or tapering from the stock aft.
     const xs = out.map(([x]) => x);
@@ -1480,8 +1483,8 @@ function buildUnderwater(ctx: Ctx): void {
       const k = (xLead - x) / Math.max(1e-6, xLead - xTrail);
       return (taper.lead + (taper.trail - taper.lead) * k) / 2;
     };
-    const facePort = out.map(([x, z]): V3 => [x, t(x), z]);
-    const faceStbd = out.map(([x, z]): V3 => [x, -t(x), z]);
+    const facePort = out.map(([x, z]): V3 => [x, dy + t(x), z]);
+    const faceStbd = out.map(([x, z]): V3 => [x, dy - t(x), z]);
     const flat = (pts: V3[], want: V3) => {
       // Fan from the centroid with the hull's attributes.
       const c = pts.reduce((acc, p) => add(acc, scale(p, 1 / pts.length)), [
@@ -1524,14 +1527,15 @@ function buildUnderwater(ctx: Ctx): void {
     if (stock)
       cylinder(
         post,
-        [stock.x, 0, stock.z0],
-        [stock.x, 0, stock.z1],
+        [stock.x, dy, stock.z0],
+        [stock.x, dy, stock.z1],
         stock.r,
         stock.r,
         q.cylSeg + 4
       );
     if (r.rudder.posts) {
-      for (const p of r.rudder.posts) box(post, p.c, p.size);
+      for (const p of r.rudder.posts)
+        box(post, [p.c[0], p.c[1] + dy, p.c[2]], p.size);
     } else if (!stock) {
       box(post, [-131.9, 0, 6.6], [0.55, 0.62, 12.2]);
       box(post, [-130.9, 0, 0.35], [2.6, 0.62, 0.7]);
@@ -1550,6 +1554,36 @@ function buildUnderwater(ctx: Ctx): void {
       start: false,
       end: true,
     });
+    mergeInto(hullBuf, tmp, sheer);
+  }
+  if (r.bulb && inPart(ctx, [r.bulb.x, 0, r.bulb.z])) {
+    // A bulbous bow: an ellipsoid in the hull's list (its paint by height).
+    const { x, z, a, b, c } = r.bulb;
+    const tmp = new GeoBuffer({ uv: true, uv1: true, extra: "aSheer" });
+    const seg = q.cylSeg + 8;
+    const rings = 8;
+    const ids: number[][] = [];
+    for (let k = 0; k <= rings; k += 1) {
+      const el = -Math.PI / 2 + (k / rings) * Math.PI;
+      const row: number[] = [];
+      for (let i = 0; i < seg; i += 1) {
+        const th = (i / seg) * Math.PI * 2;
+        row.push(
+          tmp.vertex([
+            x + a * Math.cos(el) * Math.cos(th),
+            b * Math.cos(el) * Math.sin(th),
+            z + c * Math.sin(el),
+          ])
+        );
+      }
+      ids.push(row);
+    }
+    for (let k = 0; k < rings; k += 1)
+      for (let i = 0; i < seg; i += 1) {
+        const j = (i + 1) % seg;
+        tmp.tri(ids[k][i], ids[k][j], ids[k + 1][j]);
+        tmp.tri(ids[k][i], ids[k + 1][j], ids[k + 1][i]);
+      }
     mergeInto(hullBuf, tmp, sheer);
   }
   for (const p of r.propellers) {
@@ -1631,6 +1665,62 @@ function buildPropeller(
     for (let i = 0; i < spans; i += 1) {
       buf.tri(ids[i][0], ids[i + 1][0], ids[i + 1][1]);
       buf.tri(ids[i][0], ids[i + 1][1], ids[i][1]);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// A cruise ship's parts (the Concordia's; none on the other ships).
+
+function buildCruiseParts(ctx: Ctx): void {
+  const { r, q } = ctx;
+  const paint = ctx.d.paint;
+  const seg = q.cylSeg;
+  for (const sl of r.slides ?? []) {
+    if (!inPart(ctx, sl.points[0])) continue;
+    tube(paint, sl.points, sl.r, Math.max(6, seg), rgb(sl.color));
+  }
+  const white = rgb(0xf2f2ee);
+  for (const d of r.radomes ?? []) {
+    if (!inPart(ctx, d.p)) continue;
+    const [x, y, z] = d.p;
+    dome(paint, d.p, d.r, d.r, d.r, seg + 4, 4, white);
+    cylinder(
+      paint,
+      [x, y, z - d.r * 1.1],
+      [x, y, z],
+      d.r * 0.25,
+      d.r,
+      seg + 4,
+      white,
+      { start: true, end: false }
+    );
+  }
+  for (const c of r.canisters ?? []) {
+    if (!inPart(ctx, c.c)) continue;
+    const [x, y, z] = c.c;
+    cylinder(
+      paint,
+      [x - c.len / 2, y, z],
+      [x + c.len / 2, y, z],
+      c.r,
+      c.r,
+      Math.max(6, seg - 4),
+      white
+    );
+  }
+  const dark = rgb(COLORS.interior);
+  for (const t of r.thrusters ?? []) {
+    if (!inPart(ctx, [t.x, 0, t.z])) continue;
+    for (const s of [1, -1] as const) {
+      const pts: V3[] = [];
+      for (let i = 0; i < 12; i += 1) {
+        const a = (i / 12) * Math.PI * 2;
+        const x = t.x + Math.cos(a) * t.r;
+        const z = t.z + Math.sin(a) * t.r;
+        pts.push([x, s * (r.hull.halfBreadth(x, z) + 0.03), z]);
+      }
+      polygon(paint, pts, [0, s, 0], dark);
     }
   }
 }
@@ -1854,6 +1944,7 @@ export function buildShipPart(
   buildFittings(ctx);
   buildUnderwater(ctx);
   buildBells(ctx);
+  buildCruiseParts(ctx);
   buildNames(ctx);
   buildLinesAndInstances(ctx);
   return d;

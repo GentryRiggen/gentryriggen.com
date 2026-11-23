@@ -95,7 +95,9 @@ type V3 = [number, number, number];
  * Fitzgerald's upright bow, deep in the clay, from over its starboard side
  * and aft, toward the broken middle and her upturned stern beyond; the
  * Britannic on her starboard side as the Lusitania, from further off her
- * deck side (her funnel 1 lies on the floor there).
+ * deck side (her funnel 1 lies on the floor there); the Concordia on her
+ * side on the rocks, from over the sea off her stern quarter, Giglio
+ * Porto's lights beyond her.
  */
 const WRECK_VIEW: Record<ShipId, { target: V3; cam: V3 }> = {
   titanic: { target: [60, 0, 12], cam: [-20, -120, 50] },
@@ -107,6 +109,10 @@ const WRECK_VIEW: Record<ShipId, { target: V3; cam: V3 }> = {
   // On her starboard side 120 m down, her port side up: from over it and
   // off her deck side, her bent bow and the funnel lying by her boat deck.
   britannic: { target: [30, 0, 14], cam: [-70, 70, 70] },
+  // On her starboard side at 65°, her port side up: off her stern quarter,
+  // out to sea and above (the frame rolls with her, so "up" is mostly +y,
+  // "out to sea" mostly −z), the harbour's lights behind her.
+  concordia: { target: [0, 0, 10], cam: [-190, 210, -100] },
 };
 
 interface Run {
@@ -240,7 +246,18 @@ export default function Shipwreck() {
                 mode === "whatif" && choice.enginesStopped === true,
             }
           : {};
-      s.start(runSpec, openings, { portholesOpen, storm, torpedoes, ...mine });
+      // A rocks ship's What-if toggle: the wind blows her out to sea.
+      const toSea =
+        runSpec.cause === "rocks" && mode === "whatif" && choice.toSea === true
+          ? { toSea: true }
+          : {};
+      s.start(runSpec, openings, {
+        portholesOpen,
+        storm,
+        torpedoes,
+        ...mine,
+        ...toSea,
+      });
       s.flyToPlace(null, false);
       s.setXray(false);
       s.setCamera("cinematic");
@@ -392,7 +409,14 @@ export default function Shipwreck() {
         ship: () => shipRef.current,
         startReal: () =>
           startRun("real", { ids: realWhatIfIds(getShip(shipRef.current)) }),
-        startWhatIf: (ids, portholesOpen, storm, doorsClosed, enginesStopped) =>
+        startWhatIf: (
+          ids,
+          portholesOpen,
+          storm,
+          doorsClosed,
+          enginesStopped,
+          toSea
+        ) =>
           startRun("whatif", {
             ids,
             portholesOpen,
@@ -401,6 +425,7 @@ export default function Shipwreck() {
               : {}),
             ...(doorsClosed === true ? { doorsClosed } : {}),
             ...(enginesStopped === true ? { enginesStopped } : {}),
+            ...(toSea === true ? { toSea } : {}),
           }),
         getOutcome: () => {
           const s = playback.getState();
@@ -456,6 +481,7 @@ export default function Shipwreck() {
         storm: run!.mode === "real" ? "real" : run!.choice.storm,
         doorsClosed: run!.mode === "whatif" && run!.choice.doorsClosed,
         enginesStopped: run!.mode === "whatif" && run!.choice.enginesStopped,
+        toSea: run!.mode === "whatif" && run!.choice.toSea,
         // Her mine at her real spot only (the Run for Kea lesson).
         realSpot:
           run!.mode === "real" ||

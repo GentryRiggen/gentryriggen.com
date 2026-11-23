@@ -351,3 +351,12 @@ describe("the Carpathia's places", () => {
         expect(Math.hypot(p.at[0] - b.x, p.at[2] - b.z)).toBeGreaterThan(5);
   });
 });
+
+describe("the Costa Concordia's places", () => {
+  it("are found by id for her and for no other ship", () => {
+    expect(placeFor("concordia", "the-rock")?.label).toBe("The Rock");
+    expect(placeFor("concordia", "motor-room")?.compartmentId).toBe("wtc5");
+    expect(placeFor("titanic", "the-rock")).toBeNull();
+    expect(placeFor("concordia", "grand-staircase")).toBeNull();
+  });
+});

@@ -13,6 +13,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import {
   CARPATHIA_PLACES,
   BRITANNIC_PLACES,
+  CONCORDIA_PLACES,
   FITZGERALD_PLACES,
   LUSITANIA_PLACES,
   PLACES,
@@ -1193,6 +1194,71 @@ function britTurbineParts(): Part[] {
   return parts;
 }
 
+function concBridgeParts(): Part[] {
+  const p = CONCORDIA_PLACES.bridge;
+  return bridgeAt(p.at[0], p.at[0] + 0.6, p.floorZ);
+}
+
+function concMotorParts(): Part[] {
+  // Her two big propulsion motors, side by side, a shaft running aft from
+  // each (to her twin propellers).
+  const p = CONCORDIA_PLACES["motor-room"];
+  const x0 = p.at[0];
+  const floor = p.floorZ;
+  const parts: Part[] = [
+    { g: box(x0, 0, floor, 18, 20, 0.15), color: 0x3a3a3a },
+  ];
+  for (const y of [-5.5, 5.5]) {
+    parts.push({
+      g: at(new CylinderGeometry(2.4, 2.4, 9, 20), x0, y, floor + 3, {
+        z: Math.PI / 2,
+      }),
+      color: 0x3d5a6a,
+    });
+    parts.push({
+      g: at(new CylinderGeometry(0.4, 0.4, 24, 8), x0 - 16, y, floor + 3, {
+        z: Math.PI / 2,
+      }),
+      color: 0x9a9a8a,
+    });
+  }
+  for (const x of [x0 - 5, x0 + 5])
+    parts.push({
+      g: at(new SphereGeometry(0.3, 8, 6), x, 0, floor + 8),
+      color: 0xffe0a0,
+      glow: true,
+    });
+  return parts;
+}
+
+function concGeneratorParts(): Part[] {
+  // A row of diesel generator sets either side of a walkway.
+  const p = CONCORDIA_PLACES["generator-room"];
+  const x0 = p.at[0];
+  const floor = p.floorZ;
+  const parts: Part[] = [
+    { g: box(x0, 0, floor, 18, 20, 0.15), color: 0x3a3a3a },
+  ];
+  for (const y of [-6, 6])
+    for (const dx of [-5, 0, 5]) {
+      parts.push({
+        g: box(x0 + dx, y, floor + 2, 3.6, 3.2, 4),
+        color: 0x56635c,
+      });
+      parts.push({
+        g: at(new CylinderGeometry(0.7, 0.7, 3, 12), x0 + dx, y, floor + 5),
+        color: 0x8a8a7a,
+      });
+    }
+  for (const x of [x0 - 5, x0, x0 + 5])
+    parts.push({
+      g: at(new SphereGeometry(0.3, 8, 6), x, 0, floor + 8),
+      color: 0xffe0a0,
+      glow: true,
+    });
+  return parts;
+}
+
 const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
   titanic: {
     bridge: bridgeParts,
@@ -1230,6 +1296,12 @@ const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
     portholes: britPortholeParts,
     "gantry-davit": britGantryParts,
     "turbine-room": britTurbineParts,
+  },
+  // Her rock, lifeboat, funnel and pool need none: the model draws them.
+  concordia: {
+    bridge: concBridgeParts,
+    "motor-room": concMotorParts,
+    "generator-room": concGeneratorParts,
   },
 };
 

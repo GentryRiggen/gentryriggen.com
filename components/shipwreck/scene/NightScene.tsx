@@ -16,7 +16,7 @@ import type { PlaybackStore, QualityTier } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import CameraRig from "./CameraRig";
-import Coast from "./Coast";
+import Coast, { GiglioBuild } from "./Coast";
 import Convoy from "./Convoy";
 import Effects from "./Effects";
 import Environment from "./Environment";
@@ -160,6 +160,7 @@ export default function NightScene({
         {TEST_HOOKS_ENABLED && <RenderInfoProbe quality={quality} dpr={dpr} />}
         <Environment
           runtime={runtime}
+          ship={spec.id}
           seaDepthM={spec.seaDepthM}
           settings={settings}
         />
@@ -174,9 +175,16 @@ export default function NightScene({
         ) : storm ? (
           <StormSky runtime={runtime} fog={settings.fog} dpr={dpr} />
         ) : (
-          <Sky dpr={dpr} />
+          <Sky
+            dpr={dpr}
+            moon={settings.moon}
+            clouds={settings.clouds}
+            headingDeg={settings.headingDeg}
+            runtime={runtime}
+          />
         )}
         {settings.coast && <Coast ship={spec.id} />}
+        {spec.id === "concordia" && <GiglioBuild store={store} />}
         {settings.convoy && quality !== "low" && <Convoy store={store} />}
         {/* Another ship builds her own model, disposing the old. */}
         <ShipOnStage store={store} runtime={runtime} />

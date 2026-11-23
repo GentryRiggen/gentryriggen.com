@@ -68,6 +68,14 @@ export function storyOf(
       realLabel: "The real morning",
     };
   }
+  if (ship.cause === "rocks")
+    return {
+      cause: "the rocks",
+      justHit: "Just hit the rocks",
+      justBefore: "Just before the rocks",
+      period: "night",
+      realLabel: "The real night",
+    };
   if (ship.cause === "storm")
     return {
       cause: "the storm",
@@ -108,12 +116,18 @@ export function runInCaption(
   ship: Pick<ShipSpec, "cause"> & Partial<Pick<ShipSpec, "torpedo">>,
   hits = 1
 ): string | null {
+  // A rocks ship sails in close to the island, all lit up, before the rock.
+  if (ship.cause === "rocks")
+    return "She sails close to the island, all lit up.";
   if (ship.cause !== "torpedo") return null;
   const side = ship.torpedo?.side ?? "starboard";
   return hits > 1
     ? `${countWord(hits)} torpedoes are coming! Their white trails of bubbles streak toward her ${side} side.`
     : `A torpedo is coming! Its white trail of bubbles streaks toward her ${side} side.`;
 }
+
+/** A first hole this soon after the first event counts as the first moment (s). */
+const FIRST_HIT_SLACK_S = 1;
 
 /**
  * Shown seconds of a run's first torpedo hit: its earliest hole (0 for a
@@ -122,7 +136,10 @@ export function runInCaption(
  */
 export function firstHitS(openings: readonly Pick<Opening, "t">[]): number {
   if (openings.length === 0) return 0;
-  return Math.max(0, Math.min(...openings.map((o) => o.t ?? 0)));
+  const first = Math.max(0, Math.min(...openings.map((o) => o.t ?? 0)));
+  // A hole within a second of the strike is the strike itself (the rock
+  // reaches the Concordia's first hole at 0.75 s): her clock counts from 0.
+  return first <= FIRST_HIT_SLACK_S ? 0 : first;
 }
 
 /** "1 h 05 min" or "12 min" for whole minutes. */
@@ -186,6 +203,10 @@ export interface CaptionContext {
   /** The run's holes (`PlaybackState.openings`): where and when each
    *  torpedo strikes (the Carpathia's words). */
   openings?: readonly Opening[];
+  /** A rocks ship: she ran aground (the run has an `aground` event). */
+  aground?: boolean;
+  /** A rocks ship: how far she leans at the end of the run (degrees). */
+  restListDeg?: number;
 }
 
 /** The calm caption for an event, without the clock (null: no caption). */
@@ -202,6 +223,7 @@ export function captionText(
   if (ship.cause === "storm") return stormCaption(e, ship, ctx);
   if (ship.id === "carpathia") return carpathiaCaption(e, ship, ctx);
   if (ship.cause === "mine") return mineCaption(e, ship, ctx);
+  if (ship.cause === "rocks") return rocksCaption(e, ctx);
   if (ship.cause === "torpedo") {
     const hits = ctx.hits ?? 1;
     switch (e.kind) {
@@ -589,6 +611,65 @@ function mineCaption(
   }
 }
 
+/**
+ * A rocks ship's captions (the Costa Concordia's night): the scrape, the
+ * blackout and her emergency lights, the drift back, the boats, the touch
+ * on the rocks by the harbour and her rest. Calm: no people, no blame, no
+ * deaths, nothing of who steered her.
+ */
+function rocksCaption(
+  e: Pick<SimEvent, "kind" | "index">,
+  ctx: CaptionContext
+): string | null {
+  const first = ctx.first ?? (e.index === 0 || e.index === undefined);
+  switch (e.kind) {
+    case "collision":
+      return "She scrapes rocks! A long tear opens in her left side.";
+    case "lights-out":
+      return "Her lights go out. Her engines and rudder stop. Small emergency lights come on, and the wind pushes her back toward the island.";
+    case "boat-lowered":
+      return first
+        ? "The first lifeboat is lowered. She is leaning to the right, to starboard."
+        : null;
+    case "last-boat":
+      return "The last lifeboat pulls clear of the ship.";
+    case "aground":
+      return "Her stern touches the rocks by the harbour. She is aground.";
+    case "floating-steady":
+      if (!ctx.aground) return "The water stops rising. She is staying afloat!";
+      return (ctx.restListDeg ?? 90) >= 45
+        ? "She lies on her side on the rocks, half out of the water, right by the harbour."
+        : "She rests on the rocks, leaning over, right by the harbour.";
+    // Blown out to sea (What if): no rocks to hold her.
+    case "stern-lands":
+      // On the rocks it is the touch above.
+      return ctx.aground ? null : "Her stern touches the sea floor.";
+    case "bow-under":
+      return "Her bow goes under the water.";
+    case "stern-under":
+      return "The stern goes under. She has sunk.";
+    case "bow-lands":
+      return "Her bow lands on the sea floor.";
+    // She had no rockets, steam, falling funnel or breakup, and her lights
+    // go out once (no flicker); the scrape is her collision.
+    case "explosion":
+    case "steam-start":
+    case "steam-stop":
+    case "rocket":
+    case "lights-flicker":
+    case "forecastle-under":
+    case "bridge-under":
+    case "funnel-falls":
+    case "breakup":
+    case "hatch-fails":
+    case "sheltered":
+    case "radio":
+    case "torpedo-hit":
+    default:
+      return null;
+  }
+}
+
 /** What the track says about the run at an event's time (for its caption). */
 export function captionContext(
   track: SimTrack | null,
@@ -601,6 +682,8 @@ export function captionContext(
       (e) => e.kind === "stern-under" && e.t <= t + 0.01
     ),
     sunk: track.sankAtT !== null && track.sankAtT <= t + 0.5,
+    aground: track.events.some((e) => e.kind === "aground"),
+    restListDeg: Math.abs(track.frames[track.frames.length - 1]?.listDeg ?? 0),
   };
   if (event)
     ctx.first = track.events.find((e) => e.kind === event.kind) === event;
@@ -619,6 +702,7 @@ export function captionFor(
 
 export type MarkKind =
   | "iceberg"
+  | "aground"
   | "rocket"
   | "boat"
   | "lights"
@@ -647,6 +731,7 @@ const MARK_OF: Partial<Record<SimEvent["kind"], [MarkKind, string]>> = {
   "hatch-fails": ["hatch", "A hatch cover gives way"],
   sheltered: ["shelter", "Whitefish Bay"],
   "torpedo-hit": ["torpedo", "Torpedo"],
+  aground: ["aground", "Stern on the rocks"],
 };
 
 /**
@@ -712,6 +797,7 @@ export function markRows(
 /** Which icons win a crowded spot: the end of the story first. */
 export const MARK_PRIORITY: Record<MarkKind, number> = {
   sinks: 3,
+  aground: 3,
   afloat: 3,
   shelter: 3,
   break: 2,
@@ -741,9 +827,11 @@ export function storyEndT(
   return last;
 }
 
-/** The ending to record: sank in one piece, broke in two, or floated. */
+/** The ending to record: sank in one piece, broke in two, floated or ran aground. */
 export function outcomeOf(track: SimTrack): OutcomeId {
   if (track.outcome === "floated") return "floated";
+  // A rocks ship that rests on the rocks (a rule, not a sinking).
+  if (track.outcome === "aground") return "aground";
   return track.brokeAtT !== null ? "broke-in-two" : "sank";
 }
 
@@ -785,6 +873,8 @@ export interface EndContext {
   enginesStopped?: boolean;
   /** Mine ships: the mine at her real spot and nowhere else (default false). */
   realSpot?: boolean;
+  /** Rocks ships: blown out to sea by the wind (the What-if toggle). */
+  toSea?: boolean;
 }
 
 /**
@@ -826,6 +916,72 @@ const END_NAME: Partial<Record<ShipId, string>> = {
 function andList(parts: readonly string[]): string {
   if (parts.length < 2) return parts.join("");
   return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+/**
+ * A rocks ship's ends (the Costa Concordia's): her rest on the rocks (on
+ * her side when she leans far, else leaning), her stay afloat, her safe
+ * sail past the island when nothing opens, and, blown out to sea, her
+ * sinking by the stern. Calm: nothing of who steered her.
+ */
+function rocksEnd(
+  track: SimTrack,
+  ship: ShipSpec,
+  holes: number,
+  ctx: EndContext,
+  outcome: OutcomeId
+): EndWords {
+  if (outcome === "floated") {
+    if (holes === 0)
+      return {
+        outcome,
+        title: "She sailed safely past the island.",
+        lines: [
+          "With no tear in her side, her engines kept running and she never touched the rocks.",
+          "On the real night a rock tore open her left side, and five of her rooms filled with water.",
+        ],
+      };
+    return {
+      outcome,
+      title: "She stayed afloat.",
+      lines: [
+        "The water stayed in the rooms the rocks opened, and she floated on.",
+        "On the real night the rock opened five of her rooms at once. Her power failed, and the wind pushed her back onto the rocks.",
+      ],
+    };
+  }
+  if (outcome === "aground") {
+    const rest = track.events.find((e) => e.kind === "floating-steady");
+    const at = rest?.realT ?? track.endT;
+    const list = Math.abs(track.frames[track.frames.length - 1]?.listDeg ?? 0);
+    const when = `at ${clockText(at, ship.clockStartS)}, ${durationWords(at)} after the rocks`;
+    const onSide = list >= 45;
+    return {
+      outcome,
+      title: onSide
+        ? "She lies on her side by the harbour."
+        : "She ran aground by the harbour.",
+      lines: [
+        onSide
+          ? `She came to rest on her side by Giglio's harbour ${when}.`
+          : `She came to rest on the rocks by Giglio's harbour ${when}, leaning ${Math.round(list)}\u00b0.`,
+        "The sea there is shallow and rocky, so she rested on the bottom instead of sinking.",
+      ],
+    };
+  }
+  // Sank (blown out to sea, or any run that went under): she sank by the
+  // stern, and nothing held her up as the rocks did by the harbour.
+  const sank = track.events.find((e) => e.kind === "stern-under");
+  const at = sank?.realT ?? track.sankAtT ?? track.endT;
+  const sunk = `she sank by the stern at ${clockText(at, ship.clockStartS)}, ${durationWords(at)} after the rocks.`;
+  return {
+    outcome,
+    title: ctx.toSea ? "Blown out to sea, she sank." : "She sank.",
+    lines: [
+      ctx.toSea ? `Out in the open sea ${sunk}` : `Out of her depth, ${sunk}`,
+      "Nothing there held her up, as the rocks did by the harbour.",
+    ],
+  };
 }
 
 /** A mine ship's floating end (the Britannic's What if). */
@@ -883,6 +1039,7 @@ export function endWords(
   ctx: EndContext = {}
 ): EndWords {
   const outcome = outcomeOf(track);
+  if (ship.cause === "rocks") return rocksEnd(track, ship, holes, ctx, outcome);
   if (outcome === "floated" && ship.cause === "mine")
     return mineAfloat(track, ship, ctx);
   const torpedo = ship.cause === "torpedo";
@@ -983,6 +1140,8 @@ export function historyNote(ship: Pick<ShipSpec, "id">): string {
     return "What really happened: the real Carpathia sank at about 11:00\u00a0AM, ten minutes after the U-boat's third torpedo. At about 1\u00a0PM the warship HMS Snowdrop came and picked up her lifeboats.";
   if (ship.id === "britannic")
     return "What really happened: the real Britannic was steaming up the Kea Channel when the mine went off. She sank at 9:07\u00a0AM, 55 minutes after the mine. British warships came and picked up the people in the lifeboats.";
+  if (ship.id === "concordia")
+    return "What really happened: the real Costa Concordia scraped the rocks at 9:45\u00a0PM. Her power failed, the wind pushed her back toward the island, and she came to rest on her side by the harbour at about 12:41\u00a0AM. Rescue boats came out from the island.";
   if (ship.id === "fitzgerald")
     return "What really happened: the real Edmund Fitzgerald sank in the storm just after 7:10\u00a0PM, about 17 miles from the shelter of Whitefish Bay. She very nearly made it. Experts still argue about why she sank.";
   return ship.id === "lusitania"

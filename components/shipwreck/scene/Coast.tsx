@@ -1,13 +1,27 @@
 "use client";
+/* eslint-disable react-hooks/immutability -- three.js objects are mutated in the frame loop by design */
 
-import { useEffect, useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 import {
+  AdditiveBlending,
   BufferAttribute,
   BufferGeometry,
   Color,
   Mesh,
   MeshLambertMaterial,
+  MeshStandardMaterial,
+  Points,
+  ShaderMaterial,
 } from "three";
+import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import {
+  giglioReady,
+  onGiglioReady,
+  stepGiglio,
+  type GiglioData,
+  type MeshArrays,
+} from "./giglio";
 import type { ShipId } from "@/lib/shipwreck/ships/types";
 import { BRITANNIC_MINE, LUSITANIA_HIT } from "./settings";
 
@@ -266,6 +280,11 @@ function buildCorkGeometry(): BufferGeometry {
 }
 
 export default function Coast({ ship = "lusitania" }: { ship?: ShipId }) {
+  if (ship === "concordia") return <GiglioCoast />;
+  return <ShoreCoast ship={ship} />;
+}
+
+function ShoreCoast({ ship }: { ship: ShipId }) {
   const coast = useMemo(() => {
     const geo = buildCoastGeometry(ship);
     const mat = new MeshLambertMaterial({ vertexColors: true });
@@ -542,4 +561,163 @@ function buildKeaGeometry(): BufferGeometry {
   g.computeVertexNormals();
   g.computeBoundingSphere();
   return g;
+}
+
+// ---------------------------------------------------------------------------
+// Isola del Giglio, 13 January 2012 (the Concordia): the island's east
+// coast close by her (giglio.ts: SRTM's heights inland of the sim's own
+// shoreline), Le Scole's islets, the struck rock and the mole lights'
+// towers in one draw; Giglio Porto's and Giglio Castello's lit windows,
+// the waterfront lamps and the two flashing mole lights in another.
+
+/**
+ * Plain arrays to a geometry (normals already worked out: nothing is
+ * computed here). Always drawn (no bounding sphere to work out).
+ */
+export function meshGeometry(a: MeshArrays): BufferGeometry {
+  const g = new BufferGeometry();
+  g.setAttribute("position", new BufferAttribute(a.position, 3));
+  g.setAttribute("color", new BufferAttribute(a.color, 3));
+  g.setAttribute("normal", new BufferAttribute(a.normal, 3));
+  g.setIndex(new BufferAttribute(a.index, 1));
+  return g;
+}
+
+function unsubscribeOnly(f: () => void): () => void {
+  const off = onGiglioReady(f);
+  return () => {
+    off();
+  };
+}
+
+/**
+ * The island once it is built (null until then): `GiglioBuild` builds it
+ * a step at a time over the first frames; the CPU arrays are the page's
+ * and kept, so another run or coming back to her finds it ready.
+ */
+export function useGiglio(): GiglioData | null {
+  return useSyncExternalStore(unsubscribeOnly, giglioReady, () => null);
+}
+
+/**
+ * Builds the island a little each frame (`stepGiglio`): 1.5 ms while her
+ * night is still computing (the sim's pump has the rest of the frame),
+ * 6 ms once it is done, so no frame is blocked; the island and its floor
+ * appear when it is ready (about a second in).
+ */
+export function GiglioBuild({ store }: { store: PlaybackStore }) {
+  useFrame(() => {
+    if (giglioReady()) return;
+    stepGiglio(store.getState().done ? 6 : 1.5);
+  }, -2.5);
+  return null;
+}
+
+const lightVertex = /* glsl */ `
+  attribute vec3 aColor;
+  attribute float aSize;
+  attribute float aPeriod;
+  attribute float aPhase;
+  uniform float uScale;
+  uniform float uTime;
+  varying vec3 vColor;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_Position = projectionMatrix * mv;
+    // A flashing light: on 0.5 s in each period (giglio.ts flashOn).
+    float on = aPeriod > 0.0
+      ? step(mod(uTime + aPhase, aPeriod), 0.5)
+      : 1.0;
+    vColor = aColor * on;
+    gl_PointSize = on * clamp(aSize * uScale / max(1.0, -mv.z), 1.6, 40.0);
+  }
+`;
+const lightFragment = /* glsl */ `
+  varying vec3 vColor;
+  void main() {
+    vec2 p = gl_PointCoord - 0.5;
+    float r = dot(p, p) * 4.0;
+    if (r > 1.0) discard;
+    gl_FragColor = vec4(vColor * (1.0 - r), 1.0);
+  }
+`;
+
+function GiglioCoast() {
+  const data = useGiglio();
+  if (!data) return null;
+  return <GiglioLand data={data} />;
+}
+
+function GiglioLand({ data }: { data: GiglioData }) {
+  const parts = useMemo(() => {
+    const geo = meshGeometry(data.land);
+    // Macchia and granite under starlight and the moon (a rough surface).
+    const mat = new MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 1,
+      metalness: 0,
+    });
+    // A little of the slopes' own colour as light (the night's glow off
+    // the sky and the town), so the island reads as a dark green-grey
+    // hill and not a black cut-out against the stars.
+    mat.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <emissivemap_fragment>",
+        "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vColor.rgb * 0.06;"
+      );
+    };
+    mat.customProgramCacheKey = () => "shipwreck-coast-giglio";
+    const land = new Mesh(geo, mat);
+    land.name = "coast";
+    land.frustumCulled = false;
+    const l = data.lights;
+    const lg = new BufferGeometry();
+    lg.setAttribute("position", new BufferAttribute(l.position, 3));
+    lg.setAttribute("aColor", new BufferAttribute(l.color, 3));
+    lg.setAttribute("aSize", new BufferAttribute(l.size, 1));
+    lg.setAttribute("aPeriod", new BufferAttribute(l.period, 1));
+    lg.setAttribute("aPhase", new BufferAttribute(l.phase, 1));
+    const lm = new ShaderMaterial({
+      vertexShader: lightVertex,
+      fragmentShader: lightFragment,
+      transparent: true,
+      depthWrite: false,
+      blending: AdditiveBlending,
+      fog: false,
+      uniforms: { uScale: { value: 600 }, uTime: { value: 0 } },
+    });
+    const lights = new Points(lg, lm);
+    lights.frustumCulled = false;
+    lights.name = "giglio-lights";
+    lights.renderOrder = 20;
+    return { land, geo, mat, lights, lg, lm };
+  }, [data]);
+  useEffect(
+    () => () => {
+      // The GPU copies go; the CPU arrays stay (giglio.ts keeps them).
+      parts.geo.dispose();
+      parts.mat.dispose();
+      parts.lg.dispose();
+      parts.lm.dispose();
+    },
+    [parts]
+  );
+  useFrame((state) => {
+    const u = parts.lm.uniforms;
+    u.uTime.value = state.clock.elapsedTime;
+    u.uScale.value =
+      (state.size.height * state.viewport.dpr) /
+      (2 *
+        Math.tan(
+          ((state.camera as { fov?: number }).fov ?? 42) * (Math.PI / 360)
+        ));
+    // From under the sea the shore's lights are lost in the dark water.
+    parts.lights.visible = state.camera.position.y > -1;
+  }, -0.7);
+  return (
+    <>
+      <primitive object={parts.land} />
+      <primitive object={parts.lights} />
+    </>
+  );
 }

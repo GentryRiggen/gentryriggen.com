@@ -953,3 +953,148 @@ test("the What if? Go button keeps its full size on screen at 1133x744", async (
   expect(box!.height).toBeGreaterThanOrEqual(44);
   expect(box!.y + box!.height).toBeLessThanOrEqual(744);
 });
+
+test("the Costa Concordia's real night reaches her rest by the harbour at ×100, then the Titanic's iceberg is back @smoke", async ({
+  page,
+}) => {
+  test.setTimeout(540_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-concordia").click();
+  await expect(page.getByTestId("shipwreck-ship-concordia")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "concordia"
+  );
+  // Giglio's coast and harbour lights, no iceberg; no deck to walk (yet).
+  // (The island is built a little each frame, so no frame is blocked: in
+  // software WebGL's few frames a second that takes a while.)
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("coast")), {
+      timeout: 120_000,
+    })
+    .toBe(true);
+  expect(
+    await page.evaluate(() => window.__shipwreck!.isShown!("giglio-lights"))
+  ).toBe(true);
+  expect(
+    await page.evaluate(() => window.__shipwreck!.isShown!("iceberg"))
+  ).toBe(false);
+  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+
+  // The last ten minutes of her run at ×100.
+  await computeAll(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT - 600);
+  });
+  await page.getByTestId("shipwreck-cameras-button").click();
+  await page.getByTestId("shipwreck-camera-orbit").click();
+  await page.getByTestId("shipwreck-speed-100").click();
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toBeVisible({ timeout: 300_000 });
+  await expect(end).toHaveAttribute("data-outcome", "aground");
+  await expect(end).toContainText("She lies on her side by the harbour.");
+  await expect(end).toContainText("12:41 AM");
+
+  // Back to the title, the Titanic again: her iceberg, and no Giglio.
+  await page.getByTestId("shipwreck-look").click();
+  await page.getByTestId("shipwreck-back").click();
+  await expect(page.getByTestId("shipwreck-title")).toBeVisible();
+  await page.getByTestId("shipwreck-ship-titanic").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("iceberg")))
+    .toBe(true);
+  expect(
+    await page.evaluate(() => window.__shipwreck!.isShown!("giglio-lights"))
+  ).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test("What if? on the Costa Concordia with only her fifth and sixth rooms open stays afloat", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-concordia").click();
+  await page.getByTestId("shipwreck-what-if").click();
+  await expect(page.getByTestId("shipwreck-editor")).toHaveAttribute(
+    "data-ship",
+    "concordia"
+  );
+  await page.getByTestId("shipwreck-preset-clear").click();
+  for (const id of ["wtc5", "wtc6"])
+    await page.getByTestId(`shipwreck-chip-${id}`).click();
+  await page.getByTestId("shipwreck-go").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await computeAll(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT);
+  });
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toHaveAttribute("data-outcome", "floated");
+  await expect(end).toContainText("She stayed afloat.");
+});
+
+test("What if? on the Costa Concordia blown out to sea sinks", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-concordia").click();
+  await page.getByTestId("shipwreck-what-if").click();
+  await page.getByTestId("shipwreck-preset-real").click();
+  const toSea = page.getByTestId("whatif-to-sea");
+  await toSea.click();
+  await expect(toSea).toHaveAttribute("aria-pressed", "true");
+  await page.getByTestId("shipwreck-go").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await computeAll(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT);
+  });
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toHaveAttribute("data-outcome", "sank");
+  await expect(end).toContainText("Blown out to sea, she sank.");
+});
+
+test("the Costa Concordia's paint tray repaints her and puts her own colours back", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-concordia").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await page.evaluate(() => window.__shipwreck!.pause!());
+  const hers = await page.evaluate(() => window.__shipwreck!.livery!());
+  expect(hers).toBe("costa-2012");
+  await page.getByTestId("shipwreck-livery").click();
+  await expect(page.getByTestId("shipwreck-paint-tray")).toBeVisible();
+  const paint = (id: string) =>
+    page.locator(`[data-testid="shipwreck-paint"][data-livery="${id}"]`);
+  await paint("fun-navy-hull").click();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.livery!()))
+    .toBe("fun-navy-hull");
+  await paint("costa-2012").click();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.livery!()))
+    .toBe("costa-2012");
+  expect(await page.evaluate(() => window.__shipwreck!.getScreen())).toBe(
+    "night"
+  );
+});

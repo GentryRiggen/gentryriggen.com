@@ -27,7 +27,9 @@ import {
   cinematicShot,
   fitAcross,
   clampAboveFloor,
+  clampAboveGround,
   dampSpring,
+  groundFor,
   hullBoxesFor,
   keepClear,
   lifeboatView,
@@ -82,6 +84,8 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
   const { camera, gl } = useThree();
   const SEA_DEPTH = spec.seaDepthM;
   const boxes = hullBoxesFor(spec.id);
+  // The Concordia's island and sloping floor (else her flat floor).
+  const ground = groundFor(spec.id);
   const controls = useMemo(() => {
     const c = new OrbitControls(camera, gl.domElement);
     c.enableDamping = true;
@@ -479,7 +483,9 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
               ? "morning"
               : spec.id === "fitzgerald"
                 ? "storm"
-                : "establishing";
+                : spec.id === "concordia"
+                  ? "giglio"
+                  : "establishing";
         // Reduced motion: cut between the shots instead of flying.
         if (reducedMotion && shot !== s.shot) cut = true;
         s.shot = shot;
@@ -533,18 +539,17 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       reanchor();
     }
 
-    // Never under the floor; never inside the hull (except in X-ray).
-    const c = clampAboveFloor(
-      [camera.position.x, camera.position.y, camera.position.z],
-      SEA_DEPTH,
-      3
-    );
+    // Never under the floor (or in the island's land); never inside the
+    // hull (except in X-ray).
+    const cp: V3 = [camera.position.x, camera.position.y, camera.position.z];
+    const c = ground
+      ? clampAboveGround(cp, ground, 3)
+      : clampAboveFloor(cp, SEA_DEPTH, 3);
     camera.position.set(c[0], c[1], c[2]);
-    const t2 = clampAboveFloor(
-      [controls.target.x, controls.target.y, controls.target.z],
-      SEA_DEPTH,
-      1
-    );
+    const tp: V3 = [controls.target.x, controls.target.y, controls.target.z];
+    const t2 = ground
+      ? clampAboveGround(tp, ground, 1)
+      : clampAboveFloor(tp, SEA_DEPTH, 1);
     controls.target.set(t2[0], t2[1], t2[2]);
     if (!p.xray && frame && p.camera === "orbit") {
       for (const n of ["whole", "bow", "stern"] as PartName[]) {
@@ -556,7 +561,7 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
         const ship: V3 = [l.x, -l.z, l.y];
         // Out of her and never through the sea floor (a wreck on her side
         // has a face on the floor).
-        const out = keepClear(ship, pose, SEA_DEPTH, boxes, 0.6, 3);
+        const out = keepClear(ship, pose, SEA_DEPTH, boxes, 0.6, 3, ground);
         if (out[0] !== ship[0] || out[1] !== ship[1] || out[2] !== ship[2]) {
           g.localToWorld(tmp.a.set(out[0], out[2], -out[1]));
           camera.position.copy(tmp.a);
@@ -596,6 +601,13 @@ function bridgeView(ctx: ShotContext): View {
       pos: shipThree(b, [101, -8.5, 22.5]),
       target: shipThree(b, [-60, -2, 13]),
     };
+  if (ctx.ship === "concordia")
+    // Her starboard bridge wing on deck 8, out over her side, looking aft
+    // along her balconies and boats.
+    return {
+      pos: shipThree(b, [127, -18.6, 36]),
+      target: shipThree(b, [-60, -15, 30]),
+    };
   if (ctx.ship === "carpathia")
     // Her port bridge wing (the side the torpedo's track was seen on),
     // over the bridge house's front, looking aft along her port boats.
@@ -623,6 +635,13 @@ function sternView(ctx: ShotContext): View {
     return {
       pos: shipThree(b, [-84, 0, 20.5]),
       target: shipThree(b, [60, 0, 13]),
+    };
+  if (ctx.ship === "concordia")
+    // Her stepped terraces aft (deck 9's open deck), looking forward to
+    // the funnel and the top tier.
+    return {
+      pos: shipThree(b, [-124, 0, 39]),
+      target: shipThree(b, [10, 0, 42]),
     };
   if (ctx.ship === "carpathia")
     // Over her stern deckhouse on the open after deck (R21), looking

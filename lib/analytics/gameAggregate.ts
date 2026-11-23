@@ -288,6 +288,7 @@ const SHIPWRECK_SHIP_ORDER = [
   "fitzgerald",
   "carpathia",
   "britannic",
+  "concordia",
 ];
 
 function averageByShip(

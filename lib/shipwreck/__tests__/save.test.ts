@@ -457,3 +457,50 @@ describe("save: the Britannic's What if (1.4)", () => {
     expect(bad.whatIfByShip).toEqual({ britannic: { ids: [] } });
   });
 });
+
+describe("save: the Costa Concordia's What if (1.9)", () => {
+  const BASE = {
+    v: 1,
+    settings: { sound: true, speed: 30, camera: "orbit" },
+    seen: { realNight: true, endings: [] },
+    lastWhatIf: [],
+  };
+
+  it("round-trips her spots and the wind out to sea", () => {
+    const v1 = parseSaveSalvaging(BASE)!.save;
+    const choice = { ids: ["wtc5", "wtc6"], toSea: true };
+    const next = withWhatIf({ ...v1, ship: "concordia" }, "concordia", choice);
+    const storage = new MemoryStorage();
+    writeSave(next, storage);
+    const back = loadSave(NOW, storage);
+    expect(back).toEqual(next);
+    expect(shipOf(back)).toBe("concordia");
+    expect(whatIfOf(back, "concordia")).toEqual(choice);
+  });
+
+  it("reads an older save without it as the real night, drops bad values and unknown ships", () => {
+    const old = parseSaveSalvaging({
+      ...BASE,
+      whatIfByShip: { concordia: { ids: ["wtc5"] } },
+    })!.save;
+    const w = whatIfOf(old, "concordia");
+    expect(w).toEqual({ ids: ["wtc5"] });
+    expect(w.toSea ?? false).toBe(false);
+    const bad = parseSaveSalvaging({
+      ...BASE,
+      whatIfByShip: {
+        concordia: { ids: [], toSea: "yes" },
+        "andrea-doria": { ids: ["wtc5"], toSea: true },
+      },
+    })!.save;
+    expect(bad.whatIfByShip).toEqual({ concordia: { ids: [] } });
+  });
+
+  it("keeps the aground ending she can reach", () => {
+    const save = parseSaveSalvaging({
+      ...BASE,
+      seen: { realNight: true, endings: ["aground", "sank", "capsized"] },
+    })!.save;
+    expect(save.seen.endings).toEqual(["aground", "sank"]);
+  });
+});

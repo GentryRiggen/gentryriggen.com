@@ -46,10 +46,12 @@ describe("the Lusitania's data", () => {
       "fitzgerald",
       "carpathia",
       "britannic",
+      "concordia",
     ]);
     expect(Object.keys(SHIPS).sort()).toEqual([
       "britannic",
       "carpathia",
+      "concordia",
       "fitzgerald",
       "lusitania",
       "titanic",

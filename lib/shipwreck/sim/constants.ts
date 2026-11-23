@@ -7,6 +7,10 @@
 /** Sea water at about -2 °C, kg/m³, and gravity, m/s². */
 export const RHO = 1025;
 export const GRAV = 9.81;
+/** Air at sea level, about 10 °C, kg/m³ (the wind's heeling moment). */
+export const AIR_DENSITY = 1.225;
+/** One knot, m/s. */
+export const KNOT_MS = 1852 / 3600;
 
 /** Fixed steps: slow phases (quasi-static), fast phases (the plunge). */
 export const SIM_STEP_S = 1;

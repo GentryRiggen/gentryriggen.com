@@ -163,6 +163,31 @@ function funnelEmblem(
       const yy = Math.sqrt(Math.max(0, 1 - (u / f.semiA) ** 2)) * f.semiB;
       return [cx + u - lean * v, s * (yy + off), z + v];
     };
+    if (e.letterOnly) {
+      // A thick "C" alone (Costa's), `r` to the middle of its stroke, its
+      // gap to the viewer's right on either side.
+      // In small pieces across and along, so it lies on the curve.
+      const w = e.r * 0.3;
+      const n = 24;
+      const across = 3;
+      for (let i = 0; i < n; i += 1) {
+        const a0 = Math.PI * (0.27 + (1.46 * i) / n);
+        const a1 = Math.PI * (0.27 + (1.46 * (i + 1)) / n);
+        const p = (a: number, rr: number) =>
+          at(-s * Math.cos(a) * rr, Math.sin(a) * rr, 0.06);
+        for (let k = 0; k < across; k += 1) {
+          const r0 = e.r - w + (2 * w * k) / across;
+          const r1 = e.r - w + (2 * w * (k + 1)) / across;
+          quad(
+            buf,
+            [p(a0, r0), p(a1, r0), p(a1, r1), p(a0, r1)],
+            [0, s, 0],
+            letter
+          );
+        }
+      }
+      continue;
+    }
     const pts: V3[] = [];
     for (let i = 0; i < 10; i += 1) {
       const a = Math.PI / 2 + (i * Math.PI) / 5;
@@ -198,7 +223,7 @@ function funnelEmblem(
 export function boatGeometry(
   kind: BoatKind,
   q: QualitySettings,
-  paint?: { hull: number; bottom: number }
+  paint?: { hull: number; bottom: number; cover?: number }
 ): BufferGeometry {
   const buf = new GeoBuffer({ color: true });
   const isCollapsible = kind === "collapsible";
@@ -264,25 +289,58 @@ export function boatGeometry(
       buf.tri(a, c, b);
     }
   // The top: a canvas cover with a ridge, or the open collapsible's floor.
-  const cover = rgb(isCollapsible ? 0x8a7a60 : 0xd8d0bb);
+  // A painted canopy (a modern enclosed boat's): a rounded roof over
+  // upright sides, standing well above the gunwale.
+  const coverHex = isCollapsible ? undefined : paint?.cover;
+  const canopy = coverHex !== undefined;
+  const cover = rgb(
+    isCollapsible ? 0x8a7a60 : coverHex !== undefined ? coverHex : 0xd8d0bb
+  );
+  // Across the top, port to starboard: (y as a share of the half-width,
+  // height over the gunwale as a share of the ridge).
+  const across: [number, number][] = canopy
+    ? [
+        [1, 0],
+        [0.94, 0.55],
+        [0.8, 0.85],
+        [0.45, 1],
+        [0, 1.04],
+        [-0.45, 1],
+        [-0.8, 0.85],
+        [-0.94, 0.55],
+        [-1, 0],
+      ]
+    : [
+        [1, 0],
+        [0, 1],
+        [-1, 0],
+      ];
   const top: number[][] = [];
   for (let i = 0; i <= stations; i += 1) {
     const t = -1 + (2 * i) / stations;
     const w = 0.5 * Math.pow(Math.max(0, 1 - Math.pow(Math.abs(t), 2.2)), 0.6);
     const sheer = 0.12 * t * t;
-    const ridge = isCollapsible ? 0.0 : 0.22 * (1 - t * t * 0.6);
+    const ridge = isCollapsible
+      ? 0.0
+      : canopy
+        ? 0.7 * (1 - Math.pow(Math.abs(t), 3) * 0.7)
+        : 0.22 * (1 - t * t * 0.6);
     const zEdge = 1.08 + sheer;
-    top.push([
-      buf.vertex([t * 0.5, w, zEdge], cover),
-      buf.vertex(
-        [t * 0.5, 0, zEdge + ridge - (isCollapsible ? 0.3 : 0)],
-        cover
-      ),
-      buf.vertex([t * 0.5, -w, zEdge], cover),
-    ]);
+    top.push(
+      across.map(([fy, fz]) =>
+        buf.vertex(
+          [
+            t * 0.5,
+            fy * w * (canopy ? 0.97 : 1),
+            zEdge + fz * ridge - (isCollapsible && fz > 0 ? 0.3 : 0),
+          ],
+          cover
+        )
+      )
+    );
   }
   for (let i = 0; i < stations; i += 1)
-    for (let k = 0; k < 2; k += 1) {
+    for (let k = 0; k < across.length - 1; k += 1) {
       const a = top[i][k];
       const b = top[i + 1][k];
       const c = top[i + 1][k + 1];

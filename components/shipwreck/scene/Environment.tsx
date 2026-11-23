@@ -5,6 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import {
   AdditiveBlending,
+  InstancedMesh,
   BufferAttribute,
   BufferGeometry,
   CanvasTexture,
@@ -22,17 +23,21 @@ import {
   HemisphereLight,
   Vector3,
 } from "three";
+import type { ShipId } from "@/lib/shipwreck/ships/types";
 import type { SceneRuntime } from "./runtime";
+import { meshGeometry, useGiglio } from "./Coast";
 import { snowAt, stormDaylight } from "./storm";
 import {
   NIGHT_DEEP_FOG,
   NIGHT_FOG,
   NIGHT_SEA_FOG,
   DAY_LOOKS,
+  moonAt,
   dayLookOf,
   isDaylit,
   type DayLook,
   sunDirection,
+  sunDirectionInto,
   type SceneSettings,
 } from "./settings";
 import {
@@ -168,6 +173,8 @@ function mudTexture(): CanvasTexture | null {
 
 interface EnvironmentProps {
   runtime: SceneRuntime;
+  /** Whose night it is (the Concordia's has Giglio's shelf and the moon). */
+  ship: ShipId;
   /** The sea floor's depth under the ship on the stage (m). */
   seaDepthM: number;
   /** The ship's scene (night or afternoon). */
@@ -176,6 +183,7 @@ interface EnvironmentProps {
 
 export default function Environment({
   runtime,
+  ship,
   seaDepthM,
   settings,
 }: EnvironmentProps) {
@@ -183,6 +191,7 @@ export default function Environment({
     return (
       <StormEnvironment
         runtime={runtime}
+        ship={ship}
         seaDepthM={seaDepthM}
         settings={settings}
       />
@@ -191,18 +200,37 @@ export default function Environment({
     return (
       <AfternoonEnvironment
         runtime={runtime}
+        ship={ship}
         seaDepthM={seaDepthM}
         settings={settings}
       />
     );
-  return <NightEnvironment runtime={runtime} seaDepthM={seaDepthM} />;
+  return (
+    <NightEnvironment
+      runtime={runtime}
+      ship={ship}
+      seaDepthM={seaDepthM}
+      settings={settings}
+    />
+  );
 }
 
 function NightEnvironment({
   runtime,
+  ship,
   seaDepthM: SEA_DEPTH,
-}: Omit<EnvironmentProps, "settings">) {
+  settings,
+}: EnvironmentProps) {
   const { scene, camera } = useThree();
+  // The Concordia's night: Giglio's sloping floor (giglio.ts, her seabed's
+  // `floorAt`) and seagrass in place of the flat mud, her own water, and
+  // the moon once it has risen. Every other night is 1.0's.
+  const giglio = ship === "concordia";
+  const moon = settings.moon ?? null;
+  const ownSea = useMemo(
+    () => (giglio ? new Color(settings.underwaterFog) : SEA_FOG),
+    [giglio, settings]
+  );
 
   const fog = useMemo(() => new FogExp2(NIGHT_FOG.getHex(), 0.00011), []);
   useEffect(() => {
@@ -240,6 +268,97 @@ function NightEnvironment({
     [floor]
   );
 
+  // Giglio's floor: granite, Posidonia meadows, sand and mud by depth
+  // (vertex colours), and the meadows' seagrass as crossed cards.
+  const isle = useGiglio();
+  const shelf = useMemo(() => {
+    if (!giglio || !isle) return null;
+    const mat = new MeshStandardMaterial({
+      vertexColors: true,
+      roughness: 1,
+      metalness: 0,
+    });
+    const floorGeo = meshGeometry(isle.floor);
+    const m = new Mesh(floorGeo, mat);
+    m.name = "sea-floor";
+    m.frustumCulled = false;
+    const n = isle.grass.cards.length / 5;
+    const card = new BufferGeometry();
+    // A clump of five narrow blades (Posidonia's ribbons, about 1 cm wide
+    // and a metre long [WP]: drawn 0.12 m so they read), leaning out.
+    const blade: number[] = [];
+    const ix: number[] = [];
+    for (let k = 0; k < 5; k += 1) {
+      const a = (k / 5) * Math.PI * 2 + 0.4;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const w = 0.06;
+      const lean = 0.25;
+      const o = blade.length / 3;
+      // Two quads a blade (bent once), across the lean direction.
+      blade.push(
+        -sa * w,
+        0,
+        ca * w,
+        sa * w,
+        0,
+        -ca * w,
+        sa * w + ca * lean * 0.4,
+        0.55,
+        -ca * w + sa * lean * 0.4,
+        -sa * w + ca * lean * 0.4,
+        0.55,
+        ca * w + sa * lean * 0.4,
+        ca * lean,
+        1.05,
+        sa * lean
+      );
+      ix.push(o, o + 1, o + 2, o, o + 2, o + 3, o + 3, o + 2, o + 4);
+    }
+    card.setAttribute(
+      "position",
+      new BufferAttribute(new Float32Array(blade), 3)
+    );
+    card.setIndex(ix);
+    card.computeVertexNormals();
+    const cardMat = new MeshStandardMaterial({
+      color: 0x3f6a2c,
+      roughness: 0.9,
+      side: DoubleSide,
+    });
+    const grass = new InstancedMesh(card, cardMat, n);
+    // Worked out with the island, a step at a time (giglio.ts).
+    (grass.instanceMatrix.array as Float32Array).set(isle.grass.matrices);
+    grass.instanceMatrix.needsUpdate = true;
+    grass.frustumCulled = false;
+    grass.name = "seagrass";
+    return { m, floorGeo, mat, grass, card, cardMat };
+  }, [giglio, isle]);
+  // The moon (a faint blue-white directional light once it has risen).
+  // Made and mounted from her night's first frame, not with the shelf:
+  // three.js compiles its shaders for the number of lights, so a light
+  // added a second or two in would recompile every lit material mid-run.
+  const moonLight = useMemo(() => {
+    if (!giglio) return null;
+    const l = new DirectionalLight(0xc8d4ff, 0);
+    l.name = "moonlight";
+    return l;
+  }, [giglio]);
+  useEffect(
+    () => () => {
+      if (!shelf) return;
+      // The GPU copies go; the CPU arrays stay (giglio.ts keeps them).
+      shelf.floorGeo.dispose();
+      shelf.mat.dispose();
+      shelf.card.dispose();
+      shelf.cardMat.dispose();
+      shelf.grass.dispose();
+    },
+    [shelf]
+  );
+  const moonDir = useMemo(() => new Vector3(), []);
+  const moonArr = useMemo(() => [0, 0, 0] as [number, number, number], []);
+
   // Starlight; a rocket's burst lights everything briefly (white).
   const sky = useMemo(() => {
     const h = new HemisphereLight(0x4a5c86, 0x06080e, 0.9);
@@ -260,7 +379,7 @@ function NightEnvironment({
     if (under) {
       // Thicker and darker the deeper it goes.
       const k = Math.min(1, -y / 600);
-      fog.color.copy(SEA_FOG).lerp(DEEP_FOG, k);
+      fog.color.copy(ownSea).lerp(DEEP_FOG, k);
       // Look under (from the sea while walking): clearer and lighter
       // water, to watch her go.
       if (runtime.walkLookUnder) fog.color.copy(lookUnderWater);
@@ -275,11 +394,37 @@ function NightEnvironment({
       fog.density = 0.00011;
       (scene.background as Color).set(0x02040a);
     }
-    floor.m.visible = y < -SEA_DEPTH + 2500;
+    floor.m.visible = !shelf && y < -SEA_DEPTH + 2500;
+    if (shelf) {
+      // Under the opaque sea from above: only drawn from below it.
+      shelf.m.visible = under;
+      shelf.grass.visible = under;
+    }
+    if (moonLight) {
+      // The moon at the shown clock (real seconds since her first event),
+      // lighting from where it stands once risen; brighter the higher.
+      const f = runtime.frame;
+      const m = moon
+        ? moonAt(moon, moon.utcMs + (f ? f.realT : 0) * 1000)
+        : null;
+      const up = m
+        ? Math.max(0, Math.sin((m.elevationDeg * Math.PI) / 180))
+        : 0;
+      if (m && up > 0) {
+        sunDirectionInto(m, settings.headingDeg ?? 90, moonArr);
+        moonDir.set(moonArr[0], moonArr[1], moonArr[2]);
+        moonLight.position.copy(camera.position).addScaledVector(moonDir, 2000);
+        moonLight.target.position.copy(camera.position);
+        moonLight.target.updateMatrixWorld();
+      }
+      moonLight.intensity = under || !m ? 0 : Math.min(1, up * 3) * m.lit * 0.9;
+    }
     // The lamp rides on the camera, a little above, pointing where it looks.
+    // (Her shallow shelf: the lamp full on from just under the surface,
+    // so the granite and the seagrass 10–30 m down read.)
     lamp.intensity = lookUnderLamp(
       "night",
-      under ? Math.min(1, -y / 40) * 320 : 0,
+      under ? Math.min(1, -y / (shelf ? 4 : 40)) * 320 : 0,
       runtime.walkLookUnder
     );
     lamp.distance = runtime.walkLookUnder
@@ -294,7 +439,7 @@ function NightEnvironment({
     // Walking: a faint lift so a child can see the deck.
     sky.intensity = walkAmbient(
       under
-        ? lookUnderAmbient(0.25, runtime.walkLookUnder)
+        ? lookUnderAmbient(shelf ? 0.6 : 0.25, runtime.walkLookUnder)
         : 0.9 + runtime.flash * 5,
       runtime.walkInfo?.phase === "deck"
     );
@@ -304,6 +449,18 @@ function NightEnvironment({
     <>
       <primitive object={sky} />
       <primitive object={floor.m} />
+      {shelf && (
+        <>
+          <primitive object={shelf.m} />
+          <primitive object={shelf.grass} />
+        </>
+      )}
+      {moonLight && (
+        <>
+          <primitive object={moonLight} />
+          <primitive object={moonLight.target} />
+        </>
+      )}
       <primitive object={lamp} />
       <primitive object={lamp.target} />
     </>

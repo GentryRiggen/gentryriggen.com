@@ -1,1 +1,1 @@
-export const SHIPWRECK_VERSION = "1.8.2";
+export const SHIPWRECK_VERSION = "1.9.0";

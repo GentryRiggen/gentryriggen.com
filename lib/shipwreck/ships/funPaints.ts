@@ -202,6 +202,109 @@ const LAKER_FUN: readonly FunDef[] = [
   },
 ];
 
+/** A cruise ship's lifeboats: orange (SOLAS) over a lower hull. */
+const CRUISE_BOAT = (bottom: number) => ({
+  hull: 0xe8801f,
+  bottom,
+  cover: 0xe8801f,
+});
+const CRUISE_BOTTOM = 0x5e2219;
+const CRUISE_WHITE = 0xeeeeea;
+const CRUISE_TOP = 0x18191b;
+
+/**
+ * Modern cruise ships (the Costa Concordia): hull colours and funnels the
+ * big cruise fleets of the 1990s–2010s wore, by look, not by company. The
+ * superstructure stays white in every one (only her hull to deck 3, its
+ * bottom and boot-top, the funnel and its top, and the boats change).
+ */
+const CRUISE_FUN: readonly FunDef[] = [
+  {
+    id: "fun-navy-hull",
+    label: "Navy blue hull",
+    year: 2010,
+    paint: {
+      topsides: 0x1d2a47,
+      bottom: CRUISE_BOTTOM,
+      boot: 0xe8e6df,
+      sheerLine: null,
+      funnel: 0x1d2a47,
+      funnelTop: CRUISE_TOP,
+      boat: CRUISE_BOAT(0x1d2a47),
+    },
+  },
+  {
+    id: "fun-black-red",
+    label: "Black hull, red funnel",
+    year: 2010,
+    paint: {
+      topsides: 0x18191b,
+      bottom: CRUISE_BOTTOM,
+      boot: 0xd9d6cc,
+      sheerLine: null,
+      funnel: 0xb3342a,
+      funnelTop: CRUISE_TOP,
+      boat: CRUISE_BOAT(0x18191b),
+    },
+  },
+  {
+    id: "fun-blue-white",
+    label: "Dark blue hull, white funnel",
+    year: 2010,
+    paint: {
+      topsides: 0x223a63,
+      bottom: CRUISE_BOTTOM,
+      boot: 0xe8e6df,
+      sheerLine: null,
+      funnel: 0xeeede8,
+      funnelTop: 0x2a2c30,
+      boat: CRUISE_BOAT(0x223a63),
+    },
+  },
+  {
+    id: "fun-white-blue",
+    label: "White hull, blue funnel",
+    year: 2010,
+    paint: {
+      topsides: CRUISE_WHITE,
+      bottom: CRUISE_BOTTOM,
+      boot: 0x2f5c9e,
+      sheerLine: null,
+      funnel: 0x2f5c9e,
+      funnelTop: CRUISE_TOP,
+      boat: CRUISE_BOAT(0xf1efe8),
+    },
+  },
+  {
+    id: "fun-white-red",
+    label: "White hull, red funnel",
+    year: 2010,
+    paint: {
+      topsides: CRUISE_WHITE,
+      bottom: CRUISE_BOTTOM,
+      boot: 0x8e2a22,
+      sheerLine: null,
+      funnel: 0xb8382c,
+      funnelTop: CRUISE_TOP,
+      boat: CRUISE_BOAT(0xf1efe8),
+    },
+  },
+  {
+    id: "fun-green-hull",
+    label: "Green hull",
+    year: 2010,
+    paint: {
+      topsides: 0x2e4f3c,
+      bottom: CRUISE_BOTTOM,
+      boot: 0xe8e6df,
+      sheerLine: null,
+      funnel: 0xe9e7df,
+      funnelTop: 0x2e4f3c,
+      boat: CRUISE_BOAT(0x2e4f3c),
+    },
+  },
+];
+
 function toLivery(d: FunDef, from?: string): Livery {
   return {
     id: d.id,
@@ -235,4 +338,9 @@ export function linerFun(
 /** The laker's fun paints. */
 export function lakerFun(): readonly Livery[] {
   return LAKER_FUN.map((d) => toLivery(d));
+}
+
+/** A modern cruise ship's fun paints (the Costa Concordia's). */
+export function cruiseFun(): readonly Livery[] {
+  return CRUISE_FUN.map((d) => toLivery(d));
 }

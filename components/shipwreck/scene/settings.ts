@@ -134,6 +134,19 @@ export interface SceneSettings {
   daylight?: DaylightLook;
   /** Her convoy on the horizon, scattering after the hit (`convoyMotion.ts`). */
   convoy?: true;
+  /**
+   * A night's moon (the Concordia's): the place and the UTC of her first
+   * event; the sky works it out for the shown clock (`moonPosition`),
+   * under the horizon until it rises. Missing: a moonless night.
+   */
+  moon?: { latDeg: number; lonDeg: number; utcMs: number };
+  /**
+   * A night sea's ripple strength (the shader's slope; the Titanic's glassy
+   * sea 0.18). Missing: 0.18. A look only: the sim's water is still.
+   */
+  chop?: number;
+  /** A night sky's thin cloud: the share of it covered (0–1). Missing: clear. */
+  clouds?: number;
 }
 
 // --- The night of 14–15 April 1912 (1.0's constants).
@@ -303,6 +316,127 @@ export const BRITANNIC_MINE = {
 } as const;
 export const BRITANNIC_HEADING_DEG = BRITANNIC_MINE.headingDeg;
 export const BRITANNIC_WRECK = { latDeg: 37.70139, lonDeg: 24.28389 } as const;
+
+// --- The night of 13 January 2012 (the Costa Concordia).
+
+/**
+ * Where and when she struck Le Scole: off Isola del Giglio's east coast,
+ * 42.36° N 10.92° E, at 21:45:07 CET (20:45:07 UTC) [MIT §3], on a
+ * heading of 350° (the sim's +x: lib/shipwreck/ships/concordia.ts).
+ */
+export const CONCORDIA_NIGHT = {
+  latDeg: 42.36,
+  lonDeg: 10.92,
+  utcMs: Date.UTC(2012, 0, 13, 20, 45, 7),
+  headingDeg: 350,
+} as const;
+
+/** The moon's place in the sky, with how much of its disc is lit. */
+export interface MoonAngles extends SunAngles {
+  /** 0 (new) to 1 (full). */
+  lit: number;
+}
+
+/**
+ * The moon's place in the sky: the Astronomical Almanac's low-precision
+ * lunar formulas (ecliptic longitude, latitude and parallax from their
+ * six, four and five largest terms; about 0.3° over this century), to
+ * right ascension and declination, then altitude and azimuth with the
+ * parallax taken off (topocentric; no refraction). The lit share from the
+ * moon's elongation from the sun (`sunPosition`'s ecliptic longitude).
+ * Checked against timeanddate.com's moonrise for Rome on 13 January
+ * 2012 (21:59 CET at 91°, 83.9% lit): settings.test.ts.
+ */
+export function moonPosition(
+  latDeg: number,
+  lonDeg: number,
+  utcMs: number
+): MoonAngles {
+  return moonPositionInto(latDeg, lonDeg, utcMs, {
+    elevationDeg: 0,
+    azimuthDeg: 0,
+    lit: 0,
+  });
+}
+
+const moonMemo = {
+  lat: NaN,
+  lon: NaN,
+  utcMs: NaN,
+  out: { elevationDeg: 0, azimuthDeg: 0, lit: 0 } as MoonAngles,
+};
+
+/**
+ * A night's moon at `utcMs`, worked out once however many parts of the
+ * scene ask in a frame (the sky, the sea, the light): the same object
+ * each call, overwritten when the time moves. Read it, do not keep it.
+ */
+export function moonAt(
+  moon: { latDeg: number; lonDeg: number },
+  utcMs: number
+): MoonAngles {
+  const m = moonMemo;
+  if (m.utcMs !== utcMs || m.lat !== moon.latDeg || m.lon !== moon.lonDeg) {
+    moonPositionInto(moon.latDeg, moon.lonDeg, utcMs, m.out);
+    m.utcMs = utcMs;
+    m.lat = moon.latDeg;
+    m.lon = moon.lonDeg;
+  }
+  return m.out;
+}
+
+/** As `moonPosition`, written into `out` (no allocation). */
+export function moonPositionInto(
+  latDeg: number,
+  lonDeg: number,
+  utcMs: number,
+  out: MoonAngles
+): MoonAngles {
+  const jd = utcMs / 86400000 + 2440587.5;
+  const T = (jd - 2451545) / 36525;
+  const s = (d: number) => Math.sin(d * RAD);
+  const c = (d: number) => Math.cos(d * RAD);
+  const lam =
+    218.32 +
+    481267.881 * T +
+    6.29 * s(135.0 + 477198.87 * T) -
+    1.27 * s(259.3 - 413335.36 * T) +
+    0.66 * s(235.7 + 890534.22 * T) +
+    0.21 * s(269.9 + 954397.74 * T) -
+    0.19 * s(357.5 + 35999.05 * T) -
+    0.11 * s(186.5 + 966404.03 * T);
+  const beta =
+    5.13 * s(93.3 + 483202.02 * T) +
+    0.28 * s(228.2 + 960400.89 * T) -
+    0.28 * s(318.3 + 6003.15 * T) -
+    0.17 * s(217.6 - 407332.21 * T);
+  const par =
+    0.9508 +
+    0.0518 * c(135.0 + 477198.87 * T) +
+    0.0095 * c(259.3 - 413335.36 * T) +
+    0.0078 * c(235.7 + 890534.22 * T) +
+    0.0028 * c(269.9 + 954397.74 * T);
+  const eps = 23.439 - 0.013 * T;
+  const l = c(beta) * c(lam);
+  const m = c(eps) * c(beta) * s(lam) - s(eps) * s(beta);
+  const n = s(eps) * c(beta) * s(lam) + c(eps) * s(beta);
+  const ra = Math.atan2(m, l) / RAD;
+  const dec = Math.asin(n) / RAD;
+  const gmst = 280.46061837 + 360.98564736629 * (jd - 2451545);
+  const H = gmst + lonDeg - ra;
+  const alt = Math.asin(s(latDeg) * s(dec) + c(latDeg) * c(dec) * c(H)) / RAD;
+  const az =
+    Math.atan2(-s(H), Math.tan(dec * RAD) * c(latDeg) - s(latDeg) * c(H)) / RAD;
+  // The sun's ecliptic longitude (as in sunPosition), for the phase.
+  const M = 357.52911 + 35999.05029 * T;
+  const sunLam =
+    280.46646 + 36000.76983 * T + 1.914602 * s(M) + 0.019993 * s(2 * M);
+  const elong = Math.acos(c(beta) * c(lam - sunLam));
+  out.elevationDeg = alt - par * Math.cos(alt * RAD);
+  out.azimuthDeg = ((az % 360) + 360) % 360;
+  out.lit = (1 - Math.cos(elong)) / 2;
+  return out;
+}
 
 /** Day scenes that are drawn in daylight (the afternoon and the morning). */
 export function isDaylit(s: Pick<SceneSettings, "timeOfDay">): boolean {
@@ -527,5 +661,27 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
     coast: true,
     iceberg: false,
     headingDeg: BRITANNIC_HEADING_DEG,
+  },
+  // 21:45 on 13 January 2012 off Giglio (spec R23): the Titanic's night
+  // look with the island close by, a light north-east chop (17 knots,
+  // force 4 at most [MIT §3]: "partly cloudy"), a thin broken cloud, and
+  // the waning moon rising in the east at about 22:05 (`moonPosition`),
+  // lighting the sea away from the island. Under it, the Tyrrhenian's
+  // dark blue water.
+  concordia: {
+    timeOfDay: "night",
+    sun: null,
+    fog: `#${NIGHT_FOG.getHexString()}`,
+    underwaterFog: "#031a26",
+    coast: true,
+    iceberg: false,
+    headingDeg: CONCORDIA_NIGHT.headingDeg,
+    moon: {
+      latDeg: CONCORDIA_NIGHT.latDeg,
+      lonDeg: CONCORDIA_NIGHT.lonDeg,
+      utcMs: CONCORDIA_NIGHT.utcMs,
+    },
+    chop: 0.4,
+    clouds: 0.3,
   },
 };

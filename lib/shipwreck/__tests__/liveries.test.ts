@@ -19,6 +19,7 @@ describe("each ship's liveries (R28)", () => {
     expect(ids("carpathia")).toEqual(["dazzle-1918", "cunard-1912"]);
     // Her own names for her two looks (the model's `BritannicPaint`).
     expect(ids("britannic")).toEqual(["hospital", "liner"]);
+    expect(ids("concordia")).toEqual(["costa-2012"]);
     for (const id of SHIP_IDS) {
       const spec = getShip(id);
       const fun = funLiveries(spec);

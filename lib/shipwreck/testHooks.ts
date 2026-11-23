@@ -26,7 +26,9 @@ export interface ModelViewOptions {
     | "break-close"
     | "boat-deck"
     | "bow-port"
-    | "gantry";
+    | "gantry"
+    | "funnel"
+    | "rock";
   stage?: "day" | "night";
   /**
    * A livery id (repainted live, no rebuild), e.g. "cunard-1907" or the
@@ -153,14 +155,15 @@ export interface ShipwreckGameHooks {
    * portholes are open, for a storm ship the storm ("real" | "calmer" |
    * "worse"), and for a mine ship whether every watertight door is shut
    * and her engines stopped at once (default: neither, as the real
-   * morning).
+   * morning), and for a rocks ship whether the wind blows her out to sea.
    */
   startWhatIf(
     ids: string[],
     portholesOpen?: boolean,
     storm?: string,
     doorsClosed?: boolean,
-    enginesStopped?: boolean
+    enginesStopped?: boolean,
+    toSea?: boolean
   ): void;
   /** "sank" | "floated" | "broke-in-two" once the run is done, else null. */
   getOutcome(): string | null;

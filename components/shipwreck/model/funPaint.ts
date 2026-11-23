@@ -40,11 +40,21 @@ export function withFunPaint(base: ShipRecipe, fun: FunPaint): ShipRecipe {
     },
     dazzle: false,
   };
+  // A mark only her real paint carries (the Concordia's "C") comes off.
+  const marked = base.funnels.some((f) => f.emblem?.realOnly);
   return {
     ...base,
     paint,
     blocks: base.blocks?.map((b) =>
       b.wallColor === oldTopsides ? { ...b, wallColor: fun.topsides } : b
     ),
+    ...(marked && {
+      funnels: base.funnels.map((f) => {
+        if (!f.emblem?.realOnly) return f;
+        const rest = { ...f };
+        delete rest.emblem;
+        return rest;
+      }),
+    }),
   };
 }

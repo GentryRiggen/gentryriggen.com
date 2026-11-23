@@ -286,7 +286,10 @@ describe("the Edmund Fitzgerald's data", () => {
     expect(fitzgerald.descentTimeScale).toBe(1);
     // The liners keep theirs (their golden runs are unchanged); the
     // Carpathia's way down is also in real time (ruling R22).
-    for (const id of SHIP_IDS.filter((k) => k !== "fitzgerald")) {
+    // The Concordia's one funnel never falls either (`falls: false`).
+    for (const id of SHIP_IDS.filter(
+      (k) => k !== "fitzgerald" && k !== "concordia"
+    )) {
       expect(SHIPS[id].funnels.every((f) => f.falls === undefined)).toBe(true);
       expect(SHIPS[id].descentTimeScale).toBe(
         id === "carpathia" ? 1 : undefined

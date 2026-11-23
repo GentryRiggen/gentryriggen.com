@@ -160,6 +160,9 @@ const SCENES = [
   "shipwreck-britannic-blast",
   "shipwreck-britannic-boats",
   "shipwreck-britannic-grounded",
+  "shipwreck-concordia-salute",
+  "shipwreck-concordia-drift",
+  "shipwreck-concordia-aground",
 ] as const;
 
 test.afterAll(() => {
@@ -572,7 +575,8 @@ test.describe("Shipwreck budget", () => {
         !s.startsWith("shipwreck-lusitania") &&
         !s.startsWith("shipwreck-fitzgerald") &&
         !s.startsWith("shipwreck-carpathia") &&
-        !s.startsWith("shipwreck-britannic")
+        !s.startsWith("shipwreck-britannic") &&
+        !s.startsWith("shipwreck-concordia")
     )) {
       const m = JSON.parse(
         fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")
@@ -804,6 +808,61 @@ test.describe("Shipwreck budget: the Britannic", () => {
     );
     for (const scene of SCENES.filter((s) =>
       s.startsWith("shipwreck-britannic")
+    )) {
+      const m = JSON.parse(
+        fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")
+      ) as Measurement;
+      expect(m.calls, `${scene}: draw calls`).toBeLessThanOrEqual(160);
+      expect(m.triangles, `${scene}: triangles`).toBeLessThanOrEqual(450_000);
+    }
+  });
+});
+
+test.describe("Shipwreck budget: the Costa Concordia", () => {
+  test.setTimeout(420_000);
+
+  test("her night by Giglio at the top tier: lit past the island, the drift, on her side", async ({
+    page,
+  }) => {
+    await page.goto("/shipwreck?scene&ship=concordia&quality=high");
+    await page.waitForFunction(
+      () => window.__shipwreck?.getState?.().done === true,
+      null,
+      { timeout: 300_000 }
+    );
+    const at = async (setup: () => void, settleMs = 2500) => {
+      await page.evaluate(setup);
+      await page.waitForTimeout(settleMs);
+      return measure(page, "__shipwreckRenderInfo");
+    };
+    record(
+      "shipwreck-concordia-salute",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.pause!();
+        h.seek!(-20); // lit from end to end, passing the island
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-concordia-drift",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.seek!(2900); // 22:33: the blackout, listing about 10°, the harbour behind
+        h.setCamera!("cinematic");
+      })
+    );
+    record(
+      "shipwreck-concordia-aground",
+      await at(() => {
+        const h = window.__shipwreck!;
+        const e = h.getEvents!().find((x) => x.kind === "floating-steady")!;
+        h.seek!(e.t + 5); // on her side at 65°, Giglio Porto's lights
+        h.setCamera!("cinematic");
+      })
+    );
+    for (const scene of SCENES.filter((s) =>
+      s.startsWith("shipwreck-concordia")
     )) {
       const m = JSON.parse(
         fs.readFileSync(path.join(RESULTS_DIR, `${scene}.json`), "utf8")

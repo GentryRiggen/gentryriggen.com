@@ -48,6 +48,8 @@ while she is afloat and in one piece.
 | `headway.ts`      | `headwayRun`: how far her way carries her over a step (decaying, 1.1, steady, 1.3, or a speed profile, 1.4); `speedAt`, `headingAt` (her turn), `headwayOf` (engines stopped).                    |
 | `doors.ts`        | Watertight doors and torn bulkheads between neighbouring compartments (1.4): `openDoors`, `doorLinks`, `doorFlow`.                                                                                |
 | `mine.ts`         | A mine ship's What-if (1.4): `mineOpenings` (her real spot is her real damage; any other spot one hole of the same area, in its void if it has one), `holdsRealMine`.                             |
+| `seabed.ts`       | A floor that varies with position (1.9): `floorAt` (the seabed's, or the flat floor), `shoreDistance`, `profileDepth`, `seabedDepth`, `floorTopNear` (a bound for skipping the lookup).           |
+| `aground.ts`      | The rest aground (1.9, a rule): `agroundBegins`, `beginAground`, `stepAground`.                                                                                                                   |
 | `waveRide.ts`     | Her ride on the waves (1.3): `waveRide` (quasi-static heave, pitch, roll on the wave field), `rideDz`, `rideWeight`; the deck openings and the scene share it.                                    |
 
 `scripts/shipwreck-sim.ts` prints a run's timeline:
@@ -60,7 +62,10 @@ names What-if spots (as the bare ids do) and `--no-finisher` leaves out
 her third torpedo (`FINISHER_SPOT`), from her real spots when none are
 named. `--ship=britannic` runs her morning (a line a minute);
 `--doors-closed` shuts every watertight door and `--engines-stopped` stops
-her engines at the mine (no run for Kea).
+her engines at the mine (no run for Kea). `--to-sea` drifts a ship with a
+drift path by `headway.pathToSea` (the What if "blown out to sea").
+`--ship=concordia` runs her real night (her clock in real time), with
+`--to-sea` blown out to sea, or `wtc5 wtc6` for a What if.
 
 ## The model
 
@@ -563,6 +568,131 @@ collision. Scripted events fire only while she is afloat and whole;
 
 **Lights.** `power` is 1, then from `lights-flicker` a fixed pattern of dips
 (a hash of the time, ten frames a second), then 0.
+
+## A coast: seabed, drift path, heeling moments, blackout, rest aground (1.9)
+
+Built for the Costa Concordia (her figures and sources come with her data,
+in "The Concordia's data and sources"). Each piece is an optional
+`ShipSpec` field, `undefined` for every earlier ship, and gated on it: the
+Titanic, Lusitania, Fitzgerald, Carpathia and Britannic goldens hold to
+1e-9 (`*Golden.test.ts`).
+
+- **The seabed** (`seabed`, physics of contact on a stated floor). Depth
+  from the distance offshore: `shore` is a polyline in the earth frame
+  (x along her heading at the first event, y to port, origin her midships
+  then), `seaSide` says which side is sea; the distance is the nearest
+  segment's by projection, signed by side (at a corner, by both segments'
+  normals). `profile` gives [metres offshore, depth] pairs, linear, held
+  past its ends (inshore of its first point: its first depth). A rock
+  bump (`rocks`) at r from its centre inside `radiusM` lifts the floor to
+  `topDepthM + (r/radiusM)²·(d − topDepthM)`, d the profile's depth there
+  (so it meets the profile at its edge). `floorAt(spec, x, y)` is pure and
+  allocation-free; without a seabed it is −`seaDepthM` exactly. The floor
+  contact afloat (1.1's springs, dampers and friction) looks up the floor
+  under each hull vertex at its earth x, y (her origin plus its ship x, y
+  turned by her heading; pitch and roll's few metres of shift are left
+  out), skipped while her hull is clear of the highest floor within reach
+  (`floorTopNear`). The fall, the landing and R22's stern-down test read
+  the floor under the body's lowest point.
+  Two speed-ups change no result (the Concordia's tracks are bit for bit
+  the same with and without them): `shoreDistance` scans only the shore
+  segments that can be nearest in the point's 25 m cell (worked out once
+  per cell: those within the cell's diagonal of the nearest from its
+  centre); and the floor contact and the rest aground skip a hull vertex
+  whose clearance over the floor at its last lookup is more than the
+  floor can have risen since (`floorNear`: the distance it has moved ×
+  `seabedSlopeNear`, the profile's steepest slope plus each nearby rock
+  bump's rise over its radius, renewed every 10 m). A skipped vertex is
+  one whose depth into the floor is ≤ 0, which the contact ignores
+  anyway. Before them the Concordia's real night took about 15 s, nearly
+  all of it the floor under every vertex in each 0.6 s step aground.
+- **The hold on the floor** (a rule, not physics). On a seabed or a drift
+  path, once her way is lost on the floor her origin's earth x, y are held
+  where she touched: no sway, no slide.
+- **The drift path** (`headway.path`, a rule, not physics, as the
+  Britannic's `turn` is). [shown s, earth x, earth y, heading°] points;
+  her origin follows a Catmull-Rom curve through them (each end point its
+  own outer neighbour), her heading turns linearly between points the
+  shortest way round; both hold past the ends. Pose and position only:
+  heave, pitch, roll and the flooding never see it (her 0.02 m/s drift is
+  off; leeway is folded into the path's heading and positions). Her way
+  through the water (the ram head's speed) is the path's speed. Lost for
+  good at her first floor touch. While the path still carries her (before
+  its last point, her way not lost) she never freezes as steady: a frozen
+  hull would glide on through rocks and shore without touching them. `SimOptions.toSea` follows `pathToSea`
+  instead (the same points until it parts; the curve agrees up to the
+  second-to-last shared point).
+- **Heeling moments** (`heel`, physics with cited inputs). `wind`: M =
+  ½ ρ_air C_d A V² cos β |cos β| h, ρ_air 1.225 kg/m³, β the wind's angle
+  off her beam from her heading (`fromDeg` is where it comes from, + to
+  port of her heading at the first event); it acts in the roll equation
+  like any moment, during settling too (she starts heeled by it). The
+  projected area is not reduced with heel (stated). `rock`: a mass (t) at
+  a ship-frame point from shown `t`, part of her weight and centre of mass
+  from then (its own buoyancy is the data's to state), in the floating
+  body whose length holds its x (after a break, that part only). Tests:
+  `heelMoments.test.ts` (static angle M/(Δ·g·GM) within 5%).
+- **The blackout** (`blackout`, a rule, its threshold calibrated).
+  `lights-out` the step the named compartment's water is `depthM` deep,
+  in place of the 1.0 dynamo rule; the pumps stop with the lights (as
+  before); `SimFrame.power` after it is `emergencyLight` (her batteries'
+  emergency lighting), never 0. A `compartmentId` that is none of hers is
+  a data error: the run throws.
+- **The rest aground** (`aground`, a rule, not physics, like `wreck`). A
+  whole floating body touching the floor with its way lost and listed at
+  least `minListDeg` toward the side of `restDeg` logs `aground`; from
+  there her roll follows `pace` ([real s, deg]) starting from wherever
+  physics left her (points she is already past are skipped), never back,
+  to `restDeg`. Each step she rolls on the hull point lowest then (its
+  earth x, y kept) and is re-seated so her deepest point is as deep in the
+  floor as when the rule began (the Lusitania's `seated` rule); pitch,
+  heading and the water aboard stay (no more flooding). At `restDeg` it
+  logs `floating-steady` and the run ends, outcome `"aground"` (a lost
+  ship that did not go under; also at `endT` once the rule has begun). A
+  pace that stops short of `restDeg` rests where it ends (at its last
+  time), so a run never grinds on to `endT` at the slow aground step.
+- **Time aground** (`agroundTimeScale`, a rule of presentation). Once
+  `aground` fires, shown time runs that many times slower than real (as
+  `descentTimeScale` does under water); frames carry `realT`.
+- **Water in the superstructure** (`boxWaterAtSide`, physics). Water in a
+  box weighs at its own transverse centre (the low side it came in by),
+  not on the centre line (the 1.0 rule: cabins cut it up). With it a box
+  flooded to the sea's level is buoyant only by the 5% water cannot fill.
+  `superstructureGz.test.ts`: a 14 m box hull with a 30 m deckhouse along
+  her whole length, 0–90° in 10° steps, matches the analytic GZ of its
+  section within 3% (or 3 cm), dry and flooded; without the flag the
+  flooded deckhouse keeps up to 1.5 m of false righting lever past 40°.
+- **Her spill along the bulkhead deck** (`spillBreadth`, physics with a
+  stated input). The share of the breadth at a bulkhead top that water
+  spills across, in place of SPILL_BREADTH (0.1) for her: her closed
+  splashtight doors are the weir.
+- **Weight moved across her** (`heel.muster`, physics with an estimated
+  input). A heeling moment massT·g·(−y), ramped in from `fromT` to `toT`:
+  her people at their muster stations and her boats swung out on one
+  side. A moment only; no weight is added.
+- **Her drift only without power** (`headway.pathWhenOpen`, a rule). The
+  drift path is followed only in a run whose hull openings reach one of
+  the named spaces (her motor and switchboard rooms); any other run keeps
+  her way (`startMs`, straight on).
+- **A rocks ship's door, her real night's** (a rule). Her `kind: "door"`
+  doors are open only in a run holding all of her real openings (a hand
+  opened hers that night); a What if keeps them shut.
+- **A rocks ship's What if** (`gash`). A compartment the real night did
+  not tear gets `gash` (side, heights, area) at its middle, in place of the
+  iceberg's 0.2 m² on the starboard side.
+- **Steady, for a rocks ship.** Her gashes and door trade water with the
+  sea in a slow cycle around her level, as a torpedo's holes do: the
+  averaged flow counts toward `floating-steady` (the torpedo and mine
+  ships' test).
+- **Scripted events in real time** (`agroundTimeScale` ships). Their
+  `scripted` times are real seconds after the first event (shown time runs
+  fast once she is aground); every other ship's stay shown seconds.
+- **A rocks ship's strike and boats** (`cause: "rocks"`, rules). A run
+  with no hull opening never struck: no `collision` event (she sails
+  safely past). Her `scripted` events (her boats) follow her abandoning
+  ship, which only her drift brings (her power lost: `pathWhenOpen`); a
+  run that keeps her power sails on and lowers none. Every other cause
+  keeps its `collision` and its scripted events in every run.
 
 ## API notes
 
@@ -1606,6 +1736,229 @@ minListDeg: 10 }`: she lies on her starboard side [WP, WSH].
   GN·m (9:03:19, as her bow strikes); at 5.3 GN·m she breaks 21 s before
   the bow lands. The top of the range: a concern (see "Known limits").
 
+## The Concordia's data and sources
+
+Sources (keys as in the spec): the Italian Marine Casualties
+Investigative Body's report, _Cruise Ship Costa Concordia, Marine
+casualty on January 13, 2012_ (2013), gCaptain's mirror, page numbers the
+report's own [MIT]; Safety at Sea's flooding simulation (5 Sep 2012) as
+the report quotes it, §4.7.9 [SaS]; Wikipedia, "Costa Concordia
+disaster" [WPD], "Costa Concordia" [WPS], "Parbuckle salvage" [WPP];
+EMODnet Bathymetry's depth service (rest.emodnet-bathymetry.eu, cells
+from the Italian Hydrographic Institute's survey IIM_4475-1) [EMO];
+OpenStreetMap's coastline of Isola del Giglio (© OpenStreetMap
+contributors, ODbL) [OSM]. Where they disagree:
+
+- **Particulars (R3).** LBP 247.4 m, beam 35.5 m, 114,147 GT [MIT §2.1];
+  LOA 290.2 m [WPS]. Her departure draught 8.12 m even keel [MIT §4.7.2],
+  56,600 t [MIT §4.7.1].
+- **Deck 0 at 11.2 m, not 14.18 m.** [MIT p.103]'s shell expansion
+  labels the decks "Deck C 2200, Deck B 5600, Deck A 8400, Deck 0 11200
+  da L.B." (mm above the base line), and the 8.12 m waterline is drawn
+  just under deck A. [MIT §2.1] lists "Height: 11.2 mt, Draft: 14.18 mt"
+  (the two labels swapped: 14.18 m is no draught). The spec read 14.18 m
+  as deck 0; we take deck 0 (the bulkhead deck, every bulkhead's top) at
+  11.2 m, the figure's, and 14.18 m as deck 1 (the register's depth).
+  It matters: with 11.2 m the bulkhead deck goes under aft as she sinks
+  about 2 m and trims about 1.2° ([SaS] keypoint 10: heave 2.25 m, pitch
+  1.19°, "the flood water on the bulkhead deck can be clearly seen"); at
+  14.18 m it never would. Decks 2–14 every 2.8 m above deck 1 (deck C to
+  A's spacing; stated): deck 14 at 50.6 m, her top deck about 52 m up.
+- **Her hull.** No lines plan is public. Stations (61) from a stated
+  form: flat bottom, superellipse sections (exponent 9 in the parallel
+  midbody, x −52 to +26 m, finer to the ends), the run's bottom rising
+  from x −78 m to 9.6 m at the transom (x −139 m), a forefoot rising
+  from x 104 m to the waterline's end at 128 m, then a raked stem to its
+  top at deck 3, x 151.2 m (LOA 290.2 m from the transom); the deck
+  flaring to the beam aft of x 50 m. The fullness is set so she
+  displaces 56,764 t at 8.12 m (+0.3%; Cb 0.777 on LBP: derived from
+  the displacement, not from a plan). LCB −5.80 m, KM 16.87 m. The
+  spec's Cb band of 0.68–0.72 was wrong: 56,600 t at 8.12 m on LBP
+  247.4 m and beam 35.5 m needs Cb = 56,600 / (1.025 × 247.4 × 35.5 ×
+  8.12) ≈ 0.774.
+- **Stability (R3).** No source gives her intact GM. KG 14.6 m: GM 2.27
+  m, inside the spec's 1.5–3 m (cruise ships of her size sail about 2–3
+  m). [MIT §4.7.10]'s NAPA study (flooding stages, not in time) gives
+  for WTC 4–8 flooded (DS04-08) GM 1.03 m but no range of stability and
+  no area under the GZ curve (the margin line 0.84 m under, progressive
+  flooding aft of frame 44): "a stability inadequacy and the ship's
+  capsizing". The spec's "no range of stability" and the GM are both
+  right: a positive GM upright with the lever curve gone at once. Three
+  neighbouring compartments: GM 0.67–1.19 m, every criterion met; four:
+  4–7 range 0.09° (GM 0.91 m), 5–8 margin line under (GM 0.785 m). Ours,
+  flooded, loses about 1.5–2 m of GM to WTC 4 and 7's free surfaces
+  while they fill. TCG 0 (no seed: the
+  starboard list comes from the wind and her muster, below). LCG −5.80
+  m, over the centre of buoyancy (even keel).
+- **Frames and subdivision (R4).** Frames 0.725 m apart in the damaged
+  zone [MIT §4.7.2]; frame 0 taken at the aft perpendicular and the
+  spacing kept end to end (stated: the report gives neither; its
+  flooding plans put the damaged block about a sixth to two fifths of
+  her length from the stern, as this does). WTC 4–8 at the side-shell frames of [MIT
+  §4.7.6]'s table and Figure 33: 44, 60, 76, 100, 116, 140 (x −91.8,
+  −80.2, −68.6, −51.2, −39.6, −22.2 m). The rest are in no text we can
+  read: WTC 1–3 aft of frame 44 (bulkheads at frames 8 and 24: steering
+  gear, stern thrusters, stores) and WTC 9–19 forward to a collision
+  bulkhead at frame 324 (about 5% of LBP aft of the FP), bulkheads every
+  18 frames (13 m) and 20 near the bow, each inside the two-compartment
+  standard (her damage standard is 10.71 m [MIT §4.7.2]; [MIT §4.7.7]
+  names pairs to 18/19). 19 in all. Every bulkhead to deck 0 (11.2 m).
+  Kinds: WTC 4–8 machinery (permeability 0.85), the rest holds (0.75),
+  the ends peak/stern (0.95).
+- **The gash (R5).** [MIT §4.7.2]: deformed from 330 mm aft of frame 52
+  to 413 mm forward of frame 124 (52.9 m); the main breach frames 52–101
+  (35.9 m), from the bilge strake to 1 m under the waterline; tear A
+  across frame 116, 1.12 m × 0.05 m, into WTC 8's double bottom; WTC 4, 5
+  and 6 opened by "some square metres" [§4.7.6], WTC 7 only through its
+  ladder space ("progressively"). One opening per compartment, port side,
+  2.2 m (deck C, "well over two metres from the keel line" [§4.7.1]) to
+  7.12 m (1 m under her waterline), at the middle of its torn frames; tear
+  A at 0.6–1.6 m. Each opens as the rock passed it running aft (frame
+  124 at t = 0, frame 52 at 7 s: her 15.5 kn falling to 8.3, about 7.5
+  m/s). Areas: calibration. The 97 t rock that stuck at frame 52 stays in
+  her side (R21): its submerged weight, 97 × (1 − 1.025/2.7) = 60.2 t
+  ([SaS]: density 2.7 t/m³, 10.7 m to port), from 213 s [SaS], at frame
+  52, 4 m up.
+- **The door (R6).** The main watertight door into the motor room (WTC
+  5 → 4) was opened at 21:45:46 and WTC 4 flooded through it [SaS
+  keypoint 1]; every other door was closed [MIT §4.7.3]. Ours is open
+  from the strike (39 s early), at deck C, its open area calibrated
+  (below). A hand opened it that night: a What if that is not her whole
+  real damage keeps it shut (a rule: `run.ts`; each real hole is matched
+  by its compartment and x, so a copied list of her holes is her real
+  night).
+- **Her pumps.** Four bilge pumps, 240 + 265 + 240 + 240 m³/h [MIT
+  §4.7.7]: `pumpsM3s` 0.27; they stop at the blackout (none worked [MIT
+  §4.7.7]).
+- **Mooring decks.** "Some flooding of Deck 1 at the aft mooring deck"
+  at 22:54 [SaS keypoint 10]: a row of openings at deck 1 + 1 m over
+  her after 20 m, both sides (`portholes`), 0.03 m²/m (about 0.6 m² a
+  side: a few fairleads; calibrated so they wet as she lies over, not
+  before).
+- **The blackout (R7).** At 21:45:58 (51 s) the generators and engines
+  were lost; the emergency generator ran only in fits; batteries kept the
+  emergency lighting [MIT §3, §4.9]. `blackout` on WTC 6 (the main
+  switchboard room), depth calibrated; `emergencyLight` 0.25 (a dim,
+  constant level: a presentation rule).
+- **Weather.** Speed from [MIT §2.3] ("WIND 17 KNOTS E-NE"); direction
+  from [SaS] as [MIT §4.7.9] quotes it ("wind (NE 18 knots)"): from 45°
+  (`fromDeg` −55, 55° to starboard of her 350°) at 17 kn. ([MIT]'s E–NE
+  would be about 67°; [SaS]'s NE is the one its moments used.)
+- **Her earth frame and the coast (R8, R9).** Origin her midships at the
+  strike, x along 350°, y to port (260°). Latitude and longitude to
+  metres by a local equirectangular projection about 42.36° N (radius
+  6,371,008.8 m; under a metre's error over 3 km), in the data file
+  (`concordiaEarth`). Her midships at the strike: the east tip of Scola
+  piccola (42.3556634° N, 10.9302657° E [OSM]), the easternmost of Le
+  Scole, at her port side at frame 124 (where the tear began): 33.8 m
+  forward of it along 350° and 17.75 m to starboard. The shore: [OSM]'s
+  coastline from 42.343° N to Punta del Fenaio (her north cape, where
+  the coast turns west, so the sea beyond the island is sea), simplified
+  to 20 m (Ramer–Douglas–Peucker), 83 points. Le Scole's four islets as
+  rock bumps (their [OSM] centroids and outline radii, tops at 0 m).
+- **The seabed (R9).** Depth by distance offshore, linear: 0 m at the
+  shore, 8 m at 25 m, 18 m at 70 m, 28 m at 150 m, 45 m at 200 m, 66 m
+  at 260 m, 78 m at 300 m, 98 m at 460 m, 104 m at 760 m, 110 m at 1.2
+  km, 146 m at 2 km, 150 m beyond. From: [MIT §3] 27 m where she lay
+  (04:39) and about 100 m where the anchor was tried at 22:13–22:17
+  [§4.6]; [WPD] about 20 m; [WPP] the 30 m ledge; [WPS] a 70 m trough
+  beside her; [EMO] cells 42–43 m at 105–134 m offshore, 50–72 m at about
+  200 m, 86 m at 295 m, 97–102 m at 460–760 m, 109 m at 1.2 km, 146 m at 2
+  km (EMODnet's 115 m cells smear the shelf she lay on, so the inner
+  profile follows [MIT] and [WPD]). The 22:58 fix lies 141 m offshore:
+  21 m deep. Two rock spurs she lay on [WPP] under her starboard quarter
+  and bow where her drift brings her (earth (1156, 499) and (1026, 574),
+  25 m radius, tops 14.5 and 18 m; `SPURS` in the data): not surveyed
+  (no public survey gives them), placed. Their tops are a calibration,
+  shallower than every cited depth (20 m [WPD], 27 m [MIT], the 30 m
+  ledge [WPP]): the 14.5 m spur sets her first touch at 22:39, where her
+  starboard bilge, 12–13° over and down by the stern, reaches; with its
+  top at 15 m she touches only at 23:06. Because of it her lowest point
+  at rest is about 15 m, and the test band for it was widened from the
+  spec's 20–32 m to 12–32 m (below, "Her lowest point at rest"). Contact normals are vertical (no slide: a stated limit;
+  she did not slide).
+- **Her drift (R8, a rule).** At 21:45:07 she struck at 15.5 kn; "the
+  speed decreases to 8.3 knots, loses propulsion ... and adrift proceeds
+  with direction of 350°" [MIT §3]; at 22:11 "practically motionless
+  (0.3 knots), begins then to drift and to shift the bow to starboard,
+  heading SW for the combined action of wind, NE, and rudder" [MIT §3];
+  "at 22:12 ... in position 42°22′24″ N 010°55′36″ E" [MIT §3]; touched
+  aft about 22:39 [MIT §2.4.5]; 22:58 "practically still in its final
+  position", 42°21′50.76″ N 010°55′17.40″ E [MIT §2.4.5]. The path:
+  her way decaying exponentially from 8.3 kn to 0.3 kn at 22:11 along
+  350° (scaled 1.5% so it reaches the 22:12 position, which lies on her
+  350° line 1.95 km on); her bow round to starboard through east and
+  south to 200° (yaw −210°) by 22:35; a drift back south-south-west to
+  the coast by Punta Gabbianara at about 0.6 m/s, 55 m short of the 22:58
+  fix at 22:40, ending at the fix at 22:58. A point a minute before the
+  strike (on her line at 8.3 kn) shapes only the curve's start: her
+  speed from t = 0 is the 8.3 kn. **The 22:14 AIS fix is not on it**
+  (42°22.1′ N 010°55.32′ E [MIT §2.4.5]): it lies 1.47 km along and 442
+  m to port of the strike, 560 m south and 470 m west of the 22:12
+  position, which she could not cover in two minutes at 0.3 kn; the
+  22:12 position agrees with her decaying way (1.92 km in 26 minutes from
+  8.3 kn), so we keep it and leave the AIS one out (the spec asked for the
+  AIS fix: the test checks the 22:12 one, within 100 m). Her drift is
+  hers only in a run that opens WTC 5 or 6 (`pathWhenOpen`: her power;
+  a rule): any other run keeps her way, 15.5 kn on 350°.
+- **Blown out to sea (R16).** `pathToSea`: hers to 22:15 (a shared point
+  at 27.5 min, so the curves agree past 26 min), then an east-south-east
+  drift into deep water at her drift's pace, her bow round to the east,
+  ending 2.4 km offshore in 147 m.
+- **The heeling moments (R10).** Wind: ½ ρ_air C_d A V² cos β |cos β| h
+  with A 10,500 m² (her profile above the 8.12 m waterline: hull to deck
+  3 about 3,400 m², superstructure to deck 11 about 5,700 m², the top
+  tier and funnel about 1,400 m²), h 23.5 m (its centroid 19.4 m over the
+  waterline, plus half her draught to the centre of the underwater
+  side), C_d 1.0 (range 1.0–1.2). The rock: above. **Her muster** (new,
+  `heel.muster`): 4,229 people aboard [MIT] at about 75 kg is 317 t; we
+  take 230 t of weight shifted 15 m to starboard (3,450 t·m), ramped in
+  from 21:55 to 22:40. The arithmetic behind it (estimates, no source
+  counts either): about half her people, 2,100 at 75 kg = 159 t, from
+  about her centreline to the starboard boat stations on deck 4 at her
+  side, 15 m out: 2,380 t·m; her 13 starboard lifeboats [MIT §4.5],
+  about 15 t each with their gear (assumed), swung out about 4 m: 780
+  t·m; together about 3,160 t·m, 210 t at 15 m (190 t with a lighter
+  boat or a shorter outreach). 230 t is 9% over that, inside the 150–250
+  t range; the calibration table says why it is not 190 t. [MIT §4.7]: "most
+  probably also due to the passengers assembling on the starboard side
+  and to the life-boats outreach on the same side, the ship started
+  listing to the starboard side". An estimate (range 150–250 t): no
+  source counts who stood where. It replaces the spec's `tcg` seed (R10),
+  which would list her to starboard from the start, where she listed to
+  port first.
+- **The spill along deck 0** (new, `spillBreadth` 0.02, physics). The
+  1.0 spill lets water over a bulkhead top across 10% of the breadth (a
+  liner's passages). Her deck 0 is crossed by nine splashtight doors,
+  closed, leaking until they give way [MIT §4.7.4, SaS]: one or two about
+  1 m wide on each bulkhead, so 2–5% of her 35.5 m if open, less closed;
+  0.02. At 0.1 her deck 0 carried the sea aft into WTC 1–3 within 25
+  minutes and she held 80,000–100,000 t by 22:30, sinking by the stern
+  (the report: "over 20,000 tons" at the epilogue).
+- **Boats (R19).** 26 lifeboats [MIT §4.5], 13 a side on deck 4, from x
+  −64 to +76 m (the model task checks the photographs); starboard ones
+  lowered from 22:55, one every 2.5 min, then port from 23:20; three port
+  boats (the forward three: assumed) never lowered (23 of 26 used [MIT
+  §2.4.6]). Her `scripted` times are real seconds (shown time runs 6×
+  once she is aground: run.ts compares them with real time for an
+  `agroundTimeScale` ship).
+- **Girder (R24).** IACS UR S11 wave moments for L 247.4 m, B 35.5 m, Cb
+  0.77: C = 10.75 − ((300 − L)/100)^1.5 = 10.37; hogging 190·C·L²·B·Cb =
+  3.3 GN·m, sagging 110·C·L²·B·(Cb + 0.7) = 3.65 GN·m; still water of the
+  same order; ultimate about 1.5× their sum: hog 10 GN·m, sag 11 GN·m
+  (range 8–13). She does not break (she did not).
+- **Superstructure.** Boxes above deck 3: the aft terraces to deck 9
+  (x −138 to −112 m), the main block to deck 11 (x −112 to 112 m), the top
+  tier with the pools, spa and sports deck to deck 14 (x −70 to 96 m, 14
+  m either side of the centre line), the forward block to deck 8 (x 112
+  to 128 m): coarse, from photographs (the model task refines the look;
+  the sim needs only their volume). One funnel at x −78 m, deck 14 to 10
+  m above, `falls: false`.
+- **The rest aground (R11, R12).** `aground`: rest 65° (the salvors'
+  rotation [WPP]), at least 10° to starboard to begin, the report's pace
+  30° at 23:11:24, 40° at 00:00, 65° by 00:41 [MIT §3, §4.6];
+  `agroundTimeScale` 6. `wreck` 65°/10° for a deep-water landing (R16).
+
 ## Calibration
 
 Everything tuned is a physical quantity; no timing is scripted.
@@ -1893,6 +2246,77 @@ and a whole hull that falls onto its after half settles as a stern does
 (`sternFirst`; `seabed.test.ts` on a box). Her bow-first end no longer
 uses `sternFirst`. See "The way down".
 
+### The Concordia's calibration
+
+Every value below is a physical quantity inside its stated range ("The
+Concordia's data and sources"); the drift path, the blackout threshold,
+the rest aground and the emergency light are rules. Calibrated against
+the report, in order: the fill times (WTC 5 about 3 min, WTC 6 about 7,
+WTC 4 and 7 about 40 [MIT §4.7.1]), the blackout at 51 s, the water
+aboard (over 20,000 t [MIT §4.7.1]; SaS keypoint 10: heave 2.25 m, pitch
+1.19° at 22:54), the list (port first, over to starboard 22:10–22:15,
+10° at 22:30 [MIT §1, §3]) and her stern touching about 22:39.
+
+"Full" in the tests: a compartment's water level with the sea outside
+(within 0.25 m) or 95% of its volume under deck 0, whichever comes
+first. The spec's "95% of its volume under deck 0" alone is reached only
+once the sea outside is over deck 0 there: WTC 5 and 6 stand level with
+the sea at 2.8 and 8.0 min, but hold 95% under deck 0 only at 14 and 19
+min, when she has sunk and trimmed enough.
+
+| Parameter              | Value                                 | Range, why                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gash, WTC 5            | 5.0 m²                                | "Some square metres" [MIT §4.7.6]. Level with the sea in 2.8 min (real about 3). 10 m²: 1.4 min.                                                                                                                                                                                                                                                                                                                          |
+| Gash, WTC 6            | 2.5 m²                                | The same. Level in 8.0 min (real about 7). 7 m²: 2.9 min.                                                                                                                                                                                                                                                                                                                                                                 |
+| Gash, WTC 4            | 0.1 m²                                | The rock stuck in it at frame 52 (R21): a small gap around it. With the door, full at 32.5 min.                                                                                                                                                                                                                                                                                                                           |
+| Gash, WTC 7            | 0.28 m²                               | "Through the ladder space ... progressively" [MIT §4.7.6]. Full (95% under deck 0) at 45.3 min; 0.25 m²: 49.5 min.                                                                                                                                                                                                                                                                                                        |
+| Tear A, WTC 8          | 0.056 m²                              | 1.12 m × 0.05 m [MIT §4.7.2], not calibrated.                                                                                                                                                                                                                                                                                                                                                                             |
+| The door, WTC 5 → 4    | 0.22 m², deck C, 2 m high             | A door left barely open (0–2 m²): WTC 4 full at 32.5 min (real about 40). Fully open (2 m²): WTC 4 in 7 min, and its big free surface is gone before the drift (she lists less after the turn).                                                                                                                                                                                                                           |
+| Spill breadth          | 0.02                                  | Her closed splashtight doors (0.01–0.05, data section). At 0.1 (the liners'): 80,000–100,000 t by 22:30, sinking by the stern. At 0.02: 21,400 t when she touches, 21,406 t at rest (the rule holds her water; the report: over 20,000 t).                                                                                                                                                                                |
+| Mooring deck openings  | 0.03 m²/m, deck 1 + 1 m               | A few fairleads (0.6 m² a side). At 0.25 m²/m they flooded WTC 1 from 22:10 at 12° of list and the stern went down (trim 7° by 22:30).                                                                                                                                                                                                                                                                                    |
+| KG (GM)                | 14.6 m (2.27 m)                       | 1.5–3 m (R3). In the sweeps (other values then a little different): 14.0 (2.87 m): under 2° all night, never touches; 14.7: 5.5° to port at 21:55; 14.9: 6.6° to port; 15.37 (1.5 m): 25° to port, the stern flooding by 22:15.                                                                                                                                                                                           |
+| Wind C_d               | 1.0                                   | 1.0–1.2 (spec). Area 10,500 m², lever 23.5 m (her profile).                                                                                                                                                                                                                                                                                                                                                               |
+| Muster                 | 230 t, 15 m to starboard, 21:55–22:40 | 150–250 t (data section; the people-and-boats arithmetic gives 190–210 t). 190 t passes every test but touches at 22:39:44 at 12.04°, 0.04° inside the ≥ 12° band (7.6° at 22:30): too fine a margin to hold across machines. 230 t: 12.9° at the touch, 8.5° at 22:30. Without it her list after the turn stays under 3° to starboard (the rock's 6.3 MN·m to port outweighs the quartering wind) and she never touches. |
+| Blackout depth, WTC 6  | 2.0 m                                 | A rule: lights out at 58 s (real 51 s). 1.5 m: 25 s; 3.0 m: 67–88 s.                                                                                                                                                                                                                                                                                                                                                      |
+| Spur under her quarter | top 14.5 m, 25 m radius               | Placed, not surveyed. Where her starboard bilge, 12–13° over and down by the stern, first reaches: 14.5 m. 15 m: she touches only at 23:06 (KG 14.6).                                                                                                                                                                                                                                                                     |
+| Girder                 | hog 10, sag 11 GN·m                   | UR S11 × about 1.5 (8–13 GN·m). Peak use well under 1.                                                                                                                                                                                                                                                                                                                                                                    |
+
+**The list is sensitive.** Damaged, with WTC 4 and 7 still filling,
+her GM is a few decimetres: KG ±0.1 m or the muster ±20 t moves the list
+at 22:39 by about a degree, and whether her quarter reaches the spur at
+22:39 or half an hour later. The chosen values sit inside every band,
+with these margins: port at most 4.8° (≤ 5), 5.0° to starboard at 22:20
+(> 0), 8.5° at 22:30 (6–14), 12.9° at the touch (12–25), WTC 7 full at
+45.3 min (≤ 50), WTC 4 at 32.5 (≥ 30). Floating-point differences
+between machines could move a margin under a degree; the tests run in
+the sims lane (not CI's unit job).
+
+**Her lowest point at rest: 14.6 m, not the spec's 20–32 m (PROPOSED:
+12–32).** The rest-aground rule rolls her on the point that bears and
+keeps it as deep in the floor as when the rule began, so her lowest point
+at rest is where her starboard bilge first touched. That is about 15 m:
+12–13° over, down by the stern 1.6°, her bilge aft reaches 14–15 m; a
+floor of 20 m there she never touches (her list levels off about 13–15°
+on the real night's moments). [MIT §3]'s 27 m at 04:39 and [WPD]'s 20 m
+are after she had settled and flooded through the night, which the rule
+does not model. The test checks 12–32 m (the floor at the touch band).
+
+What if (`concordiaWhatIf.test.ts`, sims lane):
+
+| Spots                           | Outcome                                                                                         |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Any one of WTC 1–19             | floats (water 600–4,600 t, list under 2°); lights out only with 6                               |
+| Any two neighbours              | floats (2,100–8,300 t, list under 2°)                                                           |
+| WTC 4–6, 5–7, 6–8               | floats (12,600, 12,500, 14,200 t; list 2.3°, 2.4°, 4.0°)                                        |
+| WTC 4–7, 5–8 (four)             | rest aground by the island (39,200, 41,700 t; list 17–18°): [MIT §4.7.10] calls four "critical" |
+| The real five, blown out to sea | sinks: stern first in 147 m (see Known limits)                                                  |
+| WTC 5 + 6, blown out to sea     | floats                                                                                          |
+| None                            | sails on past the island: no water, lights on                                                   |
+
+Any set without WTC 5 or 6 keeps her lights and her way (15.5 kn on
+350°); a set with either drifts back to the island by her path (it
+loses her motors or her switchboard) and floats there.
+
 ## Pass criteria (enforced by `__tests__/`)
 
 | Criterion                                           | Result                                                                                  |
@@ -1971,8 +2395,40 @@ uses `sternFirst`. See "The way down".
 | Britannic: funnels fall one after another           | 9:00:26, 9:02:33, 9:03:29 (dummy 9:04:05)                                               |
 | Britannic What-if: 8 toggle combinations            | all finite, in endT; any one fixed: later                                               |
 | Britannic: a mine in a boiler room's double skin    | floats steady (each of the six)                                                         |
+| Concordia: LOA, LBP, beam; displacement, GM         | 290.2, 247.4, 35.5 m; 56,764 t (+0.3%), 2.27 m                                          |
+| Concordia: WTC 5, 6 full 2–6, 4–12 min              | 2.8, 8.0 min (level with the sea)                                                       |
+| Concordia: WTC 4, 7 full 30–50 min                  | 32.5, 45.3 min (95% under deck 0)                                                       |
+| Concordia: lights out 30–90 s, then emergency light | 58 s (real 51); 0.25 after                                                              |
+| Concordia: port first (≤ 5°), starboard by 22:20    | at most 4.8° to port (21:55); over at 22:13; 5.0° at 22:20, never back                  |
+| Concordia: 10° ± 4 at 22:30                         | 8.5°                                                                                    |
+| Concordia: down by the stern from 10 min            | 0.9° at 10 min, 1.6° at the touch                                                       |
+| Concordia: touches aft 48–62 min, 12–35 m, 12–25°   | 54.4 min (22:39:32), x −56.7 m, 14.6 m, 12.9°                                           |
+| Concordia: aground; 65° ± 2 at 00:30–01:00          | `aground` 22:39:32; 65.0° at 00:41:00 (shown 20.3 min later)                            |
+| Concordia: rest: heading 180–220°, ≤ 150 m from fix | 199.4°, 95 m                                                                            |
+| Concordia: lowest point at rest 20–32 m (spec)      | 14.6 m: PROPOSED 12–32 (the rule seats her where she touched; calibration)              |
+| Concordia: port shell and ⅓ of the houses out       | yes                                                                                     |
+| Concordia: no breakup, no stern-under; `aground`    | yes; 21,400 t aboard at the touch, 21,406 t at rest                                     |
+| Concordia: real night `simulate`                    | about 0.5 s (15 s before the floor speed-ups); to sea 8 s                               |
+| Concordia What-if: 45 tests (sims lane)             | every single and pair floats; 4–6, 5–7, 6–8 float; real five to sea sinks               |
 
 ## Known limits
+
+- **A body falling onto a seabed reads the floor under its lowest point
+  only** (`stepFall`, `touch`, `sternDown`): on a steep slope a point
+  further upslope can sink into the floor before the lowest one lands.
+  Afloat, the contact looks up each hull vertex; the hull's vertices are
+  its section polygons' corners, so a narrow rock between them (under a
+  flat bottom) is not felt.
+
+- **The Concordia blown out to sea sinks by the stern, not over on her
+  side.** With WTC 4–8 open in deep water [MIT §4.7.10]'s NAPA study has
+  her capsize; ours lists to about 21° at 23:05, then the deck-0 spill
+  floods her aft spaces and she goes down stern first (trim past 30°),
+  standing on her stern in 147 m before she lands nearly upright (her
+  `wreck` rule's 65° needs 10° of list as she lands). Outcome `sank`, as
+  the spec asks; the capsize it expects is not what this model does.
+- **The Concordia's rest is seated where she touched** (the rule), about
+  15 m down, not at the 20–27 m the reports give after a night's settling.
 
 - The list stays small (about 1–1.5° to port all night); her real list
   reached several degrees late on. In this model flooding to the sea's level
@@ -1985,6 +2441,12 @@ uses `sternFirst`. See "The way down".
 - A wave group's envelope does not disperse; it is meant for the minutes
   around its time.
 - After the break the two halves do not touch each other.
+- On a seabed (1.9) the contact normal stays vertical and there is no sway:
+  a slope cannot push her sideways or let her slide, and once her way is
+  lost on the floor her earth x, y are held. The floor under a hull point
+  is looked up at its x, y without the shift pitch and roll give it. The
+  rest aground is a rule from the first touch to her rest; physics does
+  not settle a heeled hull on rock.
 - The rest on the floor is a rule either way: 1.0 eases a landed body
   upright (the Titanic), `wreck` lays her over to her survey's side (the
   Lusitania). Neither models the mud's give under a bilge.

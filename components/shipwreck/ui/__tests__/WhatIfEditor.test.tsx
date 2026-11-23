@@ -8,6 +8,7 @@ import {
 import type { ShipWhatIf } from "@/lib/shipwreck/save";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -570,5 +571,94 @@ describe("What if? for a mine ship (the Britannic, 1.4)", () => {
       expect(screen.queryByTestId("whatif-engines")).toBeNull();
       cleanup();
     }
+  });
+});
+
+describe("What if? for a rocks ship (the Costa Concordia, 1.9)", () => {
+  it("offers her compartments to tear (multi-select), from the real night", () => {
+    editor(concordia);
+    const group = screen.getByRole("group", {
+      name: "Where the rock tears her left side",
+    });
+    const chips = within(group).getAllByRole("checkbox");
+    // The nine named spaces get chips; her workrooms are tapped on the hull.
+    expect(chips.map((c) => c.dataset.testid)).toEqual(
+      [...whatIfSpots(concordia)]
+        .reverse()
+        .filter((id) => !/^wtc(9|1[0-8])$/.test(id))
+        .map((id) => `shipwreck-chip-${id}`)
+    );
+    expect(chips).toHaveLength(9);
+    for (const id of whatIfRealIds(concordia))
+      expect(screen.getByTestId(`shipwreck-chip-${id}`)).toHaveAttribute(
+        "aria-checked",
+        "true"
+      );
+    expect(screen.getByTestId("shipwreck-chip-wtc3")).toHaveAccessibleName(
+      "Stores: not torn"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "5 tears"
+    );
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-chip-wtc3"));
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "6 tears"
+    );
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    // None of the other ships' toggles.
+    expect(screen.queryByTestId("whatif-doors")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-portholes")).toBeNull();
+  });
+
+  it("has one picture toggle for the wind, with a help line", () => {
+    const onGo = editor(concordia);
+    const b = screen.getByTestId("whatif-to-sea");
+    expect(b).toHaveAttribute("aria-pressed", "false");
+    expect(b).toHaveAccessibleName(
+      "The wind blows her back to the island: tap to blow her out to sea"
+    );
+    expect(b.querySelector("svg")).not.toBeNull();
+    const help = document.getElementById(b.getAttribute("aria-describedby")!);
+    expect(help?.textContent?.length).toBeGreaterThan(20);
+    fireEvent.click(b);
+    expect(b).toHaveAttribute("aria-pressed", "true");
+    expect(b).toHaveTextContent("Wind out to sea");
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(onGo).toHaveBeenLastCalledWith({
+      ids: whatIfRealIds(concordia),
+      toSea: true,
+    });
+    // Like the real night puts the wind back.
+    fireEvent.click(screen.getByTestId("shipwreck-preset-real"));
+    expect(b).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("lets her go with no tear at all, and remembers her last choice", () => {
+    const onGo = editor(concordia, { ids: ["wtc4"], toSea: true });
+    expect(screen.getByTestId("whatif-to-sea")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "1 tear"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-preset-clear"));
+    expect(screen.getByTestId("shipwreck-go")).not.toBeDisabled();
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "No tear: she sails past"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(onGo).toHaveBeenLastCalledWith({ ids: [], toSea: true });
   });
 });

@@ -48,6 +48,9 @@ export interface ShipWhatIf {
   /** Mine ships (1.4): engines stopped at the mine, no run for the shore
    *  (default false). */
   enginesStopped?: boolean;
+  /** Rocks ships (1.9): blown out to sea by the wind, the real tear
+   *  (default false: the real night's wind, back onto the rocks). */
+  toSea?: boolean;
 }
 
 /** A storm ship's What-if storm. */
@@ -65,6 +68,7 @@ export const SAVE_SHIP_IDS: readonly ShipId[] = [
   "fitzgerald",
   "carpathia",
   "britannic",
+  "concordia",
 ];
 
 export const SAVE_KEY = "shipwreck:v1";
@@ -152,6 +156,7 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
         entry.doorsClosed = value.doorsClosed;
       if (typeof value.enginesStopped === "boolean")
         entry.enginesStopped = value.enginesStopped;
+      if (typeof value.toSea === "boolean") entry.toSea = value.toSea;
       byShip[ship] = entry;
     }
     if (Object.keys(byShip).length > 0) save.whatIfByShip = byShip;

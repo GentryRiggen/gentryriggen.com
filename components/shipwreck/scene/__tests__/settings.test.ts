@@ -13,6 +13,8 @@ import {
   dayLookOf,
   isDaylit,
   CARPATHIA_HIT,
+  CONCORDIA_NIGHT,
+  moonPosition,
   FITZGERALD_HEADING_DEG,
   LUSITANIA_DAYLIGHT,
   NIGHT_FOG,
@@ -22,6 +24,7 @@ import {
   sunPosition,
   LUSITANIA_HIT,
 } from "../settings";
+import otherShips from "./fixtures/otherShipsSettings.json";
 
 describe("SCENE_SETTINGS", () => {
   it("has a scene for every ship", () => {
@@ -382,5 +385,64 @@ describe("the coast", () => {
     expect(trueBearing).toBeGreaterThan(8);
     expect(trueBearing).toBeLessThan(18);
     g.dispose();
+  });
+});
+
+describe("the Concordia's January night (Task 6)", () => {
+  it("leaves every other ship's scene exactly as it was", () => {
+    // Written from SCENE_SETTINGS before her night was added.
+    const before = otherShips as Record<string, unknown>;
+    for (const id of Object.keys(before))
+      expect(
+        JSON.parse(
+          JSON.stringify(SCENE_SETTINGS[id as keyof typeof SCENE_SETTINGS])
+        )
+      ).toEqual(before[id]);
+  });
+
+  it("is a night by Giglio: the coast, no iceberg, her heading 350°", () => {
+    const s = SCENE_SETTINGS.concordia;
+    expect(s.timeOfDay).toBe("night");
+    expect(s.sun).toBeNull();
+    expect(s.coast).toBe(true);
+    expect(s.iceberg).toBe(false);
+    expect(s.headingDeg).toBe(CONCORDIA_NIGHT.headingDeg);
+    expect(CONCORDIA_NIGHT.headingDeg).toBe(350);
+    // A light north-east chop, a little cloud: looks only.
+    expect(s.chop).toBeGreaterThan(0.18);
+    expect(s.chop).toBeLessThan(0.6);
+    expect(s.clouds).toBeGreaterThan(0);
+    expect(s.clouds).toBeLessThan(0.6);
+    expect(s.moon).toEqual({
+      latDeg: CONCORDIA_NIGHT.latDeg,
+      lonDeg: CONCORDIA_NIGHT.lonDeg,
+      utcMs: CONCORDIA_NIGHT.utcMs,
+    });
+  });
+
+  it("puts the moon where it stood: down at the strike, rising in the east about 22:05", () => {
+    const { latDeg, lonDeg } = CONCORDIA_NIGHT;
+    const at = (h: number, m: number, s = 0) =>
+      moonPosition(latDeg, lonDeg, Date.UTC(2012, 0, 13, h - 1, m, s));
+    // 21:45:07 CET: under the eastern horizon (no moon at the strike).
+    const strike = at(21, 45, 7);
+    expect(strike.elevationDeg).toBeLessThan(-3);
+    // Rising: timeanddate.com gives moonrise at Rome 21:59 CET at 91°;
+    // Giglio is 1.58° west, about 6.5 minutes later. Rising is when the
+    // centre is 0.83° under the true horizon (refraction, the disc).
+    const rise = at(22, 5);
+    expect(rise.elevationDeg).toBeGreaterThan(-1.6);
+    expect(rise.elevationDeg).toBeLessThan(0);
+    expect(rise.azimuthDeg).toBeGreaterThan(88);
+    expect(rise.azimuthDeg).toBeLessThan(94);
+    // Her rest (00:41): about 25° up in the east-south-east, waning
+    // gibbous (timeanddate: 83.9% lit on the 13th, 74.5% on the 14th).
+    const rest = at(24, 41);
+    expect(rest.elevationDeg).toBeGreaterThan(23);
+    expect(rest.elevationDeg).toBeLessThan(28);
+    expect(rest.azimuthDeg).toBeGreaterThan(115);
+    expect(rest.azimuthDeg).toBeLessThan(124);
+    expect(rest.lit).toBeGreaterThan(0.74);
+    expect(rest.lit).toBeLessThan(0.84);
   });
 });

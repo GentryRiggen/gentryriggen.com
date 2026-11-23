@@ -23,6 +23,7 @@ import {
   FINISHER_LABEL,
   MINE_TOGGLES,
   STORM_LABEL,
+  TO_SEA_TOGGLE,
   finisherClock,
   type MineToggle,
   spotAria,
@@ -57,6 +58,8 @@ export interface WhatIfChoice {
   doorsClosed?: boolean;
   /** Mine ships only: engines stopped at once, no run for the shore. */
   enginesStopped?: boolean;
+  /** Rocks ships only: the wind blows her out to sea. */
+  toSea?: boolean;
 }
 
 interface WhatIfEditorProps {
@@ -127,6 +130,19 @@ function wordsOf(spec: ShipSpec) {
         icon: "torpedo" as const,
         go: "Go: start the afternoon with these torpedoes",
       };
+    case "rocks":
+      return {
+        lead: "Tap where the rock tears her left side, and choose the wind. Will she float?",
+        group: "Where the rock tears her left side",
+        diagram: `${spec.name}'s side, bow to the right. Tap a room to let the rock tear it open, or tap it again to leave it whole.`,
+        note: "Stern ← · → Bow. Red: the rock tears her left (port) side there. White lines: watertight walls.",
+        real: "Like the real night",
+        realAria:
+          "Like the real night: five rooms torn open on her left side, the wind blowing her back to the island",
+        clear: "Clear: no tear, she sails safely past",
+        icon: "rocks" as const,
+        go: "Go: start the night with these tears",
+      };
     default:
       return {
         lead: "Tap the hull to make holes. Will she float?",
@@ -160,6 +176,7 @@ export default function WhatIfEditor({
   // Hits along her starboard side, with a plan from above.
   const side = torpedo || mine;
   const storm = spec.cause === "storm";
+  const rocks = spec.cause === "rocks";
   // Portholes to open or shut: only a torpedo ship that has them (the
   // Lusitania; a mine ship's are among her toggles).
   const hasPortholes = torpedo && (spec.portholes?.length ?? 0) > 0;
@@ -180,6 +197,9 @@ export default function WhatIfEditor({
   // A mine ship's toggles, on for the real morning (R14).
   const [doorsStuck, setDoorsStuck] = useState(initial.doorsClosed !== true);
   const [runForKea, setRunForKea] = useState(initial.enginesStopped !== true);
+  // A rocks ship's one toggle: the wind blows her out to sea (off: the
+  // real night's wind, back to the island).
+  const [toSea, setToSea] = useState(initial.toSea === true);
   const toggleOn: Record<MineToggle["id"], boolean> = {
     portholes: portholesOpen,
     doors: doorsStuck,
@@ -203,18 +223,28 @@ export default function WhatIfEditor({
     );
   };
   // Bow first: the order a player reads the ship from the hit side.
+  // A rocks ship's nine named spaces get chips (her stores and workrooms
+  // along the middle are tapped on the hull, so Go stays on a short screen).
   const chips = storm
     ? spots
-    : [...spots].reverse().filter((id) => id !== FINISHER_SPOT);
+    : [...spots]
+        .reverse()
+        .filter(
+          (id) =>
+            id !== FINISHER_SPOT &&
+            !spec.compartments.find((c) => c.id === id)?.noChip
+        );
   const groups = storm ? stormSpotGroups(spec) : null;
   const isReal =
     ids.length === real.length &&
     ids.every((id) => real.includes(id)) &&
     (!(hasPortholes || mine) || portholesOpen) &&
     (!mine || (doorsStuck && runForKea)) &&
+    (!rocks || !toSea) &&
     (!storm || sea === "real");
-  // No damage at all is a storm ship's question too (every cover tight).
-  const canGo = storm || ids.length > 0;
+  // No damage at all is a storm ship's question too (every cover tight),
+  // and a rocks ship's: no tear, and she sails safely past.
+  const canGo = storm || rocks || ids.length > 0;
 
   const chip = (id: string, short?: string) => {
     const on = selected.has(id);
@@ -260,6 +290,11 @@ export default function WhatIfEditor({
         : ids.length === 1
           ? `Mine: ${spotLabel(spec, ids[0])}`
           : `${ids.length} mines`;
+  else if (rocks)
+    count =
+      ids.length === 0
+        ? "No tear: she sails past"
+        : `${ids.length} ${ids.length === 1 ? "tear" : "tears"}`;
   else
     count =
       ids.length === 0
@@ -406,6 +441,29 @@ export default function WhatIfEditor({
           </div>
         )}
 
+        {rocks && (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              data-testid="whatif-to-sea"
+              aria-pressed={toSea}
+              aria-label={TO_SEA_TOGGLE.aria(toSea)}
+              aria-describedby={`${helpId}-to-sea`}
+              onClick={() => setToSea((v) => !v)}
+              className={`${toSea ? PRIMARY : SECONDARY} min-h-14 whitespace-nowrap px-5 text-base sm:text-lg`}
+            >
+              <Icon name={TO_SEA_TOGGLE.icon} className="size-7 shrink-0" />
+              {TO_SEA_TOGGLE.label(toSea)}
+            </button>
+            <p
+              id={`${helpId}-to-sea`}
+              className="text-center text-xs leading-snug text-slate-300"
+            >
+              {TO_SEA_TOGGLE.help}
+            </p>
+          </div>
+        )}
+
         {/* The choices and Go share one row where the plan is taller. */}
         <div
           className={
@@ -459,6 +517,7 @@ export default function WhatIfEditor({
                 setSea("real");
                 setDoorsStuck(true);
                 setRunForKea(true);
+                setToSea(false);
               }}
               className={`${SECONDARY} min-h-14 px-5 text-base sm:text-lg`}
             >
@@ -519,7 +578,9 @@ export default function WhatIfEditor({
                       ? { ids, portholesOpen }
                       : storm
                         ? { ids, storm: sea }
-                        : { ids }
+                        : rocks
+                          ? { ids, toSea }
+                          : { ids }
                 )
               }
               className={`${PRIMARY} min-w-36 disabled:cursor-not-allowed disabled:opacity-40`}

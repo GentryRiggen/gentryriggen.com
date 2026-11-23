@@ -48,6 +48,19 @@ describe("shipwreck analytics", () => {
     });
   });
 
+  it("counts resting aground (the Concordia) as sinking: the outcome enum is unchanged", () => {
+    trackEnd("real", "aground", 176, "concordia");
+    expect(trackGame).toHaveBeenCalledWith("shipwreck_end", {
+      mode: "real",
+      outcome: "sank",
+      minutes: 176,
+      ship: "concordia",
+    });
+    expect(isValidGameProps("shipwreck_end", trackGame.mock.calls[0][1])).toBe(
+      true
+    );
+  });
+
   it("counts breaking in two as sinking", () => {
     trackEnd("real", "broke-in-two", 155, "titanic");
     expect(trackGame).toHaveBeenCalledWith("shipwreck_end", {
@@ -191,6 +204,37 @@ describe("shipwreck analytics", () => {
       minutes: 55,
       ship: "britannic",
     });
+    for (const [name, props] of trackGame.mock.calls) {
+      expect(isValidGameProps(name, props)).toBe(true);
+    }
+  });
+
+  it("sends the Concordia's runs, and an aground end counts as sank", () => {
+    trackStart("real", 0, "concordia");
+    trackEnd("real", "aground", 150, "concordia");
+    trackEnd("whatif", "floated", 30, "concordia");
+    expect(trackGame).toHaveBeenNthCalledWith(1, "shipwreck_start", {
+      mode: "real",
+      opened: 0,
+      ship: "concordia",
+    });
+    expect(trackGame).toHaveBeenNthCalledWith(2, "shipwreck_end", {
+      mode: "real",
+      outcome: "sank",
+      minutes: 150,
+      ship: "concordia",
+    });
+    expect(trackGame).toHaveBeenNthCalledWith(3, "shipwreck_end", {
+      mode: "whatif",
+      outcome: "floated",
+      minutes: 30,
+      ship: "concordia",
+    });
+    // The outcome enum stays sank/floated: no "aground" in the schema.
+    expect([...GAME_EVENTS.shipwreck_end.props.outcome.values]).toEqual([
+      "sank",
+      "floated",
+    ]);
     for (const [name, props] of trackGame.mock.calls) {
       expect(isValidGameProps(name, props)).toBe(true);
     }

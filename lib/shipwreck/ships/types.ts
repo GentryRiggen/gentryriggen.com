@@ -8,7 +8,12 @@
  */
 
 export type ShipId =
-  "titanic" | "lusitania" | "fitzgerald" | "carpathia" | "britannic";
+  | "titanic"
+  | "lusitania"
+  | "fitzgerald"
+  | "carpathia"
+  | "britannic"
+  | "concordia";
 
 export interface HullStation {
   x: number;
@@ -24,6 +29,8 @@ export interface Compartment {
   toX: number;
   aftBulkheadTopZ: number;
   fwdBulkheadTopZ: number;
+  /** A What-if editor skips this space's chip: it is tapped on the hull only. */
+  noChip?: boolean;
   /** Share of the space flood water can fill (default by kind in the sim). */
   permeability?: number;
   /** Transverse extent. Missing = the full breadth (the 1.0 behaviour).
@@ -195,6 +202,8 @@ export function hullOpenings(list: readonly RunOpening[]): Opening[] {
 }
 
 export interface ScriptedEvent {
+  /** Shown seconds after the first event; real seconds for a ship with
+   *  `agroundTimeScale` (her shown time runs fast once aground). */
   t: number;
   kind:
     | "steam-start"
@@ -286,7 +295,7 @@ export interface FunPaint {
   funnel: number;
   funnelTop: number;
   mast?: number;
-  boat?: { hull: number; bottom: number };
+  boat?: { hull: number; bottom: number; cover?: number };
 }
 
 /** Her real paints (the tray's first row), in her list's order. */
@@ -350,6 +359,27 @@ export function funnelPaintOf(
   );
 }
 
+/**
+ * The floor near a coast, in the earth frame (metres, x along her heading at
+ * the first event, y to port, origin at her midships then).
+ */
+export interface SeabedSpec {
+  /** Shoreline near her track, earth metres (x along her heading at the
+   *  first event, y to port), in order along the coast. */
+  shore: readonly (readonly [x: number, y: number])[];
+  /** Which side of the polyline is sea (+1: left of its direction). */
+  seaSide: 1 | -1;
+  /** [metres offshore, depth m] pairs, ascending, linear, held past the end. */
+  profile: readonly (readonly [offshoreM: number, depthM: number])[];
+  /** Rock bumps: depth min(profile, topDepthM + (r/radiusM)²·rise) inside radiusM. */
+  rocks?: readonly {
+    x: number;
+    y: number;
+    radiusM: number;
+    topDepthM: number;
+  }[];
+}
+
 export interface ShipSpec {
   id: ShipId;
   name: string;
@@ -396,7 +426,7 @@ export interface ShipSpec {
   /** Seconds after midnight of the first event (Titanic 23*3600+40*60). */
   clockStartS: number;
   /** What opened the hull: drives words, scene and What-if. */
-  cause: "iceberg" | "torpedo" | "storm" | "mine";
+  cause: "iceberg" | "torpedo" | "storm" | "mine" | "rocks";
   /** Torpedo ship's hits (side, order, hole). Missing: the 1.1 rule (the real
    *  hit moved along her starboard side, aft first, HIT_STAGGER_S apart). */
   torpedo?: TorpedoSpec;
@@ -432,6 +462,33 @@ export interface ShipSpec {
     /** Dynamic head factor Cp on hull openings and porthole rows with
      *  x ≥ fromX: head += Cp·u²/2g. */
     ram?: { cp: number; fromX: number };
+    /**
+     * A scripted drift (a rule, not physics, as `turn` is): [shown s,
+     * earth x, earth y, heading deg (+ to port, 0 at the first event)],
+     * t ascending; her origin follows it (Catmull-Rom on position,
+     * shortest way on heading, held past the ends) until her first floor
+     * touch, and her way through the water is its speed. Overrides
+     * startMs, halfLifeS, profile and turn for her position and heading.
+     */
+    path?: readonly (readonly [
+      t: number,
+      x: number,
+      y: number,
+      yawDeg: number,
+    ])[];
+    /** The same until it diverges; used with SimOptions.toSea. */
+    pathToSea?: readonly (readonly [
+      t: number,
+      x: number,
+      y: number,
+      yawDeg: number,
+    ])[];
+    /**
+     * The drift is hers only in a run whose hull openings reach one of
+     * these spaces (her power: a rule, as the path is); any other run
+     * keeps her way (`startMs`, straight on). Missing: every run drifts.
+     */
+    pathWhenOpen?: readonly string[];
   };
   /** Watertight doors and torn bulkheads between neighbouring compartments. */
   doors?: readonly BulkheadDoor[];
@@ -515,4 +572,90 @@ export interface ShipSpec {
      *  wholly under; missing, STERN_CAPSIZE_DEG_S. */
     stern?: { capsize: true; restDeg: number; rollDegS?: number };
   };
+  /**
+   * The sea floor near a coast (a floor that varies with position): depth
+   * from the distance offshore, plus rock bumps. The sim's floor, the
+   * scene's floor and the camera's clamp all read `floorAt`
+   * (sim/seabed.ts). Missing: the flat floor at `seaDepthM`.
+   */
+  seabed?: SeabedSpec;
+  /**
+   * The hole a What-if gives a compartment the real night did not tear
+   * (a `"rocks"` ship's). Missing: the iceberg's 0.2 m² on her starboard
+   * side.
+   */
+  gash?: {
+    side: "port" | "starboard";
+    zLow: number;
+    zHigh: number;
+    areaM2: number;
+  };
+  /**
+   * Heeling moments from outside (physics with cited inputs), in roll like
+   * any moment. `wind`: a steady wind from `fromDeg` (earth, + to port of
+   * her heading at the first event, the way the wind comes from) of `kn`
+   * knots on `areaM2` of her side, its centre `leverM` above the centre of
+   * the underwater side, drag coefficient `cd`: M = ½ ρ_air C_d A V²
+   * cos β |cos β| h, β off her beam. `rock`: a mass (t) held at a
+   * ship-frame point from shown `t`.
+   */
+  heel?: {
+    wind?: {
+      fromDeg: number;
+      kn: number;
+      areaM2: number;
+      leverM: number;
+      cd: number;
+    };
+    rock?: { t: number; massT: number; x: number; y: number; z: number };
+    /**
+     * Weight moved across her (her people at their muster stations and
+     * her boats swung out on one side): `massT` shifted from the centre
+     * line to `y` (m, + to port), ramped in from shown `fromT` to `toT`.
+     * A moment only (massT·g·y), no weight added.
+     */
+    muster?: { fromT: number; toT: number; massT: number; y: number };
+  };
+  /**
+   * The blackout from the water (a rule, its threshold calibrated): the
+   * lights go out (`lights-out`) and the pumps stop once the water in
+   * `compartmentId` is `depthM` deep; then `SimFrame.power` is
+   * `emergencyLight`, never 0. Replaces the 1.0 dynamo rule. Missing: the
+   * dynamo rule.
+   */
+  blackout?: { compartmentId: string; depthM: number; emergencyLight: number };
+  /**
+   * The rest aground (a rule, not physics, like `wreck`): a floating body
+   * touching the floor with its way lost and listed at least `minListDeg`
+   * toward `restDeg`'s side rolls along `pace` from wherever physics left
+   * it, never back, to `restDeg`, seated on the floor; then the run ends
+   * `aground`. Missing: no rule.
+   */
+  aground?: {
+    restDeg: number;
+    minListDeg: number;
+    /** [real s after the first event, roll deg] pace, ascending. */
+    pace: readonly (readonly [realT: number, deg: number])[];
+  };
+  /**
+   * Once `aground` fires, shown time runs this many times slower than real
+   * (as `descentTimeScale` does under water). Missing: 1.
+   */
+  agroundTimeScale?: number;
+  /**
+   * Water in her superstructure boxes weighs where it lies (its own
+   * transverse centre: the low side it came in by), not on the centre line
+   * (the 1.0 rule: cabins cut it up). A box flooded to the sea's level is
+   * then buoyant only by what water cannot fill, as it should be once it
+   * is deep in the sea (a cruise ship heeled past her deck edge). Missing:
+   * the 1.0 rule.
+   */
+  boxWaterAtSide?: true;
+  /**
+   * The share of the breadth at a bulkhead top water spills across along
+   * her bulkhead deck (physics, a stated input: her closed splashtight
+   * doors, leaking, are the weir). Missing: SPILL_BREADTH (0.1, a liner's
+   * deck cut up by cabins and passages).
+   */
+  spillBreadth?: number;
 }

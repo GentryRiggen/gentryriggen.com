@@ -163,12 +163,23 @@ it("shows the Shipwreck section", () => {
           minutes: 70,
           ship: "britannic",
         }),
+        sw("shipwreck_start", {
+          mode: "real",
+          opened: 0,
+          ship: "concordia",
+        }),
+        sw("shipwreck_end", {
+          mode: "real",
+          outcome: "sank",
+          minutes: 150,
+          ship: "concordia",
+        }),
         sw("shipwreck_camera", { camera: "bridge" }),
       ]}
     />
   );
-  expect(screen.getByTestId("shipwreck-starts")).toHaveTextContent("4");
-  expect(screen.getByTestId("shipwreck-sank")).toHaveTextContent("3");
+  expect(screen.getByTestId("shipwreck-starts")).toHaveTextContent("5");
+  expect(screen.getByTestId("shipwreck-sank")).toHaveTextContent("4");
   expect(screen.getByTestId("shipwreck-floated")).toHaveTextContent("1");
   expect(screen.getByText("whatif · floated")).toBeInTheDocument();
   expect(screen.getByText("bridge")).toBeInTheDocument();
@@ -181,7 +192,9 @@ it("shows the Shipwreck section", () => {
   expect(screen.getByText("fitzgerald · sank")).toBeInTheDocument();
   expect(screen.getByText("britannic")).toBeInTheDocument();
   expect(screen.getByText("britannic · sank")).toBeInTheDocument();
+  expect(screen.getByText("concordia")).toBeInTheDocument();
+  expect(screen.getByText("concordia · sank")).toBeInTheDocument();
   expect(screen.getByTestId("shipwreck-averages")).toHaveTextContent(
-    "What if? openings: lusitania 4.0, britannic 2.0 · sank after 83 min on average"
+    "What if? openings: lusitania 4.0, britannic 2.0 · sank after 100 min on average"
   );
 });
