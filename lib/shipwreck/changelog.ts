@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.10.0",
+    date: "2026-11-23",
+    title: "Any time of day",
+    highlights: [
+      "A new sun-and-moon button at the top changes the time of day on every ship, even while she sinks: early morning, a sunny afternoon, sunset or a starry night. The anchor shows the time she really sank, and a new ship always starts at her real time",
+      "The Edmund Fitzgerald keeps her storm, and can now be watched by daylight too",
+      "Under the water is easier to see: the same button has lighter and brightest water to follow a ship down. Real water is still the start",
+      "The torpedo's white trail now ends in a soft, frothy point instead of a square edge",
+    ],
+  },
+  {
     version: "1.9.0",
     date: "2026-11-23",
     title: "The Costa Concordia",

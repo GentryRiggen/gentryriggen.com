@@ -37,6 +37,7 @@ import {
   SCENE_SETTINGS,
   dayLookOf,
   isDaylit,
+  sceneSettingsFor,
   sunDirection,
   type SceneSettings,
 } from "./settings";
@@ -91,8 +92,16 @@ export default function NightScene({
   const runtime = given ?? own;
   const quality = useStore(store, (s) => s.quality);
   const spec = getShip(useStore(store, (s) => s.ship));
-  const settings = SCENE_SETTINGS[spec.id];
+  // The time button's hour (her real one unless changed), live: the sky,
+  // light and water follow it; what happens (her boats, smoke, rockets)
+  // stays her real day's (`real`).
+  const time = useStore(store, (s) => s.time);
+  const settings = sceneSettingsFor(spec.id, time);
+  const real = SCENE_SETTINGS[spec.id];
   const day = isDaylit(settings);
+  useEffect(() => {
+    runtime.stormLight = settings.stormLight ?? null;
+  }, [runtime, settings]);
   const storm = settings.storm === true;
   const haze = useMemo(() => new Color(settings.fog), [settings]);
   const sunDir = useMemo(
@@ -156,7 +165,7 @@ export default function NightScene({
             }}
           />
         )}
-        <Driver store={store} />
+        <Driver store={store} runtime={runtime} />
         {TEST_HOOKS_ENABLED && <RenderInfoProbe quality={quality} dpr={dpr} />}
         <Environment
           runtime={runtime}
@@ -200,7 +209,8 @@ export default function NightScene({
           store={store}
           runtime={runtime}
           spec={spec}
-          settings={settings}
+          settings={real}
+          dark={!day && isDaylit(real)}
         />
         <XRay store={store} runtime={runtime} spec={spec} />
         <SeaFromStore store={store} runtime={runtime} settings={settings} />
@@ -262,10 +272,20 @@ function SeaFromStore({
   );
 }
 
-/** Advances the runner (≤ 6 ms a frame) and the shown time. */
-function Driver({ store }: { store: PlaybackStore }) {
+/**
+ * Advances the runner (≤ 6 ms a frame) and the shown time; hands the
+ * water-light button's step to the scene.
+ */
+function Driver({
+  store,
+  runtime,
+}: {
+  store: PlaybackStore;
+  runtime: SceneRuntime;
+}) {
   useFrame((_, dt) => {
     const s = store.getState();
+    runtime.underLight = s.underLight;
     if (!s.done) s.pump();
     s.tick(Math.min(dt, 0.1), performance.now() / 1000);
   }, -3);

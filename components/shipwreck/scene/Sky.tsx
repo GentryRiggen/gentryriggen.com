@@ -37,7 +37,7 @@ import {
   andersonAsternM,
   geoToScene,
   snowAt,
-  stormDaylight,
+  stormLightAt,
   stormSun,
   whitefishLit,
 } from "./storm";
@@ -636,7 +636,7 @@ export function StormSky({ runtime, fog, dpr }: StormSkyProps) {
     sky.lights.visible = !under;
     const u = sky.mat.uniforms;
     const t = runtime.frame?.t ?? 0;
-    const d = stormDaylight(t);
+    const d = stormLightAt(runtime, t);
     (u.uHorizon.value as Color).copy(base).multiplyScalar(0.012 + 0.988 * d);
     (u.uZenith.value as Color)
       .setRGB(0.085, 0.095, 0.105, LinearSRGBColorSpace)

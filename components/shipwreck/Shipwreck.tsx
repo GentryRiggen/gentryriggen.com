@@ -46,6 +46,7 @@ import {
   type ShipwreckModelHooks,
   type ShipwreckScreen,
 } from "@/lib/shipwreck/testHooks";
+import { resolveTime } from "@/lib/shipwreck/times";
 import type { Speed } from "@/lib/shipwreck/types";
 import {
   currentShipwreckSave,
@@ -439,6 +440,14 @@ export default function Shipwreck() {
           const s = playback.getState();
           return resolveLivery(getShip(s.ship), s.livery);
         },
+        setTime: (id) => {
+          playback.getState().setTime(id === "real" ? null : id);
+        },
+        time: () => {
+          const s = playback.getState();
+          return resolveTime(s.ship, s.time);
+        },
+        setUnderLight: (level) => playback.getState().setUnderLight(level),
       }
     );
   }, [isModelView, isSceneView, startRun, pickShip, chooseLivery, runtime]);

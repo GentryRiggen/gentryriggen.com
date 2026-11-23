@@ -75,6 +75,7 @@
     "underwaterFog": "#1f6a9a",
     "coast": true,
     "iceberg": false,
-    "headingDeg": 18
+    "headingDeg": 18,
+    "wakePath": true
   }
 }

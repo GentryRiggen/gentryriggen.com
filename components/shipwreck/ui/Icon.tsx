@@ -45,7 +45,9 @@ export type IconName =
   | "mute"
   | "brush"
   | "anchor"
-  | "sparkle";
+  | "sparkle"
+  | "sun-moon"
+  | "bulb";
 
 const PATHS: Record<IconName, string> = {
   back: "M15 5l-7 7 7 7",
@@ -121,6 +123,11 @@ const PATHS: Record<IconName, string> = {
   // Fun paint: a sparkle and a small one.
   sparkle:
     "M10 3l1.6 4.9L16.5 9.5l-4.9 1.6L10 16l-1.6-4.9L3.5 9.5l4.9-1.6zM18 14l.8 2.2 2.2.8-2.2.8L18 20l-.8-2.2-2.2-.8 2.2-.8z",
+  // The time of day: a sun with its rays, a crescent moon tucked behind.
+  "sun-moon":
+    "M9 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM9 3v2M9 19v2M3 12h2M3.8 6.8l1.4 1.4M3.8 17.2l1.4-1.4M14.2 6.8l-1.4 1.4M17 4.5a5.5 5.5 0 1 1 3.5 10.6A6.5 6.5 0 0 0 17 4.5z",
+  // The water light: a light bulb over a wave.
+  bulb: "M12 3a5 5 0 0 0-3 9v2h6v-2a5 5 0 0 0-3-9zM10 17h4M3 20.5c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
 };
 
 const FILLED: ReadonlySet<IconName> = new Set(["play"]);

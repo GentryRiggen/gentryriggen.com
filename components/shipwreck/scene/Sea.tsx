@@ -300,7 +300,7 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
   const whitecaps = settings?.daylight?.whitecaps;
   const mirrorAmt = settings?.daylight?.mirror;
   // Her turn for Kea: the morning's wake follows her stern's path.
-  const curved = settings?.timeOfDay === "morning";
+  const curved = settings?.wakePath === true;
   // A night with its own chop and moon (the Concordia's): defines only
   // for her, so the Titanic's sea program stays 1.0's.
   const chop = !day ? settings?.chop : undefined;

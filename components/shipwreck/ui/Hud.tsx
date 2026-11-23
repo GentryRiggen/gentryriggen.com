@@ -20,6 +20,7 @@ import Captions from "./Captions";
 import HelpCard from "./HelpCard";
 import Icon, { type IconName } from "./Icon";
 import LiveryButton from "./LiveryButton";
+import TimeButton from "./TimeButton";
 import Timeline from "./Timeline";
 import WalkButton, { beginWalk } from "./WalkButton";
 import { FOCUS, PANEL, ROUND, ROUND_ON } from "./styles";
@@ -190,15 +191,21 @@ export default function Hud({
             {chips && <div className="mt-2">{chips}</div>}
           </div>
         </div>
-        <button
-          type="button"
-          aria-label="How to watch"
-          data-testid="shipwreck-help-button"
-          onClick={() => setHelp(true)}
-          className={ROUND}
-        >
-          <Icon name="help" className="size-8" />
-        </button>
+        <div className="flex shrink-0 items-start gap-3">
+          {/* The time of day and the water light (top, beside help: the
+              right rail is full on a landscape iPad). */}
+          {/* Walking: the walk controls own the top right. */}
+          {!walking && <TimeButton store={store} spec={ship} />}
+          <button
+            type="button"
+            aria-label="How to watch"
+            data-testid="shipwreck-help-button"
+            onClick={() => setHelp(true)}
+            className={ROUND}
+          >
+            <Icon name="help" className="size-8" />
+          </button>
+        </div>
       </div>
 
       <Captions key={runId} store={store} />

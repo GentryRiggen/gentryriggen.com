@@ -1,5 +1,6 @@
 import { Color, LinearSRGBColorSpace } from "three";
 import type { ShipId } from "@/lib/shipwreck/ships/types";
+import { resolveTime, type TimeId } from "@/lib/shipwreck/times";
 
 /**
  * Each ship's scene: the hour, the sun, the fog above and below the sea,
@@ -147,6 +148,15 @@ export interface SceneSettings {
   chop?: number;
   /** A night sky's thin cloud: the share of it covered (0–1). Missing: clear. */
   clouds?: number;
+  /** Her wake follows her stern's path (the Britannic's turn for Kea). */
+  wakePath?: true;
+  /**
+   * A storm's light pinned (0 night to 1 the grey afternoon) instead of
+   * following the clock (`stormDaylight`): the time button's storm by day.
+   */
+  stormLight?: number;
+  /** A daylit scene's look of its own (the time button's sunset). */
+  dayLook?: DayLook;
 }
 
 // --- The night of 14–15 April 1912 (1.0's constants).
@@ -537,9 +547,36 @@ export const DAY_LOOKS: Record<"afternoon" | "morning", DayLook> = {
 };
 
 /** A daylit scene's look (the afternoon's for the afternoon). */
-export function dayLookOf(s: Pick<SceneSettings, "timeOfDay">): DayLook {
+export function dayLookOf(
+  s: Pick<SceneSettings, "timeOfDay" | "dayLook">
+): DayLook {
+  if (s.dayLook) return s.dayLook;
   return s.timeOfDay === "morning" ? DAY_LOOKS.morning : DAY_LOOKS.afternoon;
 }
+
+/**
+ * Sunset (the time button's, any ship): the morning's low-sun pipeline with
+ * a redder sun, a warmer haze and a deep orange glow along the horizon.
+ */
+export const SUNSET_LOOK: DayLook = {
+  ...DAY_LOOKS.morning,
+  fogDensity: 0.00004,
+  sunColor: 0xffb07a,
+  warm: 0xffb07a,
+  sunIntensity: 3,
+  sunUnder: 0xc0b0a0,
+  skyColor: 0xc8b4c8,
+  skyGround: 0x6a5a5a,
+  skyIntensity: 1.1,
+  skySun: [1, 0.62, 0.34],
+  zenith: [0.04, 0.08, 0.26],
+  dawnGlow: [0.55, 0.2, 0.05],
+  seaDeep: [0.006, 0.016, 0.05],
+  seaScatter: [0.01, 0.022, 0.05],
+  seaUnder: [0.16, 0.3, 0.42],
+  shaft: [0.85, 0.6, 0.45],
+  caustic: [0.95, 0.75, 0.6],
+};
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 const HIT_SUN = sunPosition(
@@ -661,6 +698,7 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
     coast: true,
     iceberg: false,
     headingDeg: BRITANNIC_HEADING_DEG,
+    wakePath: true,
   },
   // 21:45 on 13 January 2012 off Giglio (spec R23): the Titanic's night
   // look with the island close by, a light north-east chop (17 knots,
@@ -685,3 +723,78 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
     clouds: 0.3,
   },
 };
+
+// --- The time button (1.9): any ship at another hour, live (the
+// options and their chips: `lib/shipwreck/times.ts`).
+
+function buildTime(ship: ShipId, id: TimeId): SceneSettings {
+  const real = SCENE_SETTINGS[ship];
+  if (id === "real") return real;
+  if (id === "storm-day") return { ...real, stormLight: 1 };
+  // Her place stays (the coast, the iceberg, the convoy, her heading and
+  // her wake's path); the sky, the light and the water change.
+  const base = {
+    coast: real.coast,
+    iceberg: real.iceberg,
+    ...(real.headingDeg !== undefined ? { headingDeg: real.headingDeg } : {}),
+    ...(real.convoy ? { convoy: true as const } : {}),
+    ...(real.wakePath ? { wakePath: true as const } : {}),
+  };
+  switch (id) {
+    case "night":
+      return {
+        ...base,
+        timeOfDay: "night",
+        sun: null,
+        fog: `#${NIGHT_FOG.getHexString()}`,
+        underwaterFog: `#${NIGHT_SEA_FOG.getHexString()}`,
+      };
+    case "afternoon":
+      // The Lusitania's look: a high sun in the south-south-west.
+      return {
+        ...base,
+        timeOfDay: "afternoon",
+        sun: { elevationDeg: 50, azimuthDeg: 205 },
+        fog: "#bccddb",
+        underwaterFog: "#2f7564",
+      };
+    case "morning":
+      // The Britannic's look: a low sun in the east.
+      return {
+        ...base,
+        timeOfDay: "morning",
+        sun: { elevationDeg: 10, azimuthDeg: 105 },
+        fog: "#c9d3dc",
+        underwaterFog: "#1f6a9a",
+      };
+    case "sunset":
+      return {
+        ...base,
+        timeOfDay: "morning",
+        sun: { elevationDeg: 4, azimuthDeg: 265 },
+        fog: "#d8b8a4",
+        underwaterFog: "#25506e",
+        dayLook: SUNSET_LOOK,
+      };
+  }
+}
+
+const timeCache = new Map<string, SceneSettings>();
+
+/**
+ * The ship's scene at time `id` (null or one she does not offer: her real
+ * one). The same object each time, so the scene rebuilds only on a change.
+ */
+export function sceneSettingsFor(
+  ship: ShipId,
+  id: string | null
+): SceneSettings {
+  const time = resolveTime(ship, id);
+  const key = `${ship}:${time}`;
+  let s = timeCache.get(key);
+  if (!s) {
+    s = buildTime(ship, time);
+    timeCache.set(key, s);
+  }
+  return s;
+}

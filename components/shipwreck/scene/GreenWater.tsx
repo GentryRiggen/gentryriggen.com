@@ -20,7 +20,7 @@ import { buildHull } from "@/lib/shipwreck/sim/geometry";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import { shipToThreeInto, type V3 } from "./cameraMath";
 import { MAX_LAMPS, type SceneRuntime } from "./runtime";
-import { STORM_NIGHT_WHITE, stormDaylight } from "./storm";
+import { STORM_NIGHT_WHITE, stormLightAt } from "./storm";
 
 /**
  * Green water on her deck: the sim's own (`SimFrame.deckWater`, each bay's
@@ -229,7 +229,7 @@ export default function GreenWater({ store, runtime, spec }: GreenWaterProps) {
     mesh.foam.needsUpdate = true;
     mesh.g.setDrawRange(0, q * 6);
     const u = mesh.mat.uniforms;
-    u.uLight.value = 0.03 + 0.97 * stormDaylight(frame.t);
+    u.uLight.value = 0.03 + 0.97 * stormLightAt(runtime, frame.t);
     u.uTime.value = state.clock.elapsedTime;
     u.uLamps.value = runtime.lamps;
     u.uLampCount.value = runtime.lampCount;

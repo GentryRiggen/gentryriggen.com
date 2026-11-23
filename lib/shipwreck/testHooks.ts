@@ -171,6 +171,12 @@ export interface ShipwreckGameHooks {
   setLivery(id: string): void;
   /** Her livery now (null: a ship with one paint). */
   livery(): string | null;
+  /** Shows her at time `id` ("real" or another she offers), as the time button does. */
+  setTime(id: string): void;
+  /** The time shown ("real" unless changed). */
+  time(): string;
+  /** The water light under the surface (0 real, 1, 2). */
+  setUnderLight(level: 0 | 1 | 2): void;
 }
 
 declare global {

@@ -26,7 +26,12 @@ import {
 import type { ShipId } from "@/lib/shipwreck/ships/types";
 import type { SceneRuntime } from "./runtime";
 import { meshGeometry, useGiglio } from "./Coast";
-import { snowAt, stormDaylight } from "./storm";
+import { snowAt, stormLightAt } from "./storm";
+import {
+  UNDER_LIGHT_DAY_GAIN,
+  UNDER_LIGHT_NIGHT_WATER,
+  underLightOf,
+} from "./underLight";
 import {
   NIGHT_DEEP_FOG,
   NIGHT_FOG,
@@ -372,6 +377,7 @@ function NightEnvironment({
     return l;
   }, []);
   const lookUnderWater = useMemo(() => new Color(LOOK_UNDER_NIGHT_WATER), []);
+  const lightWater = useMemo(() => new Color(UNDER_LIGHT_NIGHT_WATER), []);
 
   useFrame((state) => {
     const y = camera.position.y;
@@ -383,11 +389,12 @@ function NightEnvironment({
       // Look under (from the sea while walking): clearer and lighter
       // water, to watch her go.
       if (runtime.walkLookUnder) fog.color.copy(lookUnderWater);
-      fog.density = lookUnderFog(
-        "night",
-        0.0065 - 0.002 * k,
-        runtime.walkLookUnder
-      );
+      // The water-light button: clearer, lighter water.
+      const L = underLightOf(runtime.underLight);
+      fog.color.lerp(lightWater, L.lift);
+      fog.density =
+        lookUnderFog("night", 0.0065 - 0.002 * k, runtime.walkLookUnder) *
+        L.fog;
       (scene.background as Color).copy(fog.color);
     } else {
       fog.color.copy(NIGHT_FOG);
@@ -422,11 +429,13 @@ function NightEnvironment({
     // The lamp rides on the camera, a little above, pointing where it looks.
     // (Her shallow shelf: the lamp full on from just under the surface,
     // so the granite and the seagrass 10–30 m down read.)
-    lamp.intensity = lookUnderLamp(
-      "night",
-      under ? Math.min(1, -y / (shelf ? 4 : 40)) * 320 : 0,
-      runtime.walkLookUnder
-    );
+    const L = underLightOf(under ? runtime.underLight : 0);
+    lamp.intensity =
+      lookUnderLamp(
+        "night",
+        under ? Math.min(1, -y / (shelf ? 4 : 40)) * 320 : 0,
+        runtime.walkLookUnder
+      ) * L.lamp;
     lamp.distance = runtime.walkLookUnder
       ? LOOK_UNDER_LAMP_RANGE_M
       : LAMP_RANGE_M;
@@ -439,7 +448,8 @@ function NightEnvironment({
     // Walking: a faint lift so a child can see the deck.
     sky.intensity = walkAmbient(
       under
-        ? lookUnderAmbient(shelf ? 0.6 : 0.25, runtime.walkLookUnder)
+        ? lookUnderAmbient(shelf ? 0.6 : 0.25, runtime.walkLookUnder) *
+          L.ambient
         : 0.9 + runtime.flash * 5,
       runtime.walkInfo?.phase === "deck"
     );
@@ -554,10 +564,13 @@ float causticAt(vec2 p) {
           `#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(${look.caustic.map((c) => c.toFixed(3)).join(", ")}) * causticAt(vCausticXZ) * uCaustic;`
         );
     };
+    // The caustics' colour is baked in: a program per look.
     mat.customProgramCacheKey = () =>
       look === DAY_LOOKS_AFTERNOON
         ? "shipwreck-sand"
-        : "shipwreck-sand-morning";
+        : look === DAY_LOOKS.morning
+          ? "shipwreck-sand-morning"
+          : `shipwreck-sand-${look.caustic.join("-")}`;
     const geo = new PlaneGeometry(24000, 24000);
     const m = new Mesh(geo, mat);
     m.rotation.x = -Math.PI / 2;
@@ -605,6 +618,7 @@ float causticAt(vec2 p) {
   }, [lights, sunDir]);
 
   const water = useMemo(() => new Color(), []);
+  const lightWater = useMemo(() => new Color(), []);
   useFrame((state) => {
     const y = camera.position.y;
     const under = y < 0;
@@ -612,18 +626,26 @@ float causticAt(vec2 p) {
     if (under) {
       // Green and bright near the top, dimmer toward the floor.
       water.copy(shallow).lerp(deepWater, k * 0.85);
+      // The water-light button: toward her shallow water, made lighter.
+      const L = underLightOf(runtime.underLight);
+      if (L.lift > 0)
+        water.lerp(
+          lightWater.copy(shallow).multiplyScalar(UNDER_LIGHT_DAY_GAIN),
+          L.lift
+        );
       fog.color.copy(water);
       const [top, deep] = own?.underDensity ?? DAY_UNDER_DENSITY;
-      fog.density = lookUnderFog(
-        "afternoon",
-        top + (deep - top) * k,
-        runtime.walkLookUnder
-      );
+      fog.density =
+        lookUnderFog(
+          "afternoon",
+          top + (deep - top) * k,
+          runtime.walkLookUnder
+        ) * L.fog;
       (scene.background as Color).copy(water);
       lights.sun.color.copy(lights.under);
       lights.sun.intensity = sunIntensity * (0.45 - 0.33 * k);
       lights.sky.intensity = walkAmbient(
-        0.95 - 0.55 * k,
+        (0.95 - 0.55 * k) * L.ambient,
         runtime.walkInfo?.phase === "deck"
       );
     } else {
@@ -643,11 +665,12 @@ float causticAt(vec2 p) {
       ? (own?.caustics ?? DAY_CAUSTICS) * (1 - 0.5 * k)
       : 0;
     const lamp = lights.lamp;
-    lamp.intensity = lookUnderLamp(
-      "afternoon",
-      under ? Math.min(1, -y / 50) * 160 : 0,
-      runtime.walkLookUnder
-    );
+    lamp.intensity =
+      lookUnderLamp(
+        "afternoon",
+        under ? Math.min(1, -y / 50) * 160 : 0,
+        runtime.walkLookUnder
+      ) * underLightOf(under ? runtime.underLight : 0).lamp;
     lamp.distance = runtime.walkLookUnder
       ? LOOK_UNDER_LAMP_RANGE_M
       : DAY_LAMP_RANGE_M;
@@ -954,11 +977,12 @@ function StormEnvironment({
   }, []);
 
   const water = useMemo(() => new Color(), []);
+  const lightWater = useMemo(() => new Color(), []);
   useFrame((state) => {
     const y = camera.position.y;
     const under = runtime.underwater;
     const t = runtime.frame?.t ?? 0;
-    const d = stormDaylight(t);
+    const d = stormLightAt(runtime, t);
     const k = Math.min(1, Math.max(0, -y / SEA_DEPTH));
     lights.sky.color.copy(lights.nightSky).lerp(lights.daySky, d);
     lights.sky.groundColor.copy(lights.nightGround).lerp(lights.dayGround, d);
@@ -969,14 +993,22 @@ function StormEnvironment({
         .copy(STORM_NIGHT_WATER)
         .lerp(shallow, d)
         .lerp(STORM_DEEP_WATER, Math.min(1, k * 1.4));
+      // The water-light button: toward her shallow water, made lighter.
+      const L = underLightOf(runtime.underLight);
+      if (L.lift > 0)
+        water.lerp(
+          lightWater.copy(shallow).multiplyScalar(UNDER_LIGHT_DAY_GAIN),
+          L.lift
+        );
       fog.color.copy(water);
-      fog.density = 0.0075 - 0.0025 * k;
+      fog.density = (0.0075 - 0.0025 * k) * L.fog;
       (scene.background as Color).copy(water);
       lights.sky.color.copy(lights.waterSky);
       lights.sky.groundColor.copy(lights.waterGround);
       // About twice the 1.0 night's light under water: Lake Superior is
       // clear below the storm's murk, and a child must follow the wreck.
-      lights.sky.intensity = 1.1 * (1 - 0.3 * k) + 0.5 * d * (1 - k);
+      lights.sky.intensity =
+        (1.1 * (1 - 0.3 * k) + 0.5 * d * (1 - k)) * L.ambient;
     } else {
       fog.color.copy(haze).multiplyScalar(0.012 + 0.988 * d);
       const snow = snowAt(t);
@@ -993,7 +1025,9 @@ function StormEnvironment({
     floor.m.position.z =
       Math.round(camera.position.z / CLAY_TILE_M) * CLAY_TILE_M;
     const lamp = lights.lamp;
-    lamp.intensity = under ? Math.min(1, -y / 40) * 760 : 0;
+    lamp.intensity = under
+      ? Math.min(1, -y / 40) * 760 * underLightOf(runtime.underLight).lamp
+      : 0;
     lamp.position.copy(camera.position);
     lamp.position.y += 1.5;
     state.camera.getWorldDirection(lamp.target.position);
