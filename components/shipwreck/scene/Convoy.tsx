@@ -26,6 +26,7 @@ import {
   hullDownM,
   scatterAtOf,
   type ConvoyPaint,
+  type ConvoyPose,
 } from "./convoyMotion";
 
 /**
@@ -39,6 +40,9 @@ import {
 
 /** The shape is built this long (m) and scaled to each ship's length. */
 export const STEAMER_LENGTH_M = 120;
+
+/** One pose reused every frame (no per-frame allocation). */
+const POSE: ConvoyPose = { x: 0, z: 0, heading: 0, speed: 0 };
 
 /** The parts, for the paint (the `aPart` attribute). */
 const HULL = 0;
@@ -412,7 +416,7 @@ export default function Convoy({ store }: { store: PlaybackStore }) {
     const at = scatterAtOf(torpedoes);
     let n = 0;
     for (const ship of CONVOY) {
-      const p = convoyPose(ship, t, at);
+      const p = convoyPose(ship, t, at, POSE);
       const d = Math.hypot(p.x - cam.x, p.z - cam.z);
       const drop = hullDownM(d, cam.y);
       if (!convoyShown(d, drop)) continue;
