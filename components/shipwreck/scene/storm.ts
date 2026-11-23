@@ -130,6 +130,17 @@ export function stormDaylight(t: number): number {
   return smoothstep(-7, 14, e) ** 1.6;
 }
 
+/**
+ * The storm's light at shown time t, or the time button's pinned light
+ * (`SceneRuntime.stormLight`: the storm by day).
+ */
+export function stormLightAt(
+  rt: { stormLight: number | null },
+  t: number
+): number {
+  return rt.stormLight ?? stormDaylight(t);
+}
+
 /** Shown seconds after 3:30 PM for h:mm PM. */
 function pm(h: number, m: number): number {
   return (h + 12 - 15) * 3600 + (m - 30) * 60;

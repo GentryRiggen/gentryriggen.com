@@ -95,6 +95,13 @@ export interface SceneRuntime {
   lamps: Float32Array;
   lampCount: number;
   lampPower: number;
+  /**
+   * A storm's light pinned by the time button (0–1), or null: it follows
+   * the clock (`stormLightAt`).
+   */
+  stormLight: number | null;
+  /** How light the water is under the surface (the store's `underLight`). */
+  underLight: 0 | 1 | 2;
 }
 
 /** The walker for the test hooks. */
@@ -157,6 +164,8 @@ export function createSceneRuntime(): SceneRuntime {
     lamps: new Float32Array(3 * MAX_LAMPS),
     lampCount: 0,
     lampPower: 0,
+    stormLight: null,
+    underLight: 0,
   };
   return rt;
 }

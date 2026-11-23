@@ -194,6 +194,16 @@ export interface PlaybackState {
    * does not have: her default). The scene repaints the model live.
    */
   livery: string | null;
+  /**
+   * The time of day shown (a `TimeId` she offers; null: her real one,
+   * `sceneSettingsFor`). Back to her real one with each new ship.
+   */
+  time: string | null;
+  /**
+   * How light the water is under the surface: 0 her real water, 1 and 2
+   * clearer and brighter (`UNDER_LIGHT`). Kept across ships.
+   */
+  underLight: 0 | 1 | 2;
 }
 
 export interface PlaybackActions {
@@ -246,6 +256,10 @@ export interface PlaybackActions {
    * the run's time, playing state and frames stay as they are.
    */
   setLivery(id: string | null): void;
+  /** Shows her at time `id` (null: her real one), live: the run goes on. */
+  setTime(id: string | null): void;
+  /** How light the water is under the surface (0 her real water). */
+  setUnderLight(level: 0 | 1 | 2): void;
   /** Flies the free camera to a place (X-ray on for the interior places). */
   flyToPlace(place: PlaceId | null, xray?: boolean): void;
   /** The scene reports the water at the selected place (m). */
@@ -287,6 +301,8 @@ const INITIAL: PlaybackState = {
   flyView: null,
   speedTouchedAt: -Infinity,
   livery: null,
+  time: null,
+  underLight: 0,
 };
 
 /**
@@ -597,6 +613,8 @@ export function createPlaybackStore(
           flyView: null,
           // Her own default until the game applies her saved livery.
           livery: null,
+          // Her real time again.
+          time: null,
           ...walkOff(),
           snapId: get().snapId + 1,
         });
@@ -714,6 +732,12 @@ export function createPlaybackStore(
       },
       setLivery(livery) {
         if (livery !== get().livery) set({ livery });
+      },
+      setTime(time) {
+        if (time !== get().time) set({ time });
+      },
+      setUnderLight(underLight) {
+        if (underLight !== get().underLight) set({ underLight });
       },
       flyToPlace(place, xray) {
         const s = get();

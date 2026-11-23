@@ -14,6 +14,7 @@ import {
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
+import { isDaylit, sceneSettingsFor } from "./settings";
 import TrackPoses from "./torpedoPose";
 
 /**
@@ -36,6 +37,8 @@ export const TORPEDO_MPS = 18;
 export const TORPEDO_RANGE_M = 700;
 /** Seconds from the torpedo passing to its bubbles breaking the surface. */
 export const BUBBLE_LAG_S = 1.6;
+/** The track's froth at night: this much of its daylight white. */
+const NIGHT_TRACK_LIGHT = 0.16;
 /** Seconds the track stays on the sea. */
 const TRACK_LIFE_S = 150;
 /** Seconds before its hit that a track's far end first breaks the surface. */
@@ -106,6 +109,7 @@ const fragment = /* glsl */ `
   uniform float uSpeed;
   uniform float uLag;
   uniform float uLife;
+  uniform float uLight;
   float hash(vec2 p) {
     p = fract(p * vec2(123.34, 456.21));
     p += dot(p, p + 45.32);
@@ -122,20 +126,39 @@ const fragment = /* glsl */ `
     // s: metres out from the hull along the track; across: from its line.
     float s = vUv.y * uLength;
     float across = (vUv.x - 0.5) * 2.0 * uHalfWidth;
-    // When the bubbles here broke the surface.
+    // When the bubbles here broke the surface (negative: not yet).
     float age = uT + s / uSpeed - uLag;
-    if (age < 0.0) discard;
-    // A few metres of white froth, wider at the fresh head, spreading.
-    float head = smoothstep(4.0, 0.0, age);
-    float w = 3.0 + age * 0.12 + head * 2.5;
-    float churn = noise(vWorld.xz * 0.9 + vec2(age * 0.3, 0.0)) * 0.6
+    // Metres ahead of the surfacing front (the running head's nose).
+    float ahead = max(-age, 0.0) * uSpeed;
+    if (ahead > 4.0) discard;
+    float a0 = max(age, 0.0);
+    float head = smoothstep(4.0, 0.0, a0);
+    // Narrow where the bubbles are just breaking, opening out behind:
+    // the running head comes to a soft point, not a square edge.
+    float w = mix(0.9, 3.0, smoothstep(0.0, 3.0, a0)) + a0 * 0.12 + head * 0.8;
+    float churn = noise(vWorld.xz * 0.9 + vec2(a0 * 0.3, 0.0)) * 0.6
       + noise(vWorld.xz * 3.1) * 0.4;
-    float core = exp(-pow(across / w, 2.0));
-    float fade = exp(-age / (uLife * 0.35)) * smoothstep(uLife, uLife * 0.6, age);
+    // Ragged edges: the froth's width wanders along the track.
+    float ragged = 0.75 + 0.5 * noise(vec2(s * 0.08, a0 * 0.05));
+    float wr = w * ragged;
+    // At the hull the track ends in a rounded, frayed boil where it struck
+    // (no straight cut where the plane ends).
+    float capR = wr * 1.4;
+    float d = s < capR
+      ? length(vec2(across, (capR - s) * 0.8))
+      : abs(across);
+    float core = exp(-pow(d / wr, 2.0));
+    float nose = exp(-pow(ahead / 1.6, 2.0));
+    // Never out to the plane's long edges as it spreads.
+    float sides = smoothstep(uHalfWidth, uHalfWidth * 0.7, abs(across));
+    float fade = exp(-a0 / (uLife * 0.35)) * smoothstep(uLife, uLife * 0.6, a0);
     // The fresh head is the brightest, a white boil.
-    float a = core * fade * (0.45 + 0.55 * churn) * (0.75 + 0.6 * head);
+    float a = core * nose * sides * fade
+      * (0.45 + 0.55 * churn) * (0.75 + 0.6 * head);
+    // Broken into froth, not a smooth band, toward its edges.
+    a *= smoothstep(0.15, 0.55, churn + core * 0.6);
     if (a < 0.01) discard;
-    gl_FragColor = vec4(vec3(0.88, 0.93, 0.94), clamp(a, 0.0, 0.9));
+    gl_FragColor = vec4(vec3(0.88, 0.93, 0.94) * uLight, clamp(a, 0.0, 0.9));
     #include <fog_fragment>
   }
 `;
@@ -162,10 +185,11 @@ export default function Torpedo({ store }: TorpedoProps) {
         {
           uT: { value: 0 },
           uLength: { value: TORPEDO_RANGE_M },
-          uHalfWidth: { value: 14 },
+          uHalfWidth: { value: 24 },
           uSpeed: { value: TORPEDO_MPS },
           uLag: { value: BUBBLE_LAG_S },
           uLife: { value: TRACK_LIFE_S },
+          uLight: { value: 1 },
         },
       ]),
     });
@@ -209,6 +233,10 @@ export default function Torpedo({ store }: TorpedoProps) {
     const n = torpedoes.length > 0 ? torpedoes.length : hole ? 1 : 0;
     const ready = s.track !== null && s.track.frames.length > 0;
     const spec = getShip(s.ship);
+    // The froth is unlit: dim at night (the time button's starry night).
+    const light = isDaylit(sceneSettingsFor(s.ship, s.time))
+      ? 1
+      : NIGHT_TRACK_LIGHT;
     // Where they struck, on the sea at the moment of each hit (they stay
     // there as she steams on).
     for (let k = 0; k < Math.max(n, rig.tracks.length); k += 1) {
@@ -225,8 +253,9 @@ export default function Torpedo({ store }: TorpedoProps) {
       m.position.set(pose.x, 0.06, pose.z);
       // The plane's +y (in its own frame) lies along the track, flat on the sea.
       m.rotation.set(-Math.PI / 2, 0, pose.rotZ);
-      m.scale.set(28, TORPEDO_RANGE_M, 1);
+      m.scale.set(48, TORPEDO_RANGE_M, 1);
       m.material.uniforms.uT.value = s.t - at;
+      m.material.uniforms.uLight.value = light;
       m.visible = true;
     }
   }, -1.4);

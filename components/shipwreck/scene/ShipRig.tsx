@@ -34,7 +34,12 @@ import { seaFieldOf } from "./seaWaves";
 import { ridePose } from "./stormRide";
 import { shipToThreeInto, trackSpeedAt, type V3 } from "./cameraMath";
 import { MAX_LAMPS, WAKE_PATH_POINTS, type SceneRuntime } from "./runtime";
-import { SCENE_SETTINGS, isDaylit } from "./settings";
+import {
+  SCENE_SETTINGS,
+  isDaylit,
+  sceneSettingsFor,
+  type SceneSettings,
+} from "./settings";
 import { walkHullPower } from "./walkCamera";
 
 /**
@@ -57,9 +62,12 @@ const WARM_FRAMES = 3;
  * 4 lights at night. By day there are none (the sun outshines them), so the
  * afternoon has 3: the sun, the sky light and the submersible lamp.
  */
-function lampsOf(spec: ShipSpec): [number, number, number][] {
-  if (isDaylit(SCENE_SETTINGS[spec.id])) return [];
-  if (SCENE_SETTINGS[spec.id].storm) {
+function lampsOf(
+  spec: ShipSpec,
+  settings: SceneSettings
+): [number, number, number][] {
+  if (isDaylit(settings)) return [];
+  if (settings.storm) {
     // A laker's deck floodlights: on the forecastle's after face and the
     // after house's forward face, a few metres over her spar deck, lighting
     // the hatches between (on all afternoon in the storm).
@@ -207,16 +215,22 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
   const warm = useRef(0);
   const { gl, scene, camera } = useThree();
 
-  const lampPositions = useMemo(() => lampsOf(spec), [spec]);
+  // Her lights follow the time button's hour (lit at night, out by day).
+  const time = useStore(store, (s) => s.time);
+  const settings = sceneSettingsFor(spec.id, time);
+  const lampPositions = useMemo(
+    () => lampsOf(spec, settings),
+    [spec, settings]
+  );
   const allLamps = useMemo(
     () => [...lampPositions, ...deckLightsOf(spec)],
     [lampPositions, spec]
   );
   // The night's two lamps light a liner's long decks; a laker's floodlights
   // stand close over her deck and hatches (a dimmer lamp does).
-  const lampStrength = SCENE_SETTINGS[spec.id].storm ? 260 : 900;
+  const lampStrength = settings.storm ? 260 : 900;
   // In the storm her lights are on all afternoon (the overcast is dim).
-  const lightShare = isDaylit(SCENE_SETTINGS[spec.id]) ? DAY_LIGHTS : 1;
+  const lightShare = isDaylit(settings) ? DAY_LIGHTS : 1;
   // Scratch for her run-in frame and her wake (no allocation per frame).
   const scratch = useMemo(
     () => ({

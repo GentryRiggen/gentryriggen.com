@@ -22,6 +22,10 @@ function liveryLines(ship: ShipSpec): string[] {
     : [];
 }
 
+/** The controls card's time line (every ship: 1.9). */
+const TIME_LINE =
+  "The sun-and-moon button (top) changes the time of day, even while she sinks. The anchor is the time she really sank; the sparkle row is just for fun. The water row makes the water under the sea clearer and lighter.";
+
 /** What each livery was, in a young player's words. */
 const LIVERY_WORDS: Readonly<Record<string, string>> = {
   "white-star-1912":
@@ -199,6 +203,7 @@ function torpedoHelp(
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
           ...walkLines(ship),
           ...liveryLines(ship),
+          TIME_LINE,
         ],
       };
   }
@@ -259,6 +264,7 @@ function mineHelp(
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
           ...walkLines(ship),
           ...liveryLines(ship),
+          TIME_LINE,
         ],
       };
   }
@@ -381,6 +387,7 @@ function stormHelp(
           `X-ray shows the water inside, and her cargo of iron ore pellets. The pins fly you to ${placeList(ship)}.`,
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
           ...liveryLines(ship),
+          TIME_LINE,
         ],
       };
   }
@@ -445,6 +452,7 @@ export function helpFor(
           "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
           ...walkLines(ship),
           ...liveryLines(ship),
+          TIME_LINE,
         ],
       };
   }

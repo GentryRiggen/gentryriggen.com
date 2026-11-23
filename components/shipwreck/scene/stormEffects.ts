@@ -16,7 +16,7 @@ import {
   STORM_NIGHT_WHITE,
   STORM_PARTICLES,
   snowAt,
-  stormDaylight,
+  stormLightAt,
 } from "./storm";
 
 /**
@@ -210,7 +210,7 @@ export class StormEffects {
     this.plume(f, tier.plume);
     if (f.under) return this.n;
     const windMs = (sea.storm?.windKn ?? 40) * KN * sea.scale;
-    const d = stormDaylight(f.t);
+    const d = stormLightAt(this.runtime, f.t);
     const light = 0.03 + 0.97 * d;
     // White things keep a floor of light at night (a look: README).
     const white = Math.max(light, STORM_NIGHT_WHITE);

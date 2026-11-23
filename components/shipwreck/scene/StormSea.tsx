@@ -22,7 +22,7 @@ import { MAX_LAMPS, type SceneRuntime } from "./runtime";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { WaveFieldArrays } from "@/lib/shipwreck/sim/waves";
 import type { SceneSettings } from "./settings";
-import { STORM_NIGHT_WHITE, stormDaylight } from "./storm";
+import { STORM_NIGHT_WHITE, stormLightAt } from "./storm";
 import {
   SEA_WAVES_GLSL,
   createSeaWaves,
@@ -451,7 +451,7 @@ export default function StormSea({
     // precision and nothing wraps.
     u.uTime.value = sea.t;
     // The light: the overcast's share now, never quite none (her lamps).
-    const d = stormDaylight(runtime.frame?.t ?? 0);
+    const d = stormLightAt(runtime, runtime.frame?.t ?? 0);
     u.uLight.value = 0.05 + 0.95 * d;
     (u.uSkyLow.value as Color).copy(fogColor).multiplyScalar(0.04 + 0.96 * d);
     // The overcast is darker overhead than at the horizon: facets facing

@@ -118,13 +118,14 @@ const dayVertex = /* glsl */ `
 `;
 const dayFragment = /* glsl */ `
   varying vec4 vColor;
+  uniform float uLight;
   void main() {
     vec2 p = gl_PointCoord - 0.5;
     float r = dot(p, p) * 4.0;
     if (r > 1.0) discard;
     float a = vColor.a * (1.0 - r) * (1.0 - r * 0.4);
     if (a < 0.004) discard;
-    gl_FragColor = vec4(vColor.rgb, a);
+    gl_FragColor = vec4(vColor.rgb * uLight, a);
   }
 `;
 
@@ -135,13 +136,22 @@ interface EffectsProps {
   spec: ShipSpec;
   /** Her scene: the afternoon has smoke, the hit and boats hanging plumb. */
   settings: SceneSettings;
+  /**
+   * Her day shown at night (the time button): the day's smoke and steam
+   * drawn dim, as the night would show them.
+   */
+  dark?: boolean;
 }
+
+/** The day's smoke and steam at night (the time button): this much light. */
+const NIGHT_SMOKE_LIGHT = 0.12;
 
 export default function Effects({
   store,
   runtime,
   spec,
   settings,
+  dark = false,
 }: EffectsProps) {
   const day = isDaylit(settings);
   // The storm (the Fitzgerald): snow, spray and torn smoke in the blended
@@ -198,6 +208,7 @@ export default function Effects({
         uScale: { value: 600 },
         uMaxPx: { value: DAY_PARTICLES.high.maxPx },
         uMinPx: { value: storm ? STORM_MIN_PX : 0 },
+        uLight: { value: 1 },
       },
     });
     const points = new Points(g, mat);
@@ -314,6 +325,7 @@ export default function Effects({
 
     dayPts.mat.uniforms.uScale.value = pts.mat.uniforms.uScale.value;
     dayPts.points.visible = day || storm;
+    dayPts.mat.uniforms.uLight.value = dark ? NIGHT_SMOKE_LIGHT : 1;
 
     runtime.flash = 0;
     if (!track || !frame) {
