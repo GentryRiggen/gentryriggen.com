@@ -104,12 +104,12 @@
     "triangles": 302459
   },
   "shipwreck-carpathia-hit": {
-    "calls": 60,
-    "triangles": 163811
+    "calls": 64,
+    "triangles": 165755
   },
   "shipwreck-carpathia-settled": {
-    "calls": 55,
-    "triangles": 163551
+    "calls": 59,
+    "triangles": 165495
   },
   "shipwreck-carpathia-wreck": {
     "calls": 35,

@@ -21,6 +21,8 @@ export type Cue =
   | "boom"
   | "mine"
   | "whistle"
+  | "hardHit"
+  | "bowDown"
   | "gull"
   | "splash"
   | "swell"
@@ -111,11 +113,61 @@ const BRITANNIC_SCRIPTED: ReadonlySet<SimEventKind> = new Set<SimEventKind>([
   "last-boat",
 ]);
 
+/**
+ * The Carpathia's morning (open Atlantic): her first torpedo (the run's
+ * t = 0 `collision`) and the 10:50 one are a hard double thud, the second,
+ * 8 s later in the engine room (`torpedo-hit`, hit 2), the deep rumble. She
+ * fires her rockets by daylight. Her going down is bow first. No voices.
+ */
+export const CARPATHIA_EVENT_CUES: Partial<Record<SimEventKind, Cue>> = {
+  collision: "hardHit",
+  rocket: "rocket",
+  "boat-lowered": "davit",
+  "last-boat": "davit",
+  "forecastle-under": "rush",
+  "bridge-under": "rush",
+  "funnel-falls": "funnel",
+  "lights-out": "powerDown",
+  breakup: "breakup",
+  "bow-under": "bowDown",
+  "bow-lands": "thud",
+  "stern-lands": "thud",
+};
+
+/** The Carpathia's hit that is the engine room's deep rumble (hit 2). */
+export const CARPATHIA_ENGINE_HIT = 2;
+
+/**
+ * Her cue for an event in `list` (the run's events, in time order): the
+ * engine-room hit's rumble, her other hits' thud, and her going-down cue
+ * on whichever of `bow-under` and `stern-under` comes first, so a What-if
+ * that takes her stern first sounds it too (the later one is quiet). The
+ * rest from `CARPATHIA_EVENT_CUES`.
+ */
+export function carpathiaCueFor(
+  e: SimEvent,
+  list: readonly SimEvent[]
+): Cue | undefined {
+  if (e.kind === "torpedo-hit")
+    return e.index === CARPATHIA_ENGINE_HIT ? "boom" : "hardHit";
+  if (e.kind === "bow-under" || e.kind === "stern-under") {
+    const first = list.find(
+      (x) => x.kind === "bow-under" || x.kind === "stern-under"
+    );
+    return first === e ? "bowDown" : undefined;
+  }
+  return CARPATHIA_EVENT_CUES[e.kind];
+}
+
+/** Her gulls are this many times rarer, far from any coast. */
+export const CARPATHIA_GULL_RARITY = 2.5;
+
 /** The event-to-cue map for a ship (the Titanic's is `EVENT_CUES`). */
 export function eventCuesFor(ship: ShipId): Partial<Record<SimEventKind, Cue>> {
   if (ship === "lusitania") return LUSITANIA_EVENT_CUES;
   if (ship === "fitzgerald") return FITZGERALD_EVENT_CUES;
   if (ship === "britannic") return BRITANNIC_EVENT_CUES;
+  if (ship === "carpathia") return CARPATHIA_EVENT_CUES;
   return EVENT_CUES;
 }
 
@@ -149,6 +201,9 @@ export const CUE_GAP_S: Record<Cue, number> = {
   mine: 4,
   // Two long blasts take about 9 s.
   whistle: 12,
+  // Under the 8 s between her first two hits.
+  hardHit: 2,
+  bowDown: 30,
   gull: 4,
   splash: 2,
   swell: 6,
@@ -294,6 +349,8 @@ export function createCueScheduler(
     boom: -Infinity,
     mine: -Infinity,
     whistle: -Infinity,
+    hardHit: -Infinity,
+    bowDown: -Infinity,
     gull: -Infinity,
     splash: -Infinity,
     swell: -Infinity,
@@ -372,7 +429,9 @@ export function createCueScheduler(
       if (seeked) {
         reposition(list, i.t, isNewRun && i.t <= 0);
         nextCreakAt = i.now;
-        nextGullAt = i.now + GULL_MIN_S / 2;
+        nextGullAt =
+          i.now +
+          (GULL_MIN_S / 2) * (ship === "carpathia" ? CARPATHIA_GULL_RARITY : 1);
       } else if (i.playing) {
         while (next < list.length && list[next].t <= i.t) {
           const e = list[next];
@@ -384,7 +443,8 @@ export function createCueScheduler(
               ? undefined
               : cues[e.kind];
           if (e.kind === BRITANNIC_GONE_EVENT) gone = true;
-          if (cue) fire(cue, i.underwater ? 0.5 : 1, i);
+          const hit = ship === "carpathia" ? carpathiaCueFor(e, list) : cue;
+          if (hit) fire(hit, i.underwater ? 0.5 : 1, i);
         }
         // A multi-torpedo run's later hits land staggered after t = 0.
         const n = i.hits ?? 0;
@@ -422,10 +482,12 @@ export function createCueScheduler(
       bed.way = i.way;
       bed.wind = windAt(i.storm, i.stormScale ?? 1, i.t);
 
+      const offshore = ship === "carpathia";
+      const rare = offshore ? CARPATHIA_GULL_RARITY : 1;
       // Her afternoon (or the Britannic's morning): a gull now and then, far
       // off, while she is upright.
       if (
-        (ship === "lusitania" || ship === "britannic") &&
+        (ship === "lusitania" || ship === "britannic" || offshore) &&
         i.playing &&
         !i.underwater &&
         bed.strain < GULL_UNTIL_STRAIN &&
@@ -433,7 +495,8 @@ export function createCueScheduler(
       ) {
         fire("gull", 0.5 + 0.5 * ((gulls * 0.37) % 1), i);
         gulls += 1;
-        nextGullAt = i.now + GULL_MIN_S + ((gulls * 0.618) % 1) * GULL_SPREAD_S;
+        nextGullAt =
+          i.now + (GULL_MIN_S + ((gulls * 0.618) % 1) * GULL_SPREAD_S) * rare;
       }
 
       // Walking (real time, playing or not): a splash on going in.

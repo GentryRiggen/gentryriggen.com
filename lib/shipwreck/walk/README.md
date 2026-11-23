@@ -21,7 +21,7 @@ the sea is `z`).
 
 ## The maps
 
-`titanicDecks.ts`, `lusitaniaDecks.ts` and `britannicDecks.ts` (`walkMapFor(ship)`, null for a
+`titanicDecks.ts`, `lusitaniaDecks.ts`, `britannicDecks.ts` and `carpathiaDecks.ts` (`walkMapFor(ship)`, null for a
 ship you cannot walk on, such as the Edmund Fitzgerald) mark, per ship:
 
 - **areas**: counter-clockwise outlines on a named deck. Their sides follow
@@ -48,7 +48,11 @@ feet as blockers; `maps.test.ts` checks every house, funnel, davit and bench
 her recipe draws. Lusitania:
 boat deck (two promenades beside its long house), foredeck (`forecastle`),
 the mainmast's gap, the second class house's deck (`aft-deck`) and the
-stern.
+stern. Carpathia: forecastle, forward well, the bridge deck forward of the
+boat deck, the boat deck, a covered promenade down each side under it (a
+ladder from the boat deck; closed at both ends) and the open after deck
+(no poop) by the white stern deckhouse. `deckZAt` measures sheer from the
+C deck, or from `Upper` on a ship (the Carpathia) with no C deck.
 
 ## The walker (`step.ts`, `stepWalker`)
 

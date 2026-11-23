@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.8.0",
+    date: "2026-11-22",
+    title: "Walk the Carpathia",
+    highlights: [
+      "Walk the Carpathia's decks! Stroll her bow, her boat deck, the covered walkway down each side and the open deck at her stern, and climb the ladders between them",
+      "Her own sounds: the open sea far from land, two torpedo hits seconds apart, the third one later, and the groan as she goes down",
+      "Six ships of her convoy steam along with her on the horizon, then turn and race away after the torpedoes hit",
+      "Clouds in her sky and little white waves on her sea, like the one photo of her sinking",
+      "Her lifeboats are their real size now, bigger than before",
+    ],
+  },
+  {
     version: "1.7.0",
     date: "2026-11-22",
     title: "A paint box for every ship",

@@ -257,6 +257,21 @@ export default function Sky({ dpr }: SkyProps) {
 
 const daySkyFragment = /* glsl */ `
   varying vec3 vDir;
+  #ifdef CLOUDS
+  float hash(vec2 p) {
+    p = mod(p, 289.0);
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+  }
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+  }
+  #endif
   uniform vec3 uSunDir;
   uniform vec3 uSunColor;
   uniform vec3 uZenith;
@@ -277,8 +292,25 @@ const daySkyFragment = /* glsl */ `
     vec2 sunFlat = normalize(uSunDir.xz + vec2(1e-5));
     float toward = max(dot(dirXZ, sunFlat), 0.0);
     c += uGlow * pow(toward, 3.0) * exp(-h * 9.0);
+    float disc = 24.0 * smoothstep(0.99997, 0.999989, cs);
+    #ifdef CLOUDS
+    // Broken cloud (a ship's own, DaylightLook.clouds): fair-weather
+    // cumulus on a layer about 1.5 km up, grey underneath, lit at the
+    // edges toward the sun, thinning into the haze toward the horizon.
+    vec2 q = d.xz / (d.y + 0.07) * 1.1;
+    float cl = noise(q) * 0.5 + noise(q * 2.13 + 3.7) * 0.27
+      + noise(q * 4.7 + 9.1) * 0.15 + noise(q * 9.8 + 1.3) * 0.08;
+    float cover = smoothstep(1.0 - CLOUDS - 0.08, 1.0 - CLOUDS + 0.12, cl);
+    float thick = smoothstep(1.0 - CLOUDS, 1.0, cl);
+    vec3 cloudC = mix(vec3(0.78, 0.8, 0.82), vec3(0.42, 0.45, 0.5), thick);
+    cloudC += uSunColor * 0.25 * pow(cs, 6.0) * (1.0 - thick);
+    float far = exp(-h * 7.0);
+    cover *= 1.0 - far * 0.85;
+    c = mix(c, cloudC, cover);
+    disc *= 1.0 - cover;
+    #endif
     // The disc (0.27° across), bright enough to bloom.
-    c += uSunColor * 24.0 * smoothstep(0.99997, 0.999989, cs);
+    c += uSunColor * disc;
     // Below the horizon (the sea's edge from under it): the haze.
     if (d.y < 0.0) c = uHorizon * mix(1.0, 0.75, clamp(-d.y * 4.0, 0.0, 1.0));
     gl_FragColor = vec4(c, 1.0);
@@ -294,13 +326,15 @@ interface DaySkyProps {
   look?: DayLook;
   /** The blue overhead (linear; over the look's; default the Lusitania's). */
   zenith?: LinearRGB;
+  /** Broken cloud's cover (0–1, `DaylightLook.clouds`); missing: clear. */
+  clouds?: number;
 }
 
 /**
  * The sky of a sunny afternoon: blue overhead, a pale haze at the horizon
  * the fog fades into, the sun's glow and disc. No stars. One draw call.
  */
-export function DaySky({ sunDir, horizon, look, zenith }: DaySkyProps) {
+export function DaySky({ sunDir, horizon, look, zenith, clouds }: DaySkyProps) {
   const sky = useMemo(() => {
     const geo = new SphereGeometry(RADIUS * 1.05, 32, 16);
     const mat = new ShaderMaterial({
@@ -308,6 +342,8 @@ export function DaySky({ sunDir, horizon, look, zenith }: DaySkyProps) {
       fragmentShader: daySkyFragment,
       side: BackSide,
       depthWrite: false,
+      // A define, so a clear sky's program stays as it was.
+      defines: clouds !== undefined ? { CLOUDS: clouds.toFixed(3) } : undefined,
       uniforms: {
         uSunDir: { value: new Vector3() },
         uSunColor: { value: new Color().setRGB(1, 0.93, 0.82) },
@@ -321,7 +357,7 @@ export function DaySky({ sunDir, horizon, look, zenith }: DaySkyProps) {
     dome.renderOrder = -10;
     dome.frustumCulled = false;
     return { dome, geo, mat };
-  }, []);
+  }, [clouds]);
   useEffect(() => {
     (sky.mat.uniforms.uSunDir.value as Vector3)
       .set(sunDir[0], sunDir[1], sunDir[2])

@@ -1415,7 +1415,8 @@ realSpots)`, built in her file.
 - **Boats.** Twenty lifeboats, ten a side (Wikipedia, 1912; her 1918 count
   is not in our sources), odd numbers to starboard, 1 and 2 forward: a pair
   on the bridge deck's forward house (x 30), seven pairs along the boat
-  deck from the bridge aft (x 2 to −45), a pair on the boat platform
+  deck from the bridge aft (x 6.5 to −45.1, 8.6 m apart for 26 ft boats:
+  model README), a pair on the boat platform
   forward of the jigger (x −62.26: the Malta view and the 1912 starboard
   view show a boat there) and the tenth pair on the stern deckhouse's
   roof (x −77: no photograph shows where it went; ours); each boat's keel

@@ -145,6 +145,25 @@ describe("the Carpathia's summer morning (R6, R7)", () => {
     expect(s.sun!.azimuthDeg).toBeLessThan(100);
   });
 
+  it("has her convoy, broken cloud, small whitecaps and a faint sea mirror (R12, R7); no other ship does", () => {
+    expect(s.convoy).toBe(true);
+    expect(s.daylight?.clouds).toBe(0.5);
+    expect(s.daylight?.whitecaps).toBe(0.03);
+    expect(s.daylight?.mirror).toBeGreaterThan(0);
+    expect(s.daylight?.mirror).toBeLessThan(0.6);
+    for (const id of [
+      "titanic",
+      "lusitania",
+      "fitzgerald",
+      "britannic",
+    ] as const) {
+      expect(SCENE_SETTINGS[id].convoy).toBeUndefined();
+      expect(SCENE_SETTINGS[id].daylight?.clouds).toBeUndefined();
+      expect(SCENE_SETTINGS[id].daylight?.whitecaps).toBeUndefined();
+      expect(SCENE_SETTINGS[id].daylight?.mirror).toBeUndefined();
+    }
+  });
+
   it("heads her west for Boston, so her port side faces south", () => {
     expect(s.headingDeg).toBeGreaterThanOrEqual(255);
     expect(s.headingDeg).toBeLessThanOrEqual(290);

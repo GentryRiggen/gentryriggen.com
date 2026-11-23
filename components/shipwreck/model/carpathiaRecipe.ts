@@ -155,8 +155,13 @@ const PROM_INSET = 2.4;
 const FWD_HOUSE_FT: [number, number] = [148, 192];
 /** Its walls in from the side. */
 const FWD_HOUSE_INSET = 2.2;
-/** Her lifeboats: about 20 ft (README: the data's 6.5 m spacing). */
-const BOAT = { length: 6.2, beam: 2.0, depth: 0.85 };
+/**
+ * Her lifeboats: 26 ft by 7½ ft by 3 ft, the usual wooden lifeboat of a
+ * ship her size (README, "Boats"); the pair on the short boat platform
+ * aft a size smaller, 24 ft (as the Lusitania's after boats were).
+ */
+const BOAT = { length: 26 * FT, beam: 7.5 * FT, depth: 3 * FT };
+const PLATFORM_BOAT = { ...BOAT, length: 24 * FT };
 
 /**
  * Her 1912 funnel, measured off P1 (README): over the boat deck the black
@@ -509,7 +514,7 @@ export function carpathiaRecipe(
       x: b.x,
       y: s * (e - 1.4),
       z: deck + chock,
-      ...BOAT,
+      ...(b.x > PF.fromX && b.x < PF.toX ? PLATFORM_BOAT : BOAT),
       hasDavits: true,
       edgeY: s * (e - 0.15),
       deckZ: deck,

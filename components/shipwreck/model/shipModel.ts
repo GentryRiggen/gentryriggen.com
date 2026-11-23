@@ -36,7 +36,6 @@ import {
   TITANIC_HULL_PAINT,
   type HullPaint,
   type LightUniforms,
-  type ShipMaterials,
 } from "./materials";
 import { carpathiaRecipe } from "./carpathiaRecipe";
 import {

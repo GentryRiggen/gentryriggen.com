@@ -174,6 +174,42 @@ describe("Carpathia recipe", () => {
       }
   });
 
+  it("carries true-size boats (26 ft, 24 ft on the platform), each pair of davits on its own deck", () => {
+    const FT = 0.3048;
+    const PF = CARPATHIA_BOAT_PLATFORM;
+    const SH = CARPATHIA_STERN_HOUSE;
+    const bridgeWingX = r.layout.boatDeckTo - 2.2;
+    for (const b of r.boats) {
+      const onPlatform = b.x > PF.fromX && b.x < PF.toX;
+      expect(b.length / FT).toBeCloseTo(onPlatform ? 24 : 26, 1);
+      expect(b.beam / FT).toBeCloseTo(7.5, 1);
+      const ds = r.davits.filter((d) => d.boat === b.index);
+      // Davits stand on the deck under them: the platform's, the stern
+      // house's roof, or the boat deck clear of the bridge's wings.
+      for (const d of ds) {
+        if (onPlatform) {
+          expect(d.x).toBeGreaterThan(PF.fromX);
+          expect(d.x).toBeLessThan(PF.toX);
+        } else if (b.x < SH.toX) {
+          expect(d.x).toBeGreaterThan(SH.fromX);
+          expect(d.x).toBeLessThan(SH.toX);
+        } else if (b.x < r.layout.boatDeckTo && b.x > r.layout.boatDeckFrom) {
+          expect(d.x).toBeGreaterThan(r.layout.boatDeckFrom);
+          expect(d.x).toBeLessThan(bridgeWingX - 1.5);
+        }
+      }
+    }
+    // Neighbours on one side leave room between their davits.
+    for (const side of ["port", "starboard"]) {
+      const xs = r.davits
+        .filter((d) => r.boats[d.boat].side === side)
+        .map((d) => d.x)
+        .sort((a, b) => a - b);
+      for (let i = 1; i < xs.length; i += 1)
+        expect(xs[i] - xs[i - 1]).toBeGreaterThan(0.25);
+    }
+  });
+
   it("has two three-bladed propellers and one rudder under the counter", () => {
     expect(r.propellers).toHaveLength(2);
     // thegreatoceanliners.com: "two three-bladed".

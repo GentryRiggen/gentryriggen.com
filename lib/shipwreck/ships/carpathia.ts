@@ -242,9 +242,13 @@ const STERN_HOUSE_FWD_X = fromStem(510); // -72.17
 const STERN_HOUSE_AFT_X = fromStem(540); // -81.31
 /** Its walls 4.6 m out from the centre line: a walkway outside each. */
 const STERN_HOUSE_HALF_BREADTH = 4.6;
-/** The boat platform on stanchions forward of the jigger (P2). */
-const PLATFORM_FWD_X = fromStem(467); // -59.06
-const PLATFORM_AFT_X = fromStem(488); // -65.46
+/**
+ * The boat platform on stanchions forward of the jigger (P2: about 467–488
+ * ft off a quarter view), drawn 466–489 ft to carry a 24 ft boat (model
+ * README, "Boats"), still clear of the jigger and No. 5 hatch.
+ */
+const PLATFORM_FWD_X = fromStem(466); // -58.76
+const PLATFORM_AFT_X = fromStem(489); // -65.77
 
 /** Her masts, forward to aft (fore, main, mizzen, jigger). */
 export const CARPATHIA_MASTS: readonly number[] = [
@@ -566,8 +570,12 @@ export interface CarpathiaBoat {
  * roof (no photograph shows where: ours). Each boat's keel 1 m over its
  * deck: the forward pair's deck the house's roof, level with the boat
  * deck; the after pairs' a tier over the after deck.
+ *
+ * The boat deck's seven pairs: 26 ft boats (model README) 8.6 m apart, the
+ * aftmost at the deck's after end, the foremost alongside the bridge house
+ * clear of the bridge's wings.
  */
-const BOAT_DECK_XS = [2, -6.5, -13, -19.5, -26, -32.5, -45];
+const BOAT_DECK_XS = [6.5, -2.1, -10.7, -19.3, -27.9, -36.5, -45.1];
 /**
  * The two boats the second torpedo wrecked (GOL: "two boats wrecked"):
  * port boats 8 and 10, abreast the engine room where it struck (ours; the

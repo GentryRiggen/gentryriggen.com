@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { CARPATHIA_WALK } from "@/lib/shipwreck/walk/carpathiaDecks";
+import { insideBlocker, pointInPolygon } from "@/lib/shipwreck/walk/types";
 
 /** 2:18 AM on the Titanic: 2 h 38 min of real time after 11:40 PM. */
 const TWO_EIGHTEEN_S = 2 * 3600 + 38 * 60;
@@ -206,16 +208,57 @@ test("walk the HMHS Britannic's decks: the stick walks, then she lies down and t
   );
 });
 
-test("the Carpathia has no Walk button this release", async ({ page }) => {
+test("walk the Carpathia's decks: the stick walks, and she stays on deck", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
   await page.goto("/shipwreck");
   await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
   await page.evaluate(() => window.__shipwreck!.setShip!("carpathia"));
   await page.getByTestId("shipwreck-real-night").click();
   await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
-  // Wait until the HUD has her frame (the Titanic's Walk button shows then).
-  await expect(page.getByTestId("shipwreck-play")).toBeVisible();
+
+  // She has a walk map: the Walk button is offered once she has a frame.
+  const walk = page.getByTestId("shipwreck-walk");
+  await expect(walk).toBeVisible();
+  await expect(walk).toBeEnabled({ timeout: 60_000 });
+  await page.evaluate(() => window.__shipwreck!.pause!());
+  await walk.click();
+  const stick = page.getByTestId("shipwreck-walk-stick");
+  await expect(stick).toBeVisible();
+  expect(
+    await page.evaluate(() => window.__shipwreck!.getState!().camera)
+  ).toBe("walk");
+
+  // Drag the stick up for a second: the walker moves along her boat deck.
+  await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+  const w0 = await page.evaluate(() => window.__shipwreck!.getWalk!()!);
+  expect(w0.phase).toBe("deck");
+  const box = (await stick.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy - box.height / 2, { steps: 4 });
+  await page.waitForTimeout(1500);
+  await page.mouse.up();
   await expect
-    .poll(() => page.evaluate(() => window.__shipwreck!.getState!().computedT))
-    .toBeGreaterThan(0);
-  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+    .poll(() => page.evaluate(() => window.__shipwreck!.getWalk!()!.x))
+    .not.toBeCloseTo(w0.x, 1);
+
+  // Keep running forward: her decks hold (the boat deck's front is a wall,
+  // never the sea).
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(1, 0));
+  await page.waitForTimeout(4000);
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 0));
+  const w1 = await page.evaluate(() => window.__shipwreck!.getWalk!()!);
+  expect(w1.phase).toBe("deck");
+  // On one of her walked decks (inside its outline, inside the rails) and
+  // not inside a house, mast or fitting there.
+  const at: [number, number] = [w1.x, w1.y];
+  const onArea = CARPATHIA_WALK.areas.find((a) =>
+    pointInPolygon(at, a.outline)
+  );
+  expect(onArea?.id).toBeDefined();
+  expect(insideBlocker(CARPATHIA_WALK, onArea!.id, at, 0)).toBe(false);
 });

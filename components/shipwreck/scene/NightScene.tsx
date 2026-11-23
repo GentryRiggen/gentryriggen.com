@@ -17,6 +17,7 @@ import { getShip } from "@/lib/shipwreck/ships";
 import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import CameraRig from "./CameraRig";
 import Coast from "./Coast";
+import Convoy from "./Convoy";
 import Effects from "./Effects";
 import Environment from "./Environment";
 import Iceberg from "./Iceberg";
@@ -168,6 +169,7 @@ export default function NightScene({
             horizon={haze}
             look={dayLookOf(settings)}
             zenith={settings.daylight?.zenith}
+            clouds={settings.daylight?.clouds}
           />
         ) : storm ? (
           <StormSky runtime={runtime} fog={settings.fog} dpr={dpr} />
@@ -175,6 +177,7 @@ export default function NightScene({
           <Sky dpr={dpr} />
         )}
         {settings.coast && <Coast ship={spec.id} />}
+        {settings.convoy && quality !== "low" && <Convoy store={store} />}
         {/* Another ship builds her own model, disposing the old. */}
         <ShipOnStage store={store} runtime={runtime} />
         {settings.iceberg && <Iceberg store={store} />}

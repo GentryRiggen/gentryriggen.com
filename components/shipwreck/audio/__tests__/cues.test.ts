@@ -3,6 +3,8 @@ import type { StormSpec } from "@/lib/shipwreck/ships/types";
 import type { SimFrame } from "@/lib/shipwreck/sim/track";
 import {
   BRITANNIC_EVENT_CUES,
+  CARPATHIA_EVENT_CUES,
+  CARPATHIA_GULL_RARITY,
   CUE_GAP_S,
   EVENT_CUES,
   LUSITANIA_EVENT_CUES,
@@ -628,5 +630,112 @@ describe("the Britannic's morning", () => {
     s.update([], [frame(0, 0, 0.4)], input({ ship: "britannic" }));
     expect(s.bed.ship).toBe("britannic");
     expect(s.bed.power).toBe(0.4);
+  });
+});
+
+describe("the Carpathia's morning", () => {
+  const hit = (t: number, index: number): SimEvent => ({
+    t,
+    realT: t,
+    kind: "torpedo-hit",
+    index,
+  });
+
+  it("maps her hits, rockets and bow-first end, with no scrape or voices", () => {
+    const m = eventCuesFor("carpathia");
+    expect(m).toBe(CARPATHIA_EVENT_CUES);
+    expect(m.collision).toBe("hardHit");
+    expect(m.rocket).toBe("rocket");
+    expect(m["bow-under"]).toBe("bowDown");
+    expect(m["stern-under"]).toBeUndefined();
+    expect(Object.values(m)).not.toContain("scrape");
+  });
+
+  it("sounds the double thud, the engine-room rumble 8 s later, then the 10:50 hit", () => {
+    const { played, run } = setup([
+      ev(0, "collision"),
+      hit(8, 2),
+      ev(1000, "rocket"),
+      hit(5100, 3),
+    ]);
+    run({ t: 0, ship: "carpathia" });
+    run({ t: 1, now: 101, ship: "carpathia" });
+    expect(played).toEqual(["hardHit"]);
+    run({ t: 9, now: 102, ship: "carpathia" });
+    expect(played.filter((c) => c !== "gull")).toEqual(["hardHit", "boom"]);
+    run({ t: 1001, now: 200, ship: "carpathia" });
+    run({ t: 5101, now: 300, ship: "carpathia" });
+    expect(played.filter((c) => c !== "gull")).toEqual([
+      "hardHit",
+      "boom",
+      "rocket",
+      "hardHit",
+    ]);
+  });
+
+  it("goes down bow first and a seek makes no cue", () => {
+    const { played, run } = setup([hit(8, 2), ev(6000, "bow-under")]);
+    run({ t: 0, ship: "carpathia" });
+    run({ t: 5999, now: 101, snapId: 1, ship: "carpathia" });
+    run({ t: 6000.5, now: 102, snapId: 1, ship: "carpathia" });
+    expect(played.filter((c) => c !== "gull")).toEqual(["bowDown"]);
+  });
+
+  it("sounds her going down on a stern-first What-if too, once", () => {
+    const stern = setup([
+      hit(8, 2),
+      ev(6000, "stern-under"),
+      ev(6100, "bow-under"),
+    ]);
+    stern.run({ t: 0, ship: "carpathia" });
+    stern.run({ t: 5999, now: 101, snapId: 1, ship: "carpathia" });
+    stern.run({ t: 6000.5, now: 102, snapId: 1, ship: "carpathia" });
+    expect(stern.played.filter((c) => c !== "gull")).toEqual(["bowDown"]);
+    stern.run({ t: 6100.5, now: 200, snapId: 1, ship: "carpathia" });
+    expect(stern.played.filter((c) => c !== "gull")).toEqual(["bowDown"]);
+    // Bow first: the stern's going after is quiet.
+    const bow = setup([
+      hit(8, 2),
+      ev(6000, "bow-under"),
+      ev(6100, "stern-under"),
+    ]);
+    bow.run({ t: 0, ship: "carpathia" });
+    bow.run({ t: 5999, now: 101, snapId: 1, ship: "carpathia" });
+    bow.run({ t: 6000.5, now: 102, snapId: 1, ship: "carpathia" });
+    expect(bow.played.filter((c) => c !== "gull")).toEqual(["bowDown"]);
+    bow.run({ t: 6100.5, now: 200, snapId: 1, ship: "carpathia" });
+    expect(bow.played.filter((c) => c !== "gull")).toEqual(["bowDown"]);
+  });
+
+  it("does not change the Titanic or Lusitania for a torpedo-hit", () => {
+    for (const ship of ["titanic", "lusitania"] as const) {
+      const { played, run } = setup([hit(8, 2)]);
+      run({ t: 0, ship });
+      run({ t: 9, now: 101, ship });
+      expect(played).toEqual([]);
+    }
+  });
+
+  it("has gulls, but rarer than the Britannic's, none under water", () => {
+    const count = (ship: "carpathia" | "britannic", underwater = false) => {
+      const played: Cue[] = [];
+      const s = createCueScheduler((c) => played.push(c));
+      const none: SimEvent[] = [];
+      for (let now = 100; now < 400; now += 0.5)
+        s.update(none, [frame(0, 0)], input({ now, underwater, ship }));
+      return played.filter((c) => c === "gull").length;
+    };
+    expect(count("carpathia")).toBeGreaterThan(2);
+    expect(count("carpathia") * (CARPATHIA_GULL_RARITY - 1)).toBeLessThan(
+      count("britannic")
+    );
+    expect(count("carpathia", true)).toBe(0);
+  });
+
+  it("is quiet when paused", () => {
+    const { played, run } = setup([hit(8, 2)]);
+    run({ t: 0, ship: "carpathia" });
+    run({ t: 9, now: 101, ship: "carpathia", playing: false });
+    expect(played).toEqual([]);
   });
 });
