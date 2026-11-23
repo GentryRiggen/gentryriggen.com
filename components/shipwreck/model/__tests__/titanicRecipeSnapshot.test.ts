@@ -1,17 +1,21 @@
 import * as fs from "fs";
 import * as path from "path";
+import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { fitzgeraldRecipe } from "../fitzgeraldRecipe";
 import { lusitaniaRecipe } from "../lusitaniaRecipe";
 import { recipeFor } from "../shipModel";
 import { titanicRecipe, type ShipRecipe } from "../titanicRecipe";
 
 /**
- * The Titanic's and the Lusitania's recipes, frozen. The Titanic's fixture
+ * The Titanic's, the Lusitania's and the Fitzgerald's recipes, frozen. The
+ * Titanic's fixture
  * was written by the 1.0 recipe before the Lusitania (1.1) touched any
  * shared model code, the Lusitania's by the 1.1 recipe before the
- * Fitzgerald (1.3) did: every later change must leave their placements,
+ * Fitzgerald (1.3) did, the Fitzgerald's by the 1.3 recipe before the
+ * Britannic touched it: every later change must leave their placements,
  * layout and hull exactly as they were. Regenerate only on purpose:
  * `UPDATE_RECIPE_SNAPSHOT=1 npx jest titanicRecipeSnapshot`.
  *
@@ -80,6 +84,7 @@ function firstDiff(now: unknown, before: unknown, at: string): string | null {
 const SHIPS: [string, ShipSpec, (s: ShipSpec) => ShipRecipe, string][] = [
   ["Titanic", titanic, titanicRecipe, "titanicRecipe.json"],
   ["Lusitania", lusitania, lusitaniaRecipe, "lusitaniaRecipe.json"],
+  ["Fitzgerald", fitzgerald, fitzgeraldRecipe, "fitzgeraldRecipe.json"],
 ];
 
 describe.each(SHIPS)("the %s's recipe", (_name, spec, make, file) => {

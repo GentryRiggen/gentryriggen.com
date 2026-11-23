@@ -29,15 +29,20 @@ export interface ShipwreckSave {
 
 /**
  * A ship's last What if?: the spots chosen (any number, for every ship:
- * compartments, torpedo hits, or a storm ship's hatches, vents and shoal
- * strips), her portholes and her storm.
+ * compartments, torpedo or mine hits, or a storm ship's hatches, vents and
+ * shoal strips), her portholes, her storm, her doors and her engines.
  */
 export interface ShipWhatIf {
   ids: string[];
-  /** Torpedo ships: whether the portholes were open (default true). */
+  /** Torpedo and mine ships: whether the portholes were open (default true). */
   portholesOpen?: boolean;
   /** Storm ships: the storm as it was, calmer or worse (default "real"). */
   storm?: WhatIfStorm;
+  /** Mine ships (1.4): every watertight door shut (default false). */
+  doorsClosed?: boolean;
+  /** Mine ships (1.4): engines stopped at the mine, no run for the shore
+   *  (default false). */
+  enginesStopped?: boolean;
 }
 
 /** A storm ship's What-if storm. */
@@ -53,6 +58,7 @@ export const SAVE_SHIP_IDS: readonly ShipId[] = [
   "titanic",
   "lusitania",
   "fitzgerald",
+  "britannic",
 ];
 
 export const SAVE_KEY = "shipwreck:v1";
@@ -134,6 +140,10 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
         entry.portholesOpen = value.portholesOpen;
       if ((WHAT_IF_STORMS as readonly unknown[]).includes(value.storm))
         entry.storm = value.storm as WhatIfStorm;
+      if (typeof value.doorsClosed === "boolean")
+        entry.doorsClosed = value.doorsClosed;
+      if (typeof value.enginesStopped === "boolean")
+        entry.enginesStopped = value.enginesStopped;
       byShip[ship] = entry;
     }
     if (Object.keys(byShip).length > 0) save.whatIfByShip = byShip;

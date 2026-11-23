@@ -2,10 +2,11 @@
 /**
  * Screenshots and draw-call counts for the Shipwreck model.
  *
- *   node scripts/shipwreck-model-shots.mjs <baseURL> <outDir> [ship]
+ *   node scripts/shipwreck-model-shots.mjs <baseURL> <outDir> [ship] [paint]
  *
  * Needs a running dev server (`npx next dev --webpack`) at baseURL. Opens
- * the model viewer (`/shipwreck?model`, `&ship=<id>` when given) at
+ * the model viewer (`/shipwreck?model`, `&ship=<id>` when given, the
+ * Britannic's `&paint=hospital|liner`) at
  * 1133x744, sets each view with
  * `window.__shipwreck.setModelView`, saves `<outDir>/<id>.png` and writes
  * the last frame's draw calls and triangles to `<outDir>/render-info.json`.
@@ -19,11 +20,12 @@ const [
   baseURL = "http://localhost:3000",
   outDir = ".screenshots/task-3",
   ship = "titanic",
+  paint = "",
 ] = process.argv.slice(2);
 
 // Where each ship's sim breaks her (the Fitzgerald near hatch No. 9).
 const BREAK_X = { lusitania: 4, fitzgerald: 18 }[ship] ?? -27.1;
-const SHOTS = [
+const COMMON = [
   { id: "bow-day", view: { camera: "bow" } },
   { id: "stern-day", view: { camera: "stern" } },
   { id: "side-day", view: { camera: "side" } },
@@ -43,6 +45,16 @@ const SHOTS = [
   { id: "side-medium", view: { camera: "side", quality: "medium" } },
   { id: "side-low", view: { camera: "side", quality: "low" } },
 ];
+// She does not break (R12: her bow bends on landing instead): her port
+// bow, the gantry davits and the bent bow in place of the broken views.
+const BRITANNIC = [
+  ...COMMON.filter((s) => !s.id.startsWith("broken")),
+  { id: "bow-port-day", view: { camera: "bow-port" } },
+  { id: "gantry-day", view: { camera: "gantry" } },
+  { id: "bent-bow-day", view: { camera: "bow-port", bowBend: 0.2 } },
+  { id: "bent-bow-close-day", view: { camera: "break-close", bowBend: 0.2 } },
+];
+const SHOTS = ship === "britannic" ? BRITANNIC : COMMON;
 const BASE = {
   breakX: null,
   power: 0,
@@ -50,6 +62,7 @@ const BASE = {
   quality: "high",
   camera: "bow",
   stage: "day",
+  bowBend: 0,
 };
 
 mkdirSync(outDir, { recursive: true });
@@ -66,7 +79,9 @@ try {
     if (m.type() === "error") console.error("console", m.text());
   });
   await page.goto(
-    `${baseURL}/shipwreck?model${ship === "titanic" ? "" : `&ship=${ship}`}`
+    `${baseURL}/shipwreck?model${ship === "titanic" ? "" : `&ship=${ship}`}${
+      paint ? `&paint=${paint}` : ""
+    }`
   );
   // The dev build's corner badge is not part of the model.
   await page.addStyleTag({

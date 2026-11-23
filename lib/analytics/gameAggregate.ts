@@ -282,7 +282,12 @@ export function summarizeFlamelings(events: GameEvent[]): FlamelingsSummary {
 }
 
 /** The ships in the order they came to the game (unknown ones after). */
-const SHIPWRECK_SHIP_ORDER = ["titanic", "lusitania", "fitzgerald"];
+const SHIPWRECK_SHIP_ORDER = [
+  "titanic",
+  "lusitania",
+  "fitzgerald",
+  "britannic",
+];
 
 function averageByShip(
   whatIfs: GameEvent[]

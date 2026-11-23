@@ -122,6 +122,65 @@ function torpedoHelp(
   }
 }
 
+/** The mine ship's cards (the Britannic's): a mine, her morning, her roll. */
+function mineHelp(
+  topic: HelpTopic,
+  frame: SimFrame | null,
+  ship: ShipSpec
+): Help {
+  switch (topic) {
+    case "water":
+      return {
+        title: "Water aboard",
+        now: frame ? waterText(frame) : undefined,
+        lines: [
+          "How much sea water has come inside the ship, in tonnes. One tonne is about a bathtub and a half.",
+          `${ship.name} weighed about ${(Math.round(ship.displacementT / 1000) * 1000).toLocaleString("en-US")} t. The more water comes in, the lower she sits.`,
+        ],
+      };
+    case "bow":
+      return {
+        title: "Bow down",
+        now: frame ? bowDownText(frame) : undefined,
+        lines: [
+          "How far the front of the ship tips down. As her front sinks lower, the sea reaches rows of open portholes and comes in faster.",
+          `The sea here is only ${ship.seaDepthM} m deep, less than her length: her bow can reach the sea floor while her stern is still up.`,
+        ],
+      };
+    case "lean":
+      return {
+        title: "Lean",
+        now: frame ? leanText(frame) : undefined,
+        lines: [
+          "How far the ship leans to one side. Port is the left side looking forward, starboard the right.",
+          "The mine opened her starboard side. She leaned only a little until the very end, when she rolled over onto her side.",
+        ],
+      };
+    case "power":
+      return {
+        title: "Power",
+        now: frame ? powerText(frame) : undefined,
+        lines: [
+          "Her boilers made the steam that turned her engines and the dynamos that made the electricity.",
+          "Her lights stayed on almost to the end, until she rolled over.",
+        ],
+      };
+    case "controls":
+    default:
+      return {
+        title: "How to watch",
+        lines: [
+          "Drag to look around the ship. Pinch to zoom in and out. Two fingers move the view. Double-tap the ship to fly close.",
+          "Play and pause, and choose how fast the morning goes: ×1 is real time.",
+          "Drag the timeline, or tap an icon on it, to jump to that moment.",
+          `X-ray shows the water inside. The pins fly you to ${placeList(ship)}.`,
+          "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
+          ...walkLines(ship),
+        ],
+      };
+  }
+}
+
 /** The storm ship's cards (the Fitzgerald's): a laker in a lake storm. */
 function stormHelp(
   topic: HelpTopic,
@@ -188,6 +247,7 @@ export function helpFor(
 ): Help {
   if (ship.cause === "storm") return stormHelp(topic, frame, ship);
   if (ship.cause === "torpedo") return torpedoHelp(topic, frame, ship);
+  if (ship.cause === "mine") return mineHelp(topic, frame, ship);
   switch (topic) {
     case "water":
       return {

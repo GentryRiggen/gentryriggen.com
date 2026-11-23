@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { playback } from "@/lib/shipwreck/playback";
 import { SAVE_KEY } from "@/lib/shipwreck/save";
+import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { currentShipwreckSave, resetSaveStore } from "@/lib/shipwreck/useSave";
@@ -323,5 +324,121 @@ describe("Shipwreck: choosing the Edmund Fitzgerald (1.3)", () => {
     expect(screen.getByTestId("shipwreck-end")).toBeInTheDocument();
     expect(document.querySelector(".sw-badge")).toBeNull();
     expect(currentShipwreckSave().seen.endings).toEqual([]);
+  });
+});
+
+describe("Shipwreck: choosing the Britannic (1.4)", () => {
+  function hide() {
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      fireEvent(document, new Event("visibilitychange"));
+    });
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+  }
+
+  it("plays her real morning on her own clock, words and places", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-britannic"));
+    expect(playback.getState().ship).toBe("britannic");
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      /A mine sank her in 55 minutes/
+    );
+    expect(screen.getByTestId("shipwreck-real-night")).toHaveTextContent(
+      "The real morning"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    expect(playback.getState().t).toBe(0);
+    expect(playback.getState().openings).toEqual(britannic.realNight);
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("8:12 AM");
+    expect(screen.getByText("Just hit by the mine")).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /^8:12 AM — A mine explodes against her starboard side/
+    );
+    act(() => {
+      playback.getState().pump(60_000);
+      playback.getState().seek(18 * 60);
+    });
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("8:30 AM");
+    expect(screen.getByText("18 min after the mine")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("shipwreck-places-button"));
+    for (const id of [
+      "bridge",
+      "hold-2",
+      "boiler-room-6",
+      "portholes",
+      "gantry-davit",
+      "turbine-room",
+    ])
+      expect(screen.getByTestId(`shipwreck-place-${id}`)).toBeInTheDocument();
+    expect(screen.queryByTestId("shipwreck-place-grand-staircase")).toBeNull();
+  });
+
+  it("ends her real morning with the real time beside the sim's", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-britannic"));
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    act(() => {
+      for (let i = 0; i < 400 && !playback.getState().done; i += 1)
+        playback.getState().pump(50);
+      playback.getState().seek(playback.getState().computedT);
+    });
+    const end = screen.getByTestId("shipwreck-end");
+    expect(end).toHaveAttribute("data-outcome", "sank");
+    expect(end).toHaveTextContent(
+      "She sank at 9:07 AM, 55 minutes after the mine."
+    );
+  });
+
+  it("her What if: mines and three toggles, remembered; then the Titanic's own editor", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-britannic"));
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "britannic"
+    );
+    fireEvent.click(screen.getByTestId("whatif-portholes"));
+    fireEvent.click(screen.getByTestId("whatif-doors"));
+    fireEvent.click(screen.getByTestId("whatif-engines"));
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(window.__shipwreck?.getScreen()).toBe("night");
+    expect(playback.getState().ship).toBe("britannic");
+    expect(playback.getState().openings.map((o) => o.compartmentId)).toContain(
+      "hold3"
+    );
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+    hide();
+    const saved = JSON.parse(window.localStorage.getItem(SAVE_KEY)!);
+    expect(saved.ship).toBe("britannic");
+    expect(saved.whatIfByShip.britannic).toEqual({
+      ids: ["hold3"],
+      portholesOpen: false,
+      doorsClosed: true,
+      enginesStopped: true,
+    });
+    // Back in her editor: as she was left.
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("whatif-doors")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+
+    // Back to the Titanic: her own editor, as 1.0, none of the toggles.
+    fireEvent.click(screen.getByTestId("shipwreck-ship-titanic"));
+    expect(playback.getState().ship).toBe("titanic");
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "titanic"
+    );
+    expect(screen.queryByTestId("whatif-doors")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-portholes")).toBeNull();
   });
 });

@@ -1,5 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
+import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
+import { simulate } from "@/lib/shipwreck/sim/run";
+import type { SimEvent } from "@/lib/shipwreck/sim/events";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
 import { endWords, historyNote } from "@/lib/shipwreck/story";
 import EndCard from "../EndCard";
@@ -56,6 +59,99 @@ describe("the end card for a storm ship", () => {
     expect(card).not.toHaveTextContent("What really happened");
     expect(screen.getByTestId("shipwreck-look")).toHaveTextContent(
       "Look around"
+    );
+  });
+});
+
+/** A mine ship's run that floated, ending with `kind` (one frame). */
+function mineAfloat(kind: SimEvent["kind"]): SimTrack {
+  const t = 4000;
+  return {
+    frames: [
+      {
+        t,
+        realT: t,
+        bodies: [
+          { part: "whole", x: 0, y: 0, z: -12, pitch: 0.05, roll: 0, yaw: 0 },
+        ],
+        water: [],
+        waterAboardT: 20000,
+        trimDeg: 3,
+        listDeg: 1,
+        power: 1,
+        groundedParts: [],
+      },
+    ],
+    events: [{ kind, t, realT: t }],
+    outcome: "floated",
+    sankAtT: null,
+    brokeAtT: null,
+    breakX: null,
+    endT: t,
+  };
+}
+
+function card(track: SimTrack, ctx = {}) {
+  render(
+    <EndCard
+      words={endWords(track, britannic, 1, ctx)}
+      history={historyNote(britannic)}
+      cause="mine"
+      isNew={false}
+      onWatchAgain={() => {}}
+      onWhatIf={() => {}}
+      onLook={() => {}}
+    />
+  );
+  return screen.getByTestId("shipwreck-end");
+}
+
+describe("the end card for a mine ship (the Britannic)", () => {
+  it("reads 'She reached Kea.' when she gets to the shore", () => {
+    const c = card(mineAfloat("sheltered"));
+    expect(c).toHaveAttribute("data-outcome", "floated");
+    expect(
+      screen.getByRole("heading", { name: "She reached Kea." })
+    ).toBeInTheDocument();
+    expect(c).not.toHaveTextContent("What really happened");
+  });
+
+  it("reads 'She stayed afloat.' when the water stops rising", () => {
+    const c = card(mineAfloat("floating-steady"), { doorsClosed: true });
+    expect(
+      screen.getByRole("heading", { name: "She stayed afloat." })
+    ).toBeInTheDocument();
+    expect(c).toHaveTextContent(/With her doors closed/);
+    // Her own icon on What if?: the mine.
+    expect(screen.getByTestId("shipwreck-try-what-if")).toBeInTheDocument();
+    cleanup();
+  });
+
+  it("ends the real morning: 'She sank at 9:07 AM, 55 minutes after the mine.'", () => {
+    const c = card(simulate(britannic, britannic.realNight));
+    expect(c).toHaveAttribute("data-outcome", "sank");
+    expect(screen.getByRole("heading")).toHaveTextContent(
+      /^HMHS Britannic sank at 9:0\d AM$/
+    );
+    expect(c).toHaveTextContent(
+      "She sank at 9:07 AM, 55 minutes after the mine."
+    );
+    expect(c).toHaveTextContent(/her bow hit the floor while her stern/);
+    expect(screen.getByTestId("shipwreck-look")).toHaveTextContent(
+      "Look at the wreck"
+    );
+    expect(c).not.toHaveTextContent(/Stopping her engines/);
+    cleanup();
+  });
+
+  it("says what mattered when Run for Kea alone was off", () => {
+    const track = simulate(britannic, britannic.realNight, {
+      enginesStopped: true,
+    });
+    const c = card(track, { enginesStopped: true, realSpot: true, hits: 1 });
+    expect(c).toHaveAttribute("data-outcome", "sank");
+    expect(c).toHaveTextContent(
+      "Stopping her engines changed little. Her open portholes and the door that did not shut mattered most."
     );
   });
 });

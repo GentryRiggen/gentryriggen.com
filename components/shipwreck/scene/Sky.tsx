@@ -21,7 +21,11 @@ import {
 import type { SceneRuntime } from "./runtime";
 import type { WaveFieldArrays } from "@/lib/shipwreck/sim/waves";
 import { windOf } from "./seaWaves";
-import { FITZGERALD_HEADING_DEG, sunDirectionInto } from "./settings";
+import {
+  FITZGERALD_HEADING_DEG,
+  sunDirectionInto,
+  type DayLook,
+} from "./settings";
 import {
   ANDERSON,
   WHITEFISH_PERIOD_S,
@@ -255,6 +259,7 @@ const daySkyFragment = /* glsl */ `
   uniform vec3 uSunColor;
   uniform vec3 uZenith;
   uniform vec3 uHorizon;
+  uniform vec3 uGlow;
   void main() {
     vec3 d = normalize(vDir);
     float h = max(d.y, 0.0);
@@ -264,6 +269,12 @@ const daySkyFragment = /* glsl */ `
     // Brighter toward the sun (forward scattering in the haze).
     float cs = max(dot(d, uSunDir), 0.0);
     c += uSunColor * (0.06 * pow(cs, 4.0) + 0.22 * pow(cs, 48.0) + 1.2 * pow(cs, 900.0));
+    // A low morning sun: a warm band along the horizon on its side
+    // (zero by afternoon).
+    vec2 dirXZ = normalize(d.xz + vec2(1e-5));
+    vec2 sunFlat = normalize(uSunDir.xz + vec2(1e-5));
+    float toward = max(dot(dirXZ, sunFlat), 0.0);
+    c += uGlow * pow(toward, 3.0) * exp(-h * 9.0);
     // The disc (0.27° across), bright enough to bloom.
     c += uSunColor * 24.0 * smoothstep(0.99997, 0.999989, cs);
     // Below the horizon (the sea's edge from under it): the haze.
@@ -277,13 +288,15 @@ interface DaySkyProps {
   sunDir: readonly [number, number, number];
   /** The haze at the horizon (linear; the fog's colour). */
   horizon: Color;
+  /** The scene's day look (sun colour, the blue overhead, a dawn glow). */
+  look?: DayLook;
 }
 
 /**
  * The sky of a sunny afternoon: blue overhead, a pale haze at the horizon
  * the fog fades into, the sun's glow and disc. No stars. One draw call.
  */
-export function DaySky({ sunDir, horizon }: DaySkyProps) {
+export function DaySky({ sunDir, horizon, look }: DaySkyProps) {
   const sky = useMemo(() => {
     const geo = new SphereGeometry(RADIUS * 1.05, 32, 16);
     const mat = new ShaderMaterial({
@@ -296,6 +309,7 @@ export function DaySky({ sunDir, horizon }: DaySkyProps) {
         uSunColor: { value: new Color().setRGB(1, 0.93, 0.82) },
         uZenith: { value: new Color().setRGB(0.045, 0.16, 0.55) },
         uHorizon: { value: new Color() },
+        uGlow: { value: new Color(0, 0, 0) },
       },
     });
     const dome = new Mesh(geo, mat);
@@ -309,7 +323,12 @@ export function DaySky({ sunDir, horizon }: DaySkyProps) {
       .set(sunDir[0], sunDir[1], sunDir[2])
       .normalize();
     (sky.mat.uniforms.uHorizon.value as Color).copy(horizon);
-  }, [sky, sunDir, horizon]);
+    if (look) {
+      (sky.mat.uniforms.uSunColor.value as Color).setRGB(...look.skySun);
+      (sky.mat.uniforms.uZenith.value as Color).setRGB(...look.zenith);
+      (sky.mat.uniforms.uGlow.value as Color).setRGB(...look.dawnGlow);
+    }
+  }, [sky, sunDir, horizon, look]);
   useEffect(
     () => () => {
       sky.geo.dispose();

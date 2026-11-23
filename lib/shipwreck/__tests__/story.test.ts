@@ -1,3 +1,4 @@
+import { britannic } from "../ships/britannic";
 import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
 import { SIM_EVENT_KINDS } from "../sim/events";
@@ -137,8 +138,8 @@ describe("the Lusitania's words", () => {
     ]);
   });
 
-  it("never words people in danger or deaths, for either ship", () => {
-    for (const ship of [titanic, lusitania])
+  it("never words people in danger or deaths, for any liner", () => {
+    for (const ship of [titanic, lusitania, britannic])
       for (const kind of SIM_EVENT_KINDS)
         for (const ctx of contexts)
           for (const index of [0, 1, undefined]) {

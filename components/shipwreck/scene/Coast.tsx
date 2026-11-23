@@ -8,7 +8,8 @@ import {
   Mesh,
   MeshLambertMaterial,
 } from "three";
-import { LUSITANIA_HIT } from "./settings";
+import type { ShipId } from "@/lib/shipwreck/ships/types";
+import { BRITANNIC_MINE, LUSITANIA_HIT } from "./settings";
 
 /**
  * The south coast of County Cork on the northern horizon, as it lay from
@@ -69,14 +70,26 @@ function sinkWithDistance(x: number, y: number, z: number): number {
   return y * f - 12 * (1 - f);
 }
 
-/** Earth (lat, lon) to the scene's axes at the hit (x her heading, z starboard). */
-export function coastToScene(lat: number, lon: number): [number, number] {
-  const north = (lat - LUSITANIA_HIT.latDeg) * LAT_M;
+/** A scene's origin on the earth and her heading there. */
+export interface SceneOrigin {
+  latDeg: number;
+  lonDeg: number;
+  headingDeg: number;
+}
+
+/**
+ * Earth (lat, lon) to the scene's axes at the first event (x her heading,
+ * z starboard): the Lusitania's hit unless another origin is given.
+ */
+export function coastToScene(
+  lat: number,
+  lon: number,
+  origin: SceneOrigin = LUSITANIA_HIT
+): [number, number] {
+  const north = (lat - origin.latDeg) * LAT_M;
   const east =
-    (lon - LUSITANIA_HIT.lonDeg) *
-    LAT_M *
-    Math.cos((LUSITANIA_HIT.latDeg * Math.PI) / 180);
-  const h = (LUSITANIA_HIT.headingDeg * Math.PI) / 180;
+    (lon - origin.lonDeg) * LAT_M * Math.cos((origin.latDeg * Math.PI) / 180);
+  const h = (origin.headingDeg * Math.PI) / 180;
   return [
     east * Math.sin(h) + north * Math.cos(h),
     east * Math.cos(h) - north * Math.sin(h),
@@ -95,7 +108,12 @@ const SHORE = new Color(0x6c665c);
 const TOWER = new Color(0x15161a);
 const BAND = new Color(0xf2f2ee);
 
-export function buildCoastGeometry(): BufferGeometry {
+/** The coast a ship's scene draws (the Lusitania's Cork by default). */
+export function buildCoastGeometry(ship: ShipId = "lusitania"): BufferGeometry {
+  return ship === "britannic" ? buildKeaGeometry() : buildCorkGeometry();
+}
+
+function buildCorkGeometry(): BufferGeometry {
   const pos: number[] = [];
   const col: number[] = [];
   const idx: number[] = [];
@@ -247,14 +265,26 @@ export function buildCoastGeometry(): BufferGeometry {
   return g;
 }
 
-export default function Coast() {
+export default function Coast({ ship = "lusitania" }: { ship?: ShipId }) {
   const coast = useMemo(() => {
-    const geo = buildCoastGeometry();
+    const geo = buildCoastGeometry(ship);
     const mat = new MeshLambertMaterial({ vertexColors: true });
+    if (ship === "britannic") {
+      // Kea stands between her and the low morning sun: a little of the
+      // hills' own colour as light, so the shaded side reads brown-green
+      // in the haze rather than grey.
+      mat.onBeforeCompile = (shader) => {
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <emissivemap_fragment>",
+          "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vColor.rgb * 0.3;"
+        );
+      };
+      mat.customProgramCacheKey = () => "shipwreck-coast-kea";
+    }
     const m = new Mesh(geo, mat);
     m.name = "coast";
     return { m, geo, mat };
-  }, []);
+  }, [ship]);
   useEffect(
     () => () => {
       coast.geo.dispose();
@@ -263,4 +293,252 @@ export default function Coast() {
     [coast]
   );
   return <primitive object={coast.m} />;
+}
+
+// ---------------------------------------------------------------------------
+// The Kea Channel, 21 November 1916 (the Britannic). Real outlines
+// (OpenStreetMap, simplified to about 300 m): Kea, its hills rising to
+// Profitis Ilias (568 m), its north-west shore with the bay of Port St
+// Nikolo (Agios Nikolaos) and its light; Makronisos, long and low (to
+// about 280 m), and the Attica coast from Cape Sounion north past
+// Lavrio (from the chart, about 300 m), both to port and fading into the
+// haze. Heights ×1.5 (`KEA_HEIGHT_SCALE`: true, Kea's 568 m at 6–12 km is
+// a low sliver behind her in the haze). No temple, no people. One draw.
+
+/** Kea's outline (lat, lon), round the island. */
+const KEA: readonly [number, number][] = [
+  [37.5935, 24.2716],
+  [37.5812, 24.2652],
+  [37.5772, 24.281],
+  [37.5638, 24.2799],
+  [37.5564, 24.2734],
+  [37.5518, 24.2725],
+  [37.5393, 24.2762],
+  [37.5281, 24.2714],
+  [37.5218, 24.2759],
+  [37.5237, 24.2937],
+  [37.5288, 24.3022],
+  [37.5321, 24.3076],
+  [37.5434, 24.3137],
+  [37.545, 24.3212],
+  [37.5553, 24.3251],
+  [37.5593, 24.3293],
+  [37.5582, 24.3348],
+  [37.5733, 24.3562],
+  [37.5935, 24.3706],
+  [37.6058, 24.3867],
+  [37.617, 24.3946],
+  [37.6261, 24.3946],
+  [37.6366, 24.3989],
+  [37.6454, 24.4],
+  [37.6548, 24.4103],
+  [37.6606, 24.4061],
+  [37.6647, 24.4029],
+  [37.6749, 24.392],
+  [37.6821, 24.3728],
+  [37.6841, 24.3578],
+  [37.6878, 24.3511],
+  [37.6808, 24.3409],
+  [37.6831, 24.3327],
+  [37.6823, 24.3274],
+  [37.6777, 24.3229],
+  [37.6741, 24.3199],
+  [37.6674, 24.313],
+
+  [37.6582, 24.316],
+  [37.6636, 24.3051],
+  [37.6589, 24.2944],
+  [37.642, 24.286],
+  [37.6327, 24.2802],
+  [37.6272, 24.2769],
+  [37.622, 24.2741],
+  [37.6172, 24.2719],
+  [37.6077, 24.267],
+  [37.6031, 24.2689],
+  [37.5969, 24.2685],
+];
+/** Profitis Ilias, Kea's summit (568 m), and the island's middle. */
+const KEA_PEAK = { lat: 37.62, lon: 24.335, m: 568 };
+
+/** Makronisos's outline (lat, lon). */
+const MAKRONISOS: readonly [number, number][] = [
+  [37.6563, 24.1029],
+  [37.6454, 24.1067],
+  [37.6577, 24.114],
+  [37.671, 24.1216],
+  [37.6819, 24.1289],
+  [37.6969, 24.1345],
+  [37.7131, 24.1361],
+  [37.7208, 24.1514],
+  [37.7308, 24.1538],
+  [37.7408, 24.1545],
+  [37.7572, 24.1432],
+  [37.7403, 24.1272],
+  [37.7144, 24.1213],
+  [37.698, 24.115],
+  [37.6799, 24.1047],
+  [37.6671, 24.1035],
+  [37.6599, 24.1012],
+];
+const MAKRONISOS_TOP = { lat: 37.705, lon: 24.127, m: 280 };
+
+/** Attica from west of Cape Sounion north to Porto Rafti: [lat, lon, cliff, hills]. */
+const ATTICA: readonly [number, number, number, number][] = [
+  [37.675, 23.96, 20, 220],
+  [37.66, 23.995, 40, 260],
+  [37.6501, 24.0263, 60, 200], // Cape Sounion
+  [37.6585, 24.042, 30, 240],
+  [37.672, 24.0475, 20, 300],
+  [37.688, 24.056, 25, 330],
+  [37.71, 24.06, 10, 350], // Lavrio
+  [37.73, 24.068, 20, 330],
+  [37.75, 24.065, 15, 300], // Thorikos
+  [37.775, 24.07, 30, 280],
+  [37.805, 24.06, 30, 300],
+  [37.84, 24.05, 20, 280],
+  [37.88, 24.045, 20, 260], // Porto Rafti
+];
+/** Port St Nikolo light (Agios Nikolaos, MarineTraffic's light list). */
+const ST_NIKOLO_LIGHT = [37.6673, 24.3139] as const;
+
+/** Kea's, Makronisos's and Attica's heights are drawn this many times true. */
+export const KEA_HEIGHT_SCALE = 1.5;
+// Brown-green: maquis and phrygana on brown rock, terraces (lighter than
+// the Cork farmland: the morning sun is behind them from her deck).
+const MAQUIS = new Color(0x6f7a3e);
+const MAQUIS_DARK = new Color(0x55602f);
+const SCRUB = new Color(0x9c8458);
+const KEA_ROCK = new Color(0xb09a74);
+const KEA_SHORE = new Color(0x8a7a62);
+const WHITE = new Color(0xeeeae0);
+
+function buildKeaGeometry(): BufferGeometry {
+  const pos: number[] = [];
+  const col: number[] = [];
+  const idx: number[] = [];
+  const o = BRITANNIC_MINE;
+  const vert = (x: number, y: number, z: number, c: Color) => {
+    pos.push(x, sinkWithDistance(x, y * KEA_HEIGHT_SCALE, z), z);
+    col.push(c.r, c.g, c.b);
+    return pos.length / 3 - 1;
+  };
+
+  // An island: rings from its shore in toward its summit, the ground
+  // rising steeply from rocky shores to scrubby hills (a hash for ridges).
+  const island = (
+    outline: readonly [number, number][],
+    top: { lat: number; lon: number; m: number },
+    seed: number
+  ) => {
+    const pk = coastToScene(top.lat, top.lon, o);
+    const ring = outline.map(([la, lo]) => coastToScene(la, lo, o));
+    // [share of the way to the summit, share of its height, colour]
+    const rows: [number, number, Color][] = [
+      [-0.04, -14, KEA_SHORE],
+      [0, 0.004, KEA_SHORE],
+      [0.035, 0.09, KEA_ROCK],
+      [0.1, 0.22, SCRUB],
+      [0.25, 0.42, MAQUIS],
+      [0.45, 0.62, SCRUB],
+      [0.68, 0.82, MAQUIS_DARK],
+      [0.88, 0.94, SCRUB],
+      [1, 1, KEA_ROCK],
+    ];
+    const start = pos.length / 3;
+    const n = ring.length;
+    for (let i = 0; i < n; i += 1) {
+      const [x, z] = ring[i];
+      for (let r = 0; r < rows.length; r += 1) {
+        const [f, hShare, c] = rows[r];
+        const wob = r > 1 && r < rows.length - 1 ? hash(i, r + seed) : 0.5;
+        const h =
+          hShare < 0
+            ? hShare
+            : Math.min(top.m, top.m * hShare * (r > 1 ? 0.55 + 0.8 * wob : 1));
+        const shade = new Color().copy(c).multiplyScalar(0.85 + 0.3 * wob);
+        vert(x + (pk[0] - x) * f, h, z + (pk[1] - z) * f, shade);
+      }
+    }
+    const w = rows.length;
+    for (let i = 0; i < n; i += 1) {
+      const j = (i + 1) % n;
+      for (let r = 0; r < w - 1; r += 1) {
+        const a = start + i * w + r;
+        const b = start + j * w + r;
+        idx.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+    }
+  };
+  island(KEA, KEA_PEAK, 3);
+  island(MAKRONISOS, MAKRONISOS_TOP, 11);
+
+  // Attica: a strip of land behind its shore (inland is west, about -z).
+  const line = ATTICA.map(([la, lo, cliff, hill]) => {
+    const [x, z] = coastToScene(la, lo, o);
+    return { x, z, cliff, hill };
+  });
+  const rows = [
+    { d: -60, h: () => -10, c: KEA_SHORE },
+    { d: 0, h: (p: (typeof line)[0]) => p.cliff * 0.15, c: KEA_ROCK },
+    { d: 80, h: (p: (typeof line)[0]) => p.cliff, c: KEA_ROCK },
+    { d: 900, h: (p: (typeof line)[0]) => p.hill * 0.55, c: SCRUB },
+    { d: 3000, h: (p: (typeof line)[0]) => p.hill, c: MAQUIS },
+    { d: 7000, h: (p: (typeof line)[0]) => p.hill * 0.8, c: SCRUB },
+  ];
+  const aStart = pos.length / 3;
+  line.forEach((p, i) => {
+    const prev = line[Math.max(0, i - 1)];
+    const next = line[Math.min(line.length - 1, i + 1)];
+    let nx = next.z - prev.z;
+    let nz = -(next.x - prev.x);
+    const len = Math.hypot(nx, nz) || 1;
+    nx /= len;
+    nz /= len;
+    if (nz > 0) {
+      nx = -nx;
+      nz = -nz;
+    }
+    for (const r of rows) {
+      const wob = r.d > 100 ? (hash(i, r.d) - 0.5) * r.d * 0.2 : 0;
+      vert(p.x + nx * (r.d + wob), r.h(p), p.z + nz * (r.d + wob), r.c);
+    }
+  });
+  for (let i = 0; i < line.length - 1; i += 1)
+    for (let r = 0; r < rows.length - 1; r += 1) {
+      const a = aStart + i * rows.length + r;
+      const b = aStart + (i + 1) * rows.length + r;
+      idx.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+
+  // Port St Nikolo light: a small white tower on the point.
+  const [lx, lz] = coastToScene(ST_NIKOLO_LIGHT[0], ST_NIKOLO_LIGHT[1], o);
+  const SIDES = 8;
+  const s0 = pos.length / 3;
+  for (let k = 0; k <= SIDES; k += 1) {
+    const a = (k / SIDES) * Math.PI * 2;
+    vert(
+      lx + Math.cos(a) * 4,
+      4 / KEA_HEIGHT_SCALE,
+      lz + Math.sin(a) * 4,
+      WHITE
+    );
+    vert(
+      lx + Math.cos(a) * 3,
+      24 / KEA_HEIGHT_SCALE,
+      lz + Math.sin(a) * 3,
+      WHITE
+    );
+  }
+  for (let k = 0; k < SIDES; k += 1) {
+    const a = s0 + k * 2;
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  }
+
+  const g = new BufferGeometry();
+  g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
+  g.setAttribute("color", new BufferAttribute(new Float32Array(col), 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  g.computeBoundingSphere();
+  return g;
 }

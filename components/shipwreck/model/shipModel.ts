@@ -17,6 +17,7 @@ import {
   QUALITY,
   buildShipPart,
   guyLines,
+  splitAtHinge,
   type LineList,
   type ModelQuality,
   type ShipPartData,
@@ -26,6 +27,13 @@ import {
   type LightUniforms,
   type ShipMaterials,
 } from "./materials";
+import { BRITANNIC_PAINT } from "@/lib/shipwreck/ships/britannic";
+import {
+  attachBritannicLivery,
+  britannicModelRecipe,
+  type Livery,
+} from "./britannicLivery";
+import { britannicRecipe, type BritannicPaint } from "./britannicRecipe";
 import { fitzgeraldRecipe } from "./fitzgeraldRecipe";
 import { lusitaniaRecipe } from "./lusitaniaRecipe";
 import {
@@ -91,6 +99,11 @@ export interface TitanicHandles {
   whole: Group;
   bow: Group;
   stern: Group;
+  /**
+   * The bow forward of the recipe's hinge (R12), a child of `whole`, or
+   * null (no hinge, or built broken): pose it with `applyBowBend`.
+   */
+  bend?: Group | null;
   breakX: number | null;
   /** One group per funnel, origin at the centre of its foot. */
   funnels: Group[];
@@ -107,6 +120,12 @@ export interface TitanicHandles {
   quality: ModelQuality;
   /** Triangles in the model (instances counted) and the build time. */
   stats: { triangles: number; buildMs: number };
+  /**
+   * Wears another of the ship's liveries in place (no geometry rebuilt;
+   * `recipe` becomes that look's). A no-op for a look she lacks and for
+   * ships with one livery.
+   */
+  setPaint?(look: string): void;
 }
 
 export interface TitanicModel {
@@ -116,17 +135,41 @@ export interface TitanicModel {
   dispose(): void;
 }
 
-const recipes = new WeakMap<ShipSpec, ShipRecipe>();
-export function recipeFor(spec: ShipSpec): ShipRecipe {
-  let r = recipes.get(spec);
+const recipes = new WeakMap<ShipSpec, Map<string, ShipRecipe>>();
+/**
+ * The ship's detail recipe, built once per spec (and paint: the
+ * Britannic's `paint` picks hospital or liner; the others have one).
+ */
+export function recipeFor(spec: ShipSpec, paint?: BritannicPaint): ShipRecipe {
+  let byPaint = recipes.get(spec);
+  if (!byPaint) {
+    byPaint = new Map();
+    recipes.set(spec, byPaint);
+  }
+  const key = spec.id === "britannic" ? (paint ?? BRITANNIC_PAINT) : "";
+  let r = byPaint.get(key);
   if (!r) {
     r =
       spec.id === "lusitania"
         ? lusitaniaRecipe(spec)
         : spec.id === "fitzgerald"
           ? fitzgeraldRecipe(spec)
-          : titanicRecipe(spec);
-    recipes.set(spec, r);
+          : spec.id === "britannic"
+            ? britannicRecipe(spec, paint)
+            : titanicRecipe(spec);
+    byPaint.set(key, r);
+  }
+  return r;
+}
+
+/** The Britannic's model recipe (both liveries' geometry), per spec. */
+const liveryRecipes = new WeakMap<ShipSpec, ShipRecipe>();
+function modelRecipeFor(spec: ShipSpec, paint?: BritannicPaint): ShipRecipe {
+  if (spec.id !== "britannic") return recipeFor(spec, paint);
+  let r = liveryRecipes.get(spec);
+  if (!r) {
+    r = britannicModelRecipe(spec);
+    liveryRecipes.set(spec, r);
   }
   return r;
 }
@@ -220,11 +263,16 @@ function triCount(g: BufferGeometry): number {
 
 export function createTitanicModel(
   spec: ShipSpec,
-  options: { quality: ModelQuality; breakX: number | null }
+  options: {
+    quality: ModelQuality;
+    breakX: number | null;
+    /** The Britannic's paint (default `BRITANNIC_PAINT`); others ignore it. */
+    paint?: BritannicPaint;
+  }
 ): TitanicModel {
   const { quality, breakX } = options;
   const started = performance.now();
-  const recipe = recipeFor(spec);
+  const recipe = modelRecipeFor(spec, options.paint);
   const q = QUALITY[quality];
   const shipName = recipe.paint?.name ?? "TITANIC";
   const letters = recipe.paint?.letters;
@@ -242,6 +290,9 @@ export function createTitanicModel(
       topsides: recipe.paint.hull?.topsides,
       bottom: recipe.paint.hull?.bottom,
       relief: recipe.paint.hull?.relief,
+      ...(recipe.paint.band && {
+        band: { ...recipe.paint.band, sheer0: spec.sheerZ(0) },
+      }),
     },
     paintedNames: letters !== undefined,
   });
@@ -280,9 +331,20 @@ export function createTitanicModel(
   };
 
   const parts: ShipPart[] = breakX === null ? ["whole"] : ["bow", "stern"];
-  const partData: ShipPartData[] = parts.map((p) =>
+  const built: ShipPartData[] = parts.map((p) =>
     buildShipPart(recipe, p, breakX, quality)
   );
+  // A ship whose bow bends (R12): the bow forward of the hinge in its own
+  // group inside the whole ship's, so everything else still sees "whole".
+  let bend: Group | null = null;
+  const partData: { d: ShipPartData; group: Group }[] = [];
+  if (breakX === null && recipe.hinge) {
+    const { aft, fwd } = splitAtHinge(built[0], recipe.hinge.x);
+    bend = new Group();
+    bend.name = "bow-bend";
+    whole.add(bend);
+    partData.push({ d: aft, group: whole }, { d: fwd, group: bend });
+  } else for (const d of built) partData.push({ d, group: holders[d.part] });
 
   const funnels: Group[] = [];
   const funnelGuys: (LineSegments | null)[] = [];
@@ -360,8 +422,7 @@ export function createTitanicModel(
     }
   }
 
-  partData.forEach((d) => {
-    const group = holders[d.part];
+  partData.forEach(({ d, group }) => {
     addMesh(group, d.hull.toGeometry(), mats.hull, "hull");
     addMesh(group, d.paint.toGeometry(), mats.paint, "paint");
     addMesh(group, d.deck.toGeometry(), mats.deck, "decks");
@@ -482,12 +543,42 @@ export function createTitanicModel(
     },
   };
 
+  // A ship with two liveries (the Britannic): the look-only parts, and the
+  // swap (britannicLivery.ts).
+  let livery: Livery | null = null;
+  if (spec.id === "britannic")
+    livery = attachBritannicLivery(
+      {
+        spec,
+        recipeOf: (look) => recipeFor(spec, look),
+        mats,
+        q,
+        funnels,
+        holderAt: (x) =>
+          breakX !== null
+            ? x > breakX
+              ? bow
+              : stern
+            : bend && recipe.hinge && x > recipe.hinge.x
+              ? bend
+              : whole,
+        addMesh(group, buf, name) {
+          if (buf.vertexCount === 0) return null;
+          const g = buf.toGeometry();
+          addMesh(group, g, mats.paint, name);
+          return group.children[group.children.length - 1] as Mesh;
+        },
+      },
+      options.paint
+    );
+
   const light = mats.light;
   const handles: TitanicHandles = {
     root,
     whole,
     bow,
     stern,
+    bend,
     breakX,
     funnels,
     funnelGuys,
@@ -506,9 +597,13 @@ export function createTitanicModel(
       light.uTime.value = t;
     },
     boats,
-    recipe,
+    recipe: livery ? recipeFor(spec, options.paint) : recipe,
     quality,
     stats: { triangles, buildMs: performance.now() - started },
+    setPaint(look) {
+      if (livery?.setPaint(look))
+        handles.recipe = recipeFor(spec, look as BritannicPaint);
+    },
   };
 
   return {
@@ -519,6 +614,7 @@ export function createTitanicModel(
       for (const g of geometries) g.dispose();
       mats.dispose();
       releaseShipTextures(shipName, nameStyle);
+      livery?.dispose();
     },
   };
 }

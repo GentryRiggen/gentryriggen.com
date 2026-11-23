@@ -136,3 +136,37 @@ test("no Walk button on the Edmund Fitzgerald (she has no walk map)", async ({
   ).not.toBe("walk");
   expect(await page.evaluate(() => window.__shipwreck!.getWalk!())).toBeNull();
 });
+
+test("no Walk button on the HMHS Britannic (she has no walk map)", async ({
+  page,
+}) => {
+  await page.goto("/shipwreck");
+  await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
+  await page.getByTestId("shipwreck-ship-britannic").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "britannic"
+  );
+  // Once she has frames, the HUD is complete: still no Walk button. (Her
+  // first frames are computed here: a busy machine draws few frames.)
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const h = window.__shipwreck!;
+          h.pump!(100);
+          return h.getState!().computedT;
+        }),
+      { timeout: 60_000 }
+    )
+    .toBeGreaterThan(0);
+  await expect(page.getByTestId("shipwreck-play")).toBeVisible();
+  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+  // And the hook's walk does nothing on her.
+  await page.evaluate(() => window.__shipwreck!.startWalk!());
+  expect(
+    await page.evaluate(() => window.__shipwreck!.getState!().camera)
+  ).not.toBe("walk");
+  expect(await page.evaluate(() => window.__shipwreck!.getWalk!())).toBeNull();
+});

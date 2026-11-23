@@ -7,7 +7,7 @@
  * `x` forward, `y` to port, `z` up from the keel.
  */
 
-export type ShipId = "titanic" | "lusitania" | "fitzgerald";
+export type ShipId = "titanic" | "lusitania" | "fitzgerald" | "britannic";
 
 export interface HullStation {
   x: number;
@@ -62,6 +62,21 @@ export interface Opening {
   t?: number;
 }
 
+/** A watertight door (or other opening) in the transverse bulkhead between
+ *  two neighbouring compartments; orifice flow on the head difference. */
+export interface BulkheadDoor {
+  id: string;
+  aftId: string; // compartment ids, neighbours
+  fwdId: string;
+  x: number;
+  zLow: number;
+  zHigh: number;
+  areaM2: number;
+  /** "door": a watertight door (SimOptions.doorsClosed shuts it);
+   *  "damage": a bulkhead torn by the blast (never shuts). */
+  kind: "door" | "damage";
+}
+
 /** A row of side scuttles (portholes) that lets water in once under. */
 export interface PortholeRow {
   z: number;
@@ -76,6 +91,13 @@ export interface PortholeRow {
    * false (a level row at `z`).
    */
   followsSheer?: boolean;
+  /**
+   * The row is above the top of an inner skin (a double hull to a deck
+   * under it): where a space has wing cells (`span`), its pieces open into
+   * the space inside them, not the wing. Default false (the outermost
+   * cell, a bunker's shell).
+   */
+  inboard?: boolean;
 }
 
 /** One wave component of a storm (deterministic: no Math.random). */
@@ -218,7 +240,7 @@ export interface ShipSpec {
   /** Seconds after midnight of the first event (Titanic 23*3600+40*60). */
   clockStartS: number;
   /** What opened the hull: drives words, scene and What-if. */
-  cause: "iceberg" | "torpedo" | "storm";
+  cause: "iceberg" | "torpedo" | "storm" | "mine";
   portholes?: readonly PortholeRow[];
   /**
    * Seconds shown before the first event in a run with holes (a torpedo's
@@ -239,7 +261,21 @@ export interface ShipSpec {
    * engine still turning) until she goes under, then loses it with
    * `HEADWAY_LOST_HALF_LIFE_S`.
    */
-  headway?: { startMs: number; halfLifeS?: number };
+  headway?: {
+    startMs: number;
+    halfLifeS?: number;
+    /** [shown s, m/s] pairs, t ascending, linear, held past the ends;
+     *  overrides startMs/halfLifeS while she is afloat. */
+    profile?: readonly (readonly [t: number, ms: number])[];
+    /** [shown s, yaw deg] pairs (+ to port, i.e. a turn to starboard is −),
+     *  linear; the heading her way carries her along. */
+    turn?: readonly (readonly [t: number, yawDeg: number])[];
+    /** Dynamic head factor Cp on hull openings and porthole rows with
+     *  x ≥ fromX: head += Cp·u²/2g. */
+    ram?: { cp: number; fromX: number };
+  };
+  /** Watertight doors and torn bulkheads between neighbouring compartments. */
+  doors?: readonly BulkheadDoor[];
   /**
    * Her wreck as surveyed, for the rest on the floor: a rule, not physics.
    * A body that lands listed at least `minListDeg` toward the side her

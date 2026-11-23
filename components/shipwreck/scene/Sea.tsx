@@ -18,13 +18,19 @@ import {
   ShaderMaterial,
   UniformsLib,
   UniformsUtils,
+  Vector2,
   Vector3,
   Vector4,
   WebGLRenderTarget,
 } from "three";
 import type { QualityTier } from "@/lib/shipwreck/playback";
 import type { SceneRuntime } from "./runtime";
-import { sunDirection, type SceneSettings } from "./settings";
+import {
+  dayLookOf,
+  isDaylit,
+  sunDirection,
+  type SceneSettings,
+} from "./settings";
 
 /**
  * The sea on the night: flat calm, "like glass". One big quad with a
@@ -76,6 +82,10 @@ const fragment = /* glsl */ `
   uniform vec4 uWake;
   uniform float uWakeAmt;
   uniform float uWakeLen;
+  #ifdef WAKE_PATH
+  uniform vec2 uPath[8];
+  uniform float uPathN;
+  #endif
   #define RIPPLE 0.34
   #else
   #define RIPPLE 0.18
@@ -154,6 +164,28 @@ const fragment = /* glsl */ `
       vec2 rel = vWorld.xz - uWake.xy;
       float s = -dot(rel, uWake.zw);
       float lat = abs(dot(rel, vec2(-uWake.w, uWake.z)));
+      #ifdef WAKE_PATH
+      // A turning ship: along her stern's path (nearest segment).
+      if (uPathN > 1.5) {
+        float acc = 0.0;
+        float best = 1e9;
+        s = -1.0;
+        for (int k = 0; k < 7; k++) {
+          if (float(k) >= uPathN - 1.0) break;
+          vec2 a = uPath[k];
+          vec2 ab = uPath[k + 1] - a;
+          float l2 = max(dot(ab, ab), 1e-4);
+          float u = clamp(dot(vWorld.xz - a, ab) / l2, 0.0, 1.0);
+          float d = length(vWorld.xz - a - ab * u);
+          if (d < best && (k > 0 || u > 0.0)) {
+            best = d;
+            s = acc + u * sqrt(l2);
+          }
+          acc += sqrt(l2);
+        }
+        lat = best;
+      }
+      #endif
       if (s > 0.0 && s < uWakeLen) {
         float u = s / max(uWakeLen, 1.0);
         float churn = noise(vWorld.xz * 0.3 + vec2(uTime * 0.21, 0.0)) * 0.6
@@ -186,7 +218,9 @@ interface SeaProps {
 }
 
 export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
-  const day = settings?.timeOfDay === "afternoon";
+  const day = settings ? isDaylit(settings) : false;
+  // Her turn for Kea: the morning's wake follows her stern's path.
+  const curved = settings?.timeOfDay === "morning";
   const size = REFLECTION_SIZE[quality];
   const { gl, scene, camera } = useThree();
 
@@ -210,7 +244,7 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
         fragmentShader: fragment,
         side: DoubleSide,
         fog: true,
-        defines: day ? { DAY: "" } : {},
+        defines: day ? (curved ? { DAY: "", WAKE_PATH: "" } : { DAY: "" }) : {},
         uniforms: UniformsUtils.merge([
           UniformsLib.fog,
           {
@@ -244,21 +278,31 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
             uWake: { value: new Vector4(0, 0, 1, 0) },
             uWakeAmt: { value: 0 },
             uWakeLen: { value: 0 },
+            uPath: {
+              value: Array.from({ length: 8 }, () => new Vector2()),
+            },
+            uPathN: { value: 0 },
           },
         ]),
       }),
-    [day]
+    [day, curved]
   );
   // The afternoon's colours (linear): the haze at the horizon, the blue
   // overhead, the water and the light under it.
   useEffect(() => {
     if (!day || !settings) return;
     const u = material.uniforms;
-    (u.uDeep.value as Color).setRGB(0.008, 0.036, 0.05, LinearSRGBColorSpace);
-    (u.uScatter.value as Color).setRGB(0.012, 0.05, 0.05, LinearSRGBColorSpace);
+    // (The afternoon's are 1.1's; the morning's a deeper Aegean blue.)
+    const look = dayLookOf(settings);
+    (u.uDeep.value as Color).setRGB(...look.seaDeep, LinearSRGBColorSpace);
+    (u.uScatter.value as Color).setRGB(
+      ...look.seaScatter,
+      LinearSRGBColorSpace
+    );
     (u.uSkyLow.value as Color).set(settings.fog);
-    (u.uSkyHigh.value as Color).setRGB(0.045, 0.16, 0.55, LinearSRGBColorSpace);
-    (u.uUnder.value as Color).setRGB(0.22, 0.5, 0.44, LinearSRGBColorSpace);
+    (u.uSkyHigh.value as Color).setRGB(...look.zenith, LinearSRGBColorSpace);
+    (u.uUnder.value as Color).setRGB(...look.seaUnder, LinearSRGBColorSpace);
+    (u.uSunColor.value as Color).setRGB(...look.skySun);
     const d = settings.sun
       ? sunDirection(settings.sun, settings.headingDeg ?? 90)
       : [0, 1, 0];
@@ -332,6 +376,12 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
       (u.uWake.value as Vector4).set(w.x, w.z, w.dx, w.dz);
       u.uWakeAmt.value = w.amount;
       u.uWakeLen.value = w.length;
+      if (curved) {
+        const path = u.uPath.value as Vector2[];
+        for (let k = 0; k < w.pathN && k < path.length; k += 1)
+          path[k].set(w.path[k * 2], w.path[k * 2 + 1]);
+        u.uPathN.value = w.pathN;
+      }
     }
     // The sea follows the camera so its edge never shows.
     mesh.position.set(camera.position.x, 0, camera.position.z);

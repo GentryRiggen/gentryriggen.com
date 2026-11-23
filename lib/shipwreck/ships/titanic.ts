@@ -63,8 +63,8 @@ function titanicSheerZ(x: number): number {
   return DECK_C + sheerShape(x, SHEER_FWD, SHEER_AFT);
 }
 
-/** D and E deck height at x (more sheer than C). */
-function lowerDeckZ(deck: number, x: number): number {
+/** D and E deck height at x (more sheer than C). Her sisters share it. */
+export function lowerDeckZ(deck: number, x: number): number {
   return (
     deck +
     sheerShape(

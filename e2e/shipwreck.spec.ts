@@ -657,3 +657,131 @@ test("What if? on the Lusitania with two torpedoes runs to an end", async ({
     null
   );
 });
+
+test("the HMHS Britannic's real morning reaches the end card at ×100, then the Titanic's iceberg is back @smoke", async ({
+  page,
+}) => {
+  test.setTimeout(540_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-britannic").click();
+  await expect(page.getByTestId("shipwreck-ship-britannic")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  expect(await page.evaluate(() => window.__shipwreck!.ship!())).toBe(
+    "britannic"
+  );
+  await expect(page.getByTestId("shipwreck-real-night")).toHaveText(
+    /The real morning/
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "britannic"
+  );
+  await expect(page.getByTestId("shipwreck-clock")).toContainText("AM");
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("coast")))
+    .toBe(true);
+  expect(
+    await page.evaluate(() => window.__shipwreck!.isShown!("iceberg"))
+  ).toBe(false);
+  // No Walk button: her decks are not walkable yet.
+  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+
+  // The last quarter hour of her run at ×100 (a full hour is far more
+  // frames than software WebGL draws in a test).
+  await computeAll(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT - 900);
+  });
+  await page.getByTestId("shipwreck-cameras-button").click();
+  await page.getByTestId("shipwreck-camera-orbit").click();
+  await page.getByTestId("shipwreck-speed-100").click();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().speed)).toBe(
+    100
+  );
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toBeVisible({ timeout: 300_000 });
+  await expect(end).toHaveAttribute("data-outcome", /sank|broke-in-two/);
+  await expect(end).toContainText("HMHS Britannic sank at 9:06 AM");
+
+  // Back to the title, the Titanic again: her iceberg, and no coast.
+  await page.getByTestId("shipwreck-look").click();
+  await page.getByTestId("shipwreck-back").click();
+  await expect(page.getByTestId("shipwreck-title")).toBeVisible();
+  await page.getByTestId("shipwreck-ship-titanic").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "titanic"
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.isShown!("iceberg")))
+    .toBe(true);
+  expect(await page.evaluate(() => window.__shipwreck!.isShown!("coast"))).toBe(
+    false
+  );
+  expect(errors).toEqual([]);
+});
+
+test("What if? on the HMHS Britannic with portholes shut, doors closed and engines stopped keeps her afloat", async ({
+  page,
+}) => {
+  test.setTimeout(420_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-britannic").click();
+  await page.getByTestId("shipwreck-what-if").click();
+  await expect(page.getByTestId("shipwreck-editor")).toHaveAttribute(
+    "data-ship",
+    "britannic"
+  );
+  await page.getByTestId("shipwreck-preset-real").click();
+  for (const id of ["portholes", "doors", "engines"]) {
+    const toggle = page.getByTestId(`whatif-${id}`);
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  }
+  await page.getByTestId("shipwreck-go").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await computeAll(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT);
+  });
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toHaveAttribute("data-outcome", "floated");
+  await expect(end).toContainText("She stayed afloat.");
+  expect(await page.evaluate(() => window.__shipwreck!.getOutcome!())).toBe(
+    "floated"
+  );
+});
+
+test("the title screen shows all four ships, tappable, at iPad mini portrait @smoke", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 744, height: 1133 });
+  await page.goto("/shipwreck");
+  for (const id of ["titanic", "lusitania", "fitzgerald", "britannic"]) {
+    const card = page.getByTestId(`shipwreck-ship-${id}`);
+    await expect(card).toBeVisible();
+    const box = await card.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(744);
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(1133);
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    await card.click();
+    await expect(card).toHaveAttribute("aria-checked", "true");
+  }
+  await page.screenshot({
+    path: "test-results/britannic-title-portrait.png",
+  });
+});

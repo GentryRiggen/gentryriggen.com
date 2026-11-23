@@ -191,9 +191,9 @@ describe("save: ships (1.1)", () => {
   it("drops unknown ships and bad entries", () => {
     const parsed = parseSaveSalvaging({
       ...V1,
-      ship: "britannic",
+      ship: "andrea-doria",
       whatIfByShip: {
-        britannic: { ids: ["x"] },
+        "andrea-doria": { ids: ["x"] },
         titanic: { ids: ["br6"] },
         lusitania: { ids: ["br1", 4, "br1"], portholesOpen: "no" },
       },
@@ -201,7 +201,7 @@ describe("save: ships (1.1)", () => {
     expect(parsed.ship).toBeUndefined();
     expect(parsed.whatIfByShip).toEqual({ lusitania: { ids: ["br1"] } });
     expect(
-      parseSaveSalvaging({ ...V1, whatIfByShip: { britannic: {} } })!.save
+      parseSaveSalvaging({ ...V1, whatIfByShip: { "andrea-doria": {} } })!.save
         .whatIfByShip
     ).toBeUndefined();
     expect(parseSaveSalvaging({ ...V1, ship: 7 })!.save.ship).toBeUndefined();
@@ -279,5 +279,63 @@ describe("save: What if for every ship (1.3)", () => {
       whatIfByShip: { fitzgerald: { ids: [], storm: "worse" } },
     })!.save;
     expect(whatIfOf(worse, "fitzgerald")).toEqual({ ids: [], storm: "worse" });
+  });
+});
+
+describe("save: the Britannic's What if (1.4)", () => {
+  const BASE = {
+    v: 1,
+    settings: { sound: true, speed: 30, camera: "orbit" },
+    seen: { realNight: true, endings: [] },
+    lastWhatIf: [],
+  };
+
+  it("round-trips her mines, portholes, doors and engines", () => {
+    const v1 = parseSaveSalvaging(BASE)!.save;
+    const choice = {
+      ids: ["hold3", "br4"],
+      portholesOpen: false,
+      doorsClosed: true,
+      enginesStopped: true,
+    };
+    const next = withWhatIf({ ...v1, ship: "britannic" }, "britannic", choice);
+    const storage = new MemoryStorage();
+    writeSave(next, storage);
+    const back = loadSave(NOW, storage);
+    expect(back).toEqual(next);
+    expect(shipOf(back)).toBe("britannic");
+    expect(whatIfOf(back, "britannic")).toEqual(choice);
+  });
+
+  it("reads an older save without her toggles as the real morning", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        ...BASE,
+        ship: "britannic",
+        whatIfByShip: {
+          britannic: { ids: ["hold3"] },
+          lusitania: { ids: ["br1"], portholesOpen: false },
+        },
+      })
+    );
+    const { save, writable } = loadSaveResult(NOW, storage);
+    expect(writable).toBe(true);
+    const w = whatIfOf(save, "britannic");
+    expect(w).toEqual({ ids: ["hold3"] });
+    // Missing means the real morning: open, stuck, running for Kea.
+    expect(w.portholesOpen ?? true).toBe(true);
+    expect(w.doorsClosed ?? false).toBe(false);
+    expect(w.enginesStopped ?? false).toBe(false);
+    // Bad values are dropped, not guessed.
+    const bad = parseSaveSalvaging({
+      ...BASE,
+      whatIfByShip: {
+        britannic: { ids: [], doorsClosed: "yes", enginesStopped: 1 },
+        "andrea-doria": { ids: ["hold3"], doorsClosed: true },
+      },
+    })!.save;
+    expect(bad.whatIfByShip).toEqual({ britannic: { ids: [] } });
   });
 });

@@ -67,9 +67,11 @@ const splits = (fitzgerald.deckOpenings ?? []).filter(
 );
 
 describe("the Edmund Fitzgerald's data", () => {
-  it("is in the registry, last", () => {
+  it("is in the registry, after the Lusitania", () => {
     expect(getShip("fitzgerald")).toBe(fitzgerald);
-    expect(SHIP_IDS[SHIP_IDS.length - 1]).toBe("fitzgerald");
+    expect(SHIP_IDS.indexOf("fitzgerald")).toBe(
+      SHIP_IDS.indexOf("lusitania") + 1
+    );
     expect(fitzgerald.cause).toBe("storm");
     expect(fitzgerald.clockStartS).toBe(15 * 3600 + 30 * 60); // 3:30 PM
     expect(fitzgerald.seaDepthM).toBe(162); // 530 ft

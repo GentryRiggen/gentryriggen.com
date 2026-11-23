@@ -3,6 +3,7 @@ import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import { swungOutY } from "@/components/shipwreck/model/titanicRecipe";
 import { hitTimeS, type QualityTier } from "@/lib/shipwreck/playback";
 import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
+import type { SimTrack as Track } from "@/lib/shipwreck/sim/track";
 import type { SimEvent } from "@/lib/shipwreck/sim/events";
 import { hullHalfBreadth, type HullModel } from "@/lib/shipwreck/sim/geometry";
 import {
@@ -11,7 +12,7 @@ import {
   type SimFrame,
   type SimTrack,
 } from "@/lib/shipwreck/sim/track";
-import { shipToThree, type V3 } from "./cameraMath";
+import { shipToThree, shipToThreeInto, type V3 } from "./cameraMath";
 import { torpedoHole } from "./Torpedo";
 
 /**
@@ -35,6 +36,72 @@ const HEAD_OVER_DECK_M = 4.0;
 /** The column and its mist last this long (s); the second explosion's cloud. */
 const COLUMN_S = 21;
 const EXPLOSION_S = 40;
+
+/**
+ * A mine ship's boats (the Britannic's): stowed until their turn, swung
+ * out over the side by their davits or gantry, lowered faster than the
+ * Lusitania's crews could (calm weather, her boats not yet loaded at the
+ * falls), and pulled away from her side and a little ahead.
+ */
+export const MINE_BOAT_SWING_S = 15;
+export const MINE_BOAT_LOWER_S = 60;
+
+/**
+ * When each of `n` hits' columns goes up: a torpedo's at its hit (the
+ * first at 0); a mine's at the sim's explosion (her blast), the rest of a
+ * What-if's mines a few seconds apart after it. Once each.
+ */
+export function hitColumnTimes(
+  cause: ShipSpec["cause"],
+  events: Track["events"],
+  n: number
+): number[] {
+  let from = 0;
+  if (cause === "mine")
+    for (const e of events)
+      if (e.kind === "explosion") {
+        from = e.t;
+        break;
+      }
+  const out: number[] = [];
+  for (let k = 0; k < n; k += 1) out.push(from + hitTimeS(k, n));
+  return out;
+}
+
+/** The Lusitania's second explosion inside her; a mine has none. */
+export function hasSecondExplosion(spec: Pick<ShipSpec, "cause">): boolean {
+  return spec.cause !== "mine";
+}
+
+/**
+ * Where a mine ship's boat is (three x, z into `out`) `age` s after it
+ * touched the sea at (x, z): pulling out from her side (`side`) and a
+ * little ahead of the beam (her heading as it touched, `yaw`, the sim's
+ * earth yaw), never aft toward her turning screws (R15); she, still
+ * moving ahead, leaves it astern and well out from her side. Stops
+ * 150–400 m out.
+ */
+export function boatAwayAt(
+  x: number,
+  z: number,
+  yaw: number,
+  side: "port" | "starboard" | "centre",
+  i: number,
+  age: number,
+  out: [number, number]
+): [number, number] {
+  const s = side === "port" ? 1 : -1;
+  const ahead = 0.15 + 0.45 * hash(i, 3);
+  const c = Math.cos(yaw);
+  const sn = Math.sin(yaw);
+  // Three axes: her heading (c, -sn), her port side (-sn, -c).
+  const dx = Math.cos(ahead) * s * -sn + Math.sin(ahead) * c;
+  const dz = Math.cos(ahead) * s * -c + Math.sin(ahead) * -sn;
+  const d = Math.min(150 + hash(i, 7) * 250, Math.max(0, age) * ROW_MPS);
+  out[0] = x + dx * d;
+  out[1] = z + dz * d;
+  return out;
+}
 
 /** True while any of `n` hits' columns can still be showing at `t`. */
 export function columnOpen(t: number, n: number): boolean {
@@ -128,6 +195,12 @@ export class AfternoonEffects {
   private readonly qPart = new Quaternion();
   private readonly qBoat = new Quaternion();
   private readonly m = new Matrix4();
+  private readonly away: [number, number] = [0, 0];
+  private readonly awayEnd: [number, number] = [0, 0];
+  /** A mine ship (the Britannic): her boats stowed until lowered. */
+  private readonly mine: boolean;
+  private readonly swingS: number;
+  private readonly lowerS: number;
 
   constructor(
     private readonly spec: ShipSpec,
@@ -135,7 +208,11 @@ export class AfternoonEffects {
     private readonly pos: Float32Array,
     private readonly col: Float32Array,
     private readonly size: Float32Array
-  ) {}
+  ) {
+    this.mine = spec.cause === "mine";
+    this.swingS = this.mine ? MINE_BOAT_SWING_S : SWING_S;
+    this.lowerS = this.mine ? MINE_BOAT_LOWER_S : LOWER_S;
+  }
 
   /** Draws this frame's afternoon; returns the particle count. */
   update(f: AfternoonFrame): number {
@@ -211,15 +288,23 @@ export class AfternoonEffects {
     for (const h of this.holders.values()) this.spare.push(h);
     this.holders.clear();
     let order = 0;
+    const swingS = this.swingS;
+    const lowerS = this.lowerS;
     for (let i = 0; i < mdl.boats.count; i += 1) {
       const info = mdl.boats.info(i);
-      if (!info.hasDavits) {
+      const tb = f.lowered.get(i);
+      const age = tb === undefined ? -1 : t - tb;
+      // A mine ship's boats wait in their chocks (or gantry) until their
+      // turn; a gantry swings its boats out as a davit would.
+      if (
+        this.mine
+          ? age < 0 || (!info.hasDavits && info.gantry === undefined)
+          : !info.hasDavits
+      ) {
         mdl.boats.stow(i);
         continue;
       }
-      const tb = f.lowered.get(i);
-      const age = tb === undefined ? -1 : t - tb;
-      if (tb !== undefined && age >= SWING_S + LOWER_S) {
+      if (tb !== undefined && age >= swingS + lowerS) {
         this.floatAway(f, mdl, i, tb, age);
         continue;
       }
@@ -230,18 +315,29 @@ export class AfternoonEffects {
       this.head.set(info.x, headZ, -swungOutY(info));
       // Lowered to the Promenade deck to load, from a minute after the hit.
       const k = order++ % 11;
-      const load = hit
-        ? LOAD_DROP_M * Math.min(1, Math.max(0, (t - 70 - k * 18) / 60))
-        : 0;
+      const load =
+        hit && !this.mine
+          ? LOAD_DROP_M * Math.min(1, Math.max(0, (t - 70 - k * 18) / 60))
+          : 0;
       let fall = headZ - info.z + load;
       if (tb !== undefined && age >= 0) {
         // Down the falls to the sea.
         this.v.copy(this.head).addScaledVector(hf.down, fall);
         this.w.copy(this.v).applyMatrix4(holder.matrixWorld);
         const toSea = Math.max(0, this.w.y + 0.35);
-        fall += toSea * Math.max(0, (age - SWING_S) / LOWER_S);
+        fall += toSea * Math.max(0, (age - swingS) / lowerS);
       }
       this.v.copy(this.head).addScaledVector(hf.down, fall);
+      if (this.mine && age < swingS) {
+        // Swinging out from where it was stowed.
+        const u = age / swingS;
+        const e = u * u * (3 - 2 * u);
+        this.v.set(
+          info.x + (this.v.x - info.x) * e,
+          info.z + (this.v.y - info.z) * e,
+          -info.y + (this.v.z + info.y) * e
+        );
+      }
       this.w.copy(this.v).applyMatrix4(holder.matrixWorld);
       if (this.w.y < -2) {
         mdl.boats.stow(i);
@@ -282,10 +378,41 @@ export class AfternoonEffects {
     const info = mdl.boats.info(i);
     let start = this.launchAt.get(i);
     if (!start) {
-      const at = sampleTrack(f.track, tb + SWING_S + LOWER_S).bodies[0];
+      const at = sampleTrack(f.track, tb + this.swingS + this.lowerS).bodies[0];
       const w = shipToThree(at, [info.x, swungOutY(info) * 1.15, info.z]);
-      start = new Vector3(w[0], -0.35, w[2]);
+      // (w carries her yaw then in its fourth slot for a mine ship's boat.)
+      start = new Vector3(w[0], at.yaw, w[2]);
       this.launchAt.set(i, start);
+    }
+    if (this.mine) {
+      // Out from her side and a little ahead, never toward her screws.
+      const age2 = age - this.swingS - this.lowerS;
+      const p = boatAwayAt(
+        start.x,
+        start.z,
+        start.y,
+        info.side,
+        i,
+        age2,
+        this.away
+      );
+      const q = boatAwayAt(
+        start.x,
+        start.z,
+        start.y,
+        info.side,
+        i,
+        1e6,
+        this.awayEnd
+      );
+      const bob = Math.sin(f.wall * 0.9 + i) * 0.05;
+      this.q.setFromAxisAngle(
+        this.up,
+        Math.atan2(-(q[1] - start.z), q[0] - start.x)
+      );
+      this.m.compose(this.v.set(p[0], -0.35 + bob, p[1]), this.q, this.one);
+      mdl.boats.float(i, this.m);
+      return;
     }
     const sideZ = info.side === "port" ? -1 : 1;
     const fan = (hash(i, 3) - 0.5) * 1.2;
@@ -314,8 +441,13 @@ export class AfternoonEffects {
     const t = f.t;
     const hit = f.openings.length > 0;
     const half = this.spec.headway?.halfLifeS ?? 300;
-    const steamFails =
-      hit && t > 0 ? 0.18 + 0.82 * Math.exp((-t * Math.LN2) / half) : 1;
+    // A ship on a speed profile (the Britannic): her smoke thins with her
+    // speed (her track's, the sim's `speedAt`), the fires still lit.
+    const steamFails = this.spec.headway?.profile
+      ? 0.25 + 0.75 * f.wakeAmount
+      : hit && t > 0
+        ? 0.18 + 0.82 * Math.exp((-t * Math.LN2) / half)
+        : 1;
     const rel = 1.5 + 9.3 * f.wakeAmount;
     const ease = f.snapped ? 1 : 1 - Math.exp(-f.dt * SMOKE_RATE);
     let ex: number | undefined;
@@ -361,7 +493,7 @@ export class AfternoonEffects {
         );
       }
       // Steam blowing off (after the second explosion), white.
-      if (!hit || ex === undefined || t < ex || !alive) continue;
+      if (!hit || ex === undefined || t < ex || !alive || this.mine) continue;
       const steam = Math.exp(-(t - ex) / 200);
       const steamN = Math.round(24 * this.share);
       for (let k = 0; k < steamN && steam > 0.02; k += 1) {
@@ -384,8 +516,12 @@ export class AfternoonEffects {
   /** Where a hole was on the sea at time `at` (three), and out from her. */
   private placeAt(track: SimTrack, at: number, x: number): HitPlace {
     const pose: BodyPose = sampleTrack(track, at).bodies[0];
-    const h = shipToThree(pose, [x, -13.6, 9.3]);
-    const o = shipToThree(pose, [x, -14.6, 9.3]);
+    // A mine at her starboard side at the waterline (the Lusitania's 1.1
+    // numbers otherwise).
+    const y = this.mine ? -(this.spec.beam / 2 + 0.3) : -13.6;
+    const z = this.mine ? this.spec.draught : 9.3;
+    const h = shipToThree(pose, [x, y, z]);
+    const o = shipToThree(pose, [x, y - 1, z]);
     const ol = Math.hypot(o[0] - h[0], o[2] - h[2]) || 1;
     return { h, ox: (o[0] - h[0]) / ol, oz: (o[2] - h[2]) / ol };
   }
@@ -407,7 +543,8 @@ export class AfternoonEffects {
     const hole = f.hits && f.hits.length > 0 ? null : torpedoHole(f.openings);
     const hits = f.hits && f.hits.length > 0 ? f.hits : hole ? [hole.x] : [];
     const n = hits.length;
-    if (columnOpen(t, n)) {
+    if (this.mine) this.mineColumns(f, hits);
+    else if (columnOpen(t, n)) {
       const key = track.frames[0];
       if (this.hitKey !== key || this.hitAt.length !== n) {
         // Each where her side was as it struck (kept once the track has
@@ -431,6 +568,7 @@ export class AfternoonEffects {
           1
         );
     }
+    if (!hasSecondExplosion(this.spec)) return;
     let ex: SimEvent | undefined;
     for (const e of track.events)
       if (e.kind === "explosion") {
@@ -499,6 +637,58 @@ export class AfternoonEffects {
           4
         );
     }
+  }
+
+  /**
+   * A mine's column at her starboard bow: white water thrown higher than
+   * her funnels and a drifting mist, once per mine (`hitColumnTimes`), no
+   * track and no second explosion. Its place is worked out once per run.
+   */
+  private mineColumns(f: AfternoonFrame, hits: readonly number[]) {
+    const n = hits.length;
+    if (n === 0) return;
+    const times = this.mineTimes(f.track, n);
+    const t = f.t;
+    if (t < times[0] || t >= times[n - 1] + COLUMN_S) return;
+    // Each at her starboard side by its hole as she is now: the column
+    // rides with her while it stands (a look: thrown up at 20 knots, the
+    // real spray fell astern of the hole), so it reads where the mine hit.
+    while (this.mineAtNow.length < n)
+      this.mineAtNow.push({ h: [0, 0, 0], ox: 0, oz: 0 });
+    const pose = f.frame.bodies[0];
+    const y = -(this.spec.beam / 2 + 0.3);
+    const z = this.spec.draught;
+    const count = Math.round(560 / Math.sqrt(n));
+    for (let k = 0; k < n; k += 1) {
+      const at = this.mineAtNow[k];
+      this.pt[0] = hits[k];
+      this.pt[1] = y;
+      this.pt[2] = z;
+      shipToThreeInto(pose, this.pt, at.h);
+      this.pt[1] = y - 1;
+      shipToThreeInto(pose, this.pt, this.ptOut);
+      const ol =
+        Math.hypot(this.ptOut[0] - at.h[0], this.ptOut[2] - at.h[2]) || 1;
+      at.ox = (this.ptOut[0] - at.h[0]) / ol;
+      at.oz = (this.ptOut[2] - at.h[2]) / ol;
+      this.burst(at, t - times[k], count, 26, 20, 3, 8, 0.05, 1.3);
+    }
+  }
+
+  private readonly mineAtNow: HitPlace[] = [];
+  private readonly pt: [number, number, number] = [0, 0, 0];
+  private readonly ptOut: V3 = [0, 0, 0];
+  private mineKey: unknown = null;
+  private mineN = 0;
+  private mineAt: number[] = [];
+  /** `hitColumnTimes` for a mine, kept per track (no allocation per frame). */
+  private mineTimes(track: SimTrack, n: number): number[] {
+    if (this.mineKey !== track.events || this.mineN !== n) {
+      this.mineKey = track.events;
+      this.mineN = n;
+      this.mineAt = hitColumnTimes("mine", track.events, n);
+    }
+    return this.mineAt;
   }
 
   /** A column of water thrown up at a hole, `age` s ago. */

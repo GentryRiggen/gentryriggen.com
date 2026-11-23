@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.4.0",
+    date: "2026-11-22",
+    title: "The Britannic",
+    highlights: [
+      "A new ship! The Britannic was the Titanic's little sister. In the First World War she was a hospital ship, painted white with a green stripe and big red crosses, with giant crane-like davits for her lifeboats",
+      "Watch her real morning, 21 November 1916: a mine goes off at her bow near the Greek island of Kea, her captain turns for the shore, and water pours in through open portholes. Her bow hits the bottom while her back end is still in the air, then she rolls onto her side. She sank in 55 minutes",
+      "What if? Shut her portholes, close her watertight doors, or don't run for Kea, and see if she stays afloat",
+      "X-ray shows her holds and boiler rooms filling, and you can fly down to her wreck lying on its side",
+    ],
+  },
+  {
     version: "1.3.2",
     date: "2026-11-22",
     title: "Faster walking, no sliding",

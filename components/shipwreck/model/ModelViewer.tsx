@@ -18,6 +18,7 @@ import {
 import { Color, PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -28,16 +29,20 @@ import type {
   ShipwreckModelHooks,
 } from "@/lib/shipwreck/testHooks";
 import TitanicModel from "./TitanicModel";
+import { applyBowBend } from "./bowBend";
 import type { TitanicHandles } from "./shipModel";
 
 /**
  * A neutral stage for checking the model (`/shipwreck?model`, dev and e2e
- * builds only; `&ship=lusitania` or `&ship=fitzgerald`): orbit controls, a day light or
- * the night with bloom, and `window.__shipwreck.setModelView` to set the
- * break, lights, quality and a camera preset.
+ * builds only; `&ship=lusitania`, `&ship=fitzgerald` or `&ship=britannic`): orbit controls, a day light or
+ * the night with bloom (`&ship=britannic&paint=liner` puts her in her
+ * intended White Star paint, swapped in place), and
+ * `window.__shipwreck.setModelView` to set the break, lights, quality, a
+ * camera preset and the paint.
  */
 
-type Required3 = Required<ModelViewOptions>;
+type Required3 = Required<Omit<ModelViewOptions, "paint">> &
+  Pick<ModelViewOptions, "paint">;
 
 const DEFAULT_VIEW: Required3 = {
   breakX: null,
@@ -46,6 +51,7 @@ const DEFAULT_VIEW: Required3 = {
   quality: "high",
   camera: "bow",
   stage: "day",
+  bowBend: 0,
 };
 
 /** Camera presets (three.js axes: +x forward, +y up, +z starboard). */
@@ -64,6 +70,8 @@ const CAMERAS: Record<
   astern: { pos: [-172, 17, 0], target: [-130, 15.5, 0] },
   "break-close": { pos: [-2, 34, 72], target: [-27, 14, 0] },
   "boat-deck": { pos: [52, 40, 52], target: [18, 26, 6] },
+  "bow-port": { pos: [245, 46, -150], target: [30, 18, 0] },
+  gantry: { pos: [-20, 44, 48], target: [-50, 32, 6] },
 };
 
 /** Presets reframed for a ship whose stern is not the Titanic's. */
@@ -72,6 +80,13 @@ const SHIP_CAMERAS: Partial<Record<ShipSpec["id"], Partial<typeof CAMERAS>>> = {
     stern: { pos: [-205, 2, 120], target: [-62, 13, 0] },
     "stern-close": { pos: [-168, 20, 56], target: [-104, 12, 0] },
     astern: { pos: [-160, 17, 0], target: [-118, 15.5, 0] },
+  },
+  // Her sister's hull: the Titanic's frames, with views of her gantry
+  // davits (the aft sets from the starboard quarter) and her bent bow.
+  britannic: {
+    gantry: { pos: [-4, 46, 46], target: [-46, 33, 8] },
+    bridge: { pos: [112, 36, 30], target: [74, 30, 0] },
+    "break-close": { pos: [150, 10, -95], target: [92, 12, 0] },
   },
   // A 729 ft laker: houses at the ends, the hatches between.
   fitzgerald: {
@@ -89,6 +104,12 @@ const SHIP_CAMERAS: Partial<Record<ShipSpec["id"], Partial<typeof CAMERAS>>> = {
   },
 };
 
+/** The livery named by `?paint=` (the ship's own when missing). */
+function paintFromUrl(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  return new URLSearchParams(window.location.search).get("paint") ?? undefined;
+}
+
 /** The ship named by `?ship=` (the Titanic by default). */
 function shipFromUrl(): ShipSpec {
   if (typeof window === "undefined") return titanic;
@@ -97,7 +118,9 @@ function shipFromUrl(): ShipSpec {
     ? lusitania
     : id === "fitzgerald"
       ? fitzgerald
-      : titanic;
+      : id === "britannic"
+        ? britannic
+        : titanic;
 }
 
 interface ModelViewerProps {
@@ -105,7 +128,10 @@ interface ModelViewerProps {
 }
 
 export default function ModelViewer({ hooksRef }: ModelViewerProps) {
-  const [view, setView] = useState<Required3>(DEFAULT_VIEW);
+  const [view, setView] = useState<Required3>(() => ({
+    ...DEFAULT_VIEW,
+    paint: paintFromUrl(),
+  }));
   const [spec] = useState(shipFromUrl);
   const info = useRef<ModelInfo>({
     ready: false,
@@ -189,15 +215,22 @@ function Stage({ view, spec, onInfo }: StageProps) {
 
   const apply = useCallback(
     (h: TitanicHandles) => {
+      if (view.paint) {
+        const t0 = performance.now();
+        h.setPaint?.(view.paint);
+        onInfo({ paintMs: performance.now() - t0 });
+      }
       h.setPower(view.power);
       h.setFlicker(view.flicker);
+      if (h.bend && h.recipe.hinge)
+        applyBowBend(h.bend, view.bowBend, h.recipe.hinge);
       if (h.breakX !== null) {
         // Drawn apart for checking: hinged at the keel, the stern lifted.
         poseHalf(h.bow, h.breakX, -0.1, 4);
         poseHalf(h.stern, h.breakX, -0.3, -4);
       }
     },
-    [view.power, view.flicker]
+    [view.power, view.flicker, view.bowBend, view.paint, onInfo]
   );
 
   const onReady = useCallback(
@@ -304,7 +337,8 @@ function poseHalf(
 
 function modelTriangles(h: TitanicHandles): number {
   let n = 0;
-  h.root.traverse((o) => {
+  // Drawn meshes only (a livery's hidden parts are not).
+  h.root.traverseVisible((o) => {
     const m = o as unknown as {
       isMesh?: boolean;
       isInstancedMesh?: boolean;

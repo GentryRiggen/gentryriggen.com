@@ -27,13 +27,13 @@ export function clockText(
 
 /** Words that differ by what sank her and when. */
 export interface ShipStory {
-  /** "the iceberg" / "the torpedo". */
+  /** "the iceberg" / "the torpedo" / "the mine". */
   cause: string;
   /** "Just hit the iceberg" / "Just hit by the torpedo". */
   justHit: string;
   /** Before the first event (a torpedo's run-in): "Just before the torpedo". */
   justBefore: string;
-  /** "night" / "afternoon": the story's time of day. */
+  /** "night" / "afternoon" / "morning": the story's time of day. */
   period: string;
   /** The title screen's first button: "The real night". */
   realLabel: string;
@@ -41,9 +41,19 @@ export interface ShipStory {
 
 export function storyOf(
   ship: Pick<ShipSpec, "cause">,
-  /** Torpedo ships: how many hit (a What if may have more than one). */
+  /** Torpedo and mine ships: how many hit (a What if may have more than one). */
   hits = 1
 ): ShipStory {
+  if (ship.cause === "mine") {
+    const mine = hits > 1 ? "the mines" : "the mine";
+    return {
+      cause: mine,
+      justHit: `Just hit by ${mine}`,
+      justBefore: `Just before ${mine}`,
+      period: "morning",
+      realLabel: "The real morning",
+    };
+  }
   if (ship.cause === "storm")
     return {
       cause: "the storm",
@@ -149,6 +159,7 @@ export function captionText(
   // the rest of her is still up.
   const shallow = ship.seaDepthM < ship.lbp;
   if (ship.cause === "storm") return stormCaption(e, ship, ctx);
+  if (ship.cause === "mine") return mineCaption(e, ship, ctx);
   if (ship.cause === "torpedo") {
     const hits = ctx.hits ?? 1;
     switch (e.kind) {
@@ -313,6 +324,81 @@ function stormCaption(
     case "last-boat":
     case "funnel-falls":
     case "floating-steady":
+    default:
+      return null;
+  }
+}
+
+/**
+ * A mine ship's captions (the Britannic's morning): the mine, the boats
+ * from her davits, the sea creeping up her front, the whistle at 9:00, the
+ * roll onto her side, the floor. Calm, no people, no blame, and nothing of
+ * the boats drawn into her propellers (R15: the parent line only).
+ */
+function mineCaption(
+  e: Pick<SimEvent, "kind" | "index">,
+  ship: ShipSpec,
+  ctx: CaptionContext
+): string | null {
+  const depth = `${ship.seaDepthM.toLocaleString("en-US")} m`;
+  const shallow = ship.seaDepthM < ship.lbp;
+  // The first of its kind in the run (the track's order: her boats are
+  // lowered aft first, not by number).
+  const first = ctx.first ?? (e.index === 0 || e.index === undefined);
+  const hits = ctx.hits ?? 1;
+  switch (e.kind) {
+    case "collision":
+      return hits > 1
+        ? `${countWord(hits)} mines explode against her starboard side. Water rushes in.`
+        : "A mine explodes against her starboard side, near the front. Water rushes in.";
+    case "boat-lowered":
+      return first
+        ? "The first lifeboat is lowered from her giant crane-like davits."
+        : null;
+    case "last-boat":
+      return "The last lifeboat pulls clear of the ship.";
+    case "forecastle-under":
+      return "The front deck goes under the water.";
+    case "bridge-under":
+      return "The sea reaches the bridge.";
+    case "radio":
+      // Her whistle at 9:00 AM (the ship's signal, index 0).
+      return e.index === 0
+        ? "Her engines stop. Two long blasts on her whistle."
+        : null;
+    case "funnel-falls":
+      return first ? "She leans over, and her funnels begin to fall." : null;
+    case "lights-out":
+      return "The power fails. The lights go out.";
+    case "breakup":
+      return "The ship breaks in two.";
+    case "stern-under":
+      return "The stern goes under. She has sunk.";
+    case "bow-lands":
+      if (!shallow) return `The bow ploughs into the sea floor, ${depth} down.`;
+      return ctx.sternUnder
+        ? `The bow ploughs into the sea floor, only ${depth} down.`
+        : `The bow ploughs into the sea floor, only ${depth} down. Her stern is still up out of the water!`;
+    case "stern-lands":
+      if (!shallow) return "The stern lands on the sea floor.";
+      return ctx.sunk
+        ? `She has sunk. She lies on the sea floor, ${depth} down.`
+        : `The stern touches the sea floor, only ${depth} down.`;
+    case "floating-steady":
+      return "The water stops rising. She is staying afloat!";
+    case "sheltered":
+      return "She reaches the shore of Kea. She made it!";
+    // The mine is her collision (the scripted blast at the same moment is
+    // for the sound and the scene); she had no rockets, no steam venting
+    // and no hatch covers; her lights flicker just before they go out (one
+    // caption is enough); her front deck and bridge going under say the bow.
+    case "explosion":
+    case "steam-start":
+    case "steam-stop":
+    case "rocket":
+    case "lights-flicker":
+    case "bow-under":
+    case "hatch-fails":
     default:
       return null;
   }
@@ -495,6 +581,90 @@ export interface EndContext {
   hits?: number;
   /** The What-if storm (storm ships; default "real"). */
   storm?: "real" | "calmer" | "worse";
+  /** Mine ships: every watertight door shut (default false). */
+  doorsClosed?: boolean;
+  /** Mine ships: her engines stopped at the mine, no run for the shore. */
+  enginesStopped?: boolean;
+  /** Mine ships: the mine at her real spot and nowhere else (default false). */
+  realSpot?: boolean;
+}
+
+/**
+ * Mine ships: how long after the mine she really sank (s), for the Run
+ * for Kea lesson: the Britannic 55 minutes [WP] (her sim's 54:01).
+ */
+const REAL_SANK_S: Partial<Record<ShipId, number>> = { britannic: 55 * 60 };
+/** How close to it a run with only her engines stopped counts as "little". */
+const LITTLE_S = 120;
+
+/**
+ * Run for Kea off and nothing else changed from her real morning, and she
+ * sank within LITTLE_S of the real time (R20b: her way was mostly off by
+ * 8:18, so stopping her engines changes her end by seconds): the card names
+ * what mattered (Task 2b).
+ */
+const ENGINES_LESSON =
+  "Stopping her engines changed little. Her open portholes and the door that did not shut mattered most.";
+function enginesLesson(ship: ShipSpec, at: number, ctx: EndContext): string[] {
+  const real = REAL_SANK_S[ship.id];
+  const onlyEngines =
+    ship.cause === "mine" &&
+    ctx.enginesStopped === true &&
+    ctx.realSpot === true &&
+    (ctx.hits ?? 1) === 1 &&
+    ctx.portholesOpen !== false &&
+    ctx.doorsClosed !== true;
+  return onlyEngines && real !== undefined && Math.abs(at - real) <= LITTLE_S
+    ? [ENGINES_LESSON]
+    : [];
+}
+
+/** The end card's name for a ship, where it differs (R1: "HMHS Britannic"). */
+const END_NAME: Partial<Record<ShipId, string>> = {
+  britannic: "HMHS Britannic",
+};
+
+/** "her portholes shut, her doors closed and her engines stopped". */
+function andList(parts: readonly string[]): string {
+  if (parts.length < 2) return parts.join("");
+  return `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+}
+
+/** A mine ship's floating end (the Britannic's What if). */
+function mineAfloat(
+  track: SimTrack,
+  ship: ShipSpec,
+  ctx: EndContext
+): EndWords {
+  const mines = (ctx.hits ?? 1) > 1 ? "the mines" : "the mine";
+  const safe = track.events.find((e) => e.kind === "sheltered");
+  const fixes = [
+    ...(ctx.portholesOpen === false ? ["her portholes shut"] : []),
+    ...(ctx.doorsClosed ? ["her doors closed"] : []),
+    ...(ctx.enginesStopped ? ["her engines stopped"] : []),
+  ];
+  const held =
+    fixes.length > 0
+      ? `With ${andList(fixes)}, the water stayed in the rooms ${mines} opened, and she floated on.`
+      : `The water stayed in the rooms ${mines} opened, and she floated on.`;
+  const lesson =
+    "She was built to float with six of her front compartments full of water. On the real morning, open portholes and a watertight door that did not shut let the sea into more of her.";
+  if (safe) {
+    const at = clockText(safe.realT, ship.clockStartS).replace(" ", "\u00a0");
+    return {
+      outcome: "floated",
+      title: "She reached Kea.",
+      lines: [
+        `She reached the shore of the island of Kea at ${at} and was safe there.`,
+        lesson,
+      ],
+    };
+  }
+  return {
+    outcome: "floated",
+    title: "She stayed afloat.",
+    lines: [held, lesson],
+  };
 }
 
 /** "93 m (305 feet)" for a shallow sea, "3,800 m (2.4 miles)" for a deep one. */
@@ -515,7 +685,10 @@ export function endWords(
   ctx: EndContext = {}
 ): EndWords {
   const outcome = outcomeOf(track);
+  if (outcome === "floated" && ship.cause === "mine")
+    return mineAfloat(track, ship, ctx);
   const torpedo = ship.cause === "torpedo";
+  const mine = ship.cause === "mine";
   const storm = ship.cause === "storm";
   const torpedoes = (ctx.hits ?? 1) > 1 ? "the torpedoes" : "the torpedo";
   if (outcome === "floated") {
@@ -564,14 +737,18 @@ export function endWords(
     ? `her ${clockText(0, ship.clockStartS).replace(" ", "\u00a0")} report`
     : torpedo
       ? `${torpedoes} hit`
-      : "hitting the iceberg";
+      : mine
+        ? (ctx.hits ?? 1) > 1
+          ? "the mines"
+          : "the mine"
+        : "hitting the iceberg";
   const broke = outcome === "broke-in-two" ? "broke in two and sank" : "sank";
   const bowLands = track.events.find((e) => e.kind === "bow-lands");
   const bowFirst =
     bowLands !== undefined && (sank === undefined || bowLands.t < sank.t);
   return {
     outcome,
-    title: `${ship.name} sank at ${clockText(at, ship.clockStartS)}`,
+    title: `${END_NAME[ship.id] ?? ship.name} sank at ${clockText(at, ship.clockStartS)}`,
     lines: [
       `She ${broke} ${durationWords(at)} after ${hit}. She lies ${depthWords(ship.seaDepthM)} down.`,
       ...(bowFirst && ship.seaDepthM < ship.lbp
@@ -581,6 +758,7 @@ export function endWords(
               : "The sea there is not as deep as she was long: her bow hit the floor while her stern was still up out of the water.",
           ]
         : []),
+      ...enginesLesson(ship, at, ctx),
     ],
   };
 }
@@ -591,6 +769,8 @@ export const HISTORY_NOTE =
 
 /** Each ship's "What really happened" note. */
 export function historyNote(ship: Pick<ShipSpec, "id">): string {
+  if (ship.id === "britannic")
+    return "What really happened: the real Britannic was steaming up the Kea Channel when the mine went off. She sank at 9:07\u00a0AM, 55 minutes after the mine. British warships came and picked up the people in the lifeboats.";
   if (ship.id === "fitzgerald")
     return "What really happened: the real Edmund Fitzgerald sank in the storm just after 7:10\u00a0PM, about 17 miles from the shelter of Whitefish Bay. She very nearly made it. Experts still argue about why she sank.";
   return ship.id === "lusitania"

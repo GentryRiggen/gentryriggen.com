@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
 import {
   WHAT_IF_STORMS,
@@ -19,7 +19,9 @@ import {
   whatIfSpots,
 } from "@/lib/shipwreck/sim/run";
 import {
+  MINE_TOGGLES,
   STORM_LABEL,
+  type MineToggle,
   spotAria,
   spotLabel,
   stormChoiceText,
@@ -44,10 +46,14 @@ export const REAL_NIGHT_IDS: readonly string[] = realWhatIfIds(titanic);
 
 export interface WhatIfChoice {
   ids: string[];
-  /** Torpedo ships only. */
+  /** Torpedo and mine ships only. */
   portholesOpen?: boolean;
   /** Storm ships only. */
   storm?: WhatIfStorm;
+  /** Mine ships only: every watertight door shut. */
+  doorsClosed?: boolean;
+  /** Mine ships only: engines stopped at once, no run for the shore. */
+  enginesStopped?: boolean;
 }
 
 interface WhatIfEditorProps {
@@ -73,6 +79,19 @@ function wordsOf(spec: ShipSpec) {
         clear: "Clear: no damage, every hatch sealed tight",
         icon: "storm" as const,
         go: "Go: start the storm with these choices",
+      };
+    case "mine":
+      return {
+        lead: "Tap where mines hit, and what was open. Will she float?",
+        group: "Where mines hit",
+        diagram: `${spec.name}'s side, bow to the right, and her plan from above. Tap where mines hit.`,
+        note: "Stern ← · → Bow. Mines hit her starboard side (the bottom). White lines: watertight walls and her double skin.",
+        real: "Like the real morning",
+        realAria:
+          "Like the real morning: the mine by holds 2 and 3, portholes open, a door stuck open, running for Kea",
+        clear: "Clear: no mines",
+        icon: "mine" as const,
+        go: "Go: start the morning with these choices",
       };
     case "torpedo":
       return {
@@ -116,7 +135,11 @@ export default function WhatIfEditor({
   onGo,
 }: WhatIfEditorProps) {
   const torpedo = spec.cause === "torpedo";
+  const mine = spec.cause === "mine";
+  // Hits along her starboard side, with a plan from above.
+  const side = torpedo || mine;
   const storm = spec.cause === "storm";
+  const helpId = useId();
   const words = wordsOf(spec);
   const spots = useMemo(() => whatIfSpots(spec), [spec]);
   const real = useMemo(() => realWhatIfIds(spec), [spec]);
@@ -130,6 +153,19 @@ export default function WhatIfEditor({
     initial.portholesOpen ?? true
   );
   const [sea, setSea] = useState<WhatIfStorm>(initial.storm ?? "real");
+  // A mine ship's toggles, on for the real morning (R14).
+  const [doorsStuck, setDoorsStuck] = useState(initial.doorsClosed !== true);
+  const [runForKea, setRunForKea] = useState(initial.enginesStopped !== true);
+  const toggleOn: Record<MineToggle["id"], boolean> = {
+    portholes: portholesOpen,
+    doors: doorsStuck,
+    engines: runForKea,
+  };
+  const flip: Record<MineToggle["id"], () => void> = {
+    portholes: () => setPortholesOpen((v) => !v),
+    doors: () => setDoorsStuck((v) => !v),
+    engines: () => setRunForKea((v) => !v),
+  };
   const selected = useMemo(() => new Set(ids), [ids]);
   const openings = useMemo(() => whatIfOpenings(spec, ids), [spec, ids]);
   const toggle = (id: string) => {
@@ -144,7 +180,8 @@ export default function WhatIfEditor({
   const isReal =
     ids.length === real.length &&
     ids.every((id) => real.includes(id)) &&
-    (!torpedo || portholesOpen) &&
+    (!side || portholesOpen) &&
+    (!mine || (doorsStuck && runForKea)) &&
     (!storm || sea === "real");
   // No damage at all is a storm ship's question too (every cover tight).
   const canGo = storm || ids.length > 0;
@@ -182,6 +219,13 @@ export default function WhatIfEditor({
         : ids.length === 1
           ? `Hits: ${spotLabel(spec, ids[0])}`
           : `${ids.length} torpedoes`;
+  else if (mine)
+    count =
+      ids.length === 0
+        ? "Choose where they hit"
+        : ids.length === 1
+          ? `Mine: ${spotLabel(spec, ids[0])}`
+          : `${ids.length} mines`;
   else
     count =
       ids.length === 0
@@ -213,7 +257,7 @@ export default function WhatIfEditor({
 
       <div
         className={`mx-auto flex w-full flex-1 flex-col justify-center gap-3 py-3 sm:gap-4 sm:py-4 ${
-          torpedo ? "max-w-3xl" : "max-w-4xl"
+          side ? "max-w-3xl" : "max-w-4xl"
         }`}
       >
         <div className={`${PANEL} p-2 sm:p-4`}>
@@ -223,7 +267,10 @@ export default function WhatIfEditor({
             selected={selected}
             onToggle={toggle}
             title={words.diagram}
-            className="block h-auto w-full"
+            // A mine ship's three toggles need the room: a shorter plan.
+            className={
+              mine ? "block h-auto max-h-[28vh] w-full" : "block h-auto w-full"
+            }
           />
           <p className="px-1 pt-1 text-xs text-slate-400 sm:text-sm">
             {words.note}
@@ -257,17 +304,54 @@ export default function WhatIfEditor({
           )}
         </div>
 
+        {mine && (
+          <div
+            role="group"
+            aria-label="What was open, and her run for Kea"
+            className="flex flex-wrap items-start justify-center gap-3"
+          >
+            {MINE_TOGGLES.map((t) => {
+              const on = toggleOn[t.id];
+              return (
+                <div
+                  key={t.id}
+                  className="flex w-56 flex-col items-center gap-1"
+                >
+                  <button
+                    type="button"
+                    data-testid={`whatif-${t.id}`}
+                    aria-pressed={on}
+                    aria-label={t.aria(on)}
+                    aria-describedby={`${helpId}-${t.id}`}
+                    onClick={flip[t.id]}
+                    className={`${on ? PRIMARY : SECONDARY} min-h-14 w-full whitespace-nowrap px-4 text-base sm:text-lg`}
+                  >
+                    <Icon name={t.icon} className="size-7 shrink-0" />
+                    {t.label(on)}
+                  </button>
+                  <p
+                    id={`${helpId}-${t.id}`}
+                    className="text-center text-xs leading-snug text-slate-300"
+                  >
+                    {t.help}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* The choices and Go share one row where the plan is taller. */}
         <div
           className={
-            torpedo
+            side
               ? "flex flex-wrap items-center justify-center gap-3"
               : "contents"
           }
         >
           <div
             className={
-              torpedo
+              side
                 ? "contents"
                 : "flex flex-wrap items-center justify-center gap-3"
             }
@@ -308,6 +392,8 @@ export default function WhatIfEditor({
                 setIds([...real]);
                 setPortholesOpen(true);
                 setSea("real");
+                setDoorsStuck(true);
+                setRunForKea(true);
               }}
               className={`${SECONDARY} min-h-14 px-5 text-base sm:text-lg`}
             >
@@ -357,11 +443,18 @@ export default function WhatIfEditor({
               disabled={!canGo}
               onClick={() =>
                 onGo(
-                  torpedo
-                    ? { ids, portholesOpen }
-                    : storm
-                      ? { ids, storm: sea }
-                      : { ids }
+                  mine
+                    ? {
+                        ids,
+                        portholesOpen,
+                        doorsClosed: !doorsStuck,
+                        enginesStopped: !runForKea,
+                      }
+                    : torpedo
+                      ? { ids, portholesOpen }
+                      : storm
+                        ? { ids, storm: sea }
+                        : { ids }
                 )
               }
               className={`${PRIMARY} min-w-36 disabled:cursor-not-allowed disabled:opacity-40`}

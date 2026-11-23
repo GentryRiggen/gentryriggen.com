@@ -101,7 +101,12 @@ export function isTemplateId(id: string): id is TemplateId {
  * ship data; lib/shipwreck/__tests__/analytics.test.ts keeps it equal to
  * SHIP_IDS, and gameRulesSync checks the rules mention each one.
  */
-const SHIPWRECK_SHIPS = ["titanic", "lusitania", "fitzgerald"] as const;
+const SHIPWRECK_SHIPS = [
+  "titanic",
+  "lusitania",
+  "fitzgerald",
+  "britannic",
+] as const;
 
 /** The most spots any ship's What if? offers (the Fitzgerald's 25). */
 export const SHIPWRECK_MAX_OPENED = 25;
@@ -367,9 +372,10 @@ export const GAME_EVENTS = {
     props: {
       mode: { kind: "enum", values: ["real", "whatif"] },
       // What if? is multi-select, so `opened` is how many spots were chosen:
-      // compartments (Titanic 16, Lusitania 12) or, for the storm-sunk
-      // Fitzgerald, hatches, vents and shoal strips (25). The most any ship
-      // offers is SHIPWRECK_MAX_OPENED; analytics.test.ts fails if one exceeds it.
+      // compartments (Titanic 16, Lusitania 12, Britannic 16) or, for the
+      // storm-sunk Fitzgerald, hatches, vents and shoal strips (25). The most
+      // any ship offers is SHIPWRECK_MAX_OPENED; analytics.test.ts fails if
+      // one exceeds it.
       opened: { kind: "int", min: 0, max: SHIPWRECK_MAX_OPENED },
       ship: { kind: "enum", values: SHIPWRECK_SHIPS, optional: true },
     },

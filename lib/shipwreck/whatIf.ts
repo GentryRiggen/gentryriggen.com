@@ -41,6 +41,8 @@ export function spotAria(spec: ShipSpec, id: string, on: boolean): string {
   }
   if (spec.cause === "torpedo")
     return `${label}: ${on ? "a torpedo hits here" : "no torpedo"}`;
+  if (spec.cause === "mine")
+    return `${label}: ${on ? "a mine hits here" : "no mine"}`;
   return `${label}: ${on ? "open" : "closed"}`;
 }
 
@@ -83,3 +85,54 @@ export function stormChoiceText(
   if (s > 0) parts.push(`${s} shoal ${s === 1 ? "scrape" : "scrapes"}`);
   return parts.length === 0 ? "No damage" : parts.join(" · ");
 }
+
+/** A mine ship's What-if toggle (the Britannic's, R14). */
+export interface MineToggle {
+  id: "portholes" | "doors" | "engines";
+  /** Its picture. */
+  icon: "porthole" | "door" | "engine";
+  /** The button's words, on (the real morning) or off. */
+  label: (on: boolean) => string;
+  /** Its spoken label, with what tapping it does. */
+  aria: (on: boolean) => string;
+  /** One short line under it: what it was on the real morning. */
+  help: string;
+}
+
+/**
+ * The three things a mine What if can change besides where the mines hit,
+ * each on for the real morning: her portholes open, a watertight door
+ * stuck open, and her run for Kea. No blame: what happened, not who.
+ */
+export const MINE_TOGGLES: readonly MineToggle[] = [
+  {
+    id: "portholes",
+    icon: "porthole",
+    label: (on) => (on ? "Portholes open" : "Portholes shut"),
+    aria: (on) =>
+      on
+        ? "Portholes open: tap to shut them"
+        : "Portholes shut: tap to open them",
+    help: "Low windows near her front were open for fresh air.",
+  },
+  {
+    id: "doors",
+    icon: "door",
+    label: (on) => (on ? "Doors stuck open" : "Doors closed"),
+    aria: (on) =>
+      on
+        ? "A watertight door stuck open: tap to close every door"
+        : "Every watertight door closed: tap to leave one stuck open",
+    help: "A door between two boiler rooms did not shut all the way.",
+  },
+  {
+    id: "engines",
+    icon: "engine",
+    label: (on) => (on ? "Run for Kea" : "Engines stopped"),
+    aria: (on) =>
+      on
+        ? "Running for the island of Kea: tap to stop her engines at once"
+        : "Engines stopped at once: tap to run for the island of Kea",
+    help: "She steamed for the shore of Kea. Moving pushes water in.",
+  },
+];

@@ -50,6 +50,7 @@ import {
   openingGeometry,
   placeGeometry,
   waterGeometry,
+  XRAY_SLOTS,
 } from "./xrayGeometry";
 
 /**
@@ -66,8 +67,8 @@ import {
 
 type PartName = "whole" | "bow" | "stern";
 const PARTS: PartName[] = ["whole", "bow", "stern"];
-/** Room for every cell of a part (the Lusitania has 20). */
-const SLOTS = 24;
+/** Room for every cell of a part (`XRAY_SLOTS`: the Britannic has 32). */
+const SLOTS = XRAY_SLOTS;
 
 const ghostVertex = /* glsl */ `
   varying vec3 vN;

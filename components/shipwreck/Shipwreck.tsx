@@ -84,12 +84,17 @@ type V3 = [number, number, number];
  * the Lusitania from over her port side, which faces up as she lies on her
  * starboard side (and still clear of the floor if she lands upright); the
  * Fitzgerald's upright bow, deep in the clay, from over its starboard side
- * and aft, toward the broken middle and her upturned stern beyond.
+ * and aft, toward the broken middle and her upturned stern beyond; the
+ * Britannic on her starboard side as the Lusitania, from further off her
+ * deck side (her funnel 1 lies on the floor there).
  */
 const WRECK_VIEW: Record<ShipId, { target: V3; cam: V3 }> = {
   titanic: { target: [60, 0, 12], cam: [-20, -120, 50] },
   lusitania: { target: [40, 0, 10], cam: [-40, 60, 45] },
   fitzgerald: { target: [60, 0, 10], cam: [130, -95, 48] },
+  // On her starboard side 120 m down, her port side up: from over it and
+  // off her deck side, her bent bow and the funnel lying by her boat deck.
+  britannic: { target: [30, 0, 14], cam: [-70, 70, 70] },
 };
 
 interface Run {
@@ -206,7 +211,17 @@ export default function Shipwreck() {
         runSpec,
         mode === "real" ? whatIfRealIds(runSpec) : choice.ids
       );
-      s.start(runSpec, openings, { portholesOpen, storm, hits });
+      // A mine ship's doors and engines (R14); the other ships never get
+      // them, so their runs stay exactly as they were.
+      const mine =
+        runSpec.cause === "mine"
+          ? {
+              doorsClosed: mode === "whatif" && choice.doorsClosed === true,
+              enginesStopped:
+                mode === "whatif" && choice.enginesStopped === true,
+            }
+          : {};
+      s.start(runSpec, openings, { portholesOpen, storm, hits, ...mine });
       s.flyToPlace(null, false);
       s.setXray(false);
       s.setCamera("cinematic");
@@ -338,13 +353,15 @@ export default function Shipwreck() {
         ship: () => shipRef.current,
         startReal: () =>
           startRun("real", { ids: realWhatIfIds(getShip(shipRef.current)) }),
-        startWhatIf: (ids, portholesOpen, storm) =>
+        startWhatIf: (ids, portholesOpen, storm, doorsClosed, enginesStopped) =>
           startRun("whatif", {
             ids,
             portholesOpen,
             ...(storm === "real" || storm === "calmer" || storm === "worse"
               ? { storm }
               : {}),
+            ...(doorsClosed === true ? { doorsClosed } : {}),
+            ...(enginesStopped === true ? { enginesStopped } : {}),
           }),
         getOutcome: () => {
           const s = playback.getState();
@@ -389,6 +406,12 @@ export default function Shipwreck() {
         portholesOpen: run!.choice.portholesOpen,
         hits: playback.getState().hits.length,
         storm: run!.mode === "real" ? "real" : run!.choice.storm,
+        doorsClosed: run!.mode === "whatif" && run!.choice.doorsClosed,
+        enginesStopped: run!.mode === "whatif" && run!.choice.enginesStopped,
+        // Her mine at her real spot only (the Run for Kea lesson).
+        realSpot:
+          run!.mode === "real" ||
+          run!.choice.ids.join() === whatIfRealIds(runSpec).join(),
       })
     : null;
 

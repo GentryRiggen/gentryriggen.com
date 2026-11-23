@@ -193,3 +193,25 @@ export function stormShip(more: Partial<BoxShip> = {}): ShipSpec {
   // In fresh water: the displacement of the box at her draught.
   return { ...base, displacementT: (200 * 24 * draught * 1000) / 1000 };
 }
+
+/**
+ * 120 m × 20 m × 12 m, draught 5 m: three equal holds A, B, C aft to
+ * forward (bulkheads at x −20 and 20, to the deck), for watertight doors,
+ * the speed profile, the turn and the ram head.
+ */
+export function threeShip(more: Partial<BoxShip> = {}): ShipSpec {
+  const top = 12;
+  return boxShip({
+    length: 120,
+    beam: 20,
+    depth: top,
+    draught: 5,
+    kg: 7,
+    compartments: [
+      compartment("A", -60, -20, top),
+      compartment("B", -20, 20, top),
+      compartment("C", 20, 60, top),
+    ],
+    ...more,
+  });
+}

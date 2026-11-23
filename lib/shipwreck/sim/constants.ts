@@ -109,6 +109,18 @@ export const DRIFT_MPS = 0.02;
  * its speed in about 45 s.
  */
 export const HEADWAY_LOST_HALF_LIFE_S = 45;
+/**
+ * Engines stopped at the first event (`SimOptions.enginesStopped`): an
+ * intact liner coasting, her way halving every this many real seconds.
+ * A 53,000 t liner (about 56,000 t with her surge added mass) at 21 kn
+ * (10.8 m/s) meets about 2 MN of resistance (some 22 MW of effective
+ * power, 60 % of 50,000 shp): an initial slowing of 0.036 m/s², the
+ * speed's own e-folding time 300 s, an exponential half-life of about
+ * 210 s with that start. Her three screws stopped (dragging, not
+ * driving) and a bow trimmed down by the flooding add roughly 40 % to
+ * the drag: 150 s, inside the 90–180 s a liner losing way takes.
+ */
+export const HEADWAY_STOP_HALF_LIFE_S = 150;
 
 // --- Lightship distribution (fractions of the displacement) ---------------
 

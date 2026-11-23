@@ -38,6 +38,8 @@ export interface LightSpot {
   deck: number;
   /** In [0, 1): picks the bulb's warmth, brightness and whether it is on. */
   seed: number;
+  /** Swung open (a porthole the sim floods through): a dark hole, no glass. */
+  open?: boolean;
 }
 
 /** A box-shaped deck house: x and y extents, standing on z0. */
@@ -130,6 +132,8 @@ export interface BoatRecipe {
   edgeY: number;
   /** The boat deck's height at the boat. */
   deckZ: number;
+  /** Stowed in this gantry set (`ShipRecipe.gantries` index), not davits. */
+  gantry?: number;
 }
 
 /**
@@ -271,6 +275,48 @@ export interface ShipPaint {
   hull?: { topsides: number; bottom: number; relief?: number };
   /** Lifeboats: topsides and bottom (default white, varnished gunwale). */
   boat?: { hull: number; bottom: number };
+  /** A band along the topsides broken by crosses (a hospital ship's). */
+  band?: HullBand;
+}
+
+/**
+ * A hospital ship's band along both sides from stem to stern, broken by
+ * crosses (painted in the hull's shader; `bandPaintAt` in
+ * `britannicRecipe.ts` is the same rule in code).
+ */
+export interface HullBand {
+  color: number;
+  crossColor: number;
+  /** The band's middle amidships (x = 0), m above the keel. */
+  z: number;
+  /** How much of the sheer's rise it follows (1: parallel to the deck). */
+  follow: number;
+  height: number;
+  /** Each cross's x (the same on both sides). */
+  crosses: number[];
+  /** Arm tip to arm tip, an arm's width, and the band's gap round it. */
+  crossSize: number;
+  crossArm: number;
+  gap: number;
+}
+
+/**
+ * A set of gantry davits (the Britannic's): two lattice arms standing on
+ * pedestals at the deck edge, leaning inboard over the boats stowed in
+ * the bay between them, their heads joined by a spar.
+ */
+export interface GantryRecipe {
+  /** The middle of the bay, and the x of each arm. */
+  x: number;
+  arms: [number, number];
+  side: "port" | "starboard";
+  /** The pedestals' y (the deck edge) and the boat deck's height there. */
+  footY: number;
+  deckZ: number;
+  /** Height of the arms' heads over the deck, and how far inboard. */
+  height: number;
+  reach: number;
+  color: number;
 }
 
 /**
@@ -365,6 +411,11 @@ export interface ShipRecipe {
     p: V3;
     side: "port" | "starboard";
     pocket?: { w: number; h: number };
+    /**
+     * Housed in its hawse pipe on light plating: the pipe's mouth, no
+     * dark recess (the Britannic's white bows).
+     */
+    hawse?: boolean;
   }[];
   names: NameBoard[];
   // Optional: a recipe without them is built as the Titanic.
@@ -388,6 +439,14 @@ export interface ShipRecipe {
    * radius, from a yoke on two posts standing at `footZ`.
    */
   bells?: { p: V3; r: number; footZ: number }[];
+  /** Gantry davit sets (the Britannic's). */
+  gantries?: GantryRecipe[];
+  /**
+   * Where the bow bends on a hard landing (R12): everything forward of `x`
+   * is built in its own group, hinged about the line across the ship at
+   * height `z` (`bowBend.ts`).
+   */
+  hinge?: { x: number; z: number };
 }
 
 const TO_RAD = Math.PI / 180;
@@ -601,18 +660,11 @@ export function titanicRecipe(spec: ShipSpec): ShipRecipe {
 
   /** A porthole on the hull plating at (x, z), oriented to the surface. */
   function hullPort(x: number, z: number, s: 1 | -1, deck: number): void {
-    const hb = hull.halfBreadth(x, z);
-    if (hb < 2.4) return;
-    const d = 0.25;
-    const hx =
-      (hull.halfBreadth(x + d, z) - hull.halfBreadth(x - d, z)) / (2 * d);
-    const hz =
-      (hull.halfBreadth(x, z + d) - hull.halfBreadth(x, z - d)) / (2 * d);
-    const n = normalize([-hx, s, -hz]);
+    const at = hullPortAt(hull, x, z, s);
+    if (!at) return;
     lights.push({
       kind: "porthole",
-      p: [x + n[0] * 0.03, s * hb + n[1] * 0.03, z + n[2] * 0.03],
-      n,
+      ...at,
       w: 0.42,
       h: 0.42,
       deck,
@@ -1263,6 +1315,30 @@ export function titanicRecipe(spec: ShipSpec): ShipRecipe {
     bossings,
     anchors,
     names,
+  };
+}
+
+/**
+ * Where a porthole on the hull plating at (x, z) sits, side `s` (+1 port),
+ * and its outward normal; null where the hull is too narrow for one.
+ */
+export function hullPortAt(
+  hull: HullSurface,
+  x: number,
+  z: number,
+  s: 1 | -1
+): { p: V3; n: V3 } | null {
+  const hb = hull.halfBreadth(x, z);
+  if (hb < 2.4) return null;
+  const d = 0.25;
+  const hx =
+    (hull.halfBreadth(x + d, z) - hull.halfBreadth(x - d, z)) / (2 * d);
+  const hz =
+    (hull.halfBreadth(x, z + d) - hull.halfBreadth(x, z - d)) / (2 * d);
+  const n = normalize([-hx, s, -hz]);
+  return {
+    p: [x + n[0] * 0.03, s * hb + n[1] * 0.03, z + n[2] * 0.03],
+    n,
   };
 }
 

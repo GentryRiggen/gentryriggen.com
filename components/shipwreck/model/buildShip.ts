@@ -2,6 +2,7 @@ import { TEAR_AMPLITUDE, isInPart, tearX, type ShipPart } from "./breakCut";
 import {
   GeoBuffer,
   add,
+  basis,
   box,
   cross,
   cylinder,
@@ -17,6 +18,7 @@ import {
 import { HULL_FRACTIONS } from "./hullSurface";
 import type {
   Block,
+  GantryRecipe,
   House,
   LightSpot,
   Placement,
@@ -924,6 +926,8 @@ function buildFittings(ctx: Ctx): void {
     );
   }
 
+  for (const g of r.gantries ?? []) gantry(ctx, g);
+
   for (const c of r.cranes) {
     if (!inPart(ctx, c.p)) continue;
     const [x, y, z] = c.p;
@@ -1021,6 +1025,10 @@ function buildFittings(ctx: Ctx): void {
       anchorInPocket(ctx, a.p, a.side, a.pocket);
       continue;
     }
+    if (a.hawse) {
+      anchorAtHawse(ctx, a.p, a.side);
+      continue;
+    }
     const s = a.side === "port" ? 1 : -1;
     const [x, , z] = a.p;
     const on = (dx: number, dz: number, out: number): V3 => {
@@ -1062,6 +1070,113 @@ function buildFittings(ctx: Ctx): void {
       anchor
     );
   }
+}
+
+/**
+ * A stockless bower anchor housed in its hawse pipe against plating
+ * that is not black (the Britannic's white bows): the pipe's dark mouth,
+ * the shank running down out of it, the crown across the bottom and the
+ * two flukes turned up beside the shank, about 4.4 m from the pipe to the
+ * crown (a 7¾-ton side anchor; README). No dark recess round it.
+ */
+function anchorAtHawse(ctx: Ctx, p: V3, side: "port" | "starboard"): void {
+  const { r } = ctx;
+  const paint = ctx.d.paint;
+  const s = side === "port" ? 1 : -1;
+  const [x, , z] = p;
+  const on = (dx: number, dz: number, out: number): V3 => {
+    const hb = r.hull.halfBreadth(x + dx, z + dz);
+    return [x + dx, s * (hb + out), z + dz];
+  };
+  const iron = rgb(0x1b1c1e);
+  // The hawse pipe's mouth: a dark ring and the hole.
+  const mouth = on(0, 1.4, 0.04);
+  const [u, v] = basis([0, s, 0]);
+  const ring = (rad: number, off: number): V3[] => {
+    const pts: V3[] = [];
+    for (let i = 0; i < 12; i += 1) {
+      const a = (i / 12) * Math.PI * 2;
+      pts.push(
+        add(
+          add(mouth, [0, s * off, 0]),
+          add(scale(u, Math.cos(a) * rad), scale(v, Math.sin(a) * rad))
+        )
+      );
+    }
+    return pts;
+  };
+  polygon(paint, ring(0.62, 0), [0, s, 0], rgb(0x3a3631));
+  polygon(paint, ring(0.45, 0.02), [0, s, 0], rgb(COLORS.interior));
+  const shankTop = on(0, 1.2, 0.28);
+  const crown = on(0, -2.6, 0.32);
+  box(paint, scale(add(shankTop, crown), 0.5), [0.42, 0.36, 3.8], iron);
+  box(paint, add(crown, [0, 0, -0.05]), [2.5, 0.46, 0.5], iron);
+  for (const dx of [-1.05, 1.05])
+    box(
+      paint,
+      add(crown, [dx * 0.95, 0, 0.75]),
+      [0.62, 0.4, 1.6],
+      iron,
+      0,
+      dx > 0 ? 0.38 : -0.38
+    );
+}
+
+/**
+ * A set of gantry davits (the Britannic's): each arm a tapering plate
+ * girder from a white pedestal at the deck edge, leaning inboard over the
+ * stowed boats, its head curled outboard; a spar joins the two heads.
+ */
+function gantry(ctx: Ctx, g: GantryRecipe): void {
+  const { r, q } = ctx;
+  const paint = ctx.d.paint;
+  const white = rgb(COLORS.white);
+  const arm = rgb(g.color);
+  const s = Math.sign(g.footY);
+  const seg = Math.max(5, q.cylSeg - 4);
+  const [x0, x1] = g.arms;
+  if (!inPart(ctx, [g.x, g.footY, g.deckZ])) return;
+  const fy = (x: number) => s * (r.hull.topHalfBreadth(x) - 0.5);
+  const z0 = (x: number) => r.deckZ("Boat", x);
+  const inY = (x: number) => fy(x) - s * g.reach;
+  for (const ax of [x0, x1]) {
+    box(paint, [ax, fy(ax), z0(ax) + 0.55], [1.1, 1.3, 1.1], white);
+    // The girder: a square section, deep at the pivot, leaning inboard.
+    cylinder(
+      paint,
+      [ax, fy(ax), z0(ax) + 1.0],
+      [ax, inY(ax), z0(ax) + g.height],
+      0.55,
+      0.36,
+      4,
+      arm
+    );
+  }
+  // The head: the arms' tops bend over into a beam fore and aft between
+  // them (the falls' runway), its corners rounded.
+  const top = (x: number) => z0(x) + g.height;
+  const path: V3[] = [
+    [x0, inY(x0), top(x0)],
+    [x0 + 0.35, inY(x0), top(x0) + 0.75],
+    [x0 + 1.2, inY(x0), top(x0) + 1.05],
+    [x1 - 1.2, inY(x1), top(x1) + 1.05],
+    [x1 - 0.35, inY(x1), top(x1) + 0.75],
+    [x1, inY(x1), top(x1)],
+  ];
+  tube(paint, path, 0.3, seg, arm);
+}
+
+/** An open porthole: a dark hole in the plating, its glass swung in. */
+function openPort(ctx: Ctx, l: LightSpot): void {
+  const [u, v] = basis(l.n);
+  const r = Math.min(l.w, l.h) / 2;
+  const c = add(l.p, scale(l.n, 0.012));
+  const pts: V3[] = [];
+  for (let i = 0; i < 10; i += 1) {
+    const a = (i / 10) * Math.PI * 2;
+    pts.push(add(c, add(scale(u, Math.cos(a) * r), scale(v, Math.sin(a) * r))));
+  }
+  polygon(ctx.d.paint, pts, l.n, rgb(COLORS.interior));
 }
 
 /**
@@ -1532,7 +1647,8 @@ function buildLinesAndInstances(ctx: Ctx): void {
   }
   for (const l of r.lights) {
     if (!inPart(ctx, l.p)) continue;
-    (l.kind === "porthole" ? ctx.d.portholes : ctx.d.windows).push(l);
+    if (l.open) openPort(ctx, l);
+    else (l.kind === "porthole" ? ctx.d.portholes : ctx.d.windows).push(l);
   }
   r.funnels.forEach((f, i) => {
     if (inPart(ctx, [f.x, 0, f.baseZ])) ctx.d.funnels.push(i);
@@ -1596,4 +1712,77 @@ export function buildShipPart(
   buildNames(ctx);
   buildLinesAndInstances(ctx);
   return d;
+}
+
+// ---------------------------------------------------------------------------
+// The hinge (a bow that bends: `ShipRecipe.hinge`).
+
+/** The triangles of `src` whose middles lie forward of x (or aft). */
+function splitBuffer(src: GeoBuffer, x: number, fwd: boolean): GeoBuffer {
+  const out = new GeoBuffer(src.opts);
+  const map = new Map<number, number>();
+  const { pos, col, uv, uv1, extra, idx } = src;
+  const copy = (i: number): number => {
+    let j = map.get(i);
+    if (j !== undefined) return j;
+    j = out.vertexCount;
+    out.pos.push(pos[i * 3], pos[i * 3 + 1], pos[i * 3 + 2]);
+    if (src.opts.color)
+      out.col.push(col[i * 3], col[i * 3 + 1], col[i * 3 + 2]);
+    if (src.opts.uv) out.uv.push(uv[i * 2], uv[i * 2 + 1]);
+    if (src.opts.uv1) out.uv1.push(uv1[i * 2], uv1[i * 2 + 1]);
+    if (src.opts.extra) out.extra.push(extra[i]);
+    map.set(i, j);
+    return j;
+  };
+  for (let t = 0; t < idx.length; t += 3) {
+    const a = idx[t];
+    const b = idx[t + 1];
+    const c = idx[t + 2];
+    const mid = (pos[a * 3] + pos[b * 3] + pos[c * 3]) / 3;
+    if (mid > x !== fwd) continue;
+    out.idx.push(copy(a), copy(b), copy(c));
+  }
+  return out;
+}
+
+/**
+ * The whole ship's part data cut at x into what stays (aft) and the bow
+ * that bends (forward): every triangle, light, fitting and line goes by
+ * where its middle is. The bow keeps no funnels or boats (none stand
+ * forward of a hinge in the well deck).
+ */
+export function splitAtHinge(
+  d: ShipPartData,
+  x: number
+): { aft: ShipPartData; fwd: ShipPartData } {
+  const half = (fwd: boolean): ShipPartData => {
+    const keep = (p: V3) => p[0] > x === fwd;
+    const lines: LineList = { pos: [], col: [] };
+    for (let i = 0; i < d.lines.pos.length; i += 6) {
+      const mid = (d.lines.pos[i] + d.lines.pos[i + 3]) / 2;
+      if (mid > x !== fwd) continue;
+      lines.pos.push(...d.lines.pos.slice(i, i + 6));
+      lines.col.push(...d.lines.col.slice(i, i + 6));
+    }
+    return {
+      part: d.part,
+      hull: splitBuffer(d.hull, x, fwd),
+      paint: splitBuffer(d.paint, x, fwd),
+      deck: splitBuffer(d.deck, x, fwd),
+      bronze: splitBuffer(d.bronze, x, fwd),
+      decal: splitBuffer(d.decal, x, fwd),
+      portholes: d.portholes.filter((l) => keep(l.p)),
+      windows: d.windows.filter((l) => keep(l.p)),
+      vents: d.vents.filter((v) => keep(v.p)),
+      drums: d.drums.filter((v) => keep(v.p)),
+      benches: d.benches.filter((v) => keep(v.p)),
+      bollards: d.bollards.filter((v) => keep(v.p)),
+      posts: d.posts.filter(keep),
+      lines,
+      funnels: fwd ? [] : d.funnels,
+      boats: fwd ? [] : d.boats,
+    };
+  };
+  return { aft: half(false), fwd: half(true) };
 }

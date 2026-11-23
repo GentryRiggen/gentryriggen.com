@@ -17,6 +17,7 @@ import {
 } from "../playback";
 import type { Speed } from "../types";
 import { walkInput } from "../walk";
+import { britannic } from "../ships/britannic";
 import { fitzgerald } from "../ships/fitzgerald";
 import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
@@ -671,5 +672,32 @@ describe("playback: more than one torpedo, and a storm (1.3)", () => {
     ]);
     expect(HIT_STAGGER_S).toBeGreaterThanOrEqual(2);
     expect(HIT_STAGGER_S).toBeLessThanOrEqual(6);
+  });
+});
+
+describe("playback: a mine ship's What if (1.4)", () => {
+  it("passes her doors and engines to the sim, and nothing for other ships", () => {
+    const made: unknown[] = [];
+    const store = createPlaybackStore({
+      createRunner: (_spec, _openings, options) => {
+        made.push(options);
+        return fakeRunner(100, 100);
+      },
+    });
+    store.getState().start(britannic, britannic.realNight, {
+      portholesOpen: false,
+      doorsClosed: true,
+      enginesStopped: true,
+    });
+    expect(made[0]).toEqual({
+      portholesOpen: false,
+      doorsClosed: true,
+      enginesStopped: true,
+    });
+    expect(store.getState().ship).toBe("britannic");
+    store.getState().start(lusitania, lusitania.realNight, {
+      portholesOpen: true,
+    });
+    expect(made[1]).toEqual({ portholesOpen: true });
   });
 });

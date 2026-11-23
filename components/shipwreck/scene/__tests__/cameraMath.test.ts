@@ -26,6 +26,10 @@ import {
 } from "../cameraMath";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { britannic } from "@/lib/shipwreck/ships/britannic";
+import { simulate } from "@/lib/shipwreck/sim/run";
+import { sampleTrack } from "@/lib/shipwreck/sim/track";
+import { BRITANNIC_HULL_BOXES } from "../cameraMath";
 
 const pose = (p: Partial<BodyPose> = {}): BodyPose => ({
   part: "whole",
@@ -500,5 +504,80 @@ describe("cinematicHit", () => {
     expect(cinematicHit(0, "torpedo", false)).toBe(false);
     expect(cinematicHit(0, "iceberg", false)).toBe(false);
     expect(cinematicHit(1, "torpedo", false)).toBe(true);
+  });
+});
+
+describe("the Britannic's camera (1.4)", () => {
+  const SEA = britannic.seaDepthM; // 120 m
+  const boxes = hullBoxesFor("britannic");
+  const deg = Math.PI / 180;
+  const track = simulate(britannic, britannic.realNight, {
+    portholesOpen: true,
+  });
+  const ev = (k: string) => track.events.find((e) => e.kind === k)!.t;
+
+  it("sizes her hull boxes to her 94 ft beam", () => {
+    expect(boxes).toBe(BRITANNIC_HULL_BOXES);
+    const ys = boxes.flatMap((b) => b.y);
+    expect(Math.max(...ys)).toBeGreaterThanOrEqual(britannic.beam / 2);
+    expect(Math.max(...ys)).toBeLessThan(britannic.beam / 2 + 0.6);
+  });
+
+  it("clamps the camera above her 120 m floor", () => {
+    expect(clampAboveFloor([0, -200, 0], SEA, 3)[1]).toBe(-117);
+  });
+
+  it("never pushes the camera out of her hull, on her side and turned, through the floor", () => {
+    // Her wreck as the sim leaves it: on her starboard side, 70° turned.
+    const last = track.frames[track.frames.length - 1].bodies[0];
+    expect(Math.abs(last.roll)).toBeGreaterThan(80 * deg);
+    expect(last.yaw).toBeCloseTo(-70 * deg, 3);
+    for (const inside of [
+      [0, -13, 16],
+      [60, -5, 4],
+      [-100, 10, 25],
+    ] as [number, number, number][]) {
+      const out = keepClear(inside, last, SEA, boxes, 0.6, 3);
+      expect(pushOutOfHull(out, 0.6, boxes)).toEqual(out);
+      expect(shipToThree(last, out)[1]).toBeGreaterThanOrEqual(-SEA + 3);
+    }
+  });
+
+  it("follows her morning: the mine, the turn, the boats, the bow on the floor, her side", () => {
+    const at = (t: number) => cinematicShot(track, t, "britannic");
+    expect(at(0)).toBe("hit");
+    expect(at(30)).toBe("hit");
+    expect(at(120)).toBe("turn");
+    expect(at(400)).toBe("list");
+    expect(at(ev("boat-lowered") + 60)).toBe("boats");
+    expect(at(ev("forecastle-under") + 60)).toBe("bow-down");
+    expect(at(ev("bow-lands") + 5)).toBe("grounded");
+    expect(at(ev("stern-under") - 5)).toBe("grounded-below");
+    expect(at(ev("stern-under") + 60)).toBe("on-floor");
+    expect(cinematicShot(track, 0, "britannic", false)).toBe("morning");
+  });
+
+  it("frames every shot of her real morning above her floor and outside her turning hull", () => {
+    const end = track.frames[track.frames.length - 1].t;
+    for (let t = 0; t <= end + 120; t += 15) {
+      const f = sampleTrack(track, t);
+      const shot = cinematicShot(track, t, "britannic");
+      for (const wall of [0, 90]) {
+        const ctx: ShotContext = {
+          t,
+          wall,
+          bodies: f.bodies,
+          breakX: track.breakX,
+          seaDepthM: SEA,
+          ship: "britannic",
+          hitX: britannic.realNight[0].x,
+        };
+        for (const v of [shotView(shot, ctx), underwaterView(ctx)]) {
+          expect(v.pos[1]).toBeGreaterThanOrEqual(-SEA + 2);
+          const local = inShipFrame(f.bodies[0], v.pos);
+          expect(pushOutOfHull(local, 0, boxes)).toEqual(local);
+        }
+      }
+    }
   });
 });

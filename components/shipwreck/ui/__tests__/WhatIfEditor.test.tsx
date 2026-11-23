@@ -6,6 +6,7 @@ import {
   within,
 } from "@testing-library/react";
 import type { ShipWhatIf } from "@/lib/shipwreck/save";
+import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -293,5 +294,145 @@ describe("the end of a What if that never sinks", () => {
     );
     // Her stern went down first here: no line about the bow landing first.
     expect(words.lines).toHaveLength(1);
+  });
+});
+
+describe("What if? for a mine ship (the Britannic, 1.4)", () => {
+  it("offers her starboard spots, multi-select, starting from the real mine", () => {
+    editor(britannic);
+    const group = screen.getByRole("group", { name: "Where mines hit" });
+    const chips = within(group).getAllByRole("checkbox");
+    expect(chips.map((c) => c.dataset.testid)).toEqual(
+      [...whatIfSpots(britannic)].reverse().map((id) => `shipwreck-chip-${id}`)
+    );
+    // Not the double skin's voids: a mine there is a spot's own choice.
+    expect(screen.queryByTestId("shipwreck-chip-br4-stbd")).toBeNull();
+    expect(screen.getByTestId("shipwreck-chip-hold3")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-chip-hold2")).toHaveAccessibleName(
+      "Hold 2: no mine"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "Mine: Hold 3"
+    );
+    expect(
+      screen.getByText(
+        "Tap where mines hit, and what was open. Will she float?"
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    // The torpedo ship's porthole button is hers, not this one.
+    expect(screen.queryByTestId("shipwreck-portholes")).toBeNull();
+    expect(screen.queryByRole("radiogroup")).toBeNull();
+  });
+
+  it("has three picture toggles, on for the real morning, each with a help line", () => {
+    editor(britannic);
+    const cases = [
+      ["whatif-portholes", "Portholes open: tap to shut them"],
+      ["whatif-doors", "A watertight door stuck open: tap to close every door"],
+      [
+        "whatif-engines",
+        "Running for the island of Kea: tap to stop her engines at once",
+      ],
+    ] as const;
+    for (const [id, aria] of cases) {
+      const b = screen.getByTestId(id);
+      expect(b).toHaveAttribute("aria-pressed", "true");
+      expect(b).toHaveAccessibleName(aria);
+      // A picture, and a help line under it tied to the button.
+      expect(b.querySelector("svg")).not.toBeNull();
+      const help = document.getElementById(b.getAttribute("aria-describedby")!);
+      expect(help?.textContent?.length).toBeGreaterThan(20);
+    }
+    fireEvent.click(screen.getByTestId("whatif-doors"));
+    expect(screen.getByTestId("whatif-doors")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    expect(screen.getByTestId("whatif-doors")).toHaveAccessibleName(
+      "Every watertight door closed: tap to leave one stuck open"
+    );
+    expect(screen.getByTestId("whatif-doors")).toHaveTextContent(
+      "Doors closed"
+    );
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+  });
+
+  it("goes with her mines and toggles; Like the real morning puts every one back", () => {
+    const onGo = editor(britannic);
+    fireEvent.click(screen.getByTestId("shipwreck-chip-br4"));
+    fireEvent.click(screen.getByTestId("whatif-portholes"));
+    fireEvent.click(screen.getByTestId("whatif-doors"));
+    fireEvent.click(screen.getByTestId("whatif-engines"));
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "2 mines"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(onGo).toHaveBeenLastCalledWith({
+      ids: ["hold3", "br4"],
+      portholesOpen: false,
+      doorsClosed: true,
+      enginesStopped: true,
+    });
+    fireEvent.click(screen.getByTestId("shipwreck-preset-real"));
+    for (const id of ["whatif-portholes", "whatif-doors", "whatif-engines"])
+      expect(screen.getByTestId(id)).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(onGo).toHaveBeenLastCalledWith({
+      ids: ["hold3"],
+      portholesOpen: true,
+      doorsClosed: false,
+      enginesStopped: false,
+    });
+    fireEvent.click(screen.getByTestId("shipwreck-preset-clear"));
+    expect(screen.getByTestId("shipwreck-go")).toBeDisabled();
+  });
+
+  it("remembers her last What if, toggles and all", () => {
+    editor(britannic, {
+      ids: ["br6", "titanic-only"],
+      portholesOpen: false,
+      doorsClosed: true,
+    });
+    expect(screen.getByTestId("shipwreck-chip-br6")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-chip-hold3")).toHaveAttribute(
+      "aria-checked",
+      "false"
+    );
+    expect(screen.getByTestId("whatif-portholes")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    expect(screen.getByTestId("whatif-doors")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    // Missing: running for Kea, as she did.
+    expect(screen.getByTestId("whatif-engines")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+  });
+
+  it("leaves the other ships' editors without her toggles", () => {
+    for (const spec of [titanic, lusitania, fitzgerald]) {
+      editor(spec);
+      expect(screen.queryByTestId("whatif-portholes")).toBeNull();
+      expect(screen.queryByTestId("whatif-doors")).toBeNull();
+      expect(screen.queryByTestId("whatif-engines")).toBeNull();
+      cleanup();
+    }
   });
 });
