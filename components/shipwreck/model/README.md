@@ -731,6 +731,25 @@ sources, swatches, funnelPaint? }`, exactly one `default`, the
    the scene (`ShipRig` repaints both models on a change, and warms each
    model's livery parts at build) all read `spec.liveries`.
 
+### Fun paints (1.7)
+
+Every ship also lists paints just for fun after her real ones (the paint
+tray's two rows: `realLiveries`, `funLiveries`). A fun livery carries
+`fun: { from?, paint: FunPaint }` (`lib/shipwreck/ships/funPaints.ts`:
+the liners' set from the big lines of 1900–1920, the laker's from Great
+Lakes fleets; a ship skips the ones that are really hers). `recipeFor`
+paints it over her recipe in livery `from` (default her default) with
+`withFunPaint` (`funPaint.ts`): the hull's topsides, bottom, boot-top and
+sheer line, the funnels, masts and boats, and walls painted her topsides'
+colour; the dazzle off. The shape is that livery's, so the swap is the
+same colours-only swap, but a fun livery is prepared the first time she
+wears it (one part build, tens of ms), never at load: a long fun list
+costs no load time or memory until used. The Britannic's fun paints are
+over her liner look (`britannicLivery.ts` makes each one's hull paint and
+funnel colours on first wear; her masts and boats keep the liner's).
+Every `Livery` has a `look` (hull, funnel, top; a band or dazzle) the
+tray draws as a little ship.
+
 ### How the swap works (`shipModel.ts`)
 
 `createTitanicModel` builds her default livery exactly as before (the

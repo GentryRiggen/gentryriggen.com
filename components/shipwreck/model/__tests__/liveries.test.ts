@@ -1,5 +1,6 @@
 import {
   BufferGeometry,
+  Color,
   Mesh,
   MeshStandardMaterial,
   Texture,
@@ -11,7 +12,7 @@ import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
-import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { funLiveries, type ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildShipPart } from "../buildShip";
 import { GeoBuffer } from "../geoBuffer";
 import { createTitanicModel, recipeFor, type TitanicModel } from "../shipModel";
@@ -87,16 +88,43 @@ afterAll(() => {
   for (const m of built) m.dispose();
 });
 
-describe("a ship with one paint", () => {
-  it.each([titanic, fitzgerald])(
-    "has no liveries and ignores a swap ($id)",
+describe("fun paints (1.7)", () => {
+  it.each([titanic, lusitania, fitzgerald, carpathia, britannic])(
+    "$id: every fun paint builds the first time she wears it, then swaps colours only",
     (spec) => {
-      const m = build(spec);
-      expect(m.handles.liveries).toEqual([]);
-      expect(m.handles.livery).toBeNull();
-      const before = colours(m.handles.root);
-      m.handles.setLivery("cunard-1912");
-      expect(colours(m.handles.root)).toEqual(before);
+      const fun = funLiveries(spec);
+      expect(fun.length).toBeGreaterThanOrEqual(5);
+      for (const breakX of [null, 4]) {
+        const m = createTitanicModel(spec, { quality: "medium", breakX });
+        const h = m.handles;
+        const base = h.livery!;
+        expect(h.liveries).toEqual(spec.liveries!.map((l) => l.id));
+        const coloursBefore = colours(h.root);
+        const { u } = hullUniforms(m);
+        for (const l of fun) {
+          h.setLivery(l.id);
+          expect(h.livery).toBe(l.id);
+          // Her hull in its colours (the shader's own linear numbers).
+          expect((u.uBlack.value as Color).getHex()).toBe(
+            new Color().setHex(l.fun!.paint.topsides).getHex()
+          );
+          expect((u.uDazzleOn?.value ?? 0) as number).toBe(0);
+        }
+        // Worn once: a second time makes no geometry.
+        const made = jest.spyOn(GeoBuffer.prototype, "toGeometry");
+        for (const l of fun) h.setLivery(l.id);
+        expect(made).not.toHaveBeenCalled();
+        made.mockRestore();
+        h.setLivery(base);
+        expect(colours(h.root, true)).toEqual(
+          new Map(
+            [...coloursBefore].filter(([o]) =>
+              drawn(h.root).includes(o as Mesh)
+            )
+          )
+        );
+        m.dispose();
+      }
     }
   );
 });
@@ -111,7 +139,7 @@ describe.each([
 
   it("starts in her default and lists both", () => {
     expect(h.livery).toBe(base);
-    expect(h.liveries).toEqual([base, other]);
+    expect(h.liveries.slice(0, 2)).toEqual([base, other]);
   });
 
   // (The Britannic is built from her model recipe, both looks' funnel cuts

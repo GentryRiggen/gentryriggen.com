@@ -449,10 +449,10 @@ describe("Shipwreck: each ship's paint, remembered (1.4)", () => {
     // The Lusitania's saved id is junk: her default, the save untouched.
     fireEvent.click(screen.getByRole("radio", { name: /Ship: Lusitania/ }));
     expect(playback.getState().livery).toBe("war-1915");
-    // A ship with one paint: no livery, no button.
+    // The Titanic has paints too (1.7): her own by default.
     fireEvent.click(screen.getByRole("radio", { name: /Ship: Titanic/ }));
-    expect(playback.getState().livery).toBeNull();
-    expect(screen.queryByTestId("shipwreck-livery")).toBeNull();
+    expect(playback.getState().livery).toBe("white-star-1912");
+    expect(screen.getByTestId("shipwreck-livery")).toBeTruthy();
     // Back to the Carpathia: her 1912 colours again.
     fireEvent.click(screen.getByRole("radio", { name: /Ship: Carpathia/ }));
     expect(playback.getState().livery).toBe("cunard-1912");
@@ -469,6 +469,11 @@ describe("Shipwreck: each ship's paint, remembered (1.4)", () => {
     expect(window.__shipwreck?.getScreen()).toBe("night");
     expect(playback.getState().livery).toBe("war-1915");
     fireEvent.click(screen.getByTestId("shipwreck-livery"));
+    fireEvent.click(
+      screen
+        .getAllByTestId("shipwreck-paint")
+        .find((p) => p.dataset.livery === "cunard-1907")!
+    );
     expect(playback.getState().livery).toBe("cunard-1907");
     expect(window.__shipwreck?.getScreen()).toBe("night");
     expect(currentShipwreckSave().liveryByShip).toEqual({

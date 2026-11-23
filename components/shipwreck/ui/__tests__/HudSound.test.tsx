@@ -34,23 +34,25 @@ describe("Hud sound button", () => {
 });
 
 describe("Hud paint button", () => {
-  it("shows the next paint after her saved one before the store has it", () => {
+  it("shows her saved paint before the store has it", () => {
     const store = createPlaybackStore();
     store.getState().setShip("carpathia");
     expect(store.getState().livery).toBeNull();
     const { rerender } = render(
       <Hud store={store} onBack={() => {}} runId={1} />
     );
-    const plain = screen.getByTestId("shipwreck-livery").dataset.next;
-    // Her default is first, so the next one differs from the default's next.
+    const plain = screen.getByTestId("shipwreck-livery").dataset.current;
+    expect(plain).toBe("dazzle-1918");
     rerender(
       <Hud
         store={store}
         onBack={() => {}}
         runId={1}
-        savedLivery={plain ?? null}
+        savedLivery="cunard-1912"
       />
     );
-    expect(screen.getByTestId("shipwreck-livery").dataset.next).not.toBe(plain);
+    expect(screen.getByTestId("shipwreck-livery").dataset.current).toBe(
+      "cunard-1912"
+    );
   });
 });

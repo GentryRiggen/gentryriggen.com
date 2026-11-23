@@ -8,6 +8,7 @@ import type {
   PortholeRow,
   ShipSpec,
 } from "./types";
+import { linerFun } from "./funPaints";
 
 /**
  * HMHS Britannic on the morning of 21 November 1916.
@@ -686,6 +687,12 @@ export const BRITANNIC_LIVERIES: readonly Livery[] = [
     ],
     swatches: [0xe8e4d8, 0x2d6a3c],
     funnelPaint: BRITANNIC_FUNNEL_PAINTS.hospital,
+    look: {
+      hull: 0xd9d5c9,
+      funnel: BRITANNIC_FUNNEL_PAINTS.hospital.funnel,
+      top: BRITANNIC_FUNNEL_PAINTS.hospital.top,
+      band: 0x2d6a3c,
+    },
   },
   {
     id: "liner",
@@ -700,7 +707,14 @@ export const BRITANNIC_LIVERIES: readonly Livery[] = [
     ],
     swatches: [0x121315, 0xbb7f3a],
     funnelPaint: BRITANNIC_FUNNEL_PAINTS.liner,
+    look: {
+      hull: 0x121315,
+      funnel: BRITANNIC_FUNNEL_PAINTS.liner.funnel,
+      top: BRITANNIC_FUNNEL_PAINTS.liner.top,
+    },
   },
+  // Just for fun (1.7), over her liner shape: White Star buff is hers.
+  ...linerFun(["fun-white-star"], "liner"),
 ];
 
 export const britannic: ShipSpec = {

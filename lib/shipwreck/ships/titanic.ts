@@ -1,4 +1,11 @@
-import type { Compartment, HullStation, Opening, ShipSpec } from "./types";
+import { linerFun } from "./funPaints";
+import type {
+  Compartment,
+  HullStation,
+  Livery,
+  Opening,
+  ShipSpec,
+} from "./types";
 
 /**
  * RMS Titanic on the night of 14–15 April 1912.
@@ -518,6 +525,26 @@ const FUNNEL_X = [54, 19.3, -15.3, -50];
 /** The navigating bridge, 190 ft from the bow (the boat deck's forward end). */
 const BRIDGE_X = round(HALF_LBP - 190 * FT, 0.1);
 
+/**
+ * Her paints (1.7): her own White Star colours on 14 April 1912 (the
+ * default, the look 1.0 built), then the fun ones. White Star buff is hers.
+ */
+export const TITANIC_LIVERIES: readonly Livery[] = [
+  {
+    id: "white-star-1912",
+    label: "Her White Star colours, 1912",
+    year: 1912,
+    default: true,
+    sources: [
+      "Titanic Inquiry Project, Olympic and Titanic particulars: funnels buff, black top",
+      "TRMA, White Star Buff: Weighing the Evidence",
+    ],
+    swatches: [0x121315, 0xbb7f3a],
+    look: { hull: 0x121315, funnel: 0xbb7f3a, top: 0x18191c },
+  },
+  ...linerFun(["fun-white-star"]),
+];
+
 export const titanic: ShipSpec = {
   id: "titanic",
   name: "Titanic",
@@ -579,6 +606,7 @@ export const titanic: ShipSpec = {
     return { x, baseZ, topZ: round(baseZ + 24.2, 0.01), dummy: i === 3 };
   }),
   decks: TITANIC_DECKS,
+  liveries: TITANIC_LIVERIES,
   seaDepthM: 3800,
   clockStartS: 23 * 3600 + 40 * 60, // 11:40 PM, the collision
   cause: "iceberg",

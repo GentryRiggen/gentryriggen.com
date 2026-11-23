@@ -2,11 +2,13 @@ import type {
   Compartment,
   DeckOpening,
   HullStation,
+  Livery,
   Opening,
   ShipSpec,
   StormSpec,
 } from "./types";
 import { stormComponents } from "../sim/waves";
+import { lakerFun } from "./funPaints";
 
 /**
  * SS Edmund Fitzgerald on the afternoon of 10 November 1975, Lake Superior.
@@ -657,6 +659,23 @@ function house(fromX: number, toX: number, tiers: number) {
   };
 }
 
+/**
+ * Her paints (1.7): Columbia Transportation's colours on 10 November 1975
+ * (the default, the look 1.3 built), then the fun ones.
+ */
+export const FITZGERALD_LIVERIES: readonly Livery[] = [
+  {
+    id: "columbia-1975",
+    label: "Her Columbia colours, 1975",
+    year: 1975,
+    default: true,
+    sources: ["The model README: her 1971 colour photographs"],
+    swatches: [0x611f1f, 0x45201b],
+    look: { hull: 0x611f1f, funnel: 0x45201b, top: 0x161616 },
+  },
+  ...lakerFun(),
+];
+
 export const fitzgerald: ShipSpec = {
   id: "fitzgerald",
   name: "Edmund Fitzgerald",
@@ -705,6 +724,7 @@ export const fitzgerald: ShipSpec = {
     },
   ],
   decks: FITZGERALD_DECKS,
+  liveries: FITZGERALD_LIVERIES,
   // Columbia's stack: dark red under a black top (the model's paint; the
   // hull diagram reads it).
   funnelPaint: { funnel: 0x45201b, top: 0x161616 },

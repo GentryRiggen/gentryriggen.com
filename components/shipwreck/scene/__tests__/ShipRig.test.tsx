@@ -228,12 +228,18 @@ describe("her livery, switched live", () => {
     expect(halves!.handles.warmLiveries).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves a ship with one paint alone", () => {
+  it("paints the Titanic in a fun paint, and her own for an id she lacks", () => {
     const store = createPlaybackStore({ createRunner: () => idle });
     const runtime = createSceneRuntime();
     render(<ShipOnStage store={store} runtime={runtime} />);
+    act(() => store.getState().setLivery("fun-cunard"));
+    expect(mockBuilt[0].handles.setLivery).toHaveBeenLastCalledWith(
+      "fun-cunard"
+    );
     act(() => store.getState().setLivery("cunard-1912"));
-    expect(mockBuilt[0].handles.setLivery).not.toHaveBeenCalled();
+    expect(mockBuilt[0].handles.setLivery).toHaveBeenLastCalledWith(
+      "white-star-1912"
+    );
   });
 });
 
