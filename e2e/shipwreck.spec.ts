@@ -689,8 +689,8 @@ test("the HMHS Britannic's real morning reaches the end card at ×100, then the 
   expect(
     await page.evaluate(() => window.__shipwreck!.isShown!("iceberg"))
   ).toBe(false);
-  // No Walk button: her decks are not walkable yet.
-  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+  // Her decks are walkable (1.6.0): the Walk button shows.
+  await expect(page.getByTestId("shipwreck-walk")).toBeVisible();
 
   // The last quarter hour of her run at ×100 (a full hour is far more
   // frames than software WebGL draws in a test).

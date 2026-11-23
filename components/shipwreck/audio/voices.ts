@@ -312,6 +312,50 @@ const VOICES: Record<Cue, Voice> = {
       chop: 0.06,
     });
   },
+  // The Britannic's mine: one deep, short thump, shorter than the
+  // torpedo's, with a quick low rumble behind it.
+  mine(e, t, l) {
+    tone(e, {
+      type: "sine",
+      start: t,
+      duration: 0.8,
+      freq: 52,
+      freqEnd: 24,
+      gain: 0.1 * l,
+      attack: 0.02,
+    });
+    noise(e, {
+      buffer: e.brown,
+      start: t,
+      duration: 1.1,
+      filter: "lowpass",
+      freq: 80,
+      freqEnd: 50,
+      gain: 0.09 * l,
+      attack: 0.015,
+    });
+  },
+  // Her whistle at 9:00: two long, low blasts of a steam whistle (a deep
+  // horn, about 3.5 s each with a pause between), not a voice.
+  whistle(e, t, l) {
+    for (const k of [0, 5.5]) {
+      for (const [f, g] of [
+        [110, 0.05],
+        [165, 0.03],
+        [220, 0.015],
+      ] as const)
+        tone(e, {
+          type: "sawtooth",
+          start: t + k,
+          duration: 3.5,
+          freq: f,
+          freqEnd: f * 0.98,
+          gain: g * l,
+          attack: 0.25,
+          filter: { type: "lowpass", freq: 600, q: 0.8 },
+        });
+    }
+  },
   // A gull, far off: a thin whistle that rises, falls and fades. A bird
   // on the wind, not a voice.
   gull(e, t, l) {

@@ -37,8 +37,12 @@ export function bedTargets(s: BedState, on: boolean) {
   // The Lusitania's afternoon: engines turning (fading with her steam)
   // instead of the Titanic's hum and cold night tone.
   const storm = s.ship === "fitzgerald";
-  const day = s.ship === "lusitania" || storm;
-  const p2 = s.power * s.power;
+  // The Britannic's morning is a day bed too: engines turning, a calm sea.
+  const morning = s.ship === "britannic";
+  const day = s.ship === "lusitania" || storm || morning;
+  // The Britannic's engines follow her way (off at the stop, back as she
+  // gets under way again), still gated by her power.
+  const p2 = s.power * s.power * (morning ? (s.way ?? 1) : 1);
   const wind = storm ? (s.wind ?? 0) : 0;
   return {
     // The storm's breaking seas are a little louder than a calm sea.
@@ -46,7 +50,9 @@ export function bedTargets(s: BedState, on: boolean) {
     hum: day ? 0 : BED_LEVEL.hum * above * p2,
     night: day ? 0 : BED_LEVEL.night,
     // Her engines are a lower thrum, a little under the liners'.
-    engines: day ? BED_LEVEL.engines * above * p2 * (storm ? 0.75 : 1) : 0,
+    engines: day
+      ? BED_LEVEL.engines * above * p2 * (storm ? 0.75 : morning ? 0.85 : 1)
+      : 0,
     // The wind howls with the sea; the deck washes as she lays over.
     wind: BED_LEVEL.wind * above * wind,
     wash: BED_LEVEL.wash * above * wind * (0.4 + 0.6 * s.strain),

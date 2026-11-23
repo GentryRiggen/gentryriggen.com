@@ -63,7 +63,7 @@ test(
             while (!h.getState!().done && performance.now() < end) h.pump!(200);
             return h.getState!().done;
           }),
-        { timeout: 300_000, intervals: [100] }
+        { timeout: 150_000, intervals: [100] }
       )
       .toBe(true);
     // The clock reads real time, which runs ahead of `t` once both halves
@@ -137,9 +137,10 @@ test("no Walk button on the Edmund Fitzgerald (she has no walk map)", async ({
   expect(await page.evaluate(() => window.__shipwreck!.getWalk!())).toBeNull();
 });
 
-test("no Walk button on the HMHS Britannic (she has no walk map)", async ({
+test("walk the HMHS Britannic's decks: the stick walks, then she lies down and the walker floats", async ({
   page,
 }) => {
+  test.setTimeout(240_000);
   await page.goto("/shipwreck");
   await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
   await page.getByTestId("shipwreck-ship-britannic").click();
@@ -148,27 +149,61 @@ test("no Walk button on the HMHS Britannic (she has no walk map)", async ({
   expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
     "britannic"
   );
-  // Once she has frames, the HUD is complete: still no Walk button. (Her
-  // first frames are computed here: a busy machine draws few frames.)
+
+  // She has a walk map now: the Walk button is offered once she has frames.
+  const walk = page.getByTestId("shipwreck-walk");
+  await expect(walk).toBeVisible();
+  await expect(walk).toBeEnabled({ timeout: 60_000 });
+  await page.evaluate(() => window.__shipwreck!.pause!());
+  await walk.click();
+  const stick = page.getByTestId("shipwreck-walk-stick");
+  await expect(stick).toBeVisible();
+  expect(
+    await page.evaluate(() => window.__shipwreck!.getState!().camera)
+  ).toBe("walk");
+
+  // Drag the stick up for a second: the walker moves along her boat deck.
+  await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+  const w0 = await page.evaluate(() => window.__shipwreck!.getWalk!()!);
+  expect(w0.phase).toBe("deck");
+  const box = (await stick.boundingBox())!;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  await page.mouse.move(cx, cy);
+  await page.mouse.down();
+  await page.mouse.move(cx, cy - box.height / 2, { steps: 4 });
+  await page.waitForTimeout(1000);
+  await page.mouse.up();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.getWalk!()!.x))
+    .not.toBeCloseTo(w0.x, 1);
+  expect(await page.evaluate(() => window.__shipwreck!.getWalk!()!.phase)).toBe(
+    "deck"
+  );
+
+  // Late in the morning she lies on her side on the floor: the walker is
+  // in the water, floating (as on the Titanic and the Lusitania).
   await expect
     .poll(
       () =>
         page.evaluate(() => {
           const h = window.__shipwreck!;
-          h.pump!(100);
-          return h.getState!().computedT;
+          const end = performance.now() + 2000;
+          while (!h.getState!().done && performance.now() < end) h.pump!(200);
+          return h.getState!().done;
         }),
-      { timeout: 60_000 }
+      { timeout: 200_000, intervals: [100] }
     )
-    .toBeGreaterThan(0);
-  await expect(page.getByTestId("shipwreck-play")).toBeVisible();
-  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
-  // And the hook's walk does nothing on her.
-  await page.evaluate(() => window.__shipwreck!.startWalk!());
-  expect(
-    await page.evaluate(() => window.__shipwreck!.getState!().camera)
-  ).not.toBe("walk");
-  expect(await page.evaluate(() => window.__shipwreck!.getWalk!())).toBeNull();
+    .toBe(true);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT);
+  });
+  await page.waitForFunction(
+    () => window.__shipwreck!.getWalk!()?.phase === "water",
+    null,
+    { timeout: 20_000 }
+  );
 });
 
 test("the Carpathia has no Walk button this release", async ({ page }) => {

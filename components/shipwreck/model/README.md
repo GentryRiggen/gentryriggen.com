@@ -74,6 +74,7 @@ ledges, a dark bulkhead a few metres in.
 | `breakX`                                  | What it was built with.                                                                                                                                                                                                                                                                                         |
 | `funnels[0..3]`                           | One group per funnel, origin at the centre of its foot, a child of the part it stands on. Topple funnel 0 by turning it about its foot: `funnels[0].rotation.x` tips it sideways (positive: to starboard), `.rotation.z` fore and aft (negative: forward). Reparent with `Object3D.attach` to let it fall free. |
 | `funnelGuys[i]`                           | That funnel's guy wires (`LineSegments`, or null at medium/low). Hide them when it falls.                                                                                                                                                                                                                       |
+| `foremast`, `showForemastWires(show)`     | The Britannic's foremast as its own part (`{ group, mast }`: origin at its foot, length up local +y, in `mats.paint` with her mast paint as the merged masts), and its wires (stays, shrouds, the aerial) on/off. Missing for the other ships. `scene/mastWreck.ts` lays it on the floor.                       |
 | `setPower(p)`                             | 0..1, every lit pane (the sim's `power`).                                                                                                                                                                                                                                                                       |
 | `setDeckPower(deck, p)`                   | 0..1 per deck, index as `spec.decks` (0 Boat, 1 A, 2 B, 3 C, 4 D, 5 E, 6 F, 7 G). Dim a deck as the water reaches it.                                                                                                                                                                                           |
 | `setFlicker(a)`                           | 0..1: circuits (a deck's run of cabins) dip together, about 11 times a second. The component advances the clock (`setTime`).                                                                                                                                                                                    |
@@ -102,7 +103,7 @@ composer's `ToneMapping` after `Bloom`, as the viewer does.
 Measured with `scripts/shipwreck-model-shots.mjs` (day stage, no
 post-processing; the night stage's bloom adds about 17 draws). Medium and
 low drop the rivet normal map, rails, rigging and small fittings (benches,
-bitts, rail posts); low also drops the cowl vents and coarsens the hull,
+bitts, rail posts); the Britannic's gantries and crosses stay; low also drops the cowl vents and coarsens the hull,
 funnels and boats.
 
 ## Checking it
@@ -1080,5 +1081,11 @@ frame after the first swap (`warmLiveries` uploads it at build).
 `?model&ship=britannic&livery=liner` (or 1.4's `&paint=liner`) shows it,
 and `setModelView({ livery })` swaps it live.
 
-- Medium and low drop the rivets, rails and rigging as for the others;
-  the gantries and crosses stay.
+- **Her foremast is its own part** (`handles.foremast`), so it can lie on
+  the floor by her wreck [WP] (`scene/mastWreck.ts`): `buildShipPart`'s
+  `apartMasts` leaves it out of the paint mesh and `mastGeometry` builds
+  it (the same code, colours and `mats.paint`, its pole in 1.5 m lengths
+  so it bends); its wires go to the end of the part's line mesh, hidden
+  by a draw range. One draw more. A paint that recolours her masts must
+  also reach this mesh (`foremast.group`, mesh `"mast"`): both looks'
+  masts are buff today, so the swap leaves it alone.

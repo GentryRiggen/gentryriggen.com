@@ -21,7 +21,7 @@ the sea is `z`).
 
 ## The maps
 
-`titanicDecks.ts` and `lusitaniaDecks.ts` (`walkMapFor(ship)`, null for a
+`titanicDecks.ts`, `lusitaniaDecks.ts` and `britannicDecks.ts` (`walkMapFor(ship)`, null for a
 ship you cannot walk on, such as the Edmund Fitzgerald) mark, per ship:
 
 - **areas**: counter-clockwise outlines on a named deck. Their sides follow
@@ -40,7 +40,12 @@ ship you cannot walk on, such as the Edmund Fitzgerald) mark, per ship:
   the walker's body (0.3 m) clear of every blocker.
 - **spawn**: on the boat deck, where Walk and Back on deck put you.
 
-Titanic: boat deck, forward well, forecastle, after well, poop. Lusitania:
+Titanic: boat deck, forward well, forecastle, after well, poop. Britannic:
+the same five decks on her 94 ft beam (her own deck edge), with her
+gantry davits (each set's two arms and the bay of boats between them, from
+the constants in `ships/britannic.ts` the recipe also reads) and Welin davit
+feet as blockers; `maps.test.ts` checks every house, funnel, davit and bench
+her recipe draws. Lusitania:
 boat deck (two promenades beside its long house), foredeck (`forecastle`),
 the mainmast's gap, the second class house's deck (`aft-deck`) and the
 stern.

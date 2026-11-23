@@ -1,6 +1,10 @@
 import {
+  BRITANNIC_BOAT,
   BRITANNIC_BOATS,
   BRITANNIC_FUNNEL_PAINTS,
+  BRITANNIC_GANTRY_ARM_DX,
+  BRITANNIC_GANTRY_REACH,
+  BRITANNIC_GANTRY_ROW_GAP,
   BRITANNIC_GANTRY_SETS,
   BRITANNIC_PAINT,
 } from "@/lib/shipwreck/ships/britannic";
@@ -37,8 +41,6 @@ import {
 /** Her paint: the hospital ship (default) or the liner she never was. */
 export type BritannicPaint = typeof BRITANNIC_PAINT;
 
-const FT = 0.3048;
-
 /** Her transport number on the bridge front, October 1916 (R13). */
 export const BRIDGE_NUMBER = "G.618";
 
@@ -59,13 +61,11 @@ const GOLD_LINE = 0xc9a03a;
  */
 const LINER_LOAD_LINE = 10.54;
 
-/** Her lifeboats: 30 ft wooden boats, as her sisters' (assumed). */
-const BOAT = { length: 30 * FT, beam: 9.08 * FT, depth: 4 * FT };
-/** A gantry set: arms this far fore and aft of the bay's middle. */
-const ARM_DX = 5.6;
+const BOAT = BRITANNIC_BOAT;
+const ARM_DX = BRITANNIC_GANTRY_ARM_DX;
 /** Gantry boats: two rows across, three tiers up. */
 const TIER_DZ = 1.45;
-const ROW_GAP = 0.35;
+const ROW_GAP = BRITANNIC_GANTRY_ROW_GAP;
 
 /** The forward screens of A and B decks start here (to the house front). */
 const FWD_SCREEN_FROM = 65.5;
@@ -228,7 +228,7 @@ export function britannicRecipe(
       footY: s * (edge(set.x) - 0.5),
       deckZ: boatZ(set.x),
       height: 9.6,
-      reach: 4.4,
+      reach: BRITANNIC_GANTRY_REACH,
       color: GANTRY_BUFF,
     };
   });

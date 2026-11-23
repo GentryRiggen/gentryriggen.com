@@ -401,8 +401,16 @@ bump or changelog edit (the parent does it), Carpathia.
   9:20–10:40 and usually breaks the girder first; with no offset she often
   capsizes to port. So the 2 cm offset stays, unsourced and stated; the
   list tests measure only the list the flooding adds, and three tests of
-  the wished-for behaviour are kept as `it.failing` alarms. A sourced
-  asymmetry (coal, stores, the wards) is the follow-up.
+  the wished-for behaviour are kept as `it.failing` alarms.
+  **Ruling (follow-ups, Task 5, 2026-11-22): the 2 cm seed stays.** A
+  search for a sourced pre-strike asymmetry on 21 November 1916 (coal in
+  one side's bunkers, stores, trim, hospital fittings) found none: Wikipedia
+  ("HMHS Britannic"), the Western Front Association's "The Loss of the
+  Britannic", Al Jazeera (2016) and the Dominion (27 Nov 1916) all put the
+  starboard list after the blast, from starboard flooding. No source gives
+  a side and a magnitude for a list before it, so there is nothing to
+  replace `tcg: -0.02` with. It stays as a stated, unsourced modelling
+  choice; revisit only if a source turns up.
 - **R22 Hull band 1.7 m** deep, about as deep as the cross arm, measured
   from the same photograph as the crosses (the crosses measure about 6 m).
 

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
+  BRITANNIC_EVENT_CUES,
   CUE_GAP_S,
   EVENT_CUES,
   FITZGERALD_EVENT_CUES,
@@ -50,6 +51,7 @@ describe("the sound stays synthesised and has no voices", () => {
       ...Object.values(EVENT_CUES),
       ...Object.values(LUSITANIA_EVENT_CUES),
       ...Object.values(FITZGERALD_EVENT_CUES),
+      ...Object.values(BRITANNIC_EVENT_CUES),
     ]);
     expect(cues.size).toBeGreaterThan(5);
     for (const cue of cues)

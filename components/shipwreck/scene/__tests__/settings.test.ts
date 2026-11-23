@@ -259,7 +259,8 @@ describe("the Britannic's morning (1.4)", () => {
       if (d > COAST_FADE_TO_M) expect(p.getY(i)).toBeLessThan(0);
       top = Math.max(top, p.getY(i));
     }
-    // Kea's hills reach about 560 m (Profitis Ilias, 568 m), drawn ×1.5.
+    // Kea's hills reach about 560 m (Profitis Ilias, 568 m), drawn true.
+    expect(KEA_HEIGHT_SCALE).toBe(1);
     expect(top / KEA_HEIGHT_SCALE).toBeGreaterThan(450);
     expect(top / KEA_HEIGHT_SCALE).toBeLessThan(600);
     // Port St Nikolo light (37.6673 N 24.3139 E) from the mine: about

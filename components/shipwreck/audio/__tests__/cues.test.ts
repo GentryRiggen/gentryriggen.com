@@ -2,6 +2,7 @@ import type { SimEvent, SimEventKind } from "@/lib/shipwreck/sim/events";
 import type { StormSpec } from "@/lib/shipwreck/ships/types";
 import type { SimFrame } from "@/lib/shipwreck/sim/track";
 import {
+  BRITANNIC_EVENT_CUES,
   CUE_GAP_S,
   EVENT_CUES,
   LUSITANIA_EVENT_CUES,
@@ -483,5 +484,149 @@ describe("the Edmund Fitzgerald's sounds", () => {
     }
     // Group at t = 100, three seas 10 s apart: 90, 100, 110.
     expect(at).toEqual([90, 100, 110]);
+  });
+});
+
+describe("the Britannic's morning", () => {
+  it("maps the mine, her whistle and the funnels, with no scrape or rocket", () => {
+    const m = eventCuesFor("britannic");
+    expect(m).toBe(BRITANNIC_EVENT_CUES);
+    expect(m.explosion).toBe("mine");
+    expect(m.radio).toBe("whistle");
+    expect(m.collision).toBeUndefined();
+    expect(m.rocket).toBeUndefined();
+    expect(m["funnel-falls"]).toBe("funnel");
+    expect(m["boat-lowered"]).toBe("davit");
+    expect(m["stern-under"]).toBe("plunge");
+    expect(Object.values(m)).not.toContain("scrape");
+    expect(Object.values(m)).not.toContain("rocket");
+  });
+
+  it("leaves every other ship's mapping as it was", () => {
+    expect(eventCuesFor("titanic")).toEqual({
+      collision: "scrape",
+      rocket: "rocket",
+      "boat-lowered": "davit",
+      "last-boat": "davit",
+      "forecastle-under": "rush",
+      "bridge-under": "rush",
+      "funnel-falls": "funnel",
+      "lights-out": "powerDown",
+      breakup: "breakup",
+      "bow-under": "plunge",
+      "stern-under": "plunge",
+      "bow-lands": "thud",
+      "stern-lands": "thud",
+    });
+    expect(eventCuesFor("lusitania")).toEqual({
+      ...EVENT_CUES,
+      collision: "torpedo",
+      explosion: "boom",
+      rocket: undefined,
+    });
+    expect(eventCuesFor("fitzgerald")).toEqual({
+      collision: "swell",
+      "hatch-fails": "hatch",
+      "lights-out": "powerDown",
+      breakup: "breakup",
+      "bow-under": "plunge",
+      "stern-under": "plunge",
+      "bow-lands": "thud",
+      "stern-lands": "thud",
+    });
+  });
+
+  it("sounds the mine once at the start, then her whistle at 9:00", () => {
+    const evs = [
+      ev(0, "collision"),
+      ev(0, "explosion"),
+      ev(3600, "radio"),
+      ev(3700, "funnel-falls"),
+    ];
+    const { played, run } = setup(evs);
+    run({ t: 0, ship: "britannic" });
+    run({ t: 1, now: 101, ship: "britannic" });
+    expect(played).toEqual(["mine"]);
+    run({ t: 3601, now: 200, snapId: 0, ship: "britannic", speed: 1 });
+    expect(played.filter((c) => c !== "gull")).toEqual(["mine", "whistle"]);
+    run({ t: 3701, now: 201, ship: "britannic" });
+    expect(played.filter((c) => c !== "gull")).toEqual([
+      "mine",
+      "whistle",
+      "funnel",
+    ]);
+  });
+
+  it("makes no cue for events she never reaches or that a seek skips", () => {
+    const evs = [ev(0, "explosion"), ev(3600, "radio")];
+    const { played, run } = setup(evs);
+    run({ t: 100, ship: "britannic" });
+    run({ t: 5000, now: 110, snapId: 1, ship: "britannic" });
+    // Jumped past the 9:00 whistle: nothing sounds for it.
+    expect(played.filter((c) => c !== "gull")).toEqual([]);
+    // A What if where she is gone early: no radio event, no whistle.
+    const gone = setup([
+      ev(0, "explosion"),
+      ev(500, "stern-under"),
+      ev(1000, "boat-lowered"),
+      ev(3600, "radio"),
+    ]);
+    gone.run({ t: 0, ship: "britannic" });
+    gone.run({ t: 600, now: 110, ship: "britannic" });
+    gone.run({ t: 4000, now: 130, ship: "britannic" });
+    expect(gone.played.filter((c) => c !== "gull")).toEqual(["mine", "plunge"]);
+    // Seeking past her end makes the same silence.
+    const seek = setup([ev(500, "stern-under"), ev(3600, "radio")]);
+    seek.run({ t: 0, ship: "britannic" });
+    seek.run({ t: 3000, now: 110, snapId: 1, ship: "britannic" });
+    seek.run({ t: 3700, now: 120, ship: "britannic" });
+    expect(seek.played).not.toContain("whistle");
+  });
+
+  it("still sounds her seabed thuds and breakup after stern-under", () => {
+    const { played, run } = setup([
+      ev(500, "stern-under"),
+      ev(510, "breakup"),
+      ev(520, "bow-lands"),
+      ev(530, "stern-lands"),
+      ev(540, "radio"),
+      ev(550, "boat-lowered"),
+    ]);
+    run({ t: 0, ship: "britannic" });
+    run({ t: 525, now: 110, ship: "britannic" });
+    run({ t: 600, now: 120, ship: "britannic" });
+    expect(played.filter((c) => c !== "gull")).toEqual([
+      "plunge",
+      "breakup",
+      "thud",
+      "thud",
+    ]);
+  });
+
+  it("has gulls while she is upright, none under water or on a ship that has none", () => {
+    const count = (underwater: boolean, ship: "titanic" | "britannic") => {
+      const played: Cue[] = [];
+      const s = createCueScheduler((c) => played.push(c));
+      const none: SimEvent[] = [];
+      for (let now = 100; now < 200; now += 0.5)
+        s.update(none, [frame(0, 0)], input({ now, underwater, ship }));
+      return played.filter((c) => c === "gull").length;
+    };
+    expect(count(false, "britannic")).toBeGreaterThan(3);
+    expect(count(true, "britannic")).toBe(0);
+    expect(count(false, "titanic")).toBe(0);
+  });
+
+  it("carries her way to the held state", () => {
+    const s = createCueScheduler(() => {});
+    s.update([], [frame(0, 0)], input({ ship: "britannic", way: 0.3 }));
+    expect(s.bed.way).toBe(0.3);
+  });
+
+  it("follows her power on the held state", () => {
+    const s = createCueScheduler(() => {});
+    s.update([], [frame(0, 0, 0.4)], input({ ship: "britannic" }));
+    expect(s.bed.ship).toBe("britannic");
+    expect(s.bed.power).toBe(0.4);
   });
 });

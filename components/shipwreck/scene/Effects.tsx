@@ -32,6 +32,7 @@ import {
 } from "./afternoonEffects";
 import { STORM_MIN_PX, STORM_PARTICLES } from "./storm";
 import { FUNNEL_SINK_S, FUNNEL_TOPPLE_S, layFunnel } from "./funnelWreck";
+import { poseForemast } from "./mastWreck";
 import { StormEffects, type StormFrame } from "./stormEffects";
 
 /**
@@ -350,6 +351,9 @@ export default function Effects({
           }
         }
       });
+      // The Britannic's foremast: down on the floor by her bow once she
+      // lies there on her side [WP] (mastWreck.ts); else standing on her.
+      poseForemast(mdl, spec, track, t);
     }
 
     // --- Lifeboats.
