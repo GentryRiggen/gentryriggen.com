@@ -290,7 +290,9 @@ const smokeFragment = /* glsl */ `
                mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
   }
   void main() {
-    float u = vUv.x;
+    // Interpolation can land u a hair past 1: pow() of a negative is NaN,
+    // and one NaN pixel spreads through the bloom into a black screen.
+    float u = clamp(vUv.x, 0.0, 1.0);
     // Thick at the funnel, thinning out; soft at the edges; puffy.
     float edge = 1.0 - vUv.y * vUv.y;
     float n = noise(vec2(u * 9.0 - uTime * 0.25, vUv.y * 1.5)) * 0.6

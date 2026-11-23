@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.8.2",
+    date: "2026-11-23",
+    title: "The Carpathia shows again",
+    highlights: [
+      "Fixed the Carpathia's screen going black on many computers and iPads: a puff of smoke from a far-off convoy ship was breaking the picture",
+    ],
+  },
+  {
     version: "1.8.1",
     date: "2026-11-23",
     title: "A lighter sea",
