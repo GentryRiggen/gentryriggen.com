@@ -15,11 +15,12 @@ import {
   useState,
   type RefObject,
 } from "react";
-import { Color, PMREMGenerator, Vector3 } from "three";
+import { Color, PMREMGenerator, Vector3, type Mesh } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -31,12 +32,13 @@ import type {
 } from "@/lib/shipwreck/testHooks";
 import TitanicModel from "./TitanicModel";
 import { applyBowBend } from "./bowBend";
+import { createRockMesh, disposeRockMesh } from "./rock";
 import type { TitanicHandles } from "./shipModel";
 
 /**
  * A neutral stage for checking the model (`/shipwreck?model`, dev and e2e
- * builds only; `&ship=lusitania`, `&ship=fitzgerald`, `&ship=carpathia` or
- * `&ship=britannic`): orbit controls, a day light or
+ * builds only; `&ship=lusitania`, `&ship=fitzgerald`, `&ship=carpathia`,
+ * `&ship=britannic` or `&ship=concordia`): orbit controls, a day light or
  * the night with bloom (`&livery=<id>` picks a livery, e.g.
  * `&ship=lusitania&livery=cunard-1907` or the Carpathia's `grey-1918`; the
  * old `&paint=dazzle|grey|cunard` still names hers, and the Britannic's
@@ -75,6 +77,8 @@ const CAMERAS: Record<
   "boat-deck": { pos: [52, 40, 52], target: [18, 26, 6] },
   "bow-port": { pos: [245, 46, -150], target: [30, 18, 0] },
   gantry: { pos: [-20, 44, 48], target: [-50, 32, 6] },
+  funnel: { pos: [-10, 66, 40], target: [-52, 56, 0] },
+  rock: { pos: [-55, 9, -45], target: [-86, 4, -17] },
 };
 
 /** Presets reframed for a ship whose stern is not the Titanic's. */
@@ -105,6 +109,19 @@ const SHIP_CAMERAS: Partial<Record<ShipSpec["id"], Partial<typeof CAMERAS>>> = {
     "break-close": { pos: [40, 30, 60], target: [18, 12, 0] },
     "boat-deck": { pos: [-56, 30, 44], target: [-92, 19, 0] },
   },
+  // A 290 m cruise ship, 14 decks: everything further and higher.
+  concordia: {
+    bow: { pos: [310, 80, 240], target: [10, 30, 0] },
+    "bow-port": { pos: [300, 70, -250], target: [-10, 26, 0] },
+    stern: { pos: [-235, 22, 150], target: [-105, 16, 0] },
+    side: { pos: [0, 34, 600], target: [6, 30, 0] },
+    top: { pos: [6, 540, 24], target: [6, 0, 0] },
+    bridge: { pos: [195, 44, 34], target: [100, 36, 0] },
+    "boat-deck": { pos: [46, 30, 52], target: [8, 25, 16] },
+    "bow-close": { pos: [196, 24, 66], target: [126, 16, 0] },
+    "stern-close": { pos: [-190, 6, 58], target: [-122, 5, 0] },
+    astern: { pos: [-210, 34, 0], target: [-130, 26, 0] },
+  },
   // A 558 ft intermediate liner: one funnel, four masts, wells.
   carpathia: {
     bow: { pos: [190, 45, 130], target: [20, 18, 0] },
@@ -133,7 +150,9 @@ function shipFromUrl(): ShipSpec {
         ? carpathia
         : id === "britannic"
           ? britannic
-          : titanic;
+          : id === "concordia"
+            ? concordia
+            : titanic;
 }
 
 /** The Carpathia's 1.4 `?paint=` names, as livery ids. */
@@ -249,6 +268,9 @@ function Stage({ view, spec, livery, onInfo }: StageProps) {
     (h: TitanicHandles) => {
       h.setPower(view.power);
       h.setFlicker(view.flicker);
+      // Her emergency lights (the Concordia's) at night, as after her
+      // blackout.
+      h.setEmergency(view.stage === "night" ? 1 : 0);
       if (h.bend && h.recipe.hinge)
         applyBowBend(h.bend, view.bowBend, h.recipe.hinge);
       if (h.breakX !== null) {
@@ -257,14 +279,26 @@ function Stage({ view, spec, livery, onInfo }: StageProps) {
         poseHalf(h.stern, h.breakX, -0.3, -4);
       }
     },
-    [view.power, view.flicker, view.bowBend]
+    [view.power, view.flicker, view.bowBend, view.stage]
   );
 
+  // The Concordia's rock in her side (the scene shows it from the strike;
+  // here always, whole ship only).
+  const rock = useRef<Mesh | null>(null);
   const onReady = useCallback(
     (h: TitanicHandles) => {
       handles.current = h;
       frames.current = 0;
       apply(h);
+      if (rock.current) {
+        rock.current.removeFromParent();
+        disposeRockMesh(rock.current);
+        rock.current = null;
+      }
+      if (h.recipe.rock && h.breakX === null) {
+        rock.current = createRockMesh(h.recipe.rock);
+        h.whole.add(rock.current);
+      }
     },
     [apply]
   );

@@ -11,7 +11,12 @@ export const CAMERA_IDS = [
 ] as const;
 export type CameraId = (typeof CAMERA_IDS)[number];
 
-export const OUTCOME_IDS = ["sank", "floated", "broke-in-two"] as const;
+export const OUTCOME_IDS = [
+  "sank",
+  "floated",
+  "broke-in-two",
+  "aground",
+] as const;
 export type OutcomeId = (typeof OUTCOME_IDS)[number];
 
 /** Simulation speed: real time, 10x, 30x or 100x. */

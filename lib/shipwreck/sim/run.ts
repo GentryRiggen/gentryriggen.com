@@ -10,6 +10,7 @@ import {
   isDeckOpening,
 } from "../ships/types";
 import {
+  AIR_DENSITY,
   BOX_PERMEABILITY,
   BREAK_DAMAGE_M,
   BREAK_OPEN_FRACTION,
@@ -22,6 +23,7 @@ import {
   FAST_STEP_S,
   FLOOR_SINK_M,
   GRAV,
+  KNOT_MS,
   PERMEABILITY,
   PORTHOLE_HEIGHT_M,
   PORTHOLE_PIECE_M,
@@ -30,6 +32,7 @@ import {
   RHO,
   SIM_STEP_S,
   SLOW_FRAME_S,
+  SPILL_BREADTH,
   STERN_CAPSIZE_DEG_S,
   DECK_SAMPLE_S,
   STORM_SCALE,
@@ -37,6 +40,8 @@ import {
 import {
   type Body,
   type CrossLink,
+  FLOOR_MEMO_M,
+  type FloorFn,
   type SpillLink,
   earthZ,
   stepFloat,
@@ -44,6 +49,7 @@ import {
   upOf,
   updateBounds,
 } from "./body";
+import { agroundBegins, beginAground, stepAground } from "./aground";
 import { type DeckWater, makeDeckWater } from "./deckWater";
 import { stepFall, stepLanding, sternDown } from "./descent";
 import { doorLinks, openDoors } from "./doors";
@@ -80,9 +86,18 @@ import {
 } from "./geometry";
 import { type GirderState, girder, strengthProfile } from "./girder";
 import { R_SIZE, R_VOL, integrateSlice, upInShip } from "./hydrostatics";
-import { headingAt, headwayOf, headwayRun, speedAt } from "./headway";
+import {
+  type DriftPath,
+  headingAt,
+  headwayOf,
+  headwayRun,
+  pathAt,
+  pathOf,
+  speedAt,
+} from "./headway";
 import { type MassModel, buildMass, massOf } from "./mass";
 import { holdsRealMine, mineOpenings } from "./mine";
+import { floorAt, floorTopNear, seabedSlopeNear } from "./seabed";
 import type { BodyPose, SimFrame, SimTrack } from "./track";
 import { GROUP_RELOCK_S, lockGroups, stormOf } from "./waves";
 import { rideWeight, waveRide } from "./waveRide";
@@ -139,6 +154,8 @@ export interface SimOptions {
   /** Engines stopped at the first event: no profile, no turn; she coasts
    *  with HEADWAY_STOP_HALF_LIFE_S (default false). */
   enginesStopped?: boolean;
+  /** Drift by `headway.pathToSea` (the What if "blown out to sea"). */
+  toSea?: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -205,6 +222,16 @@ export function whatIfOpenings(
     if (!comp) continue;
     const real = spec.realNight.filter((o) => o.compartmentId === id);
     if (real.length > 0) out.push(...real);
+    else if (spec.gash)
+      // A rocks ship's own tear (`spec.gash`) along the compartment's middle.
+      out.push({
+        compartmentId: id,
+        areaM2: spec.gash.areaM2,
+        zLow: spec.gash.zLow,
+        zHigh: spec.gash.zHigh,
+        x: (comp.fromX + comp.toX) / 2,
+        side: spec.gash.side,
+      });
     else
       out.push({
         compartmentId: id,
@@ -564,7 +591,7 @@ interface World {
   events: SimEvent[];
   frames: SimFrame[];
   done: boolean;
-  outcome: "sank" | "floated";
+  outcome: SimTrack["outcome"];
   endT: number;
   girderState: GirderState;
   strength: Float64Array;
@@ -602,12 +629,34 @@ interface World {
   pumpDepth: number;
   /** Bulkhead doors open this run (`doorsClosed` shuts the watertight ones). */
   doors: readonly BulkheadDoor[];
+  /** Her drift path this run (`headway.path` or `pathToSea`), or null. */
+  path: DriftPath | null;
+  /** A seabed or a drift path: her earth x, y held once her way is lost
+   *  on the floor (no sway, no slide). */
+  holdOnFloor: boolean;
+  /** The rest aground has begun: shown time runs `agroundScale` slower. */
+  aground: boolean;
+  agroundScale: number;
+  /** The floor under an earth x, y (the seabed's, or the flat floor). */
+  floor: FloorFn;
 }
 
 /** Settle her level before the collision, then open the holes at t = 0. */
 function settle(w: World): void {
   const body = w.bodies[0];
-  stepFloat(body, SIM_STEP_S, false, 0);
+  if (w.spec.heel?.wind)
+    stepFloat(
+      body,
+      SIM_STEP_S,
+      false,
+      0,
+      0,
+      -Infinity,
+      null,
+      PUMP_DEPTH_M,
+      windHeel(w.spec, body.yaw)
+    );
+  else stepFloat(body, SIM_STEP_S, false, 0);
   w.settleLeft -= SIM_STEP_S;
   if (w.settleLeft > 0) return;
   body.vx = 0;
@@ -620,6 +669,7 @@ function settle(w: World): void {
   for (const p of w.pending) body.cells[p.i].openings.push(p.o);
   for (const p of w.pendingDeck) body.cells[p.i].deck.push(p.o);
   if (body.deckWater) body.deckWater.vol.fill(0);
+  if (w.path) onPath(w, body, 0);
   updateBounds(body);
   // Replace the placeholder frame with the settled ship at t = 0.
   w.frames[0] = frame(w);
@@ -656,8 +706,15 @@ function yRange(span: Span | undefined, hb: number): [number, number] {
  * forward end on b's after end, a bulkhead at both), over the breadth they
  * share at the top (all of it for two full-breadth cells).
  */
-function linksOf(hull: HullModel, cells: Cell[]): SpillLink[] {
+function linksOf(
+  hull: HullModel,
+  cells: Cell[],
+  spillBreadth?: number
+): SpillLink[] {
   const links: SpillLink[] = [];
+  // Her own share of the breadth water spills across (`spillBreadth`):
+  // the spill's SPILL_BREADTH scaled to it.
+  const scale = spillBreadth === undefined ? 1 : spillBreadth / SPILL_BREADTH;
   for (let i = 0; i < cells.length; i += 1)
     for (let j = i + 1; j < cells.length; j += 1) {
       for (const [ia, ib] of [
@@ -687,7 +744,7 @@ function linksOf(hull: HullModel, cells: Cell[]): SpillLink[] {
           x: a.slice.xTo,
           topZ: a.fwdTopZ,
           y,
-          breadth,
+          breadth: breadth * scale,
         });
       }
     }
@@ -842,7 +899,7 @@ function makeBody(
     cells,
     boxes,
     all: cells.concat(boxes),
-    links: linksOf(w.hull, cells),
+    links: linksOf(w.hull, cells, w.spec.spillBreadth),
     crosses: crossesOf(w.hull, cells),
     doors: doorLinks(w.doors, w.spec.compartments, cells),
     cuts: cutsOf(w.hull, cells),
@@ -909,7 +966,80 @@ function makeBody(
     floorX: new Float64Array(0),
     floorF: new Float64Array(0),
     deckWater: null,
+    ...(w.spec.boxWaterAtSide ? { boxWaterAtSide: true } : {}),
+    ...(w.spec.seabed ? seabedOf(w.spec, xFrom, xTo, w.hull) : {}),
   };
+}
+
+/** A seabed ship's floor lookup and the reach of her hull from its origin. */
+function seabedOf(
+  spec: ShipSpec,
+  xFrom: number,
+  xTo: number,
+  hull: HullModel
+): Pick<Body, "floorFn" | "floorReach" | "floorSlope"> {
+  const pts = floorPoints(hull, xFrom, xTo);
+  let reach = 0;
+  for (let k = 0; k < pts.length; k += 4)
+    reach = max(reach, Math.hypot(pts[k], pts[k + 1], pts[k + 2]));
+  const seabed = spec.seabed as NonNullable<ShipSpec["seabed"]>;
+  return {
+    floorFn: (x, y) => floorAt(spec, x, y),
+    floorReach: reach,
+    floorSlope: (x, y) => seabedSlopeNear(seabed, x, y, FLOOR_MEMO_M),
+  };
+}
+
+/** The floor's earth z the flat-floor code sees: the flat floor, or with a
+ *  seabed the highest it comes within the body's reach (its contact then
+ *  looks up each point). */
+function floorFor(w: World, b: Body): number {
+  return b.floorFn
+    ? floorTopNear(w.spec, b.x, b.y, b.floorReach ?? 0)
+    : -w.spec.seaDepthM;
+}
+
+/**
+ * The heeling moment (N·m, + to starboard) of weight moved across her by
+ * shown second t (`spec.heel.muster`): massT·g·(−y), ramped in linearly
+ * from `fromT` to `toT`. A shift, not an added weight.
+ */
+function musterHeel(spec: ShipSpec, t: number): number {
+  const m = spec.heel?.muster;
+  if (!m || t <= m.fromT) return 0;
+  const u = t >= m.toT ? 1 : (t - m.fromT) / (m.toT - m.fromT);
+  return -u * m.massT * 1000 * GRAV * m.y;
+}
+
+/**
+ * The wind's heeling moment (`spec.heel.wind`, N·m, + to starboard) on a
+ * hull heading `yaw`: ½ ρ_air C_d A V² · cos β |cos β| · h, β the wind's
+ * angle off her beam (cos β = sin α, α its bearing from her bow).
+ */
+function windHeel(spec: ShipSpec, yaw: number): number {
+  const wind = spec.heel?.wind;
+  if (!wind) return 0;
+  const v = wind.kn * KNOT_MS;
+  const s = sin(wind.fromDeg * DEG - yaw);
+  return (
+    0.5 * AIR_DENSITY * wind.cd * wind.areaM2 * v * v * s * abs(s) * wind.leverM
+  );
+}
+
+const pathBuf: [number, number, number, number] = [0, 0, 0, 0];
+
+/** Is she still carried along her drift path (before its end, way kept)? */
+function onTheWay(w: World): boolean {
+  const p = w.path;
+  return p !== null && !w.wayLost && w.t < p[p.length - 1][0];
+}
+
+/** Place a floating body on her drift path at shown second t. */
+function onPath(w: World, b: Body, t: number): void {
+  const p = pathAt(w.path as DriftPath, t, pathBuf);
+  b.yaw = p[2];
+  b.x = p[0];
+  b.y = p[1];
 }
 
 /** A compartment's own walls: a bulkhead at an end unless it is the hull's. */
@@ -1102,9 +1232,19 @@ function buildWorld(
   const boxes = boxSlices.map((s) =>
     makeCell(s, -1, true, 0, 0, false, false, BOX_PERMEABILITY)
   );
+  // A rocks ship's door was opened by hand on her real night ([SaS]): a
+  // What if that is not her whole real damage keeps it shut. Each real
+  // hole is matched by its compartment and x, not by identity (a copied
+  // list of the same holes is her real night).
   const doors = openDoors(
     spec.doors,
-    opts.doorsClosed === true,
+    opts.doorsClosed === true ||
+      (spec.cause === "rocks" &&
+        !spec.realNight.every((o) =>
+          openings.some(
+            (p) => p.compartmentId === o.compartmentId && p.x === o.x
+          )
+        )),
     spec.cause !== "mine" || holdsRealMine(spec, openings)
   );
   const ctx = { spec, hull, mass, doors };
@@ -1149,7 +1289,18 @@ function buildWorld(
     .slice()
     .sort((a, b) => b.toX - b.fromX - (a.toX - a.fromX))[0];
   const boat = spec.decks.find((d) => d.name === "Boat");
+  // A blackout on a compartment she does not have would never fire.
+  const out = spec.blackout;
+  if (out && !spec.compartments.some((c) => c.id === out.compartmentId))
+    throw new Error(
+      `${spec.id}: blackout.compartmentId "${out.compartmentId}" is none of hers`
+    );
+  // Her drift only in a run that reaches her power (`pathWhenOpen`).
+  const when = spec.headway?.pathWhenOpen;
+  const drifts =
+    !when || hullOpenings.some((o) => when.includes(o.compartmentId));
   const sheerAt = (x: number) => spec.sheerZ(x) - spec.depth;
+  const rocksMiss = spec.cause === "rocks" && hullOpenings.length === 0;
   const w: World = {
     spec,
     hull,
@@ -1168,7 +1319,13 @@ function buildWorld(
     lightsOut: false,
     steadyFor: 0,
     steady: false,
-    scriptedNext: 0,
+    // A rocks ship's scripted events (her boats) follow her abandoning
+    // ship, which only her drift brings (power lost on `pathWhenOpen`):
+    // she does not lower boats while she sails on under her own power.
+    scriptedNext:
+      spec.cause === "rocks" && !(drifts && pathOf(spec.headway, opts) !== null)
+        ? spec.scripted.length
+        : 0,
     // Counted from her first hit when it comes late (the U-boat alone).
     scriptedShift:
       spec.scriptedFromFirstHit && all.length > 0
@@ -1176,7 +1333,8 @@ function buildWorld(
         : 0,
     funnelFallen: spec.funnels.map(() => false),
     fired: new Set(),
-    events: [{ t: 0, realT: 0, kind: "collision" }],
+    // A rocks ship with no hole in her run never struck: she sails past.
+    events: rocksMiss ? [] : [{ t: 0, realT: 0, kind: "collision" }],
     frames: [],
     done: false,
     outcome: "floated",
@@ -1206,6 +1364,11 @@ function buildWorld(
     pumps: spec.pumpsM3s ?? PUMP_M3S,
     pumpDepth: ownPumps ? Infinity : PUMP_DEPTH_M,
     doors,
+    path: drifts ? pathOf(spec.headway, opts) : null,
+    holdOnFloor: spec.seabed !== undefined || pathOf(spec.headway) !== null,
+    aground: false,
+    agroundScale: spec.agroundTimeScale ?? 1,
+    floor: body.floorFn ?? (() => -spec.seaDepthM),
     probe: opts.probe,
     forecastle: fwdBox
       ? { x: (fwdBox.fromX + fwdBox.toX) / 2, z: fwdBox.topZ }
@@ -1215,6 +1378,8 @@ function buildWorld(
         ? { x: longest.toX, z: boat.z + sheerAt(longest.toX) }
         : null,
   };
+  // On a drift path she settles on its heading at the first event.
+  if (w.path) body.yaw = pathAt(w.path, 0, pathBuf)[2];
   // A placeholder until she has settled, so a track is never empty.
   w.frames.push(frame(w));
   return w;
@@ -1242,7 +1407,8 @@ function flicker(t: number): number {
 }
 
 function power(w: World): number {
-  if (w.lightsOut) return 0;
+  // Her emergency lighting after a blackout (`spec.blackout`), never dark.
+  if (w.lightsOut) return w.spec.blackout?.emergencyLight ?? 0;
   if (w.flickerAtT === null) return 1;
   return flicker(w.t);
 }
@@ -1468,7 +1634,8 @@ function watch(w: World): void {
     const scripted = spec.scripted;
     while (
       w.scriptedNext < scripted.length &&
-      scripted[w.scriptedNext].t + w.scriptedShift <= w.t
+      scripted[w.scriptedNext].t + w.scriptedShift <=
+        (spec.agroundTimeScale === undefined ? w.t : w.realT)
     ) {
       const e = scripted[w.scriptedNext];
       emit(w, e.kind, e.index);
@@ -1490,17 +1657,24 @@ function watch(w: World): void {
       w.flickerAtT = w.t;
       emit(w, "lights-flicker");
     }
-    // The dynamos: the aftmost engine space flooded deep enough.
+    // The dynamos: the aftmost engine space flooded deep enough; or her
+    // own blackout (`spec.blackout`): its space's water that deep.
     const comps = spec.compartments;
+    const out = spec.blackout;
     let dyn = -1;
-    for (let i = 0; i < comps.length; i += 1)
-      if (comps[i].kind === "engine") {
-        dyn = i;
-        break;
-      }
+    if (out) dyn = comps.findIndex((c) => c.id === out.compartmentId);
+    else
+      for (let i = 0; i < comps.length; i += 1)
+        if (comps[i].kind === "engine") {
+          dyn = i;
+          break;
+        }
     if (dyn >= 0 && !w.lightsOut) {
       const cell = whole.cells[dyn];
-      if (cell.water > 0 && cell.level - cell.zMin >= DYNAMO_FLOOD_M) {
+      if (
+        cell.water > 0 &&
+        cell.level - cell.zMin >= (out ? out.depthM : DYNAMO_FLOOD_M)
+      ) {
         w.lightsOut = true;
         emit(w, "lights-out");
       }
@@ -1581,12 +1755,17 @@ function step(w: World): void {
     ? SIM_STEP_S
     : compressed
       ? FAST_STEP_S * w.descentScale
-      : w.fast
-        ? FAST_STEP_S
-        : SIM_STEP_S;
+      : w.aground
+        ? FAST_STEP_S * w.agroundScale
+        : w.fast
+          ? FAST_STEP_S
+          : SIM_STEP_S;
   // Steady way lasts until she goes under (the bow first).
   if (w.wayLostAt === null && w.fired.has("bow-under")) w.wayLostAt = w.realT;
-  const way = headwayRun(w.headway, w.realT, w.realT + dt, w.wayLostAt);
+  // A drift path places her itself (below): no way of her own.
+  const way = w.path
+    ? 0
+    : headwayRun(w.headway, w.realT, w.realT + dt, w.wayLostAt);
   // Along her heading (`turn`, 1.4), held once she has gone under.
   const mid = w.realT + dt / 2;
   const psi = headingAt(
@@ -1598,7 +1777,11 @@ function step(w: World): void {
   // The ram head on her forward openings (1.4): her speed now.
   const ram = w.headway?.ram;
   if (ram) {
-    const u = w.wayLost ? 0 : speedAt(w.headway, w.realT, {}, w.wayLostAt);
+    const u = w.wayLost
+      ? 0
+      : w.path
+        ? pathAt(w.path, w.t, pathBuf)[3]
+        : speedAt(w.headway, w.realT, {}, w.wayLostAt);
     for (const b of w.bodies) b.ramHead = (ram.cp * u * u) / (2 * GRAV);
   }
   if (w.bowUnderRealT === null && w.fired.has("bow-under"))
@@ -1621,9 +1804,20 @@ function step(w: World): void {
         b.x += wayX;
         b.y += wayY;
       }
+  // The rock held in her side (`spec.heel.rock`), from its time.
+  const rock = spec.heel?.rock;
+  if (rock && w.t >= rock.t)
+    for (const b of w.bodies)
+      if (!b.rock && b.mode === "float" && rock.x >= b.xFrom && rock.x <= b.xTo)
+        b.rock = { m: rock.massT * 1000, x: rock.x, y: rock.y, z: rock.z };
   if (!w.steady) {
     for (const b of w.bodies) {
       if (b.mode === "float" && b.frozen) continue;
+      // Her rest aground (`spec.aground`, a rule) once it has begun.
+      if (b.mode === "float" && b.aground) {
+        stepAground(b, w.realT + dt, w.floor);
+        continue;
+      }
       // Her way through the water, until she touches the floor.
       if (
         way !== 0 &&
@@ -1639,13 +1833,28 @@ function step(w: World): void {
           b,
           dt,
           girderNow,
-          DRIFT_MPS,
+          w.path ? 0 : DRIFT_MPS,
           w.lightsOut ? 0 : w.pumps,
-          -spec.seaDepthM,
+          floorFor(w, b),
           w.sea,
-          w.pumpDepth
+          w.pumpDepth,
+          (spec.heel?.wind ? windHeel(spec, b.yaw) : 0) +
+            (spec.heel?.muster ? musterHeel(spec, w.t) : 0)
         );
         touched(w, b);
+        // On a seabed or a drift path her way, once lost on the floor,
+        // leaves her where she touched: no sway, no slide.
+        if (w.holdOnFloor && w.wayLost && b.grounded && !b.hold)
+          b.hold = { x: b.x, y: b.y };
+        if (b.hold) {
+          b.x = b.hold.x;
+          b.y = b.hold.y;
+        }
+        if (!b.aground && agroundBegins(spec, b, w.wayLost)) {
+          b.aground = beginAground(spec, b, w.realT + dt, w.floor);
+          w.aground = true;
+          emit(w, "aground");
+        }
         updateBounds(b);
         if (girderNow) {
           girder(
@@ -1667,7 +1876,7 @@ function step(w: World): void {
           under(w, b);
         }
       } else if (b.mode === "fall") {
-        if (stepFall(b, dt, -spec.seaDepthM)) {
+        if (stepFall(b, dt, -spec.seaDepthM, b.floorFn)) {
           w.wayLost = true;
           // An intact hull is both: it lands as one (unless an end already
           // touched while she was afloat).
@@ -1678,14 +1887,14 @@ function step(w: World): void {
         }
       } else if (b.mode === "landing") {
         stepLanding(b, dt);
-        if (swingsDown(b) && sternDown(b, -spec.seaDepthM))
+        if (swingsDown(b) && sternDown(b, -spec.seaDepthM, b.floorFn))
           once(w, "stern-lands", "stern-lands");
       }
     }
   }
   // Her heading while she floats (1.4), held from when she went under, as
   // her way's; a body under turns by the descent's own yaw from there.
-  if (w.headway?.turn) {
+  if (!w.path && w.headway?.turn) {
     const end = w.realT + dt;
     const yaw = headingAt(
       w.headway,
@@ -1694,7 +1903,14 @@ function step(w: World): void {
     for (const b of w.bodies) if (b.mode === "float") turnTo(b, yaw);
   }
   w.realT += dt;
-  w.t += compressed ? dt / w.descentScale : dt;
+  w.t += compressed
+    ? dt / w.descentScale
+    : w.aground
+      ? dt / w.agroundScale
+      : dt;
+  // Her drift path (a rule) carries her while she floats with her way.
+  if (w.path && !w.wayLost && w.wayLostAt === null)
+    for (const b of w.bodies) if (b.mode === "float") onPath(w, b, w.t);
   if (!w.broken && w.girderState.worst >= 1 && w.bodies[0].mode === "float") {
     breakUp(w, w.girderState.worstX);
     emit(w, "breakup");
@@ -1729,13 +1945,20 @@ function step(w: World): void {
     w.timed.length === 0
   ) {
     for (const b of w.bodies) {
-      if (b.mode !== "float" || b.frozen) continue;
+      if (b.mode !== "float" || b.frozen || b.aground) continue;
+      // Still carried by her drift path (a rule): a frozen hull would glide
+      // on through rocks and shore without touching. Past its end she
+      // lies still and may freeze.
+      if (onTheWay(w)) continue;
       // A torpedo's holes (tens of m²) trade water with the sea in a slow
       // cycle of tiny steps around her level: for a torpedo ship the
-      // average also counts (the iceberg ships keep the 1.0 test exactly).
+      // average also counts (the iceberg ships keep the 1.0 test exactly);
+      // so do a rocks ship's gashes and the door between them.
       const still =
         (abs(b.netFlow) < STEADY_INFLOW_M3S ||
-          ((w.spec.cause === "torpedo" || w.spec.cause === "mine") &&
+          ((w.spec.cause === "torpedo" ||
+            w.spec.cause === "mine" ||
+            w.spec.cause === "rocks") &&
             abs(b.flowAvg) < STEADY_INFLOW_M3S)) &&
         abs(b.wp) < 1e-5 &&
         abs(b.wr) < (w.spec.cause === "mine" ? STEADY_MINE_ROLL_RADS : 1e-5) &&
@@ -1771,7 +1994,12 @@ function step(w: World): void {
       stationX: w.hull.xs,
       lowestZ: w.bodies.reduce((lo, b) => min(lo, lowestZ(b)), Infinity),
     });
-  if (w.bodies.every((b) => b.mode === "landed")) {
+  if (w.aground && w.bodies.some((b) => b.aground?.done)) {
+    // At her rest aground: a lost ship that did not go under.
+    emit(w, "floating-steady");
+    w.done = true;
+    w.outcome = "aground";
+  } else if (w.bodies.every((b) => b.mode === "landed")) {
     w.done = true;
     w.outcome = "sank";
   } else if (
@@ -1786,7 +2014,11 @@ function step(w: World): void {
     w.outcome = "floated";
   } else if (w.t >= w.endT) {
     w.done = true;
-    w.outcome = w.bodies.some((b) => b.mode === "float") ? "floated" : "sank";
+    w.outcome = w.aground
+      ? "aground"
+      : w.bodies.some((b) => b.mode === "float")
+        ? "floated"
+        : "sank";
   }
   if (w.done && w.frames[w.frames.length - 1].t < w.t) w.frames.push(frame(w));
 }

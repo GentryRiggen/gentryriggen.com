@@ -57,6 +57,13 @@ The Britannic's morning adds (see "The Britannic's morning" below):
 | `funnelWreck.ts` | Her fallen funnels: each sinks from where it toppled to its spot beside her wreck (funnel 1 by the boat deck, 2–4 off her stern) and lies there. |
 | `Coast.tsx`      | Per ship: the Cork coast (the Lusitania) or the Kea Channel (Kea, Makronisos, Attica, Port St Nikolo light).                                     |
 
+The Concordia's night adds (see "The Concordia's night" below):
+
+| File        | What                                                                                                                                                                               |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `giglio.ts` | Pure: Giglio's land (SRTM) and her floor (`floorAt`) as one grid, Le Scole and the struck rock, the island's lights, seagrass places, the strike's white water, her boats' way in. |
+| `Coast.tsx` | A third coastline: `GiglioCoast` (the land in one draw, the lights in another).                                                                                                    |
+
 Frame loop order (R3F priorities): driver −3 (pump the runner, advance `t`),
 ship rig −2, effects and the walk runner −1.5, camera −1, X-ray −0.9,
 environment −0.8, sky −0.7, sea reflection −0.5, then the composer renders
@@ -526,3 +533,142 @@ sun and colours. Added nothing beyond what she needs to read right.
   turbine and its condensers.
 - **Perf**: three scenes (`shipwreck-britannic-blast`, `-boats`,
   `-grounded`) at the top tier, hospital paint (Task 6 report).
+
+## The Concordia's night (1.9)
+
+- **Settings** (`SCENE_SETTINGS.concordia`): the Titanic's night look
+  (`timeOfDay: "night"`, the same starlight and fog) with the island
+  (`coast: true`), her heading 350° (`CONCORDIA_NIGHT`: 42.36° N 10.92° E,
+  21:45:07 CET = 20:45:07 UTC [MIT §3]), a thin broken cloud
+  (`clouds` 0.3: "partly cloudy" [MIT §2.3]), a light north-east chop on
+  the sea shader (`chop` 0.4, short waves running toward 225°: the wind
+  E-NE 17 kn, "rough sea NE 4" [MIT §2.3]; a look only, the sim's water is
+  still) and her own darker blue water under the surface. Every other
+  ship's settings deep-equal what they were (`settings.test.ts` against a
+  fixture written before her night was added).
+- **The moon** (`moonPosition`): the Astronomical Almanac's low-precision
+  lunar formulas (about 0.3°), topocentric, at the shown clock (the
+  frame's real seconds after 21:45:07). At the strike it is 4.5° under
+  the eastern horizon; it rises at about 22:05 at 91° (timeanddate.com:
+  moonrise at Rome 21:59 CET at 91°, Giglio 1.58° further west, about
+  6.5 minutes later); at her rest (00:41) it stands about 25° up at 119°,
+  a waning gibbous about 76% lit (timeanddate: 83.9% on the 13th, 74.5% on
+  the 14th). So her lit run and the strike are moonless; from 22:05 the
+  moon (disc, glow, its path on the chop, a faint blue-white directional
+  light) is in the east, over the sea, away from the island. The disc is
+  drawn round (no phase shape: a gibbous reads round at its size).
+- **The island** (`giglio.ts`, `Coast.tsx`, one draw): one grid over land
+  and sea (10 m where she sails, drifts and lies; 60–300 m out to the
+  edges). Offshore every vertex is her seabed's `floorAt` (the sim's own
+  floor: `giglio.test.ts` checks every floor vertex to 0.2 m); inland of
+  the same traced shoreline (`shoreDistance` < 0, [OSM]) the land climbs
+  from the shore at the profile's own slope, then the granite coast's
+  (never lower than that rise up to 70 m: SRTM's 200 m lattice carried
+  its sea-level samples a cell inland and drew flat sheets there), into
+  SRTM's heights 30–200 m in [SRTM: 1″ (30 m), sampled every
+  0.002° over 42.335–42.395° N, 10.870–10.934° E through OpenTopoData's
+  `srtm30m`], with ±6 m of hashed roughness (ours). So the drawn waterline
+  is the sim's shore (within 5 m along the fine grid's edges: tested).
+  South of where the traced shore begins (south of Giglio Porto) the land
+  slopes into the sea by the grid's edge, about 2 km short of the real
+  south cape (not drawn: never in her shots). Heights true: Poggio della
+  Chiusa 485 m, Giglio Castello about 400 m on the ridge [OSM]. Colours:
+  dark macchia over grey granite, bare granite at the shore [WC], with a
+  little of their own colour as light (×0.06) so the hill reads against
+  the stars.
+- **Le Scole** (`rockArrays`): each islet of her seabed as a granite lump
+  over its bump, standing out of the sea (`isletHeight`: 1.5 m + a quarter
+  of its radius, at most 10 m; not surveyed in any source we have, so
+  ours, to read from her decks at night). The rock she struck: the sim's
+  islet is a round bump (57.5 m deep under her side at the strike), but
+  the real rock reached her below the waterline [MIT §3, §4.7.2], so a
+  ridge runs from Scola piccola to her port side at frame 124, its face
+  0.3 m off her plating (`STRIKE_GAP_M`) from 1.5 m under the sea down to
+  the floor: it meets her as she passes and never goes into her. A look,
+  not physics (the sim's floor is unchanged). The rock left in her side
+  is the model's (from 7 s, in a run that opens WTC 4).
+- **Under water** (`Environment.tsx`): the grid's floor mesh (its own
+  draw, only from under the sea) coloured by depth: granite above 6 m,
+  Posidonia meadows broken by sand and boulders to about 35 m, sand and
+  mud below [WPP, MIT; Posidonia oceanica grows to about 35–40 m in clear
+  water, WP "Posidonia oceanica"; the meadows round her wreck, WPS
+  "environmental concerns"]; the spurs (`SPURS`) as granite lumps; and
+  about 2,600 seagrass clumps (five narrow blades, about a metre) as one
+  instanced draw on the meadows round where she lies. The submersible
+  lamp is full on from 4 m down and the ambient light under her is 0.6
+  (the Titanic's 0.25) so the shallow shelf reads.
+- **Reflections**: her night's sea takes four more taps of the planar
+  reflection, stretched up and down the water (`SOFT_MIRROR`), so the
+  harbour's small bright lights do not show the mips' squares.
+- **The lights** (`giglioLights`, one draw of points): Giglio Porto's,
+  Arenella's and Giglio Castello's houses [OSM building outlines' centres:
+  a third of the Porto's, a quarter of the Castello's], one to three lit
+  windows each (one, at under half the brightness, in Giglio Castello, whose
+  close-packed houses 1.5 km off otherwise ran together into one glow),
+  warm (a few cool); sodium lamps every 30 m along the harbour's
+  quay; the two mole lights [OSM seamarks]: E 1488 on the Molo Rosso
+  (the eastern breakwater), flashing red every 3 s (0.5 s on), 9 m, 7
+  nmi, and E 1490 on the Molo Verde (the northern one), flashing green
+  every 3 s, 9 m (Lighthouse Digest: a green conical tower). Their towers
+  are small red and green columns in the land's draw. No people.
+- **Her rails** are unlit lines in their paint's colour (white): for a
+  ship with a blackout they dim with her lights (`dimRails`), to her
+  emergency level after `lights-out`, so they do not glow.
+- **Her lights** (`ShipRig.tsx`): lit end to end until the sim's
+  `lights-out`; then a 2.5 s flicker (`blackoutFlicker`) and only her
+  emergency panes, the model's fixed mask at `blackout.emergencyLight`
+  (`setEmergency`; 0 before `lights-out`, so a seek back before it, or
+  another ship, has none), her deck lamps at a quarter of that level.
+- **The strike** (`strikeSpray`, `Effects.tsx`): from the first
+  `collision` until the rock lodges, white water thrown up and trailing
+  aft along her port side at the waterline, where the rock is (it stays
+  put while she runs on past it: frame 124 less how far she has run,
+  never aft of frame 52). It lodges (`rockLodgedT`) when Le Scole's tip
+  reaches frame 52 along her side, about 13 s in at her sim's 8.3 kn (the
+  gash's 7 s assumes her 15.5 kn); the model's rock shows in her side
+  from then, so it is the islet's. Once a run; none without a collision
+  (no spots: she sails past).
+- **Her boats** (R19): lowered as the sim's `boat-lowered` events say
+  (starboard first from 22:55, then port; three port boats stay), then
+  motoring in to Giglio Porto (`boatRoute`: out from her side, a port
+  boat round her bow, to a fan of slots off the harbour mouth between the
+  mole lights) at a lifeboat's 6 knots by the run's real time (`realT`:
+  18 shown m/s on the aground clock's sixth of real time, 3 m/s blown out
+  to sea), each with a small white lamp. No people.
+- **Camera**: `CONCORDIA_HULL_BOXES` (the Carpathia's rule on her data:
+  her hull and superstructure blocks, deck 14 at 50.6 m). The ground
+  (`groundFor("concordia")`: the island's land and her sloping floor)
+  replaces the flat floor for the camera's clamp (`clampAboveGround`) and
+  for `keepClear`'s faces, so no camera goes under her floor, into the
+  island, or into her lying at 65° (`cameraMath.test.ts`: 720 orbit
+  points round her rest). Her cinematic shots: `giglio` (the title and
+  her lit run past the island, from her starboard bow on the sea side),
+  `giglio-strike` (0–40 s, low on her port quarter: the white water and
+  the rock), `giglio-drift` (out to sea from her, looking in: Giglio
+  Porto behind her), `giglio-boats` (between her and the harbour, to
+  seaward: the boats going in), `giglio-aground` (from the sea off her
+  port side: her bottom half out of the water, the harbour's lights
+  beyond). Her underwater view: when a spur lies under her, low across
+  the shelf at its granite with her starboard side lying on it (60–75 m
+  off, the first clear bearing round from her starboard beam toward her
+  stern); else ahead of her bow, looking aft at her starboard bilge. Bridge: her starboard wing on deck
+  8; stern: the aft terraces on deck 9.
+- **The other outcomes**: no spots (no `collision`) sails past lit, no
+  white water; four compartments rest at about 17° on the shelf; "blown
+  out to sea" sinks stern first in 146–150 m (the profile 2 km out),
+  where the floor mesh is deep and coarse: no island floor under her.
+- **Perf**: three scenes (`shipwreck-concordia-salute`: lit, passing the
+  island before the strike; `-drift`: 22:33, after the blackout, listing
+  about 10°, the harbour behind; `-aground`: on her side, the harbour's
+  lights) at the top tier (Task 6 report). The island (grid, normals, rocks, lights,
+  seagrass and its instance matrices) is built a step at a time
+  (`giglioBuild`, a generator: 762 steps, the longest 1.5 ms in node, 44 ms
+  in all) by `GiglioBuild` each frame, 1.5 ms while her night computes and
+  6 ms after, so no frame is blocked; the island and its floor appear when
+  it is done (about a second in) and the CPU arrays are kept for the page
+  (the GPU copies are disposed with the components). The camera's ground
+  (`concordiaGround`) costs about 0.5 µs a call (the seabed's per-cell
+  shore candidates), about 0.01 ms a frame.
+- **Attribution**: coastline, buildings, harbour lights and place names
+  © OpenStreetMap contributors (ODbL), https://www.openstreetmap.org/copyright.
+  Heights: NASA SRTM (public domain), through OpenTopoData.

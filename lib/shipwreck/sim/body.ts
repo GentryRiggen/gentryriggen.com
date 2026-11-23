@@ -196,6 +196,90 @@ export interface Body {
   doors?: DoorLink[];
   /** The ram head this step (m, Cp·u²/2g) on its `ram` openings; missing: 0. */
   ramHead?: number;
+  /** `spec.boxWaterAtSide`: its boxes' water weighs at its own y. */
+  boxWaterAtSide?: boolean;
+  /**
+   * The floor under an earth x, y (`spec.seabed`'s `floorAt`): the floor
+   * contact looks it up under each hull point. Missing: the flat floor.
+   */
+  floorFn?: FloorFn;
+  /** Farthest any hull vertex is from the origin (m), for the floor bound. */
+  floorReach?: number;
+  /** With `floorFn`: a bound on the floor's slope within `FLOOR_MEMO_M`
+   *  of an earth x, y (seabed.ts `seabedSlopeNear`), for `floorNear`. */
+  floorSlope?: FloorFn;
+  /** `floorNear`'s memo: per `floorPts` vertex the earth x, y, floor z
+   *  and slope bound of its last lookup. */
+  floorMemo?: Float64Array;
+  /** A mass held in her (`spec.heel.rock`, from its time): kg, ship frame. */
+  rock?: { m: number; x: number; y: number; z: number };
+  /** Her earth x, y held once her way is lost on the floor (`seabed` or a
+   *  drift path: no sway, no slide), or missing. */
+  hold?: { x: number; y: number };
+  /** The rest aground (`spec.aground`), once it has begun. */
+  aground?: AgroundState;
+}
+
+/** The floor's earth z under an earth x, y. */
+export type FloorFn = (x: number, y: number) => number;
+
+// Module constants: global lookups (Infinity) are slow in test sandboxes.
+const NO_FLOOR = -Infinity;
+
+/** How far (m) a hull vertex may move before its slope bound is renewed. */
+export const FLOOR_MEMO_M = 10;
+
+/**
+ * The floor (earth z) under `floorPts` vertex `k` at earth x, y, looked up
+ * with `floor`, when it may reach the vertex's earth z; −∞ when it cannot
+ * (the vertex is clear by more than the floor can rise since its last
+ * lookup: that lookup's floor plus `floorSlope` × the distance moved).
+ * Only the speed changes: a vertex skipped is one whose depth into the
+ * floor is ≤ 0, which the floor code ignores anyway. A body without
+ * `floorSlope` looks up every vertex.
+ */
+export function floorNear(
+  b: Body,
+  floor: FloorFn,
+  k: number,
+  x: number,
+  y: number,
+  z: number
+): number {
+  const slope = b.floorSlope;
+  if (!slope) return floor(x, y);
+  // Four numbers a vertex, as `floorPts` has.
+  const n = b.floorPts.length;
+  let m = b.floorMemo;
+  if (!m || m.length !== n) {
+    m = new Float64Array(n).fill(NaN);
+    b.floorMemo = m;
+  }
+  const i = k * 4;
+  const dx = x - m[i];
+  const dy = y - m[i + 1];
+  const moved = sqrt(dx * dx + dy * dy);
+  // (NaN before the first lookup: every test fails, so it looks up.)
+  if (moved <= FLOOR_MEMO_M && m[i + 2] + m[i + 3] * moved < z - 1e-6)
+    return NO_FLOOR;
+  const f = floor(x, y);
+  m[i] = x;
+  m[i + 1] = y;
+  m[i + 2] = f;
+  m[i + 3] = slope(x, y);
+  return f;
+}
+
+/** The rest aground under way (`spec.aground`, a rule). */
+export interface AgroundState {
+  /** Roll pace from where it began: [real s, |roll| rad], ascending. */
+  pace: [number, number][];
+  /** Her rest (rad, signed as roll). */
+  rest: number;
+  /** How deep her lowest point was in the floor when it began (m). */
+  seat: number;
+  /** She has reached her rest. */
+  done: boolean;
 }
 
 /** Earth up in the ship frame. */
@@ -324,9 +408,17 @@ function massProps(b: Body): { ip: number } {
     m += w;
     mx += w * c.wx;
     // Cabins and corridors cut the superstructure up: its water cannot
-    // run across the ship.
-    my += c.box ? 0 : w * c.wy;
+    // run across the ship (1.0), unless it lies where it came in
+    // (`spec.boxWaterAtSide`).
+    my += c.box ? (b.boxWaterAtSide ? w * c.wy : 0) : w * c.wy;
     mz += w * c.wz;
+  }
+  const rock = b.rock;
+  if (rock) {
+    m += rock.m;
+    mx += rock.m * rock.x;
+    my += rock.m * rock.y;
+    mz += rock.m * rock.z;
   }
   b.mass = m;
   b.gx = mx / m;
@@ -342,6 +434,7 @@ function massProps(b: Body): { ip: number } {
     const len = c.slice.xTo - c.slice.xFrom;
     ip += w * ((c.wx - b.gx) ** 2 + (len * len) / 12);
   }
+  if (rock) ip += rock.m * (rock.x - b.gx) ** 2;
   return { ip };
 }
 
@@ -360,7 +453,8 @@ export function stepFloat(
   pumps = 0,
   floorZ = -Infinity,
   sea: DeckSea | null = null,
-  pumpDepth = PUMP_DEPTH_M
+  pumpDepth = PUMP_DEPTH_M,
+  heelM = 0
 ): void {
   const [nx, ny, nz] = upOf(b);
   updateBounds(b);
@@ -586,7 +680,8 @@ export function stepFloat(
   const wp2 = (a11 * r2 - a12 * r1) / det;
   const ct = 0.5 * rho * AXIAL_CD * front * abs(vt);
   const vt2 = (mt * vt + ft * dt) / (mt + ct * dt);
-  const wr2 = (ir * b.wr + tauR * dt) / (ir + cr0 * dt);
+  // An outside heeling moment (`spec.heel`: wind, N·m, + to starboard).
+  const wr2 = (ir * b.wr + (tauR + heelM) * dt) / (ir + cr0 * dt);
   const wp0 = b.wp;
   b.an = (vn2 - vn) / dt;
   b.alpha = (wp2 - wp0) / dt;
@@ -620,6 +715,40 @@ export function stepFloat(
   b.x = gex - g1[0];
   b.y = gey - g1[1];
   b.z = gez - g1[2];
+}
+
+/**
+ * For tests and tools: the buoyancy and weight (N) at the body's pose and
+ * the roll moment about its centre of mass (N·m, + to starboard), from the
+ * floating step's own sums (every envelope's sea clip, the water's levels,
+ * the mass). Moves nothing.
+ */
+export function staticForces(b: Body): {
+  fb: number;
+  weight: number;
+  tauR: number;
+} {
+  const [nx, ny, nz] = upOf(b);
+  updateBounds(b);
+  let vol = 0;
+  let bmx = 0;
+  let bmy = 0;
+  let bmz = 0;
+  for (const c of b.all) {
+    cellSea(c, nx, ny, nz, b.z, false);
+    vol += c.seaVol;
+    bmx += c.seaMx;
+    bmy += c.seaMy;
+    bmz += c.seaMz;
+  }
+  for (const c of b.all) solveLevel(c, nx, ny, nz, b.z, false);
+  massProps(b);
+  const bx = vol > 0 ? bmx / vol : b.gx;
+  const by = vol > 0 ? bmy / vol : b.gy;
+  const bz = vol > 0 ? bmz / vol : b.gz;
+  const r = rotate(b.pitch, b.roll, bx - b.gx, by - b.gy, bz - b.gz);
+  const fb = b.rho * GRAV * vol;
+  return { fb, weight: b.mass * GRAV, tauR: r[1] * fb * cos(b.pitch) };
 }
 
 // Scratch for the floor contact (grown as needed).
@@ -706,12 +835,21 @@ function floorContact(
   const cp = cos(b.pitch);
   const sp = sin(b.pitch);
   const mid = (b.xFrom + b.xTo) / 2;
+  // A seabed (`spec.seabed`): the floor under each point, at its earth
+  // x, y (the origin plus its ship x, y turned by her heading).
+  const fn = b.floorFn;
+  const cy = fn ? cos(b.yaw) : 1;
+  const sy = fn ? sin(b.yaw) : 0;
   let n = 0;
   for (let p = 0; p < np; p += 1) {
     const x = pts[p * 4];
     const y = pts[p * 4 + 1];
     const z = pts[p * 4 + 2];
-    const d = floorZ - (b.z + nx * x + ny * y + nz * z);
+    const zp = b.z + nx * x + ny * y + nz * z;
+    const fz = fn
+      ? floorNear(b, fn, p, b.x + cy * x - sy * y, b.y + sy * x + cy * y, zp)
+      : floorZ;
+    const d = fz - zp;
     if (d <= 0) continue;
     const r = rotate(b.pitch, b.roll, x - b.gx, y - b.gy, z - b.gz);
     fIdx[n] = p;

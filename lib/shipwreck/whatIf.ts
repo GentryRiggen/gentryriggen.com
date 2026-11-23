@@ -59,6 +59,8 @@ export function spotAria(spec: ShipSpec, id: string, on: boolean): string {
     return `${label}: ${on ? "a torpedo hits here" : "no torpedo"}`;
   if (spec.cause === "mine")
     return `${label}: ${on ? "a mine hits here" : "no mine"}`;
+  if (spec.cause === "rocks")
+    return `${label}: ${on ? "the rock tears it open" : "not torn"}`;
   return `${label}: ${on ? "open" : "closed"}`;
 }
 
@@ -152,3 +154,21 @@ export const MINE_TOGGLES: readonly MineToggle[] = [
     help: "She steamed for the shore of Kea. Moving pushes water in.",
   },
 ];
+
+/**
+ * A rocks ship's one What-if toggle (the Costa Concordia's): the wind that
+ * pushed her back onto the rocks, or blowing her out to sea instead. On is
+ * the real night (back to the island).
+ */
+export const TO_SEA_TOGGLE = {
+  icon: "wind" as const,
+  /** The button's words, on (the real night's wind) or off (out to sea). */
+  label: (toSea: boolean) => (toSea ? "Wind out to sea" : "Wind to the island"),
+  /** Its spoken label, with what tapping it does. */
+  aria: (toSea: boolean) =>
+    toSea
+      ? "The wind blows her out to sea: tap to blow her back to the island"
+      : "The wind blows her back to the island: tap to blow her out to sea",
+  /** One short line under it: what the wind did on the real night. */
+  help: "On the real night the wind pushed her back toward the island.",
+};

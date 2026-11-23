@@ -129,8 +129,10 @@ describe("the Lusitania's words", () => {
     }
     // She fired no rockets; her lights failed early, then went out; she
     // had no storm (no hatch covers to fail, no shelter to reach); her
-    // torpedoes all land in the collision caption (no `torpedo-hit`).
+    // torpedoes all land in the collision caption (no `torpedo-hit`); she
+    // never rests aground (no `spec.aground`).
     expect([...new Set(none)].sort()).toEqual([
+      "aground",
       "hatch-fails",
       "lights-flicker",
       "radio",

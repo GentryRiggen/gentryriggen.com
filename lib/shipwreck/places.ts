@@ -4,6 +4,7 @@ import {
   CARPATHIA_BRIDGE_DECK,
   carpathia,
 } from "./ships/carpathia";
+import { CONCORDIA_BOATS, concordia } from "./ships/concordia";
 import { FITZGERALD_HATCHES, fitzgerald } from "./ships/fitzgerald";
 import { lusitania } from "./ships/lusitania";
 import { titanic } from "./ships/titanic";
@@ -67,13 +68,25 @@ export const BRITANNIC_PLACE_IDS = [
   "turbine-room",
 ] as const;
 
+/** The Costa Concordia's places. */
+export const CONCORDIA_PLACE_IDS = [
+  "bridge",
+  "the-rock",
+  "motor-room",
+  "generator-room",
+  "lifeboat",
+  "funnel",
+  "pool",
+] as const;
+
 /** Any ship's place (looked up with the ship: several have a bridge). */
 export type PlaceId =
   | TitanicPlaceId
   | (typeof LUSITANIA_PLACE_IDS)[number]
   | (typeof FITZGERALD_PLACE_IDS)[number]
   | (typeof CARPATHIA_PLACE_IDS)[number]
-  | (typeof BRITANNIC_PLACE_IDS)[number];
+  | (typeof BRITANNIC_PLACE_IDS)[number]
+  | (typeof CONCORDIA_PLACE_IDS)[number];
 
 export interface Place {
   id: PlaceId;
@@ -530,6 +543,113 @@ export const BRITANNIC_PLACES: Record<
   },
 };
 
+/**
+ * The Costa Concordia's places, from her data and her model: her bridge on
+ * deck 8 behind its band of windows, the rock stuck in her port side at
+ * frame 52 [MIT], the electric motor room (WTC 5) and the back generator
+ * room (WTC 6) the sea reached first, a starboard lifeboat on deck 4, her
+ * yellow funnel with the blue "C", and the pool under its glass roof on
+ * deck 12.
+ */
+const C_DECK_REF = concordia.depth;
+/** A deck's height at x (the model's rule: the sheer over her deck 3). */
+const cDeckZ = (name: string, x: number) =>
+  (concordia.decks.find((d) => d.name === name)?.z ?? 0) +
+  (concordia.sheerZ(x) - C_DECK_REF);
+const cComp = (id: string) =>
+  concordia.compartments.find((c) => c.id === id) as {
+    id: string;
+    fromX: number;
+    toX: number;
+  };
+const cMid = (id: string) =>
+  Math.round(((cComp(id).fromX + cComp(id).toX) / 2) * 10) / 10;
+/** The deepest deck inside her: where the engine spaces' floor is. */
+const CC_TANK_TOP = 1.6;
+const CC_BRIDGE_X = 118;
+const C_ROCK_X = concordia.heel?.rock?.x ?? -86;
+const C_ROCK_COMP =
+  concordia.compartments.find((c) => c.fromX <= C_ROCK_X && C_ROCK_X < c.toX)
+    ?.id ?? "wtc4";
+const C_BOAT = CONCORDIA_BOATS[6];
+const C_FUNNEL = concordia.funnels[0];
+
+export const CONCORDIA_PLACES: Record<
+  (typeof CONCORDIA_PLACE_IDS)[number],
+  Place
+> = {
+  bridge: {
+    id: "bridge",
+    label: "Bridge",
+    fact: "A long room of big windows high at her front, where she was steered from. When the lights went out, her engines and her rudder stopped working.",
+    at: [CC_BRIDGE_X, 0, cDeckZ("8", CC_BRIDGE_X) + 1.6],
+    floorZ: cDeckZ("8", CC_BRIDGE_X),
+    compartmentId: null,
+    interior: true,
+    view: [-16, -14, 8],
+  },
+  "the-rock": {
+    id: "the-rock",
+    label: "The Rock",
+    fact: "A pointed rock from the reef called Le Scole. It tore a long gash in her left side, about 53 metres long, and a piece of it stayed stuck in her hull.",
+    at: [C_ROCK_X, 13, 4],
+    floorZ: CC_TANK_TOP,
+    compartmentId: C_ROCK_COMP,
+    interior: true,
+    view: [-6, 30, 8],
+  },
+  "motor-room": {
+    id: "motor-room",
+    label: "Electric Motor Room",
+    fact: "Giant electric motors here turned her propellers. The rock opened her side next to this room, and the sea filled it in a few minutes.",
+    at: [cMid("wtc5"), 0, 5],
+    floorZ: CC_TANK_TOP,
+    compartmentId: "wtc5",
+    interior: true,
+    view: [-14, 20, 10],
+  },
+  "generator-room": {
+    id: "generator-room",
+    label: "Generator Room",
+    fact: "Big engines here made the electricity for the whole ship. When the sea reached them, her main lights went out, and small emergency lights came on.",
+    at: [cMid("wtc6"), 0, 5],
+    floorZ: CC_TANK_TOP,
+    compartmentId: "wtc6",
+    interior: true,
+    view: [-14, 20, 10],
+  },
+  lifeboat: {
+    id: "lifeboat",
+    label: "Lifeboat",
+    fact: "She carried 26 big lifeboats, each with room for 150. They hung high on her sides, and were lowered down to the water one by one.",
+    at: [C_BOAT.x, -14.4, cDeckZ("4", C_BOAT.x) + 1.4],
+    floorZ: cDeckZ("4", C_BOAT.x),
+    compartmentId: null,
+    interior: false,
+    view: [-12, -26, 7],
+  },
+  funnel: {
+    id: "funnel",
+    label: "Funnel",
+    fact: "Her one big yellow funnel, with a blue letter C for Costa, the company that owned her. It stood far back, over her engines.",
+    at: [C_FUNNEL.x, 0, C_FUNNEL.baseZ + 2],
+    floorZ: C_FUNNEL.baseZ,
+    compartmentId: null,
+    interior: false,
+    view: [-14, -26, 6],
+  },
+  pool: {
+    id: "pool",
+    label: "Pool",
+    fact: "A swimming pool high on her top decks, under a glass roof that could slide open. The deck outside it looked all the way along the ship.",
+    at: [16, 0, cDeckZ("12", 16) + 1.4],
+    floorZ: cDeckZ("12", 16),
+    compartmentId: null,
+    interior: true,
+    view: [-16, -16, 8],
+  },
+};
+
 /** Each ship's places, in the order the HUD lists them. */
 export const PLACES_BY_SHIP: Record<ShipId, readonly Place[]> = {
   titanic: PLACE_IDS.map((id) => PLACES[id]),
@@ -537,6 +657,7 @@ export const PLACES_BY_SHIP: Record<ShipId, readonly Place[]> = {
   fitzgerald: FITZGERALD_PLACE_IDS.map((id) => FITZGERALD_PLACES[id]),
   carpathia: CARPATHIA_PLACE_IDS.map((id) => CARPATHIA_PLACES[id]),
   britannic: BRITANNIC_PLACE_IDS.map((id) => BRITANNIC_PLACES[id]),
+  concordia: CONCORDIA_PLACE_IDS.map((id) => CONCORDIA_PLACES[id]),
 };
 
 /** A ship's place by id, or null if she has none by that id. */

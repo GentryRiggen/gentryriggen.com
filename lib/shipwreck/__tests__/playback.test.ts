@@ -26,6 +26,7 @@ import {
 import type { Speed } from "../types";
 import { walkInput } from "../walk";
 import { britannic } from "../ships/britannic";
+import { concordia } from "../ships/concordia";
 import { fitzgerald } from "../ships/fitzgerald";
 import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
@@ -846,5 +847,42 @@ describe("playback: a mine ship's What if (1.4)", () => {
       portholesOpen: true,
     });
     expect(made[1]).toEqual({ portholesOpen: true });
+  });
+});
+
+describe("playback: the Costa Concordia", () => {
+  it("passes the wind out to sea to her sim, and no other option", () => {
+    const made: { toSea?: boolean }[] = [];
+    const store = createPlaybackStore({
+      createRunner: (_s, _o, options) => {
+        made.push({ toSea: options.toSea });
+        return fakeRunner(100, 100);
+      },
+    });
+    store.getState().start(concordia, concordia.realNight);
+    store.getState().start(concordia, concordia.realNight, { toSea: true });
+    expect(made).toEqual([{ toSea: undefined }, { toSea: true }]);
+  });
+
+  it("plays her 40 s run-in before the rock's first hole (it reaches it in under a second)", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    store.getState().start(concordia, concordia.realNight);
+    expect(store.getState().minT).toBe(-40);
+    expect(store.getState().t).toBe(-40);
+  });
+
+  it("plays her run-in whichever rooms the rock opens, or none", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    for (const ids of [["wtc4"], ["wtc8"], ["wtc7", "wtc8"], []]) {
+      store.getState().start(concordia, whatIfOpenings(concordia, ids));
+      expect(store.getState().minT).toBe(-40);
+    }
+    // Other ships keep their rule: no hole at the first moment, no run-in.
+    store.getState().start(lusitania, []);
+    expect(store.getState().minT).toBe(0);
   });
 });

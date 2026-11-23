@@ -2,9 +2,9 @@
 
 The procedural ships: each built at load from its ship data
 (`lib/shipwreck/ships/titanic.ts`, `lusitania.ts`, `fitzgerald.ts`,
-`carpathia.ts`, `britannic.ts`) and a detail recipe (`titanicRecipe.ts`,
-`lusitaniaRecipe.ts`, `fitzgeraldRecipe.ts`, `carpathiaRecipe.ts`,
-`britannicRecipe.ts`; `recipeFor(spec, livery?)` picks by `spec.id`, and by
+`carpathia.ts`, `britannic.ts`, `concordia.ts`) and a detail recipe
+(`titanicRecipe.ts`, `lusitaniaRecipe.ts`, `fitzgeraldRecipe.ts`,
+`carpathiaRecipe.ts`, `britannicRecipe.ts`, `concordiaRecipe.ts`; `recipeFor(spec, livery?)` picks by `spec.id`, and by
 livery for a ship with more than one: see "Liveries" below). Nothing is
 downloaded: every texture is drawn into a canvas once.
 
@@ -20,6 +20,8 @@ downloaded: every texture is drawn into a canvas once.
 | `dazzle.ts`           | Her 1918 dazzle scheme as shapes (pure data; port and starboard differ).                                                                                                                                                                                         |
 | `britannicRecipe.ts`  | The Britannic's: her sister's recipe with the hospital paint (`bandPaintAt`), five gantry davit sets, Welin davits, A/B deck screens, "G.618", the bow's hinge.                                                                                                  |
 | `britannicLivery.ts`  | Her two paints on one built model (R23): `britannicModelRecipe`, `attachBritannicLivery`, her `handles.setLivery("hospital" \| "liner")`.                                                                                                                        |
+| `concordiaRecipe.ts`  | The Costa Concordia's: her tiers, boat recess, balconies, stepped front and terraces, bridge wings, spa, pool glass, slide, radar mast and domes, one funnel with the "C", 26 boats, twin screws and rudders, the rock's place.                                  |
+| `rock.ts`             | The rock stuck in her side (R21): `createRockMesh`, `disposeRockMesh`.                                                                                                                                                                                           |
 | `bowBend.ts`          | The bent bow (R12): `hardLandingAt`, `bowBend(t, landedAt)`, `bendShipPoint`, `applyBowBend`.                                                                                                                                                                    |
 | `breakCut.ts`         | The jagged tear through `breakX` and which half a point belongs to.                                                                                                                                                                                              |
 | `buildShip.ts`        | Recipe to merged triangle lists per material, instance lists and line lists, for the whole ship or one half; quality tiers.                                                                                                                                      |
@@ -29,7 +31,7 @@ downloaded: every texture is drawn into a canvas once.
 | `shipModel.ts`        | Assembles the three.js tree and the handles.                                                                                                                                                                                                                     |
 | `TitanicModel.tsx`    | The R3F component (any ship: `spec`).                                                                                                                                                                                                                            |
 | `pose.ts`             | `applyBodyPose`: a sim `BodyPose` onto a part.                                                                                                                                                                                                                   |
-| `ModelViewer.tsx`     | The checking stage at `/shipwreck?model` (`&ship=lusitania`, `fitzgerald`, `carpathia` or `britannic`, `&livery=<id>`, e.g. `cunard-1907` or `grey-1918`; `setModelView({ livery })` repaints live; dev and e2e builds only).                                    |
+| `ModelViewer.tsx`     | The checking stage at `/shipwreck?model` (`&ship=lusitania`, `fitzgerald`, `carpathia`, `britannic` or `concordia`, `&livery=<id>`, e.g. `cunard-1907` or `grey-1918`; `setModelView({ livery })` repaints live; dev and e2e builds only).                       |
 
 Frames: built in the ship frame (x forward, y to port, z up from the keel at
 midships) and written in three.js axes (`three.x = x`, `three.y = z`,
@@ -1124,3 +1126,178 @@ and `setModelView({ livery })` swaps it live.
   by a draw range. One draw more. A paint that recolours her masts must
   also reach this mesh (`foremast.group`, mesh `"mast"`): both looks'
   masts are buff today, so the swap leaves it alone.
+
+## The Costa Concordia
+
+`concordiaRecipe.ts`, as she was on the night of 13 January 2012: a
+modern cruise ship, so most of her parts are her own (`slides`,
+`radomes`, `canisters`, `thrusters`, `rock`, the rudder's `ys`, a
+funnel `emblem`'s `letterOnly` and `realOnly`, a lifeboat paint's
+`cover`, a light's `emergency`: all optional recipe fields, so every
+other recipe builds exactly as before; the fixtures pass). Her hull,
+decks, funnel and boats come from her data (`concordia.ts`); the rest is
+measured off the photographs below.
+
+| Tier   | Draws (day / night) | Triangles | Build (first, dev server) |
+| ------ | ------------------- | --------- | ------------------------- |
+| high   | 12 / 29             | 156,904   | 64–73 ms (Titanic 63 ms)  |
+| medium | 10                  | 93,356    | 21–23 ms (Titanic 15–16)  |
+| low    | 10                  | 65,822    |                           |
+
+Her budget at high is 100 draws and 330k triangles. Her part build in
+node (median of 12, high): 16.9 ms against the Titanic's 15.1 ms (+12 %);
+medium 11.4 against 8.9 ms (+28 %). Balcony glass and partitions are
+painted boxes in the one paint list, her 1,609 windows and doors one
+instanced pane mesh, her boats one instanced mesh, the slide one tube in
+the paint list. Medium and low drop her rails (as every ship's).
+
+### Sources
+
+Photographs on Wikimedia Commons, "Category:Costa Concordia (ship,
+2006)":
+
+- **[M]** "Cruise ship Costa Concordia scale model (on board of the same
+  cruise ship)": the builder's model, a near-true broadside of her
+  starboard side. Every length and height below is measured off it
+  (290.2 m stem head to stern over 912 px: about ±1.5 m), and checked
+  against [P1]–[P3].
+- **[P1]** "Costa Concordia in Palma, Majorca, Spain" (starboard bow
+  quarter, 2007): the hull's window rows, the boat recess and its 13
+  boats, the name over the boats, the balcony rows, the stepped front.
+- **[P2]** "Costa Concordia in 2009" (starboard bow, Barcelona): the
+  blue line at her waterline, the bow name, the bridge and its wings out
+  to her full beam, the spa's dark glass front over it, the radar mast,
+  the radomes, the black top of the funnel.
+- **[P3]** "Costa Concordia - Vollansicht" (port side from aft, Savona):
+  the funnel's black exhaust top over the yellow (about 30 % of what
+  shows), the "C", the yellow water slide forward, the stepped stern
+  terraces, the name on the stern.
+- **[P4]** "CostaConcordiaLasPalmas" (starboard broadside, Palma): the
+  dark glass roof sloping down fore and aft of the funnel, the dark glass
+  sides of the midships pool, the slide forward of midships.
+- **[P5]** "Costa Concordia at Valletta" and "Costa Concordia 2011-10-07"
+  (bow on, Malta): the stepped front, deck by deck, the bridge's band of
+  windows on the sixth tier over her hull, the spa's curved front.
+- **[P6]** "Costa Concordia - Rettungsboot" (a lifeboat close): white
+  lower hull, orange upper hull and canopy, hung in its davits under the
+  deck over it.
+- **[P7]** "Costa Concordia - Der Bug" (the bow close): the liferaft
+  canisters in their rack at the forward end of the boat recess, the
+  window pairs, the blue-tinted balcony glass.
+- **[P8]** "Cruise ship Costa Concordia lido deck (detail)": the teak pool
+  deck, the funnel's black cage top, the open lido under its roof.
+- **[P9]** "Costa Concordia - fährt rückwärts aus dem Hafen" (bow on,
+  Savona): the stepped front's tiers and the bridge wings.
+- **[W]** the wreck from the sea, "Costa Concordia Wreck 11sept2012":
+  the funnel, the radomes and the stepped tiers on her side.
+- Text: Wikipedia "Costa Concordia" [WPC]: 13 public decks (deck 0 the
+  engine room), about 1,500 cabins of which 505 with balconies, the
+  two-level Samsara Spa, four pools of which two under retractable
+  roofs, two fixed-pitch propellers on two 21 MW motors.
+
+### What is hers
+
+- **Hull** (her data's lines): white over a dark blue line at her
+  waterline over the red antifouling ([P2], [M]; the "blue stripe"
+  [MIT §4.7.2]): red to 7.6 m, blue to 9.0 m (the 8.12 m waterline in
+  its middle), white above; a welded hull, so the plating's relief is a
+  quarter of the liners'.
+- **Name**: "COSTA CONCORDIA" in blue serif capitals on both bows (low on
+  the flare, [P2]), along both sides over the boat recess forward of
+  midships ([P1], [M]), and on the stern over "GENOVA" ([P3]).
+- **Windows**: decks 1–3 small square cabin windows about 3 m apart in
+  the hull ([P1], [P2]); big restaurant windows in her stern on decks
+  3–5 and across its after face (the two dark bands aft in [M]); deck 6
+  over the boats windows in threes ([P1], [P7]).
+- **Balconies** (`CONCORDIA_BALCONY_DECKS`): decks 7–10 from x −100 to
+  +96 ([M]: the four blue rows from aft of the funnel to the forward
+  cabins), each cabin 3.6 m wide with white partitions, its door set
+  1.8 m in and a blue-tinted glass front at her side ([P7]). Forward and
+  aft of them, cabin windows.
+- **Stepped terraces aft**: decks 7–11 each end a few metres further
+  forward than the one below ([P3], [M]), teak on top.
+- **Stepped front, bridge and wings**: decks 6–11 end at 138, 136, 132,
+  128, 124 and 120 m (the superstructure reaches to 11 m aft of the stem
+  head at deck 6, [M]), each rounded; the bridge on deck 8 (the sixth
+  tier over her hull top at deck 3, [P5]) with a band of big windows and
+  its wings out to her full beam ([P2], [P9]).
+- **Spa** (the Samsara Spa, two levels [WPC]): decks 12–13 over the
+  bridge, x 58–116, its rounded front in big dark windows ([P2], [P5]);
+  the sports deck on its roof (a blue court) with the radar mast.
+- **Pools and glass roofs**: the midships pool's dark glass sides and its
+  glass dome (a retractable roof [WPC]) at x −2 to 34 ([M], [P4]); the
+  aft pool's dark glass roof sloping down fore and aft of the funnel
+  ([P4]: drawn as a low glass house under a glass vault fore and aft of
+  the funnel); an open pool aft and one forward ([P8]).
+- **Water slide**: yellow, coiling down from a white tower on the pool
+  deck at x 42, to starboard of the middle ([M], [P3], [P4]).
+- **Funnel**: one, an upright oval 15 m long and about 9 m wide, its
+  middle 87 m from her stern (x −52) and its top 66.5 m over the keel
+  ([M]: 18.7 m showing over the top deck, black top 32 % of it), Costa
+  yellow with a black exhaust top ([P2], [P3], [P8]) and the big blue "C"
+  on both sides, half as tall as the yellow, in her real paint only.
+- **Lifeboats**: 26, 13 a side ([MIT §4.5]; [P1] counts 13 starboard),
+  x −84 to +84 about 14 m apart ([M]), 10.8 by 3.9 m (150-person
+  boats: an assumption from their size against the deck in [P6]), in the
+  recess on deck 4 (set in 4.8 m) under deck 6, each in a pair of
+  davits, their recess wall in shade; white lower hull, orange above
+  under a rounded orange canopy (`paint.boat.cover`) ([P6]). Liferaft canisters in
+  racks at both ends of the rows ([P7]).
+- **Masts and domes**: one white radar mast over the spa (x 80) with its
+  platforms and scanners ([P2], [M]); five white radomes on the top deck
+  ([M], [P2], [P4]).
+- **Under water**: two five-bladed screws about 5.4 m across ([WPC]: two
+  fixed-pitch propellers; the size and blades assumed, no photograph of
+  them found) as far aft as her run leaves room over them, each on an
+  open shaft with an A-bracket just ahead of it and a strut further
+  forward; each rudder right behind its screw, from inside the hull down
+  to the screw's lower third (her twin rudders, `rudder.ys`). Three bow
+  thruster tunnels and two stern ones (placed where her hull is deep
+  enough). A bulbous bow (`bulb`, the bow-on photographs [P5], [P9] show
+  it red under the water) drawn on the model only: her data's stem has
+  none and the sim's offsets stay as they are. No stabiliser fins: none
+  show in any photograph (retracted).
+- **The rock** (R21): a lumpy granite block about 4 m across (her data's
+  97 t rock), stuck in her port side at frame 52 (`heel.rock.x`) at 4 m
+  over the keel, where the gash ended ([MIT §4.7.2]; the well-known
+  photograph of it, not reproduced). Its own small mesh (`rock.ts`): the
+  scene (`ShipRig`) shows it in a run whose gash opens WTC 4 from when Le
+  Scole's tip, which she runs on past, reaches frame 52
+  (`rockLodgedT`, about 13 s after the strike at her sim's 8.3 kn; never
+  before the gash's 7 s, `fromT`), so it reads as the islet's rock; the
+  viewer always.
+- **Emergency lights** (R7): about 7 % of her panes, a fixed hashed
+  pattern, carry `emergency: true`. The pane shader reads them
+  (`aEmergency`) and keeps them lit at `uEmergency` whatever the power
+  (`handles.setEmergency(level)`; default 0, so off until the scene's
+  blackout sets her level; the model viewer sets 1 on its night stage).
+  `DECK_SLOTS` (the pane shader's deck array) grew from 10 to 20 for her
+  18 decks; the other ships use their first ten as before.
+
+### Her paint box (R18)
+
+One real paint, `costa-2012` (default): `CONCORDIA_PAINT`. Her fun paints
+are `cruiseFun()` (`lib/shipwreck/ships/funPaints.ts`): "Navy blue
+hull", "Black hull, red funnel", "Dark blue hull, white funnel", "White
+hull, blue funnel", "White hull, red funnel", "Green hull": looks the
+big cruise fleets wore, by colour, never by company. A fun paint
+recolours her hull to deck 3 (the hull material), its bottom and blue
+line, the funnel and its top, and the boats' lower hulls (their orange
+stays: SOLAS); her superstructure stays white (its walls are a white
+that is not her hull's, so `withFunPaint` leaves them), and the "C"
+comes off (`emblem.realOnly`: the funnel is its own hidden mesh in each
+fun paint, made the first time she wears it).
+
+### Assumptions and departures
+
+- Her data moved (look only; the sim does not read them): the funnel
+  from x −78 to −52 and its top from 60.6 to 66.5 m, the boats from
+  x −64…76 to −84…84 (both measured off [M]).
+- The hull is her data's (Task 2): her stern is squarer in plan than her
+  rounded counter. The model's counter rounding can only widen a hull
+  (it takes the larger of the two), and narrowing the offsets would
+  change her sim; so it stays. Her stem's top edge shows a fine dark
+  seam in close views (her data's stem sections).
+- Deck numbers on the outside are ours where no deck plan was at hand:
+  the bridge on deck 8, balconies on 7–10, the boats on 4, the spa on
+  12–13.

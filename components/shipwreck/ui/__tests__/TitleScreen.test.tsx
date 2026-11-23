@@ -3,7 +3,13 @@ import { CARPATHIA_FUNNEL_PAINT } from "@/lib/shipwreck/ships/carpathia";
 import TitleScreen from "../TitleScreen";
 
 function title(
-  ship: "titanic" | "lusitania" | "fitzgerald" | "carpathia" | "britannic"
+  ship:
+    | "titanic"
+    | "lusitania"
+    | "fitzgerald"
+    | "carpathia"
+    | "britannic"
+    | "concordia"
 ) {
   const onShip = jest.fn();
   render(
@@ -39,6 +45,7 @@ describe("the ship picker", () => {
       "shipwreck-ship-fitzgerald",
       "shipwreck-ship-carpathia",
       "shipwreck-ship-britannic",
+      "shipwreck-ship-concordia",
     ]);
     const fitz = screen.getByRole("radio", { name: /Ship: Edmund Fitzgerald/ });
     expect(fitz).toHaveTextContent("1975 · 222 m long");
@@ -49,7 +56,7 @@ describe("the ship picker", () => {
     ).toBeNull();
   });
 
-  it("offers the Britannic for real, last, and nothing is still to come (1.4)", () => {
+  it("offers the Britannic for real, and nothing is still to come (1.4)", () => {
     const onShip = title("titanic");
     const radios = screen.getAllByRole("radio");
     expect(radios.map((r) => r.dataset.testid)).toEqual([
@@ -58,6 +65,7 @@ describe("the ship picker", () => {
       "shipwreck-ship-fitzgerald",
       "shipwreck-ship-carpathia",
       "shipwreck-ship-britannic",
+      "shipwreck-ship-concordia",
     ]);
     const brit = screen.getByRole("radio", { name: /Ship: Britannic/ });
     expect(brit).toHaveAccessibleName("Ship: Britannic, 1916, 269 metres long");
@@ -136,5 +144,34 @@ describe("the ship picker", () => {
     expect(onShip).toHaveBeenCalledWith("lusitania");
     // Nothing is still to come: the Britannic is offered too.
     expect(screen.queryAllByText("Coming soon")).toHaveLength(0);
+  });
+});
+
+describe("the Costa Concordia's card (1.9)", () => {
+  it("is the sixth card, with her picture, her night and the grown-ups' line", () => {
+    const onShip = title("concordia");
+    const card = screen.getByRole("radio", { name: /Ship: Costa Concordia/ });
+    expect(card).toHaveAttribute("aria-checked", "true");
+    expect(card).toHaveTextContent("2012 · 290 m long");
+    expect(
+      screen.getByTestId("shipwreck-ship-picture-concordia")
+    ).toBeInTheDocument();
+    // One yellow funnel, her Costa colours.
+    const funnels = screen
+      .getByTestId("shipwreck-ship-picture-concordia")
+      .querySelectorAll("[data-funnel]");
+    expect(funnels).toHaveLength(1);
+    expect(funnels[0]).toHaveAttribute("fill", "#f2c230");
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      /^This is the Costa Concordia, a cruise ship, in January 2012\./
+    );
+    expect(screen.getByTestId("shipwreck-real-night")).toHaveTextContent(
+      "The real night"
+    );
+    expect(screen.getByTestId("shipwreck-what-if")).toHaveAccessibleName(
+      "What if? Choose where the rocks open the hull, and which way the wind blows"
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /Ship: Titanic/ }));
+    expect(onShip).toHaveBeenCalledWith("titanic");
   });
 });

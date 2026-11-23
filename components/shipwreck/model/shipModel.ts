@@ -38,6 +38,7 @@ import {
   type LightUniforms,
 } from "./materials";
 import { carpathiaRecipe } from "./carpathiaRecipe";
+import { concordiaRecipe } from "./concordiaRecipe";
 import {
   attachBritannicLivery,
   britannicModelRecipe,
@@ -138,6 +139,8 @@ export interface TitanicHandles {
   setPower(power: number): void;
   setDeckPower(deck: number, power: number): void;
   setFlicker(amount: number): void;
+  /** 0..1, the level her emergency panes stay lit at (`uEmergency`). */
+  setEmergency(level: number): void;
   /** Seconds, for the flicker pattern (the component sets it each frame). */
   setTime(seconds: number): void;
   boats: BoatControls;
@@ -211,7 +214,9 @@ export function recipeFor(spec: ShipSpec, livery?: string | null): ShipRecipe {
             ? carpathiaRecipe(spec, id)
             : spec.id === "britannic"
               ? britannicRecipe(spec, id as BritannicPaint)
-              : titanicRecipe(spec);
+              : spec.id === "concordia"
+                ? concordiaRecipe(spec)
+                : titanicRecipe(spec);
     byLivery.set(key, r);
   }
   return r;
@@ -297,6 +302,15 @@ function paneMesh(
     "aSeed",
     new InstancedBufferAttribute(
       Float32Array.from(spots, (s) => s.seed),
+      1
+    )
+  );
+  // Her emergency lights (`LightSpot.emergency`): 1 stays lit on
+  // `uEmergency` when the power is off.
+  g.setAttribute(
+    "aEmergency",
+    new InstancedBufferAttribute(
+      Float32Array.from(spots, (s) => (s.emergency ? 1 : 0)),
       1
     )
   );
@@ -1029,6 +1043,9 @@ function buildModel(
     },
     setFlicker: (a) => {
       light.uFlicker.value = a;
+    },
+    setEmergency: (level) => {
+      light.uEmergency.value = level;
     },
     setTime: (t) => {
       light.uTime.value = t;

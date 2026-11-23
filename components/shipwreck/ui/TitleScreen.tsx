@@ -30,8 +30,8 @@ const COMING: string[] = [];
 
 /** The What if? button's words and icon, by what sank her. */
 const WHAT_IF: Record<
-  "iceberg" | "torpedo" | "storm" | "mine",
-  { label: string; icon: "iceberg" | "torpedo" | "storm" | "mine" }
+  ShipSpec["cause"],
+  { label: string; icon: "iceberg" | "torpedo" | "storm" | "mine" | "rocks" }
 > = {
   iceberg: {
     label: "What if? Choose where the iceberg opens the hull",
@@ -46,6 +46,11 @@ const WHAT_IF: Record<
   storm: {
     label: "What if? Choose what lets the lake in, and the storm",
     icon: "storm",
+  },
+  rocks: {
+    label:
+      "What if? Choose where the rocks open the hull, and which way the wind blows",
+    icon: "rocks",
   },
 };
 

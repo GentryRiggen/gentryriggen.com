@@ -67,6 +67,7 @@ describe("the Carpathia's data", () => {
       "fitzgerald",
       "carpathia",
       "britannic",
+      "concordia",
     ]);
     expect(carpathia.cause).toBe("torpedo");
     expect(carpathia.clockStartS).toBe(9 * 3600 + 15 * 60); // 9:15 AM

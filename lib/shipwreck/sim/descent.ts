@@ -12,7 +12,14 @@ import {
   STERN_SPIN,
   STERN_TUMBLE,
 } from "./constants";
-import { type Body, earthOf, placeAbout, upOf, updateBounds } from "./body";
+import {
+  type Body,
+  type FloorFn,
+  earthOf,
+  placeAbout,
+  upOf,
+  updateBounds,
+} from "./body";
 
 // Local bindings: global lookups are slow inside test sandboxes (vm).
 const { abs, asin, cos, exp, max, min, sin, sqrt } = Math;
@@ -103,7 +110,7 @@ function lowestPoint(b: Body): [number, number, number] {
  * R22: a whole hull swinging down about its bow has its stern on the floor
  * once the lowest point of its after quarter is there (or it is at rest).
  */
-export function sternDown(b: Body, floorZ: number): boolean {
+export function sternDown(b: Body, floorZ: number, floor?: FloorFn): boolean {
   if (b.mode === "landed") return true;
   const [nx, ny, nz] = upOf(b);
   const aft = b.xFrom + 0.25 * (b.xTo - b.xFrom);
@@ -123,25 +130,41 @@ export function sternDown(b: Body, floorZ: number): boolean {
       }
     }
   }
-  return p !== null && earthOf(b, p[0], p[1], p[2])[2] <= floorZ + 0.5;
+  if (p === null) return false;
+  const e = earthOf(b, p[0], p[1], p[2]);
+  return e[2] <= (floor ? floor(e[0], e[1]) : floorZ) + 0.5;
+}
+
+/** The floor (earth z) under the body's lowest point (`spec.seabed`). */
+function floorUnder(b: Body, floor: FloorFn): number {
+  const p = lowestPoint(b);
+  const e = earthOf(b, p[0], p[1], p[2]);
+  return floor(e[0], e[1]);
 }
 
 /**
  * One step of the fall. The body turns about its own centre of mass, which
- * falls and glides. Returns true at the moment it touches the floor.
+ * falls and glides. Returns true at the moment it touches the floor: the
+ * flat floor at `floorZ`, or with a seabed (`floor`) the floor under its
+ * lowest point.
  */
-export function stepFall(b: Body, dt: number, floorZ: number): boolean {
+export function stepFall(
+  b: Body,
+  dt: number,
+  floorZ: number,
+  floor?: FloorFn
+): boolean {
   // Flooded: every cell full.
   for (const c of b.all) c.water = c.cap;
   // Already on the floor (it grounded while afloat): it settles from where
   // it lies, its contact as deep in the mud as it already is.
   const onFloor = b.grounded;
-  if (!onFloor && !fall(b, dt, floorZ)) return false;
-  return touch(b, floorZ, onFloor);
+  if (!onFloor && !fall(b, dt, floorZ, floor)) return false;
+  return touch(b, floor ? floorUnder(b, floor) : floorZ, onFloor);
 }
 
 /** One step of the fall itself; true once it reaches the floor. */
-function fall(b: Body, dt: number, floorZ: number): boolean {
+function fall(b: Body, dt: number, flatZ: number, floor?: FloorFn): boolean {
   const env = envelope(b);
   const g = floodedCentre(b);
   const ge = earthOf(b, g[0], g[1], g[2]);
@@ -174,6 +197,7 @@ function fall(b: Body, dt: number, floorZ: number): boolean {
   b.gz = g[2];
   placeAbout(b, g, ge);
   updateBounds(b);
+  const floorZ = floor ? floorUnder(b, floor) : flatZ;
   if (b.bottom > floorZ) return false;
   b.z += floorZ - b.bottom;
   return true;

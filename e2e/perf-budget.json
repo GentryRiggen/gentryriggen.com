@@ -114,5 +114,17 @@
   "shipwreck-carpathia-wreck": {
     "calls": 35,
     "triangles": 80697
+  },
+  "shipwreck-concordia-salute": {
+    "calls": 50,
+    "triangles": 375351
+  },
+  "shipwreck-concordia-drift": {
+    "calls": 50,
+    "triangles": 375123
+  },
+  "shipwreck-concordia-aground": {
+    "calls": 52,
+    "triangles": 375511
   }
 }

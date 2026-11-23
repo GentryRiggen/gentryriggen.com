@@ -31,9 +31,16 @@ export interface LightUniforms {
   uFlicker: { value: number };
   /** Brightness of a lit pane (HDR, so it blooms). */
   uIntensity: { value: number };
+  /**
+   * 0..1, her emergency lights: the panes marked `emergency` (the
+   * Concordia's) stay lit at this level whatever `uPower` is (default 0:
+   * off; the scene sets her blackout's level). No other ship marks any.
+   */
+  uEmergency: { value: number };
 }
 
-export const DECK_SLOTS = 10;
+/** Room for every ship's decks (the Concordia lists 18). */
+export const DECK_SLOTS = 20;
 
 export function createLightUniforms(): LightUniforms {
   return {
@@ -42,6 +49,7 @@ export function createLightUniforms(): LightUniforms {
     uTime: { value: 0 },
     uFlicker: { value: 0 },
     uIntensity: { value: 5 },
+    uEmergency: { value: 0 },
   };
 }
 
@@ -387,7 +395,9 @@ function paneMaterial(light: LightUniforms): MeshStandardMaterial {
 attribute float aDeck;
 attribute float aSeed;
 attribute float aGlass;
+attribute float aEmergency;
 uniform float uPower;
+uniform float uEmergency;
 uniform float uDeckPower[${DECK_SLOTS}];
 uniform float uTime;
 uniform float uFlicker;
@@ -408,6 +418,8 @@ float paneHash(float n) { return fract(sin(n) * 43758.5453123); }`
   float dip = step(0.55, paneHash(circuit * 3.1 + tick * 0.73));
   float flick = 1.0 - uFlicker * dip * (0.6 + 0.4 * paneHash(tick + circuit));
   vLight = aGlass * uPower * deckPower * on * flick * (0.7 + 0.6 * fract(aSeed * 13.7));
+  // Her emergency lights: on whatever the power, at their own dim level.
+  vLight = max(vLight, aGlass * aEmergency * uEmergency * deckPower * 0.55);
   vWarm = mix(vec3(1.0, 0.36, 0.09), vec3(1.0, 0.52, 0.2), fract(aSeed * 3.71));
 }`
       );

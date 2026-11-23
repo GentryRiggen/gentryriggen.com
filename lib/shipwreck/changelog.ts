@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.9.0",
+    date: "2026-11-23",
+    title: "The Costa Concordia",
+    highlights: [
+      "A sixth ship joins the game: the Costa Concordia, a giant modern cruise ship. She is white with rows of balconies, orange lifeboats and a big yellow funnel with a blue C",
+      "One January night in 2012 she sailed close past the island of Giglio in Italy and scraped rocks that tore a long hole in her side. Watch her lights go out, see her drift back to the island, lean over and come to rest on her side on the rocks right beside the harbour, half out of the water",
+      "Her night: the island's hills, the little harbour town and the village on the hill with their lights, the moon rising, and her lifeboats motoring in to the harbour",
+      "Try What if: tear fewer rooms and see her float, or let the wind blow her out to sea instead of back to the island",
+      "Pick paint for her in the paint box too: her real colours, or fun cruise ship colours for her hull, funnel and lifeboats",
+    ],
+  },
+  {
     version: "1.8.2",
     date: "2026-11-23",
     title: "The Carpathia shows again",

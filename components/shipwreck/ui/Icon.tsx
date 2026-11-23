@@ -7,6 +7,8 @@ export type IconName =
   | "torpedo"
   | "storm"
   | "mine"
+  | "rocks"
+  | "wind"
   | "hatch"
   | "porthole"
   | "door"
@@ -56,6 +58,11 @@ const PATHS: Record<IconName, string> = {
     "M7 14a4 4 0 1 1 1.3-7.8A5 5 0 0 1 17.5 8a3 3 0 1 1 .5 6zM2 19c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M12 14l-1.5 3h3L12 20",
   // A round sea mine with its horns, under the waves, a burst over it.
   mine: "M12 9a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM12 9V6.5M8.2 10.4l-1.8-1.8M15.8 10.4l1.8-1.8M7.5 13.5H5M16.5 13.5H19M12 2.5v1.5M9 3.5l.8 1.2M15 3.5l-.8 1.2M2 21c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
+  // A ship's side with a jagged rock tearing into it, under the waves.
+  rocks:
+    "M3 8h14l3-3v8L17 16H3zM17 16l-3 3 3 2.5-4.5 0L9 19l2-3M5 8v-2.5M10 8v-2.5M2 21.5c1.5 1 3 1 4.5 0",
+  // Wind streaming across, over a wave: blown out to sea.
+  wind: "M3 8h9a3 3 0 1 0-3-3M3 12.5h14a3 3 0 1 1-3 3M3 17h6M2 21c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
   hatch:
     "M3 11h18v4H3zM6 11V8h12v3M7 15v2M17 15v2M2 20c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
   // A watertight door: a frame in a wall, the door half down in it.

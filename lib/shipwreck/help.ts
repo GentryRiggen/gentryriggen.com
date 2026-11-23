@@ -40,6 +40,8 @@ const LIVERY_WORDS: Readonly<Record<string, string>> = {
     "In 1916 she was a hospital ship, painted white with a green stripe and big red crosses, so every ship could see what she was.",
   liner:
     "She was built to carry passengers in White Star's colours, like her sisters: a black hull, white decks and buff funnels with black tops. She never sailed in them.",
+  "costa-2012":
+    "Her real Costa colours: all white, with a thin blue line at the water and a big yellow funnel with a blue C on it.",
 };
 
 /** What the paint brush says when tapped: the livery she is in now. */
@@ -262,6 +264,69 @@ function mineHelp(
   }
 }
 
+/**
+ * The rocks ship's cards (the Costa Concordia's): a rock, a blackout, a long
+ * slow lean, and a rest on the rocks. No people, no blame.
+ */
+function rocksHelp(
+  topic: HelpTopic,
+  frame: SimFrame | null,
+  ship: ShipSpec
+): Help {
+  switch (topic) {
+    case "water":
+      return {
+        title: "Water aboard",
+        now: frame ? waterText(frame) : undefined,
+        lines: [
+          "How much sea water has come inside the ship, in tonnes. One tonne is about a bathtub and a half.",
+          `${ship.name} weighed about ${(Math.round(ship.displacementT / 1000) * 1000).toLocaleString("en-US")} t. A rock tore her left side open, and the sea filled her engine rooms first.`,
+        ],
+      };
+    case "bow":
+      return {
+        title: "Bow down",
+        now: frame ? bowDownText(frame) : undefined,
+        lines: [
+          "How far the front of the ship tips down. She sank a little by the stern, so this stays at zero.",
+          `The sea by the island is shallow, about ${ship.seaDepthM} m, so the rocks held her up.`,
+        ],
+      };
+    case "lean":
+      return {
+        title: "Lean",
+        now: frame ? leanText(frame) : undefined,
+        lines: [
+          "How far the ship leans to one side. Port is the left side looking forward, starboard the right.",
+          "The rock tore her port side, but the water and the wind slowly tipped her over to starboard. At the end she lay on her side on the rocks.",
+        ],
+      };
+    case "power":
+      return {
+        title: "Power",
+        now: frame ? powerText(frame) : undefined,
+        lines: [
+          "Her engines turned generators that made the electricity for everything, even her propellers.",
+          "When the sea reached her generators, her main lights went out. Small emergency lights stayed on.",
+        ],
+      };
+    case "controls":
+    default:
+      return {
+        title: "How to watch",
+        lines: [
+          "Drag to look around the ship. Pinch to zoom in and out. Two fingers move the view. Double-tap the ship to fly close.",
+          "Play and pause, and choose how fast the night goes: ×1 is real time. Her night lasts three hours, so try ×30.",
+          "Drag the timeline, or tap an icon on it, to jump to that moment.",
+          `X-ray shows the water inside. The pins fly you to ${placeList(ship)}.`,
+          "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
+          ...walkLines(ship),
+          ...liveryLines(ship),
+        ],
+      };
+  }
+}
+
 /** The storm ship's cards (the Fitzgerald's): a laker in a lake storm. */
 function stormHelp(
   topic: HelpTopic,
@@ -330,6 +395,7 @@ export function helpFor(
   if (ship.cause === "storm") return stormHelp(topic, frame, ship);
   if (ship.cause === "torpedo") return torpedoHelp(topic, frame, ship);
   if (ship.cause === "mine") return mineHelp(topic, frame, ship);
+  if (ship.cause === "rocks") return rocksHelp(topic, frame, ship);
   switch (topic) {
     case "water":
       return {

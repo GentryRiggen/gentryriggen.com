@@ -23,6 +23,9 @@ import {
   trackSpeedAt,
   underwaterView,
   CARPATHIA_HULL_BOXES,
+  CONCORDIA_HULL_BOXES,
+  clampAboveGround,
+  groundFor,
   type ShotContext,
   type ShotId,
 } from "../cameraMath";
@@ -30,8 +33,13 @@ import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
+import { floorAt } from "@/lib/shipwreck/sim/seabed";
 import { simulate, torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
-import { sampleTrack } from "@/lib/shipwreck/sim/track";
+import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
+// The Concordia's to-sea run takes ~8 s: its saved summary, a frame every
+// 60 s (concordiaToSeaFixture, checked against the sim in the sims lane).
+import toSea from "@/lib/shipwreck/sim/__tests__/fixtures/concordiaToSea.json";
 import { trackSideY } from "../Torpedo";
 import { BRITANNIC_HULL_BOXES } from "../cameraMath";
 
@@ -700,6 +708,142 @@ describe("the Britannic's camera (1.4)", () => {
           expect(pushOutOfHull(local, 0, boxes)).toEqual(local);
         }
       }
+    }
+  });
+});
+
+describe("the Concordia's camera (Task 6)", () => {
+  const boxes = hullBoxesFor("concordia");
+  const deg = Math.PI / 180;
+  const ground = groundFor("concordia")!;
+  const track = simulate(concordia, concordia.realNight, {
+    portholesOpen: true,
+  });
+  const ev = (k: string) => track.events.find((e) => e.kind === k)!.t;
+  const rest = track.frames[track.frames.length - 1].bodies[0];
+  const insideAny = (l: readonly number[]) =>
+    boxes.some(
+      (b) =>
+        l[0] > b.x[0] &&
+        l[0] < b.x[1] &&
+        l[1] > b.y[0] &&
+        l[1] < b.y[1] &&
+        l[2] > b.z[0] &&
+        l[2] < b.z[1]
+    );
+
+  it("sizes her hull boxes from her data: 290 m, her beam, her decks", () => {
+    expect(boxes).toBe(CONCORDIA_HULL_BOXES);
+    const ys = boxes.flatMap((b) => b.y);
+    expect(Math.max(...ys)).toBeGreaterThanOrEqual(concordia.beam / 2);
+    expect(Math.max(...ys)).toBeLessThan(concordia.beam / 2 + 0.6);
+    const zs = boxes.flatMap((b) => b.z);
+    expect(Math.max(...zs)).toBeGreaterThan(50); // deck 14
+  });
+
+  it("keeps the ground as the sim's floor offshore and the island's land inland", () => {
+    // Three z is −earth y.
+    expect(ground(1015, -564)).toBeCloseTo(floorAt(concordia, 1015, 564), 6);
+    expect(ground(-33.8, -17.75)).toBeCloseTo(
+      floorAt(concordia, -33.8, 17.75),
+      6
+    );
+    expect(ground(1581, -2235)).toBeGreaterThan(300); // Giglio Castello
+    expect(groundFor("titanic")).toBeUndefined();
+  });
+
+  it("never puts an orbiting camera under her floor, in the island or inside her at her rest at 65°", () => {
+    expect(Math.abs(rest.roll)).toBeGreaterThan(60 * deg);
+    const c = shipToThree(rest, [0, 0, 10]);
+    let checked = 0;
+    for (let a = 0; a < 360; a += 15)
+      for (const el of [-40, -15, 0, 10, 30, 60])
+        for (const r of [8, 25, 60, 150, 400]) {
+          const p: [number, number, number] = [
+            c[0] + Math.cos(a * deg) * Math.cos(el * deg) * r,
+            c[1] + Math.sin(el * deg) * r,
+            c[2] + Math.sin(a * deg) * Math.cos(el * deg) * r,
+          ];
+          // The rig: over the ground, then out of her (never through it).
+          const g = clampAboveGround(p, ground, 3);
+          const local = inShipFrame(rest, g);
+          const out = keepClear(
+            local,
+            rest,
+            concordia.seaDepthM,
+            boxes,
+            0.6,
+            3,
+            ground
+          );
+          const w = shipToThree(rest, out);
+          checked += 1;
+          expect(w[1]).toBeGreaterThanOrEqual(ground(w[0], w[2]) + 3 - 1e-6);
+          expect(insideAny(out)).toBe(false);
+        }
+    expect(checked).toBe(720);
+  });
+
+  it("follows her night: past the island, the strike, the drift, the boats, her rest", () => {
+    const at = (t: number) => cinematicShot(track, t, "concordia");
+    expect(at(-20)).toBe("giglio");
+    expect(at(5)).toBe("giglio-strike");
+    expect(at(600)).toBe("giglio-drift");
+    expect(at(ev("stern-lands"))).toBe("giglio-drift");
+    expect(at(ev("boat-lowered") + 30)).toBe("giglio-boats");
+    expect(at(ev("floating-steady"))).toBe("giglio-aground");
+    expect(cinematicShot(track, 0, "concordia", false)).toBe("giglio");
+  });
+
+  it("frames every shot of her night over the ground and outside her", () => {
+    const end = track.frames[track.frames.length - 1].t;
+    for (let t = -40; t <= end + 60; t += 10) {
+      const f = sampleTrack(track, Math.max(0, t));
+      const shot = cinematicShot(track, t, "concordia");
+      for (const wall of [0, 70]) {
+        const ctx: ShotContext = {
+          t,
+          wall,
+          bodies: f.bodies,
+          breakX: null,
+          seaDepthM: concordia.seaDepthM,
+          ship: "concordia",
+        };
+        for (const v of [
+          shotView(shot, ctx),
+          underwaterView(ctx),
+          lifeboatView(ctx),
+        ]) {
+          expect(v.pos[1]).toBeGreaterThanOrEqual(
+            ground(v.pos[0], v.pos[2]) + 2
+          );
+          expect(insideAny(inShipFrame(f.bodies[0], v.pos))).toBe(false);
+        }
+        // Under water is under water.
+        expect(underwaterView(ctx).pos[1]).toBeLessThan(-2);
+      }
+    }
+  });
+
+  it("blown out to sea: deep water under her, every shot over the floor", () => {
+    const sea = toSea.whatIf as SimTrack;
+    const last = sea.frames[sea.frames.length - 1].bodies[0];
+    // The island's shelf is nowhere near: the floor under her is the
+    // profile's deep water (no island floor drawn under her).
+    expect(ground(last.x, -last.y)).toBeLessThan(-120);
+    const end = sea.frames[sea.frames.length - 1].t;
+    for (let t = 0; t <= end; t += 60) {
+      const f = sampleTrack(sea, t);
+      const ctx: ShotContext = {
+        t,
+        wall: 0,
+        bodies: f.bodies,
+        breakX: null,
+        seaDepthM: concordia.seaDepthM,
+        ship: "concordia",
+      };
+      const v = shotView(cinematicShot(sea, t, "concordia"), ctx);
+      expect(v.pos[1]).toBeGreaterThanOrEqual(ground(v.pos[0], v.pos[2]) + 2);
     }
   });
 });

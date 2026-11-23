@@ -27,7 +27,7 @@ const [
 // Where each ship's sim breaks her (the Fitzgerald near hatch No. 9).
 const BREAK_X = { lusitania: 4, fitzgerald: 18 }[ship] ?? -27.1;
 // The Carpathia does not break (her girder holds): no broken shots.
-const UNBROKEN = new Set(["carpathia"]);
+const UNBROKEN = new Set(["carpathia", "concordia"]);
 const COMMON = [
   { id: "bow-day", view: { camera: "bow" } },
   { id: "stern-day", view: { camera: "stern" } },
@@ -57,12 +57,24 @@ const BRITANNIC = [
   { id: "bent-bow-day", view: { camera: "bow-port", bowBend: 0.2 } },
   { id: "bent-bow-close-day", view: { camera: "break-close", bowBend: 0.2 } },
 ];
+// The Concordia (never breaks): her port bow with the rock, the funnel and
+// its "C", the rock close, and two fun paints (shot last: the paint stays).
+const CONCORDIA = [
+  ...COMMON.filter((s) => !s.id.startsWith("broken")),
+  { id: "bow-port-day", view: { camera: "bow-port" } },
+  { id: "funnel-day", view: { camera: "funnel" } },
+  { id: "rock-day", view: { camera: "rock" } },
+  { id: "fun-navy-hull", view: { camera: "bow", livery: "fun-navy-hull" } },
+  { id: "fun-white-red", view: { camera: "bow", livery: "fun-white-red" } },
+];
 const SHOTS =
   ship === "britannic"
     ? BRITANNIC
-    : UNBROKEN.has(ship)
-      ? COMMON.filter((s) => s.view.breakX === undefined)
-      : COMMON;
+    : ship === "concordia"
+      ? CONCORDIA
+      : UNBROKEN.has(ship)
+        ? COMMON.filter((s) => s.view.breakX === undefined)
+        : COMMON;
 const BASE = {
   breakX: null,
   power: 0,

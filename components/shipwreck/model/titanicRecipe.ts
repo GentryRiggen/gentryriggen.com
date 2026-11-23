@@ -40,6 +40,11 @@ export interface LightSpot {
   seed: number;
   /** Swung open (a porthole the sim floods through): a dark hole, no glass. */
   open?: boolean;
+  /**
+   * Stays lit on her emergency power after the blackout (the Concordia's
+   * sparse pattern, which the scene reads); missing: dark then.
+   */
+  emergency?: true;
 }
 
 /** A box-shaped deck house: x and y extents, standing on z0. */
@@ -98,7 +103,16 @@ export interface FunnelRecipe {
    * ("C") on it, centred at `z` (a fraction of the height), `r` m from its
    * middle to a point.
    */
-  emblem?: { z: number; r: number; star: number; letter: number };
+  emblem?: {
+    z: number;
+    r: number;
+    star: number;
+    letter: number;
+    /** Only the letter, thick, `r` m across its middle (Costa's "C"). */
+    letterOnly?: true;
+    /** In her real paint only: a fun paint leaves it off. */
+    realOnly?: true;
+  };
 }
 
 export interface MastRecipe {
@@ -285,7 +299,7 @@ export interface ShipPaint {
    */
   hull?: { topsides: number; bottom: number; relief?: number; boot?: number };
   /** Lifeboats: topsides and bottom (default white, varnished gunwale). */
-  boat?: { hull: number; bottom: number };
+  boat?: { hull: number; bottom: number; cover?: number };
   /**
    * Dazzle camouflage (the Carpathia's 1918 paint): the hull's topsides and
    * every wall marked `dazzle` drawn from one dazzle texture.
@@ -424,6 +438,11 @@ export interface ShipRecipe {
     taper?: { lead: number; trail: number };
     /** A round stock up the leading edge, faired into the blade. */
     stock?: { x: number; z0: number; z1: number; r: number };
+    /**
+     * One rudder at each of these y (twin rudders behind twin screws, the
+     * Concordia's); default one on the centre line.
+     */
+    ys?: number[];
   };
   /** Shaft bossings: from inside the hull aft to the wing propellers. */
   bossings: { from: V3; to: V3; r0: number; r1: number }[];
@@ -479,6 +498,27 @@ export interface ShipRecipe {
    * height `z` (`bowBend.ts`).
    */
   hinge?: { x: number; z: number };
+  // A cruise ship's parts (the Concordia's).
+  /** Water slides: a tube along `points` (painted). */
+  slides?: { points: V3[]; r: number; color: number }[];
+  /** Radar domes: a white ball of radius `r` centred at `p`, on a cone. */
+  radomes?: { p: V3; r: number }[];
+  /** Liferaft canisters lying fore and aft, centred at `c`. */
+  canisters?: { c: V3; r: number; len: number }[];
+  /**
+   * A bulbous bow drawn on the hull (the model only: the sim's offsets
+   * stay as they are): an ellipsoid centred at (x, 0, z), half-length
+   * `a`, half-breadth `b`, half-height `c`, in the hull's paint.
+   */
+  bulb?: { x: number; z: number; a: number; b: number; c: number };
+  /** Thruster tunnels through the hull: dark discs on both sides. */
+  thrusters?: { x: number; z: number; r: number }[];
+  /**
+   * The rock torn off by the strike and stuck in her side (R21): centre
+   * and size, shown by the scene from `fromT` (s after the strike) in a
+   * run that opens `compartmentId` (where it stuck).
+   */
+  rock?: { p: V3; r: number; fromT: number; compartmentId: string };
 }
 
 const TO_RAD = Math.PI / 180;

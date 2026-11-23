@@ -12,6 +12,8 @@ export const PARENT_LINES: Record<ShipId, string> = {
     "This is the Carpathia, the ship that rescued the Titanic's survivors in 1912. During the First World War, on 17 July 1918, a U-boat's torpedoes sank her off Ireland, and five of her crew died. This game shows only the ship.",
   britannic:
     "This is the Britannic in 1916, a hospital ship in the First World War. A mine sank her in 55 minutes, and 30 people died. This game shows only the ship.",
+  concordia:
+    "This is the Costa Concordia, a cruise ship, in January 2012. At night she sailed too close to the island of Giglio, struck rocks and rolled onto her side beside the harbour. Most of the 4,229 people aboard were rescued, but 32 people died. This game shows only the ship.",
 };
 
 /** The Titanic's line (the 1.0 line). */

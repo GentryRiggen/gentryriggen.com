@@ -147,3 +147,87 @@ export function headingAt(
   if (!way?.turn || way.turn.length === 0) return 0;
   return tableAt(way.turn, t) * DEG;
 }
+
+/** A drift path: [shown s, earth x, earth y, heading deg] points. */
+export type DriftPath = NonNullable<NonNullable<Headway>["path"]>;
+
+/**
+ * The drift path a run follows (`headway.path`, or `pathToSea` with
+ * `toSea` when she has one), or null.
+ */
+export function pathOf(
+  h: Headway,
+  opts: { toSea?: boolean } = {}
+): DriftPath | null {
+  if (!h?.path || h.path.length === 0) return null;
+  return opts.toSea && h.pathToSea && h.pathToSea.length > 0
+    ? h.pathToSea
+    : h.path;
+}
+
+/** Catmull-Rom (uniform) between p1 and p2 at u, and its rate in u. */
+function catmull(
+  p0: number,
+  p1: number,
+  p2: number,
+  p3: number,
+  u: number
+): [number, number] {
+  const a = 2 * p1;
+  const b = p2 - p0;
+  const c = 2 * p0 - 5 * p1 + 4 * p2 - p3;
+  const d = -p0 + 3 * p1 - 3 * p2 + p3;
+  return [
+    0.5 * (a + b * u + c * u * u + d * u * u * u),
+    0.5 * (b + 2 * c * u + 3 * d * u * u),
+  ];
+}
+
+/**
+ * Her place on a drift path at shown second t, written into `out`: earth
+ * x, earth y (m), heading (radians, + to port), and her speed along it
+ * (m/s). A rule, not physics: Catmull-Rom through the points (each end
+ * point its own outer neighbour), the heading linear between points the
+ * shortest way round, both held past the ends (speed 0 there).
+ */
+export function pathAt(
+  p: DriftPath,
+  t: number,
+  out: [number, number, number, number]
+): [number, number, number, number] {
+  const n = p.length;
+  if (n === 1 || t <= p[0][0]) {
+    const q = t <= p[0][0] ? p[0] : p[n - 1];
+    out[0] = q[1];
+    out[1] = q[2];
+    out[2] = q[3] * DEG;
+    out[3] = 0;
+    return out;
+  }
+  if (t >= p[n - 1][0]) {
+    const q = p[n - 1];
+    out[0] = q[1];
+    out[1] = q[2];
+    out[2] = q[3] * DEG;
+    out[3] = 0;
+    return out;
+  }
+  let i = 1;
+  while (i < n - 1 && t > p[i][0]) i += 1;
+  const a = p[i - 1];
+  const b = p[i];
+  const before = i >= 2 ? p[i - 2] : a;
+  const after = i + 1 < n ? p[i + 1] : b;
+  const span = b[0] - a[0];
+  const u = span > 0 ? (t - a[0]) / span : 1;
+  const [x, dx] = catmull(before[1], a[1], b[1], after[1], u);
+  const [y, dy] = catmull(before[2], a[2], b[2], after[2], u);
+  let turn = b[3] - a[3];
+  while (turn > 180) turn -= 360;
+  while (turn < -180) turn += 360;
+  out[0] = x;
+  out[1] = y;
+  out[2] = (a[3] + turn * u) * DEG;
+  out[3] = span > 0 ? Math.hypot(dx, dy) / span : 0;
+  return out;
+}

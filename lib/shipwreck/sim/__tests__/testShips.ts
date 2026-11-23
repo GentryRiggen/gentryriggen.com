@@ -280,3 +280,47 @@ export function threeShip(more: Partial<BoxShip> = {}): ShipSpec {
     ...more,
   });
 }
+
+/** The tower ship's hull and deckhouse (m). */
+export const TOWER = {
+  length: 200,
+  beam: 30,
+  depth: 14,
+  draught: 7,
+  houseHalfBreadth: 12,
+  houseTop: 44,
+} as const;
+
+/**
+ * 200 m × 30 m × 14 m, draught 7 m, with a deckhouse 24 m wide and 30 m
+ * tall along her whole length (a cruise ship's superstructure is most of
+ * her height): ten equal holds `h0` (aft) to `h9`, bulkheads to the deck.
+ * For the righting lever past the deck edge, the sloping floor, the drift
+ * path, heeling moments, the blackout and the rest aground.
+ */
+export function towerShip(more: Partial<BoxShip> = {}): ShipSpec {
+  const t = TOWER;
+  return boxShip({
+    length: t.length,
+    beam: t.beam,
+    depth: t.depth,
+    draught: t.draught,
+    kg: 11,
+    compartments: Array.from({ length: 10 }, (_, i) =>
+      compartment(`h${i}`, -100 + 20 * i, -80 + 20 * i, t.depth)
+    ),
+    ...more,
+    extra: {
+      superstructure: [
+        {
+          fromX: -t.length / 2,
+          toX: t.length / 2,
+          topZ: t.houseTop,
+          halfBreadthM: t.houseHalfBreadth,
+        },
+      ],
+      boxWaterAtSide: true,
+      ...more.extra,
+    },
+  });
+}

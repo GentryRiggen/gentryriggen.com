@@ -631,6 +631,7 @@ describe("shipwreck specifics", () => {
       "fitzgerald",
       "carpathia",
       "britannic",
+      "concordia",
     ]) {
       await assertSucceeds(
         create(
@@ -703,6 +704,8 @@ describe("shipwreck specifics", () => {
     await assertFails(create(anon(), end({ minutes: 601 })));
     await assertFails(create(anon(), end({ minutes: 1.5 })));
     await assertFails(create(anon(), end({ outcome: "broke-in-two" })));
+    // The client folds "aground" into "sank", so the rules never see it.
+    await assertFails(create(anon(), end({ outcome: "aground" })));
     await assertFails(create(anon(), end({ mode: "x" })));
   });
 
