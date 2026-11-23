@@ -1,3 +1,6 @@
+import { Matrix4, Vector3 } from "three";
+import { createTitanicModel } from "@/components/shipwreck/model/shipModel";
+import { applyBodyPose } from "@/components/shipwreck/model/pose";
 import {
   QUALITY_TIERS,
   createPlaybackStore,
@@ -7,10 +10,11 @@ import { recipeFor } from "@/components/shipwreck/model/shipModel";
 import { BRITANNIC_BOATS, britannic } from "@/lib/shipwreck/ships/britannic";
 import { carpathia, CARPATHIA_BOATS } from "@/lib/shipwreck/ships/carpathia";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { buildHull } from "@/lib/shipwreck/sim/geometry";
 import { simulate, torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
 import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import {
-  boatAwayAt,
+  AfternoonEffects,
   boatWreckedAt,
   columnOpen,
   columnOpenAt,
@@ -20,9 +24,21 @@ import {
   hitColumnTimes,
   MINE_BOAT_LOWER_S,
   MINE_BOAT_SWING_S,
+  mineBoatAt,
+  mineBoatHoldUntil,
+  mineBoatPoseT,
 } from "../afternoonEffects";
-import { shipToThree } from "../cameraMath";
 import { hasTorpedoTrack } from "../Torpedo";
+
+// jsdom has no 2d canvas: plain textures stand in for the model's.
+jest.mock("@/components/shipwreck/model/textures", () => {
+  const { Texture: T } = jest.requireActual("three");
+  const shared = { plateNormal: new T(), weathering: new T(), planks: new T() };
+  return {
+    acquireShipTextures: () => ({ ...shared, names: new T(), dispose() {} }),
+    releaseShipTextures: () => {},
+  };
+});
 
 describe("the afternoon's particles per tier", () => {
   it("draws fewer and smaller at medium and low than at high", () => {
@@ -164,21 +180,42 @@ describe("the Britannic's boats leaving (R15)", () => {
 
   it("pull out from her side and a little ahead, never aft toward her turning screws", () => {
     expect(lowered.length).toBe(35);
-    const out: [number, number] = [0, 0];
-    for (const e of lowered) {
-      const i = e.index!;
+    // They lie off her until she stops at 8:50, then where they are.
+    const hold = mineBoatHoldUntil(britannic, track.events);
+    expect(hold).toBe((50 - 12) * 60);
+    // No profile: at once. A profile that never stops: until the bow lands.
+    expect(mineBoatHoldUntil({}, track.events)).toBe(-Infinity);
+    const never = { headway: { profile: [[0, 5]] } } as never;
+    const bow = track.events.find((e) => e.kind === "bow-lands");
+    expect(mineBoatHoldUntil(never, track.events)).toBe(bow?.t);
+    expect(mineBoatHoldUntil(never, [])).toBe(Infinity);
+    const out: [number, number, number] = [0, 0, 0];
+    /** Boat i afloat at t (three x, z), as the scene places it. */
+    const place = (i: number, launchT: number, t: number, seenAt = t) => {
       const boat = BRITANNIC_BOATS[i];
       const side = boat.side === "port" ? 1 : -1;
+      const slot = BRITANNIC_BOATS.filter(
+        (o) => o.index < i && o.x === boat.x && o.side === boat.side
+      ).length;
+      const pose = sampleTrack(track, mineBoatPoseT(launchT, hold, t))
+        .bodies[0];
+      mineBoatAt(pose, boat.x, side * 17, boat.side, slot, i, t - launchT, out);
+      return inShip(seenAt, [out[0], out[1]]);
+    };
+    for (const e of lowered) {
+      const i = e.index!;
+      const side = BRITANNIC_BOATS[i].side === "port" ? 1 : -1;
       const launchT = e.t + MINE_BOAT_SWING_S + MINE_BOAT_LOWER_S;
-      const pose = sampleTrack(track, launchT).bodies[0];
-      const launch = shipToThree(pose, [boat.x, side * 17, 0]);
       // Its own way at launch, in her ship frame: out and not aft.
-      boatAwayAt(launch[0], launch[2], pose.yaw, boat.side, i, 0, out);
-      const a0 = inShip(launchT, out);
-      boatAwayAt(launch[0], launch[2], pose.yaw, boat.side, i, 10, out);
-      const a1 = inShip(launchT, out);
+      const a0 = place(i, launchT, launchT);
+      const a1 = place(i, launchT, launchT + 10, launchT);
       expect(a1.x - a0.x).toBeGreaterThanOrEqual(0);
       expect(side * (a1.y - a0.y)).toBeGreaterThan(5);
+      // Heading out on its own side, a little ahead.
+      const p0 = sampleTrack(track, launchT).bodies[0];
+      const rel = out[2] - p0.yaw;
+      expect(Math.cos(rel)).toBeGreaterThan(0);
+      expect(side * Math.sin(rel)).toBeGreaterThan(0.7);
       // Every 10 s to the end: out on its own side, ever further from
       // her, and well clear of her side wherever her screws pass it.
       let lastAway = -Infinity;
@@ -186,16 +223,7 @@ describe("the Britannic's boats leaving (R15)", () => {
       // (Until her bow strikes: then she rolls and her origin swings.)
       const under = track.events.find((x) => x.kind === "bow-lands")!.t;
       for (let t = launchT; t <= Math.min(end, under); t += 10) {
-        boatAwayAt(
-          launch[0],
-          launch[2],
-          pose.yaw,
-          boat.side,
-          i,
-          t - launchT,
-          out
-        );
-        const p = inShip(t, out);
+        const p = place(i, launchT, t);
         const away = side * p.y;
         expect(away).toBeGreaterThan(britannic.beam / 2);
         // (Her keel, the origin, shifts as she settles and lists: 3 m.)
@@ -204,5 +232,98 @@ describe("the Britannic's boats leaving (R15)", () => {
         if (p.x < sternX + 40) expect(away).toBeGreaterThan(40);
       }
     }
+  });
+});
+
+describe("the Britannic's boats on the water", () => {
+  const track = simulate(britannic, britannic.realNight, {
+    portholesOpen: true,
+  });
+  const lowered = new Map<number, number>();
+  for (const e of track.events)
+    if (e.kind === "boat-lowered" && e.index !== undefined)
+      lowered.set(e.index, e.t);
+  const at = (m: number) => (m - 12) * 60;
+
+  /** Every boat afloat at `t` (three x, y, z), playing the morning to it. */
+  function afloatAt(t: number) {
+    const { handles: h } = createTitanicModel(britannic, {
+      quality: "high",
+      breakX: null,
+    });
+    const fx = new AfternoonEffects(
+      britannic,
+      buildHull(britannic),
+      new Float32Array(3 * 2000),
+      new Float32Array(4 * 2000),
+      new Float32Array(2000)
+    );
+    const afloat = new Map<number, Vector3>();
+    const float = h.boats.float;
+    h.boats.float = (i: number, m: Matrix4) => {
+      afloat.set(i, new Vector3().setFromMatrixPosition(m));
+      float(i, m);
+    };
+    const frameAt = (tt: number) => {
+      const frame = sampleTrack(track, tt);
+      applyBodyPose(h.whole, frame.bodies[0]);
+      afloat.clear();
+      fx.update({
+        track,
+        frame,
+        openings: britannic.realNight,
+        t: tt,
+        wall: tt,
+        dt: 1 / 60,
+        snapped: false,
+        models: [h],
+        visible: h,
+        fell: new Map(),
+        lowered,
+        wakeDx: 1,
+        wakeDz: 0,
+        wakeAmount: 0.1,
+        quality: "high",
+      });
+      return frame;
+    };
+    // Played through (each boat seen as it touches the sea), then at t.
+    for (let tt = at(25); tt < t; tt += 15) frameAt(tt);
+    const frame = frameAt(t);
+    return { afloat, pose: frame.bodies[0] };
+  }
+
+  it("at 8:45 every boat down by then is afloat, apart, clear of her and near her", () => {
+    const t = at(45);
+    const { afloat, pose } = afloatAt(t);
+    const down = [...lowered].filter(
+      ([, tb]) => tb + MINE_BOAT_SWING_S + MINE_BOAT_LOWER_S <= t
+    );
+    expect(down.length).toBeGreaterThanOrEqual(25);
+    // Every launched boat that is down (the inboard Welin boats too).
+    expect([...afloat.keys()].sort((a, b) => a - b)).toEqual(
+      down.map(([i]) => i).sort((a, b) => a - b)
+    );
+    const c = Math.cos(pose.yaw);
+    const s = Math.sin(pose.yaw);
+    const list = [...afloat.values()];
+    for (const p of list) {
+      expect(Number.isFinite(p.x + p.y + p.z)).toBe(true);
+      expect(Math.abs(p.y + 0.35)).toBeLessThan(0.2);
+      // In her frame: off her side, and near enough to be in her shots
+      // (the boats camera stands 165 m off her side).
+      const ex = p.x - pose.x;
+      const ey = -p.z - pose.y;
+      const sx = c * ex + s * ey;
+      const sy = -s * ex + c * ey;
+      expect(Math.abs(sy)).toBeGreaterThan(britannic.beam / 2 + 2);
+      expect(Math.abs(sy)).toBeLessThan(200);
+      expect(Math.abs(sx)).toBeLessThan(220);
+    }
+    for (let a = 0; a < list.length; a += 1)
+      for (let b = a + 1; b < list.length; b += 1)
+        expect(
+          Math.hypot(list[a].x - list[b].x, list[a].z - list[b].z)
+        ).toBeGreaterThan(4);
   });
 });

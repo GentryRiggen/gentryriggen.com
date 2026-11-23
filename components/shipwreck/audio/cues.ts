@@ -19,6 +19,8 @@ export type Cue =
   | "thud"
   | "torpedo"
   | "boom"
+  | "mine"
+  | "whistle"
   | "gull"
   | "splash"
   | "swell"
@@ -70,10 +72,50 @@ export const FITZGERALD_EVENT_CUES: Partial<Record<SimEventKind, Cue>> = {
   "stern-lands": "thud",
 };
 
+/**
+ * The Britannic's morning: the mine is one deep, short boom (no scrape, no
+ * rockets), the shared funnel, breakup and plunge cues for her end, and her
+ * 09:00 signal (her only `radio`, index 0) is two long blasts of her whistle.
+ */
+export const BRITANNIC_EVENT_CUES: Partial<Record<SimEventKind, Cue>> = {
+  // The run's own t = 0 `collision` is the mine; the scripted `explosion`
+  // sounds it, so the shared scrape stays silent. No rockets.
+  explosion: "mine",
+  radio: "whistle",
+  "boat-lowered": "davit",
+  "last-boat": "davit",
+  "forecastle-under": "rush",
+  "bridge-under": "rush",
+  "funnel-falls": "funnel",
+  "lights-out": "powerDown",
+  breakup: "breakup",
+  "bow-under": "plunge",
+  "stern-under": "plunge",
+  "bow-lands": "thud",
+  "stern-lands": "thud",
+};
+
+/**
+ * The event after which the Britannic is gone: her scripted events (the
+ * 9:00 whistle, a late boat) are still in a What if's list, but make no cue.
+ */
+export const BRITANNIC_GONE_EVENT: SimEventKind = "stern-under";
+
+/**
+ * The scripted extras that go quiet once she is gone. Her seabed thuds and
+ * breakup are real sim events that follow `stern-under`, so they still sound.
+ */
+const BRITANNIC_SCRIPTED: ReadonlySet<SimEventKind> = new Set<SimEventKind>([
+  "radio",
+  "boat-lowered",
+  "last-boat",
+]);
+
 /** The event-to-cue map for a ship (the Titanic's is `EVENT_CUES`). */
 export function eventCuesFor(ship: ShipId): Partial<Record<SimEventKind, Cue>> {
   if (ship === "lusitania") return LUSITANIA_EVENT_CUES;
   if (ship === "fitzgerald") return FITZGERALD_EVENT_CUES;
+  if (ship === "britannic") return BRITANNIC_EVENT_CUES;
   return EVENT_CUES;
 }
 
@@ -104,6 +146,9 @@ export const CUE_GAP_S: Record<Cue, number> = {
   // Under the stagger between a multi-torpedo run's hits (3 s).
   torpedo: 2,
   boom: 4,
+  mine: 4,
+  // Two long blasts take about 9 s.
+  whistle: 12,
   gull: 4,
   splash: 2,
   swell: 6,
@@ -158,6 +203,9 @@ export interface CueInput {
   /** The run's storm (with `stormScale`): wind, and its wave groups' crashes. */
   storm?: StormSpec;
   stormScale?: number;
+  /** 0..1 of her starting speed (the scene's wake amount); the Britannic's
+   *  engines follow it. Left out without a scene. */
+  way?: number;
 }
 
 /** What the walk tells the sound (from the scene runtime). */
@@ -181,6 +229,8 @@ export interface BedState {
   ship?: ShipId;
   /** 0..1 how hard the wind blows (the storm's, rising with its sea). */
   wind?: number;
+  /** 0..1 of her starting speed (the Britannic's engines follow it). */
+  way?: number;
 }
 
 export interface CueScheduler {
@@ -242,6 +292,8 @@ export function createCueScheduler(
     thud: -Infinity,
     torpedo: -Infinity,
     boom: -Infinity,
+    mine: -Infinity,
+    whistle: -Infinity,
     gull: -Infinity,
     splash: -Infinity,
     swell: -Infinity,
@@ -253,6 +305,8 @@ export function createCueScheduler(
   let lastT = 0;
   let lastSnap = -1;
   let steamOn = false;
+  /** The Britannic has passed her `BRITANNIC_GONE_EVENT`. */
+  let gone = false;
   let nextCreakAt = 0;
   let nextGullAt = 0;
   let gulls = 0;
@@ -279,6 +333,7 @@ export function createCueScheduler(
   function reposition(list: readonly SimEvent[], t: number, atStart: boolean) {
     next = 0;
     steamOn = false;
+    gone = false;
     while (
       next < list.length &&
       (atStart ? list[next].t < t : list[next].t <= t)
@@ -286,6 +341,7 @@ export function createCueScheduler(
       const k = list[next].kind;
       if (k === "steam-start") steamOn = true;
       else if (k === "steam-stop") steamOn = false;
+      else if (k === BRITANNIC_GONE_EVENT) gone = true;
       next += 1;
     }
   }
@@ -323,7 +379,11 @@ export function createCueScheduler(
           next += 1;
           if (e.kind === "steam-start") steamOn = true;
           else if (e.kind === "steam-stop") steamOn = false;
-          const cue = cues[e.kind];
+          const cue =
+            ship === "britannic" && gone && BRITANNIC_SCRIPTED.has(e.kind)
+              ? undefined
+              : cues[e.kind];
+          if (e.kind === BRITANNIC_GONE_EVENT) gone = true;
           if (cue) fire(cue, i.underwater ? 0.5 : 1, i);
         }
         // A multi-torpedo run's later hits land staggered after t = 0.
@@ -359,11 +419,13 @@ export function createCueScheduler(
       bed.underwater = i.underwater;
       bed.speed = i.speed;
       bed.ship = ship;
+      bed.way = i.way;
       bed.wind = windAt(i.storm, i.stormScale ?? 1, i.t);
 
-      // Her afternoon: a gull now and then, far off, while she is upright.
+      // Her afternoon (or the Britannic's morning): a gull now and then, far
+      // off, while she is upright.
       if (
-        ship === "lusitania" &&
+        (ship === "lusitania" || ship === "britannic") &&
         i.playing &&
         !i.underwater &&
         bed.strain < GULL_UNTIL_STRAIN &&

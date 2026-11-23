@@ -120,6 +120,8 @@ describe("voices", () => {
     "thud",
     "torpedo",
     "boom",
+    "mine",
+    "whistle",
     "gull",
     "swell",
     "hatch",
@@ -268,5 +270,58 @@ describe("voices", () => {
     expect(audio.sources.length).toBe(before);
     beds.dispose();
     for (const s of audio.sources) expect(s.stop).toHaveBeenCalled();
+  });
+});
+
+describe("the Britannic's morning bed", () => {
+  it("has a calm sea and engines that follow her power, no hum or night tone", () => {
+    const full = bedTargets({ ...base, ship: "britannic" }, true);
+    const half = bedTargets({ ...base, ship: "britannic", power: 0.5 }, true);
+    const off = bedTargets({ ...base, ship: "britannic", power: 0 }, true);
+    expect(full.sea).toBe(BED_LEVEL.sea);
+    expect(full.engines).toBeGreaterThan(0);
+    expect(half.engines).toBeLessThan(full.engines);
+    expect(off.engines).toBe(0);
+    expect(full.hum).toBe(0);
+    expect(full.night).toBe(0);
+    expect(full.wind).toBe(0);
+    expect(full.wash).toBe(0);
+  });
+
+  it("goes to the low rumble under water", () => {
+    const u = bedTargets(
+      { ...base, ship: "britannic", underwater: true },
+      true
+    );
+    expect(u.sea).toBe(0);
+    expect(u.engines).toBe(0);
+    expect(u.rumble).toBe(BED_LEVEL.rumble);
+  });
+
+  it("keeps her loudest cues and beds under 0.3", () => {
+    const l = bedTargets({ ...base, ship: "britannic", steam: true }, true);
+    const sum = Object.values(l).reduce((a, b) => a + b, 0);
+    const cues = 4 * VOICE_PEAK_MAX * CUE_BUS_LEVEL;
+    expect((cues + sum) * 0.8).toBeLessThan(0.3);
+  });
+});
+
+describe("the Britannic's engines follow her way", () => {
+  it("falls quiet as her way comes off and is gated by power", () => {
+    const at = (way: number, power = 1) =>
+      bedTargets({ ...base, ship: "britannic", way, power }, true).engines;
+    expect(at(1)).toBeGreaterThan(at(0.1));
+    expect(at(0)).toBe(0);
+    expect(at(1, 0)).toBe(0);
+    expect(bedTargets({ ...base, ship: "britannic" }, true).engines).toBe(
+      at(1)
+    );
+  });
+
+  it("is ignored by every other ship", () => {
+    for (const ship of ["titanic", "lusitania", "fitzgerald"] as const)
+      expect(bedTargets({ ...base, ship, way: 0.1 }, true)).toEqual(
+        bedTargets({ ...base, ship }, true)
+      );
   });
 });

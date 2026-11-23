@@ -95,8 +95,6 @@ export function layFunnel(
   i: number,
   u: number
 ): void {
-  const parent = group.parent;
-  if (!parent) return;
   funnelFloorSpot(spec, wreck, i, spot);
   // Lying: its length along `dir`, its athwart half-axis (local z) up.
   ay.set(spot.dir[0], 0, spot.dir[2]);
@@ -106,18 +104,28 @@ export function layFunnel(
     .set(spot.centre[0], spot.centre[1], spot.centre[2])
     .addScaledVector(ay, -height / 2);
   want.setPosition(pos);
+  easeToWorld(group, want, u);
+}
+
+/**
+ * Moves a group from its pose now toward the world pose `target` (a
+ * rotation and position; overwritten): `u` 0 where it is, 1 there (slerp,
+ * then lerp). No allocation.
+ */
+export function easeToWorld(group: Group, target: Matrix4, u: number): void {
+  const parent = group.parent;
+  if (!parent) return;
   parent.updateMatrixWorld();
   group.updateMatrixWorld();
   if (u < 1) {
-    // From its toppled pose, sinking (slerp, then lerp).
     now.copy(group.matrixWorld);
     now.decompose(pos, q, sc);
-    want.decompose(ay, q2, sc);
+    target.decompose(ay, q2, sc);
     q.slerp(q2, u);
     pos.lerp(ay, u);
-    want.compose(pos, q, sc.set(1, 1, 1));
+    target.compose(pos, q, sc.set(1, 1, 1));
   }
   inv.copy(parent.matrixWorld).invert();
-  want.premultiply(inv);
-  want.decompose(group.position, group.quaternion, group.scale);
+  target.premultiply(inv);
+  target.decompose(group.position, group.quaternion, group.scale);
 }

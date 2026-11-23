@@ -400,9 +400,10 @@ sun and colours. Added nothing beyond what she needs to read right.
 - **The coast** (`Coast.tsx`, one draw): Kea and Makronisos from
   OpenStreetMap's outlines (simplified to about 300 m), Kea rising to
   Profitis Ilias (568 m), Makronisos to about 280 m; Attica from west of
-  Cape Sounion to Porto Rafti from the chart (about 300 m). Heights ×1.5
-  (`KEA_HEIGHT_SCALE`: true, Kea is a low sliver at 6–12 km), and a share
-  of the hills' own colour as light (`vColor × 0.3`) so their shaded side,
+  Cape Sounion to Porto Rafti from the chart (about 300 m). Heights true
+  (`KEA_HEIGHT_SCALE` 1; it was ×1.5 to read at 6–12 km, but at true
+  height Kea still stands clear on the horizon in the turn and in the boats
+  shots), and a share of the hills' own colour as light (`vColor × 0.3`) so their shaded side,
   between her and the low sun, reads brown-green. Port St Nikolo light as
   a small white tower. No temple, no people. Kea lies ahead to starboard
   once she has turned, Attica and Makronisos low and hazy to port.
@@ -424,11 +425,20 @@ sun and colours. Added nothing beyond what she needs to read right.
   morning only). Its "stern up" test uses her waterline aft (the liners'
   keel test hides their wake once hit: a follow-up, left as it is).
 - **Boats** (R15): stowed in their chocks or gantries until their
-  `boat-lowered` event, swung out (15 s), lowered (60 s), then pulled out
-  from her side and a little ahead of the beam (`boatAwayAt`, turned with
-  her heading as they touched the sea), never aft toward her screws; she
-  leaves them astern, 40 m or more out from her side by the time her
-  stern passes (`afternoonEffects.test.ts`).
+  `boat-lowered` event, swung out (15 s; an inboard Welin boat on its
+  outboard partner's davits), lowered (60 s), then pulled out from her
+  side and a little ahead of the beam (`mineBoatAt`), never aft toward her
+  screws, coming to rest 60–170 m off her side, a set's boats fanned
+  further ahead and further out so none share a spot. Fun over realism:
+  they keep station off her while she has way (`mineBoatHoldUntil`: her
+  stop at 8:50, or her bow on the floor if sooner), as if lying off her,
+  though 2 knots is more than a boat could pull; otherwise her way left
+  the first boats 300–750 m astern and out past the boats camera (165 m
+  off her side) by 8:45, and only two or three showed. From her stop they
+  lie where they are and she leaves them astern when she goes ahead
+  again, 40 m or more out from her side by the time her stern passes
+  (`afternoonEffects.test.ts`, which also checks every boat down by 8:45
+  is afloat, apart and near her).
 - **The bent bow** (R12) bends about the line through the hinge that is
   upright in the sea for her pose (`applyBowBendAbout`), so the bow lies
   on the floor where the sim puts it (within 0.5 m: `bowBend.test.ts`):
@@ -436,8 +446,14 @@ sun and colours. Added nothing beyond what she needs to read right.
 - **Funnels on the floor** (`funnelWreck.ts`): after the sim's
   `funnel-falls` and the topple, each sinks (40 s) to its spot beside the
   wreck's last pose and lies there; the model's own funnel groups (no
-  new draws). The foremast bent on the floor [WP] is a follow-up (the
-  mast is merged into the model's paint mesh).
+  new draws).
+- **The foremast on the floor** (`mastWreck.ts`) [WP]: once her bow lands
+  (the strike that bends it), if she ends whole, sunk and on her side,
+  the foremast (`handles.foremast`) comes down over 30 s to lie bent
+  (about 30°, toward her bow) on the floor beside her forward end, its
+  wires hidden. Where she floats, breaks or lands upright it stays on
+  her. Its own mesh (one draw); bent in place on the CPU (a few hundred
+  vertices, only while it moves).
 - **Camera**: `BRITANNIC_HULL_BOXES` (the Titanic's on her 94 ft beam);
   her cinematic shots are the Lusitania's (hit, list, boats, port boats,
   bow down, grounded above and below, on the floor) with `turn` (40 s–5

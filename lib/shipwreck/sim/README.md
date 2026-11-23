@@ -1732,6 +1732,15 @@ splits of 1 and 3 m² and vents of 0.1 m² change nothing before 7:00.
 
 ### The Britannic's calibration
 
+**Her off-centre seed (`tcg: -0.02`, spec R21).** The 2 cm to starboard is
+an assumption, not a sourced figure. A search for a pre-strike asymmetry on
+21 November 1916 (coal, stores, trim, hospital fittings) found none:
+Wikipedia, the Western Front Association's "The Loss of the Britannic", Al
+Jazeera (2016) and the Dominion (27 Nov 1916) all put the starboard list
+after the blast, from starboard flooding. With no source giving a side and
+a magnitude there is nothing honest to replace it with, so it stays. Replace
+it only when a source gives both (then recalibrate).
+
 Every value is physical and inside its stated range ("The Britannic's
 data"); nothing is scripted but the explosion, the boats and her 9:00
 whistle (a `radio` 0 event, "engines stopped; two long blasts on the

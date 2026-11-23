@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.6.0",
+    date: "2026-11-22",
+    title: "Walk the Britannic",
+    highlights: [
+      "Walk the Britannic's decks! Tap the walk button and stroll past her giant crane-like davits, her lifeboats and her funnels",
+      "She has her own sounds now: a calm morning sea with gulls, the boom of the mine, her engines slowing as she stops, and two long blasts on her whistle at 9:00",
+      "Her lifeboats now sit on the water near her, so you can see the boats that got everyone away",
+      "On the sea floor her front mast lies bent beside her, just like on the real wreck",
+      "The island of Kea is now drawn at its true height",
+    ],
+  },
+  {
     version: "1.5.0",
     date: "2026-11-22",
     title: "The Carpathia and a paint brush",

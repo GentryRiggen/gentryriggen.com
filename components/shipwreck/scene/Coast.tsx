@@ -302,8 +302,9 @@ export default function Coast({ ship = "lusitania" }: { ship?: ShipId }) {
 // Nikolo (Agios Nikolaos) and its light; Makronisos, long and low (to
 // about 280 m), and the Attica coast from Cape Sounion north past
 // Lavrio (from the chart, about 300 m), both to port and fading into the
-// haze. Heights ×1.5 (`KEA_HEIGHT_SCALE`: true, Kea's 568 m at 6–12 km is
-// a low sliver behind her in the haze). No temple, no people. One draw.
+// haze. Heights true (`KEA_HEIGHT_SCALE`, 1: at ×1.5 it read better at
+// distance, but at true height Kea still stands clear on the horizon in
+// her turn and boats shots). No temple, no people. One draw.
 
 /** Kea's outline (lat, lon), round the island. */
 const KEA: readonly [number, number][] = [
@@ -401,8 +402,8 @@ const ATTICA: readonly [number, number, number, number][] = [
 /** Port St Nikolo light (Agios Nikolaos, MarineTraffic's light list). */
 const ST_NIKOLO_LIGHT = [37.6673, 24.3139] as const;
 
-/** Kea's, Makronisos's and Attica's heights are drawn this many times true. */
-export const KEA_HEIGHT_SCALE = 1.5;
+/** Kea's, Makronisos's and Attica's heights are drawn this many times true (1). */
+export const KEA_HEIGHT_SCALE = 1;
 // Brown-green: maquis and phrygana on brown rock, terraces (lighter than
 // the Cork farmland: the morning sun is behind them from her deck).
 const MAQUIS = new Color(0x6f7a3e);

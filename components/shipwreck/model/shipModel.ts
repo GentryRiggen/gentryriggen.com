@@ -20,6 +20,7 @@ import {
   QUALITY,
   buildShipPart,
   guyLines,
+  mastGeometry,
   splitAtHinge,
   type LineList,
   type ModelQuality,
@@ -66,6 +67,7 @@ import {
   titanicRecipe,
   type BoatRecipe,
   type LightSpot,
+  type MastRecipe,
   type Placement,
   type ShipRecipe,
   type V3,
@@ -119,6 +121,15 @@ export interface TitanicHandles {
   funnels: Group[];
   /** Each funnel's guy wires (hide them when it falls). */
   funnelGuys: (LineSegments | null)[];
+  /**
+   * The foremast as its own part (the Britannic's, which lies on the floor
+   * by her wreck [WP]): its group, origin at the centre of its foot and its
+   * length up local +y, and its recipe. Missing where it is merged into
+   * the paint mesh (every other ship).
+   */
+  foremast?: { group: Group; mast: MastRecipe } | null;
+  /** Shows or hides that foremast's wires (stays, shrouds, the aerial). */
+  showForemastWires?(show: boolean): void;
   light: LightUniforms;
   setPower(power: number): void;
   setDeckPower(deck: number, power: number): void;
@@ -489,8 +500,12 @@ export function createTitanicModel(
   };
 
   const parts: ShipPart[] = breakX === null ? ["whole"] : ["bow", "stern"];
+  // The Britannic's foremast is its own part, to lie on the floor by her
+  // wreck [WP] (scene/mastWreck.ts).
+  const apartMasts: MastRecipe["id"][] =
+    spec.id === "britannic" ? ["fore"] : [];
   const built: ShipPartData[] = parts.map((p) =>
-    buildShipPart(recipe, p, breakX, quality)
+    buildShipPart(recipe, p, breakX, quality, apartMasts)
   );
   // A ship whose bow bends (R12): the bow forward of the hinge in its own
   // group inside the whole ship's, so everything else still sees "whole".
@@ -511,6 +526,11 @@ export function createTitanicModel(
   const partMeshes: Partial<Record<MergedKey, Mesh>>[] = [];
   const partLines: (LineSegments | null)[] = [];
   const funnelMeshes: (Mesh | null)[] = [];
+  let foremast: { group: Group; mast: MastRecipe } | null = null;
+  /** Line meshes holding the foremast's wires after their first `keep`. */
+  const mastWires: { lines: LineSegments; keep: number }[] = [];
+  /** Each mast built apart's mesh (for liveries). */
+  const mastMeshes: (Mesh | null)[] = [];
 
   function addMesh(
     group: Group,
@@ -647,11 +667,36 @@ export function createTitanicModel(
       ),
       "rail-posts"
     );
-    const lines = lineMesh(d.lines, mats.lines);
+    const keep = d.lines.pos.length / 3;
+    const lines = lineMesh(
+      d.mastLines.pos.length === 0
+        ? d.lines
+        : {
+            pos: [...d.lines.pos, ...d.mastLines.pos],
+            col: [...d.lines.col, ...d.mastLines.col],
+          },
+      mats.lines
+    );
     if (lines) {
       own(lines.geometry);
       lines.name = "rails-and-rigging";
       group.add(lines);
+      if (d.mastLines.pos.length > 0) mastWires.push({ lines, keep });
+    }
+    for (const i of d.masts) {
+      const m = recipe.masts[i];
+      const mg = new Group();
+      mg.name = `mast-${m.id}`;
+      toThree([m.x, 0, m.baseZ], mg.position);
+      // The paint material and her mast paint, as the merged mast's.
+      mastMeshes[i] = addMesh(
+        mg,
+        mastGeometry(recipe, i, quality),
+        mats.paint,
+        "mast"
+      );
+      group.add(mg);
+      if (m.id === "fore") foremast = { group: mg, mast: m };
     }
     partLines[pi] = lines;
     for (const i of d.funnels) {
@@ -804,6 +849,16 @@ export function createTitanicModel(
         funnels[i].add(alt);
         onlyIn(alt, a.id);
       }
+      // A mast built apart (the Britannic's foremast) takes the livery's
+      // mast paint as the merged masts do.
+      for (const i of d.masts) {
+        const mm = mastMeshes[i];
+        const g = mastGeometry(a.r, i, quality);
+        if (!mm || !sameGeometry(mm.geometry, g))
+          throw liveryShapeError(a.id, "mast");
+        swapColors(colorOf(mm), a.id, g.getAttribute("color").array);
+        g.dispose();
+      }
     });
   }
   // Variants first shown only in another livery start hidden; the base's
@@ -918,6 +973,11 @@ export function createTitanicModel(
     breakX,
     funnels,
     funnelGuys,
+    foremast,
+    showForemastWires(show) {
+      for (const w of mastWires)
+        w.lines.geometry.setDrawRange(0, show ? Infinity : w.keep);
+    },
     light,
     setPower: (p) => {
       light.uPower.value = p;

@@ -562,6 +562,19 @@ export interface BritannicBoat {
   kind: "gantry" | "welin";
 }
 
+/** Her lifeboats: 30 ft wooden boats, as her sisters' (assumed). */
+export const BRITANNIC_BOAT = {
+  length: 30 * FT,
+  beam: 9.08 * FT,
+  depth: 4 * FT,
+};
+/** A gantry set: arms this far fore and aft of the bay's middle. */
+export const BRITANNIC_GANTRY_ARM_DX = 5.6;
+/** How far a gantry arm leans inboard from its pedestal (m). */
+export const BRITANNIC_GANTRY_REACH = 4.4;
+/** The gap between a gantry bay's two rows of boats (m). */
+export const BRITANNIC_GANTRY_ROW_GAP = 0.35;
+
 /** Where the gantry sets stand (x, side): the middle of the bay. */
 export const BRITANNIC_GANTRY_SETS: readonly {
   x: number;

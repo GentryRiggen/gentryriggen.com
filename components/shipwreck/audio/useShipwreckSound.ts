@@ -139,6 +139,7 @@ export function useShipwreckSound(
         hits: s.hits.length,
         storm: s.track.storm,
         stormScale: s.track.stormScale,
+        way: runtime?.wake.amount,
       });
       if (now - lastBedAt < BED_EVERY_S) return;
       lastBedAt = now;

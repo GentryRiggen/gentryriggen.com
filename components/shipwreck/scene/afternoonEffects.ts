@@ -76,34 +76,86 @@ export function hasSecondExplosion(spec: Pick<ShipSpec, "cause">): boolean {
   return spec.cause !== "mine";
 }
 
+/** A mine ship's boats lie this far off her side, a set's first boat (m). */
+const MINE_REST_M = 60;
+/** Each later boat of a set (or davit pair) lies this much further out. */
+const MINE_REST_STEP_M = 18;
+
 /**
- * Where a mine ship's boat is (three x, z into `out`) `age` s after it
- * touched the sea at (x, z): pulling out from her side (`side`) and a
- * little ahead of the beam (her heading as it touched, `yaw`, the sim's
- * earth yaw), never aft toward her turning screws (R15); she, still
- * moving ahead, leaves it astern and well out from her side. Stops
- * 150–400 m out.
+ * Where a mine ship's boat lies in her level frame (ship x, y; no list)
+ * `age` s after it touched the sea at (x0, y0), and its heading there
+ * (three's angle about up, from her `yaw`), into `out` as three x, z and
+ * heading: pulling out from her side (`side`) and a little ahead of the
+ * beam, never aft toward her turning screws (R15), a set's boats (`slot`,
+ * 0 first) fanning further ahead and further out. Stops 60–170 m out:
+ * near enough to be in her shots (the boats camera stands 165 m off her
+ * side). `pose` is her level frame to place it in (`mineBoatPoseT`).
  */
-export function boatAwayAt(
-  x: number,
-  z: number,
-  yaw: number,
+export function mineBoatAt(
+  pose: Pick<BodyPose, "x" | "y" | "yaw">,
+  x0: number,
+  y0: number,
   side: "port" | "starboard" | "centre",
+  slot: number,
   i: number,
   age: number,
-  out: [number, number]
-): [number, number] {
+  out: [number, number, number]
+): [number, number, number] {
   const s = side === "port" ? 1 : -1;
-  const ahead = 0.15 + 0.45 * hash(i, 3);
-  const c = Math.cos(yaw);
-  const sn = Math.sin(yaw);
-  // Three axes: her heading (c, -sn), her port side (-sn, -c).
-  const dx = Math.cos(ahead) * s * -sn + Math.sin(ahead) * c;
-  const dz = Math.cos(ahead) * s * -c + Math.sin(ahead) * -sn;
-  const d = Math.min(150 + hash(i, 7) * 250, Math.max(0, age) * ROW_MPS);
-  out[0] = x + dx * d;
-  out[1] = z + dz * d;
+  const ahead = 0.15 + 0.08 * slot + 0.1 * hash(i, 3);
+  const rest = MINE_REST_M + MINE_REST_STEP_M * slot + 20 * hash(i, 7);
+  const d = Math.min(rest, Math.max(0, age) * ROW_MPS);
+  const dx = Math.sin(ahead);
+  const dy = s * Math.cos(ahead);
+  const lx = x0 + dx * d;
+  const ly = y0 + dy * d;
+  const c = Math.cos(pose.yaw);
+  const sn = Math.sin(pose.yaw);
+  out[0] = pose.x + c * lx - sn * ly;
+  out[1] = -(pose.y + sn * lx + c * ly);
+  out[2] = Math.atan2(sn * dx + c * dy, c * dx - sn * dy);
   return out;
+}
+
+/**
+ * When a mine ship's boats stop keeping station off her: her first stop
+ * (her speed profile's first zero: the Britannic's 8:50), or her bow
+ * striking the floor if that is sooner; no profile, at once; a profile that
+ * never stops holds until the bow lands (for ever if it never does). Fun over
+ * realism: lying off her while she still has way (2 knots, more than a
+ * boat's 0.7 m/s pull) keeps them in her shots; from her stop they lie
+ * where they are, and she leaves them astern when she goes ahead again.
+ */
+export function mineBoatHoldUntil(
+  spec: Pick<ShipSpec, "headway">,
+  events: Track["events"]
+): number {
+  if (!spec.headway?.profile) return -Infinity;
+  let until = Infinity;
+  for (const [t, u] of spec.headway.profile)
+    if (u <= 0) {
+      until = t;
+      break;
+    }
+  for (const e of events)
+    if (e.kind === "bow-lands") {
+      until = Math.min(until, e.t);
+      break;
+    }
+  return until;
+}
+
+/**
+ * The time of her pose a mine ship's boat afloat at `t` is placed by
+ * (`mineBoatAt`): now while she holds them (`holdUntil`), then frozen at
+ * her stop (or at its launch, `launchT`, for a boat down after it).
+ */
+export function mineBoatPoseT(
+  launchT: number,
+  holdUntil: number,
+  t: number
+): number {
+  return Math.min(t, Math.max(launchT, holdUntil));
 }
 
 /** True while any of `n` hits' columns can still be showing at `t`. */
@@ -249,8 +301,15 @@ export class AfternoonEffects {
   private readonly qPart = new Quaternion();
   private readonly qBoat = new Quaternion();
   private readonly m = new Matrix4();
-  private readonly away: [number, number] = [0, 0];
-  private readonly awayEnd: [number, number] = [0, 0];
+  private readonly away: [number, number, number] = [0, 0, 0];
+  /** Per track: when her boats stop keeping station, and her pose then. */
+  private holdUntil = -Infinity;
+  private holdKey: unknown = null;
+  private holdN = 0;
+  private readonly frozen = new Map<number, BodyPose>();
+  /** Each boat's place in its set or davit pair (0 first), per recipe. */
+  private slots: number[] = [];
+  private slotsOf: unknown = null;
   /** A mine ship (the Britannic): her boats stowed until lowered. */
   private readonly mine: boolean;
   private readonly swingS: number;
@@ -277,6 +336,16 @@ export class AfternoonEffects {
     if (this.launchTrack !== f.track) {
       this.launchTrack = f.track;
       this.launchAt.clear();
+      this.frozen.clear();
+    }
+    const events = f.track.events;
+    if (
+      this.mine &&
+      (this.holdKey !== events || this.holdN !== events.length)
+    ) {
+      this.holdKey = events;
+      this.holdN = events.length;
+      this.holdUntil = mineBoatHoldUntil(this.spec, events);
     }
     for (const mdl of f.models) this.hangBoats(f, mdl);
     if (f.visible) this.funnelSmoke(f, f.visible);
@@ -355,12 +424,9 @@ export class AfternoonEffects {
       const tb = f.lowered.get(i);
       const age = tb === undefined ? -1 : t - tb;
       // A mine ship's boats wait in their chocks (or gantry) until their
-      // turn; a gantry swings its boats out as a davit would.
-      if (
-        this.mine
-          ? age < 0 || (!info.hasDavits && info.gantry === undefined)
-          : !info.hasDavits
-      ) {
+      // turn; a gantry swings its boats out as a davit would, and an
+      // inboard boat goes out on its outboard partner's davits.
+      if (this.mine ? age < 0 : !info.hasDavits) {
         mdl.boats.stow(i);
         continue;
       }
@@ -436,43 +502,42 @@ export class AfternoonEffects {
     age: number
   ) {
     const info = mdl.boats.info(i);
-    let start = this.launchAt.get(i);
-    if (!start) {
-      const at = sampleTrack(f.track, tb + this.swingS + this.lowerS).bodies[0];
-      const w = shipToThree(at, [info.x, swungOutY(info) * 1.15, info.z]);
-      // (w carries her yaw then in its fourth slot for a mine ship's boat.)
-      start = new Vector3(w[0], at.yaw, w[2]);
-      this.launchAt.set(i, start);
-    }
+    const launchT = tb + this.swingS + this.lowerS;
     if (this.mine) {
-      // Out from her side and a little ahead, never toward her screws.
-      const age2 = age - this.swingS - this.lowerS;
-      const p = boatAwayAt(
-        start.x,
-        start.z,
-        start.y,
+      // Out from her side and a little ahead, never toward her screws,
+      // lying off her while she has way (`mineBoatHoldUntil`).
+      const pt = mineBoatPoseT(launchT, this.holdUntil, f.t);
+      let pose: BodyPose = f.frame.bodies[0];
+      if (pt < f.t) {
+        let held = this.frozen.get(i);
+        if (!held) {
+          held = sampleTrack(f.track, pt).bodies[0];
+          this.frozen.set(i, held);
+        }
+        pose = held;
+      }
+      const p = mineBoatAt(
+        pose,
+        info.x,
+        swungOutY(info) * 1.15,
         info.side,
+        this.slotOf(mdl, i),
         i,
-        age2,
+        age - this.swingS - this.lowerS,
         this.away
       );
-      const q = boatAwayAt(
-        start.x,
-        start.z,
-        start.y,
-        info.side,
-        i,
-        1e6,
-        this.awayEnd
-      );
       const bob = Math.sin(f.wall * 0.9 + i) * 0.05;
-      this.q.setFromAxisAngle(
-        this.up,
-        Math.atan2(-(q[1] - start.z), q[0] - start.x)
-      );
+      this.q.setFromAxisAngle(this.up, p[2]);
       this.m.compose(this.v.set(p[0], -0.35 + bob, p[1]), this.q, this.one);
       mdl.boats.float(i, this.m);
       return;
+    }
+    let start = this.launchAt.get(i);
+    if (!start) {
+      const at = sampleTrack(f.track, launchT).bodies[0];
+      const w = shipToThree(at, [info.x, swungOutY(info) * 1.15, info.z]);
+      start = new Vector3(w[0], 0, w[2]);
+      this.launchAt.set(i, start);
     }
     const sideZ = info.side === "port" ? -1 : 1;
     const fan = (hash(i, 3) - 0.5) * 1.2;
@@ -489,6 +554,24 @@ export class AfternoonEffects {
       this.one
     );
     mdl.boats.float(i, this.m);
+  }
+
+  /** A boat's place among the boats sharing its spot (x and side), 0 first. */
+  private slotOf(mdl: TitanicHandles, i: number): number {
+    if (this.slotsOf !== mdl.recipe.boats) {
+      this.slotsOf = mdl.recipe.boats;
+      this.slots = [];
+      for (let k = 0; k < mdl.boats.count; k += 1) {
+        const b = mdl.boats.info(k);
+        let n = 0;
+        for (let j = 0; j < k; j += 1) {
+          const o = mdl.boats.info(j);
+          if (o.x === b.x && o.side === b.side) n += 1;
+        }
+        this.slots.push(n);
+      }
+    }
+    return this.slots[i] ?? 0;
   }
 
   /**

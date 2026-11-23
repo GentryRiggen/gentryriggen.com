@@ -29,10 +29,22 @@ describe("firestore.rules stays in step with the game event schema", () => {
     for (const [name, event] of Object.entries(GAME_EVENTS)) {
       expect(gameRules).toContain(`'${name}'`);
       const props: Record<string, PropSpec> = event.props;
-      for (const spec of Object.values(props)) {
+      for (const [prop, spec] of Object.entries(props)) {
         if (spec.kind !== "enum") continue;
+        // The value sits in a `p.<prop> in [...]` list for its own prop, not
+        // just somewhere in the rules.
+        const lists = [
+          ...gameRules.matchAll(
+            new RegExp(`p\\.${prop} in \\[([^\\]]*)\\]`, "g")
+          ),
+        ].flatMap((m) => quotedList(m[1]));
         for (const value of spec.values) {
-          expect(gameRules).toContain(`'${value}'`);
+          // A prop the rules check another way (a worlds map) has no list.
+          const found =
+            lists.length > 0
+              ? lists.includes(value)
+              : gameRules.includes(`'${value}'`);
+          expect([name, prop, value, found]).toEqual([name, prop, value, true]);
         }
       }
     }

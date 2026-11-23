@@ -1,3 +1,4 @@
+import type { BufferGeometry } from "three";
 import { TEAR_AMPLITUDE, isInPart, tearX, type ShipPart } from "./breakCut";
 import {
   GeoBuffer,
@@ -21,6 +22,7 @@ import type {
   GantryRecipe,
   House,
   LightSpot,
+  MastRecipe,
   Placement,
   ShipRecipe,
   V3,
@@ -152,6 +154,13 @@ export interface ShipPartData {
   /** Indices of the funnels and boats that ride on this part. */
   funnels: number[];
   boats: number[];
+  /**
+   * Indices of the masts built apart (`buildShipPart`'s `apartMasts`) that
+   * stand on this part, and their wires (stays, shrouds, the aerial): drawn
+   * after `lines` in the same line mesh, so the scene can hide them.
+   */
+  masts: number[];
+  mastLines: LineList;
 }
 
 interface Column {
@@ -169,6 +178,8 @@ interface Ctx {
   q: QualitySettings;
   cols: number[];
   d: ShipPartData;
+  /** Masts built apart (their own mesh), by id. */
+  apart: readonly MastRecipe["id"][];
 }
 
 /** The long surfaces' column positions: even, and denser at the ends. */
@@ -877,6 +888,93 @@ function buildHouse(ctx: Ctx, h: House): void {
 // ---------------------------------------------------------------------------
 // Masts, davits, cranes and deck fittings (all in the paint list).
 
+/**
+ * A mast in the ship frame, in her mast paint (`ShipPaint.mast`), its pole
+ * in `pieces` lengths (rings between them, so it can be bent).
+ */
+function drawMast(
+  paint: GeoBuffer,
+  r: ShipRecipe,
+  m: MastRecipe,
+  seg: number,
+  pieces = 1
+): void {
+  const white = rgb(COLORS.white);
+  const lean = Math.tan(m.rake);
+  const at = (z: number): V3 => [m.x - lean * (z - m.baseZ), 0, z];
+  const color = rgb(r.paint?.mast ?? COLORS.mast);
+  const z0 = m.baseZ - 0.2;
+  // Exact ends (one piece draws as the merged mast always has).
+  const zAt = (k: number) =>
+    k === pieces ? m.topZ : z0 + ((m.topZ - z0) * k) / pieces;
+  const rAt = (k: number) =>
+    k === pieces ? m.r1 : m.r0 + ((m.r1 - m.r0) * k) / pieces;
+  for (let k = 0; k < pieces; k += 1)
+    cylinder(paint, at(zAt(k)), at(zAt(k + 1)), rAt(k), rAt(k + 1), seg, color);
+  cylinder(
+    paint,
+    at(m.baseZ),
+    at(m.baseZ + 1.0),
+    m.r0 + 0.25,
+    m.r0 + 0.1,
+    seg,
+    white
+  );
+  // Spreaders for the wireless aerial.
+  if (m.yard !== false) box(paint, at(m.topZ - 0.6), [0.25, 3.6, 0.2], color);
+  if (m.crowsNest) {
+    const n = m.crowsNest;
+    cylinder(paint, at(n.z), at(n.z + n.h), n.r, n.r, seg + 4, white);
+    cylinder(
+      paint,
+      at(n.z - 0.15),
+      at(n.z),
+      n.r + 0.15,
+      n.r + 0.15,
+      seg + 4,
+      color
+    );
+  }
+}
+
+/** Pole lengths of a mast built apart (m): short, so it bends smoothly. */
+const APART_PIECE_M = 1.5;
+
+/**
+ * A mast built apart (`apartMasts`) as its own geometry: what the paint
+ * mesh would hold for it, the same colours, its origin at the centre of
+ * its foot (three.js axes, its length up +y), its pole in short lengths.
+ */
+export function mastGeometry(
+  r: ShipRecipe,
+  index: number,
+  quality: ModelQuality
+): BufferGeometry {
+  const m = r.masts[index];
+  const buf = new GeoBuffer({ color: true });
+  const pieces = Math.ceil((m.topZ - m.baseZ) / APART_PIECE_M);
+  drawMast(buf, r, m, QUALITY[quality].cylSeg, pieces);
+  const g = buf.toGeometry();
+  g.translate(-m.x, -m.baseZ, 0);
+  g.computeBoundingSphere();
+  g.computeBoundingBox();
+  return g;
+}
+
+/** Whether a wire goes with a mast built apart: on its pole, or an aerial. */
+function wireOfMast(r: ShipRecipe, w: Wire, apart: Ctx["apart"]): boolean {
+  if (apart.length === 0) return false;
+  if (w.kind === "aerial" && apart.includes("fore")) return true;
+  const on = (m: MastRecipe, p: V3) =>
+    Math.abs(p[1]) < 0.05 &&
+    p[2] > m.baseZ &&
+    p[2] < m.topZ + 0.5 &&
+    Math.abs(p[0] - (m.x - Math.tan(m.rake) * (p[2] - m.baseZ))) < 0.05;
+  return r.masts.some(
+    (m) => apart.includes(m.id) && (on(m, w.a) || on(m, w.b))
+  );
+}
+
 function buildFittings(ctx: Ctx): void {
   const { r, q } = ctx;
   const paint = ctx.d.paint;
@@ -884,38 +982,11 @@ function buildFittings(ctx: Ctx): void {
   const dark = rgb(COLORS.dark);
   const seg = q.cylSeg;
 
-  for (const m of r.masts) {
-    const base: V3 = [m.x, 0, m.baseZ];
-    if (!inPart(ctx, base)) continue;
-    const lean = Math.tan(m.rake);
-    const at = (z: number): V3 => [m.x - lean * (z - m.baseZ), 0, z];
-    const color = rgb(r.paint?.mast ?? COLORS.mast);
-    cylinder(paint, at(m.baseZ - 0.2), at(m.topZ), m.r0, m.r1, seg, color);
-    cylinder(
-      paint,
-      at(m.baseZ),
-      at(m.baseZ + 1.0),
-      m.r0 + 0.25,
-      m.r0 + 0.1,
-      seg,
-      white
-    );
-    // Spreaders for the wireless aerial.
-    if (m.yard !== false) box(paint, at(m.topZ - 0.6), [0.25, 3.6, 0.2], color);
-    if (m.crowsNest) {
-      const n = m.crowsNest;
-      cylinder(paint, at(n.z), at(n.z + n.h), n.r, n.r, seg + 4, white);
-      cylinder(
-        paint,
-        at(n.z - 0.15),
-        at(n.z),
-        n.r + 0.15,
-        n.r + 0.15,
-        seg + 4,
-        color
-      );
-    }
-  }
+  r.masts.forEach((m, i) => {
+    if (!inPart(ctx, [m.x, 0, m.baseZ])) return;
+    if (ctx.apart.includes(m.id)) ctx.d.masts.push(i);
+    else drawMast(paint, r, m, seg);
+  });
 
   for (const d of r.davits) {
     const foot: V3 = [d.x, d.footY, d.z];
@@ -1664,11 +1735,17 @@ export function counterX(r: ShipRecipe, y: number, z: number): number {
 // ---------------------------------------------------------------------------
 // Lines and instances.
 
-function addLine(ctx: Ctx, a: V3, b: V3, hex: number): void {
+function addLine(
+  ctx: Ctx,
+  a: V3,
+  b: V3,
+  hex: number,
+  into: LineList = ctx.d.lines
+): void {
   if (!inPart(ctx, a) || !inPart(ctx, b)) return;
   const c = rgb(hex);
-  ctx.d.lines.pos.push(a[0], a[2], -a[1], b[0], b[2], -b[1]);
-  ctx.d.lines.col.push(...c, ...c);
+  into.pos.push(a[0], a[2], -a[1], b[0], b[2], -b[1]);
+  into.col.push(...c, ...c);
 }
 
 function buildLinesAndInstances(ctx: Ctx): void {
@@ -1698,7 +1775,13 @@ function buildLinesAndInstances(ctx: Ctx): void {
   }
   if (q.rigging) {
     for (const w of r.wires)
-      addLine(ctx, w.a, w.b, w.kind === "aerial" ? COLORS.rig : COLORS.rig);
+      addLine(
+        ctx,
+        w.a,
+        w.b,
+        w.kind === "aerial" ? COLORS.rig : COLORS.rig,
+        wireOfMast(r, w, ctx.apart) ? ctx.d.mastLines : ctx.d.lines
+      );
   }
   for (const l of r.lights) {
     if (!inPart(ctx, l.p)) continue;
@@ -1730,7 +1813,9 @@ export function buildShipPart(
   r: ShipRecipe,
   part: ShipPart,
   breakX: number | null,
-  quality: ModelQuality
+  quality: ModelQuality,
+  /** Masts to leave out of the paint mesh (`mastGeometry` builds them). */
+  apartMasts: readonly MastRecipe["id"][] = []
 ): ShipPartData {
   const q = QUALITY[quality];
   const d: ShipPartData = {
@@ -1752,6 +1837,8 @@ export function buildShipPart(
     lines: { pos: [], col: [] },
     funnels: [],
     boats: [],
+    masts: [],
+    mastLines: { pos: [], col: [] },
   };
   const ctx: Ctx = {
     r,
@@ -1760,6 +1847,7 @@ export function buildShipPart(
     q,
     cols: columnStations(r, q.colStep),
     d,
+    apart: apartMasts,
   };
   buildHull(ctx);
   buildSuperstructure(ctx);
@@ -1806,8 +1894,8 @@ function splitBuffer(src: GeoBuffer, x: number, fwd: boolean): GeoBuffer {
 /**
  * The whole ship's part data cut at x into what stays (aft) and the bow
  * that bends (forward): every triangle, light, fitting and line goes by
- * where its middle is. The bow keeps no funnels or boats (none stand
- * forward of a hinge in the well deck).
+ * where its middle is. The bow keeps no funnels, boats or apart masts
+ * (none stand forward of a hinge in the well deck).
  */
 export function splitAtHinge(
   d: ShipPartData,
@@ -1815,13 +1903,16 @@ export function splitAtHinge(
 ): { aft: ShipPartData; fwd: ShipPartData } {
   const half = (fwd: boolean): ShipPartData => {
     const keep = (p: V3) => p[0] > x === fwd;
-    const lines: LineList = { pos: [], col: [] };
-    for (let i = 0; i < d.lines.pos.length; i += 6) {
-      const mid = (d.lines.pos[i] + d.lines.pos[i + 3]) / 2;
-      if (mid > x !== fwd) continue;
-      lines.pos.push(...d.lines.pos.slice(i, i + 6));
-      lines.col.push(...d.lines.col.slice(i, i + 6));
-    }
+    const cut = (from: LineList): LineList => {
+      const out: LineList = { pos: [], col: [] };
+      for (let i = 0; i < from.pos.length; i += 6) {
+        const mid = (from.pos[i] + from.pos[i + 3]) / 2;
+        if (mid > x !== fwd) continue;
+        out.pos.push(...from.pos.slice(i, i + 6));
+        out.col.push(...from.col.slice(i, i + 6));
+      }
+      return out;
+    };
     return {
       part: d.part,
       hull: splitBuffer(d.hull, x, fwd),
@@ -1838,9 +1929,11 @@ export function splitAtHinge(
       benches: d.benches.filter((v) => keep(v.p)),
       bollards: d.bollards.filter((v) => keep(v.p)),
       posts: d.posts.filter(keep),
-      lines,
+      lines: cut(d.lines),
       funnels: fwd ? [] : d.funnels,
       boats: fwd ? [] : d.boats,
+      masts: fwd ? [] : d.masts,
+      mastLines: cut(d.mastLines),
     };
   };
   return { aft: half(false), fwd: half(true) };
