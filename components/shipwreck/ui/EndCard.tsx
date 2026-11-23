@@ -11,7 +11,7 @@ interface EndCardProps {
   /** "What really happened" (default: the Titanic's). */
   history?: string;
   /** What sank her: the What if? button's icon. */
-  cause?: "iceberg" | "torpedo" | "storm";
+  cause?: "iceberg" | "torpedo" | "storm" | "mine";
   /** First time this ending was seen: a small celebration. */
   isNew: boolean;
   onWatchAgain: () => void;

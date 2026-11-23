@@ -33,7 +33,8 @@ export interface SimEvent {
   realT: number;
   kind: SimEventKind;
   /** Rocket, boat (spec order), funnel (0 forward), hatch (from 1) or
-   *  radio message (the ship's own numbering) number. */
+   *  radio message or signal (the ship's own numbering: the Fitzgerald's
+   *  messages, the Britannic's 9:00 whistle) number. */
   index?: number;
 }
 
@@ -55,6 +56,13 @@ export const STEADY_INFLOW_M3S = 0.05;
 export const STEADY_HOLD_S = 300;
 /** The inflow is also judged averaged over about this long (s). */
 export const STEADY_AVG_S = 120;
+/**
+ * A mine ship's roll rate (rad/s) that still counts as steady (1.4): a
+ * mine's hole (12 m²) into a double skin's narrow void (0.85 m) trades
+ * water in pulses that rock her by up to about 1e-4 rad/s (0.005°/s)
+ * about a steady list; 1e-5 for every other ship.
+ */
+export const STEADY_MINE_ROLL_RADS = 2e-4;
 /**
  * `hatch-fails`: a hatch cover gives way once the water over its lip
  * reaches its `failHeadM` (ship data); a tight cover (`SimOptions

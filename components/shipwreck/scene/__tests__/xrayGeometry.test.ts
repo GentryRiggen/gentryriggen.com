@@ -1,4 +1,8 @@
-import { FITZGERALD_PLACE_IDS } from "@/lib/shipwreck/places";
+import {
+  BRITANNIC_PLACE_IDS,
+  FITZGERALD_PLACE_IDS,
+} from "@/lib/shipwreck/places";
+import { SHIP_IDS, SHIPS } from "@/lib/shipwreck/ships";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { buildHull } from "@/lib/shipwreck/sim/geometry";
@@ -8,10 +12,19 @@ import {
   partCompartments,
 } from "@/lib/shipwreck/xray";
 import {
+  XRAY_SLOTS,
   cargoGeometry,
   doubleBottomLines,
   placeGeometry,
 } from "../xrayGeometry";
+
+describe("the X-ray's water slots", () => {
+  it("hold every compartment of every ship (the Britannic has 32)", () => {
+    for (const id of SHIP_IDS)
+      expect(SHIPS[id].compartments.length).toBeLessThanOrEqual(XRAY_SLOTS);
+    expect(SHIPS.britannic.compartments.length).toBe(32);
+  });
+});
 
 describe("the Fitzgerald's X-ray", () => {
   const hull = buildHull(fitzgerald);
@@ -83,6 +96,15 @@ describe("the Fitzgerald's X-ray", () => {
       const { solid, glow } = placeGeometry("fitzgerald", id);
       if (id === "hatch-crane") expect(solid).toBeNull();
       else expect(solid ?? glow).not.toBeNull();
+    }
+  });
+});
+
+describe("the Britannic's X-ray (1.4)", () => {
+  it("has a blockout at each of her six places", () => {
+    for (const id of BRITANNIC_PLACE_IDS) {
+      const { solid, glow } = placeGeometry("britannic", id);
+      expect(solid ?? glow).not.toBeNull();
     }
   });
 });

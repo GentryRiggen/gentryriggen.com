@@ -128,6 +128,16 @@ export const LUSITANIA_HULL_BOXES: readonly HullBox[] = [
 ];
 
 /**
+ * The Britannic's: the Titanic's boxes on her 94 ft hull (her beam
+ * 28.65 m, the same frames and decks; the boat deck house a little wider
+ * with her).
+ */
+export const BRITANNIC_HULL_BOXES: readonly HullBox[] = [
+  { x: [-138.5, 130], y: [-14.45, 14.45], z: [-0.5, 21] },
+  { x: [-126, 105], y: [-13.2, 13.2], z: [21, 29.3] },
+];
+
+/**
  * A laker's boxes from her data (lib/shipwreck/ships/fitzgerald.ts): the
  * hull from her stern to her stem, the beam across, in three lengths so
  * the free camera can come down to her low open deck between her houses:
@@ -172,6 +182,7 @@ export const FITZGERALD_HULL_BOXES: readonly HullBox[] = lakerBoxes(fitzgerald);
 /** The hull boxes of a ship (the camera's bounds and the double-tap proxies). */
 export function hullBoxesFor(ship: ShipId): readonly HullBox[] {
   if (ship === "fitzgerald") return FITZGERALD_HULL_BOXES;
+  if (ship === "britannic") return BRITANNIC_HULL_BOXES;
   return ship === "lusitania" ? LUSITANIA_HULL_BOXES : HULL_BOXES;
 }
 
@@ -343,6 +354,9 @@ export type ShotId =
   | "grounded"
   | "grounded-below"
   | "on-floor"
+  // The Britannic's morning (the rest are the Lusitania's).
+  | "morning"
+  | "turn"
   // The Fitzgerald's storm.
   | "storm"
   | "storm-beam"
@@ -402,7 +416,8 @@ export function lifeboatView(ctx: ShotContext, distance = 420): View {
   // ship so the rockets' bursts are in the frame.
   // (The Lusitania fired none: just over her. Her boats got away from
   // the starboard side, so her boat camera is off the starboard quarter.)
-  const lusitania = ctx.ship === "lusitania";
+  // (Nor the Britannic: no rockets either, her boats from both sides.)
+  const lusitania = ctx.ship === "lusitania" || ctx.ship === "britannic";
   tgt[1] = Math.max(tgt[1], 6) + (lusitania ? 6 : 22);
   const a = ((lusitania ? 145 : 215) * Math.PI) / 180 + drift / distance;
   // Around where she is (the hull drifts a little through the night).
@@ -419,7 +434,8 @@ export function lifeboatView(ctx: ShotContext, distance = 420): View {
 
 /** Follows the bow down (under water), then circles the wreck. */
 export function underwaterView(ctx: ShotContext): View {
-  if (ctx.ship === "lusitania") return lusitaniaUnderwater(ctx);
+  if (ctx.ship === "lusitania" || ctx.ship === "britannic")
+    return lusitaniaUnderwater(ctx);
   if (ctx.ship === "fitzgerald") return fitzgeraldUnderwater(ctx);
   const b = bowBody(ctx);
   const mid = ctx.breakX !== null && b.part === "bow" ? ctx.breakX + 70 : 60;
@@ -465,6 +481,7 @@ export function cinematicShot(
   hit = true
 ): ShotId {
   if (ship === "lusitania") return hit ? lusitaniaShot(track, t) : "afternoon";
+  if (ship === "britannic") return hit ? britannicShot(track, t) : "morning";
   if (ship === "fitzgerald") return hit ? fitzgeraldShot(track, t) : "storm";
   const firstOf = (kind: string): number | null => {
     for (const e of track.events) if (e.kind === kind) return e.t;
@@ -498,6 +515,8 @@ export function shotView(shot: ShotId, ctx: ShotContext): View {
     case "grounded":
     case "grounded-below":
     case "on-floor":
+    case "morning":
+    case "turn":
       return lusitaniaView(shot, ctx);
     case "storm":
     case "storm-beam":
@@ -600,6 +619,13 @@ function lusitaniaView(shot: ShotId, ctx: ShotContext): View {
   const hitX = ctx.hitX ?? 63.7;
   const drift = ctx.wall * 0.004;
   switch (shot) {
+    case "turn": {
+      // The Britannic's turn for Kea: high off her port quarter, looking
+      // over her bow as she swings toward the island, her wake behind.
+      const tgt = shipToThree(b, [60, 0, 14]);
+      return { pos: levelToThree(b, [-300, 190, 85]), target: tgt };
+    }
+    case "morning":
     case "afternoon": {
       // Circling slowly from her starboard bow: the coast behind her.
       const a = 0.55 + drift;
@@ -672,6 +698,19 @@ function lusitaniaView(shot: ShotId, ctx: ShotContext): View {
     default:
       return lusitaniaUnderwater(ctx);
   }
+}
+
+/**
+ * The Britannic's morning: the Lusitania's story of shots (the hit, the
+ * list, the boats, the bow on the floor, her side) with her turn for Kea
+ * after the mine (from 40 s to 5 minutes).
+ */
+function britannicShot(
+  track: Pick<SimTrack, "events" | "brokeAtT" | "sankAtT">,
+  t: number
+): ShotId {
+  const shot = lusitaniaShot(track, t);
+  return shot === "list" && t < 300 ? "turn" : shot;
 }
 
 /** Under water with her: following her bow down, then circling the wreck. */

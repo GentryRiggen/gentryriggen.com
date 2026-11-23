@@ -100,7 +100,7 @@ describe("shipwreck analytics", () => {
       isValidGameProps("shipwreck_start", {
         mode: "real",
         opened: 0,
-        ship: "britannic",
+        ship: "andrea-doria",
       })
     ).toBe(false);
     expect(
@@ -139,5 +139,24 @@ describe("shipwreck analytics", () => {
       minutes: 20,
       ship: "fitzgerald",
     });
+  });
+
+  it("sends the Britannic's runs", () => {
+    trackStart("whatif", 16, "britannic");
+    trackEnd("real", "sank", 55, "britannic");
+    expect(trackGame).toHaveBeenNthCalledWith(1, "shipwreck_start", {
+      mode: "whatif",
+      opened: 16,
+      ship: "britannic",
+    });
+    expect(trackGame).toHaveBeenNthCalledWith(2, "shipwreck_end", {
+      mode: "real",
+      outcome: "sank",
+      minutes: 55,
+      ship: "britannic",
+    });
+    for (const [name, props] of trackGame.mock.calls) {
+      expect(isValidGameProps(name, props)).toBe(true);
+    }
   });
 });

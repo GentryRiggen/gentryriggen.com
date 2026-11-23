@@ -18,18 +18,23 @@ interface TitleScreenProps {
   onWhatIf: () => void;
 }
 
-const COMING = ["Britannic"];
+const COMING: string[] = [];
 
 /** The What if? button's words and icon, by what sank her. */
 const WHAT_IF: Record<
-  "iceberg" | "torpedo" | "storm",
-  { label: string; icon: "iceberg" | "torpedo" | "storm" }
+  "iceberg" | "torpedo" | "storm" | "mine",
+  { label: string; icon: "iceberg" | "torpedo" | "storm" | "mine" }
 > = {
   iceberg: {
     label: "What if? Choose where the iceberg opens the hull",
     icon: "iceberg",
   },
   torpedo: { label: "What if? Choose where torpedoes hit", icon: "torpedo" },
+  mine: {
+    label:
+      "What if? Choose where mines hit, and her portholes, doors and engines",
+    icon: "mine",
+  },
   storm: {
     label: "What if? Choose what lets the lake in, and the storm",
     icon: "storm",
@@ -67,11 +72,11 @@ export default function TitleScreen({
         </p>
       </div>
 
-      <div className="flex w-full max-w-2xl flex-col items-center gap-4 pb-2">
+      <div className="flex w-full max-w-3xl flex-col items-center gap-4 pb-2">
         <div
           role="radiogroup"
           aria-label="Choose a ship"
-          className="flex w-full shrink-0 justify-center gap-2 overflow-x-auto p-1"
+          className="flex w-full shrink-0 flex-wrap justify-center gap-2 p-1"
         >
           {SHIP_IDS.map((id) => {
             const s = getShip(id);

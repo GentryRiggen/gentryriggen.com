@@ -1,9 +1,11 @@
 import {
+  type BulkheadDoor,
   type Compartment,
   type DeckOpening,
   type Opening,
   type RunOpening,
   type ShipSpec,
+  hullOpenings,
   isDeckOpening,
 } from "../ships/types";
 import {
@@ -37,11 +39,13 @@ import {
   type SpillLink,
   earthZ,
   stepFloat,
+  turnTo,
   upOf,
   updateBounds,
 } from "./body";
 import { type DeckWater, makeDeckWater } from "./deckWater";
 import { stepFall, stepLanding } from "./descent";
+import { doorLinks, openDoors } from "./doors";
 import {
   DYNAMO_FLOOD_M,
   FUNNEL_STAY_LIMIT_DEG,
@@ -51,6 +55,7 @@ import {
   LIGHTS_FLICKER_TRIM_DEG,
   STEADY_HOLD_S,
   STEADY_INFLOW_M3S,
+  STEADY_MINE_ROLL_RADS,
   type SimEvent,
   type SimEventKind,
 } from "./events";
@@ -71,8 +76,9 @@ import {
 } from "./geometry";
 import { type GirderState, girder, strengthProfile } from "./girder";
 import { R_SIZE, R_VOL, integrateSlice, upInShip } from "./hydrostatics";
-import { headwayRun } from "./headway";
+import { headingAt, headwayOf, headwayRun, speedAt } from "./headway";
 import { type MassModel, buildMass, massOf } from "./mass";
+import { holdsRealMine, mineOpenings } from "./mine";
 import type { BodyPose, SimFrame, SimTrack } from "./track";
 import { GROUP_RELOCK_S, lockGroups, stormOf } from "./waves";
 import { rideWeight, waveRide } from "./waveRide";
@@ -124,6 +130,11 @@ export interface SimOptions {
    *  not already hold (a real run may: the Fitzgerald's, R14). Default
    *  false. */
   shoal?: boolean;
+  /** Every `kind: "door"` door shut (default false). */
+  doorsClosed?: boolean;
+  /** Engines stopped at the first event: no profile, no turn; she coasts
+   *  with HEADWAY_STOP_HALF_LIFE_S (default false). */
+  enginesStopped?: boolean;
 }
 
 const DEG = Math.PI / 180;
@@ -155,7 +166,10 @@ export function whatIfSpots(spec: ShipSpec): string[] {
   }
   return spec.compartments
     .filter(
-      (c) => spec.cause !== "torpedo" || !c.span || c.span.side === "centre"
+      (c) =>
+        (spec.cause !== "torpedo" && spec.cause !== "mine") ||
+        !c.span ||
+        c.span.side === "centre"
     )
     .map((c) => c.id);
 }
@@ -170,6 +184,7 @@ export function whatIfOpenings(
 ): RunOpening[] {
   if (spec.cause === "storm") return stormOpenings(spec, ids);
   if (spec.cause === "torpedo") return torpedoOpenings(spec, ids);
+  if (spec.cause === "mine") return mineOpenings(spec, whatIfSpots(spec), ids);
   const out: Opening[] = [];
   for (const id of ids) {
     const comp = spec.compartments.find((c) => c.id === id);
@@ -239,7 +254,7 @@ export function whatIfRealIds(spec: ShipSpec): string[] {
       return o !== undefined && spec.realNight.includes(o);
     });
   }
-  if (spec.cause !== "torpedo")
+  if (spec.cause !== "torpedo" && spec.cause !== "mine")
     return [...new Set(spec.realNight.map((o) => o.compartmentId))];
   const real = JSON.stringify(spec.realNight);
   const spot = whatIfSpots(spec).find(
@@ -267,11 +282,11 @@ export function hitTimeS(k: number, n: number): number {
  * spot's is her real hit's (`realNight`'s first hole).
  */
 export function torpedoHitXs(spec: ShipSpec, ids: readonly string[]): number[] {
-  if (spec.cause !== "torpedo") return [];
+  if (spec.cause !== "torpedo" && spec.cause !== "mine") return [];
   const xs: number[] = [];
   for (const id of whatIfSpots(spec)) {
     if (!ids.includes(id)) continue;
-    const hole = torpedoOpenings(spec, [id]).find(
+    const hole = hullOpenings(whatIfOpenings(spec, [id])).find(
       (o) => o.side === "starboard" && (o.t ?? 0) === 0
     );
     if (hole) xs.push(hole.x);
@@ -423,6 +438,8 @@ interface World {
   /** The pumps (m³/s) and the depth in a space past which they stop (m). */
   pumps: number;
   pumpDepth: number;
+  /** Bulkhead doors open this run (`doorsClosed` shuts the watertight ones). */
+  doors: readonly BulkheadDoor[];
 }
 
 /** Settle her level before the collision, then open the holes at t = 0. */
@@ -447,10 +464,7 @@ function settle(w: World): void {
   w.nextFrameT = SLOW_FRAME_S;
 }
 
-function cellOpening(
-  hull: HullModel,
-  o: Opening
-): { x: number; y: number; zLow: number; zHigh: number; area: number } {
+function cellOpening(hull: HullModel, o: Opening): Cell["openings"][number] {
   const zMid = (o.zLow + o.zHigh) / 2;
   const hb = hullHalfBreadth(hull, o.x, zMid);
   return {
@@ -633,7 +647,12 @@ function lowestZ(b: Body): number {
 }
 
 function makeBody(
-  w: { spec: ShipSpec; hull: HullModel; mass: MassModel },
+  w: {
+    spec: ShipSpec;
+    hull: HullModel;
+    mass: MassModel;
+    doors?: readonly BulkheadDoor[];
+  },
   part: Body["part"],
   cells: Cell[],
   boxes: Cell[]
@@ -663,6 +682,7 @@ function makeBody(
     all: cells.concat(boxes),
     links: linksOf(w.hull, cells),
     crosses: crossesOf(w.hull, cells),
+    doors: doorLinks(w.doors, w.spec.compartments, cells),
     cuts: cutsOf(w.hull, cells),
     lightMass: light.mass,
     lightCx: light.cx,
@@ -772,7 +792,7 @@ function portholeOpenings(
           if (x < c.fromX || x > c.toX) return;
           if (!c.span) {
             if (best < 0) best = ci;
-          } else if (c.span.side === row.side) best = ci;
+          } else if (c.span.side === row.side && !row.inboard) best = ci;
           else if (c.span.side === "centre" && (best < 0 || !comps[best].span))
             best = ci;
         });
@@ -918,7 +938,12 @@ function buildWorld(
   const boxes = boxSlices.map((s) =>
     makeCell(s, -1, true, 0, 0, false, false, BOX_PERMEABILITY)
   );
-  const ctx = { spec, hull, mass };
+  const doors = openDoors(
+    spec.doors,
+    opts.doorsClosed === true,
+    spec.cause !== "mine" || holdsRealMine(spec, openings)
+  );
+  const ctx = { spec, hull, mass, doors };
   const body = makeBody(ctx, "whole", cells, boxes);
   // Green water on her open deck: the whole hull's (a break ends it).
   body.deckWater = makeDeckWater(spec, hull);
@@ -939,6 +964,10 @@ function buildWorld(
   const pending = all.filter((p) => p.t <= 0).map((p) => ({ i: p.i, o: p.o }));
   const timed = all.filter((p) => p.t > 0).sort((a, b) => a.t - b.t);
   if (opts.portholesOpen ?? true) pending.push(...portholeOpenings(spec, hull));
+  // Hull openings and portholes at or forward of `ram.fromX` see the ram head.
+  const ramX = spec.headway?.ram?.fromX;
+  if (ramX !== undefined)
+    for (const p of pending.concat(timed)) if (p.o.x >= ramX) p.o.ram = true;
   const pendingDeck = deckOpenings(spec, deckList, opts, body.deckWater);
   const storm = stormOf(spec) ?? null;
 
@@ -982,7 +1011,7 @@ function buildWorld(
     settleLeft: SETTLE_S,
     pending,
     timed,
-    headway: spec.headway,
+    headway: headwayOf(spec.headway, opts),
     wayLost: false,
     wayLostAt: null,
     rho: spec.waterDensity ?? RHO,
@@ -999,6 +1028,7 @@ function buildWorld(
     descentScale: spec.descentTimeScale ?? DESCENT_TIME_SCALE,
     pumps: spec.pumpsM3s ?? PUMP_M3S,
     pumpDepth: ownPumps ? Infinity : PUMP_DEPTH_M,
+    doors,
     probe: opts.probe,
     forecastle: fwdBox
       ? { x: (fwdBox.fromX + fwdBox.toX) / 2, z: fwdBox.topZ }
@@ -1213,7 +1243,7 @@ function breakUp(w: World, xRaw: number): void {
   for (const c of bowCells)
     if (abs(c.slice.xFrom - x) < X_EPS) c.aftWall = false;
 
-  const ctx = { spec: w.spec, hull: w.hull, mass: w.mass };
+  const ctx = { spec: w.spec, hull: w.hull, mass: w.mass, doors: w.doors };
   const parts = [
     makeBody(ctx, "stern", sternCells, sternBoxes),
     makeBody(ctx, "bow", bowCells, bowBoxes),
@@ -1226,6 +1256,7 @@ function breakUp(w: World, xRaw: number): void {
     p.z = whole.z;
     p.pitch = whole.pitch;
     p.roll = whole.roll;
+    p.yaw = whole.yaw;
     p.wp = whole.wp;
     p.wr = whole.wr;
     // Velocity of the part's own centre: v + ω × r in the x–z plane.
@@ -1367,6 +1398,20 @@ function step(w: World): void {
   // Steady way lasts until she goes under (the bow first).
   if (w.wayLostAt === null && w.fired.has("bow-under")) w.wayLostAt = w.realT;
   const way = headwayRun(w.headway, w.realT, w.realT + dt, w.wayLostAt);
+  // Along her heading (`turn`, 1.4), held once she has gone under.
+  const mid = w.realT + dt / 2;
+  const psi = headingAt(
+    w.headway,
+    w.wayLostAt === null ? mid : min(mid, w.wayLostAt)
+  );
+  const wayX = psi === 0 ? way : way * cos(psi);
+  const wayY = psi === 0 ? 0 : way * sin(psi);
+  // The ram head on her forward openings (1.4): her speed now.
+  const ram = w.headway?.ram;
+  if (ram) {
+    const u = w.wayLost ? 0 : speedAt(w.headway, w.realT, {}, w.wayLostAt);
+    for (const b of w.bodies) b.ramHead = (ram.cp * u * u) / (2 * GRAV);
+  }
   if (w.bowUnderRealT === null && w.fired.has("bow-under"))
     w.bowUnderRealT = w.realT;
   if (w.sea) {
@@ -1383,13 +1428,22 @@ function step(w: World): void {
     w.headway.halfLifeS === undefined
   )
     for (const b of w.bodies)
-      if (b.mode === "float" && (b.frozen || w.steady)) b.x += way;
+      if (b.mode === "float" && (b.frozen || w.steady)) {
+        b.x += wayX;
+        b.y += wayY;
+      }
   if (!w.steady) {
     for (const b of w.bodies) {
       if (b.mode === "float" && b.frozen) continue;
       // Her way through the water, until she touches the floor.
-      if (way !== 0 && !w.wayLost && (b.mode === "float" || b.mode === "fall"))
-        b.x += way;
+      if (
+        way !== 0 &&
+        !w.wayLost &&
+        (b.mode === "float" || b.mode === "fall")
+      ) {
+        b.x += wayX;
+        b.y += wayY;
+      }
       if (b.mode === "float") {
         const girderNow = !w.broken;
         stepFloat(
@@ -1436,6 +1490,16 @@ function step(w: World): void {
       }
     }
   }
+  // Her heading while she floats (1.4), held from when she went under, as
+  // her way's; a body under turns by the descent's own yaw from there.
+  if (w.headway?.turn) {
+    const end = w.realT + dt;
+    const yaw = headingAt(
+      w.headway,
+      w.wayLostAt === null ? end : min(end, w.wayLostAt)
+    );
+    for (const b of w.bodies) if (b.mode === "float") turnTo(b, yaw);
+  }
   w.realT += dt;
   w.t += compressed ? dt / w.descentScale : dt;
   if (!w.broken && w.girderState.worst >= 1 && w.bodies[0].mode === "float") {
@@ -1471,9 +1535,10 @@ function step(w: World): void {
       // average also counts (the iceberg ships keep the 1.0 test exactly).
       const still =
         (abs(b.netFlow) < STEADY_INFLOW_M3S ||
-          (w.spec.cause === "torpedo" && abs(b.flowAvg) < STEADY_INFLOW_M3S)) &&
+          ((w.spec.cause === "torpedo" || w.spec.cause === "mine") &&
+            abs(b.flowAvg) < STEADY_INFLOW_M3S)) &&
         abs(b.wp) < 1e-5 &&
-        abs(b.wr) < 1e-5 &&
+        abs(b.wr) < (w.spec.cause === "mine" ? STEADY_MINE_ROLL_RADS : 1e-5) &&
         abs(b.vz) < 1e-3;
       b.steadyFor = still ? b.steadyFor + dt : 0;
       if (b.steadyFor >= STEADY_HOLD_S) b.frozen = true;

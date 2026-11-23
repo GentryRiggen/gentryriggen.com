@@ -1,9 +1,10 @@
 # Shipwreck model
 
 The procedural ships: each built at load from its ship data
-(`lib/shipwreck/ships/titanic.ts`, `lusitania.ts`, `fitzgerald.ts`) and a
-detail recipe (`titanicRecipe.ts`, `lusitaniaRecipe.ts`,
-`fitzgeraldRecipe.ts`; `recipeFor(spec)` picks by `spec.id`). Nothing is downloaded: every texture is drawn into a canvas
+(`lib/shipwreck/ships/titanic.ts`, `lusitania.ts`, `fitzgerald.ts`,
+`britannic.ts`) and a detail recipe (`titanicRecipe.ts`,
+`lusitaniaRecipe.ts`, `fitzgeraldRecipe.ts`, `britannicRecipe.ts`;
+`recipeFor(spec)` picks by `spec.id`). Nothing is downloaded: every texture is drawn into a canvas
 once.
 
 ## Files
@@ -14,6 +15,9 @@ once.
 | `titanicRecipe.ts`    | Where everything goes: decks, houses, funnels, masts, boats, davits, 2,000+ portholes and windows, fittings, rails, wires, underwater gear. The recipe types.                  |
 | `lusitaniaRecipe.ts`  | The Lusitania's: her tiers (`blocks`), houses, funnels, 48 boats, 44 davits, lights, the forest of ventilators, four propellers; `PEACETIME_PAINT`.                            |
 | `fitzgeraldRecipe.ts` | The Edmund Fitzgerald's: forecastle, texas house and pilothouse, the after house, 21 hatch covers on coamings, the hatch crane, one funnel, boats, one propeller; `FENCE_GAP`. |
+| `britannicRecipe.ts`  | The Britannic's: her sister's recipe with the hospital paint (`bandPaintAt`), five gantry davit sets, Welin davits, A/B deck screens, "G.618", the bow's hinge.                |
+| `britannicLivery.ts`  | Her two paints on one built model (R23): `britannicModelRecipe`, `attachBritannicLivery`, `handles.setPaint("hospital" \| "liner")`.                                           |
+| `bowBend.ts`          | The bent bow (R12): `hardLandingAt`, `bowBend(t, landedAt)`, `bendShipPoint`, `applyBowBend`.                                                                                  |
 | `breakCut.ts`         | The jagged tear through `breakX` and which half a point belongs to.                                                                                                            |
 | `buildShip.ts`        | Recipe to merged triangle lists per material, instance lists and line lists, for the whole ship or one half; quality tiers.                                                    |
 | `partGeometry.ts`     | Funnels, boats, cowl vents, benches, bitts, rail posts, porthole and window panes.                                                                                             |
@@ -22,7 +26,7 @@ once.
 | `shipModel.ts`        | Assembles the three.js tree and the handles.                                                                                                                                   |
 | `TitanicModel.tsx`    | The R3F component (any ship: `spec`).                                                                                                                                          |
 | `pose.ts`             | `applyBodyPose`: a sim `BodyPose` onto a part.                                                                                                                                 |
-| `ModelViewer.tsx`     | The checking stage at `/shipwreck?model` (`&ship=lusitania` or `&ship=fitzgerald`; dev and e2e builds only).                                                                   |
+| `ModelViewer.tsx`     | The checking stage at `/shipwreck?model` (`&ship=lusitania`, `&ship=fitzgerald` or `&ship=britannic`; dev and e2e builds only).                                                |
 
 Frames: built in the ship frame (x forward, y to port, z up from the keel at
 midships) and written in three.js axes (`three.x = x`, `three.y = z`,
@@ -75,6 +79,7 @@ ledges, a dark bulkhead a few metres in.
 | `boats.lower(i, dropM, swing = 1)`        | Swung out (`swing` 0..1) and lowered `dropM` metres down the side, riding with its part.                                                                                                                                                                                                                        |
 | `boats.float(i, matrix)`                  | Free of the ship: `matrix` (position and rotation, no scale) of its keel centre in `root` space, i.e. three.js earth space when `root` is at the origin.                                                                                                                                                        |
 | `boats.hide(i)`, `info(i)`, `holderOf(i)` | Hide it; its kind, side, stowed place and size; the part group it rides on while aboard.                                                                                                                                                                                                                        |
+| `bend`                                    | The bow forward of the recipe's `hinge` (a child of `whole`), or null: pose it with `applyBowBend(bend, bowBend(t, hardLandingAt(track)), recipe.hinge)`.                                                                                                                                                       |
 | `recipe`                                  | The detail recipe (positions of everything, for effects: funnel tops for steam, davit heads, boat lanterns).                                                                                                                                                                                                    |
 
 The lit panes are HDR (`uIntensity` 5): with a bloom pass (threshold 1) the
@@ -443,3 +448,231 @@ tank top.
   each tank's pair at the deck edge between the hatches nearest its ends.
   Mushroom vents, 18 in high (data), drawn as small drum vents.
 - **Plating**: welded, so the seams' relief is a third of the liners'.
+
+## The Britannic
+
+`britannicRecipe.ts`, as she was on the morning of 21 November 1916:
+her sister's recipe (`titanicRecipe(spec)`, so the same frames, decks,
+houses, funnels, masts, cranes, propellers and rudder, here on her 94 ft
+hull from `britannic.ts`) with what her photographs show was hers.
+
+| Tier   | Draws (hospital / liner) | Triangles (hospital / liner) |
+| ------ | ------------------------ | ---------------------------- |
+| high   | 32 / 31                  | 161,690 / 161,270            |
+| medium | 21 / 20                  | 110,206 / 109,786            |
+| low    | 19 / 18                  | 89,472 / 89,052              |
+
+Night (bloom) 48 draws. The one draw and 420 triangles between the looks
+are the hospital ship's painted boxes (their own mesh, hidden as a liner:
+"Her intended liner paint" below). The whole ship is built in two groups
+(the bow forward of the hinge in its own, `bend`), which is most of the
+draws over the Titanic's 24. She never breaks (no split model). Build
+times (`handles.stats.buildMs`, high, the median of six rebuilds, same
+laptop and script, two runs each): 27 and 26 ms (Titanic 25 and 21 ms),
+about 15 % more: the cut at the hinge and her boats and gantries. First
+build 75–103 ms (Titanic 64–92; textures, noisy).
+
+### Sources
+
+Photographs on Wikimedia Commons, "Category:Britannic (ship, 1915)":
+"HMHS Britannic" (starboard broadside under way, the clearest: [P1]),
+"Britannic in Naples for Coaling" (starboard bow, bridge front, early
+1916: [P2]), "HMHS Britannic at Moudros, October 1916" (bow on: [P3]),
+"Britannic during WWI" (dead astern: [P4]), "Lifeboats of HMHS Britannic"
+(a gantry arm and its boats close up: [P5]), "HMHS Britannic arriving in
+Moudros", "HMHS Britannic Sailing", "Hmhs britannic departing from
+naples" (port side: [P6]), "HMHS Britannic Colourized" (a modern
+colourisation, for colour only where the others agree), "RMS Britannic
+1914 Model" (the builder's model with all eight gantry sets: [M]);
+Wikipedia "HMHS Britannic" [WP]; the spec's [WSH], [PBS], [TIP], [CH],
+[AL]; the 1907 Hague Convention X, art. 5 [HC] ("painted white outside
+with a horizontal band of green about a metre and a half in breadth").
+Measurements off [P1] and [P2] take the boat deck (28.19 m) and her
+waterline (about 10.3 m) as the vertical scale and the funnels'
+positions (`britannic.ts`) as the horizontal: about ±1 m.
+
+### What is hers
+
+- **Hull white**, a little grubby (`topsides 0xd9d5c9` under the shared
+  weathering) [WSH, PBS; CH: grubby with coal dust]; red boot-topping and
+  bottom, the paint line 10.9 m, about 0.6 m above her waterline that
+  morning ([P1] shows a dark band at the waterline); no gilt line.
+- **The green band** from stem to stern and round the counter [P1, P4,
+  WSH], 1.7 m deep, its middle 3.5 m under the sheer (between the D and
+  E deck rows of portholes: [P1], [P2]). Measured off [P1], the
+  photograph the crosses are measured from (the crosses about 6 m), it is
+  about as deep as a cross's arm (1.9 m): R22. [HC] says about 1.5 m.
+  Painted by the hull's shader (`HullBand`), the rule in code
+  `bandPaintAt`.
+- **Three red crosses a side** breaking the band [WSH, PBS, P1, P6],
+  each a Greek cross 6.0 m tip to tip, arms 1.9 m, on a white gap 8.4 m
+  long (the band stops either side), centred on the band: forward under
+  the foremast (x 84 m), amidships just forward of the third funnel (x
+  −12 m) and aft by the poop (x −114 m), the same each side ([P1]
+  starboard, [P6] port). [P1] measures the cross 5.9 m tall. Hull
+  portholes that would fall on a cross are left out (the crosses read
+  unbroken in [P1]).
+- **Two red crosses a side on the boat deck** [WSH], on white boards
+  3.2 m square at the deck edge: x 35 m (between the forward gantry and
+  the Welin boats, [P1]) and x −24 m (between the Welin boats and the aft
+  gantries: our assumption, as no photograph shows the second clearly).
+  Lit at night [WSH]: not drawn (her scene is the morning).
+- **Funnels plain buff**, the guy bands thin and dark, a sooty lip
+  (`blackTop` 0.45 m). **Photographs win over R6 here**: [P1] and [P2]
+  show the funnels one tone from foot to rim, with the guy bands but no
+  black top, where the Olympic's and the Titanic's black tops show
+  plainly in every photograph of the time. The "yellow" the spec set
+  aside [Steamship Mutual, ShipsOfScale] agrees with the photographs on
+  this. White Star buff `0xbb7f3a` (the Titanic's); the fourth a dummy
+  (no whistle, one pipe, no smoke: `afternoonEffects`).
+- **Masts buff** (spec), crow's nest white [P1, P2].
+- **Gantry davits (R5)**: five sets [WP], one to starboard forward
+  abreast the first funnel (x 54 m, not the 62 m first in the data:
+  [P1] puts the forward set's arms at about x 48 and 60 m, [P2] the same;
+  WP: "several of these davits were placed abreast of funnels"; the data
+  was corrected in its own commit) and four aft by the fourth funnel at x
+  −38 and −61 m, a pair each side ([P1] measures about −35 and −61). No
+  set to port forward (Welin davits there, R5) and none on the poop
+  (designed, never fitted: [M] shows them, [P1] does not). Each set two
+  arms 11.2 m apart, tapering square plate girders on white pedestals at
+  the deck edge, leaning 4.4 m inboard to 9.6 m over the deck, their tops
+  bent over into a beam fore and aft between them ([M]; in [P1] and [P2]
+  the arms' heads curl toward each other). Painted a deep buff
+  (`0x8a6d4a`): in the photographs a shade darker than the funnels; no
+  source gives the colour. Six boats a set in the bay between the arms,
+  two rows across, three tiers high ([M], [P5]).
+- **Welin davits** for the rest [WP, AL]: three double-banked pairs at
+  the port forward position (x 42, 53, 63.5 m) and three a side amidships
+  between the second and third funnels (x −11, 0.5, 12 m; [P1] shows a
+  single row of boats there at about 11.5 m spacing). Davits turned in
+  over the outboard boat; the inboard boat under the same pair.
+- **48 boats** [WP], 30 ft wooden lifeboats as her sisters' (assumed: no
+  source gives hers), white.
+- **A deck enclosed end to end**: the after half a promenade behind big
+  windows, the forward half cabins with small windows flush with the
+  side, and at its forward end (from x 65.5 m to the house front) big
+  open screens [P1, P2]; the same open screens at the forward end of B
+  deck [P1, P2]. The Titanic's open after promenade and its rail are
+  gone.
+- **"G.618"** (R13) in white on a black board on the navigating bridge's
+  front, under the wheelhouse windows, where [P2] shows "G.608" early in
+  1916 [CH, AL: G.618 by October 1916]. Block strokes (boxes), no
+  texture.
+- **Names** in black, not gilt: "BRITANNIC" on the bows under the
+  forecastle rail [P2], "BRITANNIC / LIVERPOOL" on the counter over the
+  band [P4].
+- **Anchors** hang dark from the hawse pipes, the pipe's mouth over the
+  band and the crown under it ([P1], [P3]); no dark recess round them
+  (on her white bows the Titanic's recess read as a black "T"). The
+  side bowers about 4.4 m from pipe to crown: 7¾ tons each (Encyclopedia
+  Titanica, "Bower anchor chain link size"), scaled by the cube root of
+  the weight from the 15.6-ton centre anchor's 18 ft 6 in (Black Country
+  Living Museum).
+- **Open portholes**: the sim's open rows (`britannic.portholes`, R8) at
+  their exact heights, her sister's spacing, about half swung open (dark
+  holes, no glass: the data's area assumes about half open); the rest of
+  her scuttles shut. Where a row runs, her sister's row there is left
+  out.
+
+### The bent bow (R12)
+
+`recipe.hinge` (x 87 m, under the forward well deck between its hatch
+and the forecastle front, at the C deck) cuts the whole ship's geometry
+in two by where each triangle's middle is (`splitAtHinge`): the bow
+forward of it is the `bend` group inside `whole`. When her bow strikes
+the floor while her stern is still up (`hardLandingAt`: the first
+`bow-lands` before `sankAtT`, 9:03:55 on the real morning), `bowBend`
+eases over 40 s to 0.2 rad, about two thirds of it lifting the stem
+about the C deck at the hinge and a third turning it to port, so the
+bottom at the hinge opens (the "large hole under the forward well deck"
+[WP]) and the bow stays joined at the C deck ("attached to the rest of
+the hull only by some pieces of C-Deck" [WP]; "severely bent up"
+[GOL]). Tested on her real track from the landing to the end: the bent
+bow never goes lower than the floor (or the straight hull, where the
+sim's contact lets it touch). The sim is unchanged.
+
+### Assumptions and departures
+
+- The aft hull cross sits on the counter's turn in the drawn hull (the
+  drawn counter rounds from x −62 m, as the Titanic's): from the
+  quarter it wraps a little.
+- The four portholes across the counter in [P4] are not drawn (the
+  Titanic's counter has none either).
+- The boat-deck crosses' second position (x −24 m), the boats' size and
+  the gantry colour are ours.
+
+### Her intended liner paint (R23)
+
+**She never sailed as a liner.** Requisitioned on 13 November 1915 and
+completed as a hospital ship (fit for service 12 December 1915), she
+sank on 21 November 1916 before she could enter transatlantic service
+[WP]. Her second look is the White Star finish Harland & Wolff would have
+given her, taken from her sisters as they were in 1911–1914 and from her
+own builder's model.
+
+Sources: [M] (above: "RMS Britannic 1914 Model", the builder's model
+under a "WHITE STAR LINE / R.M.S. BRITANNIC" board: black hull, white
+superstructure, black-topped funnels); [O1] "RMS Olympic Sea Trials in
+1911" (Wikimedia Commons, starboard broadside: black hull to the shelter
+deck, white above, funnels with deep black tops); [O2] "Olympicincolour1b"
+(Commons, a modern colourisation of the Olympic at a pier, for colour
+only: gold line at the top of the black, red boot-topping straight under
+the black, buff funnels and masts, "OLYMPIC" in yellow on the bows);
+[TIP] Titanic Inquiry Project ship records, Olympic and Titanic: funnels
+"Buff; black top"; [WP-MV] Wikipedia "MV Britannic (1929)": White Star
+colours "black hull with a gold line, white superstructure and
+ventilators, red boot-topping and buff funnels with a black top"; [TRMA]
+"White Star Buff: Weighing the Evidence" (trmaarchive.com): the buff a
+darker, browner shade, "not yellow"; [WP]: a contemporary postcard after
+a painting by Charles Dixon shows her "in her intended White Star
+livery". (The "RMS Britannic" image on Commons is a retouched photograph
+of the hospital ship, an artist's impression, not a source.)
+
+- **Hull black** (the model's liner black, `0x121315`, as the Titanic's)
+  to the shelter deck edge, white above [M, O1, O2, WP-MV].
+- **Gold line** at the top of the black, under the sheer (`0xc9a03a`,
+  the Titanic's gilt line) [O2, WP-MV]. Sources disagree on when White
+  Star painted it: forum readings of the Olympic's 1911 photographs see a
+  line between the black and white; [TRMA] ties a change of the sheer
+  stripe to the Olympic's 1921 refit (the line moved down). We follow the
+  colourisation and the company's later description, and the Titanic
+  model, which draws it.
+- **Red antifouling** to her 34 ft 7 in load line (10.54 m, the paint
+  line her sisters were finished to) with no white boot-top line: [O2]
+  shows the red straight under the black, and [O1] shows no light line
+  there. The Titanic model draws a thin white boot-top; we do not copy
+  it. The hospital ship's paint line stays at 10.9 m (her photographs).
+- **Funnels buff, black tops** 5.4 m deep, the Titanic model's ([O1]
+  measures about 5.1 m on the first funnel, 24.5 ft wide for scale),
+  over the same guy bands [M, O1, TIP]; buff `0xbb7f3a` as in both looks
+  (`BRITANNIC_FUNNEL_PAINTS`). The fourth is still the dummy.
+- **Masts buff** [O2], as the hospital ship's.
+- **Names gilt**: "BRITANNIC" on the bows and "BRITANNIC / LIVERPOOL" on
+  the counter in her sisters' gilt serif (the default board) [O2].
+- **No green band, no crosses, no "G.618"**.
+- **Everything else is the ship she was**: her gantry davits (fitted as
+  she was built: [M] shows them on the liner), A deck enclosed, the
+  forward screens, her boats, her open portholes. A
+  porthole or two is missing where the hospital ship's crosses were (the
+  hull's rows are hers in both looks; on the black hull they barely
+  show).
+
+**The swap** (`britannicLivery.ts`): the model is built once from
+`britannicModelRecipe` (the hospital recipe with each funnel cut at both
+looks' black tops, and the painted boxes taken out), and
+`handles.setPaint(look)` changes, in place, the hull shader's uniforms
+(`setHullPaint` in `materials.ts`: colours, paint line, gold line, the
+band and crosses turned off by a negative half height and no crosses),
+the funnels' vertex colours (copied from arrays made at build), the
+painted boxes' mesh (shown only as a hospital ship) and the name boards'
+texture (gilt, metallic, as the Titanic's). No geometry is made or
+replaced, the shaders are not recompiled (the hull is always built with
+the band's program), and `handles.recipe` becomes the look's
+(`recipeFor(spec, look)`). A swap takes about 0.004 ms (median of 200 in
+node, 0.03 ms worst); the gilt board uploads to the GPU on the first
+frame after the first swap. `createTitanicModel(spec, { paint })` builds
+in either look; `?model&ship=britannic&paint=liner` shows it, and
+`setModelView({ paint })` swaps it live.
+
+- Medium and low drop the rivets, rails and rigging as for the others;
+  the gantries and crosses stay.

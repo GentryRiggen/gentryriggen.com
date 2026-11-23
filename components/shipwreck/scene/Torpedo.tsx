@@ -12,7 +12,7 @@ import {
   UniformsUtils,
 } from "three";
 import { hitTimeS, type PlaybackStore } from "@/lib/shipwreck/playback";
-import type { Opening } from "@/lib/shipwreck/ships/types";
+import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
 import TrackPoses from "./torpedoPose";
 
 /**
@@ -37,6 +37,14 @@ export const BUBBLE_LAG_S = 1.6;
 const TRACK_LIFE_S = 150;
 
 /** The torpedo's own hole (the first opening at the first moment). */
+/**
+ * Whether a ship's scene draws a torpedo's track: a torpedo ship only (a
+ * mine has no run-in streak; its column is drawn by the day effects).
+ */
+export function hasTorpedoTrack(spec: Pick<ShipSpec, "cause">): boolean {
+  return spec.cause === "torpedo";
+}
+
 export function torpedoHole(openings: readonly Opening[]): Opening | null {
   let best: Opening | null = null;
   for (const o of openings)

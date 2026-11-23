@@ -28,6 +28,10 @@ import {
   NIGHT_DEEP_FOG,
   NIGHT_FOG,
   NIGHT_SEA_FOG,
+  DAY_LOOKS,
+  dayLookOf,
+  isDaylit,
+  type DayLook,
   sunDirection,
   type SceneSettings,
 } from "./settings";
@@ -56,22 +60,24 @@ import {
 
 const SEA_FOG = NIGHT_SEA_FOG;
 const DEEP_FOG = NIGHT_DEEP_FOG;
-/** The afternoon's haze (exp² density: the coast, 20 km off, half hidden). */
-const DAY_FOG_DENSITY = 0.000027;
-/** Sunlit sea water in the Celtic Sea: green near the top, darker down. */
-const DAY_DEEP_WATER = new Color(0x0c3a33);
+/**
+ * The afternoon's haze (exp² density: the coast, 20 km off, half hidden)
+ * and its sunlit Celtic Sea water, green near the top, darker down, are
+ * `DAY_LOOKS.afternoon`; the morning's (the Aegean) `DAY_LOOKS.morning`.
+ */
+const DAY_LOOKS_AFTERNOON = DAY_LOOKS.afternoon;
 /** The submersible lamp's reach (m), at night and in the afternoon. */
 const LAMP_RANGE_M = 420;
 const DAY_LAMP_RANGE_M = 300;
 
-function sandTexture(): CanvasTexture | null {
+function sandTexture(base = "#a89a7c"): CanvasTexture | null {
   if (typeof document === "undefined") return null;
   const c = document.createElement("canvas");
   c.width = 256;
   c.height = 256;
   const g = c.getContext("2d");
   if (!g) return null;
-  g.fillStyle = "#a89a7c";
+  g.fillStyle = base;
   g.fillRect(0, 0, 256, 256);
   let a = 1915;
   const rnd = () => {
@@ -174,7 +180,7 @@ export default function Environment({
         settings={settings}
       />
     );
-  if (settings.timeOfDay === "afternoon")
+  if (isDaylit(settings))
     return (
       <AfternoonEnvironment
         runtime={runtime}
@@ -303,7 +309,10 @@ function AfternoonEnvironment({
   settings,
 }: EnvironmentProps) {
   const { scene, camera } = useThree();
+  // The afternoon's are 1.1's constants; the morning's its own (settings.ts).
+  const look = dayLookOf(settings);
   const haze = useMemo(() => new Color(settings.fog), [settings]);
+  const deepWater = useMemo(() => new Color(look.deepWater), [look]);
   const shallow = useMemo(() => new Color(settings.underwaterFog), [settings]);
   const sunDir = useMemo(
     () =>
@@ -314,8 +323,8 @@ function AfternoonEnvironment({
   );
 
   const fog = useMemo(
-    () => new FogExp2(haze.getHex(), DAY_FOG_DENSITY),
-    [haze]
+    () => new FogExp2(haze.getHex(), look.fogDensity),
+    [haze, look]
   );
   useEffect(() => {
     fog.color.copy(haze);
@@ -328,9 +337,9 @@ function AfternoonEnvironment({
   }, [scene, fog, haze]);
 
   const floor = useMemo(() => {
-    const map = sandTexture();
+    const map = sandTexture(look.floorBase);
     const mat = new MeshStandardMaterial({
-      color: 0xc8bc9e,
+      color: look.floorColor,
       map,
       roughness: 1,
       metalness: 0,
@@ -369,16 +378,19 @@ float causticAt(vec2 p) {
         )
         .replace(
           "#include <emissivemap_fragment>",
-          "#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(0.7, 0.95, 0.8) * causticAt(vCausticXZ) * uCaustic;"
+          `#include <emissivemap_fragment>\ntotalEmissiveRadiance += vec3(${look.caustic.map((c) => c.toFixed(3)).join(", ")}) * causticAt(vCausticXZ) * uCaustic;`
         );
     };
-    mat.customProgramCacheKey = () => "shipwreck-sand";
+    mat.customProgramCacheKey = () =>
+      look === DAY_LOOKS_AFTERNOON
+        ? "shipwreck-sand"
+        : "shipwreck-sand-morning";
     const geo = new PlaneGeometry(24000, 24000);
     const m = new Mesh(geo, mat);
     m.rotation.x = -Math.PI / 2;
     m.name = "sea-floor";
     return { m, geo, mat, map, caustics };
-  }, []);
+  }, [look]);
   useEffect(() => {
     floor.m.position.y = -SEA_DEPTH;
   }, [floor, SEA_DEPTH]);
@@ -392,9 +404,13 @@ float causticAt(vec2 p) {
   );
 
   const lights = useMemo(() => {
-    const sun = new DirectionalLight(0xfff0d8, 4);
+    const sun = new DirectionalLight(look.sunColor, look.sunIntensity);
     sun.name = "sun";
-    const sky = new HemisphereLight(0xa9c8ee, 0x2f4a4c, 0.75);
+    const sky = new HemisphereLight(
+      look.skyColor,
+      look.skyGround,
+      look.skyIntensity
+    );
     sky.name = "skylight";
     const lamp = new SpotLight(0xd8ecff, 0, DAY_LAMP_RANGE_M, 0.6, 0.6, 1.1);
     lamp.name = "submersible-lamp";
@@ -402,10 +418,10 @@ float causticAt(vec2 p) {
       sun,
       sky,
       lamp,
-      warm: new Color(0xfff1dc),
-      under: new Color(0x9fe0cf),
+      warm: new Color(look === DAY_LOOKS_AFTERNOON ? 0xfff1dc : look.sunColor),
+      under: new Color(look.sunUnder),
     };
-  }, []);
+  }, [look]);
   useEffect(() => {
     lights.sun.position
       .set(sunDir[0], sunDir[1], sunDir[2])
@@ -419,7 +435,7 @@ float causticAt(vec2 p) {
     const k = Math.min(1, Math.max(0, -y / SEA_DEPTH));
     if (under) {
       // Green and bright near the top, dimmer toward the floor.
-      water.copy(shallow).lerp(DAY_DEEP_WATER, k * 0.85);
+      water.copy(shallow).lerp(deepWater, k * 0.85);
       fog.color.copy(water);
       fog.density = lookUnderFog(
         "afternoon",
@@ -428,19 +444,19 @@ float causticAt(vec2 p) {
       );
       (scene.background as Color).copy(water);
       lights.sun.color.copy(lights.under);
-      lights.sun.intensity = 4 * (0.45 - 0.33 * k);
+      lights.sun.intensity = look.sunIntensity * (0.45 - 0.33 * k);
       lights.sky.intensity = walkAmbient(
         0.95 - 0.55 * k,
         runtime.walkInfo?.phase === "deck"
       );
     } else {
       fog.color.copy(haze);
-      fog.density = DAY_FOG_DENSITY;
+      fog.density = look.fogDensity;
       (scene.background as Color).copy(haze);
       lights.sun.color.copy(lights.warm);
-      lights.sun.intensity = 4;
+      lights.sun.intensity = look.sunIntensity;
       lights.sky.intensity = walkAmbient(
-        0.75,
+        look.skyIntensity,
         runtime.walkInfo?.phase === "deck"
       );
     }
@@ -471,7 +487,7 @@ float causticAt(vec2 p) {
       <primitive object={floor.m} />
       <primitive object={lights.lamp} />
       <primitive object={lights.lamp.target} />
-      <LightShafts sunDir={sunDir} seaDepthM={SEA_DEPTH} />
+      <LightShafts sunDir={sunDir} seaDepthM={SEA_DEPTH} look={look} />
     </>
   );
 }
@@ -509,6 +525,7 @@ const shaftVertex = /* glsl */ `
 const shaftFragment = /* glsl */ `
   uniform float uTime;
   uniform float uStrength;
+  uniform vec3 uColor;
   varying float vAcross;
   varying float vDepth;
   varying float vSeed;
@@ -517,7 +534,7 @@ const shaftFragment = /* glsl */ `
     float fade = exp(-vDepth / 38.0) * smoothstep(0.0, 4.0, vDepth);
     float flicker = 0.55 + 0.45 * sin(uTime * (0.6 + vSeed) + vSeed * 40.0);
     float a = side * side * fade * flicker * uStrength;
-    gl_FragColor = vec4(vec3(0.55, 0.85, 0.7) * a, 1.0);
+    gl_FragColor = vec4(uColor * a, 1.0);
   }
 `;
 
@@ -529,9 +546,11 @@ const shaftFragment = /* glsl */ `
 function LightShafts({
   sunDir,
   seaDepthM,
+  look,
 }: {
   sunDir: readonly [number, number, number];
   seaDepthM: number;
+  look: DayLook;
 }) {
   const shafts = useMemo(() => {
     const pos = new Float32Array(SHAFTS * 4 * 3);
@@ -584,7 +603,8 @@ function LightShafts({
         uDepth: { value: 90 },
         uSpan: { value: SHAFT_SPAN },
         uTime: { value: 0 },
-        uStrength: { value: 0.16 },
+        uStrength: { value: look.shaftStrength },
+        uColor: { value: new Vector3(...look.shaft) },
       },
     });
     const mesh = new Mesh(geo, mat);
@@ -592,7 +612,7 @@ function LightShafts({
     mesh.frustumCulled = false;
     mesh.renderOrder = 20;
     return { mesh, geo, mat };
-  }, []);
+  }, [look]);
   useEffect(() => {
     // Snell: sin(in water) = sin(from the vertical in air) / 1.33.
     const h = Math.hypot(sunDir[0], sunDir[2]);

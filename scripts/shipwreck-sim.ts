@@ -8,6 +8,8 @@
  *   npx tsx scripts/shipwreck-sim.ts --ship=lusitania br3      # torpedo at br3
  *   npx tsx scripts/shipwreck-sim.ts --ship=fitzgerald         # her last afternoon
  *   npx tsx scripts/shipwreck-sim.ts --ship=fitzgerald hatch-1 vents  # What if? these spots
+ *   npx tsx scripts/shipwreck-sim.ts --ship=britannic          # her morning
+ *   npx tsx scripts/shipwreck-sim.ts --ship=britannic br4 --doors-closed --engines-stopped
  *   add --water for each compartment's fill at each line, --shut to keep
  *   the portholes shut, --every=<s> for the line interval (default 10
  *   minutes, 1 minute for a torpedo ship, 15 minutes in a storm); for a
@@ -18,7 +20,9 @@
  *   changed for the run): --fail-head=<m> (every cover's failure head),
  *   --leak=<m²> (every cover's leak), --split=<m²> (the deck-edge split,
  *   in all), --vent=<m²> (each broken vent), --sisters=<m>|none (the
- *   group's height), --sisters-at=<h:mm> (its time, PM)
+ *   group's height), --sisters-at=<h:mm> (its time, PM); for a mine
+ *   ship --doors-closed (every watertight door shut) and
+ *   --engines-stopped (her engines stopped at the mine: no run for Kea)
  */
 import { SHIPS, type ShipId } from "../lib/shipwreck/ships";
 import {
@@ -105,15 +109,18 @@ const showWater = args.includes("--water");
 const portholesOpen = !args.includes("--shut");
 const first = option("first");
 const every = Number(
-  option("every") ?? (spec.cause === "torpedo" ? 60 : storm ? 900 : 600)
+  option("every") ??
+    (spec.cause === "torpedo" || spec.cause === "mine" ? 60 : storm ? 900 : 600)
 );
 const ids = args.filter((a) => !a.startsWith("--"));
 let label =
   spec.cause === "torpedo"
     ? "The real afternoon"
-    : storm
-      ? "Her last afternoon"
-      : "The real night";
+    : spec.cause === "mine"
+      ? "The real morning"
+      : storm
+        ? "Her last afternoon"
+        : "The real night";
 let openings: readonly RunOpening[] = spec.realNight;
 if (first) {
   const n = Number(first);
@@ -140,7 +147,11 @@ const opts: SimOptions = {
   hatchesTight: args.includes("--tight"),
   topsideDamage: !noDamage,
   shoal: args.includes("--shoal"),
+  doorsClosed: args.includes("--doors-closed"),
+  enginesStopped: args.includes("--engines-stopped"),
 };
+if (opts.doorsClosed) label += ", doors closed";
+if (opts.enginesStopped) label += ", engines stopped";
 if (storm)
   label +=
     (stormOption === "none" ? ", no storm" : `, the ${opts.storm} storm`) +

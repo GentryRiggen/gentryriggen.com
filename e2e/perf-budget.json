@@ -90,5 +90,17 @@
   "shipwreck-fitzgerald-wreck": {
     "calls": 44,
     "triangles": 189495
+  },
+  "shipwreck-britannic-blast": {
+    "calls": 90,
+    "triangles": 327671
+  },
+  "shipwreck-britannic-boats": {
+    "calls": 86,
+    "triangles": 327479
+  },
+  "shipwreck-britannic-grounded": {
+    "calls": 67,
+    "triangles": 300951
   }
 }

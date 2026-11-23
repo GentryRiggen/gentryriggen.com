@@ -155,6 +155,8 @@ describe("the Lusitania's tracks are the 1.1 tracks", () => {
 
   if (update)
     afterAll(() => {
-      writeFileSync(FIXTURE, `${JSON.stringify(stored)}\n`);
+      // Pretty (one value a line) so a rewrite diffs readably; the
+      // committed fixture is compared as data, not as text.
+      writeFileSync(FIXTURE, `${JSON.stringify(stored, null, 2)}\n`);
     });
 });

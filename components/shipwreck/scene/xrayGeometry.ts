@@ -11,6 +11,7 @@ import {
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
+  BRITANNIC_PLACES,
   FITZGERALD_PLACES,
   LUSITANIA_PLACES,
   PLACES,
@@ -23,6 +24,12 @@ import {
   fitzgerald,
 } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import {
+  BRITANNIC_E_DECK_ROW_Z,
+  INNER_SKIN_M,
+  britannic,
+  britannicHalfBreadthAt,
+} from "@/lib/shipwreck/ships/britannic";
 import type {
   Compartment,
   Opening,
@@ -40,6 +47,13 @@ import { cargoLayer, compartmentTopZ } from "@/lib/shipwreck/xray";
  * and the shell), the bulkheads' outlines, the openings and the places'
  * blockouts.
  */
+
+/**
+ * The water shaders' room for a part's cells (uniform arrays): every
+ * compartment of every ship. The Britannic has 32 (her double skin splits
+ * each boiler and engine room in three); 24 left her forward holds dry.
+ */
+export const XRAY_SLOTS = 32;
 
 const NX = 6;
 const NZ = 10;
@@ -804,6 +818,172 @@ function fitzEngineParts(): Part[] {
   return parts;
 }
 
+// The Britannic's places (her data; the Titanic's frames and decks).
+
+function britBridgeParts(): Part[] {
+  const p = BRITANNIC_PLACES.bridge;
+  return bridgeAt(p.at[0], p.at[0] + 0.6, p.floorZ);
+}
+
+function britHoldParts(): Part[] {
+  // Hold 2 by the hold 2/3 bulkhead: her stores, crated, and the torn
+  // shell plating of the mine's hole on her starboard side (just aft, in
+  // hold 3, against the bulkhead).
+  const p = BRITANNIC_PLACES["hold-2"];
+  const [x0] = p.at;
+  const floor = p.floorZ;
+  const w = 2 * britannicHalfBreadthAt(x0 + 4, floor + 0.5) - 1;
+  const parts: Part[] = [
+    { g: box(x0 + 4, 0, floor, 12, w, 0.15), color: 0x4a4038 },
+  ];
+  for (const [dx, y, h] of [
+    [1, -3, 1.6],
+    [4, -1, 2.2],
+    [7, 2, 1.4],
+    [3, 3, 1.8],
+    [9, 0, 1.2],
+  ])
+    parts.push({
+      g: box(x0 + dx, y, floor + h / 2, 2.4, 2, h),
+      color: 0x8a6a45,
+    });
+  const hole = britannic.realNight[0];
+  const zMid = (hole.zLow + hole.zHigh) / 2;
+  const side = britannicHalfBreadthAt(hole.x, zMid) - 0.3;
+  // Plates bent inward round the hole, and the sea's way in (lit).
+  for (const [dz, rot] of [
+    [-1.2, 0.5],
+    [0, -0.4],
+    [1.3, 0.3],
+  ])
+    parts.push({
+      g: at(
+        new BoxGeometry(3, 1.1, 0.12),
+        hole.x - 1 + dz,
+        -side + 0.6,
+        zMid + dz,
+        { x: rot }
+      ),
+      color: 0x5a4a40,
+    });
+  parts.push({
+    g: box(hole.x, -side, zMid, 3.2, 0.1, 2.6),
+    color: 0x9fd6ff,
+    glow: true,
+  });
+  return parts;
+}
+
+function britBoilerParts(): Part[] {
+  // Five double-ended boilers across her front boiler room as her
+  // sisters' (the Titanic's four; her beam is wider but the inner skin
+  // takes it), and the inner skin's walls either side.
+  const x0 = BRITANNIC_PLACES["boiler-room-6"].at[0];
+  const parts = boilersAt(x0, [-8.4, -2.8, 2.8, 8.4], 2.4, 20);
+  const y = britannic.beam / 2 - INNER_SKIN_M - 0.3;
+  for (const s of [1, -1])
+    parts.push({ g: box(x0, s * y, 6.5, 18, 0.12, 9.6), color: 0x6a6a64 });
+  return parts;
+}
+
+function britPortholeParts(): Part[] {
+  // Her open E-deck portholes forward (R8): a row of round windows in the
+  // starboard side, their glass swung open into the room.
+  const p = BRITANNIC_PLACES.portholes;
+  const [x0] = p.at;
+  // (At her E-deck row's height, the room's floor under it.)
+  const z = BRITANNIC_E_DECK_ROW_Z;
+  const half = britannicHalfBreadthAt(x0, z) - 0.3;
+  const parts: Part[] = [
+    { g: box(x0, -half + 3, z - 1.2, 16, 6, 0.1), color: 0x9a8a70 },
+  ];
+  for (let k = -3; k <= 3; k += 1) {
+    const x = x0 + k * 2.2;
+    parts.push({
+      g: at(new TorusGeometry(0.24, 0.05, 6, 16), x, -half, z, {
+        x: Math.PI / 2,
+      }),
+      color: 0xc89a4a,
+    });
+    // The glass on its hinge, swung in and up.
+    parts.push({
+      g: at(
+        new CylinderGeometry(0.22, 0.22, 0.04, 14),
+        x,
+        -half + 0.2,
+        z + 0.24,
+        {
+          x: 0.3,
+        }
+      ),
+      color: 0xbfe4ff,
+      glow: true,
+    });
+  }
+  return parts;
+}
+
+function britGantryParts(): Part[] {
+  // The gantry's electric motor and its drum of falls at the set's foot
+  // (the model draws the gantry itself and its boats).
+  const p = BRITANNIC_PLACES["gantry-davit"];
+  const [x0, y0] = p.at;
+  return [
+    { g: box(x0, y0 + 2, p.floorZ + 0.7, 2.2, 1.4, 1.4), color: 0x3d4a44 },
+    {
+      g: at(
+        new CylinderGeometry(0.45, 0.45, 1.6, 14),
+        x0 + 1.8,
+        y0 + 2,
+        p.floorZ + 0.7,
+        {
+          z: Math.PI / 2,
+        }
+      ),
+      color: 0x8a8a7a,
+    },
+    {
+      g: at(new SphereGeometry(0.25, 8, 6), x0, y0 + 2, p.floorZ + 1.7),
+      color: 0xffe0a0,
+      glow: true,
+    },
+  ];
+}
+
+function britTurbineParts(): Part[] {
+  // Her low-pressure turbine on the centre line, the shaft aft to her
+  // middle propeller, its condensers either side.
+  const x0 = BRITANNIC_PLACES["turbine-room"].at[0];
+  const floor = BRITANNIC_PLACES["turbine-room"].floorZ;
+  const parts: Part[] = [
+    { g: box(x0, 0, floor, 18, 18, 0.15), color: 0x3a3a3a },
+  ];
+  parts.push({
+    g: at(new CylinderGeometry(2.3, 2.8, 14, 20), x0, 0, floor + 3, {
+      z: Math.PI / 2,
+    }),
+    color: 0x3d4a44,
+  });
+  parts.push({
+    g: at(new CylinderGeometry(0.35, 0.35, 60, 8), x0 - 37, 0, 2.6, {
+      z: Math.PI / 2,
+    }),
+    color: 0x9a9a8a,
+  });
+  for (const y of [-6, 6])
+    parts.push({
+      g: box(x0 + 1, y, floor + 2.2, 10, 3.2, 4.4),
+      color: 0x56635c,
+    });
+  for (const x of [x0 - 6, x0, x0 + 6])
+    parts.push({
+      g: at(new SphereGeometry(0.3, 8, 6), x, 0, floor + 9),
+      color: 0xffe0a0,
+      glow: true,
+    });
+  return parts;
+}
+
 const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
   titanic: {
     bridge: bridgeParts,
@@ -825,6 +1005,14 @@ const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
     "cargo-hold-1": fitzHoldParts,
     "ballast-tank": fitzTankParts,
     "engine-room": fitzEngineParts,
+  },
+  britannic: {
+    bridge: britBridgeParts,
+    "hold-2": britHoldParts,
+    "boiler-room-6": britBoilerParts,
+    portholes: britPortholeParts,
+    "gantry-davit": britGantryParts,
+    "turbine-room": britTurbineParts,
   },
 };
 

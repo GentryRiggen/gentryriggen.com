@@ -6,8 +6,11 @@ export type IconName =
   | "iceberg"
   | "torpedo"
   | "storm"
+  | "mine"
   | "hatch"
   | "porthole"
+  | "door"
+  | "engine"
   | "play"
   | "pause"
   | "help"
@@ -48,8 +51,15 @@ const PATHS: Record<IconName, string> = {
     "M5 9.5h10l3 2.5-3 2.5H5a2.5 2.5 0 0 1 0-5zM18 12h3M20 9.5v5M2 18c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
   storm:
     "M7 14a4 4 0 1 1 1.3-7.8A5 5 0 0 1 17.5 8a3 3 0 1 1 .5 6zM2 19c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0M12 14l-1.5 3h3L12 20",
+  // A round sea mine with its horns, under the waves, a burst over it.
+  mine: "M12 9a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM12 9V6.5M8.2 10.4l-1.8-1.8M15.8 10.4l1.8-1.8M7.5 13.5H5M16.5 13.5H19M12 2.5v1.5M9 3.5l.8 1.2M15 3.5l-.8 1.2M2 21c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
   hatch:
     "M3 11h18v4H3zM6 11V8h12v3M7 15v2M17 15v2M2 20c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
+  // A watertight door: a frame in a wall, the door half down in it.
+  door: "M3 21V3h18v18M6 21V6h12v15M6 13h12M9 9.5h6M12 13v8",
+  // An engine: a big gear wheel on its shaft, steam puffing over it.
+  engine:
+    "M12 9.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM12 7v2.5M12 16.5V19M7.5 13H5M19 13h-2.5M8.8 9.8L7 8M15.2 9.8L17 8M8.8 16.2L7 18M15.2 16.2L17 18M2 13h3M19 13h3M9 4c0-1 1-1.5 2-1.5s1.5.8 2.5.8S15 2.5 16 2.5",
   porthole:
     "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 7.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zM12 4v3.5M12 16.5V20M4 12h3.5M16.5 12H20",
   play: "M8 5v14l11-7z",

@@ -16,6 +16,7 @@ import {
   VERTICAL_GYRATION,
 } from "./constants";
 import { type DeckWater, deckFlows } from "./deckWater";
+import { type DoorLink, doorFlow } from "./doors";
 import { STEADY_AVG_S } from "./events";
 import {
   type Cell,
@@ -51,7 +52,9 @@ const { abs, cos, max, min, sin, sqrt } = Math;
  * drag per station, all applied implicitly so a fixed step stays stable.
  *
  * Rotation ship → earth: Rz(yaw)·Ry(pitch)·Rx(roll); pitch + is bow down,
- * roll + lifts the port side (a list to starboard). Yaw stays 0 afloat.
+ * roll + lifts the port side (a list to starboard). Afloat, yaw is her
+ * heading (`headway.turn`, 1.4; else 0): pose and position only, the
+ * physics sees a straight course (her surge along it).
  */
 
 export type BodyPart = "whole" | "bow" | "stern";
@@ -175,6 +178,10 @@ export interface Body {
   floorF: Float64Array;
   /** Green water on her open deck (the whole hull afloat), or null. */
   deckWater: DeckWater | null;
+  /** Watertight doors open between its cells (1.4); missing: none. */
+  doors?: DoorLink[];
+  /** The ram head this step (m, Cp·u²/2g) on its `ram` openings; missing: 0. */
+  ramHead?: number;
 }
 
 /** Earth up in the ship frame. */
@@ -247,6 +254,19 @@ export function earthOf(
 ): [number, number, number] {
   const r = rotateYaw(b.yaw, b.pitch, b.roll, px, py, pz);
   return [b.x + r[0], b.y + r[1], b.z + r[2]];
+}
+
+/**
+ * Turn a floating body to heading `yaw` about its centre of mass: earth x
+ * and y only (z, pitch and roll do not see yaw).
+ */
+export function turnTo(b: Body, yaw: number): void {
+  if (yaw === b.yaw) return;
+  const g0 = rotateYaw(b.yaw, b.pitch, b.roll, b.gx, b.gy, b.gz);
+  const g1 = rotateYaw(yaw, b.pitch, b.roll, b.gx, b.gy, b.gz);
+  b.x += g0[0] - g1[0];
+  b.y += g0[1] - g1[1];
+  b.yaw = yaw;
 }
 
 /** Update top/bottom and the cells' earth bounds. */
@@ -401,7 +421,7 @@ export function stepFloat(
     );
   for (let i = 0; i < all.length; i += 1) {
     const c = all[i];
-    const q = capSeaFlow(c, seaInflow(c, nx, ny, nz, b.z), dt);
+    const q = capSeaFlow(c, seaInflow(c, nx, ny, nz, b.z, b.ramHead), dt);
     c.inflow = q;
     inflow += q;
     dw[i] = q * dt;
@@ -455,6 +475,12 @@ export function stepFloat(
     dw[l.a] -= q * dt;
     dw[l.b] += q * dt;
   }
+  if (b.doors)
+    for (const l of b.doors) {
+      const q = doorFlow(b.cells[l.a], b.cells[l.b], l, nx, nz, b.z, dt);
+      dw[l.a] -= q * dt;
+      dw[l.b] += q * dt;
+    }
   // Pumps, aftmost machinery space first, while the water there is shallow.
   let pumpLeft = pumps * dt;
   for (let i = 0; i < b.cells.length && pumpLeft > 0; i += 1) {
@@ -561,14 +587,22 @@ export function stepFloat(
     b.alpha = (b.wp - wp0) / dt;
   }
 
-  // Move the centre of mass, turn about it, and place the origin.
-  const g0 = rotate(b.pitch, b.roll, b.gx, b.gy, b.gz);
-  const gex = b.x + g0[0] + b.vx * dt;
-  const gey = b.y + g0[1] + drift * dt;
+  // Move the centre of mass, turn about it, and place the origin. On a
+  // heading (yaw), her surge runs along it; the drift stays earth y.
+  const yaw = b.yaw;
+  const g0 =
+    yaw === 0
+      ? rotate(b.pitch, b.roll, b.gx, b.gy, b.gz)
+      : rotateYaw(yaw, b.pitch, b.roll, b.gx, b.gy, b.gz);
+  const gex = b.x + g0[0] + (yaw === 0 ? b.vx : b.vx * cos(yaw)) * dt;
+  const gey = b.y + g0[1] + (yaw === 0 ? drift : drift + b.vx * sin(yaw)) * dt;
   const gez = b.z + g0[2] + b.vz * dt;
   b.pitch += b.wp * dt;
   b.roll += b.wr * dt;
-  const g1 = rotate(b.pitch, b.roll, b.gx, b.gy, b.gz);
+  const g1 =
+    yaw === 0
+      ? rotate(b.pitch, b.roll, b.gx, b.gy, b.gz)
+      : rotateYaw(yaw, b.pitch, b.roll, b.gx, b.gy, b.gz);
   b.x = gex - g1[0];
   b.y = gey - g1[1];
   b.z = gez - g1[2];

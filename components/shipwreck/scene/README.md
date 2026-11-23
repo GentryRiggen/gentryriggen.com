@@ -48,6 +48,13 @@ The Fitzgerald's storm adds (see its section):
 | `GreenWater.tsx`  | The sim's green water on her deck (`SimFrame.deckWater`) at the sim's level. One draw.                                                                                          |
 | `Wreckage.tsx`    | The broken middle and spilled taconite between her parts on the floor. Two draws.                                                                                               |
 
+The Britannic's morning adds (see "The Britannic's morning" below):
+
+| File             | What                                                                                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `funnelWreck.ts` | Her fallen funnels: each sinks from where it toppled to its spot beside her wreck (funnel 1 by the boat deck, 2–4 off her stern) and lies there. |
+| `Coast.tsx`      | Per ship: the Cork coast (the Lusitania) or the Kea Channel (Kea, Makronisos, Attica, Port St Nikolo light).                                     |
+
 Frame loop order (R3F priorities): driver −3 (pump the runner, advance `t`),
 ship rig −2, effects and the walk runner −1.5, camera −1, X-ray −0.9,
 environment −0.8, sky −0.7, sea reflection −0.5, then the composer renders
@@ -298,3 +305,74 @@ shot framed for landscape still fits the ship.
   torpedo track, day particles; shafts and floor only under water). No
   shadow maps (they would pass the ship again). Bloom threshold 1.6 by day
   so sunlit paint does not glow. Her lights and lamps run at 2.5 %.
+
+## The Britannic's morning (1.4)
+
+- **Settings** (`SCENE_SETTINGS.britannic`): `timeOfDay: "morning"`, drawn
+  as the afternoon is (`isDaylit`) with its own look (`DAY_LOOKS.morning`:
+  a warm low sun, the Aegean's deep blue, clear blue water, a pale sand
+  and mud floor; the afternoon's look is 1.1's constants exactly). The
+  scene's origin is her place at the mine (`BRITANNIC_MINE`, 37.6886 N
+  24.2388 E), worked back from her wreck (37°42′05″ N 24°17′02″ E [WP])
+  along the sim's real run (4.2 km, most of it east-north-east after her
+  turn): about 3.8 nmi N 70° W of Port St Nikolo light (sim README: [FI]
+  3 miles N 48° W, Divernet 4 nmi). Her heading there (the scene's +x) is
+  N 18° E (`BRITANNIC_HEADING_DEG`), her course up the channel.
+- **The sun**: NOAA's algorithm (`sunPosition`, from Meeus) at 08:12 EET
+  (06:12 UTC, the sources' clock) on 21 November 1916 at the mine:
+  **9.97° up, azimuth 124.87°** (south-east by east). After her turn
+  (heading about 88°) it is on her starboard bow, behind Kea.
+- **The coast** (`Coast.tsx`, one draw): Kea and Makronisos from
+  OpenStreetMap's outlines (simplified to about 300 m), Kea rising to
+  Profitis Ilias (568 m), Makronisos to about 280 m; Attica from west of
+  Cape Sounion to Porto Rafti from the chart (about 300 m). Heights ×1.5
+  (`KEA_HEIGHT_SCALE`: true, Kea is a low sliver at 6–12 km), and a share
+  of the hills' own colour as light (`vColor × 0.3`) so their shaded side,
+  between her and the low sun, reads brown-green. Port St Nikolo light as
+  a small white tower. No temple, no people. Kea lies ahead to starboard
+  once she has turned, Attica and Makronisos low and hazy to port.
+- **The mine** (`afternoonEffects.ts`): a white column at her starboard
+  side by the hole (`realNight[0].x`, 84.3 m: hold 3 against the hold 2/3
+  bulkhead, under the forward well deck), at the waterline, at the sim's
+  `explosion` (`hitColumnTimes`; a What-if's other mines 3 s apart), no
+  track (`hasTorpedoTrack`), no second explosion (`hasSecondExplosion`).
+  The column rides with her while it stands (a look: at 20 knots the real
+  spray fell astern of the hole) so it reads where the mine struck. The
+  playback keeps a mine ship's hits (the HUD's "the mines").
+- **Smoke** from her three working funnels (the fourth a dummy) thins
+  with her speed: 0.25 + 0.75 × her track's speed over 20 knots (the sim's
+  `speedAt` profile as run, so a What-if with her engines stopped thins
+  too).
+- **The turn and her wake**: the rig poses her yaw from the track; her
+  wake follows her stern's path (`runtime.wake.path`, 8 points 20 s apart,
+  a polyline the morning's sea shader measures; `WAKE_PATH` define, the
+  morning only). Its "stern up" test uses her waterline aft (the liners'
+  keel test hides their wake once hit: a follow-up, left as it is).
+- **Boats** (R15): stowed in their chocks or gantries until their
+  `boat-lowered` event, swung out (15 s), lowered (60 s), then pulled out
+  from her side and a little ahead of the beam (`boatAwayAt`, turned with
+  her heading as they touched the sea), never aft toward her screws; she
+  leaves them astern, 40 m or more out from her side by the time her
+  stern passes (`afternoonEffects.test.ts`).
+- **The bent bow** (R12) bends about the line through the hinge that is
+  upright in the sea for her pose (`applyBowBendAbout`), so the bow lies
+  on the floor where the sim puts it (within 0.5 m: `bowBend.test.ts`):
+  on her side it is the stem bent up from her keel line.
+- **Funnels on the floor** (`funnelWreck.ts`): after the sim's
+  `funnel-falls` and the topple, each sinks (40 s) to its spot beside the
+  wreck's last pose and lies there; the model's own funnel groups (no
+  new draws). The foremast bent on the floor [WP] is a follow-up (the
+  mast is merged into the model's paint mesh).
+- **Camera**: `BRITANNIC_HULL_BOXES` (the Titanic's on her 94 ft beam);
+  her cinematic shots are the Lusitania's (hit, list, boats, port boats,
+  bow down, grounded above and below, on the floor) with `turn` (40 s–5
+  min, high off her port quarter, Kea ahead) and `morning` (the title).
+  Floor 120 m; `keepClear` is tested with her wreck's pose (on her side,
+  turned 70°). `WRECK_VIEW.britannic` looks along her from over her port
+  side and off her deck side (funnel 1 on the floor there).
+- **X-ray places**: the wheelhouse; hold 2's stores and the torn plating
+  of the hole; boiler room 6's boilers inside the inner skin; the open
+  E-deck portholes; the gantry's motor and drum; the low-pressure
+  turbine and its condensers.
+- **Perf**: three scenes (`shipwreck-britannic-blast`, `-boats`,
+  `-grounded`) at the top tier, hospital paint (Task 6 report).

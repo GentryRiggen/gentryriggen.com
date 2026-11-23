@@ -45,7 +45,9 @@ while she is afloat and in one piece.
 | `constants.ts`    | Physical constants and every tuned parameter.                                                                                                                                                     |
 | `waves.ts`        | The storm's wave field (1.3): `waveElevation`, `boardingElevation` / `boardingRow` (second order), `waveField` (for the shader), `significantHeight`, `stormComponents`, `lockGroups`, `stormOf`. |
 | `deckWater.ts`    | Green water on her open deck (1.3): bays along her deck, onto and off it over the edges, along it with her trim; `deckFlows` (every deck opening's flow).                                         |
-| `headway.ts`      | `headwayRun`: how far her way carries her over a step (decaying, 1.1, or steady, 1.3).                                                                                                            |
+| `headway.ts`      | `headwayRun`: how far her way carries her over a step (decaying, 1.1, steady, 1.3, or a speed profile, 1.4); `speedAt`, `headingAt` (her turn), `headwayOf` (engines stopped).                    |
+| `doors.ts`        | Watertight doors and torn bulkheads between neighbouring compartments (1.4): `openDoors`, `doorLinks`, `doorFlow`.                                                                                |
+| `mine.ts`         | A mine ship's What-if (1.4): `mineOpenings` (her real spot is her real damage; any other spot one hole of the same area, in its void if it has one), `holdsRealMine`.                             |
 | `waveRide.ts`     | Her ride on the waves (1.3): `waveRide` (quasi-static heave, pitch, roll on the wave field), `rideDz`, `rideWeight`; the deck openings and the scene share it.                                    |
 
 `scripts/shipwreck-sim.ts` prints a run's timeline:
@@ -54,6 +56,9 @@ while she is afloat and in one piece.
 `--water` for each compartment's fill every 10 minutes.
 `--ship=lusitania` runs her afternoon (a line a minute), `--shut` with
 the portholes shut.
+`--ship=britannic` runs her morning (a line a minute); `--doors-closed`
+shuts every watertight door and `--engines-stopped` stops her engines at
+the mine (no run for Kea).
 
 ## The model
 
@@ -355,6 +360,61 @@ section, about 250 m² at Cd 1, 6 MN at 7 m/s), integrated exactly; lost
 for good at the first touch of the floor, as 1.1. A settled hull still
 carries steady way. With `halfLifeS` it is 1.1's decay exactly.
 
+**Watertight doors (1.4).** `spec.doors`: each `BulkheadDoor` is an
+opening of `areaM2` from `zLow` to `zHigh` in the transverse bulkhead at
+`x` between two neighbouring compartments (`aftId`, `fwdId`), on the
+centre line: the fore-and-aft analogue of cross flow. Water runs either
+way by the orifice law on the head difference over four strips of its
+height, as a hull opening's,
+`q = Σₖ Cd·(A/4)·√(2g·|hₐ,ₖ − h_b,ₖ|)·sign`, `h·,ₖ = max(0, surface −
+z_k)` (a full cell's head as for a spill), capped like a spill to
+half-equalise per step (`doorFlow`, `CD_OPENING` 0.6, `FLOW_CAP` 0.5). A
+`kind: "door"` door is a watertight door: `SimOptions.doorsClosed` shuts
+it. A `kind: "damage"` one is a bulkhead torn by the blast and never
+shuts. Each body links a door whose two compartments both have a cell in
+it at the door's x, so a break at the door ends it. No `doors`: no links,
+the same code path as before (`doors.test.ts`).
+
+**A speed profile (1.4).** `headway.profile`: [shown s, m/s] pairs, t
+ascending, linear between, held past the ends. While she floats it
+replaces `startMs`/`halfLifeS`: `u(t)` from the table, integrated
+exactly per step (trapezoids on each linear piece) into her earth
+distance; once she is under (the step after `bow-under`) her way decays
+from `u(t_under)` with `HEADWAY_LOST_HALF_LIFE_S`, as steady way does. A
+settled hull is still carried. `speedAt(h, t, opts, lostAt)` is the rate
+`headwayRun` integrates. `SimOptions.enginesStopped` (`headwayOf`) drops
+the profile and the turn at the first event: she coasts from her speed
+then, `u = u₀·2^(−t/T½)` with `HEADWAY_STOP_HALF_LIFE_S` (150 s, or her
+own `halfLifeS`): a 53,000 t liner (about 56,000 t with her surge added
+mass) at 21 kn meets about 2 MN of resistance (22 MW of effective power,
+60 % of 50,000 shp), an initial slowing of 0.036 m/s², an exponential
+half-life of about 210 s from that start; her stopped screws dragging and
+a bow trimmed down by the flooding add about 40 % to the drag.
+
+**A turn (1.4).** `headway.turn`: [shown s, yaw deg] pairs (+ to port: a
+turn to starboard is −), linear, held past the ends; `headingAt` gives
+radians. Pose and position only: each step her way (`headwayRun`) is
+laid along the heading at the step's middle into earth x and y
+(`Δx = d·cos ψ`, `Δy = d·sin ψ`; held at its value when she went under),
+and every floating body is turned to the heading about its centre of
+mass (`turnTo`: earth x and y only). `stepFloat` places the origin with
+the yaw and lays her surge along it; the drift stays earth y. Flooding,
+heave, pitch and roll never see yaw, so a turning run's are a straight
+run's to 1e-9 (`turn.test.ts`). Once a body is under, the descent's own
+yaw (the stern's spin) takes over from the last heading. With her
+engines stopped there is no turn. Not for storm ships (the wave ride and
+the re-locked groups assume her heading is 0).
+
+**Ram head (1.4).** `headway.ram: { cp, fromX }`: while she has way, the
+sea's head at each submerged strip of a hull opening or porthole piece at
+x ≥ `fromX` gains the dynamic head `Cp·u²/2g` (`u = speedAt`, her speed
+magnitude; 0 once she has touched the floor), so it floods as the orifice
+law gives for the larger head: by `√((h + Cp·u²/2g)/h)` against the same
+opening at rest (`ramHead.test.ts`). Strips above the sea gain nothing;
+openings aft of `fromX` are untouched. The head is set on each body
+(`Body.ramHead`) every step and read by `seaInflow` for openings marked
+`ram`.
+
 **What-ifs for a storm (1.3).** `SimOptions.storm` scales the field's
 heights (`STORM_SCALE`: calmer 0.6, Hs 7.6 → 4.6 m, a hard autumn gale
 the lakers sailed through; worse 1.25, 9.5 m, about the highest
@@ -550,6 +610,27 @@ collision. Scripted events fire only while she is afloat and whole;
   scene draws it at the level the sim's `deckLevel` gives (exported from
   `deckWater.ts`; `levelFor` calls it). Ships without an open deck (the
   liners) record none, so their tracks and goldens are unchanged.
+- 1.4 additions (the Britannic, Task 1): `cause: "mine"`; `BulkheadDoor`
+  and `ShipSpec.doors`; `headway.profile` / `turn` / `ram`;
+  `SimOptions.doorsClosed` / `enginesStopped`; `HEADWAY_STOP_HALF_LIFE_S`;
+  `speedAt`, `headingAt` and `headwayOf` beside `headwayRun` (which takes
+  an optional `opts` last); `Body.doors` / `ramHead`, `turnTo`;
+  `CellOpening.ram`; `seaInflow`'s optional `ram` head. All optional and
+  `undefined` for the other ships, whose tracks are pinned by the three
+  golden tests.
+- 1.4, the Britannic (Task 2): `ShipId` `"britannic"` (last in
+  `SHIP_IDS`); `PortholeRow.inboard` (a row above an inner skin opens into
+  the room, not its wing void); `cause: "mine"` What-ifs: `whatIfSpots`
+  gives the main spaces (not the voids), `whatIfOpenings` →
+  `mineOpenings` (her real spot `hold3` is `realNight` exactly; any other
+  spot one hole of the real hole's area and heights at its middle, in its
+  starboard void if it has one; several spots three seconds apart, aft
+  first, as torpedoes), `whatIfRealIds` → `["hold3"]`, `torpedoHitXs`
+  gives the mines' x too. The `kind: "damage"` doors (her torn bulkheads)
+  open only in a run that holds her real hole (`holdsRealMine`;
+  `openDoors(doors, closed, damage)`); the 6/5 door in every run unless
+  `doorsClosed`. A mine ship counts as steady on the averaged inflow (as a
+  torpedo ship) and with a roll rate under `STEADY_MINE_ROLL_RADS`.
 - What if is multi-select for every ship. A storm ship's `whatIfSpots`
   are each hatch's deck-opening id (No. 1 first), `VENTS_SPOT` ("vents":
   her topside damage, the broken vents and the split at her deck edge,
@@ -601,6 +682,11 @@ collision. Scripted events fire only while she is afloat and whole;
   later (`Opening.t`), so the scene's water columns and the flooding
   agree. One hit is untouched (the real afternoon stays bit-identical:
   `lusitaniaGolden`).
+- `__tests__/fitzgeraldGolden.test.ts` holds the Fitzgerald's real
+  afternoon and one What-if (her real damage with `hatchesTight`) to the
+  1.3 sim the same way, against `fixtures/fitzgeraldGolden.<arch>.json`
+  (arm64 and x64; the x64 one was written in a `linux/amd64` Node 24
+  container, which also passes the Lusitania's x64 fixture).
 
 ## Titanic's data and sources
 
@@ -1030,6 +1116,152 @@ put it to the covers collapsing under boarding seas.
   and one of 5.0 m none at the sisters: the afternoon's worst head over a
   coaming is about 2.6–2.7 m, the sisters' 4.5–5.0 m.
 
+## The Britannic's data and sources
+
+Sources (keys as in the spec): Chirnside, "The 'Olympic' Class Ships"
+and his HMHS Britannic FAQ and "Would higher watertight bulkheads have
+saved Titanic?" (markchirnside.co.uk) [CH]; Wikipedia, "HMHS Britannic",
+largely after Chirnside [WP]; Atlantic Liners [AL]; White Star History
+[WSH]; Kea Divers (keadivers.com) [KD]; titanicology.com, "Modifications
+to Olympic following the Titanic disaster" (the 1913 inner skin) [TI];
+Encyclopedia Titanica's watertight-door analysis and its forum on the
+firemen's passage (the Titanic's layout, which the sisters shared) [ET];
+the Formal Investigation's reconstruction of her position (Encyclopedia
+Titanica transcription) [FI]; MarineTraffic's light list (Agios Nikolaos
+light, 37.6673° N 24.3139° E) [MT]. Where they disagree:
+
+- **Length and breadth (R2).** LOA 882 ft 9 in (269.1 m) and the LBP of
+  her sisters (259.08 m) [CH: "all of Harland & Wolff's documentation is
+  in agreement"; the "903 ft" is a newspaper error]. Breadth 94 ft
+  extreme (28.65 m) [CH, WP], 18 in more than the Titanic's 92 ft 6 in.
+  The hull is the Titanic's offsets copied (never shared: the Titanic's
+  arrays stay hers), every half-breadth scaled about the centre line by
+  94/92.5, the same frames and the same deck heights and sheer
+  (`britannic.ts`).
+- **Load (R4).** Her load condition: 34 ft 7 in (10.54 m), 53,200 long
+  tons [WP]; this hull displaces 54,053 t (53,200 long tons) there, so the
+  widened Titanic lines agree with her figures. On 21 November she was
+  outbound from Naples (two days, about 1,100 t of coal at her sisters'
+  650 t a day at service speed) with no patients aboard (about 250 t of
+  people and their kit less than a full hospital ship): about 52,700 t,
+  so `draught` 10.30 m (33 ft 9 in), where the hull displaces 52,653 t
+  (`displacementT` 52,650). An assumption from the coal, not a measured
+  draught.
+- **Stability.** No source gives her GM. KM at 10.30 m is 11.73 m (0.20 m
+  more than the Titanic's at the same draught: the wider beam). KG
+  10.93 m gives GM 0.80 m, the Olympic's from her inclining (Hackett &
+  Bedford, as the Titanic's): her extra beam is offset by her higher
+  weights (the gantry davits) and the low coal burnt since Naples. Range
+  0.7–1.3 m. TCG 0.02 m to starboard (coal drawn unevenly, as the
+  Titanic's 0.02 m to port): 1.4° to starboard at rest. LCG −2.78 m, over
+  the centre of buoyancy (level trim).
+- **Subdivision and the raised bulkheads (R3).** The Titanic's fifteen
+  bulkheads at the same frames. Six raised to B deck (WP's design
+  section; its sinking section and AL say five): D (forward of boiler
+  room 6), F (boiler rooms 5/4: "the stepped-up extension ... to the
+  underside of B-deck" [CH's FAQ]) and K (aft of boiler room 1), the three
+  CH names in his FAQ and forum notes, with E, G and H, the boiler-room
+  bulkheads between them (our assumption, the "six" of most sources).
+  The rest as the Titanic's: A to C deck, B to D, C and J to E, L–P to D.
+  A top above C deck (the hull's top) never spills: water reaching C
+  deck goes on into the superstructure boxes, as for every ship.
+- **Inner skin.** Along all six boiler rooms and the reciprocating and
+  turbine engine rooms [WP, AL, WSH]; on the Olympic of 1913, about 30 in
+  inboard of the shell below G deck and 36 in above it, tank top to F
+  deck [TI]. Each such space is a centre cell with a narrow starboard and
+  port void (`span`, no cross flow: the skin is watertight), `span.y` the
+  hull's half-breadth at the space's middle at her waterline less 0.85 m
+  (so boiler room 6's void follows the narrowing hull). Void permeability
+  0.95. The void cells run full height (the skin stops at F deck): above F
+  deck that is about 0.85 m of her cabins at the side, a few per cent of
+  the room's volume.
+- **The mine (`realNight`).** "Between holds two and three" on the
+  starboard side [WP]: one hole in hold 3's shell 2 m aft of the hold 2/3
+  bulkhead, 2.5–7.0 m over the keel (a moored mine at 5–7 m under the
+  sea), 12 m² (range 5–25 m², a 1916 moored mine's charge of about
+  150–200 kg; its size moves her time by about a minute across 5–25 m²:
+  the doors and the tunnel set her pace). The wreck lies on that side, so
+  the hole has not been seen [WP].
+- **Torn bulkheads and the door (`doors`, R7).** All with the real mine
+  only (`kind: "damage"`), except the 6/5 door:
+  - hold 2/3 bulkhead (C), torn where the mine went off against it: 1 m²
+    at 2.5–7 m (range 0.5–5);
+  - the firemen's tunnel: a watertight passage on the tank top from the
+    stair tower aft of bulkhead B through holds 2 and 3 to a door at the
+    foot of bulkhead D into boiler room 6 [ET], "seriously damaged", the
+    water flowing into boiler room 6 [WP]: 1.5 m² at the tank top (1.6–3.6
+    m; range 0.5–3: the tunnel's section is about 3 m²);
+  - the stair tower, which rises from the tunnel aft of B and opens at G
+    deck into the crew spaces over hold 1 [ET]: 0.5 m² at G deck (range
+    0.3–2). With the torn tunnel it is how hold 1 fills: "the first four
+    watertight compartments were filling rapidly" [WP], hold 1 among them;
+  - the forepeak bulkhead (A), damaged [WP]: 0.5 m² at 3–7 m (range 0.2–2);
+  - the boiler room 6/5 watertight door (`kind: "door"`), which "failed to
+    close properly" [WP]: a sliding door stopped short, the gap under it
+    0.5 m² (1.1 m wide, 0.45 m high; range 0.1–1.0 m², a full door about
+    2 m²). Divers later found several doors open [KD/WP]; the sim has
+    only this one, and `doorsClosed` shuts it.
+- **Portholes (R8).** "Most of the lower-deck portholes forward" were
+  opened by the nurses to air the wards, against orders; those on E deck
+  went under about 15 minutes after the mine [WP]. A row 1 m over E deck
+  from bulkhead G (about amidships) to the forepeak bulkhead, and 1 m over
+  F deck over the holds (D to A), both sides, following the sheer;
+  0.02 m² per metre (16-inch scuttles, 0.126 m², about every 3 m, about
+  half of them open; range 0.015–0.045). Above the inner skin's top, so
+  `inboard`: they open into the room, not the void (`PortholeRow.inboard`,
+  1.4). Her other scuttles shut.
+- **Her run for Kea (R9, R10, R11).** About 20 knots at the mine, the
+  most allowed in coastal waters [FI] (service speed 21 kn [WP]). The
+  speed profile: 20 kn at 8:12; 14 kn by 8:15 through her turn (her
+  steering gone, she steered on her shafts, the port one faster [WP]);
+  2 kn by 8:18, slow enough to lower boats (they were lowered with her
+  screws still turning [WP]); stopped at about 8:35 (no source gives the
+  time, R9), coasting (`HEADWAY_STOP_HALF_LIFE_S`); slow ahead, 3 kn,
+  again at 8:50 [WP]; stopped at 9:00 [WP], coasting. 4.73 km (2.6 nmi)
+  by 9:06. Her strike was "about 3 miles off Port St Nikolo light,
+  bearing N 48° W" [FI] (Bartlett: Kea about 3 miles), or 4 nmi
+  (Divernet, Greeka); the wreck (37°42′05″ N 24°17′02″ E [WP]) lies 1.5
+  nmi off Kea's north-west point [KD], so she covered 1.5–2.5 nmi:
+  ours is at the top of that. A faster run for Kea does not fit the
+  wreck's place. The turn: from her course for Mudros up the channel
+  (N 18° E, the bearing of Mudros) to about east (the wreck lies about
+  east of the [FI] position, toward Kea's nearest shore): 70° to
+  starboard over 8:12:30–8:16 (`headway.turn`). The ram head forward of
+  x = 63 m (her forward quarter, the stem at 130 m): Cp 0.5 (range
+  0.2–1.0: the bow's pressure field on a hole in a moving hull, 1 at the
+  stagnation point).
+- **Shelter (R18).** None. On her R9 profile she stops at 9:00 with
+  4.7 km run and 1.5 nmi still to go to Kea [KD]: no run that follows
+  the profile reaches the beach, so `shelter` would never fire (with her
+  engines stopped she coasts 2.2 km). A What if that keeps her going
+  after 9:00 would need its own profile (controller's call).
+- **Boats (R5).** 48 [WP]: five gantry sets of six [WP: each could handle
+  six; eight designed, five fitted], one to starboard forward abreast
+  the first funnel by the officers' quarters (x 54 m) and four aft by
+  the fourth funnel (x −38 and −61 m, a pair each side); a set's six
+  boats share its x (two rows across, three tiers high: the model
+  README). Welin davits for the rest, double-banked: six at the port
+  forward position (its gantry never fitted; x 42, 53, 63.5 m) and six
+  a side amidships between the second and third funnels (x −11, 0.5,
+  12 m). Positions measured off her photographs (model README). 35 launched and stayed
+  afloat [WP]: `boat-lowered` from 8:25 to 8:50, one about every 44 s,
+  aft first. Which boats went when is not in our sources.
+- **Funnels.** The Titanic's positions and heights; the fourth a dummy
+  (as her sisters'). All four may fall: they "collapsed one after the
+  other" as she capsized [WP].
+- **Floor, clock, wreck.** 120 m (400 ft, 122 m [WP, GOL]; 119 m in one
+  dive guide), the clock from 8:12 AM. `wreck: { restDeg: 90,
+minListDeg: 10 }`: she lies on her starboard side [WP, WSH].
+- **Girder.** hog 6.0 GN·m, sag 5.5 GN·m. The Titanic's 4.9 GN·m is
+  about 18 m³ of section modulus at about 250 MPa; the Britannic's wider
+  beam (+1.6%) and inner skin (two 12.7 mm plates 9.6 m deep low in the
+  section, about +2.5% of the second moment) make about 18.75 m³, and the
+  warm Aegean (about 18 °C, against the Titanic's −2 °C) leaves the
+  same riveted steel tougher: 250–320 MPa, 4.7–6.0 GN·m. She did not
+  break (her bow bent on the floor [WP, GOL]); her peak is 0.97 of 6.0
+  GN·m (9:03:19, as her bow strikes); at 5.3 GN·m she breaks 21 s before
+  the bow lands. The top of the range: a concern (see "Known limits").
+
 ## Calibration
 
 Everything tuned is a physical quantity; no timing is scripted.
@@ -1155,6 +1387,48 @@ fails covers at 4:57 PM (sinks 6:41), 2.8–4.5 m put the bow under at
 7:12:05–7:16:30, 5.0 m none; leak 0.1 / 0.5 m² let in 40 / 206 t by 7:00;
 splits of 1 and 3 m² and vents of 0.1 m² change nothing before 7:00.
 
+### The Britannic's calibration
+
+Every value is physical and inside its stated range ("The Britannic's
+data"); nothing is scripted but the explosion, the boats and her 9:00
+whistle (a `radio` 0 event, "engines stopped; two long blasts on the
+whistle" [WP]; a signal with no physics, for the caption and the sound).
+Against the history (E-deck portholes under about 15 min after the mine, a list to
+starboard, the bow on the 120 m floor before the stern is under, gone in
+55 min, on her starboard side), one at a time from the chosen values
+(real morning: under at 54:01; bow lands 51:55):
+
+| Parameter           | Value                 | Sensitivity (stern under after the mine)                                                                                                                                                 |
+| ------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Mine hole           | 12 m²                 | 5 m² → 55:21, 25 m² → 53:54: the holds fill in minutes either way.                                                                                                                       |
+| 6/5 door gap        | 0.5 m²                | 0.1 → 78:26, 1.0 → 50:47. Shut (`doorsClosed`): she floats (five spaces).                                                                                                                |
+| Tunnel              | 1.5 m²                | 0.5 → 70:48, 3 → 50:38.                                                                                                                                                                  |
+| Torn 2/3 bulkhead   | 1 m²                  | 5 → 53:14.                                                                                                                                                                               |
+| Stair tower         | 0.5 m²                | 2 → 53:29.                                                                                                                                                                               |
+| Porthole open area  | 0.02 m²/m             | 0.015 → 63:13, 0.045 → 37:46. Shut: she floats (trim 5.1°, 26,500 t). The E-deck row over boiler room 4 is what sinks her (rows from F, 36.9 m, forward only: she floats, in the sweep). |
+| KG (GM)             | 10.93 m (0.80 m)      | Sets the capsize: GM 1.00 m: at most 11.5° before the bow lands; 0.60 m: 67.5°. At GM 1.0 m she breaks even at 5.8 GN·m.                                                                 |
+| TCG                 | 0.02 m to starboard   | 0.01 → at most 17.8°, 0.04 → 37.5° before the bow lands. 0: she never rolls (a symmetric hull with full-breadth spaces).                                                                 |
+| Ram Cp              | 0.5                   | 0.2 → 54:09, 1.0 → 54:00: her way is gone by 8:18, so the ram works only in the first minutes.                                                                                           |
+| Girder              | hog 6.0, sag 5.5 GN·m | Peak 0.97 as the bow strikes. 5.3 GN·m: breaks at 49:48, 21 s before the bow lands.                                                                                                      |
+| Steady (mine ships) | roll rate 2e-4 rad/s  | Not timing: a mine in a double-skin void trades water in pulses that rock her by about 1e-4 rad/s; at 1e-5 four of the six boiler-room spots never log `floating-steady`.                |
+
+What if (her real spot, multi-select toggles; `realMorning.test.ts`):
+
+| Portholes | Doors      | Engines | Outcome                            |
+| --------- | ---------- | ------- | ---------------------------------- |
+| open      | stuck open | run     | sinks 54:01 (the real morning)     |
+| open      | stuck open | stopped | sinks 54:03                        |
+| open      | closed     | run     | floats, steady at 35:00 (14,170 t) |
+| open      | closed     | stopped | floats, steady at 35:00            |
+| shut      | stuck open | run     | floats, steady at 64:38 (26,500 t) |
+| shut      | stuck open | stopped | floats, steady at 66:36            |
+| shut      | closed     | run     | floats, steady at 40:51            |
+| shut      | closed     | stopped | floats, steady at 40:45            |
+
+A mine at any boiler or engine room fills only its starboard void and
+she floats (list about 3–4°); a mine at hold 1 or the forepeak alone,
+without the real mine's torn bulkheads, floats too.
+
 ### Storm parameters (1.3)
 
 Shared by any ship with a storm; the Fitzgerald's own values are hers.
@@ -1229,6 +1503,18 @@ Shared by any ship with a storm; the Fitzgerald's own values are hers.
 | Fitzgerald ride: pitch ≤ 6°, roll ≤ 10°             | at most 2.0°, 0.6°                                  |
 | Fitzgerald What-if: 24 runs                         | all finite, inside endT; no damage sinks later      |
 | Fitzgerald: real spots = real run; none + calmer    | identical tracks; she reaches Whitefish Bay         |
+| Britannic: LOA, beam; displacement, GM              | 269.1 m, 28.65 m; 52,653 t (+0.0%), 0.80 m          |
+| Britannic: explosion at the mine                    | 8:12:01 AM (1 s)                                    |
+| Britannic: added list ≥ 2° by 8:30, growing to 8:55 | not met (−0.7°, −0.9°): `it.failing`, Known limits  |
+| Britannic: adds 8–30° of list before the bow lands  | 25.0° (as the bow strikes, 9:03:55)                 |
+| Britannic: down by the head from 8:17 AM            | yes (1.5° at 8:17, 3.4° at 8:27)                    |
+| Britannic: E-deck portholes under 10–22 min         | 12:28 after the mine (real about 15)                |
+| Britannic: bow lands before the stern is under      | bow 9:03:55, stern 9:06:01 (up then)                |
+| Britannic: gone in 45–65 min (real 55), whole       | 54:01 (9:06:01 AM); girder peak 0.97                |
+| Britannic: rests on her starboard side (≥ 60°)      | 89.9°                                               |
+| Britannic: funnels fall one after another           | 9:00:26, 9:02:33, 9:03:29 (dummy 9:04:05)           |
+| Britannic What-if: 8 toggle combinations            | all finite, in endT; any one fixed: later           |
+| Britannic: a mine in a boiler room's double skin    | floats steady (each of the six)                     |
 
 ## Known limits
 
@@ -1317,3 +1603,56 @@ Shared by any ship with a storm; the Fitzgerald's own values are hers.
 - The Lusitania's lower spaces under the bulkhead deck are whole
   compartments: water through an E-deck porthole goes straight into the
   compartment (or side bunker) under it, not onto E deck first.
+- The Britannic lists only from her 2 cm TCG until her last minutes
+  (0.77° at 8:27 AM, at most 1.9°, against "a serious list to starboard"
+  [WP]): her forward spaces are full breadth, so the water levels across
+  them and flooding by the head stiffens her. Her roll to starboard
+  (26° as the bow strikes, then onto her side) comes from 9:02 AM as her
+  decks go under. What gave her real early list (water held on her
+  starboard side in her E- and F-deck wards and cabins, the hole's side)
+  needs water that stays on its side between decks, which the sim does
+  not have. "A serious list" [WP] is unquantified; the sim's list stays
+  small until the final capsize because her forward spaces flood full
+  breadth; between-deck water held to starboard is not modelled (a
+  follow-up). Her list tests measure the list the flooding adds (each
+  frame's list less her dry list at 8:12): 25.0° at most before the bow
+  lands (8–30°). From 8:12 to 8:50 the added list is negative (−0.4° at
+  8:22, −0.7° at 8:30, −0.9° at 8:45): she rights herself from the TCG's heel
+  as her low spaces fill.
+- Task 2b tried between-deck cells (R21) and found the honest physics
+  does not give a list that grows (`it.failing` in `realMorning.test.ts`
+  holds the three tests R21 asks for; the sweeps and the prototype patch
+  are kept outside the repository). With `tcg` 0, starboard and port
+  wings in holds 1–3 (3–6 m in from the shell, the cabins' and wards'
+  partitions; the Titanic's E deck had rooms against the shell on both
+  sides, BOT report "Accommodation"), the hole into the starboard wing and
+  the torn 2/3 bulkhead wing to wing, 0.5–4 m² across to the hold, and
+  bands of wards inside the boiler rooms' inner skin (`span.toY`, 3–6 m,
+  0.03–1 m²) fed by their own side's portholes, about 4,000 runs over the
+  honest ranges of every value (hole, doors, tunnel, portholes, GM): she
+  lists 2–5° to starboard in her first ten minutes (the hole's side
+  floods first), and the filling holds take it back by about 8:35. By
+  then every open porthole forward is under on both sides, so the held
+  water evens out, and as her low spaces fill her GM rises, so no
+  steady heeling moment grows her list. Her capsize side at about 9:00 is
+  then set by a list of a few hundredths of a degree: often port. Narrow cross flow keeps the list longer but holds her spaces
+  back (sunk at 9:20–10:40) and in most such runs her girder breaks just
+  before her bow lands. Floors under the between-deck spaces (cells cut at
+  F deck, so their water lies shallow on the deck) did not change this in the runs tried.
+  So her starboard side and her capsize stay seeded by the 2 cm TCG
+  until a source or a better model gives more.
+- Her run for Kea barely matters here: with her way taken off by 8:18 (to
+  fit the wreck's place, 1.5 nmi short of Kea [KD]) the ram head works
+  only in her first minutes, and her engines stopped at the mine sink her
+  2 s later (Cp 0.2–1.0 moves her by 9 s). The stronger effect R11 hoped
+  for would need her to have run much faster for much longer, which the
+  wreck's place rules out. No run that follows her profile reaches Kea
+  (no `shelter`). The honest finding: her engines stopped change her
+  sinking by seconds (Cp 0.2–1.0 moves it by at most 9 s); the strike to
+  wreck distance wins over full speed for the nearest shore. The toggle
+  stays; its test asks that engines stopped alone sinks her no sooner
+  than the real run (1 s slack).
+- Her girder (6.0 GN·m, the top of the honest range) clears her peak by
+  3%: below about 5.8 GN·m she breaks just before her bow lands.
+- Her capsize takes about 2 minutes (9:02–9:04); she "gradually
+  capsized" from 9:00 to 9:07 [WP].

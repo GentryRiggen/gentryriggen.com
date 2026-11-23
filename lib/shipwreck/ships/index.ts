@@ -1,3 +1,4 @@
+import { britannic } from "./britannic";
 import { fitzgerald } from "./fitzgerald";
 import { lusitania } from "./lusitania";
 import { titanic } from "./titanic";
@@ -21,12 +22,19 @@ export {
   type FitzgeraldBoat,
   type FitzgeraldHatch,
 } from "./fitzgerald";
+export {
+  britannic,
+  BRITANNIC_BOATS,
+  BRITANNIC_DECKS,
+  type BritannicBoat,
+} from "./britannic";
 
 /** Every ship the game knows, in the order the title screen lists them. */
 export const SHIP_IDS = [
   "titanic",
   "lusitania",
   "fitzgerald",
+  "britannic",
 ] as const satisfies readonly ShipId[];
 /** Every ShipId is in SHIP_IDS: this fails to compile if one is missing. */
 const ALL_SHIP_IDS: [Exclude<ShipId, (typeof SHIP_IDS)[number]>] extends [never]
@@ -39,6 +47,7 @@ export const SHIPS: Record<ShipId, ShipSpec> = {
   titanic,
   lusitania,
   fitzgerald,
+  britannic,
 };
 
 export function getShip(id: ShipId): ShipSpec {

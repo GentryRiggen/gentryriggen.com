@@ -26,13 +26,19 @@ import { ShipOnStage } from "./ShipRig";
 import GreenWater from "./GreenWater";
 import Sky, { DaySky, StormSky } from "./Sky";
 import StormSea from "./StormSea";
-import Torpedo from "./Torpedo";
+import Torpedo, { hasTorpedoTrack } from "./Torpedo";
 import WalkRunner from "./WalkRunner";
 import Wreckage from "./Wreckage";
 import XRay from "./XRay";
 import { stepQuality } from "./quality";
 import { createSceneRuntime, type SceneRuntime } from "./runtime";
-import { SCENE_SETTINGS, sunDirection, type SceneSettings } from "./settings";
+import {
+  SCENE_SETTINGS,
+  dayLookOf,
+  isDaylit,
+  sunDirection,
+  type SceneSettings,
+} from "./settings";
 
 /**
  * The night: the sky, the sea, the ship from the track, the effects and
@@ -85,7 +91,7 @@ export default function NightScene({
   const quality = useStore(store, (s) => s.quality);
   const spec = getShip(useStore(store, (s) => s.ship));
   const settings = SCENE_SETTINGS[spec.id];
-  const day = settings.timeOfDay === "afternoon";
+  const day = isDaylit(settings);
   const storm = settings.storm === true;
   const haze = useMemo(() => new Color(settings.fog), [settings]);
   const sunDir = useMemo(
@@ -157,17 +163,17 @@ export default function NightScene({
           settings={settings}
         />
         {day ? (
-          <DaySky sunDir={sunDir} horizon={haze} />
+          <DaySky sunDir={sunDir} horizon={haze} look={dayLookOf(settings)} />
         ) : storm ? (
           <StormSky runtime={runtime} fog={settings.fog} dpr={dpr} />
         ) : (
           <Sky dpr={dpr} />
         )}
-        {settings.coast && <Coast />}
+        {settings.coast && <Coast ship={spec.id} />}
         {/* Another ship builds her own model, disposing the old. */}
         <ShipOnStage store={store} runtime={runtime} />
         {settings.iceberg && <Iceberg store={store} />}
-        {spec.cause === "torpedo" && <Torpedo store={store} />}
+        {hasTorpedoTrack(spec) && <Torpedo store={store} />}
         {storm && (
           <>
             <GreenWater store={store} runtime={runtime} spec={spec} />

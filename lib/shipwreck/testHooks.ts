@@ -24,8 +24,17 @@ export interface ModelViewOptions {
     | "stern-close"
     | "astern"
     | "break-close"
-    | "boat-deck";
+    | "boat-deck"
+    | "bow-port"
+    | "gantry";
   stage?: "day" | "night";
+  /** The bent bow (R12), radians (ships with a hinge; default 0). */
+  bowBend?: number;
+  /**
+   * A livery, swapped in place (`handles.setPaint`): the Britannic's
+   * "hospital" or "liner". Default the page's `?paint=`, else her own.
+   */
+  paint?: string;
 }
 
 export interface ModelInfo {
@@ -40,6 +49,8 @@ export interface ModelInfo {
   buildMs: number;
   /** Which ship is on the stage (`spec.id`). */
   ship?: string;
+  /** How long the last paint swap (`setPaint`) took, ms. */
+  paintMs?: number;
 }
 
 export interface ShipwreckModelHooks {
@@ -49,7 +60,8 @@ export interface ShipwreckModelHooks {
 
 /** What `getState()` reports about the night's playback. */
 export interface ScenePlaybackInfo {
-  /** The ship on the stage ("titanic" | "lusitania" | "fitzgerald"). */
+  /** The ship on the stage ("titanic" | "lusitania" | "fitzgerald" |
+   *  "britannic"). */
   ship: string;
   t: number;
   realT: number;
@@ -129,16 +141,26 @@ export interface WalkHookInfo {
 export interface ShipwreckGameHooks {
   /** Picks a ship as the title screen does (and shows the title). */
   setShip(id: string): void;
-  /** The ship chosen ("titanic" | "lusitania" | "fitzgerald"). */
+  /** The ship chosen ("titanic" | "lusitania" | "fitzgerald" |
+   *  "britannic"). */
   ship(): string;
   startReal(): void;
   /**
    * Starts a What if with these spots chosen (compartments open; a torpedo
-   * ship: where torpedoes hit; a storm ship: her leaking hatches, vents and
-   * shoal scrapes), and for a torpedo ship whether the portholes are open,
-   * for a storm ship the storm ("real" | "calmer" | "worse").
+   * or mine ship: where they hit; a storm ship: her leaking hatches, vents
+   * and shoal scrapes), and for a torpedo or mine ship whether the
+   * portholes are open, for a storm ship the storm ("real" | "calmer" |
+   * "worse"), and for a mine ship whether every watertight door is shut
+   * and her engines stopped at once (default: neither, as the real
+   * morning).
    */
-  startWhatIf(ids: string[], portholesOpen?: boolean, storm?: string): void;
+  startWhatIf(
+    ids: string[],
+    portholesOpen?: boolean,
+    storm?: string,
+    doorsClosed?: boolean,
+    enginesStopped?: boolean
+  ): void;
   /** "sank" | "floated" | "broke-in-two" once the run is done, else null. */
   getOutcome(): string | null;
 }

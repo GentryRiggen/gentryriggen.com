@@ -44,6 +44,13 @@ export interface SceneRuntime {
     dz: number;
     amount: number;
     length: number;
+    /**
+     * A turning ship's wake (the Britannic's, `WAKE_PATH_POINTS`): her
+     * stern's path back over the last minute or so, three (x, z) pairs
+     * from now backward, `pathN` of them (0: the straight wake).
+     */
+    path: Float32Array;
+    pathN: number;
   };
   /**
    * Walking (WalkRunner, priority −1.5): the first-person eyes, null when
@@ -103,6 +110,9 @@ export interface WalkInfo {
   area: string | null;
 }
 
+/** Points along a turning ship's wake (`SceneRuntime.wake.path`). */
+export const WAKE_PATH_POINTS = 8;
+
 /** Room for her deck lamps in `SceneRuntime.lamps`. */
 export const MAX_LAMPS = 8;
 
@@ -121,7 +131,16 @@ export function createSceneRuntime(): SceneRuntime {
     reflecting: false,
     underwater: false,
     pins: new Map(),
-    wake: { x: 0, z: 0, dx: 1, dz: 0, amount: 0, length: 0 },
+    wake: {
+      x: 0,
+      z: 0,
+      dx: 1,
+      dz: 0,
+      amount: 0,
+      length: 0,
+      path: new Float32Array(2 * WAKE_PATH_POINTS),
+      pathN: 0,
+    },
     walker: null,
     walkLookUnder: false,
     walkSplash: 0,

@@ -82,7 +82,10 @@ export interface WalkState {
 const WALK_OFF: WalkState = { phase: "off", lookUnder: false, seq: 0 };
 
 /** What a run is started with beyond its openings. */
-export type RunOptions = Pick<SimOptions, "portholesOpen" | "storm" | "endT">;
+export type RunOptions = Pick<
+  SimOptions,
+  "portholesOpen" | "storm" | "endT" | "doorsClosed" | "enginesStopped"
+>;
 
 /** And what the scene needs to know of it (not the sim). */
 export interface StartOptions extends RunOptions {
@@ -114,7 +117,8 @@ export interface PlaybackState {
   /** The holes in her hull this run was started with (the real night's or
    *  a What if; deck openings go to the sim only). */
   openings: readonly Opening[];
-  /** Each torpedo's hit (ship-frame x, aft first; none for other ships). */
+  /** Each torpedo's or mine's hit (ship-frame x, aft first; none for
+   *  other ships). */
   hits: readonly number[];
   /** The title's stage (`StartOptions.preview`): her storm sea runs on. */
   preview: boolean;
@@ -441,8 +445,9 @@ export function createPlaybackStore(
         const firstHole = openings.find(
           (o) => o.side === "starboard" && (o.t ?? 0) === 0
         );
+        // Torpedoes and mines (a mine has no track: the HUD counts them).
         const hits =
-          spec.cause !== "torpedo"
+          spec.cause !== "torpedo" && spec.cause !== "mine"
             ? []
             : (chosen ?? (firstHole ? [firstHole.x] : []));
         const pre = openings.length > 0 ? (spec.preRollS ?? 0) : 0;

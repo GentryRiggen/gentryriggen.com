@@ -40,8 +40,14 @@ function upright(draught: number) {
 describe("the Lusitania's data", () => {
   it("is in the registry", () => {
     expect(getShip("lusitania")).toBe(lusitania);
-    expect(SHIP_IDS).toEqual(["titanic", "lusitania", "fitzgerald"]);
+    expect(SHIP_IDS).toEqual([
+      "titanic",
+      "lusitania",
+      "fitzgerald",
+      "britannic",
+    ]);
     expect(Object.keys(SHIPS).sort()).toEqual([
+      "britannic",
       "fitzgerald",
       "lusitania",
       "titanic",

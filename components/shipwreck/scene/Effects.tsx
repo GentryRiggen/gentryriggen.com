@@ -14,20 +14,24 @@ import {
   ShaderMaterial,
   Vector3,
 } from "three";
-import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
+import {
+  toThree,
+  type TitanicHandles,
+} from "@/components/shipwreck/model/shipModel";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildHull, hullHalfBreadth } from "@/lib/shipwreck/sim/geometry";
 import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
 import { shipToThree } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
-import type { SceneSettings } from "./settings";
+import { isDaylit, type SceneSettings } from "./settings";
 import {
   AfternoonEffects,
   DAY_PARTICLES,
   type AfternoonFrame,
 } from "./afternoonEffects";
 import { STORM_MIN_PX, STORM_PARTICLES } from "./storm";
+import { FUNNEL_SINK_S, FUNNEL_TOPPLE_S, layFunnel } from "./funnelWreck";
 import { StormEffects, type StormFrame } from "./stormEffects";
 
 /**
@@ -128,7 +132,7 @@ export default function Effects({
   spec,
   settings,
 }: EffectsProps) {
-  const day = settings.timeOfDay === "afternoon";
+  const day = isDaylit(settings);
   // The storm (the Fitzgerald): snow, spray and torn smoke in the blended
   // buffer; none of the liners' boats, rockets, smoke or waterline foam.
   const storm = settings.storm === true;
@@ -309,6 +313,11 @@ export default function Effects({
         !fell.has(e.index)
       )
         fell.set(e.index, e.t);
+    // Her wreck's pose (the track's last frame), for the Britannic's funnels.
+    const wreckPose =
+      spec.id === "britannic"
+        ? (track.frames[track.frames.length - 1]?.bodies[0] ?? null)
+        : null;
     for (const mdl of models) {
       mdl.funnels.forEach((f, i) => {
         if (!f) return;
@@ -320,6 +329,25 @@ export default function Effects({
         f.rotation.set(u * side, 0, u * fore);
         const guys = mdl.funnelGuys[i];
         if (guys) guys.visible = tf === undefined || t < tf;
+        // The Britannic's: once toppled, each sinks to its place beside
+        // her wreck [WP] (funnelWreck.ts).
+        const rf = mdl.recipe.funnels[i];
+        if (wreckPose && rf) {
+          toThree([rf.x, 0, rf.baseZ], f.position);
+          f.scale.set(1, 1, 1);
+          const age = tf === undefined ? -1 : t - tf - FUNNEL_TOPPLE_S;
+          if (age > 0) {
+            const k = Math.min(1, age / FUNNEL_SINK_S);
+            layFunnel(
+              f,
+              rf.topZ - rf.baseZ,
+              spec,
+              wreckPose,
+              i,
+              k * k * (3 - 2 * k)
+            );
+          }
+        }
       });
     }
 

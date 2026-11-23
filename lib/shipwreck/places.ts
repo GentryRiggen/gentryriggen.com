@@ -1,3 +1,4 @@
+import { BRITANNIC_GANTRY_SETS, britannic } from "./ships/britannic";
 import { FITZGERALD_HATCHES, fitzgerald } from "./ships/fitzgerald";
 import { lusitania } from "./ships/lusitania";
 import { titanic } from "./ships/titanic";
@@ -41,11 +42,22 @@ export const FITZGERALD_PLACE_IDS = [
   "hatch-crane",
 ] as const;
 
+/** The Britannic's places. */
+export const BRITANNIC_PLACE_IDS = [
+  "bridge",
+  "hold-2",
+  "boiler-room-6",
+  "portholes",
+  "gantry-davit",
+  "turbine-room",
+] as const;
+
 /** Any ship's place (looked up with the ship: several have a bridge). */
 export type PlaceId =
   | TitanicPlaceId
   | (typeof LUSITANIA_PLACE_IDS)[number]
-  | (typeof FITZGERALD_PLACE_IDS)[number];
+  | (typeof FITZGERALD_PLACE_IDS)[number]
+  | (typeof BRITANNIC_PLACE_IDS)[number];
 
 export interface Place {
   id: PlaceId;
@@ -298,11 +310,109 @@ export const FITZGERALD_PLACES: Record<
   },
 };
 
+/**
+ * The Britannic's places, from her data (the Titanic's frames and decks,
+ * her own beam, compartments and davits): the wheelhouse where her
+ * sister's stood, 190 ft from the bow; hold 2, beside the hold 2/3
+ * bulkhead where the mine went off against her starboard side [WP];
+ * boiler room 6 (the firemen's tunnel flooded it); her open portholes on
+ * E deck forward, over hold 1 by her starboard side, where the row sits
+ * (R8); the gantry davit set by the officers' quarters, starboard forward
+ * (R5); and the turbine room between bulkheads L and M, its turbine
+ * turning her middle propeller.
+ */
+const B_BRIDGE_X = 68.6;
+const B_TANK_TOP = britannic.decks.find((d) => d.name === "Tank top")?.z ?? 1.6;
+const bComp = (id: string) =>
+  britannic.compartments.find((c) => c.id === id) as {
+    fromX: number;
+    toX: number;
+  };
+const bMid = (id: string) => (bComp(id).fromX + bComp(id).toX) / 2;
+/** In hold 2, just forward of the hold 2/3 bulkhead the mine tore. */
+const B_HOLD2_X = Math.round((bComp("hold2").fromX + 3) * 10) / 10;
+const B_BR6_X = Math.round(bMid("br6") * 10) / 10;
+const B_TURBINE_X = Math.round(bMid("turbine") * 10) / 10;
+/** Over hold 1, on her open E-deck row, 2 m inside her starboard side. */
+const B_PORTHOLE_X = Math.round(bMid("hold1") * 10) / 10;
+const B_PORTHOLE_FLOOR = deckZAt("E", B_PORTHOLE_X, britannic);
+const B_PORTHOLE_Z = B_PORTHOLE_FLOOR + 1;
+const B_PORTHOLE_Y = -6;
+const B_GANTRY = BRITANNIC_GANTRY_SETS[0];
+const B_GANTRY_DECK = deckZAt("Boat", B_GANTRY.x, britannic);
+
+export const BRITANNIC_PLACES: Record<
+  (typeof BRITANNIC_PLACE_IDS)[number],
+  Place
+> = {
+  bridge: {
+    id: "bridge",
+    label: "Bridge",
+    fact: "She was steered from the wheelhouse here. When the mine broke her steering, her captain steered her with her engines instead, turning her toward the island of Kea.",
+    at: [B_BRIDGE_X, 0, deckZAt("Boat", B_BRIDGE_X, britannic) + 1.6],
+    floorZ: deckZAt("Boat", B_BRIDGE_X, britannic),
+    compartmentId: null,
+    interior: true,
+    view: [-14, -10, 6],
+  },
+  "hold-2": {
+    id: "hold-2",
+    label: "Hold 2",
+    fact: "The mine went off against her starboard side here, by the wall between holds 2 and 3. The sea poured into both holds, and on through a tunnel into the boiler rooms behind them.",
+    at: [B_HOLD2_X, -5, 6],
+    floorZ: B_TANK_TOP,
+    compartmentId: "hold2",
+    interior: true,
+    view: [-16, -18, 12],
+  },
+  "boiler-room-6": {
+    id: "boiler-room-6",
+    label: "Boiler Room 6",
+    fact: "Her front boiler room. The mine broke the tunnel that joined it to the holds, and the sea came in. A watertight door behind it did not close all the way, so the next boiler room filled too.",
+    at: [B_BR6_X, 0, 5],
+    floorZ: B_TANK_TOP,
+    compartmentId: "br6",
+    interior: true,
+    view: [-15, -9, 17],
+  },
+  portholes: {
+    id: "portholes",
+    label: "Open Portholes",
+    fact: "Rows of round windows on E deck near her front were open to let fresh air into the rooms inside. When her front sank low enough, the sea came in through them.",
+    at: [B_PORTHOLE_X, B_PORTHOLE_Y, B_PORTHOLE_Z],
+    floorZ: B_PORTHOLE_FLOOR,
+    compartmentId: "hold1",
+    interior: true,
+    view: [-12, -26, 4],
+  },
+  "gantry-davit": {
+    id: "gantry-davit",
+    label: "Gantry Davit",
+    fact: "Giant crane-like arms that could lift six lifeboats each, from either side of the ship. She was built after the Titanic with boats for everyone aboard.",
+    at: [B_GANTRY.x, -11, B_GANTRY_DECK + 5],
+    floorZ: B_GANTRY_DECK,
+    compartmentId: null,
+    interior: false,
+    view: [-14, -22, 8],
+  },
+  "turbine-room": {
+    id: "turbine-room",
+    label: "Turbine Room",
+    fact: "Steam from her two big engines came here next and spun a giant turbine, the largest of its time. Together they drove her through the sea at about 24 miles an hour.",
+    at: [B_TURBINE_X, 0, 6],
+    floorZ: B_TANK_TOP,
+    compartmentId: "turbine",
+    interior: true,
+    view: [-16, -20, 10],
+  },
+};
+
 /** Each ship's places, in the order the HUD lists them. */
 export const PLACES_BY_SHIP: Record<ShipId, readonly Place[]> = {
   titanic: PLACE_IDS.map((id) => PLACES[id]),
   lusitania: LUSITANIA_PLACE_IDS.map((id) => LUSITANIA_PLACES[id]),
   fitzgerald: FITZGERALD_PLACE_IDS.map((id) => FITZGERALD_PLACES[id]),
+  britannic: BRITANNIC_PLACE_IDS.map((id) => BRITANNIC_PLACES[id]),
 };
 
 /** A ship's place by id, or null if she has none by that id. */

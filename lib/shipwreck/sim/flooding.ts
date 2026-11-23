@@ -58,6 +58,8 @@ export interface CellOpening {
   zLow: number;
   zHigh: number;
   area: number;
+  /** At or forward of `headway.ram.fromX`: sees the ram head (1.4). */
+  ram?: boolean;
 }
 
 /**
@@ -391,14 +393,17 @@ function roomToSea(c: Cell): number {
 
 /**
  * Sea inflow (m³/s, + in) through a cell's openings, its deck edge and, for
- * a box, its lower edge, at the pose (earth z = z0 + n·p).
+ * a box, its lower edge, at the pose (earth z = z0 + n·p). `ram` (m): the
+ * dynamic head Cp·u²/2g her speed adds to the sea's at each submerged
+ * strip of an opening marked `ram` (1.4).
  */
 export function seaInflow(
   c: Cell,
   nx: number,
   ny: number,
   nz: number,
-  z0: number
+  z0: number,
+  ram = 0
 ): number {
   const full = c.water >= c.cap;
   const inside = full ? headLevel(c) : c.water > 0 ? c.level : -Infinity;
@@ -406,13 +411,14 @@ export function seaInflow(
   // Openings, in four strips each.
   for (const o of c.openings) {
     const strip = o.area / 4;
+    const dyn = o.ram ? ram : 0;
     for (let k = 0; k < 4; k += 1) {
       const z = o.zLow + ((o.zHigh - o.zLow) * (k + 0.5)) / 4;
       const ze = z0 + nx * o.x + ny * o.y + nz * z;
       const hs = max(0, -ze);
       const hi = max(0, inside - ze);
       if (hs <= 0 && hi <= 0) continue;
-      q += orifice(strip, hs - hi);
+      q += orifice(strip, (dyn > 0 && hs > 0 ? hs + dyn : hs) - hi);
     }
   }
   // The deck edge (hull cells) or the lower edge (boxes): sections' corner

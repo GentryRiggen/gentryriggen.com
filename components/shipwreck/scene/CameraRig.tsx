@@ -444,9 +444,11 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
             )
           : spec.id === "lusitania"
             ? "afternoon"
-            : spec.id === "fitzgerald"
-              ? "storm"
-              : "establishing";
+            : spec.id === "britannic"
+              ? "morning"
+              : spec.id === "fitzgerald"
+                ? "storm"
+                : "establishing";
         // Reduced motion: cut between the shots instead of flying.
         if (reducedMotion && shot !== s.shot) cut = true;
         s.shot = shot;

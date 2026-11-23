@@ -1,6 +1,7 @@
 import { act, render } from "@testing-library/react";
 import { Group } from "three";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
+import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -134,6 +135,42 @@ describe("the ship on the stage", () => {
     ]);
     expect(lus.dispose).toHaveBeenCalledTimes(1);
     expect(fitz.dispose).toHaveBeenCalledTimes(1);
+    expect(mockBuilt[2].dispose).not.toHaveBeenCalled();
+    expect(runtime.whole?.root).toBe(mockBuilt[2].handles.root);
+  });
+});
+
+describe("choosing the Britannic (1.4)", () => {
+  it("title → Britannic → back → Titanic builds the right model and disposes the other", () => {
+    const store = createPlaybackStore({ createRunner: () => idle });
+    const runtime = createSceneRuntime();
+    render(<ShipOnStage store={store} runtime={runtime} />);
+    const first = mockBuilt[0];
+    expect(first.ship).toBe("titanic");
+
+    // The title: pick the Britannic, and her preview.
+    act(() => store.getState().setShip("britannic"));
+    act(() => store.getState().start(britannic, [], { endT: 5 }));
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual(["titanic", "britannic"]);
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    const brit = mockBuilt[1];
+    expect(brit.dispose).not.toHaveBeenCalled();
+    expect(runtime.whole?.root).toBe(brit.handles.root);
+
+    // Her real morning, then back to the title and the Titanic.
+    act(() => store.getState().start(britannic, britannic.realNight));
+    act(() => jest.runAllTimers());
+    expect(mockBuilt).toHaveLength(2);
+    act(() => store.getState().setShip("titanic"));
+    act(() => store.getState().start(titanic, []));
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual([
+      "titanic",
+      "britannic",
+      "titanic",
+    ]);
+    expect(brit.dispose).toHaveBeenCalledTimes(1);
     expect(mockBuilt[2].dispose).not.toHaveBeenCalled();
     expect(runtime.whole?.root).toBe(mockBuilt[2].handles.root);
   });

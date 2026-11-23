@@ -1,7 +1,17 @@
 import { Color, LinearSRGBColorSpace } from "three";
 import { SHIP_IDS } from "@/lib/shipwreck/ships";
-import { buildCoastGeometry, coastToScene, COAST_FADE_TO_M } from "../Coast";
 import {
+  buildCoastGeometry,
+  coastToScene,
+  COAST_FADE_TO_M,
+  KEA_HEIGHT_SCALE,
+} from "../Coast";
+import {
+  BRITANNIC_MINE,
+  BRITANNIC_WRECK,
+  DAY_LOOKS,
+  dayLookOf,
+  isDaylit,
   NIGHT_FOG,
   NIGHT_SEA_FOG,
   SCENE_SETTINGS,
@@ -45,6 +55,114 @@ describe("SCENE_SETTINGS", () => {
     );
     expect(s.sun?.elevationDeg).toBeCloseTo(sun.elevationDeg, 1);
     expect(s.sun?.azimuthDeg).toBeCloseTo(sun.azimuthDeg, 1);
+  });
+});
+
+describe("the Britannic's morning (1.4)", () => {
+  it("keeps every other ship's scene exactly as it was", () => {
+    expect(SCENE_SETTINGS.lusitania).toEqual({
+      timeOfDay: "afternoon",
+      sun: { elevationDeg: 50.01, azimuthDeg: 218.66 },
+      fog: "#bccddb",
+      underwaterFog: "#2f7564",
+      coast: true,
+      iceberg: false,
+      headingDeg: 93,
+    });
+    expect(SCENE_SETTINGS.fitzgerald).toEqual({
+      timeOfDay: "storm-dusk",
+      sun: null,
+      fog: "#6b7377",
+      underwaterFog: "#1d302d",
+      coast: false,
+      iceberg: false,
+      headingDeg: 141,
+      storm: true,
+      snow: true,
+    });
+    // The afternoon's look is the 1.1 constants.
+    expect(dayLookOf(SCENE_SETTINGS.lusitania)).toBe(DAY_LOOKS.afternoon);
+    expect(DAY_LOOKS.afternoon.fogDensity).toBe(0.000027);
+    expect(DAY_LOOKS.afternoon.deepWater).toBe(0x0c3a33);
+  });
+
+  it("is a daylit morning off Kea with the sun computed for 8:12 AM EET", () => {
+    const s = SCENE_SETTINGS.britannic;
+    expect(s.timeOfDay).toBe("morning");
+    expect(isDaylit(s)).toBe(true);
+    expect(isDaylit(SCENE_SETTINGS.titanic)).toBe(false);
+    expect(s.coast).toBe(true);
+    expect(s.iceberg).toBe(false);
+    expect(s.headingDeg).toBe(18);
+    // 06:12 UTC (EET is UTC+2) at 37.7° N 24.3° E: about 10° up, ESE.
+    expect(BRITANNIC_MINE.utcMs).toBe(Date.UTC(1916, 10, 21, 6, 12));
+    const sun = sunPosition(
+      BRITANNIC_MINE.latDeg,
+      BRITANNIC_MINE.lonDeg,
+      BRITANNIC_MINE.utcMs
+    );
+    expect(s.sun?.elevationDeg).toBeCloseTo(sun.elevationDeg, 1);
+    expect(s.sun?.azimuthDeg).toBeCloseTo(sun.azimuthDeg, 1);
+    expect(sun.elevationDeg).toBeGreaterThan(5);
+    expect(sun.elevationDeg).toBeLessThan(15);
+    expect(sun.azimuthDeg).toBeGreaterThan(110);
+    expect(sun.azimuthDeg).toBeLessThan(135);
+    // After her turn (heading about 88°) the sun is on her starboard bow.
+    const d = sunDirection(s.sun!, 88);
+    expect(d[0]).toBeGreaterThan(0);
+    expect(d[2]).toBeGreaterThan(0);
+    expect(dayLookOf(s)).toBe(DAY_LOOKS.morning);
+  });
+
+  it("draws Kea ahead to starboard after her turn, Attica and Makronisos low to port", () => {
+    const g = buildCoastGeometry("britannic");
+    const p = g.getAttribute("position");
+    let top = 0;
+    for (let i = 0; i < p.count; i += 1) {
+      const d = Math.hypot(p.getX(i), p.getZ(i));
+      if (d > COAST_FADE_TO_M) expect(p.getY(i)).toBeLessThan(0);
+      top = Math.max(top, p.getY(i));
+    }
+    // Kea's hills reach about 560 m (Profitis Ilias, 568 m), drawn ×1.5.
+    expect(top / KEA_HEIGHT_SCALE).toBeGreaterThan(450);
+    expect(top / KEA_HEIGHT_SCALE).toBeLessThan(600);
+    // Port St Nikolo light (37.6673 N 24.3139 E) from the mine: about
+    // 7 km off, east-south-east (scene +z is starboard of her 18°).
+    const [lx, lz] = coastToScene(37.6673, 24.3139, BRITANNIC_MINE);
+    const lightBearing = (Math.atan2(lz, lx) * 180) / Math.PI + 18;
+    expect(Math.hypot(lx, lz)).toBeGreaterThan(6000);
+    expect(Math.hypot(lx, lz)).toBeLessThan(8000);
+    expect(lightBearing).toBeGreaterThan(100);
+    expect(lightBearing).toBeLessThan(125);
+    // Her wreck (where the sim's run ends, about 4.2 km on) is about
+    // 1.5–2.5 nmi from Kea's north-west shore: the light is ahead to
+    // starboard of her new heading (88°).
+    const [wx, wz] = coastToScene(
+      BRITANNIC_WRECK.latDeg,
+      BRITANNIC_WRECK.lonDeg,
+      BRITANNIC_MINE
+    );
+    expect(Math.hypot(wx, wz)).toBeGreaterThan(3800);
+    expect(Math.hypot(wx, wz)).toBeLessThan(4600);
+    const rel = (Math.atan2(lz - wz, lx - wx) * 180) / Math.PI + 18 - 88;
+    expect(rel).toBeGreaterThan(20);
+    expect(rel).toBeLessThan(120);
+    // Cape Sounion (37.650 N 24.026 E) lies to port, about 19 km off.
+    const [sx, sz] = coastToScene(37.6501, 24.0263, BRITANNIC_MINE);
+    expect(sz).toBeLessThan(0);
+    expect(Math.hypot(sx, sz)).toBeGreaterThan(17000);
+    expect(Math.hypot(sx, sz)).toBeLessThan(21000);
+    g.dispose();
+  });
+
+  it("puts the scene's origin where her run ends at her wreck (within 300 m)", () => {
+    // The sim's real run ends 2,575 m along 18° and 3,334 m to starboard.
+    const [wx, wz] = coastToScene(
+      BRITANNIC_WRECK.latDeg,
+      BRITANNIC_WRECK.lonDeg,
+      BRITANNIC_MINE
+    );
+    expect(Math.hypot(wx - 2575, wz - 3334)).toBeLessThan(300);
   });
 });
 

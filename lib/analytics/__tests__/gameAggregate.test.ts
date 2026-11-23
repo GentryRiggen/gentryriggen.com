@@ -279,7 +279,14 @@ describe("summarizeShipwreck", () => {
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "titanic" }),
       ev("shipwreck_start", { mode: "whatif", opened: 1, ship: "lusitania" }),
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "fitzgerald" }),
+      ev("shipwreck_start", { mode: "real", opened: 0, ship: "britannic" }),
       ev("shipwreck_end", { mode: "real", outcome: "sank", minutes: 18 }),
+      ev("shipwreck_end", {
+        mode: "real",
+        outcome: "sank",
+        minutes: 55,
+        ship: "britannic",
+      }),
       ev("shipwreck_end", {
         mode: "real",
         outcome: "sank",
@@ -295,10 +302,12 @@ describe("summarizeShipwreck", () => {
     ]);
     expect(summary.ships).toEqual([
       { key: "titanic", views: 2 },
+      { key: "britannic", views: 1 },
       { key: "fitzgerald", views: 1 },
       { key: "lusitania", views: 1 },
     ]);
     expect(summary.shipEnds).toEqual([
+      { key: "britannic · sank", views: 1 },
       { key: "fitzgerald · sank", views: 1 },
       { key: "lusitania · floated", views: 1 },
       { key: "titanic · sank", views: 1 },
@@ -313,11 +322,21 @@ describe("summarizeShipwreck", () => {
       ev("shipwreck_start", { mode: "whatif", opened: 3, ship: "lusitania" }),
       ev("shipwreck_start", { mode: "whatif", opened: 22, ship: "fitzgerald" }),
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "fitzgerald" }),
+      // A stored value no client sends (the rules reject it) sorts after.
+      ev("shipwreck_start", {
+        mode: "whatif",
+        opened: 9,
+        ship: "andrea-doria",
+      }),
+      ev("shipwreck_start", { mode: "whatif", opened: 5, ship: "britannic" }),
+      ev("shipwreck_start", { mode: "whatif", opened: 7, ship: "britannic" }),
     ]);
     expect(summary.averageOpenedByShip).toEqual([
       { ship: "titanic", average: 3 },
       { ship: "lusitania", average: 2 },
       { ship: "fitzgerald", average: 22 },
+      { ship: "britannic", average: 6 },
+      { ship: "andrea-doria", average: 9 },
     ]);
   });
 

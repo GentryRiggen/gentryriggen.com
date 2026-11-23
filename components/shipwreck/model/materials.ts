@@ -8,6 +8,7 @@ import {
 } from "three";
 import { COLORS } from "./buildShip";
 import type { ShipTextures } from "./textures";
+import type { HullBand } from "./titanicRecipe";
 
 /**
  * The model's materials. Few on purpose (every one is at least a draw
@@ -78,7 +79,15 @@ export interface HullPaint {
   topsides?: number;
   bottom?: number;
   relief?: number;
+  /**
+   * A hospital ship's band and crosses (`HullBand`), with the sheer's
+   * height amidships (the band follows the sheer from there).
+   */
+  band?: HullBand & { sheer0: number };
 }
+
+/** Room for the band's crosses in the shader. */
+const MAX_CROSSES = 4;
 
 /** The Titanic's. */
 export const TITANIC_HULL_PAINT: HullPaint = {
@@ -118,8 +127,57 @@ function hullMaterial(
     uBlack: { value: linear(topsides) },
     uGold: { value: linear(paint.sheerLine ?? topsides) },
   };
+  const band = paint.band;
+  const bandUniforms = band && {
+    uGreen: { value: linear(band.color) },
+    uCrossRed: { value: linear(band.crossColor) },
+    // Middle amidships, sheer amidships, how much of it, half height.
+    uBand: {
+      value: [band.z, band.sheer0, band.follow, band.height / 2],
+    },
+    // Half size, half arm, half gap, count.
+    uCross: {
+      value: [
+        band.crossSize / 2,
+        band.crossArm / 2,
+        band.gap / 2,
+        Math.min(MAX_CROSSES, band.crosses.length),
+      ],
+    },
+    uCrossX: {
+      value: Array.from(
+        { length: MAX_CROSSES },
+        (_, i) => band.crosses[i] ?? 1e6
+      ),
+    },
+  };
+  // The same rule as `bandPaintAt` (britannicRecipe.ts), antialiased.
+  const bandGlsl = band
+    ? `
+  {
+    float zc = uBand.x + uBand.z * (vSheer - uBand.y);
+    float dz = abs(z - zc);
+    float ax = fwidth(vShip.x) * 0.75 + 1e-4;
+    float onCross = 0.0;
+    float inGap = 0.0;
+    for (int i = 0; i < ${MAX_CROSSES}; i++) {
+      if (float(i) >= uCross.w) break;
+      float dx = abs(vShip.x - uCrossX[i]);
+      float upright = (1.0 - smoothstep(uCross.y - ax, uCross.y + ax, dx)) *
+        (1.0 - smoothstep(uCross.x - aa, uCross.x + aa, dz));
+      float bar = (1.0 - smoothstep(uCross.y - aa, uCross.y + aa, dz)) *
+        (1.0 - smoothstep(uCross.x - ax, uCross.x + ax, dx));
+      onCross = max(onCross, max(upright, bar));
+      inGap = max(inGap, 1.0 - smoothstep(uCross.z - ax, uCross.z + ax, dx));
+    }
+    float green = (1.0 - smoothstep(uBand.w - aa, uBand.w + aa, dz)) *
+      (1.0 - inGap);
+    paint = mix(paint, uGreen, green);
+    paint = mix(paint, uCrossRed, onCross);
+  }`
+    : "";
   m.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
+    Object.assign(shader.uniforms, uniforms, bandUniforms ?? {});
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
@@ -138,7 +196,16 @@ uniform float uBootTop;
 uniform vec3 uRed;
 uniform vec3 uBoot;
 uniform vec3 uBlack;
-uniform vec3 uGold;
+uniform vec3 uGold;${
+          band
+            ? `
+uniform vec3 uGreen;
+uniform vec3 uCrossRed;
+uniform vec4 uBand;
+uniform vec4 uCross;
+uniform float uCrossX[${MAX_CROSSES}];`
+            : ""
+        }
 varying vec3 vShip;
 varying float vSheer;
 float hullGlossy = 0.0;`
@@ -158,7 +225,7 @@ float hullGlossy = 0.0;`
     (1.0 - smoothstep(vSheer - 0.1 - aa, vSheer - 0.1 + aa, z));
   paint = mix(paint, uRed, red);
   paint = mix(paint, uBoot, boot);
-  paint = mix(paint, uGold, gold);
+  paint = mix(paint, uGold, gold);${bandGlsl}
   hullGlossy = 1.0 - red;
   if (!gl_FrontFacing) { paint = vec3(0.012, 0.009, 0.007); hullGlossy = 0.0; }
   diffuseColor.rgb *= paint;
@@ -170,7 +237,10 @@ float hullGlossy = 0.0;`
 roughnessFactor = mix(0.85, 0.48, hullGlossy);`
       );
   };
-  m.customProgramCacheKey = () => `shipwreck-hull-${rivets ? 1 : 0}`;
+  m.customProgramCacheKey = () =>
+    `shipwreck-hull-${rivets ? 1 : 0}${band ? "-band" : ""}`;
+  // For `setHullPaint`: the shader reads these objects every frame.
+  m.userData.hullUniforms = { ...uniforms, ...bandUniforms };
   return m;
 }
 
@@ -294,4 +364,52 @@ export function createShipMaterials(
       for (const m of all) m.dispose();
     },
   };
+}
+
+/**
+ * Repaints a hull material made here, in place: its colours, paint line
+ * and band change with no new shader (the same rules as `hullMaterial`).
+ * A band can be taken off any hull but put on only one built with a band
+ * (a ship with a hospital livery builds with it: `britannicLivery.ts`).
+ */
+export function setHullPaint(m: MeshStandardMaterial, paint: HullPaint): void {
+  type Uniform<T> = { value: T };
+  const u = m.userData.hullUniforms as
+    | (Record<
+        "uRed" | "uBoot" | "uBlack" | "uGold" | "uGreen" | "uCrossRed",
+        Uniform<Color>
+      > &
+        Record<"uLoadWL" | "uBootTop", Uniform<number>> &
+        Record<"uBand" | "uCross" | "uCrossX", Uniform<number[]>>)
+    | undefined;
+  if (!u) return;
+  const topsides = paint.topsides ?? 0x121315;
+  u.uLoadWL.value = paint.loadWaterline;
+  u.uBootTop.value = paint.bootTop;
+  u.uRed.value.setHex(paint.bottom ?? 0x6a2419);
+  u.uBoot.value.setHex(paint.bootTop > 0 ? 0xd8d4c8 : topsides);
+  u.uBlack.value.setHex(topsides);
+  u.uGold.value.setHex(paint.sheerLine ?? topsides);
+  if (!u.uBand) return;
+  const band = paint.band;
+  if (!band) {
+    // No band: none of it is ever nearer than a negative half height, and
+    // no crosses.
+    u.uBand.value = [0, 0, 0, -1];
+    u.uCross.value = [0, 0, 0, 0];
+    return;
+  }
+  u.uGreen.value.setHex(band.color);
+  u.uCrossRed.value.setHex(band.crossColor);
+  u.uBand.value = [band.z, band.sheer0, band.follow, band.height / 2];
+  u.uCross.value = [
+    band.crossSize / 2,
+    band.crossArm / 2,
+    band.gap / 2,
+    Math.min(MAX_CROSSES, band.crosses.length),
+  ];
+  u.uCrossX.value = Array.from(
+    { length: MAX_CROSSES },
+    (_, i) => band.crosses[i] ?? 1e6
+  );
 }
