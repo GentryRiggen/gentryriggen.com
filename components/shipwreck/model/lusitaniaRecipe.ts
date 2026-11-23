@@ -1,7 +1,6 @@
 import {
   LUSITANIA_BOATS,
   LUSITANIA_FUNNEL_PAINT,
-  LUSITANIA_PEACETIME_PAINT,
 } from "@/lib/shipwreck/ships/lusitania";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { createHullSurface } from "./hullSurface";
@@ -50,14 +49,14 @@ import {
  */
 
 /**
- * The paint switch, kept with her data (`LUSITANIA_PEACETIME_PAINT` in
- * lib/shipwreck/ships/lusitania.ts, which also holds the funnel colours the
- * hull diagram reads). false: as she was on 7 May 1915 (funnels painted out
- * dark, the gilt band round the base of the superstructure, her name in
- * gilt letters). true: her peacetime Cunard colours (red funnels with
- * black tops and three thin black bands, no gilt band).
+ * Her liveries (`LUSITANIA_LIVERIES` in lib/shipwreck/ships/lusitania.ts,
+ * README "The Lusitania's liveries"): `war-1915` (default) as on 7 May
+ * 1915: funnels painted out dark, the gilt band round the base of the
+ * superstructure, her name in gilt letters. `cunard-1907`: her first
+ * colours: Cunard red funnels with a deep black top and three narrow black
+ * bands, no gilt band (added only in 1914), her name in gilt.
  */
-export const PEACETIME_PAINT = LUSITANIA_PEACETIME_PAINT;
+export type LusitaniaLivery = "war-1915" | "cunard-1907";
 
 const FT = 0.3048;
 /** Paint (sRGB), as `COLORS` in buildShip.ts (kept free of three.js here). */
@@ -84,7 +83,7 @@ const WAR_PAINT: ShipPaint = {
   mast: MAST,
   ventLining: VENT_LINING,
 };
-/** 1907–1914: Cunard red, black tops and bands. */
+/** 1907: Cunard red, black tops and bands, no gilt band. */
 const CUNARD_PAINT: ShipPaint = {
   funnel: LUSITANIA_FUNNEL_PAINT.cunard.funnel,
   funnelTop: LUSITANIA_FUNNEL_PAINT.cunard.top,
@@ -106,7 +105,23 @@ const CROWS_NEST_UP = 42 * FT;
 const HOUSE_INSET = 3.6;
 const HOUSE_H = 2.6;
 
-export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
+/**
+ * Her 1907 funnels, measured off the two funnels sharp in the Library of
+ * Congress panorama (LCCN2013646024, 1907): over the boat deck house the
+ * black top is about a quarter of the funnel (5.6 m of its 21.7 m), and
+ * three narrow black bands follow it down at about a fifth of that height
+ * apart (45, 64 and 83 % of the way down). The 1915 funnels keep 1.1's
+ * (painted over, barely seen).
+ */
+const FUNNEL_1907 = { blackTop: 5.6, bands: [0.23, 0.41, 0.58] };
+/** Where the funnel guys meet the funnel (1.1's middle band). */
+const GUY_BAND = 0.52;
+
+export function lusitaniaRecipe(
+  spec: ShipSpec,
+  livery: string = "war-1915"
+): ShipRecipe {
+  const peace = livery === "cunard-1907";
   // Her counter is a broad ellipse in plan above the sternpost; the
   // offsets' run comes to a point up there (fine for the sim's volumes).
   const hull = createHullSurface(spec, {
@@ -115,7 +130,7 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
     zFrom: 10.5,
     zTo: 17,
   });
-  const paint = PEACETIME_PAINT ? CUNARD_PAINT : WAR_PAINT;
+  const paint = peace ? CUNARD_PAINT : WAR_PAINT;
   const deckByName = new Map(spec.decks.map((d, i) => [d.name, i]));
   const deckIndex = (name: string): number => {
     const i = deckByName.get(name);
@@ -434,8 +449,8 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
     semiA: (25 * FT) / 2,
     semiB: (21 * FT) / 2,
     rake: 7.5 * TO_RAD,
-    blackTop: 4.4,
-    bands: [0.36, 0.52, 0.68],
+    blackTop: peace ? FUNNEL_1907.blackTop : 4.4,
+    bands: peace ? [...FUNNEL_1907.bands] : [0.36, 0.52, 0.68],
     pipes: [
       { y: -0.65, r: 0.2 },
       { y: 0.65, r: 0.2 },
@@ -1105,7 +1120,9 @@ export function lusitaniaRecipe(spec: ShipSpec): ShipRecipe {
 
   const funnelGuys: Wire[][] = funnels.map((f) => {
     const guys: Wire[] = [];
-    const zBand = f.baseZ + (f.topZ - f.baseZ) * f.bands[1];
+    // At 1.1's middle band in every livery: the guys are rigging, not
+    // paint, so a livery never moves them (README, "liveries").
+    const zBand = f.baseZ + (f.topZ - f.baseZ) * GUY_BAND;
     const lean = Math.tan(f.rake);
     for (const s of sides)
       for (const [ang, dx] of [

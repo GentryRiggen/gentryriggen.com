@@ -55,6 +55,10 @@ export interface House {
   h: number;
   /** Roof: grey painted canvas, or a raised skylight with a pitched top. */
   roof: "flat" | "skylight";
+  /** Walls this colour (default white). */
+  wallColor?: number;
+  /** Walls in the dazzle paint (the recipe's `paint.dazzle`). */
+  dazzle?: boolean;
 }
 
 export interface Dome {
@@ -98,7 +102,8 @@ export interface FunnelRecipe {
 }
 
 export interface MastRecipe {
-  id: "fore" | "main";
+  /** Fore and main; the Carpathia's four add the mizzen and jigger. */
+  id: "fore" | "main" | "mizzen" | "jigger";
   x: number;
   baseZ: number;
   topZ: number;
@@ -132,6 +137,12 @@ export interface BoatRecipe {
   edgeY: number;
   /** The boat deck's height at the boat. */
   deckZ: number;
+  /**
+   * Wrecked by a torpedo in the real run at this shown time (the
+   * Carpathia's port 8 and 10: `CarpathiaBoat.wreckedAtT`); the scene hides
+   * it from its hit. Missing: never.
+   */
+  wreckedAtT?: number;
   /** Stowed in this gantry set (`ShipRecipe.gantries` index), not davits. */
   gantry?: number;
 }
@@ -272,9 +283,20 @@ export interface ShipPaint {
    * and how strongly the plating's seams show (default 1; a welded hull
    * less).
    */
-  hull?: { topsides: number; bottom: number; relief?: number };
+  hull?: { topsides: number; bottom: number; relief?: number; boot?: number };
   /** Lifeboats: topsides and bottom (default white, varnished gunwale). */
   boat?: { hull: number; bottom: number };
+  /**
+   * Dazzle camouflage (the Carpathia's 1918 paint): the hull's topsides and
+   * every wall marked `dazzle` drawn from one dazzle texture.
+   */
+  dazzle?: boolean;
+  /**
+   * Davits, the masts' collars and crow's nests, cranes (default white),
+   * and the cowl ventilators' outsides (default white).
+   */
+  fittings?: number;
+  vent?: number;
   /** A band along the topsides broken by crosses (a hospital ship's). */
   band?: HullBand;
 }
@@ -344,6 +366,8 @@ export interface Block {
   wall: "white" | "plating" | "shade";
   /** Paint the walls this colour instead (not for "plating"). */
   wallColor?: number;
+  /** Walls in the dazzle paint (the recipe's `paint.dazzle`). */
+  dazzle?: boolean;
   roof: "pine" | "pitch" | "paint" | "skylight" | "none";
   /** A painted roof's colour (default the grey canvas). */
   roofColor?: number;
@@ -412,10 +436,12 @@ export interface ShipRecipe {
     side: "port" | "starboard";
     pocket?: { w: number; h: number };
     /**
-     * Housed in its hawse pipe on light plating: the pipe's mouth, no
-     * dark recess (the Britannic's white bows).
+     * A stockless anchor drawn in full, `size` m from the hawse pipe's lip
+     * at `p` to the crown (the Carpathia's, the Britannic's): the lip with
+     * its dark mouth, the shank, the crown and two flukes with their palms,
+     * no dark recess round it. Without it, the Titanic's.
      */
-    hawse?: boolean;
+    stockless?: { size: number };
   }[];
   names: NameBoard[];
   // Optional: a recipe without them is built as the Titanic.
@@ -423,6 +449,12 @@ export interface ShipRecipe {
   /** Superstructure tiers; when given, they replace the Titanic's. */
   blocks?: Block[];
   boxes?: BoxPart[];
+  /**
+   * Painted boxes that only some liveries carry (the Carpathia's 1918
+   * stern gun): their own small list (`ShipPartData.variant`), so a livery
+   * without them hides its mesh instead of rebuilding the paint list.
+   */
+  variantBoxes?: BoxPart[];
   /** Drum ("oil-drum") ventilators, flat-topped. */
   drums?: Placement[];
   /** Decks torn open at a break (default the Titanic's C to Orlop). */

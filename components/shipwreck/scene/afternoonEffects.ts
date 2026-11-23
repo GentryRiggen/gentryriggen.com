@@ -5,6 +5,7 @@ import { hitTimeS, type QualityTier } from "@/lib/shipwreck/playback";
 import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { SimTrack as Track } from "@/lib/shipwreck/sim/track";
 import type { SimEvent } from "@/lib/shipwreck/sim/events";
+import type { TorpedoHit } from "@/lib/shipwreck/sim/run";
 import { hullHalfBreadth, type HullModel } from "@/lib/shipwreck/sim/geometry";
 import {
   sampleTrack,
@@ -16,10 +17,12 @@ import { shipToThree, shipToThreeInto, type V3 } from "./cameraMath";
 import { torpedoHole } from "./Torpedo";
 
 /**
- * The afternoon's effects (the Lusitania), apart from the night's: coal
- * smoke from four funnels thinning as her steam fails, white steam after
- * the second explosion, the hit's water column, the second explosion, and
- * her boats hanging plumb from their swung-out davits. Everything is drawn
+ * The afternoon's effects (the Lusitania, and the Carpathia's morning),
+ * apart from the night's: coal smoke from each funnel thinning as her steam
+ * fails, white steam after the second explosion, each hit's water column
+ * on the side it struck, the second explosion, and her boats hanging plumb
+ * from their swung-out davits (a boat the torpedo wrecked gone from its
+ * hit: `BoatRecipe.wreckedAtT`). Everything is drawn
  * into one blended `Points` buffer that `Effects` owns; nothing here
  * allocates per frame (the hit's places are worked out once per run).
  */
@@ -107,6 +110,49 @@ export function boatAwayAt(
 export function columnOpen(t: number, n: number): boolean {
   return n > 0 && t >= hitTimeS(0, n) && t < hitTimeS(n - 1, n) + COLUMN_S;
 }
+
+/** True while a column of any of these hits (shown s) is showing at `t`. */
+export function columnOpenAt(t: number, hitTimes: readonly number[]): boolean {
+  for (const h of hitTimes) if (t >= h && t < h + COLUMN_S) return true;
+  return false;
+}
+
+/**
+ * Where a hit's column rises across her (ship-frame y, + to port): just
+ * outside her side, on the side it struck (the Lusitania's 1.1 13.6 m to
+ * starboard).
+ */
+export function columnSideY(
+  spec: Pick<ShipSpec, "beam">,
+  side: "port" | "starboard"
+): number {
+  const half = Math.round((spec.beam / 2 + 0.25) * 10) / 10;
+  return side === "port" ? half : -half;
+}
+
+/** How near a hit (ship-frame x, m) a boat flagged `wreckedAtT` is wrecked. */
+export const WRECK_REACH_M = 8;
+
+/**
+ * When a boat flagged as wrecked (`wreckedAtT`, the Carpathia's port 8
+ * and 10) is wrecked in this run: at a torpedo landing at that time on its
+ * side within `WRECK_REACH_M` of it (her real second hit, in the engine
+ * room), else never (null: a What if that spares it).
+ */
+export function boatWreckedAt(
+  boat: { x: number; side: string; wreckedAtT?: number },
+  torpedoes: readonly TorpedoHit[]
+): number | null {
+  if (boat.wreckedAtT === undefined) return null;
+  for (const h of torpedoes)
+    if (
+      h.t === boat.wreckedAtT &&
+      h.side === boat.side &&
+      Math.abs(h.x - boat.x) <= WRECK_REACH_M
+    )
+      return h.t;
+  return null;
+}
 /** Smoke eases to its new strength at this rate (1/s). */
 const SMOKE_RATE = 3;
 
@@ -137,7 +183,12 @@ export interface AfternoonFrame {
   track: SimTrack;
   frame: SimFrame;
   openings: readonly Opening[];
-  /** Each torpedo's hit (ship x, aft first); missing: the first hole's. */
+  /**
+   * Each torpedo (`PlaybackState.torpedoes`: x, shown time, side);
+   * missing or empty: the first hole's, at the first moment, to starboard.
+   */
+  torpedoes?: readonly TorpedoHit[];
+  /** Each mine's hit (a mine ship: `PlaybackState.hits`, aft first). */
   hits?: readonly number[];
   t: number;
   wall: number;
@@ -173,7 +224,10 @@ export class AfternoonEffects {
   private readonly launchAt = new Map<number, Vector3>();
   private launchTrack: SimTrack | null = null;
   private hitKey: unknown = null;
-  private hitAt: HitPlace[] = [];
+  private hitAt: (HitPlace | null)[] = [];
+  /** Each hit's place is final (the track had reached its time). */
+  private hitFinal: boolean[] = [];
+  private readonly hitTimes: number[] = [];
   private exKey: unknown = null;
   private exAt: (HitPlace & { deck: V3; t: number }) | null = null;
   private readonly holders = new Map<
@@ -292,6 +346,12 @@ export class AfternoonEffects {
     const lowerS = this.lowerS;
     for (let i = 0; i < mdl.boats.count; i += 1) {
       const info = mdl.boats.info(i);
+      // Wrecked where it hung by the torpedo (no new effect: gone).
+      const wrecked = boatWreckedAt(info, f.torpedoes ?? []);
+      if (wrecked !== null && hit && t >= wrecked) {
+        mdl.boats.hide(i);
+        continue;
+      }
       const tb = f.lowered.get(i);
       const age = tb === undefined ? -1 : t - tb;
       // A mine ship's boats wait in their chocks (or gantry) until their
@@ -513,15 +573,18 @@ export class AfternoonEffects {
     }
   }
 
-  /** Where a hole was on the sea at time `at` (three), and out from her. */
-  private placeAt(track: SimTrack, at: number, x: number): HitPlace {
+  /**
+   * Where a hole was on the sea at time `at` (three), and out from her:
+   * `y` her side (ship frame; default the Lusitania's starboard 13.6 m).
+   */
+  private placeAt(track: SimTrack, at: number, x: number, y: number): HitPlace {
     const pose: BodyPose = sampleTrack(track, at).bodies[0];
-    // A mine at her starboard side at the waterline (the Lusitania's 1.1
-    // numbers otherwise).
-    const y = this.mine ? -(this.spec.beam / 2 + 0.3) : -13.6;
+    // A mine at her starboard side at the waterline (a torpedo's side `y`
+    // at the Lusitania's 1.1 height otherwise).
+    const side = this.mine ? -(this.spec.beam / 2 + 0.3) : y;
     const z = this.mine ? this.spec.draught : 9.3;
-    const h = shipToThree(pose, [x, y, z]);
-    const o = shipToThree(pose, [x, y - 1, z]);
+    const h = shipToThree(pose, [x, side, z]);
+    const o = shipToThree(pose, [x, side + Math.sign(side), z]);
     const ol = Math.hypot(o[0] - h[0], o[2] - h[2]) || 1;
     return { h, ox: (o[0] - h[0]) / ol, oz: (o[2] - h[2]) / ol };
   }
@@ -540,33 +603,41 @@ export class AfternoonEffects {
   private theHit(f: AfternoonFrame) {
     const t = f.t;
     const track = f.track;
-    const hole = f.hits && f.hits.length > 0 ? null : torpedoHole(f.openings);
-    const hits = f.hits && f.hits.length > 0 ? f.hits : hole ? [hole.x] : [];
-    const n = hits.length;
-    if (this.mine) this.mineColumns(f, hits);
-    else if (columnOpen(t, n)) {
+    const torpedoes = f.torpedoes ?? [];
+    const hole = torpedoes.length > 0 ? null : torpedoHole(f.openings);
+    const n = torpedoes.length > 0 ? torpedoes.length : hole ? 1 : 0;
+    const times = this.hitTimes;
+    times.length = n;
+    for (let k = 0; k < n; k += 1) times[k] = torpedoes[k]?.t ?? 0;
+    if (this.mine)
+      this.mineColumns(
+        f,
+        f.hits && f.hits.length > 0 ? f.hits : hole ? [hole.x] : []
+      );
+    else if (columnOpenAt(t, times)) {
       const key = track.frames[0];
       if (this.hitKey !== key || this.hitAt.length !== n) {
-        // Each where her side was as it struck (kept once the track has
-        // reached the last hit).
-        const last = track.frames[track.frames.length - 1].t;
-        this.hitKey = last >= hitTimeS(n - 1, n) ? key : null;
-        this.hitAt = hits.map((x, k) => this.placeAt(track, hitTimeS(k, n), x));
+        this.hitKey = key;
+        this.hitAt = new Array(n).fill(null);
+        this.hitFinal = new Array(n).fill(false);
       }
-      // One hit: the 1.1 column; more share them.
+      // Each where her side was as it struck, worked out when its column
+      // shows (kept once the track has reached its hit).
+      const last = track.frames[track.frames.length - 1].t;
+      // One hit: the 1.1 column; more share them (the Lusitania's What
+      // ifs, a few seconds apart; the Carpathia's two at 9:15 AM).
       const count = Math.round(460 / Math.sqrt(n));
-      for (let k = 0; k < n; k += 1)
-        this.burst(
-          this.hitAt[k],
-          t - hitTimeS(k, n),
-          count,
-          22,
-          16,
-          2,
-          7,
-          0.14,
-          1
-        );
+      for (let k = 0; k < n; k += 1) {
+        const age = t - times[k];
+        if (age < 0 || age > COLUMN_S) continue;
+        if (!this.hitFinal[k]) {
+          const h = torpedoes[k];
+          const y = columnSideY(this.spec, h ? h.side : "starboard");
+          this.hitAt[k] = this.placeAt(track, times[k], h ? h.x : hole!.x, y);
+          this.hitFinal[k] = last >= times[k];
+        }
+        this.burst(this.hitAt[k]!, age, count, 22, 16, 2, 7, 0.14, 1);
+      }
     }
     if (!hasSecondExplosion(this.spec)) return;
     let ex: SimEvent | undefined;
@@ -586,7 +657,7 @@ export class AfternoonEffects {
     const key = track.frames[0];
     if (this.exKey !== key || !this.exAt || this.exAt.t !== ex.t) {
       this.exKey = key;
-      const p = this.placeAt(track, ex.t, inside.x);
+      const p = this.placeAt(track, ex.t, inside.x, -13.6);
       const pose = sampleTrack(track, ex.t).bodies[0];
       this.exAt = {
         ...p,

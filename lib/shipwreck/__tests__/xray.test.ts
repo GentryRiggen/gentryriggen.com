@@ -1,4 +1,5 @@
 import {
+  CARPATHIA_PLACE_IDS,
   FITZGERALD_PLACE_IDS,
   LUSITANIA_PLACE_IDS,
   PLACE_IDS,
@@ -7,6 +8,7 @@ import {
   placeFor,
   waterHereText,
 } from "../places";
+import { CARPATHIA_BOATS, carpathia } from "../ships/carpathia";
 import { fitzgerald } from "../ships/fitzgerald";
 import { lusitania } from "../ships/lusitania";
 import { titanic } from "../ships/titanic";
@@ -282,5 +284,70 @@ describe("the Fitzgerald's places", () => {
         expect(z).toBeLessThan(fitzgerald.sheerZ(x) + 12);
       }
     }
+  });
+});
+
+describe("the Carpathia's places", () => {
+  const cHull = buildHull(carpathia);
+  const places = PLACES_BY_SHIP.carpathia;
+  const comp = (id: string | null) =>
+    carpathia.compartments.find((c) => c.id === id);
+
+  it("are her bridge, the torpedoes' rooms, the dining saloon and the wireless room", () => {
+    expect(places.map((p) => p.id)).toEqual([...CARPATHIA_PLACE_IDS]);
+    expect(placeFor("carpathia", "boiler-room")?.compartmentId).toBe("boiler");
+    expect(placeFor("carpathia", "engine-room")?.compartmentId).toBe("engine");
+    expect(placeFor("carpathia", "hold-5")?.compartmentId).toBe("hold5");
+    // Each torpedo's room is opened by her real run.
+    const hit = new Set(carpathia.realNight.map((o) => o.compartmentId));
+    for (const id of ["boiler-port", "engine", "hold5"])
+      expect(hit).toContain(id);
+    // The first torpedo struck at the boiler room's forward end, the last
+    // at No. 5 hatch.
+    const boiler = comp("boiler")!;
+    expect(placeFor("carpathia", "boiler-room")!.at[0]).toBeGreaterThan(
+      (boiler.fromX + boiler.toX) / 2
+    );
+    expect(placeFor("carpathia", "hold-5")!.at[0]).toBe(
+      carpathia.torpedo!.hitX!.hold5
+    );
+    expect(placeFor("carpathia", "grand-staircase")).toBeNull();
+  });
+
+  it("each sits inside her hull or her houses, in a compartment she has", () => {
+    for (const p of places) {
+      const [x, y, z] = p.at;
+      expect(p.fact.length).toBeGreaterThan(30);
+      expect(p.interior).toBe(true);
+      expect(p.floorZ).toBeLessThanOrEqual(z);
+      expect(x).toBeGreaterThan(cHull.xMin);
+      expect(x).toBeLessThan(cHull.xMax);
+      if (p.compartmentId) {
+        const c = comp(p.compartmentId);
+        expect(c).toBeDefined();
+        expect(x).toBeGreaterThanOrEqual(c!.fromX);
+        expect(x).toBeLessThanOrEqual(c!.toX);
+        expect(z).toBeLessThan(carpathia.sheerZ(x));
+        const [lo, hi] = spanRange(c!, hullHalfBreadth(cHull, x, z));
+        expect(y).toBeGreaterThan(lo);
+        expect(y).toBeLessThan(hi);
+      } else {
+        // In her houses: within her breadth, over her upper deck, under
+        // the navigating bridge's top.
+        expect(Math.abs(y)).toBeLessThan(carpathia.beam / 2);
+        expect(z).toBeGreaterThan(carpathia.sheerZ(x));
+        expect(z).toBeLessThan(carpathia.sheerZ(x) + 12);
+      }
+    }
+  });
+
+  it("keeps clear of boats 1 and 2 on the forward house roof", () => {
+    const fwd = CARPATHIA_BOATS.filter(
+      (b) => b.label === "1" || b.label === "2"
+    );
+    expect(fwd).toHaveLength(2);
+    for (const p of places)
+      for (const b of fwd)
+        expect(Math.hypot(p.at[0] - b.x, p.at[2] - b.z)).toBeGreaterThan(5);
   });
 });

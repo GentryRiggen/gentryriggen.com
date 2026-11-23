@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import type { PlaybackState, PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
 import { eventsBetween } from "@/lib/shipwreck/sim/track";
 import {
@@ -21,6 +21,20 @@ interface CaptionsProps {
 }
 
 /**
+ * How many torpedoes are running in during the pre-roll: those that land
+ * before it is over (the Carpathia's two at 9:15 AM, not her 10:50 one;
+ * every one of the Lusitania's, a few seconds apart).
+ */
+export function runInCount(
+  s: Pick<PlaybackState, "torpedoes" | "hits" | "minT">
+): number {
+  if (s.torpedoes.length === 0) return Math.max(1, s.hits.length);
+  let n = 0;
+  for (const h of s.torpedoes) if (h.t < -s.minT) n += 1;
+  return Math.max(1, n);
+}
+
+/**
  * A calm line for each event as playback passes it, with the clock time
  * from the sim. Starts with the collision when mounted at the start of a
  * run (never a stale one later in the night), or with the torpedo's run-in
@@ -33,11 +47,14 @@ export default function Captions({ store }: CaptionsProps) {
     const hits = Math.max(1, s.hits.length);
     if (s.t < 0) {
       // The torpedo's run-in (the collision's caption comes at the hit).
-      const run = runInCaption(ship, hits);
+      const run = runInCaption(ship, runInCount(s));
       return run ? `${clockText(s.t, ship.clockStartS)} — ${run}` : null;
     }
     return s.t < CAPTION_RECENT_S
-      ? captionFor({ kind: "collision", t: 0, realT: 0 }, ship, { hits })
+      ? captionFor({ kind: "collision", t: 0, realT: 0 }, ship, {
+          hits,
+          openings: s.openings,
+        })
       : null;
   });
 
@@ -47,7 +64,7 @@ export default function Captions({ store }: CaptionsProps) {
       const hits = Math.max(1, s.hits.length);
       if (s.t < 0 && !(prev.t < 0)) {
         const ship = getShip(s.ship);
-        const run = runInCaption(ship, hits);
+        const run = runInCaption(ship, runInCount(s));
         if (run) setText(`${clockText(s.t, ship.clockStartS)} — ${run}`);
         return;
       }
@@ -59,6 +76,7 @@ export default function Captions({ store }: CaptionsProps) {
         const c = captionFor(evs[i], getShip(s.ship), {
           ...captionContext(s.track, evs[i].t, evs[i]),
           hits,
+          openings: s.openings,
         });
         if (c) {
           setText(c);

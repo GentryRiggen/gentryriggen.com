@@ -1,5 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
+import { torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
 import Captions from "../Captions";
 
 describe("Captions", () => {
@@ -37,6 +39,19 @@ describe("Captions", () => {
     act(() => store.setState({ t: 0.5 }));
     expect(screen.getByTestId("shipwreck-caption").textContent).toMatch(
       /^2:10 PM — A torpedo hits the starboard side/
+    );
+  });
+
+  it("runs the Carpathia's two 9:15 AM torpedoes in, not her 10:50 one", () => {
+    const store = createPlaybackStore();
+    const torpedoes = torpedoHits(carpathia, whatIfRealIds(carpathia));
+    act(() =>
+      store.getState().start(carpathia, carpathia.realNight, { torpedoes })
+    );
+    expect(store.getState().t).toBe(-40);
+    render(<Captions store={store} />);
+    expect(screen.getByTestId("shipwreck-caption").textContent).toMatch(
+      /^9:14 AM — Two torpedoes are coming!.*port side/
     );
   });
 

@@ -132,6 +132,13 @@ export interface ShipPartData {
   deck: GeoBuffer;
   bronze: GeoBuffer;
   decal: GeoBuffer;
+  /** Walls in dazzle paint (the Carpathia's; empty for the others). */
+  dazzle: GeoBuffer;
+  /**
+   * Painted parts only some liveries carry (`ShipRecipe.variantBoxes`, the
+   * Carpathia's 1918 stern gun; empty for the others).
+   */
+  variant: GeoBuffer;
   portholes: LightSpot[];
   windows: LightSpot[];
   vents: Placement[];
@@ -404,17 +411,20 @@ interface BandSpec {
   under?: boolean;
   /** A deck or painted roof this much higher on the centre line. */
   camber?: number;
+  /** The walls (sides and ends) go here (default the paint list). */
+  wallBuf?: GeoBuffer;
 }
 
 function band(ctx: Ctx, o: BandSpec): void {
   const paint = ctx.d.paint;
+  const walls = o.wallBuf ?? paint;
   const rowsWall = [0, 0.5, 1];
-  const port = grid(ctx, paint, o.x0, o.x1, (x) => ({
+  const port = grid(ctx, walls, o.x0, o.x1, (x) => ({
     p: rowsWall.map((k): V3 => [x, o.yr(x)[1], o.zb(x) + o.h * k]),
     color: repeat(o.wall, 3),
   }));
   if (!port) return;
-  const stbd = grid(ctx, paint, o.x0, o.x1, (x) => ({
+  const stbd = grid(ctx, walls, o.x0, o.x1, (x) => ({
     p: rowsWall.map((k): V3 => [x, o.yr(x)[0], o.zb(x) + o.h * (1 - k)]),
     color: repeat(o.wall, 3),
   }));
@@ -477,7 +487,7 @@ function band(ctx: Ctx, o: BandSpec): void {
     const z = o.zb(x);
     if (hi - lo < 0.05) return;
     quad(
-      paint,
+      walls,
       [
         [x, lo, z],
         [x, hi, z],
@@ -762,6 +772,7 @@ function buildBlocks(ctx: Ctx, blocks: Block[]): void {
       ends: b.ends ?? true,
       under: b.under,
       camber: b.camber,
+      ...(b.dazzle ? { wallBuf: ctx.d.dazzle } : {}),
     };
     const strip = b.strip;
     if (strip) {
@@ -848,7 +859,7 @@ function platingBlock(
 }
 
 function buildHouse(ctx: Ctx, h: House): void {
-  const white = rgb(COLORS.white);
+  const white = rgb(h.wallColor ?? COLORS.white);
   const z = (x: number) => h.z0 + ((h.z1 - h.z0) * (x - h.x0)) / (h.x1 - h.x0);
   band(ctx, {
     x0: h.x0,
@@ -859,6 +870,7 @@ function buildHouse(ctx: Ctx, h: House): void {
     wall: white,
     roof: h.roof === "skylight" ? "skylight" : "paint",
     ends: true,
+    ...(h.dazzle ? { wallBuf: ctx.d.dazzle } : {}),
   });
 }
 
@@ -868,7 +880,7 @@ function buildHouse(ctx: Ctx, h: House): void {
 function buildFittings(ctx: Ctx): void {
   const { r, q } = ctx;
   const paint = ctx.d.paint;
-  const white = rgb(COLORS.white);
+  const white = rgb(r.paint?.fittings ?? COLORS.white);
   const dark = rgb(COLORS.dark);
   const seg = q.cylSeg;
 
@@ -1001,6 +1013,11 @@ function buildFittings(ctx: Ctx): void {
     if (!inPart(ctx, b.c)) continue;
     box(paint, b.c, b.size, rgb(b.color), b.yaw ?? 0, b.pitch ?? 0);
   }
+  for (const b of r.variantBoxes ?? []) {
+    if (!inPart(ctx, b.c)) continue;
+    const c = rgb(b.color);
+    box(ctx.d.variant, b.c, b.size, c, b.yaw ?? 0, b.pitch ?? 0);
+  }
 
   // Bow and stern staffs.
   const wood = rgb(COLORS.wood);
@@ -1025,8 +1042,8 @@ function buildFittings(ctx: Ctx): void {
       anchorInPocket(ctx, a.p, a.side, a.pocket);
       continue;
     }
-    if (a.hawse) {
-      anchorAtHawse(ctx, a.p, a.side);
+    if (a.stockless) {
+      stocklessAnchor(ctx, a.p, a.side, a.stockless.size);
       continue;
     }
     const s = a.side === "port" ? 1 : -1;
@@ -1073,53 +1090,91 @@ function buildFittings(ctx: Ctx): void {
 }
 
 /**
- * A stockless bower anchor housed in its hawse pipe against plating
- * that is not black (the Britannic's white bows): the pipe's dark mouth,
- * the shank running down out of it, the crown across the bottom and the
- * two flukes turned up beside the shank, about 4.4 m from the pipe to the
- * crown (a 7¾-ton side anchor; README). No dark recess round it.
+ * A stockless anchor hove up against the bow (the Carpathia's): the hawse
+ * pipe's lip with its dark mouth at `p`, the shank hanging from it, the
+ * crown, and two flukes angled up from the crown to broad palms, all laid
+ * against the plating, `size` m from the lip to the crown.
  */
-function anchorAtHawse(ctx: Ctx, p: V3, side: "port" | "starboard"): void {
-  const { r } = ctx;
+function stocklessAnchor(
+  ctx: Ctx,
+  p: V3,
+  side: "port" | "starboard",
+  size: number
+): void {
+  const { r, q } = ctx;
   const paint = ctx.d.paint;
   const s = side === "port" ? 1 : -1;
   const [x, , z] = p;
-  const on = (dx: number, dz: number, out: number): V3 => {
-    const hb = r.hull.halfBreadth(x + dx, z + dz);
-    return [x + dx, s * (hb + out), z + dz];
-  };
-  const iron = rgb(0x1b1c1e);
-  // The hawse pipe's mouth: a dark ring and the hole.
-  const mouth = on(0, 1.4, 0.04);
-  const [u, v] = basis([0, s, 0]);
-  const ring = (rad: number, off: number): V3[] => {
-    const pts: V3[] = [];
-    for (let i = 0; i < 12; i += 1) {
-      const a = (i / 12) * Math.PI * 2;
-      pts.push(
-        add(
-          add(mouth, [0, s * off, 0]),
-          add(scale(u, Math.cos(a) * rad), scale(v, Math.sin(a) * rad))
-        )
-      );
-    }
-    return pts;
-  };
-  polygon(paint, ring(0.62, 0), [0, s, 0], rgb(0x3a3631));
-  polygon(paint, ring(0.45, 0.02), [0, s, 0], rgb(COLORS.interior));
-  const shankTop = on(0, 1.2, 0.28);
-  const crown = on(0, -2.6, 0.32);
-  box(paint, scale(add(shankTop, crown), 0.5), [0.42, 0.36, 3.8], iron);
-  box(paint, add(crown, [0, 0, -0.05]), [2.5, 0.46, 0.5], iron);
-  for (const dx of [-1.05, 1.05])
+  const iron = rgb(0x26272a);
+  /** A point on the plating `out` m off it, (dx, dz) from the lip. */
+  const on = (dx: number, dz: number, out: number): V3 => [
+    x + dx,
+    s * (r.hull.halfBreadth(x + dx, z + dz) + out),
+    z + dz,
+  ];
+  // The hawse pipe's lip, a short thick ring standing off the side.
+  const lip = on(0, 0, 0);
+  cylinder(
+    paint,
+    [lip[0], lip[1] - s * 0.05, lip[2]],
+    [lip[0], lip[1] + s * 0.22, lip[2]],
+    0.62,
+    0.58,
+    q.cylSeg + 4,
+    iron
+  );
+  cylinder(
+    paint,
+    [lip[0], lip[1] + s * 0.2, lip[2]],
+    [lip[0], lip[1] + s * 0.23, lip[2]],
+    0.4,
+    0.4,
+    q.cylSeg + 4,
+    rgb(COLORS.interior)
+  );
+  const shankLen = size * 0.78;
+  const top = on(0, -0.25, 0.3);
+  const crown = on(0, -size, 0.3);
+  box(
+    paint,
+    scale(add(top, on(0, -shankLen, 0.3)), 0.5),
+    [0.36, 0.3, shankLen],
+    iron
+  );
+  // The crown: a broad block across the shank's foot.
+  box(paint, crown, [size * 0.42, 0.34, size * 0.16], iron);
+  // Two flukes rising from the crown, 40° off the shank, to their palms.
+  const fluke = size * 0.5;
+  const tilt = 50 * (Math.PI / 180);
+  for (const dir of [1, -1] as const) {
+    const base = on(dir * size * 0.16, -size + size * 0.04, 0.3);
+    const tip: V3 = [
+      base[0] + dir * fluke * Math.cos(tilt),
+      base[1],
+      base[2] + fluke * Math.sin(tilt),
+    ];
     box(
       paint,
-      add(crown, [dx * 0.95, 0, 0.75]),
-      [0.62, 0.4, 1.6],
+      scale(add(base, tip), 0.5),
+      [fluke, 0.28, 0.3],
       iron,
-      0,
-      dx > 0 ? 0.38 : -0.38
+      dir > 0 ? 0 : Math.PI,
+      tilt
     );
+    // The palm: a broad blade near the fluke's tip, pointed by its tilt.
+    box(
+      paint,
+      [
+        base[0] + dir * fluke * 0.7 * Math.cos(tilt),
+        base[1],
+        base[2] + fluke * 0.7 * Math.sin(tilt),
+      ],
+      [fluke * 0.5, 0.3, size * 0.22],
+      iron,
+      dir > 0 ? 0 : Math.PI,
+      tilt
+    );
+  }
 }
 
 /**
@@ -1685,6 +1740,8 @@ export function buildShipPart(
     deck: new GeoBuffer({ color: true, uv: true }),
     bronze: new GeoBuffer(),
     decal: new GeoBuffer({ uv: true }),
+    dazzle: new GeoBuffer({ color: true }),
+    variant: new GeoBuffer({ color: true }),
     portholes: [],
     windows: [],
     vents: [],
@@ -1772,6 +1829,8 @@ export function splitAtHinge(
       deck: splitBuffer(d.deck, x, fwd),
       bronze: splitBuffer(d.bronze, x, fwd),
       decal: splitBuffer(d.decal, x, fwd),
+      dazzle: splitBuffer(d.dazzle, x, fwd),
+      variant: splitBuffer(d.variant, x, fwd),
       portholes: d.portholes.filter((l) => keep(l.p)),
       windows: d.windows.filter((l) => keep(l.p)),
       vents: d.vents.filter((v) => keep(v.p)),

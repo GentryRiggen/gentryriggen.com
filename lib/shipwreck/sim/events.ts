@@ -22,6 +22,7 @@ export const SIM_EVENT_KINDS = [
   "hatch-fails",
   "sheltered",
   "radio",
+  "torpedo-hit",
 ] as const;
 
 export type SimEventKind = (typeof SIM_EVENT_KINDS)[number];
@@ -32,9 +33,10 @@ export interface SimEvent {
   /** Real seconds after the collision (differs once the way down is sped up). */
   realT: number;
   kind: SimEventKind;
-  /** Rocket, boat (spec order), funnel (0 forward), hatch (from 1) or
+  /** Rocket, boat (spec order), funnel (0 forward), hatch (from 1),
    *  radio message or signal (the ship's own numbering: the Fitzgerald's
-   *  messages, the Britannic's 9:00 whistle) number. */
+   *  messages, the Britannic's 9:00 whistle) or torpedo (`torpedo-hit`:
+   *  its hit number, the hit at the first event being 1) number. */
   index?: number;
 }
 

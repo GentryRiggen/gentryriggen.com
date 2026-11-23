@@ -11,6 +11,7 @@ import {
 } from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import {
+  CARPATHIA_PLACES,
   BRITANNIC_PLACES,
   FITZGERALD_PLACES,
   LUSITANIA_PLACES,
@@ -23,6 +24,7 @@ import {
   FITZGERALD_TANK_Y,
   fitzgerald,
 } from "@/lib/shipwreck/ships/fitzgerald";
+import { CARPATHIA_WING_Y, carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import {
   BRITANNIC_E_DECK_ROW_Z,
@@ -327,6 +329,7 @@ export function openingGeometry(
 ): BufferGeometry {
   const pos: number[] = [];
   const uv: number[] = [];
+  const openT: number[] = [];
   for (const o of openings) {
     // Longer for a bigger opening: about 6 m for the real night's 0.3 m².
     const half = Math.max(2, Math.min(7, o.areaM2 * 20));
@@ -343,10 +346,13 @@ export function openingGeometry(
     const d = at(o.x - half, z1);
     pos.push(...a, ...b, ...c, ...a, ...c, ...d);
     uv.push(0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1);
+    // When it opens (shown s): a later torpedo's gash shows from then.
+    for (let k = 0; k < 6; k += 1) openT.push(o.t ?? 0);
   }
   const g = new BufferGeometry();
   g.setAttribute("position", new BufferAttribute(new Float32Array(pos), 3));
   g.setAttribute("uv", new BufferAttribute(new Float32Array(uv), 2));
+  g.setAttribute("aOpenT", new BufferAttribute(new Float32Array(openT), 1));
   return g;
 }
 
@@ -818,6 +824,209 @@ function fitzEngineParts(): Part[] {
   return parts;
 }
 
+// The Carpathia's places.
+
+function carpBridgeParts(): Part[] {
+  const p = CARPATHIA_PLACES.bridge;
+  return bridgeAt(p.at[0], p.at[0] + 0.6, p.floorZ);
+}
+
+function carpBoilerParts(): Part[] {
+  // Seven single-ended boilers (about 15½ ft across), three abreast
+  // between her side bunkers: two rows back to back, furnaces outward,
+  // and the seventh aft on the centre line (the arrangement is ours).
+  const p = CARPATHIA_PLACES["boiler-room"];
+  const room = carpathia.compartments.find((c) => c.id === "boiler")!;
+  const r = 2.3;
+  const len = 3.4;
+  const floor = p.floorZ;
+  const zc = floor + r + 0.15;
+  const mid = (room.fromX + room.toX) / 2;
+  const parts: Part[] = [
+    {
+      g: box(
+        mid,
+        0,
+        floor,
+        room.toX - room.fromX - 1,
+        CARPATHIA_WING_Y * 2,
+        0.15
+      ),
+      color: 0x3a3a3a,
+    },
+  ];
+  const rows: { x: number; ys: number[]; face: 1 | -1 }[] = [
+    { x: mid + 5.5, ys: [-5, 0, 5], face: 1 },
+    { x: mid + 2, ys: [-5, 0, 5], face: -1 },
+    { x: mid - 5.5, ys: [0], face: -1 },
+  ];
+  for (const row of rows)
+    for (const y of row.ys) {
+      parts.push({
+        g: at(new CylinderGeometry(r, r, len, 18), row.x, y, zc, {
+          z: Math.PI / 2,
+        }),
+        color: 0x5a3a2a,
+      });
+      for (const dy of [-1.1, 0, 1.1])
+        parts.push({
+          g: at(
+            new CylinderGeometry(0.4, 0.4, 0.08, 12),
+            row.x + row.face * (len / 2 + 0.04),
+            y + dy,
+            zc - 0.9,
+            { z: Math.PI / 2 }
+          ),
+          color: 0xff7a2a,
+          glow: true,
+        });
+    }
+  // The coal bunker on her port side, where the first torpedo struck.
+  parts.push({
+    g: box(room.toX - 5, CARPATHIA_WING_Y + 0.9, floor + 1.2, 8, 1.4, 2),
+    color: 0x1c1c1f,
+  });
+  return parts;
+}
+
+function carpEngineParts(): Part[] {
+  // Two four-cylinder quadruple-expansion engines, port and starboard,
+  // each turning a shaft aft to its propeller.
+  const p = CARPATHIA_PLACES["engine-room"];
+  const x0 = p.at[0];
+  const floor = p.floorZ;
+  const parts: Part[] = [
+    { g: box(x0, 0, floor, 15, 15, 0.15), color: 0x3a3a3a },
+  ];
+  for (const y of [-3.8, 3.8]) {
+    parts.push({ g: box(x0, y, floor + 1.4, 12, 3.4, 2.6), color: 0x3d4a44 });
+    for (let k = 0; k < 4; k += 1)
+      parts.push({
+        g: at(
+          new CylinderGeometry(
+            k === 3 ? 1.3 : 1.0,
+            k === 3 ? 1.3 : 1.0,
+            4.6,
+            16
+          ),
+          x0 - 4.5 + k * 3,
+          y,
+          floor + 5
+        ),
+        color: 0x56635c,
+      });
+    parts.push({
+      g: at(new CylinderGeometry(0.3, 0.3, 50, 8), x0 - 31, y, 2.4, {
+        z: Math.PI / 2,
+      }),
+      color: 0x9a9a8a,
+    });
+  }
+  for (const x of [x0 - 5, x0, x0 + 5])
+    parts.push({
+      g: at(new SphereGeometry(0.3, 8, 6), x, 0, floor + 8.5),
+      color: 0xffe0a0,
+      glow: true,
+    });
+  return parts;
+}
+
+function carpHoldParts(): Part[] {
+  // An empty hold in ballast: its floor, the hatch above with its ladder.
+  const p = CARPATHIA_PLACES["hold-5"];
+  const hold = carpathia.compartments.find((c) => c.id === "hold5")!;
+  const x0 = p.at[0];
+  const floor = p.floorZ;
+  const top = Math.min(hold.aftBulkheadTopZ, hold.fwdBulkheadTopZ);
+  const parts: Part[] = [
+    {
+      g: box(
+        (hold.fromX + hold.toX) / 2,
+        0,
+        floor,
+        hold.toX - hold.fromX - 1,
+        9,
+        0.15
+      ),
+      color: 0x4a4038,
+    },
+  ];
+  // The hatch's coaming outline, at the top of the hold.
+  for (const [dx, dy, lx, ly] of [
+    [0, 2.6, 6, 0.3],
+    [0, -2.6, 6, 0.3],
+    [3, 0, 0.3, 5.5],
+    [-3, 0, 0.3, 5.5],
+  ])
+    parts.push({
+      g: box(x0 + dx, dy, top - 0.3, lx, ly, 0.5),
+      color: 0x6a6a6a,
+    });
+  // A ladder down the hold's side.
+  parts.push({
+    g: box(x0 + 3.6, 0, (floor + top) / 2, 0.15, 0.8, top - floor),
+    color: 0x8a8a7a,
+  });
+  parts.push({
+    g: at(new SphereGeometry(0.3, 8, 6), x0, 0, top - 1.2),
+    color: 0xffe0a0,
+    glow: true,
+  });
+  return parts;
+}
+
+function carpSaloonParts(): Part[] {
+  // Long tables down the room, chairs either side (the layout is ours).
+  const p = CARPATHIA_PLACES["dining-saloon"];
+  const x0 = p.at[0];
+  const floor = p.floorZ;
+  const parts: Part[] = [
+    { g: box(x0, 0, floor + 0.1, 18, 16, 0.2), color: 0xb89a6a },
+  ];
+  for (const y of [-5, 0, 5]) {
+    parts.push({ g: box(x0, y, floor + 0.8, 14, 1.4, 0.1), color: 0xf3ece0 });
+    for (const dy of [-1.1, 1.1])
+      for (let x = x0 - 6; x <= x0 + 6.01; x += 1.5)
+        parts.push({
+          g: box(x, y + dy, floor + 0.45, 0.5, 0.5, 0.9),
+          color: 0x8a6a45,
+        });
+  }
+  for (const x of [x0 - 5, x0, x0 + 5])
+    parts.push({
+      g: at(new SphereGeometry(0.3, 8, 6), x, 0, floor + 2.2),
+      color: 0xffe6a8,
+      glow: true,
+    });
+  return parts;
+}
+
+function carpWirelessParts(): Part[] {
+  // A desk with the wireless set and its headphones, and a lamp.
+  const p = CARPATHIA_PLACES["wireless-room"];
+  const [x0] = p.at;
+  const floor = p.floorZ;
+  return [
+    { g: box(x0, 0, floor + 0.1, 3, 3.4, 0.2), color: 0x8a6a45 },
+    { g: box(x0 - 0.8, 0, floor + 0.75, 1.2, 2.4, 0.1), color: 0x7a5232 },
+    { g: box(x0 - 0.9, 0, floor + 1.05, 0.7, 1.4, 0.5), color: 0x3a3a3a },
+    {
+      g: at(
+        new TorusGeometry(0.16, 0.03, 6, 14, Math.PI),
+        x0 - 0.5,
+        0.6,
+        floor + 0.95
+      ),
+      color: 0x222222,
+    },
+    {
+      g: at(new SphereGeometry(0.18, 8, 6), x0 - 0.8, -0.9, floor + 1.4),
+      color: 0xffe0a0,
+      glow: true,
+    },
+  ];
+}
+
 // The Britannic's places (her data; the Titanic's frames and decks).
 
 function britBridgeParts(): Part[] {
@@ -1005,6 +1214,14 @@ const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
     "cargo-hold-1": fitzHoldParts,
     "ballast-tank": fitzTankParts,
     "engine-room": fitzEngineParts,
+  },
+  carpathia: {
+    bridge: carpBridgeParts,
+    "boiler-room": carpBoilerParts,
+    "engine-room": carpEngineParts,
+    "hold-5": carpHoldParts,
+    "dining-saloon": carpSaloonParts,
+    "wireless-room": carpWirelessParts,
   },
   britannic: {
     bridge: britBridgeParts,

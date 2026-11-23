@@ -36,6 +36,7 @@ const MARK_ICON: Record<MarkKind, IconName> = {
   afloat: "afloat",
   hatch: "hatch",
   shelter: "afloat",
+  torpedo: "torpedo",
 };
 
 interface TimelineProps {

@@ -19,6 +19,13 @@ interface TitanicModelProps {
   /** Null: one piece. A number: built as bow and stern torn apart at this x. */
   breakX?: number | null;
   quality?: ModelQuality;
+  /**
+   * Her livery (default hers; an id she does not have is ignored). A
+   * change repaints the built model (no rebuild); an id outside
+   * `spec.liveries` her recipe knows (the Carpathia's `grey-1918`) is
+   * built in.
+   */
+  livery?: string | null;
   /** The handles the scene drives each frame (see README.md). */
   ref?: Ref<TitanicHandles | null>;
   onReady?: (handles: TitanicHandles) => void;
@@ -34,13 +41,20 @@ export default function TitanicModel({
   spec = titanic,
   breakX = null,
   quality = "high",
+  livery = null,
   ref,
   onReady,
 }: TitanicModelProps) {
+  // Only an id outside her listed liveries needs building in.
+  const extra =
+    livery && !spec.liveries?.some((l) => l.id === livery) ? livery : null;
   const model = useMemo(
-    () => createTitanicModel(spec, { quality, breakX }),
-    [spec, quality, breakX]
+    () => createTitanicModel(spec, { quality, breakX, livery: extra }),
+    [spec, quality, breakX, extra]
   );
+  useEffect(() => {
+    if (livery) model.handles.setLivery(livery);
+  }, [model, livery]);
   // StrictMode runs effects twice (mount, cleanup, mount) on the same memo:
   // the cleanup only schedules the dispose and a re-mount cancels it, so a
   // model is freed once, when it is really gone.

@@ -12,6 +12,9 @@ import {
   DAY_LOOKS,
   dayLookOf,
   isDaylit,
+  CARPATHIA_HIT,
+  FITZGERALD_HEADING_DEG,
+  LUSITANIA_DAYLIGHT,
   NIGHT_FOG,
   NIGHT_SEA_FOG,
   SCENE_SETTINGS,
@@ -55,6 +58,139 @@ describe("SCENE_SETTINGS", () => {
     );
     expect(s.sun?.elevationDeg).toBeCloseTo(sun.elevationDeg, 1);
     expect(s.sun?.azimuthDeg).toBeCloseTo(sun.azimuthDeg, 1);
+  });
+});
+
+describe("the other ships' scenes stay as they were (Task 6)", () => {
+  it("keeps the Lusitania's and the Fitzgerald's settings exactly", () => {
+    const sun = sunPosition(
+      LUSITANIA_HIT.latDeg,
+      LUSITANIA_HIT.lonDeg,
+      LUSITANIA_HIT.utcMs
+    );
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    expect(SCENE_SETTINGS.lusitania).toEqual({
+      timeOfDay: "afternoon",
+      sun: {
+        elevationDeg: r2(sun.elevationDeg),
+        azimuthDeg: r2(sun.azimuthDeg),
+      },
+      fog: "#bccddb",
+      underwaterFog: "#2f7564",
+      coast: true,
+      iceberg: false,
+      headingDeg: 93,
+    });
+    expect(SCENE_SETTINGS.fitzgerald).toEqual({
+      timeOfDay: "storm-dusk",
+      sun: null,
+      fog: "#6b7377",
+      underwaterFog: "#1d302d",
+      coast: false,
+      iceberg: false,
+      headingDeg: FITZGERALD_HEADING_DEG,
+      storm: true,
+      snow: true,
+    });
+    // The afternoon's look, once the scene's constants, written out.
+    expect(LUSITANIA_DAYLIGHT).toEqual({
+      zenith: [0.045, 0.16, 0.55],
+      hazeDensity: 0.000027,
+      seaDeep: [0.008, 0.036, 0.05],
+      seaScatter: [0.012, 0.05, 0.05],
+      seaUnder: [0.22, 0.5, 0.44],
+      deepWater: "#0c3a33",
+      underDensity: [0.0085, 0.0125],
+      sunUnder: "#9fe0cf",
+      shafts: [0.55, 0.85, 0.7],
+      floor: "#c8bc9e",
+      caustics: 0.12,
+      sunColor: 0xfff0d8,
+      sunIntensity: 4,
+      skyColor: 0xa9c8ee,
+      skyGround: 0x2f4a4c,
+      skyIntensity: 0.75,
+    });
+  });
+});
+
+describe("the Carpathia's summer morning (R6, R7)", () => {
+  const s = SCENE_SETTINGS.carpathia;
+
+  it("is the daylight pipeline in the open Atlantic: no coast, no iceberg", () => {
+    expect(s.timeOfDay).toBe("afternoon");
+    expect(s.coast).toBe(false);
+    expect(s.iceberg).toBe(false);
+    expect(s.storm).toBeUndefined();
+  });
+
+  it("puts the sun where it was at her wreck at 9:15 AM BST, 17 July 1918", () => {
+    // 49°30.03' N 10°43.04' W, 08:15 GMT.
+    expect(CARPATHIA_HIT.latDeg).toBeCloseTo(49.5005, 4);
+    expect(CARPATHIA_HIT.lonDeg).toBeCloseTo(-10.71733, 4);
+    expect(new Date(CARPATHIA_HIT.utcMs).toISOString()).toBe(
+      "1918-07-17T08:15:00.000Z"
+    );
+    const sun = sunPosition(
+      CARPATHIA_HIT.latDeg,
+      CARPATHIA_HIT.lonDeg,
+      CARPATHIA_HIT.utcMs
+    );
+    expect(s.sun?.elevationDeg).toBeCloseTo(sun.elevationDeg, 1);
+    expect(s.sun?.azimuthDeg).toBeCloseTo(sun.azimuthDeg, 1);
+    // Low-ish in the east: about 30° up, near due east.
+    expect(s.sun!.elevationDeg).toBeGreaterThan(25);
+    expect(s.sun!.elevationDeg).toBeLessThan(35);
+    expect(s.sun!.azimuthDeg).toBeGreaterThan(80);
+    expect(s.sun!.azimuthDeg).toBeLessThan(100);
+  });
+
+  it("heads her west for Boston, so her port side faces south", () => {
+    expect(s.headingDeg).toBeGreaterThanOrEqual(255);
+    expect(s.headingDeg).toBeLessThanOrEqual(290);
+    // South (180°) lies on her port side (scene -z).
+    const south = sunDirection(
+      { elevationDeg: 0, azimuthDeg: 180 },
+      s.headingDeg!
+    );
+    expect(south[2]).toBeLessThan(-0.9);
+  });
+
+  it("is a different morning: greyer haze, a deep blue sea, blue water below", () => {
+    const look = s.daylight!;
+    expect(look).toBeDefined();
+    expect(s.fog).not.toBe(SCENE_SETTINGS.lusitania.fog);
+    // A thicker haze and a paler, greyer sky overhead (broken cloud).
+    expect(look.hazeDensity).toBeGreaterThan(LUSITANIA_DAYLIGHT.hazeDensity);
+    const sat = (c: readonly number[]) => Math.max(...c) - Math.min(...c);
+    expect(sat(look.zenith)).toBeLessThan(sat(LUSITANIA_DAYLIGHT.zenith));
+    // Blue, not the Celtic Sea's green: blue over green in the sea, under
+    // it and toward the floor.
+    for (const c of [look.seaDeep, look.seaScatter, look.seaUnder])
+      expect(c[2]).toBeGreaterThan(c[1]);
+    for (const hex of [s.underwaterFog, look.deepWater]) {
+      const c = new Color(hex);
+      expect(c.b).toBeGreaterThan(c.g);
+    }
+    // Clear enough to see her 120 m off at the floor (exp² fog > 0.35).
+    const [, deep] = look.underDensity;
+    expect(Math.exp(-((deep * 120) ** 2))).toBeGreaterThan(0.35);
+    // The sea rougher than the Lusitania's calm (a moderate sea).
+    expect(look.ripple).toBeGreaterThan(0.34);
+    // A stronger sky fill, lit from the sea below too, for her shaded
+    // port side under a low sun (the dazzle's white must read white); the
+    // sun no stronger than the Lusitania's, so the sunlit side holds.
+    expect(look.skyIntensity).toBeGreaterThan(
+      LUSITANIA_DAYLIGHT.skyIntensity * 1.5
+    );
+    expect(
+      new Color(look.skyGround).getHSL({ h: 0, s: 0, l: 0 }).l
+    ).toBeGreaterThan(
+      new Color(LUSITANIA_DAYLIGHT.skyGround).getHSL({ h: 0, s: 0, l: 0 }).l
+    );
+    expect(look.sunIntensity).toBeLessThanOrEqual(
+      LUSITANIA_DAYLIGHT.sunIntensity
+    );
   });
 });
 

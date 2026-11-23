@@ -335,14 +335,16 @@ export function hullSlice(
 
 /**
  * A superstructure box: from the deck edge (`sheerZ`) up to `topZ`, as wide
- * as the hull's deck at each x.
+ * as the hull's deck at each x, or no wider than `halfBreadth` either side
+ * (a deckhouse inboard of an open deck).
  */
 export function boxSlice(
   hull: HullModel,
   sheerZ: (x: number) => number,
   fromX: number,
   toX: number,
-  topZ: number
+  topZ: number,
+  halfBreadth?: number
 ): Slice {
   const a = Math.max(hull.xMin, fromX);
   const b = Math.min(hull.xMax, toX);
@@ -351,7 +353,10 @@ export function boxSlice(
   for (let p = 0; p <= parts; p += 1) xs.push(a + ((b - a) * p) / parts);
   const sections = xs.map((x) => {
     const sec = sectionAt(hull, x);
-    const hb = sec.hb[NL - 1];
+    const hb =
+      halfBreadth === undefined
+        ? sec.hb[NL - 1]
+        : Math.min(sec.hb[NL - 1], halfBreadth);
     const z0 = sheerZ(x);
     const z1 = Math.max(z0, topZ);
     return { y: [hb, hb, -hb, -hb], z: [z0, z1, z1, z0] };

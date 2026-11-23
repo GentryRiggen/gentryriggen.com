@@ -17,16 +17,24 @@ import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
 import { trackEnd, trackStart, type RunMode } from "@/lib/shipwreck/analytics";
 import { playback, startSpeed } from "@/lib/shipwreck/playback";
-import { shipOf, whatIfOf, withWhatIf } from "@/lib/shipwreck/save";
+import {
+  liveryOf,
+  shipOf,
+  whatIfOf,
+  withLivery,
+  withWhatIf,
+} from "@/lib/shipwreck/save";
 import { SHIP_IDS, getShip } from "@/lib/shipwreck/ships";
-import type { ShipId } from "@/lib/shipwreck/ships/types";
+import { resolveLivery, type ShipId } from "@/lib/shipwreck/ships/types";
 import {
   torpedoHitXs,
+  torpedoHits,
   whatIfOpenings,
   whatIfRealIds,
 } from "@/lib/shipwreck/sim/run";
 import {
   endWords,
+  firstHitS,
   historyNote,
   outcomeOf,
   showsNewEnding,
@@ -52,6 +60,7 @@ import NightPanels from "./ui/NightPanels";
 import ShipwreckErrorBoundary from "./ui/ShipwreckErrorBoundary";
 import TitleScreen from "./ui/TitleScreen";
 import WalkHud from "./ui/WalkHud";
+import { useShipLivery } from "./useShipLivery";
 import { useAtStoryEnd } from "./ui/useTimelineEnd";
 import WhatIfEditor, {
   realWhatIfIds,
@@ -92,6 +101,9 @@ const WRECK_VIEW: Record<ShipId, { target: V3; cam: V3 }> = {
   titanic: { target: [60, 0, 12], cam: [-20, -120, 50] },
   lusitania: { target: [40, 0, 10], cam: [-40, 60, 45] },
   fitzgerald: { target: [60, 0, 10], cam: [130, -95, 48] },
+  // A placeholder until her scene (Task 6): her upright wreck from over
+  // her port side.
+  carpathia: { target: [30, 0, 8], cam: [-30, 80, 40] },
   // On her starboard side 120 m down, her port side up: from over it and
   // off her deck side, her bent bow and the funnel lying by her boat deck.
   britannic: { target: [30, 0, 14], cam: [-70, 70, 70] },
@@ -207,21 +219,28 @@ export default function Shipwreck() {
           : whatIfOpenings(runSpec, choice.ids);
       const portholesOpen = mode === "real" || choice.portholesOpen !== false;
       const storm = mode === "real" ? "real" : (choice.storm ?? "real");
-      const hits = torpedoHitXs(
+      // Each torpedo: where, when and on which side (`hits`, the x's aft
+      // first, follow from them).
+      const torpedoes = torpedoHits(
         runSpec,
         mode === "real" ? whatIfRealIds(runSpec) : choice.ids
       );
-      // A mine ship's doors and engines (R14); the other ships never get
-      // them, so their runs stay exactly as they were.
+      // A mine ship's hits (no torpedo tracks: the HUD counts them), doors
+      // and engines (R14); the other ships never get them, so their runs
+      // stay exactly as they were.
       const mine =
         runSpec.cause === "mine"
           ? {
+              hits: torpedoHitXs(
+                runSpec,
+                mode === "real" ? whatIfRealIds(runSpec) : choice.ids
+              ),
               doorsClosed: mode === "whatif" && choice.doorsClosed === true,
               enginesStopped:
                 mode === "whatif" && choice.enginesStopped === true,
             }
           : {};
-      s.start(runSpec, openings, { portholesOpen, storm, hits, ...mine });
+      s.start(runSpec, openings, { portholesOpen, storm, torpedoes, ...mine });
       s.flyToPlace(null, false);
       s.setXray(false);
       s.setCamera("cinematic");
@@ -251,6 +270,26 @@ export default function Shipwreck() {
       setScreen("night");
     },
     [update]
+  );
+
+  // Her paint: the one saved for her (an unknown id, or none in an older
+  // save: her default), applied whenever the ship changes.
+  const savedLivery = useShipLivery(ship, liveryOf(save, ship));
+  /** The paint button: remembered per ship (no analytics, R27). */
+  const saveLivery = useCallback(
+    (id: string) => {
+      // The ship the save chose (the title's, and the run's).
+      update((v) => withLivery(v, shipOf(v), id));
+      persist();
+    },
+    [update, persist]
+  );
+  const chooseLivery = useCallback(
+    (id: string) => {
+      playback.getState().setLivery(id);
+      saveLivery(id);
+    },
+    [saveLivery]
   );
 
   // The end: record the ending once per run.
@@ -367,9 +406,17 @@ export default function Shipwreck() {
           const s = playback.getState();
           return s.done && s.track ? outcomeOf(s.track) : null;
         },
+        setLivery: (id) => {
+          const own = getShip(playback.getState().ship);
+          if (own.liveries?.some((l) => l.id === id)) chooseLivery(id);
+        },
+        livery: () => {
+          const s = playback.getState();
+          return resolveLivery(getShip(s.ship), s.livery);
+        },
       }
     );
-  }, [isModelView, isSceneView, startRun, pickShip, runtime]);
+  }, [isModelView, isSceneView, startRun, pickShip, chooseLivery, runtime]);
 
   useVisibilityPause({ onPersist: persist });
 
@@ -405,6 +452,7 @@ export default function Shipwreck() {
     ? endWords(endTrack, runSpec, run!.holes, {
         portholesOpen: run!.choice.portholesOpen,
         hits: playback.getState().hits.length,
+        firstHitS: firstHitS(playback.getState().openings),
         storm: run!.mode === "real" ? "real" : run!.choice.storm,
         doorsClosed: run!.mode === "whatif" && run!.choice.doorsClosed,
         enginesStopped: run!.mode === "whatif" && run!.choice.enginesStopped,
@@ -431,6 +479,8 @@ export default function Shipwreck() {
             startRun("real", { ids: realWhatIfIds(spec), portholesOpen: true })
           }
           onWhatIf={() => setScreen("editor")}
+          livery={savedLivery}
+          onLivery={chooseLivery}
         />
       )}
       {screen === "editor" && (
@@ -455,6 +505,7 @@ export default function Shipwreck() {
           sound={sound}
           side={panels}
           hidden={showEnd}
+          onLivery={saveLivery}
         />
       )}
       {words && (

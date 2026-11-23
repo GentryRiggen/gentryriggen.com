@@ -11,7 +11,7 @@ import {
   type HelpTopic,
 } from "@/lib/shipwreck/help";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { funnelPaintOf, type ShipSpec } from "@/lib/shipwreck/ships/types";
 import { sampleTrack, type SimFrame } from "@/lib/shipwreck/sim/track";
 import HelpCard from "./HelpCard";
 import HullDiagram from "./HullDiagram";
@@ -60,7 +60,16 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
   // A storm ship's hatch covers that have given way by now, as a key
   // ("3,4,5") so the panel re-renders only when one more goes.
   const [failedKey, setFailedKey] = useState("");
-  const openings = useStore(store, (s) => s.openings);
+  const all = useStore(store, (s) => s.openings);
+  // Her funnels in the diagram wear her livery's paint.
+  const livery = useStore(store, (s) => s.livery);
+  // Only the holes open by now (a later torpedo's shows when it hits), as
+  // a count so the diagram re-renders only when one more opens.
+  const [openCount, setOpenCount] = useState(0);
+  const openings = useMemo(() => {
+    const byTime = [...all].sort((a, b) => (a.t ?? 0) - (b.t ?? 0));
+    return byTime.slice(0, openCount);
+  }, [all, openCount]);
   const failed = useMemo(
     () =>
       new Set(
@@ -79,6 +88,7 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
         if (e.kind === "hatch-fails" && e.t <= s.t && e.index !== undefined)
           gone.push(e.index);
       setFailedKey(gone.sort((a, b) => a - b).join(","));
+      setOpenCount(s.openings.filter((o) => (o.t ?? 0) <= s.t).length);
     };
     read();
     const id = setInterval(read, READ_MS);
@@ -126,6 +136,7 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
             openings={openings}
             failedHatches={failed}
             pose={whole}
+            funnelPaint={funnelPaintOf(spec, livery)}
             title="The water inside each compartment"
             className="block h-auto w-full"
           />

@@ -10,10 +10,12 @@ import {
 } from "./ships/types";
 import {
   createSimRunner,
+  FINISHER_SPOT,
   HIT_STAGGER_S,
   hitTimeS,
   type SimOptions,
   type SimRunner,
+  type TorpedoHit,
 } from "./sim/run";
 import { sampleTrack, type SimTrack } from "./sim/track";
 import { storyEndT } from "./story";
@@ -95,6 +97,12 @@ export interface StartOptions extends RunOptions {
    */
   hits?: readonly number[];
   /**
+   * Every torpedo of the run in landing order (`torpedoHits`): where, when
+   * and on which side. Missing: one per `hits`, hit k at `hitTimeS(k, n)`
+   * on her starboard side (the Lusitania's 1.1 path).
+   */
+  torpedoes?: readonly TorpedoHit[];
+  /**
    * Behind the title and the editor: her opening moment as a still stage
    * whose storm sea (and her ride on it) runs on the wall clock while the
    * playback is paused. Default false.
@@ -108,6 +116,8 @@ export interface StartOptions extends RunOptions {
  * scene.
  */
 export { HIT_STAGGER_S, hitTimeS };
+/** A torpedo ship's What-if spot for her later torpedo: re-exported. */
+export { FINISHER_SPOT };
 
 export interface PlaybackState {
   /** The ship on the stage (the title's choice, then the run's). */
@@ -120,6 +130,14 @@ export interface PlaybackState {
   /** Each torpedo's or mine's hit (ship-frame x, aft first; none for
    *  other ships). */
   hits: readonly number[];
+  /** Each torpedo in landing order: x, shown time and side (`TorpedoHit`). */
+  torpedoes: readonly TorpedoHit[];
+  /**
+   * A ship with her own hits (`spec.torpedo`, the Carpathia): each hit's
+   * shown time, and the cinematic camera plays each at ×1
+   * (`inOwnHitWindow`). Null: the 1.1 rule (`inHitWindow`).
+   */
+  hitTimesS: readonly number[] | null;
   /** The title's stage (`StartOptions.preview`): her storm sea runs on. */
   preview: boolean;
   /** Water over the selected place's floor (m), updated by the scene. */
@@ -166,6 +184,11 @@ export interface PlaybackState {
   flyView: ShipView | null;
   /** Wall-clock seconds when the player last touched the speed (or -Infinity). */
   speedTouchedAt: number;
+  /**
+   * The ship's livery shown (an id in `spec.liveries`; null or an id she
+   * does not have: her default). The scene repaints the model live.
+   */
+  livery: string | null;
 }
 
 export interface PlaybackActions {
@@ -213,6 +236,11 @@ export interface PlaybackActions {
   setLookUnder(on: boolean): void;
   setQuality(quality: QualityTier): void;
   setXray(on: boolean): void;
+  /**
+   * Paints her in livery `id` (null: her default). Nothing else changes:
+   * the run's time, playing state and frames stay as they are.
+   */
+  setLivery(id: string | null): void;
   /** Flies the free camera to a place (X-ray on for the interior places). */
   flyToPlace(place: PlaceId | null, xray?: boolean): void;
   /** The scene reports the water at the selected place (m). */
@@ -229,6 +257,8 @@ const INITIAL: PlaybackState = {
   track: null,
   openings: [],
   hits: [],
+  torpedoes: [],
+  hitTimesS: null,
   preview: false,
   placeWaterM: 0,
   computedT: 0,
@@ -251,6 +281,7 @@ const INITIAL: PlaybackState = {
   flyId: 0,
   flyView: null,
   speedTouchedAt: -Infinity,
+  livery: null,
 };
 
 /**
@@ -353,19 +384,59 @@ export function inHitWindow(
   );
 }
 
+/**
+ * A ship with her own hits (`PlaybackState.hitTimesS`): true from
+ * SLOWMO_HIT_BEFORE_S before each hit (its wake running in) to SLOWMO_HIT_S
+ * after it, on a run with holes. Her 10:50 AM torpedo gets its own window.
+ */
+export function inOwnHitWindow(
+  track: SimTrack | null,
+  openings: readonly Opening[] | undefined,
+  t: number,
+  hitTimes: readonly number[]
+): boolean {
+  if (track === null || (openings?.length ?? 0) === 0) return false;
+  for (const h of hitTimes)
+    if (t >= h - SLOWMO_HIT_BEFORE_S && t <= h + SLOWMO_HIT_S) return true;
+  return false;
+}
+
 /** The speed playback actually runs at. */
 export function effectiveSpeed(
   s: Pick<
     PlaybackState,
     "track" | "t" | "speed" | "camera" | "speedTouchedAt"
-  > & { openings?: readonly Opening[]; hits?: readonly number[] },
+  > & {
+    openings?: readonly Opening[];
+    hits?: readonly number[];
+    hitTimesS?: readonly number[] | null;
+  },
   nowS: number
 ): number {
   if (s.camera !== "cinematic") return s.speed;
   if (nowS - s.speedTouchedAt < SPEED_TOUCH_HOLD_S) return s.speed;
   const slow = slowMoSpeed(s.track, s.t);
   if (slow !== null) return slow;
+  if (s.hitTimesS)
+    return inOwnHitWindow(s.track, s.openings, s.t, s.hitTimesS) ? 1 : s.speed;
   return inHitWindow(s.track, s.openings, s.t, s.hits?.length) ? 1 : s.speed;
+}
+
+/**
+ * The run's torpedoes (`StartOptions.torpedoes`), or, missing, one per hit
+ * x at `hitTimeS` on her starboard side (the 1.1 path).
+ */
+function torpedoesOf(
+  hits: readonly number[],
+  given: readonly TorpedoHit[] | undefined
+): readonly TorpedoHit[] {
+  if (given) return given;
+  return hits.map((x, k) => ({
+    x,
+    t: hitTimeS(k, hits.length),
+    side: "starboard" as const,
+    finisher: false,
+  }));
 }
 
 /**
@@ -439,18 +510,37 @@ export function createPlaybackStore(
     return {
       ...INITIAL,
       start(spec, given, options = {}) {
-        const { hits: chosen, preview = false, ...run } = options;
+        const {
+          hits: chosen,
+          torpedoes: givenTorpedoes,
+          preview = false,
+          ...run
+        } = options;
         runner = makeRunner(spec, given, run);
         const openings = given.filter((o): o is Opening => !isDeckOpening(o));
         const firstHole = openings.find(
           (o) => o.side === "starboard" && (o.t ?? 0) === 0
         );
         // Torpedoes and mines (a mine has no track: the HUD counts them).
+        const torpedoesGiven =
+          spec.cause !== "torpedo" ? undefined : givenTorpedoes;
         const hits =
           spec.cause !== "torpedo" && spec.cause !== "mine"
             ? []
-            : (chosen ?? (firstHole ? [firstHole.x] : []));
-        const pre = openings.length > 0 ? (spec.preRollS ?? 0) : 0;
+            : (chosen ??
+              (torpedoesGiven
+                ? torpedoesGiven.map((h) => h.x).sort((a, b) => a - b)
+                : firstHole
+                  ? [firstHole.x]
+                  : []));
+        const torpedoes =
+          spec.cause !== "torpedo" ? [] : torpedoesOf(hits, torpedoesGiven);
+        // The run-in plays before a hit at the first moment only (her
+        // U-boat alone strikes at 10:50 AM: no wake comes at 9:15).
+        const pre =
+          openings.length > 0 && openings.some((o) => (o.t ?? 0) <= 0)
+            ? (spec.preRollS ?? 0)
+            : 0;
         const minT = pre > 0 ? -pre : 0;
         const tail = preview ? 0 : (spec.timelineTail ?? 0);
         set({
@@ -458,6 +548,8 @@ export function createPlaybackStore(
           track: null,
           openings,
           hits,
+          torpedoes,
+          hitTimesS: spec.torpedo ? torpedoes.map((h) => h.t) : null,
           preview,
           computedT: 0,
           done: false,
@@ -480,6 +572,8 @@ export function createPlaybackStore(
           track: null,
           openings: [],
           hits: [],
+          torpedoes: [],
+          hitTimesS: null,
           preview: false,
           computedT: 0,
           done: false,
@@ -493,6 +587,8 @@ export function createPlaybackStore(
           place: null,
           placeWaterM: 0,
           flyView: null,
+          // Her own default until the game applies her saved livery.
+          livery: null,
           ...walkOff(),
           snapId: get().snapId + 1,
         });
@@ -607,6 +703,9 @@ export function createPlaybackStore(
       },
       setXray(xray) {
         set({ xray });
+      },
+      setLivery(livery) {
+        if (livery !== get().livery) set({ livery });
       },
       flyToPlace(place, xray) {
         const s = get();

@@ -1,10 +1,10 @@
-import type { BufferAttribute, Group, Mesh } from "three";
+import type { BufferAttribute, Group, Mesh, Texture } from "three";
 import { BRITANNIC_PAINT } from "@/lib/shipwreck/ships/britannic";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { britannicRecipe, type BritannicPaint } from "./britannicRecipe";
 import type { QualitySettings } from "./buildShip";
 import { GeoBuffer, box, rgb } from "./geoBuffer";
-import { setHullPaint, type HullPaint, type ShipMaterials } from "./materials";
+import type { HullPaint, ShipMaterials } from "./materials";
 import { funnelGeometry } from "./partGeometry";
 import { acquireShipTextures, releaseShipTextures } from "./textures";
 import type { FunnelRecipe, ShipPaint, ShipRecipe } from "./titanicRecipe";
@@ -16,7 +16,7 @@ import type { FunnelRecipe, ShipPaint, ShipRecipe } from "./titanicRecipe";
  * that serves both, and a swap changes only:
  *
  * - the hull shader's uniforms (topsides, paint line, gold line, band and
- *   crosses: `setHullPaint`);
+ *   crosses: `mats.setHullPaint`);
  * - the funnels' vertex colours (each funnel is cut at both looks' black
  *   tops, so only the colour between the cuts changes);
  * - the hospital ship's painted boxes (the boat deck's crosses, "G.618"),
@@ -103,6 +103,10 @@ export interface LiveryTarget {
 export interface Livery {
   /** Wears `look`; false (and nothing changes) for a look she lacks. */
   setPaint(look: string): boolean;
+  /** The look she wears now. */
+  readonly wearing: BritannicPaint;
+  /** The textures only another look shows (the liner's gilt names). */
+  readonly textures: readonly Texture[];
   dispose(): void;
 }
 
@@ -173,12 +177,14 @@ export function attachBritannicLivery(
     liner: hullPaintOf(liner, spec),
   };
 
-  let wearing: BritannicPaint | null = null;
+  let wearing: BritannicPaint = BRITANNIC_PAINT;
+  let worn = false;
   function setPaint(next: string): boolean {
     if (!isLook(next)) return false;
-    if (next === wearing) return true;
+    if (worn && next === wearing) return true;
+    worn = true;
     wearing = next;
-    setHullPaint(mats.hull, hulls[next]);
+    mats.setHullPaint(hulls[next]);
     for (const m of marks) m.visible = next === "hospital";
     for (const f of funnelColors) {
       if (!f) continue;
@@ -192,6 +198,10 @@ export function attachBritannicLivery(
 
   return {
     setPaint,
+    get wearing() {
+      return wearing;
+    },
+    textures: gilt.names ? [gilt.names] : [],
     dispose() {
       releaseShipTextures(liner.paint?.name);
     },

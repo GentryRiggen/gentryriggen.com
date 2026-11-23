@@ -18,6 +18,7 @@ import { OrbitControls } from "three-stdlib";
 import { placeFor } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { createFrame, sampleTrackInto } from "@/lib/shipwreck/sim/track";
 import { partAt } from "@/lib/shipwreck/xray";
 import {
   FITZGERALD_WIDE_SHOTS,
@@ -35,6 +36,7 @@ import {
   shipToThreeInto,
   portraitPullBack,
   shotView,
+  torpedoInView,
   underwaterView,
   type ShotContext,
   type ShotId,
@@ -42,7 +44,7 @@ import {
   type View,
 } from "./cameraMath";
 import type { SceneRuntime } from "./runtime";
-import { torpedoHole } from "./Torpedo";
+import { torpedoHole, trackSideY } from "./Torpedo";
 import { viewDirection } from "./walkCamera";
 
 /**
@@ -129,6 +131,8 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
     () => ({
       p: [0, -13.4, 9] as [number, number, number],
       out: [0, 0, 0] as V3,
+      own: [0, 0, 9] as [number, number, number],
+      frame: createFrame(),
     }),
     []
   );
@@ -410,24 +414,51 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       controls.update();
     } else {
       const hole = torpedoHole(p.openings);
-      const ctx: ShotContext = {
-        t: p.t,
-        wall: state.clock.elapsedTime,
-        bodies: frame.bodies,
-        breakX: p.track?.breakX ?? null,
-        seaDepthM: SEA_DEPTH,
-        ship: spec.id,
-        hitX: hole?.x,
-        // Where it struck: her first frame, into scratch arrays.
-        hitAt:
-          hole && p.track && p.track.frames.length > 0
-            ? shipToThreeInto(
-                p.track.frames[0].bodies[0],
-                setHole(hitScratch.p, hole.x),
-                hitScratch.out
-              )
-            : undefined,
-      };
+      // A ship with her own hits (the Carpathia): the torpedo in view now,
+      // where her side was as it struck (port, and her 10:50 AM one).
+      const own =
+        p.hitTimesS && p.torpedoes.length > 0 && p.track
+          ? p.torpedoes[torpedoInView(p.torpedoes, p.t)]
+          : null;
+      if (own && p.track && p.track.frames.length > 0) {
+        hitScratch.own[0] = own.x;
+        hitScratch.own[1] = trackSideY(spec, own.side);
+        shipToThreeInto(
+          sampleTrackInto(p.track, own.t, hitScratch.frame).bodies[0],
+          hitScratch.own,
+          hitScratch.out
+        );
+      }
+      const ctx: ShotContext = own
+        ? {
+            t: p.t,
+            wall: state.clock.elapsedTime,
+            bodies: frame.bodies,
+            breakX: p.track?.breakX ?? null,
+            seaDepthM: SEA_DEPTH,
+            ship: spec.id,
+            hitX: own.x,
+            hitT: own.t,
+            hitAt: p.track!.frames.length > 0 ? hitScratch.out : undefined,
+          }
+        : {
+            t: p.t,
+            wall: state.clock.elapsedTime,
+            bodies: frame.bodies,
+            breakX: p.track?.breakX ?? null,
+            seaDepthM: SEA_DEPTH,
+            ship: spec.id,
+            hitX: hole?.x,
+            // Where it struck: her first frame, into scratch arrays.
+            hitAt:
+              hole && p.track && p.track.frames.length > 0
+                ? shipToThreeInto(
+                    p.track.frames[0].bodies[0],
+                    setHole(hitScratch.p, hole.x),
+                    hitScratch.out
+                  )
+                : undefined,
+          };
       let view: View;
       let cut = false;
       if (p.camera === "lifeboat") view = lifeboatView(ctx);
@@ -442,7 +473,7 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
               spec.id,
               cinematicHit(p.openings.length, spec.cause, p.preview)
             )
-          : spec.id === "lusitania"
+          : spec.id === "lusitania" || spec.id === "carpathia"
             ? "afternoon"
             : spec.id === "britannic"
               ? "morning"
@@ -565,6 +596,13 @@ function bridgeView(ctx: ShotContext): View {
       pos: shipThree(b, [101, -8.5, 22.5]),
       target: shipThree(b, [-60, -2, 13]),
     };
+  if (ctx.ship === "carpathia")
+    // Her port bridge wing (the side the torpedo's track was seen on),
+    // over the bridge house's front, looking aft along her port boats.
+    return {
+      pos: shipThree(b, [16, 9.6, 24.5]),
+      target: shipThree(b, [-40, 7, 21]),
+    };
   if (ctx.ship === "lusitania")
     // Her starboard bridge wing (the bridge at 68 m, over the boat deck),
     // looking aft along the boats.
@@ -585,6 +623,13 @@ function sternView(ctx: ShotContext): View {
     return {
       pos: shipThree(b, [-84, 0, 20.5]),
       target: shipThree(b, [60, 0, 13]),
+    };
+  if (ctx.ship === "carpathia")
+    // Over her stern deckhouse on the open after deck (R21), looking
+    // forward past the jigger and the boat platform.
+    return {
+      pos: shipThree(b, [-84, 0, 19.6]),
+      target: shipThree(b, [10, 0, 21]),
     };
   if (ctx.ship === "lusitania")
     // Her open Shelter deck aft (no raised poop), looking forward.

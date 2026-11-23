@@ -25,6 +25,11 @@ export interface ShipwreckSave {
    * `lastWhatIf`, where 1.0 kept it.
    */
   whatIfByShip?: Partial<Record<ShipId, ShipWhatIf>>;
+  /**
+   * The paint (livery id) chosen for each ship (1.4). Missing, or an id
+   * the ship does not have: her default livery (`resolveLivery`).
+   */
+  liveryByShip?: Partial<Record<ShipId, string>>;
 }
 
 /**
@@ -58,6 +63,7 @@ export const SAVE_SHIP_IDS: readonly ShipId[] = [
   "titanic",
   "lusitania",
   "fitzgerald",
+  "carpathia",
   "britannic",
 ];
 
@@ -68,6 +74,8 @@ const BACKUP_INDEX_KEY = `${CORRUPT_PREFIX}:index`;
 export const BACKUPS_KEPT = 3;
 const MAX_WHATIF = 64;
 const MAX_ID_LENGTH = 48;
+/** A livery id as the ships name them ("cunard-1912"). */
+const LIVERY_ID = /^[a-z0-9-]{1,48}$/;
 
 export function emptySave(): ShipwreckSave {
   return {
@@ -148,6 +156,15 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
     }
     if (Object.keys(byShip).length > 0) save.whatIfByShip = byShip;
   }
+  if (isObj(raw.liveryByShip)) {
+    // Shaped like an id only: whether the ship has it is the game's to
+    // check (an unknown one shows her default, never a reset).
+    const byShip: Partial<Record<ShipId, string>> = {};
+    for (const [ship, id] of Object.entries(raw.liveryByShip))
+      if (isShipId(ship) && typeof id === "string" && LIVERY_ID.test(id))
+        byShip[ship] = id;
+    if (Object.keys(byShip).length > 0) save.liveryByShip = byShip;
+  }
   return { save, newer: raw.v > 1 };
 }
 
@@ -196,6 +213,20 @@ export function withWhatIf(
       [ship]: { ...whatIf, ids: [...whatIf.ids] },
     },
   };
+}
+
+/** The livery id the save chose for `ship` (unchecked), or null. */
+export function liveryOf(save: ShipwreckSave, ship: ShipId): string | null {
+  return save.liveryByShip?.[ship] ?? null;
+}
+
+/** The save with `ship`'s livery remembered. */
+export function withLivery(
+  save: ShipwreckSave,
+  ship: ShipId,
+  livery: string
+): ShipwreckSave {
+  return { ...save, liveryByShip: { ...save.liveryByShip, [ship]: livery } };
 }
 
 export interface StorageLike {

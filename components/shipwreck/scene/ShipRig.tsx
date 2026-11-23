@@ -15,7 +15,7 @@ import { applyBodyPose } from "@/components/shipwreck/model/pose";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
-import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { resolveLivery, type ShipSpec } from "@/lib/shipwreck/ships/types";
 import {
   createFrame,
   sampleTrackInto,
@@ -197,25 +197,65 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
       runtime.split = null;
   }, [modelBreakX, runtime]);
 
+  // Her livery (the paint button): repaint the built models live, never
+  // rebuild them (a swap is colours and uniforms only: README, "Liveries").
+  const paint = useCallback(
+    (h: TitanicHandles | null) => {
+      const id = resolveLivery(spec, store.getState().livery);
+      if (h && id !== null) h.setLivery(id);
+    },
+    [spec, store]
+  );
+  useEffect(
+    () =>
+      store.subscribe((s, prev) => {
+        if (s.livery === prev.livery) return;
+        paint(runtime.whole);
+        paint(runtime.split);
+      }),
+    [store, runtime, paint]
+  );
+
+  // Her other liveries' parts on a built model: compiled and uploaded now,
+  // so a tap never waits on a shader or a texture.
+  const warmPaints = useCallback(
+    (h: TitanicHandles) =>
+      h.warmLiveries(
+        () => {
+          try {
+            gl.compile(scene, camera);
+          } catch {
+            // Not fatal: the first frame after a swap compiles them.
+          }
+        },
+        (texture) => gl.initTexture(texture)
+      ),
+    [gl, scene, camera]
+  );
   const onWhole = useCallback(
     (h: TitanicHandles) => {
+      paint(h);
       runtime.whole = h;
+      warmPaints(h);
     },
-    [runtime]
+    [runtime, paint, warmPaints]
   );
   const onSplit = useCallback(
     (h: TitanicHandles) => {
+      paint(h);
       runtime.split = h;
       warm.current = WARM_FRAMES;
-      // Compile the halves' programs now (hidden objects are skipped).
+      // Compile the halves' programs now (hidden objects are skipped),
+      // their other paints' too (her no-finisher What if breaks).
       h.root.visible = true;
       try {
         gl.compile(scene, camera);
       } catch {
         // Not fatal: the first frame compiles them instead.
       }
+      warmPaints(h);
     },
-    [runtime, gl, scene, camera]
+    [runtime, gl, scene, camera, paint, warmPaints]
   );
 
   useFrame((state) => {

@@ -23,8 +23,10 @@ import type { WaveFieldArrays } from "@/lib/shipwreck/sim/waves";
 import { windOf } from "./seaWaves";
 import {
   FITZGERALD_HEADING_DEG,
+  LUSITANIA_DAYLIGHT,
   sunDirectionInto,
   type DayLook,
+  type LinearRGB,
 } from "./settings";
 import {
   ANDERSON,
@@ -290,13 +292,15 @@ interface DaySkyProps {
   horizon: Color;
   /** The scene's day look (sun colour, the blue overhead, a dawn glow). */
   look?: DayLook;
+  /** The blue overhead (linear; over the look's; default the Lusitania's). */
+  zenith?: LinearRGB;
 }
 
 /**
  * The sky of a sunny afternoon: blue overhead, a pale haze at the horizon
  * the fog fades into, the sun's glow and disc. No stars. One draw call.
  */
-export function DaySky({ sunDir, horizon, look }: DaySkyProps) {
+export function DaySky({ sunDir, horizon, look, zenith }: DaySkyProps) {
   const sky = useMemo(() => {
     const geo = new SphereGeometry(RADIUS * 1.05, 32, 16);
     const mat = new ShaderMaterial({
@@ -325,10 +329,16 @@ export function DaySky({ sunDir, horizon, look }: DaySkyProps) {
     (sky.mat.uniforms.uHorizon.value as Color).copy(horizon);
     if (look) {
       (sky.mat.uniforms.uSunColor.value as Color).setRGB(...look.skySun);
-      (sky.mat.uniforms.uZenith.value as Color).setRGB(...look.zenith);
       (sky.mat.uniforms.uGlow.value as Color).setRGB(...look.dawnGlow);
     }
-  }, [sky, sunDir, horizon, look]);
+    const z = zenith ?? look?.zenith ?? LUSITANIA_DAYLIGHT.zenith;
+    (sky.mat.uniforms.uZenith.value as Color).setRGB(
+      z[0],
+      z[1],
+      z[2],
+      LinearSRGBColorSpace
+    );
+  }, [sky, sunDir, horizon, look, zenith]);
   useEffect(
     () => () => {
       sky.geo.dispose();

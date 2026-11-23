@@ -92,8 +92,14 @@ describe("the Britannic's paint swap (R23)", () => {
 
   afterAll(() => model.dispose());
 
+  it("lists both looks, the hospital ship first, like every ship's liveries", () => {
+    expect(model.handles.liveries).toEqual(["hospital", "liner"]);
+    expect(model.handles.livery).toBe("hospital");
+  });
+
   it("repaints her as a liner without rebuilding anything", () => {
-    model.handles.setPaint!("liner");
+    model.handles.setLivery("liner");
+    expect(model.handles.livery).toBe("liner");
     const liner = look(model);
     // The same meshes and the same geometry objects.
     expect(liner.geometries).toHaveLength(hospital.geometries.length);
@@ -120,8 +126,8 @@ describe("the Britannic's paint swap (R23)", () => {
   });
 
   it("puts her hospital paint back exactly", () => {
-    model.handles.setPaint!("liner");
-    model.handles.setPaint!("hospital");
+    model.handles.setLivery("liner");
+    model.handles.setLivery("hospital");
     const back = look(model);
     back.geometries.forEach((g, i) => expect(g).toBe(hospital.geometries[i]));
     expect(back).toEqual(hospital);
@@ -129,37 +135,38 @@ describe("the Britannic's paint swap (R23)", () => {
   });
 
   it("ignores a look she does not have", () => {
-    model.handles.setPaint!("dazzle");
+    model.handles.setLivery("dazzle");
     expect(look(model)).toEqual(hospital);
+    expect(model.handles.livery).toBe("hospital");
   });
 
   it("builds in either paint the same as swapping to it", () => {
     const built = createTitanicModel(britannic, {
       quality: "high",
       breakX: null,
-      paint: "liner",
+      livery: "liner",
     });
-    model.handles.setPaint!("liner");
+    model.handles.setLivery("liner");
     const a = look(built);
     const b = look(model);
     expect(a.uniforms).toEqual(b.uniforms);
     expect(a.colors).toEqual(b.colors);
     expect(a.visible).toEqual(b.visible);
     expect(a.decal).toEqual(b.decal);
-    model.handles.setPaint!("hospital");
+    model.handles.setLivery("hospital");
     built.dispose();
   });
 });
 
 describe("a ship with one livery", () => {
-  it("does nothing on setPaint", () => {
+  it("does nothing on setLivery", () => {
     const model = createTitanicModel(titanic, {
       quality: "low",
       breakX: null,
     });
     const before = look(model);
-    model.handles.setPaint?.("liner");
-    model.handles.setPaint?.("hospital");
+    model.handles.setLivery("liner");
+    model.handles.setLivery("hospital");
     const after = look(model);
     after.geometries.forEach((g, i) => expect(g).toBe(before.geometries[i]));
     expect(after).toEqual(before);

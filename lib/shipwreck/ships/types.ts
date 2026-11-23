@@ -7,7 +7,8 @@
  * `x` forward, `y` to port, `z` up from the keel.
  */
 
-export type ShipId = "titanic" | "lusitania" | "fitzgerald" | "britannic";
+export type ShipId =
+  "titanic" | "lusitania" | "fitzgerald" | "carpathia" | "britannic";
 
 export interface HullStation {
   x: number;
@@ -205,6 +206,94 @@ export interface ScriptedEvent {
   index?: number;
 }
 
+/**
+ * A torpedo ship's own hits (the Carpathia's): one torpedo per chosen
+ * compartment, on her own side, in her own order and gap. Missing on a
+ * torpedo ship: the 1.1 rule (the real hit moved along her starboard side).
+ */
+export interface TorpedoSpec {
+  side: "port" | "starboard";
+  /** Order hits land along her length in a run with several. */
+  order: "aft-first" | "fwd-first";
+  /** Seconds between successive hits (hit k lands k·staggerS after the first). */
+  staggerS: number;
+  /** One torpedo's hole in her side: total area, its heights above the keel,
+   *  and its length along her side. A hole across a bulkhead opens both
+   *  spaces, the area shared by overlap length. */
+  hole: { areaM2: number; zLow: number; zHigh: number; lengthM: number };
+  /** Where a hit at a spot strikes (ship-frame x of the hole's middle).
+   *  Missing for a spot: the spot's compartment middle. */
+  hitX?: Readonly<Record<string, number>>;
+  /** A later torpedo, offered as its own What-if spot (FINISHER_SPOT):
+   *  strikes compartment `spotId` at shown `t`. */
+  finisher?: { spotId: string; t: number };
+  /** The What-if spots that give her real run (FINISHER_SPOT included if real). */
+  realSpots: readonly string[];
+}
+
+/**
+ * One of a ship's paints (a livery), switched live in the game. Plain data:
+ * the model's recipe paints it (components/shipwreck/model/README.md).
+ */
+export interface Livery {
+  /** "dazzle-1918", "cunard-1912", "war-1915", "cunard-1907", ... */
+  id: string;
+  /** Spoken and aria words, e.g. "Her 1912 Cunard colours". */
+  label: string;
+  year: number;
+  /** Exactly one per ship. */
+  default?: true;
+  /** Where each detail of the paint comes from (the model README cites). */
+  sources: readonly string[];
+  /** The paint button's two swatches (sRGB): what the livery looks like. */
+  swatches: readonly [number, number];
+  /** Her funnels' paint in it (the hull diagram's and the title's). */
+  funnelPaint?: { funnel: number; top: number };
+}
+
+/** The ship's default livery's id, or null when she has no choice. */
+export function defaultLivery(spec: ShipSpec): string | null {
+  const list = spec.liveries;
+  if (!list || list.length < 2) return null;
+  return (list.find((l) => l.default) ?? list[0]).id;
+}
+
+/**
+ * The livery to show: `id` when it is one of hers, else her default (an
+ * unknown or missing id, a save from another build). Null: no choice.
+ */
+export function resolveLivery(
+  spec: ShipSpec,
+  id: string | null | undefined
+): string | null {
+  const fallback = defaultLivery(spec);
+  if (fallback === null) return null;
+  return spec.liveries!.some((l) => l.id === id) ? id! : fallback;
+}
+
+/** The livery after `id` in her list (the paint button's next), or null. */
+export function nextLivery(
+  spec: ShipSpec,
+  id: string | null | undefined
+): Livery | null {
+  const list = spec.liveries;
+  const now = resolveLivery(spec, id);
+  if (!list || now === null) return null;
+  const i = list.findIndex((l) => l.id === now);
+  return list[(i + 1) % list.length];
+}
+
+/** Her funnels' paint in a livery (the hull diagram's and the title's). */
+export function funnelPaintOf(
+  spec: ShipSpec,
+  id: string | null | undefined
+): { funnel: number; top: number } | undefined {
+  const now = resolveLivery(spec, id);
+  return (
+    spec.liveries?.find((l) => l.id === now)?.funnelPaint ?? spec.funnelPaint
+  );
+}
+
 export interface ShipSpec {
   id: ShipId;
   name: string;
@@ -221,7 +310,18 @@ export interface ShipSpec {
   tcg?: number;
   stations: readonly HullStation[]; // ≥ 41 stations, aft to fwd, the full hull to the top of the shelter deck
   sheerZ: (x: number) => number; // height of the uppermost continuous deck edge at x
-  superstructure: { fromX: number; toX: number; topZ: number }[]; // buoyant volume above the hull once sealed decks submerge (coarse boxes)
+  /**
+   * Buoyant volume above the hull once sealed decks submerge (coarse
+   * boxes, from the deck edge up to `topZ`). `halfBreadthM`: a deckhouse
+   * inboard of an open deck, no wider than this either side of the centre
+   * line (the Carpathia's stern house); missing, as wide as the deck.
+   */
+  superstructure: {
+    fromX: number;
+    toX: number;
+    topZ: number;
+    halfBreadthM?: number;
+  }[];
   compartments: readonly Compartment[]; // the 16 watertight compartments, aft to fwd
   realNight: readonly Opening[]; // the iceberg damage
   girder: { hogMaxNm: number; sagMaxNm: number }; // hull girder strength
@@ -241,6 +341,9 @@ export interface ShipSpec {
   clockStartS: number;
   /** What opened the hull: drives words, scene and What-if. */
   cause: "iceberg" | "torpedo" | "storm" | "mine";
+  /** Torpedo ship's hits (side, order, hole). Missing: the 1.1 rule (the real
+   *  hit moved along her starboard side, aft first, HIT_STAGGER_S apart). */
+  torpedo?: TorpedoSpec;
   portholes?: readonly PortholeRow[];
   /**
    * Seconds shown before the first event in a run with holes (a torpedo's
@@ -291,6 +394,12 @@ export interface ShipSpec {
    * tops (the 1.0 look).
    */
   funnelPaint?: { funnel: number; top: number };
+  /**
+   * The paints she can be shown in (R23: one `default`). Missing or one
+   * entry: no choice. The model's recipe maps each id to its paint
+   * (components/shipwreck/model/README.md, "Liveries").
+   */
+  liveries?: readonly Livery[];
   /** Water density (kg/m³). Missing: RHO (1025, sea water). */
   waterDensity?: number;
   /** A storm: one wave field for the deck openings and the sea drawn. */
@@ -323,6 +432,21 @@ export interface ShipSpec {
    * DESCENT_TIME_SCALE (6). 1: in real time (ruling R11).
    */
   descentTimeScale?: number;
+  /**
+   * Ruling R22 (the Carpathia): a whole hull that lands on its bow in water
+   * shallower than she is long swings down about that contact no faster
+   * than the water lets it (her weight in water against pressure drag on
+   * her plan: `descent.ts`, `pivotRate`), and logs `stern-lands` when her
+   * stern reaches the floor, not as her bow touches. Missing: the 1.0
+   * plough rule (she eases to rest in a few seconds).
+   */
+  pivotDrag?: true;
+  /**
+   * Her scripted events (`scripted`) count from her first hit, not from
+   * t = 0: a What if whose first torpedo comes late (the Carpathia's
+   * U-boat alone) has no rockets or boats before it. Missing: from t = 0.
+   */
+  scriptedFromFirstHit?: true;
   /**
    * Per-part wreck rules after a break (a rule, not physics, like `wreck`):
    * the bow by the `wreck` rule's terms; the stern, once wholly under,

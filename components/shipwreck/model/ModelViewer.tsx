@@ -18,6 +18,7 @@ import {
 import { Color, PMREMGenerator, Vector3 } from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
@@ -34,15 +35,17 @@ import type { TitanicHandles } from "./shipModel";
 
 /**
  * A neutral stage for checking the model (`/shipwreck?model`, dev and e2e
- * builds only; `&ship=lusitania`, `&ship=fitzgerald` or `&ship=britannic`): orbit controls, a day light or
- * the night with bloom (`&ship=britannic&paint=liner` puts her in her
- * intended White Star paint, swapped in place), and
+ * builds only; `&ship=lusitania`, `&ship=fitzgerald`, `&ship=carpathia` or
+ * `&ship=britannic`): orbit controls, a day light or
+ * the night with bloom (`&livery=<id>` picks a livery, e.g.
+ * `&ship=lusitania&livery=cunard-1907` or the Carpathia's `grey-1918`; the
+ * old `&paint=dazzle|grey|cunard` still names hers, and the Britannic's
+ * 1.4 `&paint=liner` hers), and
  * `window.__shipwreck.setModelView` to set the break, lights, quality, a
- * camera preset and the paint.
+ * camera preset and the livery (repainted live, no rebuild).
  */
 
-type Required3 = Required<Omit<ModelViewOptions, "paint">> &
-  Pick<ModelViewOptions, "paint">;
+type Required3 = Required<Omit<ModelViewOptions, "livery">>;
 
 const DEFAULT_VIEW: Required3 = {
   breakX: null,
@@ -102,13 +105,21 @@ const SHIP_CAMERAS: Partial<Record<ShipSpec["id"], Partial<typeof CAMERAS>>> = {
     "break-close": { pos: [40, 30, 60], target: [18, 12, 0] },
     "boat-deck": { pos: [-56, 30, 44], target: [-92, 19, 0] },
   },
+  // A 558 ft intermediate liner: one funnel, four masts, wells.
+  carpathia: {
+    bow: { pos: [190, 45, 130], target: [20, 18, 0] },
+    stern: { pos: [-170, 18, 95], target: [-60, 12, 0] },
+    side: { pos: [0, 22, 330], target: [0, 21, 0] },
+    top: { pos: [0, 300, 14], target: [0, 0, 0] },
+    break: { pos: [5, 32, 300], target: [0, 16, 0] },
+    bridge: { pos: [42, 36, 44], target: [2, 26, 0] },
+    "bow-close": { pos: [118, 26, 48], target: [70, 18, 0] },
+    "stern-close": { pos: [-128, 14, 44], target: [-80, 8, 0] },
+    astern: { pos: [-130, 14, 0], target: [-88, 10, 0] },
+    "break-close": { pos: [10, 30, 60], target: [-10, 15, 0] },
+    "boat-deck": { pos: [26, 34, 40], target: [-12, 23, 6] },
+  },
 };
-
-/** The livery named by `?paint=` (the ship's own when missing). */
-function paintFromUrl(): string | undefined {
-  if (typeof window === "undefined") return undefined;
-  return new URLSearchParams(window.location.search).get("paint") ?? undefined;
-}
 
 /** The ship named by `?ship=` (the Titanic by default). */
 function shipFromUrl(): ShipSpec {
@@ -118,9 +129,30 @@ function shipFromUrl(): ShipSpec {
     ? lusitania
     : id === "fitzgerald"
       ? fitzgerald
-      : id === "britannic"
-        ? britannic
-        : titanic;
+      : id === "carpathia"
+        ? carpathia
+        : id === "britannic"
+          ? britannic
+          : titanic;
+}
+
+/** The Carpathia's 1.4 `?paint=` names, as livery ids. */
+const PAINT_LIVERY: Record<string, string> = {
+  dazzle: "dazzle-1918",
+  grey: "grey-1918",
+  cunard: "cunard-1912",
+};
+
+/**
+ * The livery named by `?livery=` (or `?paint=`: the Carpathia's 1.4 names,
+ * else a livery id as is, the Britannic's `liner`), null for hers.
+ */
+function liveryFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  const q = new URLSearchParams(window.location.search);
+  const paint = q.get("paint") ?? "";
+  const own = shipFromUrl().liveries?.some((l) => l.id === paint);
+  return q.get("livery") ?? PAINT_LIVERY[paint] ?? (own ? paint : null);
 }
 
 interface ModelViewerProps {
@@ -128,11 +160,9 @@ interface ModelViewerProps {
 }
 
 export default function ModelViewer({ hooksRef }: ModelViewerProps) {
-  const [view, setView] = useState<Required3>(() => ({
-    ...DEFAULT_VIEW,
-    paint: paintFromUrl(),
-  }));
+  const [view, setView] = useState<Required3>(DEFAULT_VIEW);
   const [spec] = useState(shipFromUrl);
+  const [livery, setLivery] = useState(liveryFromUrl);
   const info = useRef<ModelInfo>({
     ready: false,
     calls: 0,
@@ -143,8 +173,9 @@ export default function ModelViewer({ hooksRef }: ModelViewerProps) {
 
   useEffect(() => {
     hooksRef.current = {
-      setModelView: (v) => {
+      setModelView: ({ livery: next, ...v }) => {
         info.current.ready = false;
+        if (next !== undefined) setLivery(next);
         setView((old) => ({ ...old, ...v }));
       },
       getModelInfo: () => ({ ...info.current }),
@@ -170,7 +201,7 @@ export default function ModelViewer({ hooksRef }: ModelViewerProps) {
         camera={{ fov: 30, near: 1, far: 4000, position: [215, 58, 190] }}
         gl={{ antialias: true }}
       >
-        <Stage view={view} spec={spec} onInfo={onInfo} />
+        <Stage view={view} spec={spec} livery={livery} onInfo={onInfo} />
       </Canvas>
     </div>
   );
@@ -179,10 +210,11 @@ export default function ModelViewer({ hooksRef }: ModelViewerProps) {
 interface StageProps {
   view: Required3;
   spec: ShipSpec;
+  livery: string | null;
   onInfo(patch: Partial<ModelInfo>): void;
 }
 
-function Stage({ view, spec, onInfo }: StageProps) {
+function Stage({ view, spec, livery, onInfo }: StageProps) {
   const get = useThree((s) => s.get);
   const controls = useRef<OrbitControlsImpl>(null);
   const handles = useRef<TitanicHandles | null>(null);
@@ -215,11 +247,6 @@ function Stage({ view, spec, onInfo }: StageProps) {
 
   const apply = useCallback(
     (h: TitanicHandles) => {
-      if (view.paint) {
-        const t0 = performance.now();
-        h.setPaint?.(view.paint);
-        onInfo({ paintMs: performance.now() - t0 });
-      }
       h.setPower(view.power);
       h.setFlicker(view.flicker);
       if (h.bend && h.recipe.hinge)
@@ -230,7 +257,7 @@ function Stage({ view, spec, onInfo }: StageProps) {
         poseHalf(h.stern, h.breakX, -0.3, -4);
       }
     },
-    [view.power, view.flicker, view.bowBend, view.paint, onInfo]
+    [view.power, view.flicker, view.bowBend]
   );
 
   const onReady = useCallback(
@@ -261,6 +288,8 @@ function Stage({ view, spec, onInfo }: StageProps) {
     onInfo({
       calls: gl.info.render.calls,
       triangles: gl.info.render.triangles,
+      livery: handles.current?.livery ?? null,
+      liveryMs: handles.current?.stats.liveryMs ?? 0,
       // Ready once the model built for this view has drawn a few frames.
       ...(isBuiltFor(handles.current, view) && frames.current > 3
         ? { ready: true }
@@ -291,6 +320,7 @@ function Stage({ view, spec, onInfo }: StageProps) {
         spec={spec}
         breakX={view.breakX}
         quality={view.quality}
+        livery={livery}
         onReady={(h) => {
           onInfo({
             modelTriangles: modelTriangles(h),
@@ -337,7 +367,7 @@ function poseHalf(
 
 function modelTriangles(h: TitanicHandles): number {
   let n = 0;
-  // Drawn meshes only (a livery's hidden parts are not).
+  // Visible only: a livery's hidden parts (another funnel) are not drawn.
   h.root.traverseVisible((o) => {
     const m = o as unknown as {
       isMesh?: boolean;

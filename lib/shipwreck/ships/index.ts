@@ -1,4 +1,5 @@
 import { britannic } from "./britannic";
+import { carpathia } from "./carpathia";
 import { fitzgerald } from "./fitzgerald";
 import { lusitania } from "./lusitania";
 import { titanic } from "./titanic";
@@ -10,6 +11,7 @@ export {
   lusitania,
   LUSITANIA_BOATS,
   LUSITANIA_DECKS,
+  LUSITANIA_LIVERIES,
   type LusitaniaBoat,
 } from "./lusitania";
 export {
@@ -23,9 +25,30 @@ export {
   type FitzgeraldHatch,
 } from "./fitzgerald";
 export {
+  carpathia,
+  CARPATHIA_AFTER_DECK,
+  CARPATHIA_BOAT_DECK,
+  CARPATHIA_BOAT_PLATFORM,
+  CARPATHIA_BOATS,
+  CARPATHIA_BRIDGE_DECK,
+  CARPATHIA_BRIDGE_HOUSE,
+  CARPATHIA_DECKS,
+  CARPATHIA_FUNNEL_PAINT,
+  CARPATHIA_FUNNEL_PAINTS,
+  CARPATHIA_HIT_T,
+  CARPATHIA_LIVERIES,
+  CARPATHIA_MASTS,
+  CARPATHIA_STERN_HOUSE,
+  CARPATHIA_SUPERSTRUCTURE,
+  CARPATHIA_WELLS,
+  CARPATHIA_WING_Y,
+  type CarpathiaBoat,
+} from "./carpathia";
+export {
   britannic,
   BRITANNIC_BOATS,
   BRITANNIC_DECKS,
+  BRITANNIC_LIVERIES,
   type BritannicBoat,
 } from "./britannic";
 
@@ -34,6 +57,7 @@ export const SHIP_IDS = [
   "titanic",
   "lusitania",
   "fitzgerald",
+  "carpathia",
   "britannic",
 ] as const satisfies readonly ShipId[];
 /** Every ShipId is in SHIP_IDS: this fails to compile if one is missing. */
@@ -47,6 +71,7 @@ export const SHIPS: Record<ShipId, ShipSpec> = {
   titanic,
   lusitania,
   fitzgerald,
+  carpathia,
   britannic,
 };
 

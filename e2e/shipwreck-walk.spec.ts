@@ -170,3 +170,17 @@ test("no Walk button on the HMHS Britannic (she has no walk map)", async ({
   ).not.toBe("walk");
   expect(await page.evaluate(() => window.__shipwreck!.getWalk!())).toBeNull();
 });
+
+test("the Carpathia has no Walk button this release", async ({ page }) => {
+  await page.goto("/shipwreck");
+  await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
+  await page.evaluate(() => window.__shipwreck!.setShip!("carpathia"));
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  // Wait until the HUD has her frame (the Titanic's Walk button shows then).
+  await expect(page.getByTestId("shipwreck-play")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.getState!().computedT))
+    .toBeGreaterThan(0);
+  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+});

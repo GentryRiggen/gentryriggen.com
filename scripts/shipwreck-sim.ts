@@ -8,6 +8,12 @@
  *   npx tsx scripts/shipwreck-sim.ts --ship=lusitania br3      # torpedo at br3
  *   npx tsx scripts/shipwreck-sim.ts --ship=fitzgerald         # her last afternoon
  *   npx tsx scripts/shipwreck-sim.ts --ship=fitzgerald hatch-1 vents  # What if? these spots
+ *   npx tsx scripts/shipwreck-sim.ts --ship=carpathia          # her last morning
+ *   npx tsx scripts/shipwreck-sim.ts --ship=carpathia --no-finisher   # no third torpedo
+ *   npx tsx scripts/shipwreck-sim.ts --ship=carpathia --spots=hold3,finisher  # these spots
+ *   --spots=a,b names What-if spots like the bare ids; --no-finisher drops a
+ *   torpedo ship's later torpedo (FINISHER_SPOT) from them, or from her
+ *   real spots when none are named;
  *   npx tsx scripts/shipwreck-sim.ts --ship=britannic          # her morning
  *   npx tsx scripts/shipwreck-sim.ts --ship=britannic br4 --doors-closed --engines-stopped
  *   add --water for each compartment's fill at each line, --shut to keep
@@ -31,9 +37,11 @@ import {
   isDeckOpening,
 } from "../lib/shipwreck/ships/types";
 import {
+  FINISHER_SPOT,
   type SimOptions,
   simulate,
   whatIfOpenings,
+  whatIfRealIds,
   whatIfSpots,
 } from "../lib/shipwreck/sim/run";
 import { sampleTrack } from "../lib/shipwreck/sim/track";
@@ -112,10 +120,20 @@ const every = Number(
   option("every") ??
     (spec.cause === "torpedo" || spec.cause === "mine" ? 60 : storm ? 900 : 600)
 );
-const ids = args.filter((a) => !a.startsWith("--"));
+const noFinisher = args.includes("--no-finisher");
+const named = [
+  ...args.filter((a) => !a.startsWith("--")),
+  ...(option("spots")?.split(",").filter(Boolean) ?? []),
+];
+const ids =
+  noFinisher && named.length === 0
+    ? whatIfRealIds(spec).filter((id) => id !== FINISHER_SPOT)
+    : named.filter((id) => !noFinisher || id !== FINISHER_SPOT);
 let label =
   spec.cause === "torpedo"
-    ? "The real afternoon"
+    ? spec.clockStartS < 12 * 3600
+      ? "The real morning"
+      : "The real afternoon"
     : spec.cause === "mine"
       ? "The real morning"
       : storm
@@ -129,7 +147,10 @@ if (first) {
   label = `What if: the first ${n} forward (${forward.join(", ")})`;
 } else if (ids.length > 0) {
   openings = whatIfOpenings(spec, ids);
-  label = `What if: ${ids.join(", ")}`;
+  label =
+    named.length === 0
+      ? `${label}, no later torpedo`
+      : `What if: ${ids.join(", ")}`;
 }
 const stormOption = option("storm");
 if (stormOption && !["real", "calmer", "worse", "none"].includes(stormOption))

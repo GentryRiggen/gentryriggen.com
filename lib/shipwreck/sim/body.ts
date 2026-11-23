@@ -164,6 +164,13 @@ export interface Body {
   /** Landed from afloat (grounded when she went under): no further plough,
    * and her lowest hull point kept at that depth in the mud as she turns. */
   seated: boolean;
+  /** A whole hull that touched the floor with its after half first (a
+   * stern-first plunge in water shallower than she is long): it settles
+   * as a stern does, along the floor, not nose down about its stern. */
+  sternFirst: boolean;
+  /** `spec.pivotDrag` (R22): landing on its bow, it swings down about the
+   *  contact no faster than `pivotRate` (descent.ts). */
+  pivotDrag: boolean;
   /** Hull vertices for the floor while afloat: x, y, z, length (m) each. */
   floorPts: Float64Array;
   /** Floor stiffness per metre of hull per vertex (N/m per m). */

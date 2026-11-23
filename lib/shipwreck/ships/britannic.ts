@@ -3,6 +3,7 @@ import type {
   BulkheadDoor,
   Compartment,
   HullStation,
+  Livery,
   Opening,
   PortholeRow,
   ShipSpec,
@@ -629,6 +630,66 @@ const FUNNEL_X = titanic.funnels.map((f) => f.x);
 // Load (R4): her load draught 34 ft 7 in, 53,200 tons [WP]; outbound from
 // Naples with no patients, about a day and a half's coal burnt: README.
 
+// ---------------------------------------------------------------------------
+// Her look (the model reads these; plain numbers, no three.js).
+
+/**
+ * Her paint (R23): the hospital ship she was (default, as she sank), or the
+ * White Star liner she was built to be and never sailed as.
+ */
+export const BRITANNIC_PAINT: "hospital" | "liner" = "hospital";
+
+/**
+ * Her funnels' paint in each look (sRGB): White Star buff in both; a sooty
+ * lip as a hospital ship (her photographs), a deep black top as a liner
+ * (her sisters, the builder's model). Model README, "The Britannic".
+ */
+export const BRITANNIC_FUNNEL_PAINTS: Record<
+  "hospital" | "liner",
+  { funnel: number; top: number }
+> = {
+  hospital: { funnel: 0xbb7f3a, top: 0x2b2621 },
+  liner: { funnel: 0xbb7f3a, top: 0x18191c },
+};
+
+/**
+ * Her two paints (R23 of her spec; the paint button, the save and the
+ * model's swap read them): the hospital ship she was when she sank (the
+ * default) and the White Star liner she was built to be. She never sailed
+ * as a liner; that look is her sisters' and her builder's model's (model
+ * README, "Her intended liner paint").
+ */
+export const BRITANNIC_LIVERIES: readonly Livery[] = [
+  {
+    id: "hospital",
+    label: "Her 1916 hospital ship paint",
+    year: 1916,
+    default: true,
+    sources: [
+      "Wikimedia Commons, HMHS Britannic (starboard broadside under way, 1916)",
+      "Wikimedia Commons, Britannic in Naples for Coaling (early 1916)",
+      "Wikimedia Commons, Hmhs britannic departing from naples (port side)",
+      "1907 Hague Convention X, art. 5: white, with a green band about 1.5 m broad",
+    ],
+    swatches: [0xe8e4d8, 0x2d6a3c],
+    funnelPaint: BRITANNIC_FUNNEL_PAINTS.hospital,
+  },
+  {
+    id: "liner",
+    label: "Her White Star liner colours",
+    year: 1914,
+    sources: [
+      "Wikimedia Commons, RMS Britannic 1914 Model (the builder's model: black hull, white superstructure, black-topped funnels)",
+      "Wikimedia Commons, RMS Olympic Sea Trials in 1911 (her sister)",
+      "Titanic Inquiry Project, Olympic and Titanic particulars: funnels buff, black top",
+      "Wikipedia, MV Britannic (1929): White Star's black hull, gold line, white superstructure, buff funnels with a black top",
+      "TRMA, White Star Buff: Weighing the Evidence",
+    ],
+    swatches: [0x121315, 0xbb7f3a],
+    funnelPaint: BRITANNIC_FUNNEL_PAINTS.liner,
+  },
+];
+
 export const britannic: ShipSpec = {
   id: "britannic",
   name: "Britannic",
@@ -668,28 +729,8 @@ export const britannic: ShipSpec = {
   },
   doors: BRITANNIC_DOORS,
   wreck: { restDeg: 90, minListDeg: 10 },
-};
-
-// ---------------------------------------------------------------------------
-// Her look (the model reads these; plain numbers, no three.js).
-
-/**
- * Her paint (R23): the hospital ship she was (default, as she sank), or the
- * White Star liner she was built to be and never sailed as.
- */
-export const BRITANNIC_PAINT: "hospital" | "liner" = "hospital";
-
-/**
- * Her funnels' paint in each look (sRGB): White Star buff in both; a sooty
- * lip as a hospital ship (her photographs), a deep black top as a liner
- * (her sisters, the builder's model). Model README, "The Britannic".
- */
-export const BRITANNIC_FUNNEL_PAINTS: Record<
-  "hospital" | "liner",
-  { funnel: number; top: number }
-> = {
-  hospital: { funnel: 0xbb7f3a, top: 0x2b2621 },
-  liner: { funnel: 0xbb7f3a, top: 0x18191c },
+  funnelPaint: BRITANNIC_FUNNEL_PAINTS.hospital,
+  liveries: BRITANNIC_LIVERIES,
 };
 
 /** For the data tests: the hull's half-breadth and the raised tops. */

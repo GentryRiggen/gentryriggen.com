@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { simulate } from "@/lib/shipwreck/sim/run";
 import type { SimEvent } from "@/lib/shipwreck/sim/events";
@@ -59,6 +60,31 @@ describe("the end card for a storm ship", () => {
     expect(card).not.toHaveTextContent("What really happened");
     expect(screen.getByTestId("shipwreck-look")).toHaveTextContent(
       "Look around"
+    );
+  });
+});
+
+describe("the Carpathia's end card", () => {
+  it("reads her sinking time and Snowdrop for her real run", () => {
+    const track = simulate(carpathia, carpathia.realNight);
+    const words = endWords(track, carpathia, 4, { hits: 3 });
+    render(
+      <EndCard
+        words={words}
+        history={historyNote(carpathia)}
+        cause={carpathia.cause}
+        isNew={false}
+        onWatchAgain={() => {}}
+        onWhatIf={() => {}}
+        onLook={() => {}}
+      />
+    );
+    const card = screen.getByTestId("shipwreck-end");
+    expect(card).toHaveAttribute("data-outcome", "sank");
+    expect(card).toHaveTextContent(/Carpathia sank at 11:0\d AM/);
+    expect(card).toHaveTextContent(/after the first torpedo hit/);
+    expect(card).toHaveTextContent(
+      /HMS Snowdrop came and picked up her lifeboats/
     );
   });
 });

@@ -20,6 +20,7 @@ export default class TrackPoses {
   private track: SimTrack | null = null;
   private readonly done: (TrackPose | null)[] = [];
   private readonly xs: number[] = [];
+  private readonly ys: number[] = [];
   private readonly scratch: SimFrame = createFrame();
   private readonly live: TrackPose = { x: 0, z: 0, rotZ: 0 };
   private readonly a: V3 = [0, 0, 0];
@@ -32,14 +33,23 @@ export default class TrackPoses {
     return this.pt;
   }
 
-  /** Hit `k`'s pose: struck at `at` s, at ship-frame `x`. */
-  poseOf(track: SimTrack, k: number, at: number, x: number): TrackPose {
+  /**
+   * Hit `k`'s pose: struck at `at` s, at ship-frame `x`, at her side `y`
+   * (ship frame, + to port; default the Lusitania's starboard side).
+   */
+  poseOf(
+    track: SimTrack,
+    k: number,
+    at: number,
+    x: number,
+    y = -13.4
+  ): TrackPose {
     if (track !== this.track) {
       this.track = track;
       this.done.length = 0;
     }
     const cached = this.done[k];
-    if (cached && this.xs[k] === x) return cached;
+    if (cached && this.xs[k] === x && this.ys[k] === y) return cached;
     const frames = track.frames;
     const reached = frames.length > 0 && frames[frames.length - 1].t >= at;
     let out = this.live;
@@ -47,10 +57,12 @@ export default class TrackPoses {
       out = { x: 0, z: 0, rotZ: 0 };
       this.done[k] = out;
       this.xs[k] = x;
+      this.ys[k] = y;
     }
     const pose = sampleTrackInto(track, at, this.scratch).bodies[0];
-    const hit = shipToThreeInto(pose, this.p1(x, -13.4), this.a);
-    const away = shipToThreeInto(pose, this.p1(x, -14.4), this.b);
+    const hit = shipToThreeInto(pose, this.p1(x, y), this.a);
+    // A metre further out from her side, whichever side it is.
+    const away = shipToThreeInto(pose, this.p1(x, y + Math.sign(y)), this.b);
     const dx = away[0] - hit[0];
     const dz = away[2] - hit[2];
     const len = Math.hypot(dx, dz) || 1;

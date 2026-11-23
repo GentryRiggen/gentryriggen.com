@@ -1,7 +1,14 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { playback } from "@/lib/shipwreck/playback";
 import { SAVE_KEY } from "@/lib/shipwreck/save";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { currentShipwreckSave, resetSaveStore } from "@/lib/shipwreck/useSave";
@@ -324,6 +331,152 @@ describe("Shipwreck: choosing the Edmund Fitzgerald (1.3)", () => {
     expect(screen.getByTestId("shipwreck-end")).toBeInTheDocument();
     expect(document.querySelector(".sw-badge")).toBeNull();
     expect(currentShipwreckSave().seen.endings).toEqual([]);
+  });
+});
+
+describe("Shipwreck: choosing the Carpathia (1.4)", () => {
+  it("plays her real morning on her own clock, words, places and side", async () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-carpathia"));
+    expect(playback.getState().ship).toBe("carpathia");
+    expect(screen.getByTestId("shipwreck-real-night")).toHaveTextContent(
+      "The real morning"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    // Her first two wakes run in from port for 40 s before 9:15 (Task 6).
+    expect(playback.getState().t).toBe(-40);
+    expect(playback.getState().openings).toEqual(carpathia.realNight);
+    // Three torpedoes in her real run (two now, the U-boat's at 10:50).
+    expect(playback.getState().hits).toHaveLength(3);
+    expect(
+      playback.getState().torpedoes.map((h) => [h.t, h.side, h.finisher])
+    ).toEqual([
+      [0, "port", false],
+      [8, "port", false],
+      [5700, "port", true],
+    ]);
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("9:14 AM");
+    expect(screen.getByText(/^Just before the torpedo/)).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /^9:14 AM — Two torpedoes are coming!.*port side/
+    );
+    // The hit at 9:15 AM.
+    act(() => {
+      playback.getState().pump(60_000);
+      playback.getState().seek(0.5);
+    });
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("9:15 AM");
+    expect(screen.getByText("Just hit by a torpedo")).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /^9:15 AM — A torpedo hits her port side, by her boiler room/
+    );
+    // 9:30 AM, a quarter of an hour on.
+    act(() => {
+      playback.getState().pump(60_000);
+      playback.getState().seek(15 * 60);
+    });
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("9:30 AM");
+    expect(
+      screen.getByText("15 min after the first torpedo")
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("shipwreck-places-button"));
+    for (const id of [
+      "bridge",
+      "boiler-room",
+      "engine-room",
+      "hold-5",
+      "dining-saloon",
+      "wireless-room",
+    ])
+      expect(screen.getByTestId(`shipwreck-place-${id}`)).toBeInTheDocument();
+    // The water panel draws only the holes open by now: not the U-boat's
+    // (it reads the store a few times a second).
+    fireEvent.click(screen.getByTestId("shipwreck-panel-button"));
+    const panel = screen.getByTestId("shipwreck-panel");
+    const holesNow = () =>
+      [...panel.querySelectorAll("[data-hole]")].map((h) =>
+        h.getAttribute("data-hole")
+      );
+    await waitFor(() => expect(holesNow().length).toBeGreaterThan(0));
+    const holes = holesNow();
+    expect(holes).not.toContain("hold5");
+    expect(screen.getByTestId("shipwreck-struck-side")).toHaveAttribute(
+      "data-side",
+      "port"
+    );
+  });
+
+  it("her What if with only the U-boat's return counts down to it", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-carpathia"));
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "carpathia"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-chip-boiler"));
+    fireEvent.click(screen.getByTestId("shipwreck-chip-engine"));
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("9:15 AM");
+    expect(
+      screen.getByText("1 h 35 min before the torpedo")
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /A calm summer morning at sea/
+    );
+    expect(currentShipwreckSave().whatIfByShip?.carpathia).toEqual({
+      ids: ["finisher"],
+    });
+  });
+});
+
+describe("Shipwreck: each ship's paint, remembered (1.4)", () => {
+  it("applies the saved livery when her ship is chosen, and her default otherwise", () => {
+    window.localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        v: 1,
+        ship: "carpathia",
+        lastWhatIf: [],
+        liveryByShip: { carpathia: "cunard-1912", lusitania: "junk-0000" },
+      })
+    );
+    playback.getState().reset();
+    render(<Shipwreck />);
+    expect(playback.getState().ship).toBe("carpathia");
+    expect(playback.getState().livery).toBe("cunard-1912");
+    expect(window.__shipwreck?.livery?.()).toBe("cunard-1912");
+    // The Lusitania's saved id is junk: her default, the save untouched.
+    fireEvent.click(screen.getByRole("radio", { name: /Ship: Lusitania/ }));
+    expect(playback.getState().livery).toBe("war-1915");
+    // A ship with one paint: no livery, no button.
+    fireEvent.click(screen.getByRole("radio", { name: /Ship: Titanic/ }));
+    expect(playback.getState().livery).toBeNull();
+    expect(screen.queryByTestId("shipwreck-livery")).toBeNull();
+    // Back to the Carpathia: her 1912 colours again.
+    fireEvent.click(screen.getByRole("radio", { name: /Ship: Carpathia/ }));
+    expect(playback.getState().livery).toBe("cunard-1912");
+  });
+
+  it("the paint button repaints her mid-run and remembers it", () => {
+    window.localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({ v: 1, ship: "lusitania", lastWhatIf: [] })
+    );
+    playback.getState().reset();
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    expect(window.__shipwreck?.getScreen()).toBe("night");
+    expect(playback.getState().livery).toBe("war-1915");
+    fireEvent.click(screen.getByTestId("shipwreck-livery"));
+    expect(playback.getState().livery).toBe("cunard-1907");
+    expect(window.__shipwreck?.getScreen()).toBe("night");
+    expect(currentShipwreckSave().liveryByShip).toEqual({
+      lusitania: "cunard-1907",
+    });
+    // The hook paints her too (as the button does).
+    act(() => window.__shipwreck?.setLivery?.("war-1915"));
+    expect(playback.getState().livery).toBe("war-1915");
   });
 });
 

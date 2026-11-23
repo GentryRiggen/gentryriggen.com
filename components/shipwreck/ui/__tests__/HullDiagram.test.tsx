@@ -1,4 +1,5 @@
 import { render } from "@testing-library/react";
+import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -45,6 +46,20 @@ describe("the diagram's funnels", () => {
       top: paint.funnelTop,
     });
     expect(funnelFills(fitzgerald)).toEqual(["#45201b", "#161616"]);
+  });
+});
+
+describe("the diagram's funnels in another livery", () => {
+  it("wear the livery's paint (the Lusitania's 1907 Cunard red)", () => {
+    const paint = lusitania.liveries![1].funnelPaint!;
+    const { container } = render(
+      <HullDiagram spec={lusitania} title="Side" funnelPaint={paint} />
+    );
+    const fills = [...container.querySelectorAll("rect")]
+      .filter((r) => r.getAttribute("transform") === "skewX(8)")
+      .map((r) => r.getAttribute("fill"));
+    expect(fills.filter((f) => f === "#cc5a28")).toHaveLength(4);
+    expect(fills.filter((f) => f === "#141416")).toHaveLength(4);
   });
 });
 
@@ -120,5 +135,52 @@ describe("a liner's compartment targets", () => {
       "aria-label",
       spotAria(lusitania, "br2", false)
     );
+  });
+});
+
+describe("the Carpathia's diagram (R21)", () => {
+  it("draws no raised poop: only the stern deckhouse, clear of her stern", () => {
+    const { container } = render(<HullDiagram spec={carpathia} title="Side" />);
+    const boxes = [...container.querySelectorAll("rect")].filter(
+      (r) =>
+        r.getAttribute("fill") === "#e7e2d4" &&
+        r.getAttribute("opacity") === "0.75"
+    );
+    expect(boxes).toHaveLength(carpathia.superstructure.length);
+    // Her hull's outline starts at her stern; the aftmost box (the stern
+    // deckhouse, 30 ft long) stands well forward of it.
+    const hull = container.querySelector("clipPath path")!.getAttribute("d")!;
+    const sternPx = Number(hull.slice(1).split(",")[0]);
+    const xs = boxes.map((r) => Number(r.getAttribute("x")));
+    const widths = boxes.map((r) => Number(r.getAttribute("width")));
+    const aft = xs.indexOf(Math.min(...xs));
+    const pxPerM =
+      widths[aft] /
+      (carpathia.superstructure[0].toX - carpathia.superstructure[0].fromX);
+    expect((xs[aft] - sternPx) / pxPerM).toBeGreaterThan(4);
+    expect(widths[aft] / pxPerM).toBeLessThan(12);
+  });
+});
+
+describe("the struck side's label", () => {
+  it("stands clear of the red dashed edge, on a halo over the plan's lines", () => {
+    const { container, getByText, getByTestId } = render(
+      <HullDiagram spec={carpathia} title="Side" />
+    );
+    const edge = getByTestId("shipwreck-struck-side");
+    const edgeY = Number(edge.getAttribute("y1"));
+    const label = getByText("Port: torpedoes hit here");
+    const fontSize = Number(label.getAttribute("font-size"));
+    // Its caps' top (about 0.72 of the font size over the baseline) at
+    // least 5 units under the dashed edge (the holes' zigzag on it reaches
+    // about 2 under).
+    const capTop = Number(label.getAttribute("y")) - 0.72 * fontSize;
+    expect(capTop - edgeY).toBeGreaterThanOrEqual(5);
+    // The plan's bulkhead lines pass behind a halo, not through the words.
+    expect(label.getAttribute("paint-order")).toBe("stroke");
+    expect(label.getAttribute("stroke")).toBe("#111827");
+    expect(
+      container.querySelector("[data-testid='shipwreck-plan']")
+    ).toContainElement(label);
   });
 });

@@ -28,13 +28,13 @@ export interface ModelViewOptions {
     | "bow-port"
     | "gantry";
   stage?: "day" | "night";
+  /**
+   * A livery id (repainted live, no rebuild), e.g. "cunard-1907" or the
+   * Britannic's "liner".
+   */
+  livery?: string;
   /** The bent bow (R12), radians (ships with a hinge; default 0). */
   bowBend?: number;
-  /**
-   * A livery, swapped in place (`handles.setPaint`): the Britannic's
-   * "hospital" or "liner". Default the page's `?paint=`, else her own.
-   */
-  paint?: string;
 }
 
 export interface ModelInfo {
@@ -49,8 +49,9 @@ export interface ModelInfo {
   buildMs: number;
   /** Which ship is on the stage (`spec.id`). */
   ship?: string;
-  /** How long the last paint swap (`setPaint`) took, ms. */
-  paintMs?: number;
+  /** Her livery shown (null: one paint) and the last swap's time, ms. */
+  livery?: string | null;
+  liveryMs?: number;
 }
 
 export interface ShipwreckModelHooks {
@@ -61,7 +62,7 @@ export interface ShipwreckModelHooks {
 /** What `getState()` reports about the night's playback. */
 export interface ScenePlaybackInfo {
   /** The ship on the stage ("titanic" | "lusitania" | "fitzgerald" |
-   *  "britannic"). */
+   *  "carpathia" | "britannic"). */
   ship: string;
   t: number;
   realT: number;
@@ -141,7 +142,7 @@ export interface WalkHookInfo {
 export interface ShipwreckGameHooks {
   /** Picks a ship as the title screen does (and shows the title). */
   setShip(id: string): void;
-  /** The ship chosen ("titanic" | "lusitania" | "fitzgerald" |
+  /** The ship chosen ("titanic" | "lusitania" | "fitzgerald" | "carpathia" |
    *  "britannic"). */
   ship(): string;
   startReal(): void;
@@ -163,6 +164,10 @@ export interface ShipwreckGameHooks {
   ): void;
   /** "sank" | "floated" | "broke-in-two" once the run is done, else null. */
   getOutcome(): string | null;
+  /** Paints the ship on the stage in livery `id`, as the paint button does. */
+  setLivery(id: string): void;
+  /** Her livery now (null: a ship with one paint). */
+  livery(): string | null;
 }
 
 declare global {

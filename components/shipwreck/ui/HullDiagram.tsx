@@ -50,6 +50,8 @@ interface HullDiagramProps {
   onToggle?: (id: string) => void;
   /** A storm ship: the hatches (numbers) whose covers have given way. */
   failedHatches?: ReadonlySet<number>;
+  /** Her funnels' paint (her livery's); default `spec.funnelPaint`. */
+  funnelPaint?: { funnel: number; top: number };
   className?: string;
   title: string;
 }
@@ -62,6 +64,7 @@ export default function HullDiagram({
   selected,
   onToggle,
   failedHatches,
+  funnelPaint,
   className = "",
   title,
 }: HullDiagramProps) {
@@ -71,8 +74,10 @@ export default function HullDiagram({
   const W = (x1 - x0) * S + PAD * 2;
   // A low laker gets a profile only as tall as her funnel (a liner's is
   // the 1.0 height).
+  // A ship with her own torpedoes (the Carpathia, one funnel) likewise:
+  // the editor then keeps Go on screen.
   const topZ =
-    spec.cause === "storm"
+    spec.cause === "storm" || spec.torpedo
       ? Math.ceil(
           Math.max(
             ...spec.funnels.map((f) => f.topZ),
@@ -99,6 +104,8 @@ export default function HullDiagram({
   // hatch covers, the broken vents and rail split, the shoal scrapes), not
   // her compartments; her holds carry cargo.
   const storm = spec.cause === "storm";
+  // A ship with her own torpedoes: the side they strike.
+  const struck = spec.torpedo?.side ?? null;
   const deckOps = storm ? (spec.deckOpenings ?? []) : [];
   const hatches = deckOps.filter((d) => d.kind === "hatch");
   const topside = deckOps.filter(
@@ -202,7 +209,7 @@ export default function HullDiagram({
         />
       )}
       {spec.funnels.map((f, i) => {
-        const paint = spec.funnelPaint;
+        const paint = funnelPaint ?? spec.funnelPaint;
         const h = (f.topZ - (house?.topZ ?? f.baseZ)) * S;
         const shape = {
           x: X(f.x - 3.5),
@@ -477,11 +484,49 @@ export default function HullDiagram({
               fill={on(VENTS_SPOT) ? "#f87171" : "#94a3b8"}
             />
           ))}
-          <text x={X(x0) + 2} y={PY(halfB) + 9} fontSize={9} fill="#94a3b8">
-            Port
+          {/* The side her torpedoes come from (a ship with her own,
+              the Carpathia's port side) is edged red and named so. */}
+          {struck && (
+            <line
+              data-testid="shipwreck-struck-side"
+              data-side={struck}
+              x1={X(x0)}
+              x2={X(x1)}
+              y1={struck === "port" ? PY(halfB) - 0.5 : PY(-halfB) + 0.5}
+              y2={struck === "port" ? PY(halfB) - 0.5 : PY(-halfB) + 0.5}
+              stroke="#f87171"
+              strokeWidth={1.4}
+              strokeDasharray="4 3"
+              opacity={0.8}
+            />
+          )}
+          {/* Clear of the struck edge and the holes' zigzag on it, on a
+              halo of the plan's fill so its lines pass behind the words. */}
+          <text
+            x={X(x0) + 2}
+            y={PY(halfB) + 11.5}
+            fontSize={9}
+            fill={struck === "port" ? "#fca5a5" : "#94a3b8"}
+            stroke="#111827"
+            strokeWidth={3}
+            strokeLinejoin="round"
+            paintOrder="stroke"
+          >
+            {struck === "port" ? "Port: torpedoes hit here" : "Port"}
           </text>
-          <text x={X(x0) + 2} y={PY(-halfB) - 3} fontSize={9} fill="#94a3b8">
-            Starboard
+          <text
+            x={X(x0) + 2}
+            y={PY(-halfB) - 3}
+            fontSize={9}
+            fill={struck === "starboard" ? "#fca5a5" : "#94a3b8"}
+            stroke="#111827"
+            strokeWidth={3}
+            strokeLinejoin="round"
+            paintOrder="stroke"
+          >
+            {struck === "starboard"
+              ? "Starboard: torpedoes hit here"
+              : "Starboard"}
           </text>
         </g>
       )}

@@ -1,8 +1,8 @@
 import { titanic } from "../../ships";
 import type { Opening, ShipSpec } from "../../ships/types";
-import { BOW_PLOUGH_M, END_T } from "../constants";
+import { BOW_PLOUGH_M, END_T, STERN_CRUSH_M } from "../constants";
 import { simulate } from "../run";
-import type { BodyPose, SimTrack } from "../track";
+import { type BodyPose, type SimTrack, sampleTrack } from "../track";
 import { longShip } from "./testShips";
 
 /**
@@ -173,6 +173,135 @@ describe("the sea floor under a ship afloat", () => {
     expect(upright.events).toEqual(onSide.events);
     const end = upright.frames[upright.frames.length - 1];
     expect(Math.abs(end.listDeg)).toBeLessThan(1);
+  });
+});
+
+describe("a whole hull that lands stern first", () => {
+  it("lies along the floor, not nose down through it (the Carpathia's end)", () => {
+    // Flooded aft, the 200 m box plunges stern first and falls through
+    // 250 m of sea onto its after end.
+    const sea = 250;
+    const spec = longShip({ seaDepthM: sea });
+    const [h0, h1] = spec.compartments;
+    const aftHoles: Opening[] = [
+      { ...bowHoles[0], compartmentId: h0.id, x: h0.fromX + 5 },
+      { ...bowHoles[1], compartmentId: h1.id, x: (h1.fromX + h1.toX) / 2 },
+    ];
+    let lowest = Infinity;
+    const track = simulate(spec, aftHoles, {
+      probe: (p) => {
+        if (!p.bodies.some((b) => b.mode === "float"))
+          lowest = Math.min(lowest, p.lowestZ);
+      },
+    });
+    expect(track.outcome).toBe("sank");
+    // It fell (no end touched while it floated), stern down.
+    const lands = eventT(track, "stern-lands") as number;
+    expect(lands).toBeGreaterThanOrEqual(track.sankAtT as number);
+    expect(sampleTrack(track, track.sankAtT as number).trimDeg).toBeLessThan(
+      -20
+    );
+    const last = track.frames[track.frames.length - 1];
+    expect(Math.abs(last.bodies[0].pitch) / (Math.PI / 180)).toBeLessThan(2);
+    expect(lowest).toBeGreaterThanOrEqual(-sea - STERN_CRUSH_M - 1);
+  });
+});
+
+/** The fastest the after end's top moves up or down (m per real second). */
+function sternSpeed(track: SimTrack, spec: ShipSpec, from: number): number {
+  const x = spec.stations[0].x;
+  let fastest = 0;
+  let prev: { realT: number; z: number } | null = null;
+  for (const f of track.frames) {
+    if (f.t < from) continue;
+    const z = earthZ(f.bodies[0], x, 0, spec.depth);
+    if (prev && f.realT > prev.realT)
+      fastest = Math.max(
+        fastest,
+        Math.abs(z - prev.z) / (f.realT - prev.realT)
+      );
+    prev = { realT: f.realT, z };
+  }
+  return fastest;
+}
+
+describe("a whole hull that swings down about its bow on the floor (pivotDrag, R22)", () => {
+  // The 200 m box flooded forward in 150 m of sea: her bow on the floor
+  // while her stern still floats, her stern under at about 46° by the head.
+  const sea = 150;
+  const plain = longShip({ seaDepthM: sea });
+  const ruled = longShip({
+    seaDepthM: sea,
+    extra: { pivotDrag: true, descentTimeScale: 1 },
+  });
+  /**
+   * The rule's terminal rate at level (its fastest): her weight in water
+   * (STEEL_BUOYANCY 0.2) about the contact at her bow against pressure
+   * drag on her plan, ω = √(8 W′ d / (ρ Cd B L⁴)), with W′ = 0.8 × 29,520 t
+   * × g, d = 100 m, B = 24 m, L = 200 m, Cd 1: 0.069 rad/s, her stern's top
+   * 13.7 m/s. The 1.0 rule swings it down at over 20 m/s.
+   */
+  const LIMIT_MS = 15;
+  let lowest = Infinity;
+  let track: SimTrack;
+  beforeAll(() => {
+    track = simulate(ruled, bowHoles, {
+      probe: (p) => {
+        if (!p.bodies.some((b) => b.mode === "float"))
+          lowest = Math.min(lowest, p.lowestZ);
+      },
+    });
+  });
+
+  it("her stern settles no faster than the water lets it", () => {
+    const under = track.sankAtT as number;
+    expect(sternSpeed(track, ruled, under)).toBeLessThanOrEqual(LIMIT_MS);
+    // Without the rule the same hull swings down like a door.
+    const old = simulate(plain, bowHoles);
+    expect(sternSpeed(old, plain, old.sankAtT as number)).toBeGreaterThan(
+      LIMIT_MS
+    );
+  });
+
+  it("takes at least 20 s from stern-under to rest, in real time", () => {
+    const under = track.sankAtT as number;
+    expect(track.outcome).toBe("sank");
+    expect(track.endT - under).toBeGreaterThanOrEqual(20);
+    // Shown time runs at real time once she is under.
+    const after = track.frames.filter((f) => f.t >= under);
+    for (let i = 1; i < after.length; i += 1)
+      expect(after[i].t - after[i - 1].t).toBeCloseTo(
+        after[i].realT - after[i - 1].realT,
+        6
+      );
+  });
+
+  it("logs her stern landing when her stern reaches the floor, after her bow", () => {
+    const bow = eventT(track, "bow-lands") as number;
+    const stern = eventT(track, "stern-lands") as number;
+    expect(stern).toBeGreaterThan(bow);
+    expect(stern).toBeGreaterThan((track.sankAtT as number) + 5);
+    expect(stern).toBeLessThanOrEqual(track.endT);
+    // The 1.0 rule logs it as she goes under.
+    const old = simulate(plain, bowHoles);
+    expect(eventT(old, "stern-lands")).toBeLessThan(
+      (old.sankAtT as number) + 1
+    );
+  });
+
+  it("goes nowhere through the floor, with finite poses, inside endT", () => {
+    expect(lowest).toBeGreaterThanOrEqual(-sea - BOW_PLOUGH_M - 0.5);
+    expect(track.endT).toBeLessThanOrEqual(END_T);
+    for (const f of track.frames)
+      for (const b of f.bodies)
+        for (const v of [b.x, b.y, b.z, b.pitch, b.roll, b.yaw])
+          expect(Number.isFinite(v)).toBe(true);
+    // She ends where the 1.0 rule leaves her: the same rest.
+    const old = simulate(plain, bowHoles);
+    const a = track.frames[track.frames.length - 1].bodies[0];
+    const b = old.frames[old.frames.length - 1].bodies[0];
+    expect(a.pitch).toBeCloseTo(b.pitch, 2);
+    expect(a.z).toBeCloseTo(b.z, 0);
   });
 });
 

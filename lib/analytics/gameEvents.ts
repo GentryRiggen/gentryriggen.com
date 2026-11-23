@@ -105,6 +105,7 @@ const SHIPWRECK_SHIPS = [
   "titanic",
   "lusitania",
   "fitzgerald",
+  "carpathia",
   "britannic",
 ] as const;
 
@@ -375,7 +376,8 @@ export const GAME_EVENTS = {
       // compartments (Titanic 16, Lusitania 12, Britannic 16) or, for the
       // storm-sunk Fitzgerald, hatches, vents and shoal strips (25). The most
       // any ship offers is SHIPWRECK_MAX_OPENED; analytics.test.ts fails if
-      // one exceeds it.
+      // one exceeds it. The Carpathia's finishing torpedo counts as one spot
+      // opened (her nine spots plus the finisher, 10 at most).
       opened: { kind: "int", min: 0, max: SHIPWRECK_MAX_OPENED },
       ship: { kind: "enum", values: SHIPWRECK_SHIPS, optional: true },
     },

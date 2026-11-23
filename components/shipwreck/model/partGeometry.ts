@@ -296,14 +296,16 @@ export function boatGeometry(
 
 /**
  * A cowl ventilator, about 3 m tall at scale 1, mouth facing +x; its
- * mouth lined `lining` (default near black, the Titanic's).
+ * mouth lined `lining` (default near black, the Titanic's), its outside
+ * `body` (default white).
  */
 export function ventGeometry(
   q: QualitySettings,
-  lining = 0x2a1a14
+  lining = 0x2a1a14,
+  body: number = COLORS.white
 ): BufferGeometry {
   const buf = new GeoBuffer({ color: true });
-  const white = rgb(COLORS.white);
+  const white = rgb(body);
   const seg = Math.max(8, q.cylSeg);
   cylinder(buf, [0, 0, 0], [0, 0, 0.35], 0.55, 0.5, seg, white, {
     start: false,
@@ -335,10 +337,11 @@ export function ventGeometry(
  */
 export function drumVentGeometry(
   q: QualitySettings,
-  lining = 0x2a1a14
+  lining = 0x2a1a14,
+  body: number = COLORS.white
 ): BufferGeometry {
   const buf = new GeoBuffer({ color: true });
-  const white = rgb(COLORS.white);
+  const white = rgb(body);
   const seg = Math.max(10, q.cylSeg + 2);
   cylinder(buf, [0, 0, 0], [0, 0, 0.3], 1.0, 0.95, seg, white, {
     start: false,

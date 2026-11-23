@@ -14,7 +14,15 @@ import {
   STORM_START_SPEED,
   slowMoSpeed,
   startSpeed,
+  inOwnHitWindow,
 } from "../playback";
+import { carpathia, CARPATHIA_HIT_T } from "../ships/carpathia";
+import {
+  FINISHER_SPOT,
+  torpedoHits,
+  whatIfOpenings,
+  whatIfRealIds,
+} from "../sim/run";
 import type { Speed } from "../types";
 import { walkInput } from "../walk";
 import { britannic } from "../ships/britannic";
@@ -672,6 +680,145 @@ describe("playback: more than one torpedo, and a storm (1.3)", () => {
     ]);
     expect(HIT_STAGGER_S).toBeGreaterThanOrEqual(2);
     expect(HIT_STAGGER_S).toBeLessThanOrEqual(6);
+  });
+});
+
+describe("the paint (livery) in the store", () => {
+  it("changes only the livery: the run's time, playing state and frames stay", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(1000, 1000),
+    });
+    store.getState().start(titanic, titanic.realNight);
+    store.getState().pump();
+    store.getState().setSpeed(10, 0);
+    store.getState().play();
+    store.getState().tick(5, 100);
+    const before = store.getState();
+    expect(before.livery).toBeNull();
+    store.getState().setLivery("cunard-1912");
+    const after = store.getState();
+    expect(after.livery).toBe("cunard-1912");
+    expect(after.t).toBe(before.t);
+    expect(after.realT).toBe(before.realT);
+    expect(after.playing).toBe(true);
+    expect(after.track).toBe(before.track);
+    expect(after.computedT).toBe(before.computedT);
+    expect(after.snapId).toBe(before.snapId);
+    expect(after.speed).toBe(before.speed);
+    // Playing on from where it was.
+    store.getState().tick(1, 100);
+    expect(store.getState().t).toBe(before.t + 10);
+  });
+
+  it("goes back to the new ship's default when the ship changes", () => {
+    const store = createPlaybackStore();
+    store.getState().setLivery("cunard-1907");
+    store.getState().setShip("carpathia");
+    expect(store.getState().livery).toBeNull();
+    store.getState().setLivery("cunard-1912");
+    store.getState().reset();
+    expect(store.getState().livery).toBeNull();
+  });
+});
+
+describe("playback: a ship with her own hits (the Carpathia, Task 6)", () => {
+  const real = torpedoHits(carpathia, whatIfRealIds(carpathia));
+
+  it("keeps each torpedo's place, time and side for the scene", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    store.getState().start(carpathia, carpathia.realNight, { torpedoes: real });
+    const s = store.getState();
+    expect(s.torpedoes).toEqual(real);
+    expect(s.torpedoes.map((h) => [h.t, h.side])).toEqual([
+      [0, "port"],
+      [8, "port"],
+      [CARPATHIA_HIT_T.third, "port"],
+    ]);
+    // The x's aft first (the HUD and captions count them), as 1.3's.
+    expect(s.hits).toEqual(real.map((h) => h.x).sort((a, b) => a - b));
+    expect(s.hitTimesS).toEqual([0, 8, CARPATHIA_HIT_T.third]);
+    // Her two 9:15 AM wakes run in for the 40 s before the hit.
+    expect(s.minT).toBe(-40);
+    store.getState().setShip("titanic");
+    expect(store.getState().torpedoes).toEqual([]);
+    expect(store.getState().hitTimesS).toBeNull();
+  });
+
+  it("plays no run-in for the U-boat alone (its wake comes at 10:50 AM)", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    const ids = [FINISHER_SPOT];
+    store.getState().start(carpathia, whatIfOpenings(carpathia, ids), {
+      torpedoes: torpedoHits(carpathia, ids),
+    });
+    expect(store.getState().minT).toBe(0);
+    expect(store.getState().t).toBe(0);
+    expect(store.getState().torpedoes.map((h) => h.t)).toEqual([
+      CARPATHIA_HIT_T.third,
+    ]);
+  });
+
+  it("leaves the Lusitania's 1.1 path: starboard, a few seconds apart, the old ×1 rule", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(100, 100),
+    });
+    store
+      .getState()
+      .start(lusitania, lusitania.realNight, { hits: [10, 40, 67.7] });
+    const s = store.getState();
+    expect(s.torpedoes).toEqual(
+      [10, 40, 67.7].map((x, k) => ({
+        x,
+        t: hitTimeS(k, 3),
+        side: "starboard",
+        finisher: false,
+      }))
+    );
+    expect(s.hitTimesS).toBeNull();
+    expect(s.minT).toBe(-40);
+    // From the game's torpedoHits: the same hits.
+    const ids = whatIfRealIds(lusitania);
+    store.getState().start(lusitania, lusitania.realNight, {
+      torpedoes: torpedoHits(lusitania, ids),
+    });
+    expect(store.getState().hits).toEqual(
+      torpedoHits(lusitania, ids).map((h) => h.x)
+    );
+    expect(store.getState().hitTimesS).toBeNull();
+  });
+
+  it("holds ×1 around each of her hits on the cinematic camera, 10:50 AM too", () => {
+    const track = fakeTrack(7000, {
+      events: [
+        { kind: "collision", t: 0, realT: 0 },
+        { kind: "torpedo-hit", t: 8, realT: 8, index: 2 },
+        { kind: "torpedo-hit", t: 5700, realT: 5700, index: 3 },
+      ],
+    });
+    const run = {
+      track,
+      speed: 100 as const,
+      camera: "cinematic" as const,
+      speedTouchedAt: -Infinity,
+      openings: carpathia.realNight,
+      hits: [1, 2, 3],
+      hitTimesS: [0, 8, 5700],
+    };
+    expect(effectiveSpeed({ ...run, t: -30 }, 1000)).toBe(100);
+    expect(effectiveSpeed({ ...run, t: -15 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 27 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 30 }, 1000)).toBe(100);
+    expect(effectiveSpeed({ ...run, t: 3000 }, 1000)).toBe(100);
+    expect(effectiveSpeed({ ...run, t: 5675 }, 1000)).toBe(100);
+    expect(effectiveSpeed({ ...run, t: 5685 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 5719 }, 1000)).toBe(1);
+    expect(effectiveSpeed({ ...run, t: 5721 }, 1000)).toBe(100);
+    // Not on a run with no holes, nor on another camera.
+    expect(inOwnHitWindow(track, [], 0, [0])).toBe(false);
+    expect(effectiveSpeed({ ...run, camera: "orbit", t: 0 }, 1000)).toBe(100);
   });
 });
 

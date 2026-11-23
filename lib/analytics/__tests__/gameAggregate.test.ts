@@ -279,6 +279,7 @@ describe("summarizeShipwreck", () => {
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "titanic" }),
       ev("shipwreck_start", { mode: "whatif", opened: 1, ship: "lusitania" }),
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "fitzgerald" }),
+      ev("shipwreck_start", { mode: "real", opened: 0, ship: "carpathia" }),
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "britannic" }),
       ev("shipwreck_end", { mode: "real", outcome: "sank", minutes: 18 }),
       ev("shipwreck_end", {
@@ -299,15 +300,23 @@ describe("summarizeShipwreck", () => {
         minutes: 30,
         ship: "lusitania",
       }),
+      ev("shipwreck_end", {
+        mode: "real",
+        outcome: "sank",
+        minutes: 104,
+        ship: "carpathia",
+      }),
     ]);
     expect(summary.ships).toEqual([
       { key: "titanic", views: 2 },
       { key: "britannic", views: 1 },
+      { key: "carpathia", views: 1 },
       { key: "fitzgerald", views: 1 },
       { key: "lusitania", views: 1 },
     ]);
     expect(summary.shipEnds).toEqual([
       { key: "britannic · sank", views: 1 },
+      { key: "carpathia · sank", views: 1 },
       { key: "fitzgerald · sank", views: 1 },
       { key: "lusitania · floated", views: 1 },
       { key: "titanic · sank", views: 1 },
@@ -322,6 +331,7 @@ describe("summarizeShipwreck", () => {
       ev("shipwreck_start", { mode: "whatif", opened: 3, ship: "lusitania" }),
       ev("shipwreck_start", { mode: "whatif", opened: 22, ship: "fitzgerald" }),
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "fitzgerald" }),
+      ev("shipwreck_start", { mode: "whatif", opened: 4, ship: "carpathia" }),
       // A stored value no client sends (the rules reject it) sorts after.
       ev("shipwreck_start", {
         mode: "whatif",
@@ -335,6 +345,7 @@ describe("summarizeShipwreck", () => {
       { ship: "titanic", average: 3 },
       { ship: "lusitania", average: 2 },
       { ship: "fitzgerald", average: 22 },
+      { ship: "carpathia", average: 4 },
       { ship: "britannic", average: 6 },
       { ship: "andrea-doria", average: 9 },
     ]);

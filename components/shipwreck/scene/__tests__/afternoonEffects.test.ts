@@ -3,13 +3,18 @@ import {
   createPlaybackStore,
   hitTimeS,
 } from "@/lib/shipwreck/playback";
+import { recipeFor } from "@/components/shipwreck/model/shipModel";
 import { BRITANNIC_BOATS, britannic } from "@/lib/shipwreck/ships/britannic";
+import { carpathia, CARPATHIA_BOATS } from "@/lib/shipwreck/ships/carpathia";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
-import { simulate } from "@/lib/shipwreck/sim/run";
+import { simulate, torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
 import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import {
   boatAwayAt,
+  boatWreckedAt,
   columnOpen,
+  columnOpenAt,
+  columnSideY,
   DAY_PARTICLES,
   hasSecondExplosion,
   hitColumnTimes,
@@ -53,6 +58,46 @@ describe("the torpedo columns' window", () => {
   it("12 hits stretch well past the old 21 s gate", () => {
     expect(columnOpen(hitTimeS(11, 12) + 1, 12)).toBe(true);
     expect(hitTimeS(11, 12)).toBeGreaterThan(21);
+  });
+});
+
+describe("the Carpathia's hits (Task 6)", () => {
+  const real = torpedoHits(carpathia, whatIfRealIds(carpathia));
+
+  it("raises a column at each hit's own time: 9:15 AM twice, 10:50 AM", () => {
+    const times = real.map((h) => h.t);
+    expect(columnOpenAt(-1, times)).toBe(false);
+    expect(columnOpenAt(0, times)).toBe(true);
+    expect(columnOpenAt(8 + 20.9, times)).toBe(true);
+    expect(columnOpenAt(8 + 21, times)).toBe(false);
+    expect(columnOpenAt(3000, times)).toBe(false);
+    expect(columnOpenAt(5699, times)).toBe(false);
+    expect(columnOpenAt(5700, times)).toBe(true);
+    expect(columnOpenAt(5720.9, times)).toBe(true);
+    expect(columnOpenAt(5721, times)).toBe(false);
+  });
+
+  it("on the side each struck: her port side, the Lusitania's starboard as 1.1", () => {
+    expect(columnSideY(carpathia, "port")).toBeCloseTo(10.1, 6);
+    expect(columnSideY(lusitania, "starboard")).toBe(-13.6);
+  });
+
+  it("wrecks port boats 8 and 10 at the engine-room hit, and only then", () => {
+    const flagged = CARPATHIA_BOATS.filter((b) => b.wreckedAtT !== undefined);
+    expect(flagged.map((b) => b.label).sort()).toEqual(["10", "8"]);
+    // The model's boats carry the flag through to the scene.
+    const boats = recipeFor(carpathia).boats;
+    const wrecked = boats.filter((b) => boatWreckedAt(b, real) !== null);
+    expect(wrecked.map((b) => b.label).sort()).toEqual(["10", "8"]);
+    for (const b of wrecked) expect(boatWreckedAt(b, real)).toBe(8);
+    // A What if that spares the engine room spares them.
+    const boilerOnly = torpedoHits(carpathia, ["boiler"]);
+    expect(boats.some((b) => boatWreckedAt(b, boilerOnly) !== null)).toBe(
+      false
+    );
+    // Other ships' boats are never wrecked.
+    for (const b of recipeFor(lusitania).boats)
+      expect(boatWreckedAt(b, real)).toBeNull();
   });
 });
 

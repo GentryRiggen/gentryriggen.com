@@ -7,6 +7,7 @@ import {
   SRGBColorSpace,
   type Texture,
 } from "three";
+import { DAZZLE_COLORS, dazzleShapes } from "./dazzle";
 
 /**
  * The model's procedural textures, drawn once into canvases (nothing is
@@ -374,5 +375,84 @@ export function releaseShipTextures(name = "TITANIC", style?: NameStyle): void {
   if (users === 0 && cache) {
     cache.dispose();
     cache = null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dazzle (the Carpathia's 1918 paint).
+
+/** The dazzle texture's frame: the hull's length and the height it covers. */
+export interface DazzleFrame {
+  /** The hull's after end (texture u = 0) and its length, m. */
+  x0: number;
+  length: number;
+  /** Height covered from the keel up, m. */
+  height: number;
+}
+
+/**
+ * Both sides' dazzle in one texture, 1024 x 256: the port side in the top
+ * half, the starboard in the bottom, u along the hull from its after end,
+ * v up from the keel within each half (`dazzle.ts` holds the shapes).
+ */
+function dazzleMap(frame: DazzleFrame): Texture {
+  const W = 1024;
+  const H = 256;
+  const [c, ctx] = canvas(W, H);
+  const half = H / 2;
+  (["port", "starboard"] as const).forEach((side, k) => {
+    // Canvas rows run down: the keel at the bottom of each half.
+    const top = k * half;
+    const px = (s: number) => (s / frame.length) * W;
+    const py = (z: number) => top + half - (z / frame.height) * half;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, top, W, half);
+    ctx.clip();
+    for (const shape of dazzleShapes(side, frame.length, frame.height)) {
+      ctx.fillStyle = hexCss(DAZZLE_COLORS[shape.color]);
+      ctx.beginPath();
+      shape.pts.forEach(([s, z], i) => {
+        if (i === 0) ctx.moveTo(px(s), py(z));
+        else ctx.lineTo(px(s), py(z));
+      });
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+  const t = new CanvasTexture(c);
+  // Raw sRGB bytes: the shaders decode them (`DAZZLE_GLSL` in
+  // materials.ts), the same in the hull's and the walls' materials.
+  t.colorSpace = NoColorSpace;
+  t.anisotropy = 8;
+  t.minFilter = LinearMipmapLinearFilter;
+  return t;
+}
+
+const dazzles = new Map<string, { texture: Texture; users: number }>();
+
+/** The dazzle texture for a hull (made on first use, shared, counted). */
+export function acquireDazzleTexture(frame: DazzleFrame): Texture {
+  const key = `${frame.x0}|${frame.length}|${frame.height}`;
+  let d = dazzles.get(key);
+  if (!d) {
+    d = { texture: dazzleMap(frame), users: 0 };
+    dazzles.set(key, d);
+  }
+  d.users += 1;
+  return d.texture;
+}
+
+/** Frees it when its last user lets go. */
+export function releaseDazzleTexture(texture: Texture): void {
+  for (const [key, d] of dazzles) {
+    if (d.texture !== texture) continue;
+    d.users -= 1;
+    if (d.users <= 0) {
+      d.texture.dispose();
+      dazzles.delete(key);
+    }
+    return;
   }
 }
