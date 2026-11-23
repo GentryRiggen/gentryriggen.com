@@ -7,6 +7,7 @@ import {
   type TorpedoSpec,
   hullOpenings,
 } from "./types";
+import { linerFun } from "./funPaints";
 import { FINISHER_SPOT, whatIfOpenings } from "../sim/run";
 
 /**
@@ -682,6 +683,12 @@ export const CARPATHIA_LIVERIES: readonly Livery[] = [
     ],
     swatches: [0x1d1f22, 0xe6e7e3],
     funnelPaint: CARPATHIA_FUNNEL_PAINTS.dazzle,
+    look: {
+      hull: 0x1d1f22,
+      funnel: CARPATHIA_FUNNEL_PAINTS.dazzle.funnel,
+      top: CARPATHIA_FUNNEL_PAINTS.dazzle.top,
+      dazzle: true,
+    },
   },
   {
     id: "cunard-1912",
@@ -696,7 +703,15 @@ export const CARPATHIA_LIVERIES: readonly Livery[] = [
     ],
     swatches: [CARPATHIA_FUNNEL_PAINTS.cunard.funnel, 0x141416],
     funnelPaint: CARPATHIA_FUNNEL_PAINTS.cunard,
+    look: {
+      hull: 0x121315,
+      funnel: CARPATHIA_FUNNEL_PAINTS.cunard.funnel,
+      top: CARPATHIA_FUNNEL_PAINTS.cunard.top,
+    },
   },
+  // Just for fun (1.7), over her 1912 shape: Cunard red and war grey were
+  // really hers.
+  ...linerFun(["fun-cunard", "fun-war-grey"], "cunard-1912"),
 ];
 
 /**

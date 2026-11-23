@@ -825,7 +825,7 @@ test("the Carpathia's real morning reaches the end card at ×100 @smoke", async 
   expect(errors).toEqual([]);
 });
 
-test("the Carpathia's paint button swaps her livery without restarting the run", async ({
+test("the Carpathia's paint tray swaps her livery without restarting the run", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -840,12 +840,18 @@ test("the Carpathia's paint button swaps her livery without restarting the run",
     .toBeGreaterThan(-39);
   await page.evaluate(() => window.__shipwreck!.pause!());
   const before = await page.evaluate(() => window.__shipwreck!.livery!());
-  const paint = page.getByTestId("shipwreck-livery");
-  await expect(paint).toBeVisible();
-  const next = await paint.getAttribute("data-next");
+  const brush = page.getByTestId("shipwreck-livery");
+  await expect(brush).toBeVisible();
+  await brush.click();
+  await expect(page.getByTestId("shipwreck-paint-tray")).toBeVisible();
+  // A fun paint (1.7): the tray stays open to compare.
+  const next = "fun-blue-funnel";
   expect(next).not.toBe(before);
   const t0 = await page.evaluate(() => window.__shipwreck!.getState!().t);
-  await paint.click();
+  await page
+    .locator(`[data-testid="shipwreck-paint"][data-livery="${next}"]`)
+    .click();
+  await expect(page.getByTestId("shipwreck-paint-tray")).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => window.__shipwreck!.livery!()))
     .toBe(next);

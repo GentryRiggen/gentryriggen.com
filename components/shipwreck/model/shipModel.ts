@@ -14,7 +14,11 @@ import {
   type Object3D,
   type Texture,
 } from "three";
-import { defaultLivery, type ShipSpec } from "@/lib/shipwreck/ships/types";
+import {
+  defaultLivery,
+  liveryOfSpec,
+  type ShipSpec,
+} from "@/lib/shipwreck/ships/types";
 import type { ShipPart } from "./breakCut";
 import {
   QUALITY,
@@ -42,6 +46,7 @@ import {
 } from "./britannicLivery";
 import { britannicRecipe, type BritannicPaint } from "./britannicRecipe";
 import { fitzgeraldRecipe } from "./fitzgeraldRecipe";
+import { withFunPaint } from "./funPaint";
 import { lusitaniaRecipe } from "./lusitaniaRecipe";
 import {
   benchGeometry,
@@ -186,8 +191,16 @@ export function recipeFor(spec: ShipSpec, livery?: string | null): ShipRecipe {
     recipes.set(spec, byLivery);
   }
   const own = defaultLivery(spec);
-  const key = own === null ? "" : (livery ?? own);
+  // Only these ships' recipes read a livery; the others' fun paints do.
+  const reads = ["lusitania", "carpathia", "britannic"].includes(spec.id);
+  const fun = liveryOfSpec(spec, livery)?.fun;
+  const key = own === null ? "" : fun || reads ? (livery ?? own) : own;
   let r = byLivery.get(key);
+  if (!r && fun) {
+    // A fun paint: her recipe in the livery it is painted over, recoloured.
+    r = withFunPaint(recipeFor(spec, fun.from ?? own), fun.paint);
+    byLivery.set(key, r);
+  }
   if (!r) {
     const id = key || undefined;
     r =
@@ -410,6 +423,8 @@ function buildModel(
   // too (its recipe and its triangle lists) to take its colours, so a
   // swap is a copy of numbers, never a rebuild. (The Britannic swaps her
   // two paints her own way: britannicLivery.ts.)
+  // Fun paints (1.7) are built the first time she wears one (`prepare`):
+  // her real ones at the build, as before, so a fun list costs no load time.
   const listed =
     spec.id !== "britannic" && spec.liveries && spec.liveries.length >= 2
       ? spec.liveries.map((l) => l.id)
@@ -419,8 +434,9 @@ function buildModel(
   if (base !== null && options.livery && !liveryIds.includes(options.livery))
     liveryIds.push(options.livery);
   const recipe = modelRecipeFor(spec, base);
+  const isFun = (id: string) => liveryOfSpec(spec, id)?.fun !== undefined;
   const alts = liveryIds
-    .filter((id) => id !== base)
+    .filter((id) => id !== base && !isFun(id))
     .map((id) => ({ id, r: recipeFor(spec, id) }));
   const q = QUALITY[quality];
   const shipName = recipe.paint?.name ?? "TITANIC";
@@ -801,7 +817,10 @@ function buildModel(
     variants.push({ obj, ids: new Set([id]) });
   }
 
-  for (const a of alts) {
+  const prepared = new Set<string>(base === null ? [] : [base]);
+  /** Takes livery `a`'s colours (and its own meshes where shapes differ). */
+  function prepare(a: { id: string; r: ShipRecipe }) {
+    prepared.add(a.id);
     hullPaints.set(a.id, hullPaintOf(a.r));
     if (JSON.stringify(a.r.boats) !== JSON.stringify(recipe.boats))
       throw liveryShapeError(a.id, "boats");
@@ -882,6 +901,7 @@ function buildModel(
       }
     });
   }
+  for (const a of alts) prepare(a);
   // Variants first shown only in another livery start hidden; the base's
   // own show (they are in every livery but those that differ).
   let livery = base;
@@ -889,6 +909,7 @@ function buildModel(
   function setLivery(id: string) {
     if (livery === null || id === livery || !liveryIds.includes(id)) return;
     const t0 = performance.now();
+    if (!prepared.has(id)) prepare({ id, r: recipeFor(spec, id) });
     for (const s of swaps) {
       const next = s.by.get(id) ?? s.by.get(base!)!;
       (s.attr.array as Float32Array).set(next);

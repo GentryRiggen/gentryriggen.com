@@ -6,6 +6,7 @@ import type {
   PortholeRow,
   ShipSpec,
 } from "./types";
+import { linerFun } from "./funPaints";
 
 /**
  * RMS Lusitania on the afternoon of 7 May 1915.
@@ -640,6 +641,11 @@ export const LUSITANIA_LIVERIES: readonly Livery[] = [
     ],
     swatches: [LUSITANIA_FUNNEL_PAINT.war.funnel, 0xb8913f],
     funnelPaint: LUSITANIA_FUNNEL_PAINT.war,
+    look: {
+      hull: 0x121315,
+      funnel: LUSITANIA_FUNNEL_PAINT.war.funnel,
+      top: LUSITANIA_FUNNEL_PAINT.war.top,
+    },
   },
   {
     id: "cunard-1907",
@@ -656,7 +662,14 @@ export const LUSITANIA_LIVERIES: readonly Livery[] = [
     ],
     swatches: [LUSITANIA_FUNNEL_PAINT.cunard.funnel, 0x141416],
     funnelPaint: LUSITANIA_FUNNEL_PAINT.cunard,
+    look: {
+      hull: 0x121315,
+      funnel: LUSITANIA_FUNNEL_PAINT.cunard.funnel,
+      top: LUSITANIA_FUNNEL_PAINT.cunard.top,
+    },
   },
+  // Just for fun (1.7), over her 1907 shape: Cunard red is really hers.
+  ...linerFun(["fun-cunard"], "cunard-1907"),
 ];
 
 export const lusitania: ShipSpec = {

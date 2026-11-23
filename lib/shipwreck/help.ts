@@ -17,13 +17,17 @@ function walkLines(ship: ShipSpec): string[] {
 function liveryLines(ship: ShipSpec): string[] {
   return resolveLivery(ship, null) !== null
     ? [
-        "The paint brush changes her paint, even while she sinks: her colours on the day, or her colours from another year.",
+        "The paint brush opens her paints, even while she sinks. The anchor row is paint she really wore; the sparkle row is just for fun.",
       ]
     : [];
 }
 
 /** What each livery was, in a young player's words. */
 const LIVERY_WORDS: Readonly<Record<string, string>> = {
+  "white-star-1912":
+    "Her real White Star colours: a black hull with a thin gold line, white decks and buff funnels with black tops.",
+  "columbia-1975":
+    "Her real colours: a dark red hull, white cabins and a dark red stack with a buff band, a red star and a black top.",
   "war-1915":
     "In 1915 there was a war. She sailed with her funnels painted dark, so she was harder to see. Her name stayed on her bow in gold letters.",
   "cunard-1907":
@@ -46,8 +50,11 @@ export function liveryHelp(ship: ShipSpec, id: string | null): Help | null {
   return {
     title: livery.label,
     lines: [
-      LIVERY_WORDS[livery.id] ?? `${ship.name} as she was in ${livery.year}.`,
-      "Tap the paint brush again to change her paint.",
+      livery.fun
+        ? "Just for fun: real ships of her day wore colours like these, but she never did."
+        : (LIVERY_WORDS[livery.id] ??
+          `${ship.name} as she was in ${livery.year}.`),
+      "Tap another paint to compare.",
     ],
   };
 }

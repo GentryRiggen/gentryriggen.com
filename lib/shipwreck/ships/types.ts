@@ -249,6 +249,62 @@ export interface Livery {
   swatches: readonly [number, number];
   /** Her funnels' paint in it (the hull diagram's and the title's). */
   funnelPaint?: { funnel: number; top: number };
+  /**
+   * The paint tray's little ship: her hull, her funnels and their tops
+   * (sRGB). `band`: a stripe along the hull (the hospital ship's green);
+   * `dazzle`: drawn striped.
+   */
+  look: LiveryLook;
+  /**
+   * A paint just for fun: colours real ships of her kind wore, never hers.
+   * Painted over livery `from` (default her default): her shape in that
+   * livery, these colours on her hull, funnels, masts and boats.
+   */
+  fun?: { from?: string; paint: FunPaint };
+}
+
+/** The paint tray's little ship (sRGB). */
+export interface LiveryLook {
+  hull: number;
+  funnel: number;
+  top: number;
+  band?: number;
+  dazzle?: true;
+}
+
+/**
+ * A fun paint's colours (sRGB): the hull's topsides, its bottom under the
+ * paint line and boot-top (default hers), the line under the sheer (null:
+ * none), the funnels and their tops and bands, the masts and the
+ * lifeboats (default hers).
+ */
+export interface FunPaint {
+  topsides: number;
+  bottom: number;
+  boot?: number;
+  sheerLine: number | null;
+  funnel: number;
+  funnelTop: number;
+  mast?: number;
+  boat?: { hull: number; bottom: number };
+}
+
+/** Her real paints (the tray's first row), in her list's order. */
+export function realLiveries(spec: ShipSpec): readonly Livery[] {
+  return (spec.liveries ?? []).filter((l) => !l.fun);
+}
+
+/** Her fun paints (the tray's second row), in her list's order. */
+export function funLiveries(spec: ShipSpec): readonly Livery[] {
+  return (spec.liveries ?? []).filter((l) => l.fun);
+}
+
+/** Her livery `id`, or undefined. */
+export function liveryOfSpec(
+  spec: ShipSpec,
+  id: string | null | undefined
+): Livery | undefined {
+  return spec.liveries?.find((l) => l.id === id);
 }
 
 /** The ship's default livery's id, or null when she has no choice. */

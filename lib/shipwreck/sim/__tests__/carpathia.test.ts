@@ -383,7 +383,7 @@ describe("the Carpathia's data", () => {
   });
 
   it("wears dazzle with a grey funnel by default; her 1912 livery keeps her Cunard colours", () => {
-    expect(CARPATHIA_LIVERIES.map((l) => l.id)).toEqual([
+    expect(CARPATHIA_LIVERIES.filter((l) => !l.fun).map((l) => l.id)).toEqual([
       "dazzle-1918",
       "cunard-1912",
     ]);

@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.7.0",
+    date: "2026-11-22",
+    title: "A paint box for every ship",
+    highlights: [
+      "The paint brush now opens a paint box: tap a little ship to repaint her, even while she sinks. The box stays open so you can try one after another",
+      "The top row (the anchor) is paint she really wore. The bottom row (the sparkles) is just for fun: colours other real ships of her day wore, like Cunard's red funnels, Blue Funnel's blue, a lavender hull or a royal yacht's white",
+      "Every ship has a paint box now, the Titanic and the Edmund Fitzgerald too. The Fitzgerald tries other lake freighters' colours: black, grey, blue or green hulls",
+    ],
+  },
+  {
     version: "1.6.1",
     date: "2026-11-22",
     title: "Carpathia fixes",

@@ -41,7 +41,9 @@ export type IconName =
   | "camera"
   | "sound"
   | "mute"
-  | "brush";
+  | "brush"
+  | "anchor"
+  | "sparkle";
 
 const PATHS: Record<IconName, string> = {
   back: "M15 5l-7 7 7 7",
@@ -106,6 +108,12 @@ const PATHS: Record<IconName, string> = {
   // A paint brush: the handle, its band, the bristles with a drip of paint.
   brush:
     "M20.5 3.5l-8 8M15 9l1.8 1.8M11.4 12.6c-2.4-.6-4.6.9-4.7 3.4-.1 1.6-1.3 2.6-3.2 3 2.7 1.4 6.4 1.1 8-.7 1.3-1.4 1.3-3.6-.1-5.7z",
+  // Real paint: an anchor.
+  anchor:
+    "M12 7.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM12 7.5V21M8 11h8M4.5 14.5c.5 3.8 3.6 6.5 7.5 6.5s7-2.7 7.5-6.5",
+  // Fun paint: a sparkle and a small one.
+  sparkle:
+    "M10 3l1.6 4.9L16.5 9.5l-4.9 1.6L10 16l-1.6-4.9L3.5 9.5l4.9-1.6zM18 14l.8 2.2 2.2.8-2.2.8L18 20l-.8-2.2-2.2-.8 2.2-.8z",
 };
 
 const FILLED: ReadonlySet<IconName> = new Set(["play"]);

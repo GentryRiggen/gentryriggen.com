@@ -33,6 +33,13 @@ function isLook(look: string): look is BritannicPaint {
   return (LOOKS as readonly string[]).includes(look);
 }
 
+/** A paint's look: her own two, or a fun paint's (over the liner, 1.7). */
+function lookOf(spec: ShipSpec, id: string): BritannicPaint | null {
+  if (isLook(id)) return id;
+  const from = spec.liveries?.find((l) => l.id === id)?.fun?.from ?? null;
+  return from !== null && isLook(from) ? from : null;
+}
+
 /** The hull paint of a look's recipe (as `createTitanicModel` makes it). */
 export function hullPaintOf(r: ShipRecipe, spec: ShipSpec): HullPaint {
   const p = r.paint;
@@ -43,6 +50,7 @@ export function hullPaintOf(r: ShipRecipe, spec: ShipSpec): HullPaint {
     topsides: p?.hull?.topsides,
     bottom: p?.hull?.bottom,
     relief: p?.hull?.relief,
+    boot: p?.hull?.boot,
     ...(p?.band && { band: { ...p.band, sheer0: spec.sheerZ(0) } }),
   };
 }
@@ -88,8 +96,8 @@ export function britannicModelRecipe(spec: ShipSpec): ShipRecipe {
 
 export interface LiveryTarget {
   spec: ShipSpec;
-  /** Each look's recipe (`recipeFor(spec, look)`). */
-  recipeOf(look: BritannicPaint): ShipRecipe;
+  /** Each paint's recipe (`recipeFor(spec, id)`): a look or a fun paint. */
+  recipeOf(id: string): ShipRecipe;
   mats: ShipMaterials;
   q: QualitySettings;
   /** One group per funnel, its mesh named "funnel" inside. */
@@ -101,10 +109,10 @@ export interface LiveryTarget {
 }
 
 export interface Livery {
-  /** Wears `look`; false (and nothing changes) for a look she lacks. */
-  setPaint(look: string): boolean;
-  /** The look she wears now. */
-  readonly wearing: BritannicPaint;
+  /** Wears paint `id`; false (and nothing changes) for one she lacks. */
+  setPaint(id: string): boolean;
+  /** The paint she wears now (a look, or a fun paint's id). */
+  readonly wearing: string;
   /** The textures only another look shows (the liner's gilt names). */
   readonly textures: readonly Texture[];
   dispose(): void;
@@ -138,28 +146,41 @@ export function attachBritannicLivery(
 
   // The funnels' colours in each look (the same cuts, so the same
   // vertices; only the stripe's colour and the top's differ).
-  const funnelColors = t.funnels.map((fg, i) => {
+  const funnelAttrs = t.funnels.map((fg) => {
     const mesh = fg?.getObjectByName("funnel") as Mesh | undefined;
-    if (!mesh) return null;
-    const attr = mesh.geometry.getAttribute("color") as BufferAttribute;
-    const linerGeo = funnelGeometry(
-      cutFunnel(
-        hospital.funnels[i],
-        liner.funnels[i],
-        liner.paint?.funnelTop as number
-      ),
-      t.q,
-      liner.paint
-    );
-    const linerColors = linerGeo.getAttribute("color").array as Float32Array;
-    linerGeo.dispose();
-    if (linerColors.length !== attr.array.length) return null;
-    return {
-      attr,
-      hospital: Float32Array.from(attr.array as Float32Array),
-      liner: Float32Array.from(linerColors),
-    };
+    return mesh
+      ? (mesh.geometry.getAttribute("color") as BufferAttribute)
+      : null;
   });
+  /** A liner-shaped paint's funnel colours (its recipe's paint). */
+  function linerFunnels(r: ShipRecipe): (Float32Array | null)[] {
+    return funnelAttrs.map((attr, i) => {
+      if (!attr) return null;
+      const geo = funnelGeometry(
+        cutFunnel(
+          hospital.funnels[i],
+          liner.funnels[i],
+          r.paint?.funnelTop as number
+        ),
+        t.q,
+        r.paint
+      );
+      const colors = geo.getAttribute("color").array as Float32Array;
+      geo.dispose();
+      return colors.length === attr.array.length
+        ? Float32Array.from(colors)
+        : null;
+    });
+  }
+  /** Each paint's funnel colours, made the first time she wears it. */
+  const funnelsBy = new Map<string, (Float32Array | null)[]>([
+    [
+      "hospital",
+      funnelAttrs.map((a) =>
+        a ? Float32Array.from(a.array as Float32Array) : null
+      ),
+    ],
+  ]);
 
   // The name boards: black painted letters, or her sisters' gilt.
   const hospitalBoard = mats.decal.map;
@@ -172,26 +193,38 @@ export function attachBritannicLivery(
     },
     liner: { map: gilt.names, roughness: 0.4, metalness: 0.6 },
   };
-  const hulls = {
-    hospital: hullPaintOf(hospital, spec),
-    liner: hullPaintOf(liner, spec),
-  };
+  const hulls = new Map<string, HullPaint>([
+    ["hospital", hullPaintOf(hospital, spec)],
+  ]);
 
-  let wearing: BritannicPaint = BRITANNIC_PAINT;
+  // Her own liner paint is ready from the start (fun paints are made the
+  // first time she wears one).
+  hulls.set("liner", hullPaintOf(liner, spec));
+  funnelsBy.set("liner", linerFunnels(liner));
+
+  let wearing: string = BRITANNIC_PAINT;
   let worn = false;
   function setPaint(next: string): boolean {
-    if (!isLook(next)) return false;
+    const look = lookOf(spec, next);
+    if (look === null) return false;
     if (worn && next === wearing) return true;
+    if (!hulls.has(next)) {
+      const r = t.recipeOf(next);
+      hulls.set(next, hullPaintOf(r, spec));
+      if (look === "liner") funnelsBy.set(next, linerFunnels(r));
+    }
     worn = true;
     wearing = next;
-    mats.setHullPaint(hulls[next]);
-    for (const m of marks) m.visible = next === "hospital";
-    for (const f of funnelColors) {
-      if (!f) continue;
-      (f.attr.array as Float32Array).set(f[next]);
-      f.attr.needsUpdate = true;
-    }
-    Object.assign(mats.decal, boards[next]);
+    mats.setHullPaint(hulls.get(next)!);
+    for (const m of marks) m.visible = look === "hospital";
+    const colors = funnelsBy.get(next) ?? funnelsBy.get("hospital")!;
+    funnelAttrs.forEach((attr, i) => {
+      const c = colors[i];
+      if (!attr || !c) return;
+      (attr.array as Float32Array).set(c);
+      attr.needsUpdate = true;
+    });
+    Object.assign(mats.decal, boards[look]);
     return true;
   }
   if (!setPaint(look)) setPaint(BRITANNIC_PAINT);
