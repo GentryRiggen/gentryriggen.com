@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { resetWalkInput, walkMapFor } from "@/lib/shipwreck/walk";
+import { resetWalkInput, walkInput, walkMapFor } from "@/lib/shipwreck/walk";
 import {
   setWalkInputOff,
   type SceneRuntime,
@@ -156,9 +156,30 @@ export default function WalkHud({
       {/* No stick in a lifeboat: it rows itself. */}
       {!boat && (
         <div
-          className={`absolute left-[max(1rem,env(safe-area-inset-left))] ${OVER_BAR}`}
+          className={`absolute left-[max(1rem,env(safe-area-inset-left))] flex items-end gap-3 ${OVER_BAR}`}
         >
           <WalkJoystick />
+          {/* Jump, beside the stick (on her deck: a running jump at the
+              railing goes over the side). */}
+          {deck && (
+            <button
+              type="button"
+              aria-label="Jump"
+              data-testid="shipwreck-walk-jump"
+              data-walk-control
+              onPointerDown={(e) => {
+                e.preventDefault();
+                walkInput.jump = true;
+              }}
+              onClick={(e) => {
+                // A keyboard press (Enter); a tap jumped on pointer down.
+                if (e.detail === 0) walkInput.jump = true;
+              }}
+              className={BIG_OFF}
+            >
+              <Icon name="jump" className="size-11" />
+            </button>
+          )}
         </div>
       )}
 

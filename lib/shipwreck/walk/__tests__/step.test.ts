@@ -11,6 +11,9 @@ import {
 } from "../step";
 import {
   floorZ,
+  jumpHeight,
+  JUMP_HEIGHT_M,
+  JUMP_S,
   pointInPolygon,
   TITANIC_WALK,
   WALK_RADIUS_M,
@@ -322,4 +325,113 @@ describe("stairs", () => {
 it("clamps a long frame to 0.25 s", () => {
   const r = stepWalker(walker(), FORWARD, ctx(), 5);
   expect(r.state.x - map.spawn.at[0]).toBeCloseTo(1, 6);
+});
+
+describe("jumping", () => {
+  const JUMP: WalkInput = { ...STILL, jump: true };
+
+  /** Standing `back` m inside edge i of area `id`, facing out through it. */
+  function atEdge(
+    id: string,
+    i: number,
+    back = WALK_RADIUS_M + 0.02
+  ): WalkerState {
+    const poly = outline(map, id);
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    // Outward normal of a counter-clockwise outline.
+    const nx = (b[1] - a[1]) / len;
+    const ny = -(b[0] - a[0]) / len;
+    const mx = (a[0] + b[0]) / 2;
+    const my = (a[1] + b[1]) / 2;
+    return walker({
+      area: id,
+      x: mx - nx * back,
+      y: my - ny * back,
+      yaw: Math.atan2(ny, nx),
+    });
+  }
+
+  it("hops JUMP_HEIGHT_M at the top and lands after JUMP_S", () => {
+    expect(JUMP_S).toBe(0.6);
+    expect(JUMP_HEIGHT_M).toBe(0.8);
+    expect(jumpHeight(null)).toBe(0);
+    expect(jumpHeight(JUMP_S / 2)).toBeCloseTo(JUMP_HEIGHT_M, 5);
+    let r = stepWalker(walker(), JUMP, ctx(), 1 / 60);
+    expect(r.state.jumpS).toBeGreaterThan(0);
+    r = run(r.state, STILL, ctx(), JUMP_S - 0.05);
+    expect(r.state.jumpS).not.toBeNull();
+    r = run(r.state, STILL, ctx(), 0.1);
+    expect(r.state.jumpS ?? null).toBeNull();
+  });
+
+  it("does not start a new jump in the air", () => {
+    let r = stepWalker(walker(), JUMP, ctx(), 0.3);
+    const mid = r.state.jumpS!;
+    r = stepWalker(r.state, JUMP, ctx(), 1 / 60);
+    expect(r.state.jumpS!).toBeGreaterThan(mid);
+  });
+
+  // The boat deck's long starboard rail, over the sea.
+  const RAIL = 2;
+  it("a running jump at a sea railing goes over the side", () => {
+    expect(outline(map, "boat-deck")[RAIL][1]).toBeLessThan(-13);
+    // A run-up: the jump starts 1.5 m from the rail.
+    const r = run(
+      atEdge("boat-deck", RAIL, 1.5),
+      { ...FORWARD, jump: true },
+      ctx(),
+      0.6
+    );
+    expect(r.overboard).toBe(true);
+    expect(r.inWater).toBe("deep");
+  });
+
+  it("jumping while already pressed against the railing stays aboard (no run-up)", () => {
+    const r = run(
+      atEdge("boat-deck", RAIL),
+      { ...FORWARD, jump: true },
+      ctx(),
+      1
+    );
+    expect(r.overboard ?? false).toBe(false);
+    expect(r.inWater).toBeNull();
+  });
+
+  it("a jump while sliding along the railing at a slant stays aboard", () => {
+    // 35° into the rail, the way a child hugs a wall with the stick.
+    const w = atEdge("boat-deck", RAIL, 1.5);
+    const r = run(
+      { ...w, yaw: w.yaw + 55 * DEG },
+      { ...FORWARD, jump: true },
+      ctx(),
+      1
+    );
+    expect(r.overboard ?? false).toBe(false);
+  });
+
+  it("walking into the railing without jumping still holds", () => {
+    const r = run(atEdge("boat-deck", RAIL), FORWARD, ctx(), 2);
+    expect(r.overboard ?? false).toBe(false);
+    expect(r.inWater).toBeNull();
+  });
+
+  it("jumping on the spot beside the railing stays aboard", () => {
+    const r = run(atEdge("boat-deck", RAIL), JUMP, ctx(), 1);
+    expect(r.overboard ?? false).toBe(false);
+    expect(r.inWater).toBeNull();
+  });
+
+  it("a wall (a house side, a rail over a lower deck) never lets you over", () => {
+    const area = map.areas.find((a) => (a.wallEdges?.length ?? 0) > 0)!;
+    const r = run(
+      atEdge(area.id, area.wallEdges![0]),
+      { ...FORWARD, jump: true },
+      ctx(),
+      1
+    );
+    expect(r.overboard ?? false).toBe(false);
+    expect(r.inWater).toBeNull();
+  });
 });

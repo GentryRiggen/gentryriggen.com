@@ -165,6 +165,13 @@ it("resets the shared walk input", () => {
   walkInput.strafe = -1;
   walkInput.lookDx = 30;
   walkInput.lookDy = -4;
+  walkInput.jump = true;
   resetWalkInput();
-  expect(walkInput).toEqual({ forward: 0, strafe: 0, lookDx: 0, lookDy: 0 });
+  expect(walkInput).toEqual({
+    forward: 0,
+    strafe: 0,
+    lookDx: 0,
+    lookDy: 0,
+    jump: false,
+  });
 });

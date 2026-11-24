@@ -54,6 +54,17 @@ export interface WalkMap {
 
 // --- Tuning (see README.md) -------------------------------------------------
 
+/** A jump: how long the walker is in the air (s) and how high (m). */
+export const JUMP_S = 0.6;
+export const JUMP_HEIGHT_M = 0.8;
+
+/** Height over the floor `jumpS` seconds into a jump (null: on the floor). */
+export function jumpHeight(jumpS: number | null | undefined): number {
+  if (jumpS === null || jumpS === undefined) return 0;
+  const u = Math.max(0, Math.min(1, jumpS / JUMP_S));
+  return 4 * JUMP_HEIGHT_M * u * (1 - u);
+}
+
 /** Eye height over the feet (m). */
 export const WALK_EYE_M = 1.6;
 /** Water this deep over the feet (waist) puts you in the sea (m). */

@@ -78,6 +78,9 @@ export function sceneHooks(
       (window.__shipwreckRenderInfo?.isShown(name) ?? false),
     pump: (budgetMs) => get().pump(Math.max(1, Math.min(500, budgetMs))),
     startWalk: () => get().startWalk(),
+    jumpWalk: () => {
+      walkInput.jump = true;
+    },
     boardBoat: (index) => {
       const s = get();
       const i = index ?? (s.track ? nextBoardable(s.track.events, s.t) : null);

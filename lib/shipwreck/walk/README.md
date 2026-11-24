@@ -75,6 +75,15 @@ railings that gave way were removed in 1.3.2.
 4. The stairs, then the water: 1 m over the feet (`WALK_IN_WATER_DEPTH_M`,
    the waist) is `inWater: "deep"`.
 
+**Jumping** (1.13.0): `input.jump` starts a hop of `JUMP_S` (0.6 s) and
+`JUMP_HEIGHT_M` (0.8 m) from the floor (`jumpHeight`, `WalkerState.jumpS`);
+the eyes rise with it. In the air, running at a railing over the sea
+(within a few cm past the body, facing it squarely; never a `wallEdges`
+edge) goes over the side: `overboard` with `inWater` "deep", and the scene
+plays the fall to the sea before the splash. Walking into a rail without
+jumping still holds. Jumping onto roofs or over benches needs blocker
+heights the maps do not have yet.
+
 `inWaterFromDepth` is the one decision that ends a walk. **"Go down with
 the ship"** (the next ask) changes only that decision in `stepWalker`.
 

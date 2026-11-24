@@ -344,3 +344,81 @@ test("ride a Titanic lifeboat: it lowers at once and rows away", async ({
     { timeout: 20_000 }
   );
 });
+
+test("jump on the Titanic's deck, then a running jump over the rail into the sea", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto("/shipwreck");
+  await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
+  await page.evaluate(() => window.__shipwreck!.setShip!("titanic"));
+  await page.getByTestId("shipwreck-real-night").click();
+  const walk = page.getByTestId("shipwreck-walk");
+  await expect(walk).toBeEnabled({ timeout: 60_000 });
+  await page.evaluate(() => window.__shipwreck!.pause!());
+  await walk.click();
+  await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+
+  // A hop: the eyes rise and come back down.
+  const y0 = await page.evaluate(
+    () => window.__shipwreck!.getRenderInfo!()!.camera[1]
+  );
+  await page.getByTestId("shipwreck-walk-jump").dispatchEvent("pointerdown");
+  await page.waitForFunction(
+    (y) => window.__shipwreck!.getRenderInfo!()!.camera[1] > y + 0.2,
+    y0,
+    { timeout: 10_000 }
+  );
+  expect(await page.evaluate(() => window.__shipwreck!.getWalk!()!.phase)).toBe(
+    "deck"
+  );
+
+  // Over to the starboard rail; a running jump at it goes over the side,
+  // down to the sea.
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 1));
+  await page.waitForFunction(
+    () => (window.__shipwreck!.getWalk!()?.y ?? 0) < -13,
+    null,
+    { timeout: 30_000 }
+  );
+  // Pressed against the rail, a jump only hops: no run-up.
+  await page.waitForFunction(
+    () => (window.__shipwreck!.getWalk!()?.y ?? 0) < -13.6,
+    null,
+    { timeout: 30_000 }
+  );
+  await page.evaluate(() => window.__shipwreck!.jumpWalk!());
+  await page.waitForTimeout(1500);
+  expect(await page.evaluate(() => window.__shipwreck!.getWalk!()?.phase)).toBe(
+    "deck"
+  );
+  // Back a couple of metres, then run at it and jump.
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, -1));
+  await page.waitForFunction(
+    () => (window.__shipwreck!.getWalk!()?.y ?? -99) > -11.5,
+    null,
+    { timeout: 30_000 }
+  );
+  // Run at it pressing jump (a jump only starts on the floor): one that
+  // takes off a run-up from the rail goes over.
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 1));
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const h = window.__shipwreck!;
+          const w = h.getWalk!();
+          if (w?.phase === "deck") h.jumpWalk!();
+          // Null while falling (off her deck, not yet in the sea).
+          return w?.phase ?? "falling";
+        }),
+      { timeout: 30_000, intervals: [150] }
+    )
+    .toBe("water");
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 0));
+  await page.waitForFunction(
+    () => (window.__shipwreck!.getRenderInfo!()?.camera[1] ?? 99) < 2,
+    null,
+    { timeout: 10_000 }
+  );
+});

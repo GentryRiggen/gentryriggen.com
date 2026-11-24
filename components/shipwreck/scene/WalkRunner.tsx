@@ -28,6 +28,7 @@ import { shipToThreeInto, type V3 } from "./cameraMath";
 import type { SceneRuntime, WalkInfo } from "./runtime";
 import {
   deckEyes,
+  FLOAT_EYE_M,
   followShipPitch,
   LOOK_UNDER_EYE_Y,
   newView,
@@ -67,7 +68,7 @@ interface WalkRunnerProps {
 export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   const map = useMemo(() => walkMapFor(spec.id), [spec]);
   const walking = useStore(store, (s) => s.camera === "walk");
-  useWalkKeys(walking, runtime);
+  useWalkKeys(walking, runtime, store);
   const st = useRef({
     seq: null as number | null,
     walker: null as WalkerState | null,
@@ -78,6 +79,16 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     wasUnder: false,
     /** Seconds until the next Back-on-deck check. */
     reboardIn: 0,
+    /**
+     * Over the rail: the fall from her deck to the sea (three.js eyes from
+     * and to, seconds in and how long), then the splash. Null: not falling.
+     */
+    fall: null as null | {
+      from: V3;
+      to: V3;
+      t: number;
+      dur: number;
+    },
   });
   // Written in place every frame (no per-frame allocations).
   const scratch = useMemo(
@@ -121,6 +132,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     s.pitch = 0;
     s.surfacing = false;
     s.wasUnder = false;
+    s.fall = null;
     runtime.walker = null;
     runtime.walkLookUnder = false;
     runtime.walkCanReboard = false;
@@ -195,7 +207,9 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         s.walker = null;
         s.swimmer = null;
         s.pitch = 0;
+        s.fall = null;
       }
+      walkInput.jump = false;
       const r = runtime.ride;
       if (!runtime.walkInputOff) {
         r.yaw -= walkInput.lookDx * WALK_TURN_PER_PX;
@@ -228,6 +242,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       s.seq = p.walk.seq;
       s.reboardIn = 0;
       s.pitch = 0;
+      s.fall = null;
       const w = placeWalker(map, spec, frame, breakX, FLAT_SEA);
       if (w) {
         s.walker = w;
@@ -272,6 +287,29 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     const tilted = walkInput.lookDy !== 0;
     walkInput.lookDy = 0;
 
+    // Falling to the sea after a jump over the rail: across and down
+    // (faster and faster), then the splash.
+    const fall = s.fall;
+    if (fall) {
+      walkInput.jump = false;
+      walkInput.lookDx = 0;
+      fall.t += Math.min(dt, 0.1);
+      const u = Math.min(1, fall.t / fall.dur);
+      const across = 1 - (1 - u) * (1 - u);
+      const view = scratch.view;
+      view.pos[0] = fall.from[0] + (fall.to[0] - fall.from[0]) * across;
+      view.pos[1] = fall.from[1] + (fall.to[1] - fall.from[1]) * u * u;
+      view.pos[2] = fall.from[2] + (fall.to[2] - fall.from[2]) * across;
+      view.pitch = s.pitch;
+      runtime.walker = view;
+      if (u >= 1) {
+        s.fall = null;
+        runtime.walkSplash += 1;
+        store.getState().wentInWater();
+      }
+      return;
+    }
+
     if (s.walker) {
       let w = s.walker;
       let pose = poseOf(frame, w.part);
@@ -285,6 +323,30 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       ctx.breakX = breakX;
       const r = stepWalker(w, walkInput, ctx, dt);
       walkInput.lookDx = 0;
+      walkInput.jump = false;
+      if (r.inWater && r.overboard) {
+        // Over the rail: fall from where the eyes are to the sea.
+        s.walker = null;
+        const sw = swimmerFrom(r.state, pose, spec, map);
+        s.swimmer = sw;
+        const eyes = deckEyes(r.state, pose, spec, map, s.pitch, scratch.view);
+        const from: V3 = [eyes.pos[0], eyes.pos[1], eyes.pos[2]];
+        const to: V3 = [sw.x, FLOAT_EYE_M, -sw.y];
+        const drop = Math.max(0, from[1] - to[1]);
+        s.fall = {
+          from,
+          to,
+          t: 0,
+          dur: Math.max(0.5, Math.min(2.5, Math.sqrt((2 * drop) / 9.81))),
+        };
+        // Facing out to sea as they go.
+        scratch.view.yaw = Math.atan2(-(to[2] - from[2]), to[0] - from[0]);
+        sw.yaw = scratch.view.yaw;
+        runtime.walker = scratch.view;
+        // Off her deck now: no lifeboat to get into on the way down.
+        runtime.walkInfo = null;
+        return;
+      }
       if (r.inWater) {
         s.walker = null;
         s.swimmer = swimmerFrom(r.state, pose, spec, map);
@@ -317,6 +379,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
 
     const sw = s.swimmer;
     if (!sw) return;
+    // No jumping in the sea (nor saved for the next time on deck).
+    walkInput.jump = false;
     const lookUnder = store.getState().walk.lookUnder;
     if (
       lookUnder &&
@@ -393,8 +457,12 @@ const KEYS: Record<string, [axis: "forward" | "strafe", dir: 1 | -1]> = {
   arrowleft: ["strafe", -1],
 };
 
-/** WASD and the arrows walk while walking (they write `walkInput`). */
-function useWalkKeys(walking: boolean, runtime: SceneRuntime) {
+/** WASD and the arrows walk, Space jumps, while walking (`walkInput`). */
+function useWalkKeys(
+  walking: boolean,
+  runtime: SceneRuntime,
+  store: PlaybackStore
+) {
   useEffect(() => {
     if (!walking) return;
     const held = new Set<string>();
@@ -412,6 +480,20 @@ function useWalkKeys(walking: boolean, runtime: SceneRuntime) {
     const onDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
+      // Space jumps (on her deck; Hud leaves it to us then).
+      if (k === " ") {
+        // Only on her deck (in the sea or a boat, Hud's play/pause).
+        if (store.getState().walk.phase !== "deck") return;
+        if (runtime.walkInputOff || e.repeat) return;
+        const el = e.target as HTMLElement | null;
+        if (
+          el?.closest?.("button, input, textarea, [role=slider], [role=dialog]")
+        )
+          return;
+        e.preventDefault();
+        walkInput.jump = true;
+        return;
+      }
       if (!(k in KEYS)) return;
       // Not under the end card.
       if (runtime.walkInputOff) return;
@@ -445,5 +527,5 @@ function useWalkKeys(walking: boolean, runtime: SceneRuntime) {
       window.removeEventListener("blur", clear);
       clear();
     };
-  }, [walking, runtime]);
+  }, [walking, runtime, store]);
 }
