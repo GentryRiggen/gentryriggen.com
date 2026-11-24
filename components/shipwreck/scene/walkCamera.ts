@@ -2,6 +2,7 @@ import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import {
   floorZ,
+  jumpHeight,
   WALK_EYE_M,
   type SwimmerState,
   type WalkerState,
@@ -80,7 +81,7 @@ export function deckEyes(
   feetAt[2] = floorZ(map, w.area, w.x, spec);
   shipToThreeInto(pose, feetAt, feet);
   out.pos[0] = feet[0];
-  out.pos[1] = feet[1] + WALK_EYE_M;
+  out.pos[1] = feet[1] + WALK_EYE_M + jumpHeight(w.jumpS);
   out.pos[2] = feet[2];
   out.yaw = pose.yaw + w.yaw;
   out.pitch = lookPitch;

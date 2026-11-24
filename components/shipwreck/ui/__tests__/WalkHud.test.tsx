@@ -408,3 +408,27 @@ describe("riding a lifeboat", () => {
     expect(store.getState().walk.boat?.index).toBe(6);
   });
 });
+
+describe("jumping", () => {
+  it("the jump button beside the stick jumps, on her deck only", () => {
+    const { store } = setup();
+    act(() => store.getState().startWalk());
+    const jump = screen.getByTestId("shipwreck-walk-jump");
+    fireEvent.pointerDown(jump);
+    expect(walkInput.jump).toBe(true);
+    act(() => store.getState().wentInWater());
+    expect(screen.queryByTestId("shipwreck-walk-jump")).toBeNull();
+  });
+
+  it("Space on her deck is the jump, not play/pause", () => {
+    const { store } = setup();
+    act(() => store.getState().startWalk());
+    act(() => store.getState().play());
+    fireEvent.keyDown(document.body, { key: " " });
+    expect(store.getState().playing).toBe(true);
+    // Off the deck (in the sea) Space plays and pauses again.
+    act(() => store.getState().wentInWater());
+    fireEvent.keyDown(document.body, { key: " " });
+    expect(store.getState().playing).toBe(false);
+  });
+});

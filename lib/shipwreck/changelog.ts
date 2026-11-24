@@ -17,6 +17,16 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.13.0",
+    date: "2026-11-24",
+    title: "Jump!",
+    highlights: [
+      "You can jump while you walk her decks. Tap the round jump button next to the stick, or press Space",
+      "Run at the railing and jump to leap over the side! You fall all the way down to the sea with a big splash, then float and watch her go",
+      "Just walking into the railing still keeps you safe on board, so you only go over when you jump",
+    ],
+  },
+  {
     version: "1.12.0",
     date: "2026-11-24",
     title: "Ride a lifeboat",

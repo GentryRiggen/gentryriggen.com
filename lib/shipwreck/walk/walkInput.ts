@@ -13,6 +13,7 @@ export const walkInput: WalkInput = {
   strafe: 0,
   lookDx: 0,
   lookDy: 0,
+  jump: false,
 };
 
 export function resetWalkInput(): void {
@@ -20,4 +21,5 @@ export function resetWalkInput(): void {
   walkInput.strafe = 0;
   walkInput.lookDx = 0;
   walkInput.lookDy = 0;
+  walkInput.jump = false;
 }

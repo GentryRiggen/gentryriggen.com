@@ -127,6 +127,8 @@ export interface ShipwreckSceneHooks {
   pump(budgetMs: number): void;
   /** Walk the deck (as the Walk button does; no-op without a walk map). */
   startWalk(): void;
+  /** Jumps, as the jump button does (on her deck). */
+  jumpWalk(): void;
   /** Gets in lifeboat `index` (default: the next due to leave), if any. */
   boardBoat(index?: number): void;
   /** Holds the stick at `forward` and `strafe` (each −1..1; 0, 0 lets go). */

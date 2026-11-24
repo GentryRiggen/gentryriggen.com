@@ -115,6 +115,9 @@ export default function Hud({
       if (el?.closest("button, input, textarea, [role=slider], [role=dialog]"))
         return;
       const s = store.getState();
+      // On her deck Space jumps (WalkRunner's keys), not play/pause.
+      if (e.key === " " && s.camera === "walk" && s.walk.phase === "deck")
+        return;
       if (e.key === " ") {
         if (s.playing) s.pause();
         else s.play();

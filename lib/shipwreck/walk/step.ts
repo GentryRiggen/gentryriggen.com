@@ -4,6 +4,7 @@ import { deckSlope, shipToEarth, type V3 } from "./slope";
 import {
   areaById,
   floorZ,
+  JUMP_S,
   WALK_IN_WATER_DEPTH_M,
   WALK_RADIUS_M,
   WALK_SPEED_MS,
@@ -32,6 +33,10 @@ export interface WalkerState {
   y: number;
   /** Heading in the ship frame (rad; 0 faces the bow, + turns to port). */
   yaw: number;
+  /** Seconds into a jump (null or missing: feet on the floor). */
+  jumpS?: number | null;
+  /** Where that jump took off (ship frame x, y): the run-up is from here. */
+  jumpFrom?: V2 | null;
 }
 
 /** Stick −1..1 (forward, strafe right), look in px since last read. */
@@ -40,6 +45,8 @@ export interface WalkInput {
   strafe: number;
   lookDx: number;
   lookDy: number;
+  /** Jump (pressed since the runner last read it; it zeroes it). */
+  jump?: boolean;
 }
 
 export interface StepContext {
@@ -60,6 +67,11 @@ export type StepResult = {
   /** Sea over the feet (m; negative when dry). */
   depthM: number;
   slopeDeg: number;
+  /**
+   * A running jump took them over a sea railing (with `inWater` "deep"):
+   * the scene shows the fall to the sea.
+   */
+  overboard?: boolean;
 };
 
 /** The fixed substep (s). */
@@ -69,6 +81,15 @@ const MAX_DT = 0.25;
 const EPS = 1e-4;
 /** Speed share left wading at the waist (the rest fades in with depth). */
 const WALK_WADE_MIN = 0.6;
+/** How near the rail past the body's radius counts as "at" it (m). */
+const RAIL_REACH_M = 0.08;
+/** How squarely (cosine, about 30°) the run must face the rail to go over it. */
+const RUN_AT_RAIL = 0.85;
+/**
+ * The run-up: a jump that took off nearer a rail than this past the body
+ * (pressed against it already) never goes over that rail (m).
+ */
+const RUN_UP_M = 0.6;
 
 /** The piece a walker at x is on: x >= breakX is the bow. */
 export function partFor(
@@ -248,6 +269,36 @@ function resolveBody(ctx: StepContext, area: WalkArea, s: Sub): void {
   }
 }
 
+/**
+ * In the air and running at a railing over the sea (not a wall: a house
+ * side or a rail over a lower deck): over it they go. The body stops
+ * WALK_RADIUS_M short of the rail, so "at" it means within a few cm more.
+ */
+function overSeaRail(
+  area: WalkArea,
+  s: Sub,
+  mx: number,
+  my: number,
+  from: V2
+): boolean {
+  const poly = area.outline;
+  const speed = Math.hypot(mx, my);
+  if (speed < 1e-9) return false;
+  for (let i = 0; i < poly.length; i += 1) {
+    if (area.wallEdges?.includes(i)) continue;
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const { d } = nearestOnSegment([s.x, s.y], a, b);
+    if (d > WALK_RADIUS_M + RAIL_REACH_M) continue;
+    // A running jump: it took off well back from this rail.
+    if (nearestOnSegment(from, a, b).d < WALK_RADIUS_M + RUN_UP_M) continue;
+    const n = outward(a, b);
+    // Running at it, not along it.
+    if ((mx * n[0] + my * n[1]) / speed > RUN_AT_RAIL) return true;
+  }
+  return false;
+}
+
 /** Steps through a stair when the walker has just entered one end. */
 function takeStairs(ctx: StepContext, s: Sub, px: number, py: number): void {
   for (const st of ctx.map.stairs) {
@@ -306,10 +357,30 @@ export function stepWalker(
   const baseY = WALK_SPEED_MS * (f * sy - r * cy);
 
   let inWater: StepResult["inWater"] = null;
+  let overboard = false;
+  // A jump starts on the floor only.
+  let jumpS = s.jumpS ?? null;
+  let jumpFrom = s.jumpFrom ?? null;
+  if (input.jump && jumpS === null && n > 0) {
+    jumpS = 0;
+    jumpFrom = [s.x, s.y];
+  }
   let depth = depthAt(ctx, sub.area, sub.x, sub.y);
   for (let k = 0; k < n; k += 1) {
     const area = areaById(ctx.map, sub.area);
     if (!area) break;
+    if (jumpS !== null) {
+      if (overSeaRail(area, sub, baseX, baseY, jumpFrom ?? [sub.x, sub.y])) {
+        overboard = true;
+        inWater = "deep";
+        break;
+      }
+      jumpS += h;
+      if (jumpS >= JUMP_S) {
+        jumpS = null;
+        jumpFrom = null;
+      }
+    }
     // Wading: slower in water, down to WALK_WADE_MIN at the waist.
     const wade =
       depth > 0
@@ -336,8 +407,17 @@ export function stepWalker(
   if (!inWater) inWater = inWaterFromDepth(depth);
 
   return {
-    state: { part: s.part, area: sub.area, x: sub.x, y: sub.y, yaw },
+    state: {
+      part: s.part,
+      area: sub.area,
+      x: sub.x,
+      y: sub.y,
+      yaw,
+      jumpS,
+      jumpFrom,
+    },
     inWater,
+    ...(overboard ? { overboard } : {}),
     depthM: depth,
     slopeDeg: deckSlope(ctx.pose).deg,
   };
