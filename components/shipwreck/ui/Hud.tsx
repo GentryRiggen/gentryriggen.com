@@ -19,6 +19,7 @@ import {
 import Captions from "./Captions";
 import HelpCard from "./HelpCard";
 import Icon, { type IconName } from "./Icon";
+import BoatButton from "./BoatButton";
 import LiveryButton from "./LiveryButton";
 import TimeButton from "./TimeButton";
 import Timeline from "./Timeline";
@@ -195,6 +196,7 @@ export default function Hud({
           {/* The time of day and the water light (top, beside help: the
               right rail is full on a landscape iPad). */}
           {/* Walking: the walk controls own the top right. */}
+          {!walking && !hidden && <BoatButton store={store} />}
           {!walking && <TimeButton store={store} spec={ship} />}
           <button
             type="button"

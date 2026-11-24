@@ -4,6 +4,7 @@ import {
   phaseAt,
   type PlaybackStore,
 } from "@/lib/shipwreck/playback";
+import { nextBoardable } from "@/lib/shipwreck/boatRide";
 import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import type { ShipwreckSceneHooks } from "@/lib/shipwreck/testHooks";
 import { CAMERA_IDS, type CameraId } from "@/lib/shipwreck/types";
@@ -77,6 +78,11 @@ export function sceneHooks(
       (window.__shipwreckRenderInfo?.isShown(name) ?? false),
     pump: (budgetMs) => get().pump(Math.max(1, Math.min(500, budgetMs))),
     startWalk: () => get().startWalk(),
+    boardBoat: (index) => {
+      const s = get();
+      const i = index ?? (s.track ? nextBoardable(s.track.events, s.t) : null);
+      if (i !== null && i !== undefined) s.boardBoat(i);
+    },
     setWalkInput: (forward, strafe) => {
       walkInput.forward = clampUnit(forward);
       walkInput.strafe = clampUnit(strafe);

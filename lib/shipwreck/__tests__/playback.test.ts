@@ -913,3 +913,123 @@ describe("playback: the Costa Concordia", () => {
     expect(store.getState().minT).toBe(0);
   });
 });
+
+describe("playback: riding a lifeboat", () => {
+  /** Boats 1, 3 and 5 leave at 800, 900 and 950. */
+  const BOAT_EVENTS = [
+    { t: 800, kind: "boat-lowered" as const, index: 1 },
+    { t: 900, kind: "boat-lowered" as const, index: 3 },
+    { t: 950, kind: "boat-lowered" as const, index: 5 },
+  ];
+  function started(spec = titanic) {
+    const store = createPlaybackStore({
+      createRunner: () => {
+        const track = fakeTrack(1000, {
+          events: BOAT_EVENTS as unknown as SimTrack["events"],
+        });
+        return {
+          advance: () => true,
+          done: true,
+          progress: () => 1,
+          track: () => track,
+        };
+      },
+    });
+    store.getState().start(spec, spec.realNight);
+    store.getState().pump();
+    return store;
+  }
+
+  it("boardBoat rides that boat from now, on the walk camera", () => {
+    const store = started();
+    store.getState().seek(300);
+    store.getState().boardBoat(5);
+    const s = store.getState();
+    expect(s.camera).toBe("walk");
+    expect(s.walk.phase).toBe("boat");
+    expect(s.walk.boat).toEqual({ index: 5, at: 300 });
+  });
+
+  it("boardBoat does nothing before the night has frames", () => {
+    const store = createPlaybackStore({
+      createRunner: () => fakeRunner(1000, 1000),
+    });
+    store.getState().start(titanic, titanic.realNight);
+    store.getState().boardBoat(5);
+    expect(store.getState().walk.phase).toBe("off");
+  });
+
+  it("seeking back before boarding ends the ride; forward keeps it", () => {
+    const store = started();
+    store.getState().seek(300);
+    store.getState().boardBoat(5);
+    store.getState().seek(600);
+    expect(store.getState().walk.phase).toBe("boat");
+    expect(store.getState().walk.boat).toEqual({ index: 5, at: 300 });
+    store.getState().seek(299);
+    expect(store.getState().walk.phase).toBe("off");
+    expect(store.getState().walk.boat ?? null).toBeNull();
+    expect(store.getState().camera).toBe("orbit");
+  });
+
+  it("boardBoat starts the night playing (no hanging in the davits)", () => {
+    const store = started();
+    store.getState().pause();
+    store.getState().boardBoat(5);
+    expect(store.getState().playing).toBe(true);
+  });
+
+  it("boardBoat ignores a boat that has already left", () => {
+    const store = started();
+    store.getState().seek(920);
+    store.getState().boardBoat(3);
+    expect(store.getState().walk.phase).toBe("off");
+    store.getState().boardBoat(5);
+    expect(store.getState().walk.phase).toBe("boat");
+  });
+
+  it("Play from the end starts the night again out of the boat", () => {
+    const store = started();
+    store.getState().seek(300);
+    store.getState().boardBoat(5);
+    store.getState().seek(1000);
+    expect(store.getState().walk.phase).toBe("boat");
+    store.getState().play();
+    expect(store.getState().t).toBe(store.getState().minT);
+    expect(store.getState().walk.phase).toBe("off");
+    expect(store.getState().camera).toBe("orbit");
+  });
+
+  it("a new run or ship ends the ride", () => {
+    const store = started();
+    store.getState().boardBoat(5);
+    store.getState().start(titanic, titanic.realNight);
+    expect(store.getState().walk.phase).toBe("off");
+    store.getState().pump();
+    store.getState().boardBoat(5);
+    store.getState().setShip("lusitania");
+    expect(store.getState().walk.phase).toBe("off");
+    expect(store.getState().camera).toBe("orbit");
+  });
+
+  it("leaveBoat goes back on deck on a ship you can walk", () => {
+    const store = started();
+    store.getState().boardBoat(5);
+    const seq = store.getState().walk.seq;
+    store.getState().leaveBoat();
+    const s = store.getState();
+    expect(s.camera).toBe("walk");
+    expect(s.walk.phase).toBe("deck");
+    expect(s.walk.boat ?? null).toBeNull();
+    expect(s.walk.seq).toBe(seq + 1);
+  });
+
+  it("leaveBoat goes back to the outside view on a ship you cannot walk", () => {
+    const store = started(concordia);
+    store.getState().boardBoat(1);
+    expect(store.getState().walk.phase).toBe("boat");
+    store.getState().leaveBoat();
+    expect(store.getState().camera).toBe("orbit");
+    expect(store.getState().walk.phase).toBe("off");
+  });
+});

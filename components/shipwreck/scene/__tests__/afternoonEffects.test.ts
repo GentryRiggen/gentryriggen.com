@@ -10,6 +10,7 @@ import { recipeFor } from "@/components/shipwreck/model/shipModel";
 import { BRITANNIC_BOATS, britannic } from "@/lib/shipwreck/ships/britannic";
 import { carpathia, CARPATHIA_BOATS } from "@/lib/shipwreck/ships/carpathia";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { buildHull } from "@/lib/shipwreck/sim/geometry";
 import { simulate, torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
 import { sampleTrack } from "@/lib/shipwreck/sim/track";
@@ -413,5 +414,65 @@ describe("a distress rocket by day (the Carpathia's)", () => {
     expect(rocketFlash(3.9, false)).toBe(0);
     expect(rocketFlash(4, false)).toBe(1);
     expect(rocketFlash(5, false)).toBeCloseTo(Math.exp(-2.2), 10);
+  });
+});
+
+describe("riding a davit-less boat by day (the Titanic's collapsibles)", () => {
+  const track = simulate(titanic, titanic.realNight);
+  /** Collapsible D: no davits of its own. */
+  const D = 19;
+
+  function floatsAfter(ride: boolean) {
+    const { handles: h } = createTitanicModel(titanic, {
+      quality: "low",
+      breakX: null,
+    });
+    expect(h.boats.info(D).hasDavits).toBe(false);
+    const fx = new AfternoonEffects(
+      titanic,
+      buildHull(titanic),
+      new Float32Array(3 * 2000),
+      new Float32Array(4 * 2000),
+      new Float32Array(2000)
+    );
+    let floated = false;
+    const float = h.boats.float;
+    h.boats.float = (i: number, m: Matrix4) => {
+      if (i === D) floated = true;
+      float(i, m);
+    };
+    const t0 = 3000;
+    const lowered = new Map([[D, t0]]);
+    for (let t = t0; t <= t0 + 400; t += 20) {
+      const frame = sampleTrack(track, t);
+      applyBodyPose(h.whole, frame.bodies[0]);
+      fx.update({
+        track,
+        frame,
+        openings: titanic.realNight,
+        t,
+        wall: t,
+        dt: 1 / 60,
+        snapped: false,
+        models: [h],
+        visible: h,
+        fell: new Map(),
+        lowered,
+        wakeDx: 1,
+        wakeDz: 0,
+        wakeAmount: 0,
+        quality: "low",
+        rideIndex: ride ? D : -1,
+      });
+    }
+    return floated;
+  }
+
+  it("the ridden one goes down to the sea and away", () => {
+    expect(floatsAfter(true)).toBe(true);
+  });
+
+  it("one not ridden stays in its chocks, as before", () => {
+    expect(floatsAfter(false)).toBe(false);
   });
 });

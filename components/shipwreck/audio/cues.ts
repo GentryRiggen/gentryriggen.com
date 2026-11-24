@@ -272,7 +272,8 @@ export interface CueInput {
 
 /** What the walk tells the sound (from the scene runtime). */
 export interface WalkCueInput {
-  phase: "off" | "deck" | "water";
+  /** "boat": riding a lifeboat (no splash). */
+  phase: "off" | "deck" | "water" | "boat";
   /** Bumped each time they go into the sea. */
   splash: number;
 }

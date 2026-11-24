@@ -1,4 +1,5 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
+import { boardableBoats, type BoatRide } from "./boatRide";
 import { resetWalkInput, walkMapFor } from "./walk";
 import { placeFor, type PlaceId } from "./places";
 import {
@@ -78,10 +79,13 @@ export interface ShipView {
 
 /** The walker's state; the scene decides deck or water when `seq` changes. */
 export interface WalkState {
-  phase: "off" | "deck" | "water";
+  /** "boat": riding a lifeboat (`boat`), on the walk camera. */
+  phase: "off" | "deck" | "water" | "boat";
   lookUnder: boolean;
   /** Bumped whenever the walker must be re-placed (start, seek, back on deck). */
   seq: number;
+  /** The lifeboat being ridden (phase "boat" only). */
+  boat?: BoatRide | null;
 }
 
 const WALK_OFF: WalkState = { phase: "off", lookUnder: false, seq: 0 };
@@ -258,6 +262,14 @@ export interface PlaybackActions {
   wentInWater(steppedIn?: boolean): void;
   /** The walker is back on the deck. */
   backOnDeck(): void;
+  /**
+   * Gets in lifeboat `index` (its `boat-lowered` index) now: it is lowered
+   * at once and rows away, the walk camera riding in it. Needs a frame;
+   * works on a ship without a walk map.
+   */
+  boardBoat(index: number): void;
+  /** Out of the boat: on her deck if she can be walked, else the free camera. */
+  leaveBoat(): void;
   setLookUnder(on: boolean): void;
   setQuality(quality: QualityTier): void;
   setXray(on: boolean): void;
@@ -681,9 +693,17 @@ export function createPlaybackStore(
       },
       play() {
         const s = get();
-        // Playing from the end starts the night again.
+        // Playing from the end starts the night again (out of a lifeboat:
+        // the ride had not happened yet).
         if (s.done && s.t >= s.computedT)
-          set({ t: s.minT, realT: s.minT, snapId: s.snapId + 1 });
+          set({
+            t: s.minT,
+            realT: s.minT,
+            snapId: s.snapId + 1,
+            ...(s.walk.phase === "boat"
+              ? { ...walkOff(), camera: "orbit" as const }
+              : {}),
+          });
         set({ playing: true });
       },
       pause() {
@@ -697,6 +717,21 @@ export function createPlaybackStore(
         // Holding for the tail: nothing to scrub to yet.
         if (s.tail > 0 && !s.done) return;
         const clamped = Math.max(s.minT, Math.min(s.computedT, t));
+        // Back to before they got in: the ride never happened.
+        if (
+          s.walk.phase === "boat" &&
+          s.walk.boat &&
+          clamped < s.walk.boat.at
+        ) {
+          set({
+            t: clamped,
+            realT: realTimeAt(s.track, clamped),
+            ...walkOff(),
+            camera: "orbit",
+            snapId: s.snapId + 1,
+          });
+          return;
+        }
         set({
           t: clamped,
           realT: realTimeAt(s.track, clamped),
@@ -744,6 +779,40 @@ export function createPlaybackStore(
         set({
           walk: { phase: "deck", lookUnder: false, seq: s.walk.seq + 1 },
         });
+      },
+      boardBoat(index) {
+        const s = get();
+        if (!s.track || s.track.frames.length === 0) return;
+        // Only a boat still in its davits (one already lowering or away
+        // would jump back to them).
+        if (!boardableBoats(s.track.events, s.t).includes(index)) return;
+        resetWalkInput();
+        set({
+          camera: "walk",
+          walk: {
+            phase: "boat",
+            lookUnder: false,
+            seq: s.walk.seq + 1,
+            boat: { index, at: s.t },
+          },
+          place: null,
+          xray: false,
+          // Down the side at once, not hanging in the davits while paused.
+          playing: true,
+          snapId: s.snapId + 1,
+        });
+      },
+      leaveBoat() {
+        const s = get();
+        if (s.walk.phase !== "boat") return;
+        if (walkMapFor(s.ship)) {
+          resetWalkInput();
+          set({
+            camera: "walk",
+            walk: { phase: "deck", lookUnder: false, seq: s.walk.seq + 1 },
+            snapId: s.snapId + 1,
+          });
+        } else get().leaveWalk();
       },
       setLookUnder(on) {
         const s = get();
