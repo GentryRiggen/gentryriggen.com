@@ -127,6 +127,8 @@ export interface ShipwreckSceneHooks {
   pump(budgetMs: number): void;
   /** Walk the deck (as the Walk button does; no-op without a walk map). */
   startWalk(): void;
+  /** Gets in lifeboat `index` (default: the next due to leave), if any. */
+  boardBoat(index?: number): void;
   /** Holds the stick at `forward` and `strafe` (each −1..1; 0, 0 lets go). */
   setWalkInput(forward: number, strafe: number): void;
   /** Turns the walker's view by `yawRad` (positive: to the left). */
@@ -138,7 +140,7 @@ export interface ShipwreckSceneHooks {
 
 /** What `getWalk()` reports. */
 export interface WalkHookInfo {
-  /** "deck" | "water". */
+  /** "deck" | "water" | "boat". */
   phase: string;
   /** The piece underfoot ("whole" | "bow" | "stern"), "none" in the water. */
   part: string;

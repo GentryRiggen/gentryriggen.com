@@ -262,3 +262,85 @@ test("walk the Carpathia's decks: the stick walks, and she stays on deck", async
   expect(onArea?.id).toBeDefined();
   expect(insideBlocker(CARPATHIA_WALK, onArea!.id, at, 0)).toBe(false);
 });
+
+test("ride a Titanic lifeboat: it lowers at once and rows away", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  await page.goto("/shipwreck");
+  await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
+  await page.evaluate(() => window.__shipwreck!.setShip!("titanic"));
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await page.evaluate(() => window.__shipwreck!.pause!());
+  // Compute the night ahead (software WebGL draws few frames).
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const h = window.__shipwreck!;
+          const end = performance.now() + 2000;
+          while (!h.getState!().done && performance.now() < end) h.pump!(200);
+          return h.getState!().done;
+        }),
+      { timeout: 150_000, intervals: [100] }
+    )
+    .toBe(true);
+  await page.evaluate(() => window.__shipwreck!.seek!(600));
+
+  // The top bar's boat button: in the next boat, high on her boat deck.
+  await page.getByTestId("shipwreck-ride-boat").click();
+  await page.waitForFunction(
+    () => window.__shipwreck!.getWalk!()?.phase === "boat",
+    null,
+    { timeout: 20_000 }
+  );
+  await expect(page.getByTestId("shipwreck-walk-stick")).toHaveCount(0);
+  await page.waitForFunction(
+    () => (window.__shipwreck!.getRenderInfo!()?.camera[1] ?? 0) > 10,
+    null,
+    { timeout: 20_000 }
+  );
+
+  // Seven minutes on: the boat is down on the sea and still ridden.
+  await page.evaluate(() => window.__shipwreck!.seek!(1020));
+  await page.waitForFunction(
+    () => {
+      const y = window.__shipwreck!.getRenderInfo!()?.camera[1] ?? 99;
+      return y > 0 && y < 3;
+    },
+    null,
+    { timeout: 20_000 }
+  );
+  expect(await page.evaluate(() => window.__shipwreck!.getWalk!()?.phase)).toBe(
+    "boat"
+  );
+
+  // Back on deck: walking her deck again.
+  await page.getByTestId("shipwreck-leave-boat").click();
+  await page.waitForFunction(
+    () => window.__shipwreck!.getWalk!()?.phase === "deck",
+    null,
+    { timeout: 20_000 }
+  );
+
+  // Walk to the starboard rail, then aft: beside boat 9's davit the
+  // get-in button shows, and boards that boat.
+  await page.evaluate(() => window.__shipwreck!.seek!(600));
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 1));
+  await page.waitForFunction(
+    () => (window.__shipwreck!.getWalk!()?.y ?? 0) < -13,
+    null,
+    { timeout: 30_000 }
+  );
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(-1, 0));
+  const board = page.getByTestId("shipwreck-board-boat");
+  await expect(board).toBeVisible({ timeout: 60_000 });
+  await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 0));
+  await board.click();
+  await page.waitForFunction(
+    () => window.__shipwreck!.getWalk!()?.phase === "boat",
+    null,
+    { timeout: 20_000 }
+  );
+});

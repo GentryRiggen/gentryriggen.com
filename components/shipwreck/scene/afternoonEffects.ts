@@ -406,6 +406,11 @@ export interface AfternoonFrame {
   /** Each funnel's fall time and each boat's lowering time (events). */
   fell: ReadonlyMap<number, number>;
   lowered: ReadonlyMap<number, number>;
+  /**
+   * The lifeboat being ridden (−1 or missing: none). It goes down to the
+   * sea even without davits of its own (a collapsible).
+   */
+  rideIndex?: number;
   /** Her wake: heading (three x, z) and 0..1 of her starting speed. */
   wakeDx: number;
   wakeDz: number;
@@ -521,6 +526,12 @@ export class AfternoonEffects {
         this.popN = k + 1;
       },
     };
+  }
+
+  /** Forgets where boat `i` touched the sea (its lowering time moved). */
+  forgetBoat(i: number): void {
+    this.launchAt.delete(i);
+    this.frozen.delete(i);
   }
 
   /** Draws this frame's afternoon; returns the particle count. */
@@ -661,7 +672,7 @@ export class AfternoonEffects {
       // A mine ship's boats wait in their chocks (or gantry) until their
       // turn; a gantry swings its boats out as a davit would, and an
       // inboard boat goes out on its outboard partner's davits.
-      if (this.mine ? age < 0 : !info.hasDavits) {
+      if (this.mine ? age < 0 : !info.hasDavits && i !== f.rideIndex) {
         mdl.boats.stow(i);
         continue;
       }

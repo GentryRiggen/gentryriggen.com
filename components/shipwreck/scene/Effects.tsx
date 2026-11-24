@@ -23,7 +23,7 @@ import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildHull, hullHalfBreadth } from "@/lib/shipwreck/sim/geometry";
 import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
 import { shipToThree, shipToThreeInto, type V3 } from "./cameraMath";
-import type { SceneRuntime } from "./runtime";
+import type { SceneRuntime, WalkInfo } from "./runtime";
 import { isDaylit, type SceneSettings } from "./settings";
 import {
   AfternoonEffects,
@@ -38,6 +38,12 @@ import { FUNNEL_SINK_S, FUNNEL_TOPPLE_S, layFunnel } from "./funnelWreck";
 import { poseForemast } from "./mastWreck";
 import { StormEffects, type StormFrame } from "./stormEffects";
 import { alongRoute, boatRoute, rockLodgedT, strikeSpray } from "./giglio";
+import {
+  boardableBoats,
+  nearestBoardable,
+  rideLowered,
+  type BoatSpot,
+} from "@/lib/shipwreck/boatRide";
 
 /**
  * The night's events, all worked out from the shown time `t` (so seeking
@@ -55,6 +61,10 @@ const G = 9.81;
 /** Seconds of sim time to swing a boat out, then to lower it. */
 const SWING_S = 20;
 const LOWER_S = 120;
+/** A lifeboat rider's eyes over the boat's keel (m). */
+const RIDE_EYE_M = 1.3;
+/** Seconds between looks for a boat beside the walker. */
+const BOARD_CHECK_S = 0.25;
 /** Rowing speed (m/s) and how far out the boats go. */
 const ROW_MPS = 0.7;
 /**
@@ -273,6 +283,20 @@ export default function Effects({
   );
   const waveFrame = useMemo(() => ({}) as PoseidonFrame, []);
   const lastSnap = useRef(-1);
+  /** The ride last seen (index −1: none): a new one is re-aimed. */
+  const rideSeen = useRef({ index: -1, at: 0 });
+  /** Seconds until the next look for a boat beside the walker. */
+  const boardIn = useRef(0);
+  /** The rider for the test hooks (earth x, y). */
+  const rideInfo = useRef<WalkInfo>({
+    phase: "boat",
+    part: null,
+    area: null,
+    x: 0,
+    y: 0,
+    slopeDeg: 0,
+    depthM: 0,
+  });
   // Per track: where each boat touched the water (sampled once).
   const launch = useRef<{
     track: SimTrack | null;
@@ -480,6 +504,25 @@ export default function Effects({
     for (const e of events)
       if (e.kind === "boat-lowered" && e.index !== undefined)
         lowered.set(e.index, e.t);
+    // Riding a lifeboat: that one is lowered when they got in.
+    const ride = s.walk.phase === "boat" ? (s.walk.boat ?? null) : null;
+    const seen = rideSeen.current;
+    if ((ride?.index ?? -1) !== seen.index || (ride?.at ?? 0) !== seen.at) {
+      // A ride starts or ends: the boats whose lowering time moves (the
+      // old ride's back to its real one, the new one's to now) forget
+      // where they touched the sea.
+      for (const i of [seen.index, ride?.index ?? -1])
+        if (i >= 0) {
+          launch.current.at.delete(i);
+          launch.current.routes.delete(i);
+          launch.current.afloatRealT.delete(i);
+          afternoon.forgetBoat(i);
+        }
+      seen.index = ride?.index ?? -1;
+      seen.at = ride?.at ?? 0;
+      runtime.ride.aimed = false;
+    }
+    rideLowered(lowered, ride);
     for (const mdl of day ? [] : models) {
       for (let i = 0; i < mdl.boats.count; i += 1) {
         const tb = lowered.get(i);
@@ -559,7 +602,8 @@ export default function Effects({
         }
         tmp.m.compose(tmp.v.set(px, -0.35 + bob, pz), tmp.q, tmp.one);
         mdl.boats.float(i, tmp.m);
-        if (mdl === visible) {
+        // (Not the ridden boat's light: it would sit in the rider's eyes.)
+        if (mdl === visible && i !== ride?.index) {
           if (harbourBound) {
             // Her boats' small white lamps (a modern lifeboat's light).
             emit(px, 2.6 + bob, pz, 4.5, 4.6, 4.2, 1.1);
@@ -589,6 +633,7 @@ export default function Effects({
       f.visible = visible;
       f.fell = fell;
       f.lowered = lowered;
+      f.rideIndex = ride?.index ?? -1;
       f.wakeDx = runtime.wake.dx;
       f.wakeDz = runtime.wake.dz;
       f.wakeAmount = runtime.wake.amount;
@@ -596,6 +641,56 @@ export default function Effects({
       // Point size capped per tier (framebuffer pixels, as the night's 96).
       dayPts.mat.uniforms.uMaxPx.value = DAY_PARTICLES[s.quality].maxPx;
       dn = afternoon.update(f);
+    }
+
+    // --- Riding a lifeboat: the eyes sit in the boat (WalkRunner turns
+    // the look); on her deck, the boat beside the walker they can get in.
+    if (ride && visible && visible.boats.worldPosition(ride.index, tmp.v)) {
+      const r = runtime.ride;
+      if (!r.aimed) {
+        // A new ride: the look starts straight at her.
+        r.yaw = 0;
+        r.pitch = 0;
+        r.aimed = true;
+      }
+      // The look keeps facing her as the boat rows away (her stern piece
+      // after the break, the last to go), turned by the player's drag.
+      // Earth y is three −z.
+      const view = runtime.rideView;
+      view.pos[0] = tmp.v.x;
+      view.pos[1] = tmp.v.y + RIDE_EYE_M;
+      view.pos[2] = tmp.v.z;
+      view.yaw = Math.atan2(main.y + tmp.v.z, main.x - tmp.v.x) + r.yaw;
+      view.pitch = r.pitch;
+      runtime.walker = view;
+      const info = rideInfo.current;
+      info.x = tmp.v.x;
+      info.y = -tmp.v.z;
+      runtime.walkInfo = info;
+    }
+    if (s.walk.phase === "deck" && runtime.walkInfo?.phase === "deck") {
+      boardIn.current -= dt;
+      if (boardIn.current <= 0 && visible) {
+        boardIn.current = BOARD_CHECK_S;
+        const spots: BoatSpot[] = [];
+        for (const i of boardableBoats(events, t)) {
+          if (i >= visible.boats.count) continue;
+          const b = visible.boats.info(i);
+          if (b.side === "centre") continue;
+          const sign = b.side === "port" ? 1 : -1;
+          spots.push({
+            index: i,
+            x: b.x,
+            y: sign * Math.max(0, Math.abs(b.edgeY) - 1),
+            halfLength: b.length / 2,
+          });
+        }
+        const w = runtime.walkInfo;
+        runtime.boardable = nearestBoardable(w.x, w.y, spots) ?? -1;
+      }
+    } else {
+      boardIn.current = 0;
+      runtime.boardable = -1;
     }
     if (stormFx) {
       const f = stormFrame;

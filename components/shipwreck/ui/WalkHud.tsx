@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useStore } from "zustand";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { resetWalkInput } from "@/lib/shipwreck/walk";
+import { resetWalkInput, walkMapFor } from "@/lib/shipwreck/walk";
 import {
   setWalkInputOff,
   type SceneRuntime,
@@ -16,6 +16,8 @@ import { FOCUS } from "./styles";
 /** A big round picture button (80 px) for the walk controls. */
 const BIG = `pointer-events-auto grid size-20 shrink-0 touch-manipulation place-items-center rounded-full border-2 shadow-lg shadow-black/50 backdrop-blur-md active:scale-95 ${FOCUS}`;
 const BIG_OFF = `${BIG} border-white/40 bg-slate-950/70 text-white dark:bg-slate-950/70`;
+/** The get-in button glows amber (as Walk does): something to tap. */
+const BOARD = `${BIG} border-amber-100 bg-amber-400 text-slate-950 dark:border-amber-100 dark:bg-amber-400 dark:text-slate-950`;
 const BIG_ON = `${BIG} border-sky-200 bg-sky-500/90 text-white dark:bg-sky-500/90`;
 
 /** Above the bottom bar (play, speeds, the timeline), which wraps on a phone. */
@@ -31,6 +33,8 @@ const OVER_MARKS =
 
 interface Feel {
   canReboard: boolean;
+  /** The lifeboat beside the walker they can get in, or −1. */
+  boardable: number;
   /** The splash being rippled (its count), or 0: none. */
   ripple: number;
 }
@@ -39,7 +43,7 @@ interface Feel {
 const RIPPLE_MS = 700;
 
 function readFeel(rt: SceneRuntime, ripple = 0): Feel {
-  return { canReboard: rt.walkCanReboard, ripple };
+  return { canReboard: rt.walkCanReboard, boardable: rt.boardable, ripple };
 }
 
 /**
@@ -62,7 +66,11 @@ function useFeel(runtime: SceneRuntime, on: boolean): Feel {
       }
       const next = readFeel(runtime, now < rippleUntil ? seen : 0);
       setFeel((f) =>
-        f.canReboard === next.canReboard && f.ripple === next.ripple ? f : next
+        f.canReboard === next.canReboard &&
+        f.boardable === next.boardable &&
+        f.ripple === next.ripple
+          ? f
+          : next
       );
       raf = requestAnimationFrame(loop);
     };
@@ -93,6 +101,7 @@ export default function WalkHud({
 }: WalkHudProps) {
   const phase = useStore(store, (s) => s.walk.phase);
   const lookUnder = useStore(store, (s) => s.walk.lookUnder);
+  const ship = useStore(store, (s) => s.ship);
   const on = phase !== "off" && !hidden;
   // Under the end card the walk keys and held input stop (WalkRunner).
   useEffect(() => {
@@ -102,7 +111,10 @@ export default function WalkHud({
   useEffect(() => () => setWalkInputOff(runtime, false), [runtime]);
   const feel = useFeel(runtime, on);
   if (!on) return null;
+  const canWalk = walkMapFor(ship) !== null;
   const water = phase === "water";
+  const boat = phase === "boat";
+  const deck = phase === "deck";
 
   return (
     <div
@@ -141,11 +153,50 @@ export default function WalkHud({
         <Icon name="fly" className="size-11" />
       </button>
 
-      <div
-        className={`absolute left-[max(1rem,env(safe-area-inset-left))] ${OVER_BAR}`}
-      >
-        <WalkJoystick />
-      </div>
+      {/* No stick in a lifeboat: it rows itself. */}
+      {!boat && (
+        <div
+          className={`absolute left-[max(1rem,env(safe-area-inset-left))] ${OVER_BAR}`}
+        >
+          <WalkJoystick />
+        </div>
+      )}
+
+      {/* Beside a lifeboat on her deck: get in (it lowers at once). */}
+      {deck && feel.boardable >= 0 && (
+        <div
+          className={`absolute right-[max(1rem,env(safe-area-inset-right))] ${OVER_MARKS}`}
+        >
+          <button
+            type="button"
+            aria-label="Get in the lifeboat"
+            data-testid="shipwreck-board-boat"
+            data-walk-control
+            onClick={() => store.getState().boardBoat(feel.boardable)}
+            className={BOARD}
+          >
+            <Icon name="lifeboat" className="size-11" />
+          </button>
+        </div>
+      )}
+
+      {/* In a lifeboat: back on her deck (a ship you can't walk: Fly). */}
+      {boat && canWalk && (
+        <div
+          className={`absolute right-[max(1rem,env(safe-area-inset-right))] ${OVER_MARKS}`}
+        >
+          <button
+            type="button"
+            aria-label="Back on deck"
+            data-testid="shipwreck-leave-boat"
+            data-walk-control
+            onClick={() => store.getState().leaveBoat()}
+            className={BIG_OFF}
+          >
+            <Icon name="on-deck" className="size-11" />
+          </button>
+        </div>
+      )}
 
       {water && (
         <div

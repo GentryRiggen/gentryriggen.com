@@ -186,6 +186,33 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   useFrame((state, dt) => {
     const p = store.getState();
     const frame = runtime.frame;
+    // Riding a lifeboat: Effects stands the eyes in the boat; the drag
+    // turns the look (not under the end card).
+    if (p.camera === "walk" && p.walk.phase === "boat") {
+      const s = st.current;
+      if (p.walk.seq !== s.seq) {
+        s.seq = p.walk.seq;
+        s.walker = null;
+        s.swimmer = null;
+        s.pitch = 0;
+      }
+      const r = runtime.ride;
+      if (!runtime.walkInputOff) {
+        r.yaw -= walkInput.lookDx * WALK_TURN_PER_PX;
+        r.pitch = Math.max(
+          -WALK_PITCH_LIMIT,
+          Math.min(
+            WALK_PITCH_LIMIT,
+            r.pitch - walkInput.lookDy * WALK_TURN_PER_PX
+          )
+        );
+      }
+      walkInput.lookDx = 0;
+      walkInput.lookDy = 0;
+      runtime.walkLookUnder = false;
+      runtime.walkCanReboard = false;
+      return;
+    }
     if (p.camera !== "walk" || p.walk.phase === "off" || !map || !frame) {
       if (p.camera !== "walk") runtime.walker = null;
       return;

@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.12.0",
+    date: "2026-11-24",
+    title: "Ride a lifeboat",
+    highlights: [
+      "Get in a lifeboat! While you walk her deck, stand next to a lifeboat and tap the yellow boat button. Your boat swings out, goes down the side and rows away, and you can look back and watch her sink from safely out on the water",
+      "Not walking? Tap the boat button at the top to jump straight into the next boat to leave",
+      "Your boat goes down as soon as you get in, even if the real one left later. The other boats still leave at their real times",
+      "Drag to look around from the boat. Tap Back on deck to climb aboard her again",
+    ],
+  },
+  {
     version: "1.11.0",
     date: "2026-11-24",
     title: "The Poseidon",

@@ -355,3 +355,56 @@ describe("walking", () => {
     expect(screen.getByTestId("shipwreck-walk-hud").textContent).toBe("");
   });
 });
+
+describe("riding a lifeboat", () => {
+  const rideButton = () => screen.queryByTestId("shipwreck-ride-boat");
+
+  it("the top bar's boat button puts you in the next boat due to leave", () => {
+    const { store } = setup();
+    const first = track.events
+      .filter((e) => e.kind === "boat-lowered")
+      .sort((a, b) => a.t - b.t)[0];
+    fireEvent.click(rideButton()!);
+    const s = store.getState();
+    expect(s.camera).toBe("walk");
+    expect(s.walk.phase).toBe("boat");
+    expect(s.walk.boat).toEqual({ index: first.index, at: s.t });
+    // Riding: the top bar's button is gone.
+    expect(rideButton()).toBeNull();
+  });
+
+  it("is gone once every boat has left", () => {
+    const { store } = setup();
+    const last = Math.max(
+      ...track.events.filter((e) => e.kind === "boat-lowered").map((e) => e.t)
+    );
+    act(() => store.getState().seek(last));
+    expect(rideButton()).toBeNull();
+  });
+
+  it("is hidden under the end card", () => {
+    const store = makeStore();
+    render(<Hud store={store} onBack={() => {}} runId={1} hidden />);
+    expect(rideButton()).toBeNull();
+  });
+
+  it("in the boat: no stick, and Back on deck puts you on her deck", () => {
+    const { store } = setup();
+    act(() => store.getState().boardBoat(3));
+    expect(screen.queryByTestId("shipwreck-walk-stick")).toBeNull();
+    fireEvent.click(screen.getByTestId("shipwreck-leave-boat"));
+    expect(store.getState().walk.phase).toBe("deck");
+    expect(screen.getByTestId("shipwreck-walk-stick")).toBeInTheDocument();
+  });
+
+  it("on deck beside a boat: the get-in button boards that boat", () => {
+    const { store, runtime, tick } = setup();
+    act(() => store.getState().startWalk());
+    expect(screen.queryByTestId("shipwreck-board-boat")).toBeNull();
+    runtime.boardable = 6;
+    tick();
+    fireEvent.click(screen.getByTestId("shipwreck-board-boat"));
+    expect(store.getState().walk.phase).toBe("boat");
+    expect(store.getState().walk.boat?.index).toBe(6);
+  });
+});

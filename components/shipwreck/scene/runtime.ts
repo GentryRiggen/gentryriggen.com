@@ -71,6 +71,19 @@ export interface SceneRuntime {
   /** For the test hooks: where the walker is (null when not walking). */
   walkInfo: WalkInfo | null;
   /**
+   * Riding a lifeboat: the player's look, a yaw turned from facing her
+   * (radians, + to port) and a pitch (WalkRunner turns both by the drag),
+   * and whether a ride's first frame has zeroed it. Effects writes
+   * `rideView` into `walker`.
+   */
+  ride: { yaw: number; pitch: number; aimed: boolean };
+  rideView: WalkerView;
+  /**
+   * While on her deck: the lifeboat beside the walker they can get in
+   * (its `boat-lowered` index), or −1. Effects writes it.
+   */
+  boardable: number;
+  /**
    * The storm's sea this frame (a storm ship: her track's storm, the field
    * the sea shader draws and the time it is drawn at; real seconds, or the
    * wall clock on the title's stage). The ship rig writes it; `storm` is
@@ -118,7 +131,7 @@ export interface SceneRuntime {
 
 /** The walker for the test hooks. */
 export interface WalkInfo {
-  phase: "deck" | "water";
+  phase: "deck" | "water" | "boat";
   part: "whole" | "bow" | "stern" | null;
   /** Ship frame on deck (m), earth frame in the water. */
   x: number;
@@ -166,6 +179,9 @@ export function createSceneRuntime(): SceneRuntime {
     walkCanReboard: false,
     walkInputOff: false,
     walkInfo: null,
+    ride: { yaw: 0, pitch: 0, aimed: false },
+    rideView: { pos: [0, 0, 0], yaw: 0, pitch: 0 },
+    boardable: -1,
     sea: { storm: null, scale: 1, field: null, t: 0, atCamera: 0 },
     seaY(x, z) {
       const sea = rt.sea;

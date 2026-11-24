@@ -108,6 +108,11 @@ export interface BoatControls {
    */
   hang(index: number, position: Vector3, quaternion: Quaternion): void;
   hide(index: number): void;
+  /**
+   * The boat's middle in world space right now (aboard or afloat) into
+   * `out`; false (and `out` untouched) while it is hidden.
+   */
+  worldPosition(index: number, out: Vector3): boolean;
 }
 
 export interface TitanicHandles {
@@ -977,6 +982,24 @@ function buildModel(
     hide(i) {
       put(aboard, i, zero);
       put(afloat, i, zero);
+    },
+    worldPosition(i, out) {
+      for (let k = 0; k < 2; k += 1) {
+        const s = (k === 0 ? afloat : aboard).get(i);
+        if (!s) continue;
+        s.mesh.getMatrixAt(s.slot, m4);
+        // A hidden slot is scaled to nothing.
+        if (
+          m4.elements[0] === 0 &&
+          m4.elements[1] === 0 &&
+          m4.elements[2] === 0
+        )
+          continue;
+        s.mesh.updateWorldMatrix(true, false);
+        out.setFromMatrixPosition(m4).applyMatrix4(s.mesh.matrixWorld);
+        return true;
+      }
+      return false;
     },
   };
 
