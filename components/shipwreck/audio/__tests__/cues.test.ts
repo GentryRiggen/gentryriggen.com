@@ -538,6 +538,15 @@ describe("the Britannic's morning", () => {
     });
   });
 
+  it("keeps the Poseidon's events silent, and every other ship's map as it was", () => {
+    expect(eventCuesFor("poseidon")).toEqual({});
+    expect(Object.keys(eventCuesFor("poseidon"))).toHaveLength(0);
+    // The Concordia still has the Titanic's, not hers.
+    expect(eventCuesFor("concordia")).toBe(EVENT_CUES);
+    expect(eventCuesFor("titanic")).toBe(EVENT_CUES);
+    expect(eventCuesFor("carpathia")).toBe(CARPATHIA_EVENT_CUES);
+  });
+
   it("sounds the mine once at the start, then her whistle at 9:00", () => {
     const evs = [
       ev(0, "collision"),

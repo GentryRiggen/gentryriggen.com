@@ -1,4 +1,4 @@
-import type { WhatIfStorm } from "./save";
+import type { WhatIfStorm, WhatIfWave } from "./save";
 import type { ShipSpec } from "./ships/types";
 import { FINISHER_SPOT, VENTS_SPOT, whatIfSpots } from "./sim/run";
 import { clockText } from "./story";
@@ -28,6 +28,8 @@ export function finisherClock(spec: ShipSpec): string | null {
 
 /** A spot's short label: "Hatch 3", "Vents and railing", "Boiler room 1". */
 export function spotLabel(spec: ShipSpec, id: string): string {
+  const wave = spec.wave?.spots.find((s) => s.id === id);
+  if (wave) return wave.label;
   if (id === FINISHER_SPOT && spec.torpedo?.finisher) return FINISHER_LABEL;
   if (spec.cause === "storm") {
     if (id === VENTS_SPOT) return "Vents and railing";
@@ -42,6 +44,8 @@ export function spotLabel(spec: ShipSpec, id: string): string {
 /** A spot's spoken label, with what choosing it means. */
 export function spotAria(spec: ShipSpec, id: string, on: boolean): string {
   const label = spotLabel(spec, id);
+  if (spec.cause === "wave")
+    return `${label}: ${on ? "the wave smashes it" : "the wave leaves it whole"}`;
   if (spec.cause === "storm") {
     if (id === VENTS_SPOT)
       return `Her two broken vents and the split by her railing: ${on ? "broken, letting water in" : "whole"}`;
@@ -76,6 +80,48 @@ export function stormSpotGroups(spec: ShipSpec): {
     vents: spots.filter((id) => id === VENTS_SPOT),
     shoal: spots.filter((id) => id.startsWith("shoal-")),
   };
+}
+
+/** A wave ship's What-if wave: its chip's words, spoken label and help. */
+export interface WaveChoice {
+  id: WhatIfWave;
+  /** The chip's picture. */
+  icon: "wave-big" | "wave-small" | "wave-ahead";
+  label: string;
+  aria: string;
+  /** One short line under the chip while it is chosen. */
+  help: string;
+}
+
+export const WAVE_CHOICES: readonly WaveChoice[] = [
+  {
+    id: "real",
+    icon: "wave-big",
+    label: "Real wave",
+    aria: "Real wave: a giant wave, as tall as a ten-storey building, hits her side",
+    help: "On the real night a giant wave hit her left side.",
+  },
+  {
+    id: "smaller",
+    icon: "wave-small",
+    label: "Smaller wave",
+    aria: "Smaller wave: half as tall, hits her side",
+    help: "A wave half as tall hits her left side.",
+  },
+  {
+    id: "ahead",
+    icon: "wave-ahead",
+    label: "Wave from ahead",
+    aria: "Wave from ahead: the giant wave comes at her bow instead of her side",
+    help: "The giant wave comes at her front, not her side.",
+  },
+];
+
+/** A wave What-if's choice in a few words: "7 smashed spots", "Nothing smashed". */
+export function waveChoiceText(ids: readonly string[]): string {
+  return ids.length === 0
+    ? "Nothing smashed"
+    : `${ids.length} smashed ${ids.length === 1 ? "spot" : "spots"}`;
 }
 
 /** The storm setting's words. */

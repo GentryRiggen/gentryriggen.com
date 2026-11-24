@@ -499,8 +499,60 @@ describe("save: the Costa Concordia's What if (1.9)", () => {
   it("keeps the aground ending she can reach", () => {
     const save = parseSaveSalvaging({
       ...BASE,
-      seen: { realNight: true, endings: ["aground", "sank", "capsized"] },
+      seen: { realNight: true, endings: ["aground", "sank", "upside-down"] },
     })!.save;
     expect(save.seen.endings).toEqual(["aground", "sank"]);
+  });
+});
+
+describe("save: the Poseidon's What if (1.11)", () => {
+  const BASE = {
+    v: 1,
+    settings: { sound: true, speed: 30, camera: "orbit" },
+    seen: { realNight: true, endings: [] },
+    lastWhatIf: [],
+  };
+
+  it("round-trips her spots and the wave, even none chosen", () => {
+    const v1 = parseSaveSalvaging(BASE)!.save;
+    for (const choice of [
+      { ids: ["ballroom", "vents"], wave: "smaller" as const },
+      { ids: [], wave: "ahead" as const },
+      { ids: ["stern", "lobby"], wave: "real" as const },
+    ]) {
+      const next = withWhatIf({ ...v1, ship: "poseidon" }, "poseidon", choice);
+      const storage = new MemoryStorage();
+      writeSave(next, storage);
+      const back = loadSave(NOW, storage);
+      expect(back).toEqual(next);
+      expect(shipOf(back)).toBe("poseidon");
+      expect(whatIfOf(back, "poseidon")).toEqual(choice);
+    }
+  });
+
+  it("reads an older save without her as the real wave, and drops a junk wave", () => {
+    const old = parseSaveSalvaging({
+      ...BASE,
+      whatIfByShip: { poseidon: { ids: ["vents"] } },
+    })!.save;
+    expect(whatIfOf(old, "poseidon")).toEqual({ ids: ["vents"] });
+    expect(whatIfOf(old, "poseidon").wave ?? "real").toBe("real");
+    // A save with no entry for her at all.
+    expect(whatIfOf(parseSaveSalvaging(BASE)!.save, "poseidon")).toEqual({
+      ids: [],
+    });
+    const bad = parseSaveSalvaging({
+      ...BASE,
+      whatIfByShip: { poseidon: { ids: ["vents"], wave: "tsunami" } },
+    })!.save;
+    expect(bad.whatIfByShip).toEqual({ poseidon: { ids: ["vents"] } });
+  });
+
+  it("keeps the capsized ending she can reach", () => {
+    const save = parseSaveSalvaging({
+      ...BASE,
+      seen: { realNight: true, endings: ["capsized", "sank", "upside-down"] },
+    })!.save;
+    expect(save.seen.endings).toEqual(["capsized", "sank"]);
   });
 });

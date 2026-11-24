@@ -4,34 +4,37 @@ The procedural ships: each built at load from its ship data
 (`lib/shipwreck/ships/titanic.ts`, `lusitania.ts`, `fitzgerald.ts`,
 `carpathia.ts`, `britannic.ts`, `concordia.ts`) and a detail recipe
 (`titanicRecipe.ts`, `lusitaniaRecipe.ts`, `fitzgeraldRecipe.ts`,
-`carpathiaRecipe.ts`, `britannicRecipe.ts`, `concordiaRecipe.ts`; `recipeFor(spec, livery?)` picks by `spec.id`, and by
+`carpathiaRecipe.ts`, `britannicRecipe.ts`, `concordiaRecipe.ts`,
+`poseidonRecipe.ts` on the cruise kit; `recipeFor(spec, livery?)` picks by `spec.id`, and by
 livery for a ship with more than one: see "Liveries" below). Nothing is
 downloaded: every texture is drawn into a canvas once.
 
 ## Files
 
-| File                  | What                                                                                                                                                                                                                                                             |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `hullSurface.ts`      | The hull from the spec's offsets, interpolated with monotone cubics (smooth, exact at the stations); rounds the counter in plan.                                                                                                                                 |
-| `titanicRecipe.ts`    | Where everything goes: decks, houses, funnels, masts, boats, davits, 2,000+ portholes and windows, fittings, rails, wires, underwater gear. The recipe types.                                                                                                    |
-| `lusitaniaRecipe.ts`  | The Lusitania's: her tiers (`blocks`), houses, funnels, 48 boats, 44 davits, lights, the forest of ventilators, four propellers; her liveries `war-1915` and `cunard-1907`.                                                                                      |
-| `fitzgeraldRecipe.ts` | The Edmund Fitzgerald's: forecastle, texas house and pilothouse, the after house, 21 hatch covers on coamings, the hatch crane, one funnel, boats, one propeller; `FENCE_GAP`.                                                                                   |
-| `carpathiaRecipe.ts`  | The Carpathia's: forecastle, two wells, the bridge deck house and promenade, the boat deck and its houses, one funnel, four masts with derricks, 20 boats, twin screws, the stern gun; liveries `dazzle-1918`, `cunard-1912` (and `grey-1918`, a recipe option). |
-| `dazzle.ts`           | Her 1918 dazzle scheme as shapes (pure data; port and starboard differ).                                                                                                                                                                                         |
-| `britannicRecipe.ts`  | The Britannic's: her sister's recipe with the hospital paint (`bandPaintAt`), five gantry davit sets, Welin davits, A/B deck screens, "G.618", the bow's hinge.                                                                                                  |
-| `britannicLivery.ts`  | Her two paints on one built model (R23): `britannicModelRecipe`, `attachBritannicLivery`, her `handles.setLivery("hospital" \| "liner")`.                                                                                                                        |
-| `concordiaRecipe.ts`  | The Costa Concordia's: her tiers, boat recess, balconies, stepped front and terraces, bridge wings, spa, pool glass, slide, radar mast and domes, one funnel with the "C", 26 boats, twin screws and rudders, the rock's place.                                  |
-| `rock.ts`             | The rock stuck in her side (R21): `createRockMesh`, `disposeRockMesh`.                                                                                                                                                                                           |
-| `bowBend.ts`          | The bent bow (R12): `hardLandingAt`, `bowBend(t, landedAt)`, `bendShipPoint`, `applyBowBend`.                                                                                                                                                                    |
-| `breakCut.ts`         | The jagged tear through `breakX` and which half a point belongs to.                                                                                                                                                                                              |
-| `buildShip.ts`        | Recipe to merged triangle lists per material, instance lists and line lists, for the whole ship or one half; quality tiers.                                                                                                                                      |
-| `partGeometry.ts`     | Funnels, boats, cowl vents, benches, bitts, rail posts, porthole and window panes.                                                                                                                                                                               |
-| `materials.ts`        | Hull paint by height in the shader, painted steel (vertex colours), planks, bronze, the name boards, the lit panes and their uniforms.                                                                                                                           |
-| `textures.ts`         | Plate seams and rivets (normal map), weathering, planks, the name; the dazzle texture (`acquireDazzleTexture`).                                                                                                                                                  |
-| `shipModel.ts`        | Assembles the three.js tree and the handles.                                                                                                                                                                                                                     |
-| `TitanicModel.tsx`    | The R3F component (any ship: `spec`).                                                                                                                                                                                                                            |
-| `pose.ts`             | `applyBodyPose`: a sim `BodyPose` onto a part.                                                                                                                                                                                                                   |
-| `ModelViewer.tsx`     | The checking stage at `/shipwreck?model` (`&ship=lusitania`, `fitzgerald`, `carpathia`, `britannic` or `concordia`, `&livery=<id>`, e.g. `cunard-1907` or `grey-1918`; `setModelView({ livery })` repaints live; dev and e2e builds only).                       |
+| File                  | What                                                                                                                                                                                                                                                                                            |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `hullSurface.ts`      | The hull from the spec's offsets, interpolated with monotone cubics (smooth, exact at the stations); rounds the counter in plan.                                                                                                                                                                |
+| `titanicRecipe.ts`    | Where everything goes: decks, houses, funnels, masts, boats, davits, 2,000+ portholes and windows, fittings, rails, wires, underwater gear. The recipe types.                                                                                                                                   |
+| `lusitaniaRecipe.ts`  | The Lusitania's: her tiers (`blocks`), houses, funnels, 48 boats, 44 davits, lights, the forest of ventilators, four propellers; her liveries `war-1915` and `cunard-1907`.                                                                                                                     |
+| `fitzgeraldRecipe.ts` | The Edmund Fitzgerald's: forecastle, texas house and pilothouse, the after house, 21 hatch covers on coamings, the hatch crane, one funnel, boats, one propeller; `FENCE_GAP`.                                                                                                                  |
+| `carpathiaRecipe.ts`  | The Carpathia's: forecastle, two wells, the bridge deck house and promenade, the boat deck and its houses, one funnel, four masts with derricks, 20 boats, twin screws, the stern gun; liveries `dazzle-1918`, `cunard-1912` (and `grey-1918`, a recipe option).                                |
+| `dazzle.ts`           | Her 1918 dazzle scheme as shapes (pure data; port and starboard differ).                                                                                                                                                                                                                        |
+| `britannicRecipe.ts`  | The Britannic's: her sister's recipe with the hospital paint (`bandPaintAt`), five gantry davit sets, Welin davits, A/B deck screens, "G.618", the bow's hinge.                                                                                                                                 |
+| `britannicLivery.ts`  | Her two paints on one built model (R23): `britannicModelRecipe`, `attachBritannicLivery`, her `handles.setLivery("hospital" \| "liner")`.                                                                                                                                                       |
+| `concordiaRecipe.ts`  | The Costa Concordia's: her tiers, boat recess, balconies, stepped front and terraces, bridge wings, spa, pool glass, slide, radar mast and domes, one funnel with the "C", 26 boats, twin screws and rudders, the rock's place.                                                                 |
+| `cruiseKit.ts`        | The cruise kit: the Concordia recipe's builders lifted out and parametrised (tiers, balconies, panes, boats and davits, rafts, rails, the funnel, the mast, the slide, twin screws, names, the emergency mask), so the Poseidon is built from the same parts.                                   |
+| `poseidonRecipe.ts`   | The Poseidon's (made up, ours): her tiers on the cruise kit, balconies decks 7–11, the boat recess on deck 4 with 24 boats, the stepped front and bridge on deck 9, one raked tapering funnel with a fin and the gold wave, the ballroom's drum and ribbed glass dome, twin screws and rudders. |
+| `rock.ts`             | The rock stuck in her side (R21): `createRockMesh`, `disposeRockMesh`.                                                                                                                                                                                                                          |
+| `bowBend.ts`          | The bent bow (R12): `hardLandingAt`, `bowBend(t, landedAt)`, `bendShipPoint`, `applyBowBend`.                                                                                                                                                                                                   |
+| `breakCut.ts`         | The jagged tear through `breakX` and which half a point belongs to.                                                                                                                                                                                                                             |
+| `buildShip.ts`        | Recipe to merged triangle lists per material, instance lists and line lists, for the whole ship or one half; quality tiers.                                                                                                                                                                     |
+| `partGeometry.ts`     | Funnels, boats, cowl vents, benches, bitts, rail posts, porthole and window panes.                                                                                                                                                                                                              |
+| `materials.ts`        | Hull paint by height in the shader, painted steel (vertex colours), planks, bronze, the name boards, the lit panes and their uniforms.                                                                                                                                                          |
+| `textures.ts`         | Plate seams and rivets (normal map), weathering, planks, the name; the dazzle texture (`acquireDazzleTexture`).                                                                                                                                                                                 |
+| `shipModel.ts`        | Assembles the three.js tree and the handles.                                                                                                                                                                                                                                                    |
+| `TitanicModel.tsx`    | The R3F component (any ship: `spec`).                                                                                                                                                                                                                                                           |
+| `pose.ts`             | `applyBodyPose`: a sim `BodyPose` onto a part.                                                                                                                                                                                                                                                  |
+| `ModelViewer.tsx`     | The checking stage at `/shipwreck?model` (`&ship=lusitania`, `fitzgerald`, `carpathia`, `britannic`, `concordia` or `poseidon`, `&livery=<id>`, e.g. `cunard-1907` or `grey-1918`; `setModelView({ livery })` repaints live; dev and e2e builds only).                                          |
 
 Frames: built in the ship frame (x forward, y to port, z up from the keel at
 midships) and written in three.js axes (`three.x = x`, `three.y = z`,
@@ -1127,6 +1130,36 @@ and `setModelView({ livery })` swaps it live.
   also reach this mesh (`foremast.group`, mesh `"mast"`): both looks'
   masts are buff today, so the swap leaves it alone.
 
+## The cruise kit
+
+`cruiseKit.ts` holds a modern cruise ship's builders, lifted out of
+`concordiaRecipe.ts` (Poseidon plan, Task 5). Each is pure and takes the
+numbers the Concordia's recipe hard-coded before:
+
+| Builder                              | Returns                                                                                                                |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `cruiseFrame(spec)`                  | Her hull, `deckIndex`, `deckZ`, `Z` (amidships) and the deck edge.                                                     |
+| `flushTier`, `lowerTiers`            | The base tier, the bow's plating and foredeck, the boat recess between flush ends, the tier over the boats.            |
+| `balconyTiers`, `balconyFronts`      | Each balcony deck's after and forward ends (the bridge on its deck), floors, the back wall; glass runs and partitions. |
+| `bridgeWings`                        | The wings out to her full beam.                                                                                        |
+| `ovalFunnels`                        | Upright oval funnels with a dark top and a letter in her real paint only.                                              |
+| `radarMast`, `radarMastBoxes`        | The radar mast, its legs, platforms and scanners.                                                                      |
+| `recessBoats`, `boatDavits`          | Her data's boats at her side on the recess deck, two davits each.                                                      |
+| `liferaftRacks`                      | Canisters in racks, two high, both sides.                                                                              |
+| `createPanes`                        | Her lit panes: `sideLight` (in the hull or a tier's side), `row`, `frontLights` (a rounded front), `aftFace`.          |
+| `emergencyMask`                      | The sparse share of panes lit on emergency power (R7).                                                                 |
+| `railKit`                            | Rail runs along her edges and across.                                                                                  |
+| `waterSlide`                         | A slide coiling down from its tower.                                                                                   |
+| `twinScrews`                         | Two propellers on open shafts, A-brackets and struts, twin rudders.                                                    |
+| `bowAnchors`, `nameBoards`, `staffs` | Stockless anchors, the name on the bows (and sides) and stern, the jack and ensign staffs.                             |
+
+Every builder keeps the Concordia's arithmetic exactly (the same sums in
+the same order, the same loop order, so the panes' seeds and the emergency
+mask fall on the same panes): her recipe rebuilt on the kit deep-equals
+its 1.10 snapshot (`concordiaRecipeSnapshot.test.ts`, numbers to 1e-9),
+and her bow 3/4 in the model viewer is pixel-identical to before the
+lift. `cruiseKit.test.ts` runs each builder on a small made-up ship.
+
 ## The Costa Concordia
 
 `concordiaRecipe.ts`, as she was on the night of 13 January 2012: a
@@ -1301,3 +1334,100 @@ fun paint, made the first time she wears it).
 - Deck numbers on the outside are ours where no deck plan was at hand:
   the bridge on deck 8, balconies on 7–10, the boats on 4, the spa on
   12–13.
+
+## The Poseidon
+
+`poseidonRecipe.ts`: a made-up modern cruise ship of our own design (the
+first ship in the game that never sailed), built from the cruise kit on her
+data (`poseidon.ts`: hull, decks, superstructure boxes, funnel, 24 boats).
+Her particulars and her look are ours; every feature below was checked for
+believability against photographs of real cruise ships of her size and era
+([CR]: the Concordia, Carnival Conquest, Grand and Voyager classes; [WC]:
+their Wikimedia Commons categories), never against the 2006 film's art.
+New optional recipe fields, so every other recipe builds exactly as before
+(their snapshots pass): `ballrooms`, and a funnel's `taper`, `wing` and
+`wave`.
+
+| Tier   | Draws (day / night) | Triangles | Build (first, dev server)  |
+| ------ | ------------------- | --------- | -------------------------- |
+| high   | 11 / 28             | 166,482   | 76 ms (Concordia 77–89 ms) |
+| medium | 9                   | 108,564   | 23 ms                      |
+| low    | 9                   | 82,132    |                            |
+
+Her budget at high is 100 draws and 300k triangles. Part build in node
+(median of 12, high): 30.0 ms against the Concordia's 28.8 ms (+4 %). The
+ballroom adds 2,640 triangles at high (816 at low, ribs off) and no draw
+call: its glass, drum and ribs are in the paint list, its 144 lit panes in
+the one instanced pane mesh. 2,200 panes in all, 161 on emergency power.
+
+### Look notes (ours; believability against [CR]/[WC])
+
+Each feature: what real ships of her era do, what we drew, and the "not
+from the film" check.
+
+- **Silhouette.** Real 290–311 m cruise ships of 2000–2010 run a long
+  straight sheer with the superstructure almost to the bow and stern, a
+  stepped front over the bridge and stepped terraces aft ([CR] Grand and
+  Voyager classes, [WC]). Ours: 305 m, lower tiers to 20 m short of the
+  stem, decks 7–11 stepping back fore and aft, a raked stem, a square
+  stepped stern. Not from the film: our own tier ends from her own boxes.
+- **Balconies decks 7–11, window bands decks 0–6.** Real ships of her era
+  carry balcony rows over the boats and window rows below them ([WC]
+  Concordia, Conquest classes). Ours: the kit's balcony tiers and glass,
+  sea-blue glass, 3.6 m cabins; hull and tier windows, big promenade
+  windows on the recess wall behind the boats. Not from the film: the
+  Concordia's kit, our spans.
+- **The boat recess on deck 4.** Real ships hang their boats in a recess
+  set in from the side, under the deck over them ([WC] Concordia and
+  Grand classes). Ours: the kit's recess, 24 orange boats in davits,
+  liferaft racks at its ends. Not from the film: her data's boat places.
+- **One tall raked funnel aft, tapering, with a fin across its top.**
+  Raked, tapering funnels with side fins or wings at the top are a common
+  2000s look ([WC] the Conquest class's winged funnel, Voyager class).
+  Ours: an oval 16 × 8.8 m at its foot, raked 15°, narrowing to 70 % at
+  the top, a flat fin either side in the top's colour, white under a deep
+  blue top, a gold wave stripe (her real paint only). Not from the film:
+  our own proportions and paint, no badge or logo.
+- **The ballroom under a glass dome.** Real ships put glass domes and
+  roofs over pools and atria (the Concordia's sliding glass roof, the
+  Grand class's glass-roofed pool and atrium domes, [WC]). Ours: a round
+  drum two decks tall (12–13) of 24 tall windows between white piers,
+  29 m across, a cornice, a lat-long glass dome of 24 × 6 panes with ribs
+  on every meridian and parallel and a small lantern at its crown, lit
+  warm from inside until lights-out. Not from the film: a plain domed
+  rotunda, our size and pane count.
+- **Bridge on deck 9 with wings to her beam; radar mast and domes over
+  it.** As every ship in [CR]. Ours: the kit's wings and mast, three
+  radomes.
+- **Under water: twin screws on open shafts, A-brackets, twin rudders,
+  bow and stern thrusters.** As the Concordia and Grand classes ([CR]).
+  Ours: 5.6 m screws as far aft as her run leaves room (x −134), rudders
+  right behind them; seen in the air keel up.
+- **"POSEIDON" on both bows and across her stern.** Plain sans capitals
+  in deep blue (our lettering), no port of registry (she is made up), no
+  trident or logo.
+
+### Her paint box (R6)
+
+- `poseidon` (default, ours): white hull (`0xf1f1ec`, not quite the
+  superstructure's `0xf4f4f0`, so a fun paint leaves her houses white), a
+  sea-blue line along her hull's top (`sheerLine`), a deep blue boot-top
+  over a dark red bottom, a white funnel with a deep blue top and the gold
+  wave (`wave.realOnly`, as the Concordia's "C"), orange boats.
+- Fun paints: the cruise set (`cruiseFun()`), painted over hers by
+  `withFunPaint`, which also takes the gold wave off; `setLivery` swaps
+  colours only (the 1.7 mechanism; tested).
+
+### Assumptions and departures
+
+- Ruling: the sea-blue band sits at her hull's top (deck 1, the
+  `sheerLine`) rather than the spec's "deck 3": her data puts the hull's
+  top at deck 1, and `sheerLine` is the paint a fun paint swaps.
+- Ruling: the dome's crown is 9 m over deck 14 (her data's ballroom
+  comment), above the `ballroom` box's top (deck 14 + 4 m): that top is
+  the dome's volume as a slab, not its crown. The drum and dome sit inside
+  the box in plan and from its floor; tested.
+- Her stern is stepped but square, not rounded in plan (the kit's tiers
+  round only forward).
+- Keel-up check in the model viewer: `setModelView({ roll: 180, camera:
+"keel" })`.

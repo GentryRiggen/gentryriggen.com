@@ -15,6 +15,7 @@ import {
   BRITANNIC_PLACES,
   CONCORDIA_PLACES,
   FITZGERALD_PLACES,
+  POSEIDON_PLACES,
   LUSITANIA_PLACES,
   PLACES,
   deckZAt,
@@ -40,7 +41,7 @@ import type {
   ShipSpec,
 } from "@/lib/shipwreck/ships/types";
 import { hullHalfBreadth, type HullModel } from "@/lib/shipwreck/sim/geometry";
-import { cargoLayer, compartmentTopZ } from "@/lib/shipwreck/xray";
+import { boxExtent, cargoLayer, compartmentTopZ } from "@/lib/shipwreck/xray";
 
 /**
  * Geometry for the X-ray cutaway, in the ship frame written in three.js
@@ -167,6 +168,52 @@ export function waterGeometry(
   g.setAttribute("aComp", new BufferAttribute(new Float32Array(comp), 1));
   g.computeVertexNormals();
   return g;
+}
+
+/** Segments round a round box's water (the ballroom's drum). */
+const DRUM_SEGMENTS = 24;
+
+/**
+ * The water in superstructure boxes with an id (the Poseidon's tiers and
+ * her ballroom), as closed volumes the water shader cuts at each box's
+ * level (`aComp`: the slot in the level uniform array, in `boxes` order):
+ * a block for a tier, a drum for a round room (`round`: the ballroom,
+ * its half-breadth the drum's radius), each a hair inside its box. Null
+ * without one.
+ */
+export function boxWaterGeometry(
+  spec: Pick<ShipSpec, "beam" | "sheerZ" | "superstructure">,
+  boxes: readonly number[],
+  round: (b: ShipSpec["superstructure"][number]) => boolean = (b) =>
+    b.id === "ballroom"
+): BufferGeometry | null {
+  if (boxes.length === 0) return null;
+  const parts = boxes.map((index, slot) => {
+    const b = spec.superstructure[index];
+    const e = boxExtent(spec, b);
+    const lx = e.x[1] - e.x[0] - 0.3;
+    const ly = (e.y[1] - e.y[0]) * INSET;
+    const lz = e.z[1] - e.z[0] - 0.2;
+    const cx = (e.x[0] + e.x[1]) / 2;
+    const cz = (e.z[0] + e.z[1]) / 2;
+    let g: BufferGeometry = round(b)
+      ? new CylinderGeometry(
+          Math.min(lx, ly) / 2,
+          Math.min(lx, ly) / 2,
+          lz,
+          DRUM_SEGMENTS
+        )
+      : new BoxGeometry(lx, lz, ly);
+    g = at(g, cx, 0, cz).toNonIndexed();
+    g.deleteAttribute("uv");
+    const n = g.getAttribute("position").count;
+    g.setAttribute(
+      "aComp",
+      new BufferAttribute(new Float32Array(n).fill(slot), 1)
+    );
+    return g;
+  });
+  return mergeGeometries(parts, false);
 }
 
 /**
@@ -1303,7 +1350,98 @@ const BUILDERS: Record<ShipId, Partial<Record<PlaceId, () => Part[]>>> = {
     "motor-room": concMotorParts,
     "generator-room": concGeneratorParts,
   },
+  // Her compartments' and boxes' water is the X-ray's own; these are the
+  // rooms' blockouts. (The funnel, propeller and lifeboat: the model's.)
+  poseidon: {
+    bridge: posBridgeParts,
+    ballroom: posBallroomParts,
+    lobby: posLobbyParts,
+    "engine-room": posEngineParts,
+  },
 };
+
+// --- The Poseidon's rooms (ours: a made-up ship).
+
+function posBridgeParts(): Part[] {
+  const p = POSEIDON_PLACES.bridge;
+  return bridgeAt(p.at[0], p.at[0] + 0.6, p.floorZ);
+}
+
+/**
+ * The ballroom: a round dance floor about 30 m across, a ring of tables'
+ * worth of low drum wall round it (its tall windows) and a chandelier
+ * under the dome's centre.
+ */
+function posBallroomParts(): Part[] {
+  const p = POSEIDON_PLACES.ballroom;
+  const [x, ,] = p.at;
+  const floor = p.floorZ;
+  const parts: Part[] = [
+    {
+      g: at(new CylinderGeometry(14.5, 14.5, 0.2, 32), x, 0, floor + 0.1),
+      color: 0x8a6a45,
+    },
+    {
+      g: at(new CylinderGeometry(6, 6, 0.25, 24), x, 0, floor + 0.2),
+      color: 0xc8a060,
+    },
+    {
+      g: at(new TorusGeometry(14.2, 0.25, 6, 40), x, 0, floor + 1.2, {
+        x: Math.PI / 2,
+      }),
+      color: 0xd8c8a0,
+    },
+    {
+      g: at(new SphereGeometry(1.1, 12, 8), x, 0, floor + 7.5),
+      color: 0xfff0c0,
+      glow: true,
+    },
+  ];
+  return parts;
+}
+
+/** The lobby: a tall atrium's floor and its glass lift shafts. */
+function posLobbyParts(): Part[] {
+  const p = POSEIDON_PLACES.lobby;
+  const x = p.at[0];
+  const floor = p.floorZ;
+  const parts: Part[] = [
+    { g: box(x, 0, floor, 20, 14, 0.15), color: 0x9a8a70 },
+  ];
+  for (const y of [-4, 4])
+    parts.push({
+      g: at(new CylinderGeometry(1.2, 1.2, 14, 12), x - 6, y, floor + 7),
+      color: 0xa8d8e8,
+    });
+  parts.push({
+    g: at(new SphereGeometry(0.4, 8, 6), x + 4, 0, floor + 6),
+    color: 0xffe0a0,
+    glow: true,
+  });
+  return parts;
+}
+
+/** The generator room: diesel generator sets either side of a walkway. */
+function posEngineParts(): Part[] {
+  const p = POSEIDON_PLACES["engine-room"];
+  const x0 = p.at[0];
+  const floor = p.floorZ;
+  const parts: Part[] = [
+    { g: box(x0, 0, floor, 20, 26, 0.15), color: 0x3a3a3a },
+  ];
+  for (const y of [-6, 6])
+    for (const dx of [-5, 5])
+      parts.push({
+        g: box(x0 + dx, y, floor + 2.2, 8, 3.2, 4.2),
+        color: 0x5a6e7a,
+      });
+  parts.push({
+    g: at(new SphereGeometry(0.3, 8, 6), x0, 0, floor + 6),
+    color: 0xffe0a0,
+    glow: true,
+  });
+  return parts;
+}
 
 function colored(parts: Part[]): BufferGeometry | null {
   if (parts.length === 0) return null;

@@ -11,6 +11,7 @@ import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { isDeckOpening } from "@/lib/shipwreck/ships/types";
 import {
@@ -660,5 +661,122 @@ describe("What if? for a rocks ship (the Costa Concordia, 1.9)", () => {
     );
     fireEvent.click(screen.getByTestId("shipwreck-go"));
     expect(onGo).toHaveBeenLastCalledWith({ ids: [], toSea: true });
+  });
+});
+
+describe("What if? for a wave ship (the Poseidon, 1.11)", () => {
+  const SPOTS = [
+    "stern",
+    "aft-win",
+    "mid-win",
+    "vents",
+    "ballroom",
+    "fwd-win",
+    "lobby",
+  ];
+
+  it("offers seven spot pictures and the three-way wave chip, all seven on", () => {
+    editor(poseidon);
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "poseidon"
+    );
+    const group = screen.getByRole("group", { name: "What the wave smashes" });
+    const chips = within(group).getAllByRole("checkbox");
+    expect(chips).toHaveLength(7);
+    for (const id of SPOTS) {
+      const chip = screen.getByTestId(`shipwreck-chip-${id}`);
+      expect(chip).toHaveAttribute("aria-checked", "true");
+      // A picture, then a few words.
+      expect(chip.querySelector("svg")).not.toBeNull();
+    }
+    expect(screen.getByTestId("shipwreck-chip-ballroom")).toHaveAccessibleName(
+      "The ballroom dome: the wave smashes it"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "7 smashed spots"
+    );
+    // The wave chip: real to start with, each labelled, one help line.
+    const chip = screen.getByRole("radiogroup", { name: "The wave" });
+    expect(within(chip).getAllByRole("radio")).toHaveLength(3);
+    expect(screen.getByTestId("whatif-wave-real")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("whatif-wave-smaller")).toHaveAccessibleName(
+      "Smaller wave: half as tall, hits her side"
+    );
+    expect(screen.getByTestId("whatif-wave-ahead")).toHaveAccessibleName(
+      "Wave from ahead: the giant wave comes at her bow instead of her side"
+    );
+    expect(chip).toHaveAccessibleDescription(
+      "On the real night a giant wave hit her left side."
+    );
+    // The picture on the hull gives the same seven spots.
+    for (const id of SPOTS)
+      expect(screen.getByTestId(`shipwreck-spot-${id}`)).toBeInTheDocument();
+    // No other ship's toggles.
+    expect(screen.queryByTestId("shipwreck-storm")).toBeNull();
+    expect(screen.queryByTestId("whatif-to-sea")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-portholes")).toBeNull();
+  });
+
+  it("goes with the chosen spots and wave", () => {
+    const onGo = editor(poseidon);
+    fireEvent.click(screen.getByTestId("shipwreck-preset-clear"));
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "Nothing smashed"
+    );
+    // Nothing smashed is a fair question: Go stays on.
+    expect(screen.getByTestId("shipwreck-go")).toBeEnabled();
+    fireEvent.click(screen.getByTestId("shipwreck-chip-ballroom"));
+    fireEvent.click(screen.getByTestId("shipwreck-spot-vents"));
+    fireEvent.click(screen.getByTestId("whatif-wave-smaller"));
+    expect(screen.getByTestId("whatif-wave-smaller")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "2 smashed spots"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(onGo).toHaveBeenCalledWith({
+      ids: ["ballroom", "vents"],
+      wave: "smaller",
+    });
+    expect(
+      whatIfOpenings(poseidon, ["ballroom", "vents"], "smaller").length
+    ).toBeGreaterThan(0);
+  });
+
+  it("remembers her last choice, and the real preset puts it all back", () => {
+    const onGo = editor(poseidon, { ids: [], wave: "ahead" });
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "Nothing smashed"
+    );
+    expect(screen.getByTestId("whatif-wave-ahead")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveAttribute(
+      "aria-pressed",
+      "false"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-preset-real"));
+    expect(screen.getByTestId("shipwreck-preset-real")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(onGo).toHaveBeenCalledWith({
+      ids: whatIfRealIds(poseidon),
+      wave: "real",
+    });
+  });
+
+  it("leaves the other ships' editors without a wave", () => {
+    editor(concordia);
+    expect(screen.queryByTestId("shipwreck-wave")).toBeNull();
+    expect(screen.queryByTestId("whatif-wave-real")).toBeNull();
   });
 });

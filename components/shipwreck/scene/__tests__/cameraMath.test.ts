@@ -24,6 +24,7 @@ import {
   underwaterView,
   CARPATHIA_HULL_BOXES,
   CONCORDIA_HULL_BOXES,
+  POSEIDON_HULL_BOXES,
   clampAboveGround,
   groundFor,
   type ShotContext,
@@ -34,6 +35,13 @@ import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
+import {
+  orbitOnceCapsized,
+  poseidonShot,
+  poseidonView,
+  POSEIDON_SHOTS,
+} from "../poseidonShots";
 import { floorAt } from "@/lib/shipwreck/sim/seabed";
 import { simulate, torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
 import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
@@ -845,5 +853,137 @@ describe("the Concordia's camera (Task 6)", () => {
       const v = shotView(cinematicShot(sea, t, "concordia"), ctx);
       expect(v.pos[1]).toBeGreaterThanOrEqual(ground(v.pos[0], v.pos[2]) + 2);
     }
+  });
+});
+
+describe("the Poseidon's camera (Task 9)", () => {
+  const boxes = hullBoxesFor("poseidon");
+  const deg = Math.PI / 180;
+  const SEA = poseidon.seaDepthM;
+  const track = simulate(poseidon, poseidon.realNight);
+  const ev = (k: string) => track.events.find((e) => e.kind === k)!.t;
+  const insideAny = (l: readonly number[]) =>
+    boxes.some(
+      (b) =>
+        l[0] > b.x[0] &&
+        l[0] < b.x[1] &&
+        l[1] > b.y[0] &&
+        l[1] < b.y[1] &&
+        l[2] > b.z[0] &&
+        l[2] < b.z[1]
+    );
+
+  it("sizes her hull boxes from her data: her hull, her tiers, the ballroom and its dome", () => {
+    expect(boxes).toBe(POSEIDON_HULL_BOXES);
+    const ys = boxes.flatMap((b) => b.y);
+    expect(Math.max(...ys)).toBeGreaterThanOrEqual(poseidon.beam / 2);
+    expect(Math.max(...ys)).toBeLessThan(poseidon.beam / 2 + 0.6);
+    const xs = boxes.flatMap((b) => b.x);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(300);
+    // The dome's crown, 9 m over deck 14.
+    const zs = boxes.flatMap((b) => b.z);
+    expect(Math.max(...zs)).toBeGreaterThanOrEqual(poseidon.decks[0].z + 9);
+  });
+
+  for (const rollDeg of [0, 90, 180])
+    it(`never leaves an orbiting camera inside her or under the floor at ${rollDeg}°`, () => {
+      // Afloat (keel at the sea's level) and on the floor, rolled so.
+      for (const z of [-8, 12 - SEA + 30]) {
+        const pose: BodyPose = {
+          part: "whole",
+          x: 0,
+          y: 0,
+          z,
+          roll: rollDeg * deg,
+          pitch: 0,
+          yaw: 0,
+        };
+        const c = shipToThree(pose, [0, 0, 25]);
+        let checked = 0;
+        for (let a = 0; a < 360; a += 20)
+          for (const el of [-50, -20, 0, 15, 40, 70])
+            for (const r of [6, 20, 45, 120, 300]) {
+              const p: [number, number, number] = [
+                c[0] + Math.cos(a * deg) * Math.cos(el * deg) * r,
+                c[1] + Math.sin(el * deg) * r,
+                c[2] + Math.sin(a * deg) * Math.cos(el * deg) * r,
+              ];
+              // The rig: over the floor, then out of her.
+              const g = clampAboveFloor(p, SEA, 3);
+              const local = inShipFrame(pose, g);
+              const out = keepClear(local, pose, SEA, boxes, 0.6, 3);
+              const w = shipToThree(pose, out);
+              checked += 1;
+              expect(insideAny(out)).toBe(false);
+              expect(w[1]).toBeGreaterThanOrEqual(-SEA + 3 - 1e-6);
+            }
+        expect(checked).toBe(540);
+      }
+    });
+
+  it("follows her night: the party, the wave, the roll, keel up, the dome, the dive, the floor", () => {
+    const at = (t: number) => cinematicShot(track, t, "poseidon");
+    expect(at(-50)).toBe("poseidon-party");
+    expect(at(-10)).toBe("poseidon-wave");
+    expect(at(10)).toBe("poseidon-roll");
+    expect(at(ev("capsized") + 10)).toBe("poseidon-keel");
+    expect(at(ev("capsized") + 200)).toBe("poseidon-dome");
+    expect(at(ev("bow-under"))).toBe("poseidon-dive");
+    expect(at(ev("bow-lands") + 10)).toBe("poseidon-floor");
+    // The title's calm ship.
+    expect(cinematicShot(track, 0, "poseidon", false)).toBe("poseidon-party");
+    expect(poseidonShot(track, -50)).toBe("poseidon-party");
+  });
+
+  it("frames every shot of her night above the floor, the under-water ones under the sea", () => {
+    const end = track.frames[track.frames.length - 1].t;
+    for (let t = -60; t <= end + 30; t += 5) {
+      const f = sampleTrack(track, t);
+      const ctx: ShotContext = {
+        t,
+        wall: t,
+        bodies: f.bodies,
+        breakX: null,
+        seaDepthM: SEA,
+        ship: "poseidon",
+      };
+      const shot = cinematicShot(track, t, "poseidon");
+      const v = shotView(shot, ctx);
+      for (const n of [...v.pos, ...v.target])
+        expect(Number.isFinite(n)).toBe(true);
+      expect(v.pos[1]).toBeGreaterThan(-SEA + 2);
+      if (shot === "poseidon-dome" || shot === "poseidon-dive")
+        expect(v.pos[1]).toBeLessThan(0);
+      // Never inside her.
+      expect(insideAny(inShipFrame(f.bodies[0], v.pos))).toBe(false);
+    }
+    // Every shot has a view (and the under-water camera follows her).
+    const f = sampleTrack(track, ev("capsized") + 100);
+    const ctx: ShotContext = {
+      t: 0,
+      wall: 0,
+      bodies: f.bodies,
+      breakX: null,
+      seaDepthM: SEA,
+      ship: "poseidon",
+    };
+    for (const shot of POSEIDON_SHOTS)
+      expect(poseidonView(shot, ctx).pos).toHaveLength(3);
+    expect(underwaterView(ctx).pos[1]).toBeLessThan(0);
+  });
+
+  it("hands the bridge, stern and lifeboat cameras to the orbit once she is keel up", () => {
+    const cap = ev("capsized");
+    for (const cam of ["bridge", "lifeboat", "stern"] as const) {
+      expect(orbitOnceCapsized(cam, track.events, cap - 1)).toBe(false);
+      expect(orbitOnceCapsized(cam, track.events, cap)).toBe(true);
+      expect(orbitOnceCapsized(cam, track.events, cap + 300)).toBe(true);
+    }
+    expect(orbitOnceCapsized("cinematic", track.events, cap + 10)).toBe(false);
+    expect(orbitOnceCapsized("underwater", track.events, cap + 10)).toBe(false);
+    // A run that never rolls over (the smaller wave) keeps its camera.
+    const small = simulate(poseidon, poseidon.realNight, { wave: "smaller" });
+    expect(small.events.some((e) => e.kind === "capsized")).toBe(false);
+    expect(orbitOnceCapsized("bridge", small.events, 600)).toBe(false);
   });
 });

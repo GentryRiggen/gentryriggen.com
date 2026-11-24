@@ -102,6 +102,18 @@ export interface SceneRuntime {
   stormLight: number | null;
   /** How light the water is under the surface (the store's `underLight`). */
   underLight: 0 | 1 | 2;
+  /**
+   * White water on the storm's sea where a ship rolled over (the
+   * Poseidon's, `poseidonEffects.ts` writes it): three x, z, radius (m)
+   * and strength (0–1; 0 none).
+   */
+  foamPatch: Float32Array;
+  /**
+   * Her emergency lights' level (0–1) after a blackout (the ship rig
+   * writes it): the storm's sea glows round her hull with it, her lit
+   * decks under the water (the Poseidon keel up). 0 for every other ship.
+   */
+  underGlow: number;
 }
 
 /** The walker for the test hooks. */
@@ -166,6 +178,8 @@ export function createSceneRuntime(): SceneRuntime {
     lampPower: 0,
     stormLight: null,
     underLight: 0,
+    foamPatch: new Float32Array(4),
+    underGlow: 0,
   };
   return rt;
 }

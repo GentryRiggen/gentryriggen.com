@@ -51,6 +51,8 @@ const STREAK_M = 15;
 export const STREAK_DOTS = 4;
 /** The clay plume's life after a part lands (shown s). */
 const PLUME_S = 45;
+/** A wave ship's side spray stops past this roll (rad, 40°). */
+const WAVE_SPRAY_ROLL = (40 * Math.PI) / 180;
 
 function hash(a: number, b = 0): number {
   const s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453;
@@ -114,7 +116,18 @@ export class StormEffects {
     private readonly runtime: SceneRuntime,
     private readonly pos: Float32Array,
     private readonly col: Float32Array,
-    private readonly size: Float32Array
+    private readonly size: Float32Array,
+    /**
+     * `snow`: the storm's snow (the Fitzgerald's; a clear night has none).
+     * `wave`: a wave ship (the Poseidon): her side spray only while she is
+     * upright enough for the sea to reach her deck edge from outside (not
+     * on her side or keel up, where every edge is under it), and her
+     * funnel's smoke only until her lights go out (her diesels stop).
+     */
+    private readonly opts: { snow: boolean; wave: boolean } = {
+      snow: true,
+      wave: false,
+    }
   ) {
     // Her deck edge each side (ship frame), and her stem.
     const xs = spec.stations.map((s) => s.x);
@@ -224,14 +237,18 @@ export class StormEffects {
     // Spray and smoke first: the snow (thickest in the squall the big
     // seas come in) takes what the pool has left, never their share.
     let n0 = this.n;
-    if (f.frame.bodies.length === 1)
+    if (
+      f.frame.bodies.length === 1 &&
+      (!this.opts.wave || Math.abs(body.roll) < WAVE_SPRAY_ROLL)
+    )
       this.sprayAt(f, tier.spray, white, relX, relZ);
     c.spray = this.n - n0;
     n0 = this.n;
     this.smoke(f, tier.smoke, light, relX, relZ);
     c.smoke = this.n - n0;
     n0 = this.n;
-    this.snow(f, tier.snow, tier.snowFar, tier.streaks, white, windMs);
+    if (this.opts.snow)
+      this.snow(f, tier.snow, tier.snowFar, tier.streaks, white, windMs);
     c.snow = this.n - n0 - c.snowFar;
     return this.n;
   }

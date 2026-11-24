@@ -1,5 +1,6 @@
 import { bowDownText, helpFor, leanText, powerText, waterText } from "../help";
 import { lusitania } from "../ships/lusitania";
+import { poseidon } from "../ships/poseidon";
 import { titanic } from "../ships/titanic";
 
 describe("stat chips", () => {
@@ -69,5 +70,20 @@ describe("the walk line", () => {
     expect(helpFor("controls", null, noWalk).lines.join(" ")).not.toMatch(
       /walking button/
     );
+  });
+});
+
+describe("the wave ship's lean card", () => {
+  const lean = (v?: "real" | "smaller" | "ahead") =>
+    helpFor("lean", null, poseidon, v).lines.join(" ");
+
+  it("matches the wave the run has", () => {
+    expect(lean()).toMatch(/rolled her all the way over/);
+    expect(lean("real")).toMatch(/rolled her all the way over/);
+    expect(lean("smaller")).toMatch(/smaller wave/);
+    expect(lean("smaller")).not.toMatch(/rolled her all the way over/);
+    expect(lean("ahead")).toMatch(/bow/);
+    expect(lean("ahead")).not.toMatch(/port side/);
+    expect(lean("ahead")).not.toMatch(/rolled her/);
   });
 });

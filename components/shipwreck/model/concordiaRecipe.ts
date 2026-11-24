@@ -1,20 +1,32 @@
 import { CONCORDIA_BOATS } from "@/lib/shipwreck/ships/concordia";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
-import { createHullSurface } from "./hullSurface";
 import {
-  hash01,
-  normalize,
-  swungOutY,
+  SIDES,
+  balconyFronts,
+  balconyTiers,
+  boatDavits,
+  bowAnchors,
+  bridgeWings,
+  createPanes,
+  cruiseFrame,
+  emergencyMask,
+  flushTier,
+  liferaftRacks,
+  lowerTiers,
+  nameBoards,
+  ovalFunnels,
+  radarMast,
+  radarMastBoxes,
+  railKit,
+  recessBoats,
+  staffs as staffPair,
+  twinScrews,
+  waterSlide,
+} from "./cruiseKit";
+import {
   type Block,
-  type BoatRecipe,
   type BoxPart,
-  type DavitRecipe,
-  type FunnelRecipe,
-  type LightSpot,
   type MastRecipe,
-  type NameBoard,
-  type Propeller,
-  type RailRun,
   type ShipLayout,
   type ShipPaint,
   type ShipRecipe,
@@ -124,19 +136,9 @@ export function concordiaRecipe(
   _livery: string = "costa-2012"
 ): ShipRecipe {
   void _livery;
-  const hull = createHullSurface(spec);
+  const frame = cruiseFrame(spec);
+  const { hull, deckIndex, deckZ, Z, edge } = frame;
   const paint = CONCORDIA_PAINT;
-  const deckByName = new Map(spec.decks.map((d, i) => [d.name, i]));
-  const deckIndex = (name: string): number => {
-    const i = deckByName.get(name);
-    if (i === undefined) throw new Error(`no deck ${name}`);
-    return i;
-  };
-  const deckZ = (name: string, x: number): number =>
-    spec.decks[deckIndex(name)].z + (spec.sheerZ(x) - spec.depth);
-  const Z = (name: string) => deckZ(name, 0);
-  const edge = (x: number): number => hull.topHalfBreadth(x);
-  const sides: (1 | -1)[] = [1, -1];
   const stern = hull.xMin;
   const stem = hull.xMax;
   const funnelX = spec.funnels[0].x;
@@ -165,6 +167,7 @@ export function concordiaRecipe(
   // and forward (the stepped front, the bridge on deck 8); deck 11 flush;
   // then the narrower top: the pool decks, the glass roof, the spa forward
   // and the sports deck on it.
+  const tierPaint = { wall: WHITE, roof: DECK_TOP };
   const flush = (
     id: string,
     deck: string,
@@ -172,97 +175,40 @@ export function concordiaRecipe(
     x1: number,
     h: number,
     extra: Partial<Block> = {}
-  ): Block => ({
-    id,
-    x0,
-    x1,
-    deck,
-    h,
-    wall: "white",
-    wallColor: WHITE,
-    roof: "paint",
-    roofColor: DECK_TOP,
-    ...extra,
-  });
+  ): Block => flushTier(tierPaint, id, deck, x0, x1, h, extra);
   const blocks: Block[] = [
-    flush("deck-3", "3", stern + 1.2, BOW_PLATING_X, TIER, { roof: "pine" }),
-    // The bow's plating carried up to deck 5 (the mooring deck inside).
-    {
-      id: "bow-plating",
-      x0: BOW_PLATING_X,
-      x1: stem - 0.05,
-      deck: "3",
-      h: 2 * TIER,
-      wall: "plating",
-      roof: "none",
-    },
-    // Its deck, painted.
-    flush("foredeck", "5", BOW_PLATING_X, stem - 0.6, 0.02, {
-      dz: -0.02,
-      ends: false,
+    ...lowerTiers({
+      paint: tierPaint,
+      stern,
+      stem,
+      tier: TIER,
+      base: { deck: "3", x0: stern + 1.2, h: TIER },
+      bowPlating: { x: BOW_PLATING_X, h: 2 * TIER },
+      foredeck: "5",
+      recess: {
+        deck: "4",
+        span: RECESS,
+        inset: RECESS_INSET,
+        wall: RECESS_SHADE,
+        aftX0: stern + 2,
+        tiers: 2,
+      },
+      over: { deck: "6", x0: stern + 3, x1: DECK6_FWD, roundFwd: 16 },
     }),
-    flush("deck-4-aft", "4", stern + 2, RECESS[0], 2 * TIER, { roof: "none" }),
-    {
-      id: "boat-recess",
-      x0: RECESS[0],
-      x1: RECESS[1],
-      deck: "4",
-      h: 2 * TIER,
-      inset: RECESS_INSET,
-      wall: "shade",
-      wallColor: RECESS_SHADE,
-      roof: "none",
-      ends: false,
-    },
-    flush("deck-4-fwd", "4", RECESS[1], BOW_PLATING_X, 2 * TIER),
-    flush("deck-6", "6", stern + 3, DECK6_FWD, TIER, {
+    ...balconyTiers({
+      paint: tierPaint,
+      decks: CONCORDIA_BALCONY_DECKS,
+      aftEnd: AFT_END,
+      fwdEnd: FWD_END,
+      span: BALCONY,
+      depth: BALCONY_DEPTH,
+      shade: SHADE,
+      tier: TIER,
+      bridgeDeck: "8",
       roundFwd: 16,
-      under: true,
     }),
   ];
-  for (const deck of CONCORDIA_BALCONY_DECKS) {
-    blocks.push(
-      flush(`deck-${deck}-aft`, deck, AFT_END[deck], BALCONY[0], TIER, {
-        roof: "pine",
-      }),
-      flush(
-        deck === "8" ? "bridge" : `deck-${deck}-fwd`,
-        deck,
-        BALCONY[1],
-        FWD_END[deck],
-        TIER,
-        { roundFwd: 16, under: true }
-      )
-    );
-    if (deck !== "7")
-      blocks.push({
-        id: `balcony-floor-${deck}`,
-        x0: BALCONY[0],
-        x1: BALCONY[1],
-        deck,
-        dz: -0.3,
-        h: 0.3,
-        wall: "white",
-        wallColor: WHITE,
-        roof: "paint",
-        roofColor: DECK_TOP,
-        under: true,
-        ends: false,
-      });
-  }
   blocks.push(
-    {
-      id: "balcony-wall",
-      x0: BALCONY[0],
-      x1: BALCONY[1],
-      deck: "7",
-      h: 4 * TIER,
-      inset: BALCONY_DEPTH,
-      wall: "shade",
-      wallColor: SHADE,
-      roof: "none",
-      ends: false,
-    },
     flush("deck-11", "11", -115, DECK11_FWD, TIER, {
       roundFwd: 16,
       under: true,
@@ -320,172 +266,41 @@ export function concordiaRecipe(
   // The funnel: one, an upright oval about 15 m long and 9 m wide (the
   // scale model, the bow-on photographs), Costa yellow with a black top,
   // the blue "C" on both sides (her real paint only).
-  const funnels: FunnelRecipe[] = spec.funnels.map((f, i) => {
-    const H = f.topZ - f.baseZ;
-    return {
-      index: i,
-      x: f.x,
-      baseZ: f.baseZ,
-      topZ: f.topZ,
-      dummy: f.dummy,
-      semiA: 7.5,
-      semiB: 4.6,
-      rake: 0,
-      // The black top: about 30 % of what shows (the scale model).
-      blackTop: 5.8,
-      bands: [],
-      pipes: [],
-      hasWhistle: false,
-      emblem: {
-        // Midway up the yellow, 2.8 m to the middle of its stroke (the
-        // scale model: the C half as tall as the yellow).
-        z: (54.4 - f.baseZ) / H,
-        r: 2.8,
-        star: paint.funnel,
-        letter: 0x1d4596,
-        letterOnly: true,
-        realOnly: true,
-      },
-    };
+  const funnels = ovalFunnels(spec, {
+    semiA: 7.5,
+    semiB: 4.6,
+    // The black top: about 30 % of what shows (the scale model).
+    blackTop: 5.8,
+    // Midway up the yellow, 2.8 m to the middle of its stroke (the scale
+    // model: the C half as tall as the yellow).
+    emblem: { atZ: 54.4, r: 2.8, star: paint.funnel, letter: 0x1d4596 },
   });
 
   // -------------------------------------------------------------------------
   // The radar mast on the sports deck over the spa (the photographs: a
   // white lattice mast with its scanners and yards).
   const mastX = 80;
-  const masts: MastRecipe[] = [
-    {
-      id: "fore",
-      x: mastX,
-      baseZ: Z("14") + 0.35,
-      topZ: 68,
-      r0: 0.55,
-      r1: 0.18,
-      rake: 0,
-      yard: true,
-    },
-  ];
+  const masts: MastRecipe[] = [radarMast(mastX, Z("14") + 0.35, 68)];
 
   // -------------------------------------------------------------------------
   // Boats: her data's 26, in the recess on deck 4 at her side, each in a
   // pair of davits.
-  const boats: BoatRecipe[] = CONCORDIA_BOATS.map((b) => {
-    const s = b.side === "port" ? 1 : -1;
-    const e = edge(b.x);
-    const deck = Z("4");
-    const k = b.side === "port" ? b.index - 13 : b.index;
-    return {
-      index: b.index,
-      label: `${b.side === "port" ? "P" : "S"}${k + 1}`,
-      kind: "lifeboat",
-      side: b.side,
-      x: b.x,
-      y: s * (e - BOAT.beam / 2 - 0.35),
-      z: deck + 0.9,
-      ...BOAT,
-      hasDavits: true,
-      edgeY: s * (e - 0.15),
-      deckZ: deck,
-    } satisfies BoatRecipe;
-  });
-  const davits: DavitRecipe[] = [];
-  for (const b of boats)
-    for (const dx of [-1, 1])
-      davits.push({
-        boat: b.index,
-        x: b.x + dx * (b.length / 2 - 0.8),
-        footY: b.edgeY,
-        headY: swungOutY(b),
-        z: b.deckZ,
-      });
+  const boats = recessBoats(frame, CONCORDIA_BOATS, { deck: "4", boat: BOAT });
+  const davits = boatDavits(boats);
   // Liferaft canisters in two racks at each end of the boat rows.
-  const canisters: { c: V3; r: number; len: number }[] = [];
-  for (const s of sides)
-    for (const x0 of [91.5, -99])
-      for (let i = 0; i < 5; i += 1)
-        for (const dz of [0.45, 1.25]) {
-          const x = x0 + i * 1.9;
-          canisters.push({
-            c: [x, s * (edge(x) - 1.1), Z("4") + dz],
-            r: 0.36,
-            len: 1.5,
-          });
-        }
+  const canisters = liferaftRacks(frame, {
+    fromX: [91.5, -99],
+    count: 5,
+    z: Z("4"),
+  });
 
   // -------------------------------------------------------------------------
   // Lights: every window a pane that lights at night.
-  const lights: LightSpot[] = [];
-  let serial = 0;
-  const seed = () => hash01(serial++, 2012);
-  const push = (p: V3, n: V3, w: number, h: number, deck: string) =>
-    lights.push({
-      kind: "window",
-      p: [p[0] + n[0] * 0.03, p[1] + n[1] * 0.03, p[2] + n[2] * 0.03],
-      n,
-      w,
-      h,
-      deck: deckIndex(deck),
-      seed: seed(),
-    });
-  /** A window in her side `inset` in from her deck edge (or her hull). */
-  function sideLight(
-    x: number,
-    z: number,
-    s: 1 | -1,
-    inset: number,
-    w: number,
-    h: number,
-    deck: string
-  ): void {
-    const inHull = z < hull.zTop(x);
-    const at = (xx: number) =>
-      inHull ? hull.halfBreadth(xx, z) : edge(xx) - inset;
-    const e = at(x);
-    if (e < 2) return;
-    const d = 0.4;
-    const slope = (at(x + d) - at(x - d)) / (2 * d);
-    const nz = inHull
-      ? -(hull.halfBreadth(x, z + d) - hull.halfBreadth(x, z - d)) / (2 * d)
-      : 0;
-    push([x, s * e, z], normalize([-slope, s, nz]), w, h, deck);
-  }
-  /** A row of windows from x0 to x1, a few left out (`gap`). */
-  function row(
-    x0: number,
-    x1: number,
-    step: number,
-    gap: number,
-    rowId: number,
-    at: (x: number) => void
-  ): void {
-    const n = Math.floor((x1 - x0) / step);
-    for (let i = 0; i <= n; i += 1) {
-      if (hash01(i, rowId) < gap) continue;
-      at(x0 + i * step);
-    }
-  }
-  /** Windows round a tier's rounded front (`R` long, `w` half-wide). */
-  function frontLights(
-    x1: number,
-    R: number,
-    w: number,
-    z: number,
-    count: number,
-    size: [number, number],
-    deck: string
-  ): void {
-    for (let i = 0; i < count; i += 1) {
-      const phi = -1.25 + (2.5 * (i + 0.5)) / count;
-      const x = x1 - R + R * Math.cos(phi) - 0.05;
-      const y = w * Math.sin(phi);
-      // The ellipse's outward normal.
-      const n = normalize([Math.cos(phi) / R, Math.sin(phi) / w, 0]);
-      push([x, y, z], n, size[0], size[1], deck);
-    }
-  }
+  const panes = createPanes(frame, 2012);
+  const { lights, sideLight, row, frontLights } = panes;
   const nameX = 60;
   const bowNameX = 126;
-  for (const s of sides) {
+  for (const s of SIDES) {
     const k = s > 0 ? 0 : 1;
     // Cabin windows in her hull (decks 1, 2) and deck 3, small and square.
     for (const [deck, id] of [
@@ -543,9 +358,7 @@ export function concordiaRecipe(
     ["9", AFT_END["9"]],
     ["10", AFT_END["10"]],
   ] as const) {
-    const w = edge(x0) - 1.5;
-    for (let y = -w + 1.2; y <= w - 1.2; y += 2.6)
-      push([x0, y, Z(deck) + 1.5], [-1, 0, 0], 2.0, 1.8, deck);
+    panes.aftFace(x0, Z(deck), deck);
   }
   // The stepped front: decks 6–10 and the bridge's wide windows.
   for (const [deck, x1] of [
@@ -595,77 +408,39 @@ export function concordiaRecipe(
     );
   // Her emergency lights after the blackout (R7): a sparse fixed pattern,
   // the stair towers and corridors' ends (the scene reads it).
-  lights.forEach((l, i) => {
-    if (hash01(i, 7012) < 0.07) l.emergency = true;
-  });
+  emergencyMask(lights);
 
   // -------------------------------------------------------------------------
   // Painted boxes: the balconies' glass fronts and partitions, the bridge
   // wings, the radar mast's platforms and scanners, the slide's tower, the
   // pools, the glass roof over the aft pool either side of the funnel, the
   // propeller shafts' struts.
-  const boxes: BoxPart[] = [];
-  for (const deck of CONCORDIA_BALCONY_DECKS) {
-    const z = Z(deck);
-    for (const s of sides) {
-      // The glass fronts follow her side in 12 m runs.
-      const runs = 16;
-      const len = (BALCONY[1] - BALCONY[0]) / runs;
-      for (let i = 0; i < runs; i += 1) {
-        const xa = BALCONY[0] + i * len;
-        const xb = xa + len;
-        const ya = edge(xa) - 0.08;
-        const yb = edge(xb) - 0.08;
-        boxes.push({
-          c: [(xa + xb) / 2, (s * (ya + yb)) / 2, z + 0.55],
-          size: [Math.hypot(len, yb - ya), 0.08, 1.1],
-          color: GLASS_BLUE,
-          yaw: s * Math.atan2(yb - ya, len),
-        });
-      }
-      // White partitions between the balconies.
-      for (let x = BALCONY[0] + 3.6; x < BALCONY[1] - 0.5; x += 3.6)
-        boxes.push({
-          c: [x, s * (edge(x) - BALCONY_DEPTH / 2), z + 1.25],
-          size: [0.14, BALCONY_DEPTH, 2.5],
-          color: WHITE,
-        });
-    }
-  }
-  {
+  const boxes: BoxPart[] = [
+    ...balconyFronts(frame, {
+      decks: CONCORDIA_BALCONY_DECKS,
+      span: BALCONY,
+      depth: BALCONY_DEPTH,
+      runs: 16,
+      pitch: 3.6,
+      glass: GLASS_BLUE,
+      partition: WHITE,
+    }),
     // The bridge wings on deck 8, out to her full beam over her sides
     // (the bow photographs), a cab at each end.
-    const x = FWD_END["8"] - 6;
-    const inner = edge(x) - 3;
-    const outer = spec.beam / 2 + 0.3;
-    for (const s of sides)
-      boxes.push({
-        c: [x, (s * (inner + outer)) / 2, Z("8") + 1.4],
-        size: [4.2, outer - inner, TIER],
-        color: WHITE,
-      });
-  }
-  {
+    ...bridgeWings(frame, {
+      x: FWD_END["8"] - 6,
+      z: Z("8") + 1.4,
+      inset: 3,
+      length: 4.2,
+      h: TIER,
+      color: WHITE,
+    }),
     // The radar mast: its legs, platforms and scanners.
-    const z0 = Z("14") + 0.35;
-    for (const s of sides)
-      boxes.push({
-        c: [mastX, s * 1.6, z0 + 5.5],
-        size: [0.35, 0.35, 11],
-        color: WHITE,
-      });
-    for (const [z, w] of [
-      [z0 + 5, 6],
-      [z0 + 10.5, 4.5],
-    ] as const) {
-      boxes.push({ c: [mastX, 0, z], size: [2.6, w, 0.3], color: WHITE });
-      boxes.push({
-        c: [mastX + 0.6, 0, z + 0.7],
-        size: [0.45, w + 1.2, 0.35],
-        color: 0x2a2b2e,
-      });
-    }
-  }
+    ...radarMastBoxes(mastX, Z("14") + 0.35, {
+      white: WHITE,
+      scanner: 0x2a2b2e,
+    }),
+  ];
   // The water slide's tower.
   const slideC: [number, number] = [42, -8];
   boxes.push({
@@ -679,19 +454,7 @@ export function concordiaRecipe(
 
   // -------------------------------------------------------------------------
   // The water slide: yellow, coiling down from its tower (README).
-  const slidePts: V3[] = [];
-  const turns = 2.25;
-  const n = 36;
-  for (let i = 0; i <= n; i += 1) {
-    const t = i / n;
-    const a = t * turns * Math.PI * 2;
-    slidePts.push([
-      slideC[0] + 3.4 * Math.cos(a),
-      slideC[1] + 3.4 * Math.sin(a),
-      Z("13") + 8.2 - 7.4 * t,
-    ]);
-  }
-  slidePts.push([slideC[0] - 6, slideC[1] + 3, Z("13") + 0.6]);
+  const slidePts = waterSlide(slideC, Z("13"));
 
   // White radar domes (the photographs): two forward, two aft, one on the
   // spa.
@@ -706,30 +469,7 @@ export function concordiaRecipe(
   // -------------------------------------------------------------------------
   // Rails: deck 4's promenade under the boats, the open decks on top, the
   // terraces aft.
-  const rails: RailRun[] = [];
-  function edgeRun(
-    x0: number,
-    x1: number,
-    z: number,
-    hw: (x: number) => number
-  ): void {
-    for (const s of sides) {
-      const pts: V3[] = [];
-      const count = Math.max(2, Math.ceil((x1 - x0) / 1.6));
-      for (let i = 0; i <= count; i += 1) {
-        const x = x0 + ((x1 - x0) * i) / count;
-        pts.push([x, s * hw(x), z]);
-      }
-      rails.push({ points: pts });
-    }
-  }
-  function acrossRun(x: number, z: number, halfWidth: number): void {
-    const pts: V3[] = [];
-    const count = Math.ceil((2 * halfWidth) / 1.6);
-    for (let i = 0; i <= count; i += 1)
-      pts.push([x, -halfWidth + (2 * halfWidth * i) / count, z]);
-    rails.push({ points: pts });
-  }
+  const { rails, edgeRun, acrossRun } = railKit();
   edgeRun(RECESS[0] + 0.3, RECESS[1] - 0.3, Z("4"), (x) => edge(x) - 0.1);
   edgeRun(-96.8, -2, Z("13"), () => 15.4);
   edgeRun(34, 58, Z("13"), () => 15.4);
@@ -747,76 +487,16 @@ export function concordiaRecipe(
   // shafts with an A-bracket just ahead of each and a strut further
   // forward; each rudder right behind its screw, about as tall as it, from
   // the hull down to the screw's lower third.
-  const hubX = -123;
-  const hubY = 7.2;
-  const hubZ = 2.95;
-  const propR = 2.7;
-  const propellers: Propeller[] = [
-    { hub: [hubX, hubY, hubZ], radius: propR, blades: 5, phase: 0.3 },
-    { hub: [hubX, -hubY, hubZ], radius: propR, blades: 5, phase: 0.9 },
-  ];
-  function shaft(y: number) {
-    const r0 = 0.8;
-    const inside = (x: number) =>
-      [0, 0.7, -0.7].every(
-        (k) =>
-          hull.halfBreadth(x, hubZ + k * r0) >=
-          Math.abs(y) + r0 * Math.sqrt(1 - k * k) + 0.2
-      );
-    let x = hubX + 0.6;
-    while (!inside(x) && x < 0) x += 0.5;
-    return {
-      from: [x, y, hubZ] as V3,
-      to: [hubX + 0.6, y, hubZ] as V3,
-      r0,
-      r1: 0.62,
-    };
-  }
-  const bossings = [hubY, -hubY].map(shaft);
-  for (const s of sides) {
-    // The A-bracket: two legs from the shaft up and out to the hull.
-    const ax = hubX + 3.2;
-    const top = hull.zBottom(ax) + 0.5;
-    const h = top - hubZ;
-    for (const out of [-2.2, 2.2]) {
-      const len = Math.hypot(out, h);
-      boxes.push({
-        c: [ax, s * hubY + out / 2, (hubZ + top) / 2],
-        size: [len, 0.9, 0.35],
-        color: ANTIFOULING,
-        yaw: (Math.sign(out) * Math.PI) / 2,
-        pitch: Math.atan2(h, Math.abs(out)),
-      });
-    }
-    // A strut further forward.
-    const fx = hubX + 13;
-    const ftop = hull.zBottom(fx) + 0.5;
-    boxes.push({
-      c: [fx, s * hubY, (hubZ + ftop) / 2],
-      size: [0.9, 0.35, ftop - hubZ],
-      color: ANTIFOULING,
-    });
-  }
-  const lead = hubX - 2.3;
-  const chord = 4.2;
-  const trail = lead - chord;
-  const rudderTop = hull.zBottom(lead - chord / 2) + 0.6;
-  const rudderFoot = hubZ - propR * 0.55;
-  const rudder: ShipRecipe["rudder"] = {
-    outline: [
-      [lead, rudderFoot + 0.5],
-      [lead - 0.6, rudderFoot],
-      [trail + 0.7, rudderFoot],
-      [trail, rudderFoot + 0.7],
-      [trail, rudderTop - 0.4],
-      [lead, rudderTop],
-    ],
-    thickness: 0.8,
-    taper: { lead: 0.8, trail: 0.2 },
-    centre: [lead - chord / 2, 0, (rudderFoot + rudderTop) / 2],
-    stock: { x: lead - 0.9, z0: rudderTop - 1.5, z1: rudderTop + 0.5, r: 0.38 },
-    ys: [hubY, -hubY],
-  };
+  const { propellers, bossings, brackets, rudder } = twinScrews(hull, {
+    hubX: -123,
+    hubY: 7.2,
+    hubZ: 2.95,
+    radius: 2.7,
+    blades: 5,
+    phases: [0.3, 0.9],
+    bracketColor: ANTIFOULING,
+  });
+  boxes.push(...brackets);
   const thrusters = [
     { x: 112, z: 4.2, r: 1.15 },
     { x: 116.5, z: 4.2, r: 1.15 },
@@ -826,47 +506,15 @@ export function concordiaRecipe(
   ];
 
   const anchorX = stem - 14;
-  const anchors = (["port", "starboard"] as const).map((side) => {
-    const s = side === "port" ? 1 : -1;
-    const z = 15.5;
-    return {
-      p: [anchorX, s * hull.halfBreadth(anchorX, z), z] as V3,
-      side,
-      stockless: { size: 3.2 },
-    };
-  });
+  const anchors = bowAnchors(hull, anchorX, 15.5, 3.2);
 
   // Her name on both bows, along both sides over the boats, and across the
   // stern over "GENOVA" (the photographs).
-  const names: NameBoard[] = [
-    ...(["port", "starboard"] as const).flatMap((side) => [
-      {
-        where: "bow" as const,
-        x: bowNameX,
-        z: 17.6,
-        side,
-        width: 15,
-        height: 1.3,
-      },
-      {
-        where: "bow" as const,
-        x: nameX,
-        z: Z("6") + 1.45,
-        side,
-        width: 26,
-        height: 2.0,
-      },
-    ]),
-    {
-      where: "stern" as const,
-      x: stern,
-      z: 16.6,
-      side: "aft" as const,
-      width: 15,
-      height: 1.8,
-      rows: 3,
-    },
-  ];
+  const names = nameBoards({
+    bow: { x: bowNameX, z: 17.6, width: 15, height: 1.3 },
+    side: { x: nameX, z: Z("6") + 1.45, width: 26, height: 2.0 },
+    stern: { x: stern, z: 16.6, width: 15, height: 1.8, rows: 3 },
+  });
 
   // The rock from Le Scole stuck in her port side at frame 52 (R21; the
   // well-known photograph), never before the gash reached it (7 s after
@@ -884,10 +532,7 @@ export function concordiaRecipe(
 
   const jack: V3 = [stem - 2.5, 0, Z("5")];
   const ensign: V3 = [stern + 3.5, 0, Z("7")];
-  const staffs = [
-    { foot: jack, top: [jack[0] + 0.3, 0, jack[2] + 6] as V3 },
-    { foot: ensign, top: [ensign[0] - 0.5, 0, ensign[2] + 7] as V3 },
-  ];
+  const staffs = staffPair(jack, ensign);
 
   return {
     spec,

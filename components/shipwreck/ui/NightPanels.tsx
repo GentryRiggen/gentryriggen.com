@@ -63,6 +63,7 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
   const all = useStore(store, (s) => s.openings);
   // Her funnels in the diagram wear her livery's paint.
   const livery = useStore(store, (s) => s.livery);
+  const waveRun = useStore(store, (s) => s.waveRun);
   // Only the holes open by now (a later torpedo's shows when it hits), as
   // a count so the diagram re-renders only when one more opens.
   const [openCount, setOpenCount] = useState(0);
@@ -100,7 +101,7 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
         { topic: "water", text: waterText(frame) },
         { topic: "bow", text: `Bow down ${bowDownText(frame)}` },
         { topic: "lean", text: `Lean ${leanText(frame)}` },
-        { topic: "power", text: powerText(frame) },
+        { topic: "power", text: powerText(frame, spec) },
       ]
     : [];
   const whole = frame?.bodies.find((b) => b.part === "whole") ?? null;
@@ -133,6 +134,7 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
           <HullDiagram
             spec={spec}
             water={frame?.water}
+            boxWater={frame?.boxWater}
             openings={openings}
             failedHatches={failed}
             pose={whole}
@@ -157,7 +159,7 @@ export default function NightPanels({ store, spec }: NightPanelsProps) {
       </button>
       {topic && (
         <HelpCard
-          help={helpFor(topic, frame, spec)}
+          help={helpFor(topic, frame, spec, waveRun?.variant)}
           icon={CHIP_ICON[topic as Exclude<HelpTopic, "controls">]}
           onClose={() => setTopic(null)}
         />

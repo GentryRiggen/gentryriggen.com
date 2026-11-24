@@ -282,7 +282,14 @@ describe("summarizeShipwreck", () => {
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "carpathia" }),
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "britannic" }),
       ev("shipwreck_start", { mode: "real", opened: 0, ship: "concordia" }),
+      ev("shipwreck_start", { mode: "real", opened: 0, ship: "poseidon" }),
       ev("shipwreck_end", { mode: "real", outcome: "sank", minutes: 18 }),
+      ev("shipwreck_end", {
+        mode: "real",
+        outcome: "sank",
+        minutes: 40,
+        ship: "poseidon",
+      }),
       ev("shipwreck_end", {
         mode: "real",
         outcome: "sank",
@@ -321,6 +328,7 @@ describe("summarizeShipwreck", () => {
       { key: "concordia", views: 1 },
       { key: "fitzgerald", views: 1 },
       { key: "lusitania", views: 1 },
+      { key: "poseidon", views: 1 },
     ]);
     expect(summary.shipEnds).toEqual([
       { key: "britannic · sank", views: 1 },
@@ -328,6 +336,7 @@ describe("summarizeShipwreck", () => {
       { key: "concordia · sank", views: 1 },
       { key: "fitzgerald · sank", views: 1 },
       { key: "lusitania · floated", views: 1 },
+      { key: "poseidon · sank", views: 1 },
       { key: "titanic · sank", views: 1 },
     ]);
   });
@@ -350,6 +359,7 @@ describe("summarizeShipwreck", () => {
       ev("shipwreck_start", { mode: "whatif", opened: 5, ship: "britannic" }),
       ev("shipwreck_start", { mode: "whatif", opened: 7, ship: "britannic" }),
       ev("shipwreck_start", { mode: "whatif", opened: 8, ship: "concordia" }),
+      ev("shipwreck_start", { mode: "whatif", opened: 7, ship: "poseidon" }),
     ]);
     expect(summary.averageOpenedByShip).toEqual([
       { ship: "titanic", average: 3 },
@@ -358,6 +368,7 @@ describe("summarizeShipwreck", () => {
       { ship: "carpathia", average: 4 },
       { ship: "britannic", average: 6 },
       { ship: "concordia", average: 8 },
+      { ship: "poseidon", average: 7 },
       { ship: "andrea-doria", average: 9 },
     ]);
   });

@@ -29,6 +29,7 @@ import { britannic } from "../ships/britannic";
 import { concordia } from "../ships/concordia";
 import { fitzgerald } from "../ships/fitzgerald";
 import { lusitania } from "../ships/lusitania";
+import { poseidon } from "../ships/poseidon";
 import { titanic } from "../ships/titanic";
 import type { SimRunner } from "../sim/run";
 import type { SimFrame, SimTrack } from "../sim/track";
@@ -307,6 +308,32 @@ describe("slow-mo", () => {
     expect(startSpeed(fitzgerald, 1)).toBe(1);
     expect(startSpeed(titanic, 30)).toBe(30);
     expect(startSpeed(lusitania, 100)).toBe(100);
+  });
+
+  it("starts the Poseidon's wave at ×10 at most, and holds her roll at ×1 (1.11)", () => {
+    expect(startSpeed(poseidon, 30)).toBe(10);
+    expect(startSpeed(poseidon, 100)).toBe(10);
+    expect(startSpeed(poseidon, 1)).toBe(1);
+    // Her roll: from just before the wave to just after she is keel up; the
+    // storm's long seas window (×1 up to bow-under) is not hers.
+    const track = {
+      ...fakeTrack(3200, {
+        events: [
+          { t: 0, realT: 0, kind: "collision" as const },
+          { t: 25, realT: 25, kind: "capsized" as const },
+          { t: 470, realT: 2700, kind: "bow-under" as const },
+        ],
+      }),
+      storm: poseidon.storm,
+    };
+    expect(slowMoSpeed(track, -10)).toBeNull();
+    expect(slowMoSpeed(track, -3)).toBe(1);
+    expect(slowMoSpeed(track, 20)).toBe(1);
+    expect(slowMoSpeed(track, 32)).toBe(1);
+    expect(slowMoSpeed(track, 40)).toBeNull();
+    expect(slowMoSpeed(track, 300)).toBeNull();
+    // A smaller wave (no capsize) has no window at all.
+    expect(slowMoSpeed(fakeTrack(300, {}), 5)).toBeNull();
   });
 
   it("holds ×1 through a torpedo's run-in, its hit and the second explosion", () => {

@@ -28,10 +28,16 @@ interface TitleScreenProps {
 
 const COMING: string[] = [];
 
+/** Ships that never sailed: their card says so, with no year (R1). */
+const MADE_UP: ReadonlySet<ShipId> = new Set(["poseidon"]);
+
 /** The What if? button's words and icon, by what sank her. */
 const WHAT_IF: Record<
   ShipSpec["cause"],
-  { label: string; icon: "iceberg" | "torpedo" | "storm" | "mine" | "rocks" }
+  {
+    label: string;
+    icon: "iceberg" | "torpedo" | "storm" | "mine" | "rocks" | "wave";
+  }
 > = {
   iceberg: {
     label: "What if? Choose where the iceberg opens the hull",
@@ -51,6 +57,10 @@ const WHAT_IF: Record<
     label:
       "What if? Choose where the rocks open the hull, and which way the wind blows",
     icon: "rocks",
+  },
+  wave: {
+    label: "What if? Choose what the wave smashes, and how big the wave is",
+    icon: "wave",
   },
 };
 
@@ -172,13 +182,18 @@ export default function TitleScreen({
             const s = getShip(id);
             const on = id === ship;
             const length = Math.round(s.loa);
+            const madeUp = MADE_UP.has(id);
             return (
               <button
                 key={id}
                 type="button"
                 role="radio"
                 aria-checked={on}
-                aria-label={`Ship: ${s.name}, ${s.year}, ${length} metres long`}
+                aria-label={
+                  madeUp
+                    ? `Ship: ${s.name}, a made-up ship from a film, ${length} metres long`
+                    : `Ship: ${s.name}, ${s.year}, ${length} metres long`
+                }
                 data-testid={`shipwreck-ship-${id}`}
                 onClick={() => onShip(id)}
                 className={`${PANEL} pointer-events-auto flex min-h-16 shrink-0 touch-manipulation flex-col items-start px-4 py-2 text-left active:scale-95 ${
@@ -193,9 +208,23 @@ export default function TitleScreen({
                 >
                   {s.name}
                 </span>
-                <span className="text-sm text-slate-300">
-                  {s.year} · {length} m long
-                </span>
+                {madeUp ? (
+                  <span className="flex items-center gap-1.5 text-sm text-slate-300">
+                    <span
+                      role="img"
+                      aria-label="A made-up ship from a film"
+                      data-testid={`shipwreck-made-up-${id}`}
+                      className="inline-flex"
+                    >
+                      <Icon name="film-strip" className="size-4" />
+                    </span>
+                    Made up · {length} m long
+                  </span>
+                ) : (
+                  <span className="text-sm text-slate-300">
+                    {s.year} · {length} m long
+                  </span>
+                )}
               </button>
             );
           })}

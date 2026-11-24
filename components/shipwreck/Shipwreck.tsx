@@ -114,6 +114,9 @@ const WRECK_VIEW: Record<ShipId, { target: V3; cam: V3 }> = {
   // out to sea and above (the frame rolls with her, so "up" is mostly +y,
   // "out to sea" mostly −z), the harbour's lights behind her.
   concordia: { target: [0, 0, 10], cam: [-190, 210, -100] },
+  // Keel up on the 4,000 m floor, her hull up: from off her stern quarter
+  // and above (the frame is turned over, so "up" is down the ship's z).
+  poseidon: { target: [0, 0, 5], cam: [-170, 130, -100] },
 };
 
 interface Run {
@@ -223,7 +226,7 @@ export default function Shipwreck() {
       const openings =
         mode === "real"
           ? runSpec.realNight
-          : whatIfOpenings(runSpec, choice.ids);
+          : whatIfOpenings(runSpec, choice.ids, choice.wave);
       const portholesOpen = mode === "real" || choice.portholesOpen !== false;
       const storm = mode === "real" ? "real" : (choice.storm ?? "real");
       // Each torpedo: where, when and on which side (`hits`, the x's aft
@@ -252,12 +255,22 @@ export default function Shipwreck() {
         runSpec.cause === "rocks" && mode === "whatif" && choice.toSea === true
           ? { toSea: true }
           : {};
+      // A wave ship's wave (the What-if chip; the real night's is the real
+      // one).
+      const wave =
+        runSpec.cause === "wave"
+          ? {
+              wave:
+                mode === "real" ? ("real" as const) : (choice.wave ?? "real"),
+            }
+          : {};
       s.start(runSpec, openings, {
         portholesOpen,
         storm,
         torpedoes,
         ...mine,
         ...toSea,
+        ...wave,
       });
       s.flyToPlace(null, false);
       s.setXray(false);
@@ -416,7 +429,8 @@ export default function Shipwreck() {
           storm,
           doorsClosed,
           enginesStopped,
-          toSea
+          toSea,
+          wave
         ) =>
           startRun("whatif", {
             ids,
@@ -427,6 +441,9 @@ export default function Shipwreck() {
             ...(doorsClosed === true ? { doorsClosed } : {}),
             ...(enginesStopped === true ? { enginesStopped } : {}),
             ...(toSea === true ? { toSea } : {}),
+            ...(wave === "real" || wave === "smaller" || wave === "ahead"
+              ? { wave }
+              : {}),
           }),
         getOutcome: () => {
           const s = playback.getState();
@@ -552,7 +569,8 @@ export default function Shipwreck() {
           isNew={newEnding}
           onLook={() => {
             setEndDismissed(true);
-            if (words.outcome === "floated")
+            // Afloat (even upside down): look around her, not at a wreck.
+            if (words.outcome === "floated" || words.outcome === "capsized")
               playback.getState().setCamera("orbit");
             else playback.getState().flyToView(WRECK_VIEW[runSpec.id]);
           }}

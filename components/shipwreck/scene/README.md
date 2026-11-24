@@ -672,3 +672,131 @@ sun and colours. Added nothing beyond what she needs to read right.
 - **Attribution**: coastline, buildings, harbour lights and place names
   © OpenStreetMap contributors (ODbL), https://www.openstreetmap.org/copyright.
   Heights: NASA SRTM (public domain), through OpenTopoData.
+
+## The Poseidon's night (Task 9)
+
+She is made up (spec "Her first-ship-made-up rule"): everything in her
+scene that is not the sim's is ours and is a look, named so below. The
+sim's numbers (the wave's size [DRA] [QE2] [ROG], her swell [ATL], her
+blackout's angle [SOL]) are cited in `lib/shipwreck/sim/README.md`, "The
+Poseidon".
+
+The Poseidon's night adds:
+
+| File                 | What                                                                                                                                                                       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `poseidonShots.ts`   | Pure: her cinematic shots (party, wave, roll, keel, dome, dive, floor), her bridge and stern views, `orbitOnceCapsized`.                                                   |
+| `poseidonEffects.ts` | Pure of three.js: the spray sheet at the hit, the white water where she rolled (`runtime.foamPatch`), air bubbling from her smashed openings keel up. Into blended points. |
+
+- **Settings** (`SCENE_SETTINGS.poseidon`, R12): the storm's pipeline held
+  at night (`timeOfDay: "storm-dusk"`, `storm: true`, `stormLight: 0`),
+  so the sea is her track's own waves: her winter swell (Hs 3 m, 12 s, from
+  her port beam [ATL]) and the rogue wave's group (`StormSea`). Over it a
+  **clear starry sky with no moon** (`stars: true`: the night `Sky`, the
+  Titanic's 6,000 stars, no `moon`: a made-up date has none to work out),
+  the 1.0 night's horizon haze (`NIGHT_FOG`, density 0.00011: no snow),
+  no coast, no iceberg, and under the surface the deep Atlantic's dark
+  blue (`#04203a`), black toward her 4,000 m floor [ATL]. **By day** (the
+  time button's "The big wave by day", `sceneSettingsFor(…, "storm-day")`):
+  the stars dropped and a grey winter overcast (`POSEIDON_DAY_LOOK`, ours)
+  on the storm's own daylight. Every other ship's settings, at every hour
+  the button offers, deep-equal 1.10.0's (`settings.test.ts` against
+  `fixtures/otherShipsTimes.json`, written from 1.10.0's `settings.ts`).
+- **Starlight** (`STARLIT`, `Environment.tsx`): a hemisphere light of
+  0x8a96b4 over 0x1a2028 at 1.9 (the Titanic's starlight is 0x4a5c86 at
+  0.9). A look, not physics: a moonless open ocean is darker than that,
+  but a young player must see her lit decks, the wave's dark wall and,
+  after the blackout, her red bottom keel up (placeholder Task 7 shot 23
+  was nearly black). The sea reflects the night horizon's haze low and a
+  near-black sky overhead (`STAR_SEA`), and white water keeps 0.3 of its
+  daylight brightness at night (the storm's `STORM_NIGHT_WHITE` is 0.18).
+- **Her lights** (`ShipRig.tsx`): a party night, lit end to end (no
+  people) until the sim's `lights-out` (9.4 s, past 60° of roll [SOL]);
+  then the Concordia's 2.5 s flicker and only her emergency mask from the
+  cruise kit (`blackout.emergencyLight` 0.25). Two floodlights over her
+  top deck (forward of the ballroom, aft by the sun deck; the liners'
+  strength) light her and the swell; her window rows on decks 3–6 as six
+  lamps three a side just outboard (`deckLightsOf`) put her light on the
+  water (`runtime.lamps`, the storm sea's lamp slots; no three.js lights).
+  After the blackout, her emergency lights **glow up through the water
+  round her hull** (`runtime.underGlow`, the storm sea's `uUnderGlow`:
+  ours, a look) while she floats keel up, so her silhouette reads on a
+  dark sea. Lit panes under the water keep the model's own dimming
+  (`setDeckPower`), as every ship.
+- **The wave on screen** (R10, looks only; the sim's sea, her ride, her
+  flooding, the camera's and the spray's heights all read
+  `boardingElevation`, unchanged). The sim's linear packet looks like a
+  smooth 30 m hill, so for a group with `ride: false` (her rogue wave,
+  and only it: `rogueLookOf`) the shader adds a Gerstner-style horizontal
+  shift toward its crest (Q so that k·a·Q = 0.75 at the crest,
+  `ROGUE_SHARPEN_MAX`: under 1, so the surface never folds; the slope is
+  divided by the squeeze 1 − Q·k·a·cos p, never under 0.25), its crest
+  leaning forward (0.35 m per m of crest height, `ROGUE_LEAN`), and a white
+  breaking lip along the crest, stronger on its front face, from 8 s
+  before her (full from 4 s, about 150 m at its 23 m/s phase speed) until
+  10 s after (`rogueLipAt`). Its face is a dark wall: the whitecaps read
+  the sea's height without the rogue's own (`vRogue`, with its
+  second-order part), so only its lip is white. Every other group (the
+  Fitzgerald's "three sisters") packs zeros, so her sea draws exactly as
+  before (`seaWaves.test.ts`: the same uniforms, the look all zeros).
+- **Spray, foam and bubbles** (`poseidonEffects.ts`, in the storm's
+  blended points: no draw call of their own). At the hit (`collision`,
+  once, 6 s) a sheet of spray thrown up her port side from the waterline
+  where she was at the hit (16–38 m/s up: to her top decks and over them,
+  4–18 m/s across her to starboard, ballistic), catching her deck lights
+  until they go out. White water on the sea round her from the hit
+  (`runtime.foamPatch`: 90 m growing to 260 m, strong while the wave
+  breaks over her and she rolls, thinning over the minutes she floats
+  keel up, gone a minute after she is under). From `capsized` until 40 s
+  after `stern-under`, air bubbling out of every opening the wave smashed
+  that is under the sea, in wobbling columns to the surface (rising about
+  a metre a second: a look); from above the sea only the fizz where they
+  break it. Her side spray (`StormEffects`, the Fitzgerald's deck-edge
+  spray) stops past 40° of roll (on her side or keel up every edge is
+  under the sea), there is no snow (`snow` is the Fitzgerald's), and her
+  funnel's exhaust stops at `lights-out` (her diesels stop). Counts per
+  tier: `POSEIDON_PARTICLES` (spray 2,200 / 1,300 / 650; bubbles 420 /
+  240 / 120).
+- **Camera** (`POSEIDON_HULL_BOXES`, `poseidonShots.ts`): her hull and
+  tiers by the Carpathia's rule on her data, plus a box over the
+  ballroom's for the dome's crown (9.5 m over deck 14). The free camera
+  keeps out of them in her own frame, so they hold at any roll
+  (`cameraMath.test.ts`: sampled orbits at 0°, 90° and 180°, afloat and on
+  the floor, never inside her and never under the floor). Her cinematic
+  night: the lit ship on the swell (a slow circle, 430 m out), the wave
+  coming (from 28 s before it, off her starboard quarter, low, the wave
+  rising behind her across her port side), the roll-over from ahead, keel
+  up from off her stern quarter (her red bottom, propellers and rudders in
+  the air; 70 s), then under water beside and below the ballroom's dome
+  facing the deep, the dive (from 15 s before `bow-under`), and keel up on
+  the floor (a slow circle, 230 m out, 70 m over her). The bridge (her
+  starboard wing on deck 9), the stern (her sun deck) and the lifeboat
+  cameras hand over to the free camera from her keel-up shot at
+  `capsized` (`orbitOnceCapsized`): no camera upside down in her flooded
+  bridge. A run that never rolls over keeps them.
+- **X-ray** (`XRay.tsx`, `boxWaterGeometry`): her compartments' water as
+  every ship's, and her named superstructure boxes' water
+  (`SimFrame.boxWater`) as blocks, the ballroom as a 24-sided drum, cut
+  at each box's level (`waterLevel` over `boxSamples`: level with the
+  earth at any pose, so right upside down: tested at 0°, 90° and 180°).
+  "Water here" at her bridge, ballroom and lobby (`Place.boxId`) reads
+  their box's water from the floor, or keel up from the roof that is then
+  underneath, never more than the room is tall (`boxDepthAt`). The in-run
+  hull diagram draws her boxes' water too (`HullDiagram`'s `boxWater`).
+  Blockouts: the bridge's wheel and telegraphs, the ballroom's round
+  floor, dance floor and chandelier, the lobby's floor and glass lift
+  shafts, the generator room's four diesel sets (ours).
+- **GLSL guards** (1.8.2's lesson: NaN is a black screen on real GPUs and
+  invisible in SwiftShader): every `pow`/`sqrt`/`log` argument in the
+  storm sea's shaders and wave function is clamped and every division is
+  by a literal or a `max(…)` (`shaderGuards.test.ts` scans them; the
+  Fitzgerald's output is the same: only zero-distance cases change).
+- **Perf** (the top tier, `e2e/perf-budget.json`): `shipwreck-poseidon-party`
+  (lit on the swell, the wave rising behind), `-wave` (the crest at her,
+  the spray, the roll starting), `-keelup` (keel up, propellers in the
+  air, bubbles): 34 draw calls and 285k triangles each (her model 28 calls
+  and 166k at night; the storm sea's rings, the sky's two draws, the
+  points). The spec's ceilings are 160 and 450k. The three are identical
+  although the seeks do take effect (checked: `getState().t` moves to -35, 2
+  and 55 s): spray, foam and bubbles are points in a buffer that is drawn
+  whole every frame, so the counts do not move with the night.

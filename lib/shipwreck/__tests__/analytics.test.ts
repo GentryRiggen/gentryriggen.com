@@ -239,4 +239,46 @@ describe("shipwreck analytics", () => {
       expect(isValidGameProps(name, props)).toBe(true);
     }
   });
+
+  it("sends the Poseidon's runs, and a capsize counts as sank", () => {
+    trackStart("real", 0, "poseidon");
+    trackEnd("real", "capsized", 40, "poseidon");
+    trackEnd("whatif", "floated", 30, "poseidon");
+    expect(trackGame).toHaveBeenNthCalledWith(1, "shipwreck_start", {
+      mode: "real",
+      opened: 0,
+      ship: "poseidon",
+    });
+    expect(trackGame).toHaveBeenNthCalledWith(2, "shipwreck_end", {
+      mode: "real",
+      outcome: "sank",
+      minutes: 40,
+      ship: "poseidon",
+    });
+    expect(trackGame).toHaveBeenNthCalledWith(3, "shipwreck_end", {
+      mode: "whatif",
+      outcome: "floated",
+      minutes: 30,
+      ship: "poseidon",
+    });
+    // Capsized is not a schema outcome, and no wave prop was added.
+    expect([...GAME_EVENTS.shipwreck_end.props.outcome.values]).toEqual([
+      "sank",
+      "floated",
+    ]);
+    expect(Object.keys(GAME_EVENTS.shipwreck_end.props).sort()).toEqual([
+      "minutes",
+      "mode",
+      "outcome",
+      "ship",
+    ]);
+    expect(Object.keys(GAME_EVENTS.shipwreck_start.props).sort()).toEqual([
+      "mode",
+      "opened",
+      "ship",
+    ]);
+    for (const [name, props] of trackGame.mock.calls) {
+      expect(isValidGameProps(name, props)).toBe(true);
+    }
+  });
 });

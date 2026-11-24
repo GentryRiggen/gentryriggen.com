@@ -162,8 +162,15 @@ export function carpathiaCueFor(
 /** Her gulls are this many times rarer, far from any coast. */
 export const CARPATHIA_GULL_RARITY = 2.5;
 
+/**
+ * The Poseidon's events make no cue yet (her wave, her roll and her long
+ * float are for her own sound design): silent, never the Titanic's.
+ */
+export const POSEIDON_EVENT_CUES: Partial<Record<SimEventKind, Cue>> = {};
+
 /** The event-to-cue map for a ship (the Titanic's is `EVENT_CUES`). */
 export function eventCuesFor(ship: ShipId): Partial<Record<SimEventKind, Cue>> {
+  if (ship === "poseidon") return POSEIDON_EVENT_CUES;
   if (ship === "lusitania") return LUSITANIA_EVENT_CUES;
   if (ship === "fitzgerald") return FITZGERALD_EVENT_CUES;
   if (ship === "britannic") return BRITANNIC_EVENT_CUES;

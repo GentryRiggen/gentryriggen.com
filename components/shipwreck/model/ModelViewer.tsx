@@ -23,6 +23,7 @@ import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type {
@@ -38,7 +39,7 @@ import type { TitanicHandles } from "./shipModel";
 /**
  * A neutral stage for checking the model (`/shipwreck?model`, dev and e2e
  * builds only; `&ship=lusitania`, `&ship=fitzgerald`, `&ship=carpathia`,
- * `&ship=britannic` or `&ship=concordia`): orbit controls, a day light or
+ * `&ship=britannic`, `&ship=concordia` or `&ship=poseidon`): orbit controls, a day light or
  * the night with bloom (`&livery=<id>` picks a livery, e.g.
  * `&ship=lusitania&livery=cunard-1907` or the Carpathia's `grey-1918`; the
  * old `&paint=dazzle|grey|cunard` still names hers, and the Britannic's
@@ -57,6 +58,7 @@ const DEFAULT_VIEW: Required3 = {
   camera: "bow",
   stage: "day",
   bowBend: 0,
+  roll: 0,
 };
 
 /** Camera presets (three.js axes: +x forward, +y up, +z starboard). */
@@ -79,6 +81,8 @@ const CAMERAS: Record<
   gantry: { pos: [-20, 44, 48], target: [-50, 32, 6] },
   funnel: { pos: [-10, 66, 40], target: [-52, 56, 0] },
   rock: { pos: [-55, 9, -45], target: [-86, 4, -17] },
+  dome: { pos: [40, 70, 60], target: [-3, 54, 0] },
+  keel: { pos: [-230, 75, 120], target: [-80, 38, 0] },
 };
 
 /** Presets reframed for a ship whose stern is not the Titanic's. */
@@ -122,6 +126,21 @@ const SHIP_CAMERAS: Partial<Record<ShipSpec["id"], Partial<typeof CAMERAS>>> = {
     "stern-close": { pos: [-190, 6, 58], target: [-122, 5, 0] },
     astern: { pos: [-210, 34, 0], target: [-130, 26, 0] },
   },
+  // A made-up 305 m cruise ship, 15 decks: the Concordia's frames, a
+  // little further; her funnel aft and the ballroom's dome.
+  poseidon: {
+    bow: { pos: [330, 82, 255], target: [14, 30, 0] },
+    "bow-port": { pos: [320, 72, -265], target: [-6, 26, 0] },
+    stern: { pos: [-250, 22, 160], target: [-112, 14, 0] },
+    side: { pos: [0, 34, 640], target: [6, 30, 0] },
+    top: { pos: [6, 580, 24], target: [6, 0, 0] },
+    bridge: { pos: [200, 44, 40], target: [105, 36, 0] },
+    "boat-deck": { pos: [46, 30, 54], target: [8, 25, 16] },
+    "bow-close": { pos: [210, 24, 70], target: [138, 16, 0] },
+    "stern-close": { pos: [-200, 6, 60], target: [-132, 5, 0] },
+    astern: { pos: [-225, 34, 0], target: [-140, 26, 0] },
+    funnel: { pos: [-20, 72, 55], target: [-74, 60, 0] },
+  },
   // A 558 ft intermediate liner: one funnel, four masts, wells.
   carpathia: {
     bow: { pos: [190, 45, 130], target: [20, 18, 0] },
@@ -152,7 +171,9 @@ function shipFromUrl(): ShipSpec {
           ? britannic
           : id === "concordia"
             ? concordia
-            : titanic;
+            : id === "poseidon"
+              ? poseidon
+              : titanic;
 }
 
 /** The Carpathia's 1.4 `?paint=` names, as livery ids. */
@@ -271,6 +292,12 @@ function Stage({ view, spec, livery, onInfo }: StageProps) {
       // Her emergency lights (the Concordia's) at night, as after her
       // blackout.
       h.setEmergency(view.stage === "night" ? 1 : 0);
+      // Rolled about her length through 20 m over the keel (keel up at
+      // 180: the hull in the air over the turned-over decks).
+      const roll = (view.roll * Math.PI) / 180;
+      h.root.rotation.x = roll;
+      h.root.position.y = 20 * (1 - Math.cos(roll));
+      h.root.position.z = -20 * Math.sin(roll);
       if (h.bend && h.recipe.hinge)
         applyBowBend(h.bend, view.bowBend, h.recipe.hinge);
       if (h.breakX !== null) {
@@ -279,7 +306,7 @@ function Stage({ view, spec, livery, onInfo }: StageProps) {
         poseHalf(h.stern, h.breakX, -0.3, -4);
       }
     },
-    [view.power, view.flicker, view.bowBend, view.stage]
+    [view.power, view.flicker, view.bowBend, view.stage, view.roll]
   );
 
   // The Concordia's rock in her side (the scene shows it from the strike;

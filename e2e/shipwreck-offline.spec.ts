@@ -1,9 +1,35 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 // The worker only runs in a secure context (localhost counts), and the e2e
 // build keeps it off unless the page is opened with ?offline.
 test.use({ serviceWorkers: "allow" });
 test.setTimeout(120_000);
+
+/**
+ * Her night needs the lazily loaded 3D chunks too: wait until the worker has
+ * stopped adding files before the network goes.
+ */
+async function waitForWorkerToSettle(page: Page) {
+  await page.waitForLoadState("networkidle");
+  let stored = -1;
+  await expect
+    .poll(
+      async () => {
+        const n = await page.evaluate(async () => {
+          const names = await caches.keys();
+          const cache = await caches.open(
+            names.find((x) => x.startsWith("shipwreck-")) ?? ""
+          );
+          return (await cache.keys()).length;
+        });
+        const same = n === stored;
+        stored = n;
+        return same;
+      },
+      { intervals: [1000], timeout: 30_000 }
+    )
+    .toBe(true);
+}
 
 test("shows the title screen with no network after one visit", async ({
   page,
@@ -265,6 +291,8 @@ test("starts the Costa Concordia's night with no network after one visit", async
     )
     .toBe(true);
 
+  await waitForWorkerToSettle(page);
+
   await context.setOffline(true);
   await page.reload();
   await page.waitForFunction(() => Boolean(window.__shipwreck));
@@ -292,4 +320,54 @@ test("starts the Costa Concordia's night with no network after one visit", async
       { timeout: 30_000 }
     )
     .toBeGreaterThan(0);
+});
+
+test("starts the Poseidon's wave night with no network after one visit", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/shipwreck?offline");
+  await page.waitForFunction(() => Boolean(window.__shipwreck));
+  await expect(page.getByTestId("shipwreck-title")).toBeVisible();
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await expect
+    .poll(() =>
+      page.evaluate(() => navigator.serviceWorker.controller !== null)
+    )
+    .toBe(true);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(async () => {
+          const names = await caches.keys();
+          const cache = await caches.open(
+            names.find((n) => n.startsWith("shipwreck-")) ?? ""
+          );
+          const urls = (await cache.keys()).map((request) => request.url);
+          return urls.some((url) => url.endsWith("/shipwreck"));
+        }),
+      { timeout: 30_000 }
+    )
+    .toBe(true);
+  await waitForWorkerToSettle(page);
+
+  await context.setOffline(true);
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__shipwreck));
+  await page.getByTestId("shipwreck-ship-poseidon").click();
+  await expect(page.getByTestId("shipwreck-parent-line")).toContainText(
+    "Poseidon"
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "poseidon"
+  );
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__shipwreck!.getState!().computedT),
+      { timeout: 30_000 }
+    )
+    .toBeGreaterThan(0);
+  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
 });

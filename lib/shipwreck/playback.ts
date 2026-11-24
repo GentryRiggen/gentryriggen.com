@@ -18,6 +18,7 @@ import {
   type TorpedoHit,
 } from "./sim/run";
 import { sampleTrack, type SimTrack } from "./sim/track";
+import type { WaveVariant } from "./sim/wave";
 import { storyEndT } from "./story";
 import type { CameraId, Speed } from "./types";
 
@@ -56,6 +57,8 @@ export const SLOWMO_SEAS = { before: 30 } as const;
  * the stern's roll lasts about 3 s).
  */
 export const SLOWMO_HALF = { before: 3, after: 3, speed: 0.5 } as const;
+/** A wave ship's roll-over at ×1: seconds before the wave, after keel up. */
+export const SLOWMO_WAVE = { before: 6, after: 8 } as const;
 /** A storm ship's run starts at this speed at most (her 3¾ hours). */
 export const STORM_START_SPEED = 10;
 /** A speed the player touched this recently (s) overrides the slow-mo. */
@@ -92,6 +95,7 @@ export type RunOptions = Pick<
   | "doorsClosed"
   | "enginesStopped"
   | "toSea"
+  | "wave"
 >;
 
 /** And what the scene needs to know of it (not the sim). */
@@ -145,6 +149,12 @@ export interface PlaybackState {
   hitTimesS: readonly number[] | null;
   /** The title's stage (`StartOptions.preview`): her storm sea runs on. */
   preview: boolean;
+  /**
+   * A wave ship's run: which wave (`SimOptions.wave`) and whether any spot
+   * was open (what the wave smashed): the captions' words. Null for the
+   * other ships.
+   */
+  waveRun: { variant: WaveVariant; smashed: boolean } | null;
   /** Water over the selected place's floor (m), updated by the scene. */
   placeWaterM: number;
   /** The last computed frame's time (s); playback and seeks stop here. */
@@ -279,6 +289,7 @@ const INITIAL: PlaybackState = {
   torpedoes: [],
   hitTimesS: null,
   preview: false,
+  waveRun: null,
   placeWaterM: 0,
   computedT: 0,
   done: false,
@@ -340,7 +351,14 @@ export function speedOnGoingIn(
  */
 export function slowMoSpeed(track: SimTrack | null, t: number): number | null {
   if (!track) return null;
-  if (track.storm) {
+  // A wave ship's roll-over plays at ×1, from just before the wave to just
+  // after she is keel up (a run that capsizes has no storm seas window: her
+  // sea is one wave and a long float).
+  const capsized = track.events.find((e) => e.kind === "capsized");
+  if (capsized) {
+    if (t >= -SLOWMO_WAVE.before && t <= capsized.t + SLOWMO_WAVE.after)
+      return 1;
+  } else if (track.storm) {
     let under: number | null = null;
     let lands: number | null = null;
     let sternLands: number | null = null;
@@ -465,7 +483,9 @@ function torpedoesOf(
  * afternoon at most ×10 (at ×30 her sea plays as a time-lapse).
  */
 export function startSpeed(spec: ShipSpec, saved: Speed): Speed {
-  return spec.cause === "storm" && saved > STORM_START_SPEED
+  // A wave ship's roll lasts 25 s: at ×30 it would be gone in a blink.
+  return (spec.cause === "storm" || spec.cause === "wave") &&
+    saved > STORM_START_SPEED
     ? STORM_START_SPEED
     : saved;
 }
@@ -562,6 +582,7 @@ export function createPlaybackStore(
         // opens (even none: she sails past).
         const pre =
           spec.cause === "rocks" ||
+          spec.cause === "wave" ||
           (openings.length > 0 && openings.some((o) => (o.t ?? 0) <= 0))
             ? (spec.preRollS ?? 0)
             : 0;
@@ -575,6 +596,10 @@ export function createPlaybackStore(
           torpedoes,
           hitTimesS: spec.torpedo ? torpedoes.map((h) => h.t) : null,
           preview,
+          waveRun:
+            spec.cause === "wave"
+              ? { variant: run.wave ?? "real", smashed: given.length > 0 }
+              : null,
           computedT: 0,
           done: false,
           progress: 0,
@@ -599,6 +624,7 @@ export function createPlaybackStore(
           torpedoes: [],
           hitTimesS: null,
           preview: false,
+          waveRun: null,
           computedT: 0,
           done: false,
           progress: 0,

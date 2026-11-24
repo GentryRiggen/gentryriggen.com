@@ -33,6 +33,8 @@ import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildHull, hullHalfBreadth } from "@/lib/shipwreck/sim/geometry";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import {
+  boxDepthAt,
+  boxSamples,
   compartmentSamples,
   depthOver,
   earthZ,
@@ -44,6 +46,7 @@ import {
 } from "@/lib/shipwreck/xray";
 import type { SceneRuntime } from "./runtime";
 import {
+  boxWaterGeometry,
   bulkheadLines,
   cargoGeometry,
   doubleBottomLines,
@@ -216,6 +219,15 @@ interface PartSet {
   pieces: { index: number; fromX: number; toX: number }[];
   samples: VolumeSamples[];
   levels: Float32Array;
+  /**
+   * Her named superstructure boxes' water (the Poseidon's tiers and
+   * ballroom, `SimFrame.boxWater`): the boxes this part holds (by their
+   * middle), their mesh, samples and levels. Empty for other ships.
+   */
+  boxes: number[];
+  boxWater: Mesh<BufferGeometry, ShaderMaterial> | null;
+  boxSamples: VolumeSamples[];
+  boxLevels: Float32Array;
 }
 
 interface XRayProps {
@@ -331,6 +343,25 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
       }
       const surface = surfaceMesh(hull, spec, pieces, levelsOf(water));
       root.add(surface);
+      // Her named boxes' water, each box with the part holding its middle.
+      const boxes: number[] = [];
+      spec.superstructure.forEach((b, i) => {
+        const mid = (b.fromX + b.toX) / 2;
+        if (b.id && mid >= from && mid < to && boxes.length < SLOTS)
+          boxes.push(i);
+      });
+      const boxGeo = boxWaterGeometry(spec, boxes);
+      let boxWater: Mesh<BufferGeometry, ShaderMaterial> | null = null;
+      if (boxGeo) {
+        boxWater = new Mesh(boxGeo, mats.water.clone());
+        boxWater.material.uniforms.uLevel = {
+          value: new Float32Array(SLOTS),
+        };
+        boxWater.renderOrder = 10;
+        boxWater.frustumCulled = false;
+        boxWater.name = `xray-box-water-${name}`;
+        group.add(boxWater);
+      }
       out.set(name, {
         group,
         surface,
@@ -340,6 +371,10 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
           compartmentSamples(hull, spec.compartments[p.index], p.fromX, p.toX)
         ),
         levels: levelsOf(water),
+        boxes,
+        boxWater,
+        boxSamples: boxes.map((i) => boxSamples(spec, spec.superstructure[i])),
+        boxLevels: boxWater ? levelsOf(boxWater) : new Float32Array(SLOTS),
       });
     }
     return out;
@@ -352,6 +387,7 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
           if (g) g.dispose();
         });
         s.water.material.dispose();
+        s.boxWater?.material.dispose();
         s.surface.geometry.dispose();
         s.surface.material.dispose();
         root.remove(s.surface);
@@ -437,6 +473,19 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
       const fade = s.place !== null ? PLACE_WATER_FADE : 1;
       su.uFade.value = fade;
       set.water.material.uniforms.uFade.value = fade;
+      if (set.boxWater) {
+        const bu = set.boxWater.material.uniforms;
+        bu.uFade.value = fade;
+        bu.uTime.value = state.clock.elapsedTime;
+        set.boxes.forEach((i, k) => {
+          const lvl = waterLevel(
+            set.boxSamples[k],
+            pose,
+            frame.boxWater?.[i] ?? 0
+          );
+          set.boxLevels[k] = Math.max(-1e6, Math.min(1e6, lvl));
+        });
+      }
       set.group.position.copy(part.position);
       set.group.quaternion.copy(part.quaternion);
       set.water.material.uniforms.uTime.value = state.clock.elapsedTime;
@@ -501,7 +550,36 @@ export default function XRay({ store, runtime, spec }: XRayProps) {
       const p = selectedPlace;
       const name = partAt(breakX, runtime.broken, p.at[0]);
       const pose = posed(name);
-      if (pose) {
+      const boxIndex = p.boxId
+        ? spec.superstructure.findIndex((b) => b.id === p.boxId)
+        : -1;
+      if (pose && boxIndex >= 0) {
+        // In one of her named boxes: its own water (`boxWater`), from
+        // her floor, or keel up her roof underneath (`boxDepthAt`).
+        const set = sets.get(name);
+        const k = set ? set.boxes.indexOf(boxIndex) : -1;
+        const level =
+          set && k >= 0
+            ? waterLevel(
+                set.boxSamples[k],
+                pose,
+                frame.boxWater?.[boxIndex] ?? 0
+              )
+            : -Infinity;
+        const depth = Math.min(
+          99,
+          boxDepthAt(
+            pose,
+            [p.at[0], p.at[1]],
+            p.floorZ,
+            spec.superstructure[boxIndex].topZ,
+            level
+          )
+        );
+        s.setPlaceWater(depth);
+        const label = runtime.pins.get(p.id)?.label;
+        if (label) label.textContent = waterHereText(depth);
+      } else if (pose) {
         let level = 0; // the sea, for open decks
         if (p.compartmentId) {
           const ci = spec.compartments.findIndex(

@@ -334,9 +334,10 @@ export function hullSlice(
 }
 
 /**
- * A superstructure box: from the deck edge (`sheerZ`) up to `topZ`, as wide
- * as the hull's deck at each x, or no wider than `halfBreadth` either side
- * (a deckhouse inboard of an open deck).
+ * A superstructure box: from the deck edge (`sheerZ`), or its own floor
+ * `baseZ` (a tier on another box), up to `topZ`, as wide as the hull's
+ * deck at each x, or no wider than `halfBreadth` either side (a deckhouse
+ * inboard of an open deck).
  */
 export function boxSlice(
   hull: HullModel,
@@ -344,7 +345,8 @@ export function boxSlice(
   fromX: number,
   toX: number,
   topZ: number,
-  halfBreadth?: number
+  halfBreadth?: number,
+  baseZ?: number
 ): Slice {
   const a = Math.max(hull.xMin, fromX);
   const b = Math.min(hull.xMax, toX);
@@ -357,7 +359,7 @@ export function boxSlice(
       halfBreadth === undefined
         ? sec.hb[NL - 1]
         : Math.min(sec.hb[NL - 1], halfBreadth);
-    const z0 = sheerZ(x);
+    const z0 = baseZ === undefined ? sheerZ(x) : baseZ;
     const z1 = Math.max(z0, topZ);
     return { y: [hb, hb, -hb, -hb], z: [z0, z1, z1, z0] };
   });

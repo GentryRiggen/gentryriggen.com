@@ -53,6 +53,23 @@ export const BOX_FLOOD_M2_PER_M = 0.035;
  */
 export const VENT_BURST_M = 20;
 export const VENT_BURST_M2 = 3;
+/**
+ * Trapped air (`ShipSpec.trappedAir`, sim README "Trapped air"): the
+ * atmosphere's pressure (Pa), which sets a pocket's Boyle head
+ * h = P_ATM/(ρg)·(m/V − 1).
+ */
+export const P_ATM = 101325;
+/**
+ * The ceiling exchange: a rule, not physics (sim README "Trapped air").
+ * A point open to a pocket's air within this height (m) of the pocket's
+ * top is in its ceiling: air, lighter than the sea, escapes up through it
+ * as fast as water comes in (one m³ of air out for each m³ of water in, by
+ * construction), so a hole in the ceiling under the sea cannot hold air.
+ * The 0.5 m band and the 1:1 exchange are chosen, not derived (one pocket
+ * per cell cannot model the two-way flow through one hole). Lower in the
+ * pocket the air leaves only when its pressure beats the sea's (physics).
+ */
+export const AIR_CEILING_M = 0.5;
 /** Fraction of the broken section open to the sea after the breakup. */
 export const BREAK_OPEN_FRACTION = 0.4;
 /** Below this head (m) the orifice law is linearised (no 1/sqrt blow-up). */
@@ -215,3 +232,16 @@ export const PERMEABILITY = {
 } as const;
 /** Superstructure (cabins, saloons). */
 export const BOX_PERMEABILITY = 0.95;
+
+/**
+ * A wave ship (`spec.wave`, the Poseidon): `capsized` once the roll rule
+ * lets go with her list past this, or physics takes her past it (deg).
+ */
+export const CAPSIZED_DEG = 150;
+/**
+ * The dive keel up (a rule): a whole hull whose wreck rests at least
+ * KEEL_UP_REST_DEG over keeps its roll as it falls, eased toward that rest
+ * this slowly (s), as the 1.0 dive eases it upright.
+ */
+export const KEEL_UP_REST_DEG = 150;
+export const KEEL_UP_TAU_S = 40;

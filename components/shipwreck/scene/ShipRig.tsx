@@ -67,6 +67,17 @@ function lampsOf(
   settings: SceneSettings
 ): [number, number, number][] {
   if (isDaylit(settings)) return [];
+  if (settings.storm && spec.cause === "wave") {
+    // A cruise ship's party night (the Poseidon): floodlights over her
+    // top deck, forward of the ballroom and aft by the sun deck, lighting
+    // her upper tiers, her funnel and the swell around her.
+    const top = spec.decks[0]?.z ?? spec.depth;
+    const z = Math.round((top + 4) * 100) / 100;
+    return [
+      [70, 0, z],
+      [-100, 0, z],
+    ];
+  }
   if (settings.storm) {
     // A laker's deck floodlights: on the forecastle's after face and the
     // after house's forward face, a few metres over her spar deck, lighting
@@ -96,6 +107,8 @@ function lampsOf(
  * the model's shaders are not touched). The liners have none.
  */
 export function deckLightsOf(spec: ShipSpec): [number, number, number][] {
+  if (SCENE_SETTINGS[spec.id].storm && spec.cause === "wave")
+    return cruiseSideLights(spec);
   if (!SCENE_SETTINGS[spec.id].storm || !spec.openDeck) return [];
   const { fromX, toX } = spec.openDeck;
   const out: [number, number, number][] = [];
@@ -108,6 +121,26 @@ export function deckLightsOf(spec: ShipSpec): [number, number, number][] {
       Math.round(side * (spec.beam / 2 - 2) * 10) / 10,
       Math.round((spec.sheerZ(x) + 5) * 100) / 100,
     ]);
+  }
+  return out;
+}
+
+/**
+ * A lit cruise ship's light on the sea (the Poseidon's party night): her
+ * window rows along each side (decks 3 to 6, her hull's top tiers), as
+ * six lamps three a side, a little outboard of her shell, for the sea and
+ * the spray to catch (`runtime.lamps` only: no three.js lights). Ours.
+ */
+function cruiseSideLights(spec: ShipSpec): [number, number, number][] {
+  const xs = spec.stations.map((st) => st.x);
+  const lo = Math.min(...xs) + 40;
+  const hi = Math.max(...xs) - 50;
+  const deck3 = spec.decks.find((d) => d.name === "3")?.z ?? spec.depth;
+  const out: [number, number, number][] = [];
+  for (let i = 0; i < 3; i += 1) {
+    const x = Math.round(lo + ((hi - lo) * i) / 2);
+    for (const side of [1, -1])
+      out.push([x, side * (spec.beam / 2 + 1), Math.round(deck3 * 100) / 100]);
   }
   return out;
 }
@@ -228,7 +261,8 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
   );
   // The night's two lamps light a liner's long decks; a laker's floodlights
   // stand close over her deck and hatches (a dimmer lamp does).
-  const lampStrength = settings.storm ? 260 : 900;
+  // (A cruise ship's floodlights over her high top deck: the liners'.)
+  const lampStrength = settings.storm && spec.cause !== "wave" ? 260 : 900;
   // In the storm her lights are on all afternoon (the overcast is dim).
   const lightShare = isDaylit(settings) ? DAY_LIGHTS : 1;
   // Scratch for her run-in frame and her wake (no allocation per frame).
@@ -452,6 +486,9 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
     const lit = lights.lit;
     const flicker = lights.flicker;
     const emergency = lights.emergency;
+    // (The storm's sea glows round a wave ship's hull with them: her lit
+    // decks under the water once she has rolled over.)
+    runtime.underGlow = spec.cause === "wave" ? emergency : 0;
     // Her rails are lines drawn unlit at their paint's colour (white on
     // her): after the blackout they would glow; dim them with her lights,
     // to her emergency level at most.

@@ -1,3 +1,5 @@
+import type { StormSpec } from "@/lib/shipwreck/ships/types";
+import { GRAV } from "@/lib/shipwreck/sim/constants";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
 import {
   GROUP_STRIDE,
@@ -39,6 +41,13 @@ export interface SeaWaves {
   groupA: Float32Array;
   /** Per group: cos θ, sin θ, envelope offset at the centre (u₀), 1/L. */
   groupB: Float32Array;
+  /**
+   * Per group, the rogue wave's look (`rogueLookOf`; zeros for every
+   * other group, so the Fitzgerald's sea draws as before): its crest
+   * sharpening Q (Gerstner, k·a·Q capped), its crest's forward lean (m per
+   * m of crest height), its breaking lip's foam (0–1), unused.
+   */
+  groupC: Float32Array;
   /** The components' mean wavenumber for the second-order crests. */
   meanK: number;
   /** The components' significant height now (m), for the foam. */
@@ -52,6 +61,7 @@ export function createSeaWaves(): SeaWaves {
     wave: new Float32Array(4 * SEA_MAX_WAVES),
     groupA: new Float32Array(4 * SEA_MAX_GROUPS),
     groupB: new Float32Array(4 * SEA_MAX_GROUPS),
+    groupC: new Float32Array(4 * SEA_MAX_GROUPS),
     meanK: 0,
     hs: 0,
   };
@@ -100,16 +110,77 @@ function wrap(p: number): number {
   return q < 0 ? q + TWO_PI : q;
 }
 
+// --- The rogue wave's look (the Poseidon's; spec "The wave on screen",
+// R10). The sim's packet is linear: on screen a smooth 30 m hill, not a
+// breaking wall. So a group left out of her ride (`ride: false`, her rogue
+// wave) is drawn with three looks the sim never sees: its crests pulled
+// together (a Gerstner-style horizontal displacement), its crest leaning
+// forward, and a white lip of foam along it for its last ~150 m before
+// her. A look only: her ride, her flooding and every camera and spray
+// height read the sim's sea (`boardingElevation`).
+
+/**
+ * The cap on a crest's sharpening: k·a·Q at the crest. At 1 the Gerstner
+ * surface folds (a loop: NaN-free but a cusp); 0.75 leaves the slope
+ * finite (1 / (1 − 0.75) = 4× steeper at the crest).
+ */
+export const ROGUE_SHARPEN_MAX = 0.75;
+/** The crest's forward lean at its top (m forward per m of height). */
+export const ROGUE_LEAN = 0.35;
+/**
+ * The breaking lip: from this many seconds before the group's time to
+ * when the crest passes her (its phase speed g/ω, about 23 m/s for her
+ * 15 s wave, so ~150 m in 6.5 s), full white, then thinning as it breaks
+ * over her and runs on.
+ */
+export const ROGUE_LIP_S: readonly [rise: number, full: number, gone: number] =
+  [-8, -4, 10];
+
+/**
+ * The look of each group of a storm (GROUP_STRIDE order), 4 values each:
+ * [Q, lean, lip strength at t = group time (1 or 0), 0]: Q so that the
+ * crest's k·a·Q is ROGUE_SHARPEN_MAX for a group with `ride: false`, and
+ * 0 (with no lean and no lip) for every other group. Pure.
+ */
+export function rogueLookOf(
+  storm: Pick<StormSpec, "groups"> | null | undefined,
+  out = new Float32Array(4 * SEA_MAX_GROUPS)
+): Float32Array {
+  out.fill(0);
+  const groups = storm?.groups ?? [];
+  const m = Math.min(groups.length, SEA_MAX_GROUPS);
+  for (let i = 0; i < m; i += 1) {
+    const g = groups[i];
+    if (g.ride !== false) continue;
+    const w = TWO_PI / g.periodS;
+    const k = (w * w) / GRAV;
+    const ka = k * (g.heightM / 2);
+    out[4 * i] = ka > 0 ? ROGUE_SHARPEN_MAX / ka : 0;
+    out[4 * i + 1] = ROGUE_LEAN;
+    out[4 * i + 2] = 1;
+  }
+  return out;
+}
+
+/** The breaking lip's strength (0–1) `tau` s after a group's time. */
+export function rogueLipAt(tau: number): number {
+  const [a, b, c] = ROGUE_LIP_S;
+  return smoothstep(a, b, tau) * (1 - smoothstep(b, c, tau));
+}
+
 /**
  * Fills `out` for real time t about the mesh's centre (earth x₀, y₀).
- * No allocation.
+ * `look` (`rogueLookOf` of the same storm) adds the rogue wave's look
+ * per group; without it (or zeros) every group draws plain. No
+ * allocation.
  */
 export function packSeaWaves(
   field: WaveFieldArrays,
   t: number,
   x0: number,
   y0: number,
-  out: SeaWaves
+  out: SeaWaves,
+  look?: Float32Array
 ): void {
   const ramp = rampOf(field, t);
   const n = Math.min(field.count, SEA_MAX_WAVES);
@@ -154,6 +225,17 @@ export function packSeaWaves(
     // Far from her (more than the mesh's reach past the cutoff): none.
     out.groupB[o + 2] = Math.max(-1e4, Math.min(1e4, u0));
     out.groupB[o + 3] = 1 / L;
+    if (look && look[o] > 0) {
+      out.groupC[o] = look[o];
+      out.groupC[o + 1] = look[o + 1];
+      out.groupC[o + 2] = look[o + 2] * rogueLipAt(tau);
+      out.groupC[o + 3] = 0;
+    } else {
+      out.groupC[o] = 0;
+      out.groupC[o + 1] = 0;
+      out.groupC[o + 2] = 0;
+      out.groupC[o + 3] = 0;
+    }
   }
   out.groupCount = m;
 }
@@ -208,6 +290,43 @@ export const SEA_WAVES_GLSL = /* glsl */ `
     float E = e + 0.5 * uMeanK * (e * e - h * h);
     vec2 dE = de + uMeanK * (e * de - h * dh);
     return vec3(E, dE);
+  }
+  // The rogue wave's look (rogueLookOf): for a group with uGroupC.x
+  // (its sharpening Q) > 0, the vertex's horizontal shift toward its crest
+  // (Gerstner: -k^ Q a sin p) and its crest leaning forward (k^ lean a
+  // cos^2 p over the crest), the white lip along the crest, and the
+  // surface's squeeze along k^ there (1 - Q k a cos p, never under 0.25:
+  // k a Q is capped at ${ROGUE_SHARPEN_MAX}). (0, 0, 0, 1) for every
+  // other group: the Fitzgerald's sea is drawn as before. rogueE: its
+  // own (linear) height, which the whitecaps leave out (a dark wall).
+  uniform vec4 uGroupC[${SEA_MAX_GROUPS}];
+  vec4 seaRogue(vec2 d, out float rogueE) {
+    vec2 shift = vec2(0.0);
+    float lip = 0.0;
+    float squeeze = 1.0;
+    rogueE = 0.0;
+    for (int i = 0; i < ${SEA_MAX_GROUPS}; i++) {
+      if (i >= uGroupCount) break;
+      vec4 gc = uGroupC[i];
+      if (gc.x <= 0.0) continue;
+      vec4 ga = uGroupA[i];
+      vec4 gb = uGroupB[i];
+      float u = gb.z + dot(gb.xy, d) * gb.w;
+      if (abs(u) > ${GROUP_CUTOFF.toFixed(1)}) continue;
+      float env = exp(-0.5 * u * u);
+      float a = ga.x * env;
+      float k = length(ga.yz);
+      vec2 kh = ga.yz / max(k, 1e-6);
+      float p = ga.w + dot(ga.yz, d);
+      float c = cos(p);
+      float s = sin(p);
+      float over = max(c, 0.0);
+      rogueE += a * c;
+      shift += kh * (gc.y * a * over * over - gc.x * a * s);
+      squeeze = min(squeeze, 1.0 - gc.x * k * a * c);
+      lip = max(lip, gc.z * env * smoothstep(0.9, 0.99, c) * (0.45 + 0.55 * smoothstep(-0.2, 0.35, s)));
+    }
+    return vec4(shift, lip, max(squeeze, 0.25));
   }
 `;
 

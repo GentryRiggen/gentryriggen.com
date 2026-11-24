@@ -51,6 +51,8 @@ while she is afloat and in one piece.
 | `seabed.ts`       | A floor that varies with position (1.9): `floorAt` (the seabed's, or the flat floor), `shoreDistance`, `profileDepth`, `seabedDepth`, `floorTopNear` (a bound for skipping the lookup).           |
 | `aground.ts`      | The rest aground (1.9, a rule): `agroundBegins`, `beginAground`, `stepAground`.                                                                                                                   |
 | `waveRide.ts`     | Her ride on the waves (1.3): `waveRide` (quasi-static heave, pitch, roll on the wave field), `rideDz`, `rideWeight`; the deck openings and the scene share it.                                    |
+| `air.ts`          | Trapped air (the Poseidon): `airHeadM` (a pocket's Boyle head), `gasOutflow` (the orifice law for a gas), `cellSealed`, `edgeVertex` (a box's lowest edge at the pose).                           |
+| `wave.ts`         | The rogue wave (the Poseidon, a rule): `withWave` (its group in her storm), `ruleRoll` (the smoothstep), `swellFade`, `groupPassed`, `waveSpots` / `waveOpenings` (her What-if spots).            |
 
 `scripts/shipwreck-sim.ts` prints a run's timeline:
 `npx tsx scripts/shipwreck-sim.ts` (the real night),
@@ -694,6 +696,298 @@ Titanic, Lusitania, Fitzgerald, Carpathia and Britannic goldens hold to
   run that keeps her power sails on and lowers none. Every other cause
   keeps its `collision` and its scripted events in every run.
 
+## Trapped air and named spaces (the Poseidon)
+
+Built for the Poseidon, a ship that floats upside down. Both pieces are
+physics, each gated on an optional field (`ShipSpec.trappedAir`,
+`superstructure[i].id`) that every earlier ship leaves out: the six
+goldens (Titanic, Lusitania, Fitzgerald, Carpathia, Britannic, Concordia)
+and `concordiaToSeaFixture` hold unchanged.
+
+**Why.** Without it a space's water rises until its head inside meets the
+sea's: right for a ship the right way up, whose air escapes up through
+her decks. Upside down every space would fill to the sea's level and she
+would sink at once. A real capsized hull floats on the air caught in it.
+
+**Trapped air** (`trappedAir`, `air.ts`, `body.ts`, `flooding.ts`). Each
+cell of a body (a hull compartment or part of one, a superstructure box)
+has an air mass m in atmosphere·m³ (the volume it would fill at the
+surface), one `Float64Array` per body (`Body.air`):
+
+- **Sealed or open.** A cell is open when some way out of it touches its
+  air (is above its water's surface, earth z) and is above the sea: a
+  strip of an opening, a point of its deck edge (hull) or lower edge
+  (box), an open deck opening (`cellSealed`). An open cell's air is at
+  the atmosphere's pressure: m = V, its air volume (V = capacity ×
+  permeability − water), and its head h = 0. A sealed cell keeps its m.
+  A full cell has none: with a way out above the sea it drains as
+  before (air comes in there); with every way out under the sea it holds
+  its water, an upturned glass.
+- **Boyle** (isothermal, [BOY]): a sealed cell's gauge head is
+  h = p_atm/(ρg)·(m/V − 1) (`airHeadM`; p_atm = 101,325 Pa, `P_ATM`), so
+  10.08 m of sea water per atmosphere of overpressure.
+- **Water** through every way in (hull openings, deck edge and box flood
+  points, the burst vents) by the orifice law, the inside head raised by
+  h: q = Cd·A·√(2g·Δh), Δh = sea head − (inside head + h). Where a point
+  is in the air (above the water inside) the inside head is h alone. So a
+  sealed space's water stands below the sea's level by its air's head;
+  her buoyancy comes out of the hydrostatics unchanged (her envelope's
+  sea clip; the dry part of each cell is displaced sea, its water is her
+  weight).
+- **Air out** where a point in the air is under the sea and the air's
+  pressure beats the sea's there: the orifice law for a gas,
+  Q = Cd·A·√(2Δp/ρ_air) at the pocket's pressure (ρ_air = 1.225 kg/m³ ×
+  p/p_atm, isothermal), counted back to the surface (× p/p_atm)
+  (`gasOutflow`). Plus her stated slow leaks (`trappedAir.leakM2`, m² per
+  cell by its kind, `box` for boxes: the ducts, stairways and door seals
+  a real ship is full of), out of the cell's top to the sea's head there
+  (or the open air if the top is out of the sea). The burst vents
+  (`VENT_BURST_M`) count as a way out for her air too. **Air never comes
+  back in under water** (`gasOutflow` is 0 for Δp ≤ 0); it comes back only
+  through a way out above the sea, which opens the cell.
+- **The ceiling (a rule, not physics).** A point in the air within
+  `AIR_CEILING_M` (0.5 m) of the cell's top is in its ceiling: air,
+  lighter than the sea, escapes up through it as fast as water comes in
+  (an exchange flow: each m³ of water in lets a m³ of air out, so the head
+  stays). The 0.5 m band and the 1:1 exchange are chosen, not derived:
+  one pocket per cell cannot model air and water passing each other
+  through one hole, so this stands in for it. So a hatch at the top
+  of a space under the sea cannot hold its air: an upright ship with
+  trapped air sinks as one without does (the long box ship, four holds
+  holed: under at 380 s against 355 s). Lower in a space the air leaves only when its pressure
+  beats the sea's.
+- **Between cells** water spills, crosses and runs through doors on each
+  side's pressure at the gap (its water's head plus its air's), and only
+  water passes: the side the pressure drives from must have water at the
+  gap. **No air passes between cells** (each keeps its own pocket).
+- **The step.** One pocket per cell; its head is found from the last
+  step's water and m before the flows. Two caps keep the 1 s step from
+  overshooting: the water in (or out) one step may close no more than
+  `FLOW_CAP` of the gap to the water at which h would meet the largest
+  driving head (`capAirFlow`), and the air out no more than `FLOW_CAP` of
+  the gap to the mass at which h meets the sea's at its shallowest way
+  out. Allocation-free: the per-cell arrays are made with the body; at a
+  break each cell's air goes with it, a cell cut in two sharing its air
+  by the halves' air volumes.
+- **Deep**, Boyle squeezes the air and she loses lift as she goes down:
+  honest, no rule.
+
+Missing `trappedAir`: exactly the 1.0 code path (`seaInflow`, `spill`,
+`crossFlow`, `doorFlow` take the air's heads only when she has some).
+
+**Named spaces** (`superstructure[i].id`). An `Opening.compartmentId` may
+name a box: the hole opens into that box (at its own side, the deck's
+breadth or its `halfBreadthM`), at once or at its time (`boxAt`, after a
+break too). For a ship with trapped air a box floods over its **lowest
+edge at the pose** (`edgeVertex`: the two lowest of its section's four
+corners; upright its lower corners, keel up its roof's edges, on its side
+the wall underneath); every other ship keeps the 1.0 ship-frame lower
+corners. A box with an id puts `SimFrame.boxWater` (0..1 per box, spec
+order, its parts summed after a break) in every frame (`sampleTrack`
+blends it); missing otherwise. A box may stand on another (`baseZ`, its
+floor above the keel: a tier over a tier, the Poseidon's ballroom on
+decks 12–13); missing, it stands on the deck edge (`sheerZ`), as every
+earlier ship's.
+
+**Tests** (box test ships, `__tests__/`): `trappedAir` (a sealed space held
+keel up with its open face 10 m down at the Boyle answer ±1%; a box ship
+turned keel up floats at her Boyle draught ±2%; a 0.01 m² leak at about
+5.6 m of head at the gas orifice rate ±5%, emptying the pocket down to
+the sea's level; air never rising under water; an upright ship open to
+the air floods frame for frame as without it, and holed past saving
+sinks as without it), `boxSpaces` (an opening
+into a named box, the orifice law through it, flood points at the pose,
+`boxWater`), `keelUpGz` (the tower ship's GZ 0–180° in 10° steps against
+the analytic section within 3%; keel up with her deckhouse flooded and
+her hull's air sealed she floats keel up 3.5 m out with her air at
+5.55 m of head, and a nudge of 5° in roll and 2° in pitch dies away
+within 120 s).
+
+**Physics vs rules.** All of this is physics (Boyle's law, the orifice
+laws for water and gas, hydrostatics) but one rule: the ceiling exchange
+(its 0.5 m band and its 1:1 exchange, chosen). The stated inputs are the
+leaks (`leakM2`, a stated range of 0.001–0.05 m² per cell) and where her
+openings are.
+
+**Limits.** Isothermal (a real pocket squeezed fast warms a little and
+cools back); one pocket per cell (a real space's air can be caught in
+several places under its decks and beams); no air between cells; the gas
+orifice is incompressible (past a pressure ratio of about 0.53 real flow
+chokes: near the surface, a pocket at more than about 9 m of head leaks
+slower than this says); the water and air through one point
+are one or the other each step, except at the ceiling; a box with trapped
+air and no opening above its lower edge is a diving bell and keeps its
+air (give a ship's boxes the openings she has: windows, doors).
+
+## The wave, capsized, short ends and the dive keel up (the Poseidon)
+
+Built for the Poseidon, rolled over by one giant wave. Each piece is gated
+on an optional field every earlier ship leaves out (`ShipSpec.wave`,
+`blackout.listDeg`, `capsizeTimeScale`, `rideOut`, `endS`, a `wreck` with
+`restDeg` ≥ 150, `cause: "wave"`): the six goldens and
+`concordiaToSeaFixture` hold unchanged.
+
+**The wave (`spec.wave`, `wave.ts`): a rule, not physics.** The sim has
+no honest model of a breaking wave's impact on a ship (a slamming load
+on her side and superstructure, green water over her decks), and no real
+cruise ship has been rolled over by one ([ND] the _Norwegian Dawn_, 2005,
+and [LM] the _Louis Majesty_, 2010: windows smashed decks above the sea,
+both upright after). So the roll-over is stated, as the Concordia's rest
+on the rocks and the Lusitania's rest on her side are:
+
+- **Its group** (`wave.group`, a `WaveGroup`) joins her storm
+  (`stormOf(spec, variant)`, `withWave`): the shared linear wave field
+  (`waves.ts`) draws it and every deck opening sees it; it is locked on
+  the sea's crest at her and re-locked on her real path, as any group.
+  Its size is sourced: [DRA] the Draupner wave (25.6 m crest to trough in
+  a sea of Hs ≈ 12 m, 1 January 1995) and [QE2] the _Queen Elizabeth 2_'s
+  wave in Hurricane Luis (about 29 m, reported, 1995); [ROG] a rogue wave
+  is one over twice the sea's Hs. Her values are in her data (Task 4).
+- **The roll rule.** From the group's time as locked (`waveStartT`: its
+  `t`, never before the first event) her roll is set each step by a
+  smoothstep (3u² − 2u³: no kick at either end) from where it was to
+  `peakDeg` (+ to starboard) over `rollS` real seconds (`ruleRoll`),
+  turned about her centre of mass at the end of each physics step. Her
+  heave, pitch, flooding, trapped air, the girder and her yaw stay
+  physics around it. At `rollS` it lets go at the peak with her roll rate
+  zeroed; from then physics owns her roll. The run takes small steps
+  (`FAST_STEP_S`) from the wave on.
+- **Out of her ride.** The group carries `ride: false` and `waveRide`
+  skips it: her quasi-static, small-angle ride on a 30 m breaking wave
+  would be nonsense, and the rule owns her roll. Her swell's ride stays
+  and fades out over `rollS` from the wave (`swellFade`: 1 − smoothstep,
+  the weight `waveRide` puts on the components): her ride is for a ship
+  right way up. The scene rides her by the same `swellFade`
+  (`stormRide.ts`).
+- **The variants** (`SimOptions.wave`): `"real"`; `"smaller"` (the group
+  at `smaller.heightM`, the rule's peak `smaller.peakDeg`); `"ahead"`
+  (the group from `ahead.dirDeg`, no rule, and in her ride: she pitches
+  up and over it, kinematic as the Fitzgerald's seas). Physics decides
+  what happens after the rule in each.
+- **Spots** (`cause: "wave"`): her What-if spots are `wave.spots` (what
+  the wave smashes; `whatIfSpots`), every one real (`whatIfRealIds`), and
+  a run's openings are the chosen spots' (`whatIfOpenings(spec, ids,
+variant)`): the same for the smaller wave, only the `fwd` spots from
+  ahead (it breaks over her bow). Each opening opens at its own `t`.
+
+**Blackout by list (`blackout.listDeg`): a rule.** `lights-out` the step
+her list passes `listDeg` (however far round she has rolled), then
+`SimFrame.power` is `emergencyLight` (her batteries), never 0, and the
+pumps stop, as the Concordia's water rule (which still applies). The
+threshold is calibrated, not sourced: [SOL] SOLAS II-1 Reg. 26 and IACS
+UR M46 ask machinery to work at 15° static and 22.5° dynamic heel; past
+that her generators trip and lubrication fails, and her 60° is a stated
+margin over it.
+
+**`capsized`** (an event and an outcome, appended to the sets). The event
+fires once, when the rule lets go with her list past `CAPSIZED_DEG`
+(150°), or whenever physics takes a wave ship's whole hull afloat past
+it. Once it fires, shown time runs `capsizeTimeScale` times slower than
+real (as `agroundTimeScale`; 6 for her): her keel-up float plays in
+minutes, frames carry `realT`, and her clock stays true.
+
+**`rideOut` (a rule).** A run whose ship is whole, afloat and never
+`capsized` ends `floated` (event `sheltered`: "She rode it out") the
+first step at or after `afterS` shown seconds from the wave on which her
+list is within `maxListDeg`. A capsized one never ends this way, even
+one physics rights again.
+
+**`endS` (a rule).** Her end (shown s after the first event) replaces
+6:00 AM. There a body afloat keel up (cos roll < 0) ends with the
+outcome `capsized`; one afloat the right way up `floated`, as before.
+
+**The steady test in her storm.** Every other storm ship never runs it
+(the next wave over her deck can always come). A wave ship runs it once
+her rogue wave has passed (`groupPassed`: the group's envelope 8 widths
+beyond her at its group speed, where `waves.ts` cuts it off) instead of
+after 1800 s, with the Carpathia's pose box (`settled`) on: her hull's
+physics is on still water, so a hull that has stopped can freeze; her
+ride (kinematic) goes on in the scene.
+
+**The dive keel up (`wreck.restDeg` ≥ 150): a rule.** In 1.0 a whole
+hull going under eases its roll upright and its pitch to 40° bow down
+(`descent.ts`): she would turn right way up on the way down. A whole
+hull whose wreck rests keel up and that goes under more than half over
+(cos roll < 0) keeps its roll as it falls, eased toward `restDeg` on the
+side it lies (40 s, as the 1.0 roll), never back through 90°; her pitch
+dives as in 1.0. She meets the floor with her lowest point, her
+superstructure counted, and settles to `restDeg` keel up. Any other
+hull dives as in 1.0; one that has rolled on round past 180° eases to
+the nearest upright (a whole turn on), never a full circle back (exactly
+1.0 for |roll| ≤ 180°, every earlier ship). A wave ship's whole hull
+that has `capsized` (`Body.capsized`) dives keel up however she went
+under, also from her beam ends or past them: under the sea her last air
+is in her hull, on her keel side, above her centre of mass, so keel up
+is the way she hangs, and the rule eases her there (40 s) rather than
+modelling her air on the way down. The Fitzgerald's stern capsize
+(`wreckParts.stern`) is untouched.
+
+**The keel-under rule (`Body.keelUnder`): a rule, not physics.** A
+capsized whole hull whose wreck rests keel up has the same rule from the
+moment her keel amidships goes under the sea, still afloat (latched;
+`stepKeelUnder`): her roll is eased toward keel up on the side she lies
+(`keelUpRoll`, 40 s, never back through 90°), turned about her centre of
+mass; her heave, pitch, flooding and air stay physics. Why: from then she
+has no waterplane, and one air pocket per cell, each with a free surface
+its full width, is all that decides her roll; real air is caught in many
+pockets under decks and beams (Limits). Left to the pockets she rolled
+from 229° to 352°, nearly right way up, as she went under, and the dive
+rule turned her back under water (the anti-goal on screen). Real capsized
+ships ([SEW]) went under keel or bow up.
+
+**The box flood (`wave.boxFlood`): a rule, not physics.** During the
+real wave's roll rule each named box fills to at least `fill` of its
+volume, linearly from `fromU` to `toU` of `rollS`; its air (if it has
+any) goes out with the volume the water takes, at its pressure. From
+the hand-off physics carries that water (it is real box water:
+`boxWater` reports it). Why a rule: the sim has no model of a breaking
+wave's impact or of the water it throws aboard (see Limits), and a real
+superstructure is not watertight (doors, glass, stairways, lifts). Why
+it is needed: without it, a ship rolled by the rule keeps her
+superstructure full of open air (the Poseidon's: about 290,000 m³, five
+times her displacement): she rides up on it (keel 43 m out of the sea at
+190°) and physics rolls her on round in a second (static GZ keel up,
+dry: −2.65 m at 190°; with her boxes full: +1.37 m). Only the real wave
+(not the smaller one, not from ahead), and only the boxes behind an open
+What-if spot (`spots`: its glass broken; every spot on her real night).
+A What-if that keeps a box's windows whole keeps that box dry, and
+physics decides what she does with it (calibration). The spots'
+openings stay honest openings on top.
+
+**What is physics, what is a rule.** Physics: everything during the rule
+but her roll, and everything after it (her keel-up attitude, her
+flooding, her air, her trim and sinking, the dive's speed). Rules: the
+roll's peak and pace, the blackout threshold, `rideOut`'s end, `endS`,
+the box flood, the dive keeping its roll (and a capsized hull's going
+back keel up), the keel-under rule, the rest keel up.
+
+**Tests** (box test ships, `__tests__/testShips.ts`: `waveShip`, the
+tower ship with trapped air in an Hs 3 m swell with a 30 m wave from
+port; `keelUpShip`, a 100 m box as stable keel up as upright):
+`waveRule` (the smoothstep within 0.5° every step, the hand-off at the
+peak with her roll rate 0, heave, pitch and flooding moving during it,
+`lights-out` the step her list passes 60° and power 0.2 after,
+`capsized` once at the hand-off, shown time ×6 after it, the group out
+of her ride and the swell's faded on screen too; the smaller wave
+peaking at 45° and righted within 120 s; from ahead never past 15° and
+the group in her ride; the What-if spots), `capsizeEnds` (`rideOut` for
+the smaller wave and from ahead at `afterS`, never for a capsized run;
+`endS` keel up ends `capsized`; the steady test after the group has
+passed, before 1800 s), `diveKeelUp` (her list at least 150° all the way
+down and 180 ± 10° at rest, her superstructure no deeper in the floor
+than a plough; without the rule she turns upright on the way down).
+
+**Limits.** No breaking-wave impact model: the rule stands in for it,
+and the wave's water on her decks and in her rooms is not modelled but
+by the box flood (a rule, above); her spots' openings let the sea in by
+the orifice law. The
+ride is not fed back into the physics (as for every storm ship). The
+tower test ship, her deckhouse 30 m tall and still full of air when the
+rule lets go, rolls straight back over (physics: an upturned ship
+floating on a sealed deckhouse is far less stable than one the right way
+up); her roll's inertia is her beam's (`ROLL_GYRATION`), so a tall hull
+turns over faster than a real one would.
+
 ## API notes
 
 - A track always has at least one frame (the ship at t = 0, a placeholder
@@ -891,6 +1185,11 @@ Titanic, Lusitania, Fitzgerald, Carpathia and Britannic goldens hold to
   1.3 sim the same way, against `fixtures/fitzgeraldGolden.<arch>.json`
   (arm64 and x64; the x64 one was written in a `linux/amd64` Node 24
   container, which also passes the Lusitania's x64 fixture).
+- `__tests__/concordiaGolden.test.ts` holds the Costa Concordia's real
+  night to the 1.10 sim the same way (written before the Poseidon touched
+  the sim), against `fixtures/concordiaGolden.<arch>.json` (arm64 and x64,
+  the x64 one from a `linux/amd64` Node 24 container); her to-sea runs are
+  `concordiaToSeaFixture`'s.
 
 ## Titanic's data and sources
 
@@ -1959,6 +2258,111 @@ contributors, ODbL) [OSM]. Where they disagree:
   30° at 23:11:24, 40° at 00:00, 65° by 00:41 [MIT §3, §4.6];
   `agroundTimeScale` 6. `wreck` 65°/10° for a deep-water landing (R16).
 
+## The Poseidon's data and sources
+
+The Poseidon is made up (the first such ship): her particulars, her
+subdivision, her superstructure and her openings are **ours**, chosen in
+the range real cruise ships of 2000–2010 have; the wave, the sea and the
+physics are sourced. Nothing comes from the film's art. Sources:
+
+- [CR] Wikipedia: the Concordia class (290 m, 35.5 m, 8.2 m draught, 13–14
+  passenger decks, 26 boats), the Carnival Conquest class (290 m, 35.4 m,
+  8.2 m), the Grand class (290 m, 36 m, 8.5 m), the Voyager class (311 m,
+  38.6 m, 8.8 m, 18 boats a side): the ranges her particulars sit in.
+- [DRA] Haver (Statoil, 2004): the Draupner wave, 25.6 m crest to trough
+  in Hs ≈ 12 m, 1 January 1995. [QE2] the _Queen Elizabeth 2_ in
+  Hurricane Luis, 1995: about 29 m, reported (Wikipedia, "Rogue wave").
+  [ROG] Kharif, Pelinovsky & Slunyaev (2009): a rogue wave is over twice
+  Hs. [ND] the _Norwegian Dawn_ (2005, ~21 m, decks 9–10 windows) and
+  [LM] the _Louis Majesty_ (2010, ~8 m, deck 5 windows): cruise ships'
+  glass smashed high above the sea.
+- [ATL] The North Atlantic in winter: an abyssal plain about 4,000 m deep
+  (GEBCO); a winter swell of Hs 3–4 m (ERA5 climatology): hers 3 m, 12 s
+  peak, from her port beam, 20 kn of wind.
+- [SOL] SOLAS II-1 Reg. 26 / IACS UR M46 (machinery at 15° static, 22.5°
+  dynamic heel): her 60° blackout is a stated margin over it.
+- [BOY] Boyle's law; [SEW] the _Sewol_ (2014) and the _Princess of the
+  Stars_ (2008) floated keel up for hours on their trapped air.
+
+Her data (`ships/poseidon.ts`, each "ours"):
+
+- **Particulars (R3).** LOA 305 m, LBP 265 m, beam 36.0 m, draught 8.4 m
+  even keel. 61 stations from a cruise ship's form (as the Concordia's):
+  a parallel midbody x −25 to 15 m, a flat bottom, a raked stem to 157 m
+  and a transom at −148 m whose run lifts the bottom from x −88 m; the
+  waterline narrows 50% to the transom. Her fullness was tuned (Task 4)
+  from a first try that displaced 62,140 t to 57,946 t at 8.4 m (block
+  coefficient 0.705; `displacementT` 57,500, 265 × 36 × 8.4 × 0.70 ×
+  1.025): the midbody shortened (−50…18 → −25…15 m), the sections' exponent
+  6 amidships falling by 4.6 to each end, the waterline's aft taper
+  0.3 → 0.5 (her LCB from −10.9 to −5.8 m, `lcg` −5.8). KM 16.09 m; KG
+  14.1 m (ours) for an intact GM of 2.0 m (R3: 1.5–3).
+- **Decks.** Deck 0, the bulkhead deck, at 14.5 m; decks 1–14 every 2.8 m
+  (the Concordia's spacing). Her hull's side shell runs to deck 1 (17.3
+  m, `depth`, `sheerZ`); every bulkhead stops at deck 0.
+- **Subdivision (R4).** 20 compartments: the after peak bulkhead 22 m
+  from the transom, the collision bulkhead 5% of LBP aft of the forward
+  perpendicular (SOLAS II-1 Reg. 12: 5–8%), 18 spaces of 13.6 m between
+  (under a two-compartment floodable length of about 14–15 m). Her
+  machinery amidships aft (WTC 3 propulsion motors, 4 switchboards, 5–7
+  three generator rooms, 8 boilers and purifiers), bow thrusters in WTC 19. **Side tanks** (ours, added in calibration): from WTC 3 to WTC 18 a
+  longitudinal bulkhead 5 m in from each side, in five tanks a side
+  (WTC 3–5, 6–8, 9–11, 12–14, 15–18; fuel, ballast and fresh water,
+  voids; permeability 0.95), each its own watertight space with no way
+  in but its stated leak; 30 spaces in all, inside the X-ray's 32. Without
+  them her keel-up hull's water (squeezed in by Boyle through her deck
+  edges, about 10–30% of each space) has a free surface 36 m wide, and
+  she lolls 15–25° off keel up and loses her air in minutes (static GZ
+  keel up, boxes full: +1.37 m at 190° dry, −0.32 m with 10% hull water).
+- **Superstructure (R4).** Named boxes in tiers: `aft-lower`,
+  `mid-lower`, `fwd-lower` (decks 1–6, from deck 1 to 7), `aft-upper`,
+  `mid-upper`, `fwd-upper` (decks 7–11), `top-aft` (decks 12–13 aft of
+  her funnel, 14 m either side), and `ballroom`: x −18 to 12 m (30 m),
+  15 m either side, on decks 12–13 with 4 m more for the dome's volume
+  (a cap 30 m across and 9 m high holds about 3,560 m³; the dome's crown
+  stands about 9 m over deck 14, above the box's top, which is a volume
+  equivalent). Her funnel at x −70 m, raked, its top 78 m over her keel
+  (the sim reads only its foot and `falls: false`). No `boxWaterAtSide`: box water weighs on
+  the centre line (the 1.0 rule: cabins cut it up), else a part-full box
+  is one free surface and no fill short of full is stable keel up.
+- **The wave (R7).** `wave.group`: 30 m, one crest, 15 s, from her port
+  beam (dirDeg −90), at t = 0 (23:58:00); the rule's peak 190°, `rollS`
+  25 s; smaller 15 m / 45°; ahead dirDeg 0.
+- **The spots (R9)**, all on her port side, opening at t = 0 (areas ours,
+  `SPOT_M2`): `stern` the aft mooring and marina doors (15 m², deck 0 to
+  1, into WTC 1); `aft-win`, `mid-win`, `fwd-win` glass broken in the
+  lower tiers' window rows on decks 3–6 (120, 150, 110 m²; `fwd-win` also
+  the bridge front on deck 8, 25 m², into `fwd-upper`); `vents` the
+  funnel casing and engine-room intakes (12 m² over WTC 5–7, at the
+  hull's top: keel up they open downward); `ballroom` the dome's glass
+  (40 m²); `lobby` the deck 5 atrium doors (30 m², `mid-lower`) and the
+  gangway doors (12 m², WTC 11). From ahead only `fwd-win`.
+- **Box flood (rule)**: every named box to full (`fill` 1, the smallest
+  fill that left her keel up in calibration), the top boxes and the
+  ballroom from 35 to 75% of the roll, the upper tiers from 40 to 85%, the
+  lower tiers from 50 to 100%; each behind its spots: `aft-lower`,
+  `aft-upper`, `top-aft` behind `aft-win`; `mid-lower`, `mid-upper`
+  behind `mid-win` or `lobby`; `fwd-lower`, `fwd-upper` behind `fwd-win`;
+  `ballroom` behind `ballroom`. `stern` and `vents` open only her hull.
+- **Trapped air (R8)**, leaks per space: hull 0.01 m², engine rooms
+  0.004 m², boxes 0.03 m² (range 0.001–0.05).
+- **Power.** Blackout by list at 60° (`blackout.listDeg`, a rule; the
+  water rule on WTC 6 at 2 m as well), emergency light 0.25.
+- **Time and ends.** `capsizeTimeScale` 6; `rideOut` 300 s at 10°;
+  `endS` 870 shown s (about 1:25 AM real once scaled: 25 s real, then
+  845 × 6); `wreck` 180° / 120°; `seaDepthM` 4,000, a flat floor.
+- **Girder (R17).** IACS UR S11 for L 265 m, B 36 m, Cb 0.70: C = 10.54,
+  wave moments 3.5 GN·m hogging and 4.1 GN·m sagging, still water about
+  the same; their sum × an ultimate factor of 3.2 (ours): hog 22.7 GN·m,
+  sag 26.2 GN·m. She does not break (R17). 1.8 (12.8 / 14.8 GN·m) broke
+  her at 20 s in What-ifs whose box flood fills only her middle (hogging
+  20.1 GN·m: `mid-win` or `lobby` with the ballroom) or only her ends
+  (sagging 22.4 GN·m: `aft-win` + `fwd-win`), the worst of all 128 spot
+  sets; 3.2 keeps every one under 0.9 of her strength. A load a real
+  breaker, which floods her all along, would not give: the rule's.
+- **Boats (R16).** 24 in the deck-4 recess, 12 a side, x −84 to 84 m;
+  never lowered (no `boat-lowered`).
+
 ## Calibration
 
 Everything tuned is a physical quantity; no timing is scripted.
@@ -2317,99 +2721,186 @@ Any set without WTC 5 or 6 keeps her lights and her way (15.5 kn on
 350°); a set with either drifts back to the island by her path (it
 loses her motors or her switchboard) and floats there.
 
+### The Poseidon's calibration
+
+Every tuned value stays in its stated range; each step and why:
+
+1. **First run (as drafted, no box flood).** Keel 43 m out of the sea at
+   190° (her dry superstructure holds her up), boxes under 2% full at
+   the hand-off, rolled on round to upright within 3 s. Spot areas ×10,
+   or 2,000 m² more per upper box, still 235–430°. Hence the box flood
+   (a rule, the controller's ruling) and no `boxWaterAtSide`.
+2. **Hull.** 62,140 t / GM −0.1 m → 57,946 t / GM 2.0 m (Her data).
+3. **Box flood, every box full.** She stays keel up at the hand-off but
+   lolls to 158–166° and loses her air in about 11 minutes: the hull's
+   free surface (static GZ above). Hull leaks 0.001–0.004 m² and KG
+   13.1–14.6 m changed little. Hence the side tanks: 3 m wings lolled to
+   164°, 4 m to 166–170°, 5 m and 6 m held 180° with no spots.
+4. **Side tanks 5 m (first one per compartment, then five long tanks a
+   side to fit the X-ray's 32 slots: under at 52.7 → 49.0 min), the
+   ballroom in the box flood.** Without it the ballroom reached 85–89%
+   at 5 real minutes through its dome (box leak 0.03–0.05 m²); with it,
+   full by 18 s.
+5. **Leaks (first pass).** Her sinking was not a smooth leak-out: she
+   floated keel up while her hull's air held her high, then, low
+   enough, rolled off her keel as her deck edges reached the surface and
+   her air went, at a time sensitive to every input (hull leak 0.0015 →
+   52.7 min, 0.002 → 35.5 min, 0.001 → afloat at `endS`).
+6. **The keel-under rule (review).** With it she no longer rolls off: at
+   hull leak 0.0015 she floated keel up to 82 min. Her sink time is now
+   her leaks', smoothly: hull leak 0.006 → 60.7 min, 0.01 → 45.0, 0.015
+   → 36.2, 0.02 → 32.3 (all spots). Chosen: hull 0.01 m², engine 0.004,
+   box 0.03, KG 14.1 m, side tanks 5 m.
+7. **The box flood behind its spots (review).** Each box floods only when
+   one of its spots is open. A box flooded at one end or in her middle
+   alone bends her hard ("Her data", Girder: ×3.2).
+
+Results (real night, `poseidonNight.test.ts`):
+
+- The rule: 90° at 12 s, 190° at 25 s; `lights-out` at 9.4 s;
+  `capsized` at 25 s.
+- Afloat keel up 44.5 real minutes: 173.5–190° (180.0–180.5° from 4
+  minutes on); at 10 minutes 180.0°, trim 0.16°, her keel 9.0 m out of
+  the sea (15.7 m the most); trim −0.3° to 3.6° by the bow as she goes;
+  keel and propellers in the air 44.5 real minutes.
+- From `capsized` to her rest she is never under 170° from upright.
+- The ballroom 90% full at 18 s (met by the box flood, a rule: through
+  its dome alone, 85–89% at 5 minutes).
+- Her hull's air carries 73% of her weight at 10 real minutes; her
+  total air never rises from step to step from the wave on.
+- Her keel goes under at 44.9 real minutes (the keel-under rule from
+  then); `bow-under` 2,697 real s (45.0 min, 00:42:57 AM) at 183°,
+  `stern-under` 2,843 s at 180°; she lands at 180.0° on the floor at
+  3,212 s. Shown: 556 s, 616 s from the first frame (10.3 min). No
+  breakup; `sank`.
+
+What if (`poseidonWhatIf.test.ts`, sims lane; every pair on the real
+wave was run):
+
+| Wave    | Spots                                  | Outcome                                                                                                                                               |
+| ------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Real    | all seven                              | `sank`: under at 45.0 min, keel up all the way                                                                                                        |
+| Real    | none, `stern`, `vents`, `ballroom`     | `capsized` at `endS`: her rooms stay dry, she rolls on past her side (312–320°), then slowly back to keel up (182–185°) as water seeps into her rooms |
+| Real    | `aft-win`, `mid-win`, `lobby`          | `capsized` at `endS`: over toward her side (283–290°), back keel up (180°)                                                                            |
+| Real    | `fwd-win`                              | `sank`: under at 49.4 min                                                                                                                             |
+| Real    | `stern`+`vents`, `ballroom`+`vents`    | `capsized` at `endS`                                                                                                                                  |
+| Real    | `fwd-win`+`lobby`, `mid-win`+`fwd-win` | `sank` bow first: under at 3.5 and 3.8 min (front and middle full, back dry)                                                                          |
+| Real    | `aft-win`+`mid-win`, `aft-win`+`lobby` | `sank`: under at 13.7 and 13.0 min (back and middle full, front dry)                                                                                  |
+| Real    | other pairs (all run)                  | `stern`+`aft-win` 65.1, `aft-win`+`vents` 45.6, `vents`+`fwd-win` 46.2, `ballroom`+`fwd-win` 46.0, `stern`+`fwd-win` 49.4 min; the rest `capsized`    |
+| Smaller | any (none, each alone, all)            | `floated`: leans 45°, upright again, rides out at 300 s                                                                                               |
+| Ahead   | any                                    | `floated`: no list, no water (her ride carries her over the crest; it never reaches her windows), rides out at 300 s                                  |
+
+Every run ends inside `endS` with an outcome and finite poses. Keeping
+windows whole keeps those rooms dry: with none broken, or only her
+doors, vents or dome, she floats upside down to the end; a set that
+floods only one end or her middle sinks her soonest (minutes), bow or
+stern first. In the sinking What-ifs she may roll as far as 60° from
+upright before her keel goes under (physics, afloat); the keel-under
+rule holds her keel up from then.
+
 ## Pass criteria (enforced by `__tests__/`)
 
-| Criterion                                           | Result                                                                                  |
-| --------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Undamaged: floats at her draught ±0.1 m, trim ±0.2° | 9.82 m, trim 0.00° (list 1.4° to port from the TCG)                                     |
-| Displacement within 3%, GM 0.6–2.5 m                | +0.1%, GM 0.80 m                                                                        |
-| Breakup 2:05–2:25 AM                                | 2:14:01 AM (±5% strength: 2:12:06, 2:15:51)                                             |
-| Break 35–45% of LBP from the stern, funnels 3–4     | x = −27.1 m, 39.5%                                                                      |
-| Trim at the break 8°–25°                            | 10.8°                                                                                   |
-| Stern under 2:10–2:30 AM                            | 2:15:52 AM                                                                              |
-| List under 10° before the break                     | at most 1.5° (to port)                                                                  |
-| What if 1–4 forward (every subset): afloat, whole   | all 15 float, steady by 12:30 AM                                                        |
-| What if 5 forward: later than the real night        | sinks 2:52:48 AM (breaks 2:50:58)                                                       |
-| What if 7 forward: sooner                           | sinks 1:12:23 AM                                                                        |
-| Every single compartment, first 1–8, mixed sets     | float steady, or sink with every part on the floor                                      |
-| Deterministic                                       | two runs deep-equal                                                                     |
-| Whole real night `simulate`                         | about 0.8–1.2 s (test allows 3 s and logs it)                                           |
-| `advance(8)`                                        | slowest call about 8.5 ms                                                               |
-| Lusitania: displacement within 2%, GM 0.5–1.2 m     | 35,654 t (+0.0%), GM 0.84 m; Cb 0.610 at load                                           |
-| Lusitania: list ≥ 12° by 2:15, at most 15–30°       | 21.7° at 2:15, at most 24.8°                                                            |
-| Lusitania: down by the head from 2:12               | trim > 0 from 2:12 on (1.5° then)                                                       |
-| Lusitania: bow on the floor, stern in the air       | bow lands 2:27:25 PM, trim 26°                                                          |
-| Lusitania: gone at 2:25–2:32 PM (real 2:28)         | 2:28:05 PM, no breakup                                                                  |
-| Lusitania: at rest on her starboard side (≥ 45°)    | 75° (she goes under at 59°; the survey's rule)                                          |
-| Titanic What-ifs as 1.0                             | 83 checked frame by frame against e5fd6da4: same                                        |
-| Lusitania: explosion within 30 s                    | 8 s                                                                                     |
-| Lusitania What-if: 12 spots × portholes open/shut   | all finite, all float steady or rest on the floor                                       |
-| Lusitania portholes shut at the real spot           | floats (open: sinks at 2:28:05 PM)                                                      |
-| Lusitania real afternoon `simulate`                 | about 0.5–0.9 s (the Titanic's 3 s budget)                                              |
-| Lusitania tracks as 1.1                             | 3 runs, every 50th frame to 1e-9: same                                                  |
-| Storm field: 4σ of a 6 h record                     | within 5% of Hs at three places                                                         |
-| Fresh water: same mass floats deeper                | 1025/1000 by volume                                                                     |
-| Box laker: calmer ships less, worse more            | < 0.5×, > 1.5× the real storm's water in 30 min                                         |
-| Box laker: a hatch fails under its head of water    | `hatch-fails`, then > 5× the inflow                                                     |
-| Box in 120 m: bow upright, stern upside down        | bow 0°, stern 180°, 5 m apart, none in the floor                                        |
-| Fitzgerald: LOA, beam, depth, displacement, GM      | 222.2 m, 22.86 m, 11.89 m; 34,750 t, 3.80 m                                             |
-| Fitzgerald: freeboard 3.2–3.8 m, cargo 26,535 t     | 3.56 m; 26,535 t (41.1/15.5/43.4% by hold)                                              |
-| Fitzgerald: starboard list 1–8° at 5:30 PM (R14)    | 5.0° (topside alone: 0.0°)                                                              |
-| Fitzgerald: water rising, afloat at 7:10            | 754 / 1,349 / 1,795 / 2,031+ t at 4:30–7:10                                             |
-| Fitzgerald: storm's water over her deck, by 7:00    | 490 m³ (her holds'); the graze the tanks'                                               |
-| Fitzgerald: still water, all damage: afloat 9:00 PM | floats, 1,568 t, list 6.0°                                                              |
-| Fitzgerald: sisters' time inside 7:00–7:15 PM (R15) | 7:11:55 PM (re-locked); the table above                                                 |
-| Fitzgerald: still water sinks nothing by 9:00 PM    | floats, no cover fails                                                                  |
-| Fitzgerald: a cover fails, bow under 7:10–7:25      | first cover 7:11:37 PM, bow under 7:12:03 PM                                            |
-| Fitzgerald: bow lands ≤ 3 min, stern top ≥ −5 m     | 7:12:44 PM (41 s), house +2.6 m, hull +0.8 m                                            |
-| Fitzgerald: stern under ≤ 5 s after the bow lands   | 1.7 s                                                                                   |
-| Fitzgerald: breaks after the bow lands              | as it strikes, x = 17.9 m, before the stern lands                                       |
-| Fitzgerald: stern rolls in the water (R10)          | 180° as it first touches; 0° more on the floor                                          |
-| Fitzgerald: rests                                   | bow 0.1°, stern 180°; sections 35 m apart                                               |
-| Green water: on and off her deck in seconds         | a 4.2 m swell: yes; still water, a 1 m sea: none                                        |
-| Fitzgerald: funnel stays; dive in real time (R11)   | no `funnel-falls`; shown t = real t                                                     |
-| Fitzgerald ride: pitch ≤ 6°, roll ≤ 10°             | at most 2.0°, 0.6°                                                                      |
-| Fitzgerald What-if: 24 runs                         | all finite, inside endT; no damage sinks later                                          |
-| Fitzgerald: real spots = real run; none + calmer    | identical tracks; she reaches Whitefish Bay                                             |
-| Carpathia: LOA, LBP, beam; displacement, GM         | 170.08, 164.59, 19.66 m; 18,509 t (+0.0%), 1.14 m                                       |
-| Carpathia: hits at 0, 8 and 5,700 s, port side      | `torpedo-hit` 2 at 8 s, 3 at 5,700 s (10:50 AM)                                         |
-| Carpathia: list to port 0.5–10° at 9:25, ≤ 15°      | 3.6° at 9:25 (1.0° by 10:50); at most 9.7° (15 s)                                       |
-| Carpathia: down by the head 9:25–10:50              | 0.82° at 9:25, 1.02° at 10:50                                                           |
-| Carpathia: afloat at 10:50, forecastle edge out     | sinkage 12.38 m (from 8.00), 11,387 t aboard                                            |
-| Carpathia: stern under 10:55–11:50 AM               | 11:02:48 AM (6,468 s)                                                                   |
-| Carpathia: bow first, stern last (the photograph)   | bow down 57° at stern-under; met under R20 (≤ 0.8° by the stern, 8 min 14 s)            |
-| Carpathia: her way down is seen (R22)               | 31 s stern-under to rest in real time; stern ≤ 12.2 m/s; stern lands 16 s after the bow |
-| Carpathia: no breakup afloat; rests upright to port | none; roll −4.0°, pitch +4.3°, lowest −167.1 m                                          |
-| Carpathia: without the third torpedo                | sinks later, 11:15:51 AM; all nine single hits float                                    |
-| Carpathia What-if: 97 runs (sims lane)              | all finite, inside `END_T`; 3+ hits ≤ the first two                                     |
-| Carpathia real morning `simulate`                   | about 0.45 s (the test allows 4.5 s)                                                    |
-| Britannic: LOA, beam; displacement, GM              | 269.1 m, 28.65 m; 52,653 t (+0.0%), 0.80 m                                              |
-| Britannic: explosion at the mine                    | 8:12:01 AM (1 s)                                                                        |
-| Britannic: added list ≥ 2° by 8:30, growing to 8:55 | not met (−0.7°, −0.9°): `it.failing`, Known limits                                      |
-| Britannic: adds 8–30° of list before the bow lands  | 25.0° (as the bow strikes, 9:03:55)                                                     |
-| Britannic: down by the head from 8:17 AM            | yes (1.5° at 8:17, 3.4° at 8:27)                                                        |
-| Britannic: E-deck portholes under 10–22 min         | 12:28 after the mine (real about 15)                                                    |
-| Britannic: bow lands before the stern is under      | bow 9:03:55, stern 9:06:01 (up then)                                                    |
-| Britannic: gone in 45–65 min (real 55), whole       | 54:01 (9:06:01 AM); girder peak 0.97                                                    |
-| Britannic: rests on her starboard side (≥ 60°)      | 89.9°                                                                                   |
-| Britannic: funnels fall one after another           | 9:00:26, 9:02:33, 9:03:29 (dummy 9:04:05)                                               |
-| Britannic What-if: 8 toggle combinations            | all finite, in endT; any one fixed: later                                               |
-| Britannic: a mine in a boiler room's double skin    | floats steady (each of the six)                                                         |
-| Concordia: LOA, LBP, beam; displacement, GM         | 290.2, 247.4, 35.5 m; 56,764 t (+0.3%), 2.27 m                                          |
-| Concordia: WTC 5, 6 full 2–6, 4–12 min              | 2.8, 8.0 min (level with the sea)                                                       |
-| Concordia: WTC 4, 7 full 30–50 min                  | 32.5, 45.3 min (95% under deck 0)                                                       |
-| Concordia: lights out 30–90 s, then emergency light | 58 s (real 51); 0.25 after                                                              |
-| Concordia: port first (≤ 5°), starboard by 22:20    | at most 4.8° to port (21:55); over at 22:13; 5.0° at 22:20, never back                  |
-| Concordia: 10° ± 4 at 22:30                         | 8.5°                                                                                    |
-| Concordia: down by the stern from 10 min            | 0.9° at 10 min, 1.6° at the touch                                                       |
-| Concordia: touches aft 48–62 min, 12–35 m, 12–25°   | 54.4 min (22:39:32), x −56.7 m, 14.6 m, 12.9°                                           |
-| Concordia: aground; 65° ± 2 at 00:30–01:00          | `aground` 22:39:32; 65.0° at 00:41:00 (shown 20.3 min later)                            |
-| Concordia: rest: heading 180–220°, ≤ 150 m from fix | 199.4°, 95 m                                                                            |
-| Concordia: lowest point at rest 20–32 m (spec)      | 14.6 m: PROPOSED 12–32 (the rule seats her where she touched; calibration)              |
-| Concordia: port shell and ⅓ of the houses out       | yes                                                                                     |
-| Concordia: no breakup, no stern-under; `aground`    | yes; 21,400 t aboard at the touch, 21,406 t at rest                                     |
-| Concordia: real night `simulate`                    | about 0.5 s (15 s before the floor speed-ups); to sea 8 s                               |
-| Concordia What-if: 45 tests (sims lane)             | every single and pair floats; 4–6, 5–7, 6–8 float; real five to sea sinks               |
+| Criterion                                           | Result                                                                                   |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Undamaged: floats at her draught ±0.1 m, trim ±0.2° | 9.82 m, trim 0.00° (list 1.4° to port from the TCG)                                      |
+| Displacement within 3%, GM 0.6–2.5 m                | +0.1%, GM 0.80 m                                                                         |
+| Breakup 2:05–2:25 AM                                | 2:14:01 AM (±5% strength: 2:12:06, 2:15:51)                                              |
+| Break 35–45% of LBP from the stern, funnels 3–4     | x = −27.1 m, 39.5%                                                                       |
+| Trim at the break 8°–25°                            | 10.8°                                                                                    |
+| Stern under 2:10–2:30 AM                            | 2:15:52 AM                                                                               |
+| List under 10° before the break                     | at most 1.5° (to port)                                                                   |
+| What if 1–4 forward (every subset): afloat, whole   | all 15 float, steady by 12:30 AM                                                         |
+| What if 5 forward: later than the real night        | sinks 2:52:48 AM (breaks 2:50:58)                                                        |
+| What if 7 forward: sooner                           | sinks 1:12:23 AM                                                                         |
+| Every single compartment, first 1–8, mixed sets     | float steady, or sink with every part on the floor                                       |
+| Deterministic                                       | two runs deep-equal                                                                      |
+| Whole real night `simulate`                         | about 0.8–1.2 s (test allows 3 s and logs it)                                            |
+| `advance(8)`                                        | slowest call about 8.5 ms                                                                |
+| Lusitania: displacement within 2%, GM 0.5–1.2 m     | 35,654 t (+0.0%), GM 0.84 m; Cb 0.610 at load                                            |
+| Lusitania: list ≥ 12° by 2:15, at most 15–30°       | 21.7° at 2:15, at most 24.8°                                                             |
+| Lusitania: down by the head from 2:12               | trim > 0 from 2:12 on (1.5° then)                                                        |
+| Lusitania: bow on the floor, stern in the air       | bow lands 2:27:25 PM, trim 26°                                                           |
+| Lusitania: gone at 2:25–2:32 PM (real 2:28)         | 2:28:05 PM, no breakup                                                                   |
+| Lusitania: at rest on her starboard side (≥ 45°)    | 75° (she goes under at 59°; the survey's rule)                                           |
+| Titanic What-ifs as 1.0                             | 83 checked frame by frame against e5fd6da4: same                                         |
+| Lusitania: explosion within 30 s                    | 8 s                                                                                      |
+| Lusitania What-if: 12 spots × portholes open/shut   | all finite, all float steady or rest on the floor                                        |
+| Lusitania portholes shut at the real spot           | floats (open: sinks at 2:28:05 PM)                                                       |
+| Lusitania real afternoon `simulate`                 | about 0.5–0.9 s (the Titanic's 3 s budget)                                               |
+| Lusitania tracks as 1.1                             | 3 runs, every 50th frame to 1e-9: same                                                   |
+| Storm field: 4σ of a 6 h record                     | within 5% of Hs at three places                                                          |
+| Fresh water: same mass floats deeper                | 1025/1000 by volume                                                                      |
+| Box laker: calmer ships less, worse more            | < 0.5×, > 1.5× the real storm's water in 30 min                                          |
+| Box laker: a hatch fails under its head of water    | `hatch-fails`, then > 5× the inflow                                                      |
+| Box in 120 m: bow upright, stern upside down        | bow 0°, stern 180°, 5 m apart, none in the floor                                         |
+| Fitzgerald: LOA, beam, depth, displacement, GM      | 222.2 m, 22.86 m, 11.89 m; 34,750 t, 3.80 m                                              |
+| Fitzgerald: freeboard 3.2–3.8 m, cargo 26,535 t     | 3.56 m; 26,535 t (41.1/15.5/43.4% by hold)                                               |
+| Fitzgerald: starboard list 1–8° at 5:30 PM (R14)    | 5.0° (topside alone: 0.0°)                                                               |
+| Fitzgerald: water rising, afloat at 7:10            | 754 / 1,349 / 1,795 / 2,031+ t at 4:30–7:10                                              |
+| Fitzgerald: storm's water over her deck, by 7:00    | 490 m³ (her holds'); the graze the tanks'                                                |
+| Fitzgerald: still water, all damage: afloat 9:00 PM | floats, 1,568 t, list 6.0°                                                               |
+| Fitzgerald: sisters' time inside 7:00–7:15 PM (R15) | 7:11:55 PM (re-locked); the table above                                                  |
+| Fitzgerald: still water sinks nothing by 9:00 PM    | floats, no cover fails                                                                   |
+| Fitzgerald: a cover fails, bow under 7:10–7:25      | first cover 7:11:37 PM, bow under 7:12:03 PM                                             |
+| Fitzgerald: bow lands ≤ 3 min, stern top ≥ −5 m     | 7:12:44 PM (41 s), house +2.6 m, hull +0.8 m                                             |
+| Fitzgerald: stern under ≤ 5 s after the bow lands   | 1.7 s                                                                                    |
+| Fitzgerald: breaks after the bow lands              | as it strikes, x = 17.9 m, before the stern lands                                        |
+| Fitzgerald: stern rolls in the water (R10)          | 180° as it first touches; 0° more on the floor                                           |
+| Fitzgerald: rests                                   | bow 0.1°, stern 180°; sections 35 m apart                                                |
+| Green water: on and off her deck in seconds         | a 4.2 m swell: yes; still water, a 1 m sea: none                                         |
+| Fitzgerald: funnel stays; dive in real time (R11)   | no `funnel-falls`; shown t = real t                                                      |
+| Fitzgerald ride: pitch ≤ 6°, roll ≤ 10°             | at most 2.0°, 0.6°                                                                       |
+| Fitzgerald What-if: 24 runs                         | all finite, inside endT; no damage sinks later                                           |
+| Fitzgerald: real spots = real run; none + calmer    | identical tracks; she reaches Whitefish Bay                                              |
+| Carpathia: LOA, LBP, beam; displacement, GM         | 170.08, 164.59, 19.66 m; 18,509 t (+0.0%), 1.14 m                                        |
+| Carpathia: hits at 0, 8 and 5,700 s, port side      | `torpedo-hit` 2 at 8 s, 3 at 5,700 s (10:50 AM)                                          |
+| Carpathia: list to port 0.5–10° at 9:25, ≤ 15°      | 3.6° at 9:25 (1.0° by 10:50); at most 9.7° (15 s)                                        |
+| Carpathia: down by the head 9:25–10:50              | 0.82° at 9:25, 1.02° at 10:50                                                            |
+| Carpathia: afloat at 10:50, forecastle edge out     | sinkage 12.38 m (from 8.00), 11,387 t aboard                                             |
+| Carpathia: stern under 10:55–11:50 AM               | 11:02:48 AM (6,468 s)                                                                    |
+| Carpathia: bow first, stern last (the photograph)   | bow down 57° at stern-under; met under R20 (≤ 0.8° by the stern, 8 min 14 s)             |
+| Carpathia: her way down is seen (R22)               | 31 s stern-under to rest in real time; stern ≤ 12.2 m/s; stern lands 16 s after the bow  |
+| Carpathia: no breakup afloat; rests upright to port | none; roll −4.0°, pitch +4.3°, lowest −167.1 m                                           |
+| Carpathia: without the third torpedo                | sinks later, 11:15:51 AM; all nine single hits float                                     |
+| Carpathia What-if: 97 runs (sims lane)              | all finite, inside `END_T`; 3+ hits ≤ the first two                                      |
+| Carpathia real morning `simulate`                   | about 0.45 s (the test allows 4.5 s)                                                     |
+| Britannic: LOA, beam; displacement, GM              | 269.1 m, 28.65 m; 52,653 t (+0.0%), 0.80 m                                               |
+| Britannic: explosion at the mine                    | 8:12:01 AM (1 s)                                                                         |
+| Britannic: added list ≥ 2° by 8:30, growing to 8:55 | not met (−0.7°, −0.9°): `it.failing`, Known limits                                       |
+| Britannic: adds 8–30° of list before the bow lands  | 25.0° (as the bow strikes, 9:03:55)                                                      |
+| Britannic: down by the head from 8:17 AM            | yes (1.5° at 8:17, 3.4° at 8:27)                                                         |
+| Britannic: E-deck portholes under 10–22 min         | 12:28 after the mine (real about 15)                                                     |
+| Britannic: bow lands before the stern is under      | bow 9:03:55, stern 9:06:01 (up then)                                                     |
+| Britannic: gone in 45–65 min (real 55), whole       | 54:01 (9:06:01 AM); girder peak 0.97                                                     |
+| Britannic: rests on her starboard side (≥ 60°)      | 89.9°                                                                                    |
+| Britannic: funnels fall one after another           | 9:00:26, 9:02:33, 9:03:29 (dummy 9:04:05)                                                |
+| Britannic What-if: 8 toggle combinations            | all finite, in endT; any one fixed: later                                                |
+| Britannic: a mine in a boiler room's double skin    | floats steady (each of the six)                                                          |
+| Concordia: LOA, LBP, beam; displacement, GM         | 290.2, 247.4, 35.5 m; 56,764 t (+0.3%), 2.27 m                                           |
+| Concordia: WTC 5, 6 full 2–6, 4–12 min              | 2.8, 8.0 min (level with the sea)                                                        |
+| Concordia: WTC 4, 7 full 30–50 min                  | 32.5, 45.3 min (95% under deck 0)                                                        |
+| Concordia: lights out 30–90 s, then emergency light | 58 s (real 51); 0.25 after                                                               |
+| Concordia: port first (≤ 5°), starboard by 22:20    | at most 4.8° to port (21:55); over at 22:13; 5.0° at 22:20, never back                   |
+| Concordia: 10° ± 4 at 22:30                         | 8.5°                                                                                     |
+| Concordia: down by the stern from 10 min            | 0.9° at 10 min, 1.6° at the touch                                                        |
+| Concordia: touches aft 48–62 min, 12–35 m, 12–25°   | 54.4 min (22:39:32), x −56.7 m, 14.6 m, 12.9°                                            |
+| Concordia: aground; 65° ± 2 at 00:30–01:00          | `aground` 22:39:32; 65.0° at 00:41:00 (shown 20.3 min later)                             |
+| Concordia: rest: heading 180–220°, ≤ 150 m from fix | 199.4°, 95 m                                                                             |
+| Concordia: lowest point at rest 20–32 m (spec)      | 14.6 m: PROPOSED 12–32 (the rule seats her where she touched; calibration)               |
+| Concordia: port shell and ⅓ of the houses out       | yes                                                                                      |
+| Concordia: no breakup, no stern-under; `aground`    | yes; 21,400 t aboard at the touch, 21,406 t at rest                                      |
+| Concordia: real night `simulate`                    | about 0.5 s (15 s before the floor speed-ups); to sea 8 s                                |
+| Concordia What-if: 45 tests (sims lane)             | every single and pair floats; 4–6, 5–7, 6–8 float; real five to sea sinks                |
+| Poseidon: LOA, LBP, beam; displacement, GM          | 305, 265, 36.0 m; 57,946 t (+0.8%), 2.0 m                                                |
+| Poseidon: roll ≥ 90° by 15 s, ≥ 150° by 25 s        | yes (190° at 25 s); `capsized` once                                                      |
+| Poseidon: lights out 3–20 s, then emergency light   | 9.4 s; 0.25 after                                                                        |
+| Poseidon: keel up 165–195° ≥ 20 real min            | 44.5 min afloat; keel and propellers out 44.5 min; never under 170° from upright to rest |
+| Poseidon: ballroom ≥ 90% within 5 real min          | 18 s (met by the box flood, a rule)                                                      |
+| Poseidon: hull air ≥ 50% of her weight at 10 min    | 73%; her total air never rises, step to step                                             |
+| Poseidon: under 35–60 real min, whole, `sank`       | 45.0 min; no breakup                                                                     |
+| Poseidon: lands keel up (180 ± 10°) at 4,000 m      | 180.0°, keel up all the way (the keel-under and dive rules)                              |
+| Poseidon: first frame to rest ≤ 15 shown min        | 10.3 min, inside `endS`                                                                  |
+| Poseidon What-if: 33 runs (sims lane)               | all finite, inside `endS`; outcomes pinned per set (calibration table)                   |
 
 ## Known limits
 

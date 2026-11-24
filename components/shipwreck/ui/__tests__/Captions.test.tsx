@@ -1,6 +1,8 @@
 import { act, render, screen } from "@testing-library/react";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
+import { simulate } from "@/lib/shipwreck/sim/run";
 import { torpedoHits, whatIfRealIds } from "@/lib/shipwreck/sim/run";
 import Captions from "../Captions";
 
@@ -175,4 +177,58 @@ describe("Captions", () => {
       expect(caption()).toBeNull();
     });
   });
+});
+
+describe("Captions for the Poseidon", () => {
+  const text = () => screen.getByTestId("shipwreck-caption").textContent;
+
+  it("runs the wave in: lit up first, then the wave coming, even after a seek", () => {
+    const store = createPlaybackStore();
+    act(() =>
+      store.getState().start(poseidon, poseidon.realNight, { wave: "real" })
+    );
+    expect(store.getState().t).toBe(-60);
+    render(<Captions store={store} />);
+    expect(text()).toBe(
+      "11:57 PM — It's New Year's Eve. The Poseidon is lit up from end to end."
+    );
+    act(() => store.setState({ t: -30 }));
+    expect(text()).toMatch(/lit up from end to end/);
+    act(() => store.setState({ t: -10 }));
+    expect(text()).toBe("11:57 PM — A giant wave is coming!");
+    // Back to the start, then a smaller wave's own words.
+    act(() => store.setState({ t: -55 }));
+    expect(text()).toMatch(/lit up/);
+    act(() =>
+      store.setState({ waveRun: { variant: "smaller", smashed: false } })
+    );
+    act(() => store.setState({ t: -5 }));
+    expect(text()).toBe("11:57 PM — A smaller wave is coming!");
+  });
+
+  it("says her moments as they pass, in time order, with the real clock", () => {
+    const store = createPlaybackStore();
+    const track = simulate(poseidon, poseidon.realNight);
+    act(() =>
+      store.getState().start(poseidon, poseidon.realNight, { wave: "real" })
+    );
+    act(() => store.setState({ track, t: -0.5 }));
+    render(<Captions store={store} />);
+    const said: string[] = [];
+    for (const t of [0.5, 7, 10, 13, 26, 60, 100]) {
+      act(() => {
+        store.setState({ t });
+      });
+      said.push(text() ?? "");
+    }
+    expect(said).toEqual([
+      "11:58 PM — The wave hits her side! Windows break.",
+      "11:58 PM — She's rolling over\u2026",
+      "11:58 PM — Her lights go out. Only her emergency lights are on.",
+      "11:58 PM — She's on her side\u2026",
+      "11:58 PM — She's upside down! Air caught inside is holding her up.",
+      "12:00 AM — Water is coming in through the broken windows. Air is bubbling out.",
+      "12:03 AM — The ballroom has filled with water.",
+    ]);
+  }, 30_000);
 });

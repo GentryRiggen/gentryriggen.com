@@ -12,6 +12,7 @@ import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
 import { currentShipwreckSave, resetSaveStore } from "@/lib/shipwreck/useSave";
 import Shipwreck, { PREVIEW_END_S } from "../Shipwreck";
 
@@ -704,5 +705,160 @@ describe("Shipwreck: choosing the Costa Concordia (1.9)", () => {
       "titanic"
     );
     expect(screen.queryByTestId("whatif-to-sea")).toBeNull();
+  });
+});
+
+describe("Shipwreck: choosing the Poseidon (1.11)", () => {
+  function hide() {
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      fireEvent(document, new Event("visibilitychange"));
+    });
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+  }
+
+  it("plays her night on her own clock: the wave coming, then the hit", async () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-poseidon"));
+    expect(playback.getState().ship).toBe("poseidon");
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      /^The Poseidon is not a real ship/
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    expect(playback.getState().openings).toEqual(poseidon.realNight);
+    expect(playback.getState().waveRun).toEqual({
+      variant: "real",
+      smashed: true,
+    });
+    // Her roll lasts 25 s: a saved ×30 starts at ×10.
+    expect(playback.getState().speed).toBe(10);
+    // The run-in first (60 s), then the wave hits at 11:58 PM.
+    expect(playback.getState().minT).toBe(-60);
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /^11:57 PM — It's New Year's Eve\. The Poseidon is lit up from end to end\./
+    );
+    act(() => {
+      playback.getState().pump(60_000);
+      playback.getState().seek(0);
+    });
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("11:58 PM");
+    expect(screen.getByTestId("shipwreck-caption")).toHaveTextContent(
+      /^11:58 PM — The wave hits her side! Windows break\./
+    );
+    // Keel up: the lean chip says so, and the clock keeps real time.
+    act(() => playback.getState().seek(30));
+    expect(screen.getByTestId("shipwreck-clock")).toHaveTextContent("11:58 PM");
+    await waitFor(() =>
+      expect(screen.getByText("Lean upside down")).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-places-button"));
+    for (const id of [
+      "bridge",
+      "ballroom",
+      "lobby",
+      "engine-room",
+      "funnel",
+      "propeller",
+      "lifeboat",
+    ])
+      expect(screen.getByTestId(`shipwreck-place-${id}`)).toBeInTheDocument();
+    // No walking on her: the button is not there.
+    expect(screen.queryByTestId("shipwreck-walk")).toBeNull();
+  }, 30_000);
+
+  it("opens her paint box with one real and at least five fun paints", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-poseidon"));
+    fireEvent.click(screen.getByTestId("shipwreck-livery"));
+    const tray = screen.getByTestId("shipwreck-paint-tray");
+    expect(
+      tray.querySelectorAll('[data-testid="shipwreck-paint-real"] button')
+    ).toHaveLength(1);
+    expect(
+      tray.querySelectorAll('[data-testid="shipwreck-paint-fun"] button').length
+    ).toBeGreaterThanOrEqual(5);
+  });
+
+  it("her time button offers two times: her night and the big wave by day", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-poseidon"));
+    fireEvent.click(screen.getByTestId("shipwreck-real-night"));
+    fireEvent.click(screen.getByTestId("shipwreck-time-button"));
+    const times = screen
+      .getAllByTestId("shipwreck-time")
+      .map((b) => b.getAttribute("data-time"));
+    expect(times).toEqual(["real", "storm-day"]);
+    expect(
+      screen.getByRole("button", { name: "Time: The big wave by day" })
+    ).toBeInTheDocument();
+  });
+
+  it("her What if: the wave and the spots start her run, and are remembered", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-poseidon"));
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("shipwreck-editor")).toHaveAttribute(
+      "data-ship",
+      "poseidon"
+    );
+    fireEvent.click(screen.getByTestId("shipwreck-preset-clear"));
+    fireEvent.click(screen.getByTestId("shipwreck-chip-ballroom"));
+    fireEvent.click(screen.getByTestId("whatif-wave-smaller"));
+    fireEvent.click(screen.getByTestId("shipwreck-go"));
+    expect(window.__shipwreck?.getScreen()).toBe("night");
+    expect(playback.getState().waveRun).toEqual({
+      variant: "smaller",
+      smashed: true,
+    });
+    expect(playback.getState().openings.map((o) => o.compartmentId)).toEqual([
+      "ballroom",
+    ]);
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+    hide();
+    const saved = JSON.parse(window.localStorage.getItem(SAVE_KEY)!);
+    expect(saved.ship).toBe("poseidon");
+    expect(saved.whatIfByShip.poseidon).toEqual({
+      ids: ["ballroom"],
+      wave: "smaller",
+    });
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.getByTestId("whatif-wave-smaller")).toHaveAttribute(
+      "aria-checked",
+      "true"
+    );
+    expect(screen.getByTestId("shipwreck-hole-count")).toHaveTextContent(
+      "1 smashed spot"
+    );
+    // The Titanic's editor has none of it.
+    fireEvent.click(screen.getByLabelText("Back to the title"));
+    fireEvent.click(screen.getByTestId("shipwreck-ship-titanic"));
+    fireEvent.click(screen.getByTestId("shipwreck-what-if"));
+    expect(screen.queryByTestId("shipwreck-wave")).toBeNull();
+  });
+
+  it("the test hook starts her What if with a wave", () => {
+    render(<Shipwreck />);
+    fireEvent.click(screen.getByTestId("shipwreck-ship-poseidon"));
+    act(() =>
+      window.__shipwreck?.startWhatIf?.(
+        ["vents"],
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        "ahead"
+      )
+    );
+    expect(playback.getState().waveRun).toEqual({
+      variant: "ahead",
+      smashed: false,
+    });
   });
 });

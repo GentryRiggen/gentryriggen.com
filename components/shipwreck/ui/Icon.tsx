@@ -47,7 +47,16 @@ export type IconName =
   | "anchor"
   | "sparkle"
   | "sun-moon"
-  | "bulb";
+  | "bulb"
+  | "wave"
+  | "wave-big"
+  | "wave-small"
+  | "wave-ahead"
+  | "film-strip"
+  | "windows"
+  | "vents"
+  | "dome"
+  | "double-door";
 
 const PATHS: Record<IconName, string> = {
   back: "M15 5l-7 7 7 7",
@@ -128,6 +137,23 @@ const PATHS: Record<IconName, string> = {
     "M9 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM9 3v2M9 19v2M3 12h2M3.8 6.8l1.4 1.4M3.8 17.2l1.4-1.4M14.2 6.8l-1.4 1.4M17 4.5a5.5 5.5 0 1 1 3.5 10.6A6.5 6.5 0 0 0 17 4.5z",
   // The water light: a light bulb over a wave.
   bulb: "M12 3a5 5 0 0 0-3 9v2h6v-2a5 5 0 0 0-3-9zM10 17h4M3 20.5c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0",
+  // A giant wave curling over: the What-if button of a wave ship.
+  wave: "M2 20c3.5 0 5-1.5 7-5s3.5-9 9-9c2.5 0 4 1.5 4 3.5s-2.5 3-4 1.5M2 20h20M5 17.5c1.5-.3 2.5-1 3.5-2.5M9 11l2-.5",
+  // The wave chip's pictures: the giant wave, a small one, one from the front.
+  "wave-big":
+    "M2 20c3.5 0 5-1.5 7-5s3.5-9 9-9c2.5 0 4 1.5 4 3.5s-2.5 3-4 1.5M2 20h20",
+  "wave-small": "M2 14c3-4 5-4 8 0s5 4 8 0M2 20h20M5 17c2-1.5 4-1.5 6 0",
+  "wave-ahead":
+    "M2 18h13l4-3.5H9L7 18M12 14.5v-3h4v3M22 6h-6M19 3l-3 3 3 3M3 21c2 1 4 1 6 0s4-1 6 0",
+  // A film strip: the made-up ship's mark.
+  "film-strip":
+    "M4 4h16v16H4zM8 4v16M16 4v16M4 8h4M4 12h4M4 16h4M16 8h4M16 12h4M16 16h4",
+  // A wave spot's pictures: rows of windows, air-vent louvres, a glass dome,
+  // a pair of glass doors.
+  windows: "M3 5h18v14H3zM3 12h18M9 5v14M15 5v14",
+  vents: "M4 5h16v14H4zM7 9h10M7 12h10M7 15h10",
+  dome: "M2 19h20M4.5 19a7.5 7.5 0 0 1 15 0M12 11.5V19M8 13.5l1 5.5M16 13.5l-1 5.5M12 4v2",
+  "double-door": "M4 21V4h16v17M12 4v17M9.5 11v2.5M14.5 11v2.5M2 21h20",
 };
 
 const FILLED: ReadonlySet<IconName> = new Set(["play"]);

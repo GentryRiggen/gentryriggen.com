@@ -289,6 +289,7 @@ const SHIPWRECK_SHIP_ORDER = [
   "carpathia",
   "britannic",
   "concordia",
+  "poseidon",
 ];
 
 function averageByShip(

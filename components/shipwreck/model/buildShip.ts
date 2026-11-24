@@ -1672,6 +1672,97 @@ function buildPropeller(
 // ---------------------------------------------------------------------------
 // A cruise ship's parts (the Concordia's; none on the other ships).
 
+/**
+ * The Poseidon's ballroom: the drum's dark glass between white piers under
+ * a cornice, the glass dome over it (one smooth lat-long shell) and its
+ * ribs along every meridian and parallel (thin square tubes; left off at
+ * low quality, where the rails and vents go too). All in the paint list:
+ * no draw call of its own. Its lit panes are recipe lights.
+ */
+function buildBallroom(
+  ctx: Ctx,
+  b: NonNullable<ShipRecipe["ballrooms"]>[number]
+): void {
+  if (!inPart(ctx, [b.x, 0, b.z])) return;
+  const paint = ctx.d.paint;
+  const R = b.radius;
+  const top = b.z + b.drumH;
+  const drum = rgb(b.drum);
+  const white = rgb(COLORS.white);
+  // The drum's glass wall and its floor's edge.
+  cylinder(
+    paint,
+    [b.x, 0, b.z],
+    [b.x, 0, top],
+    R,
+    R,
+    b.cols * 2,
+    rgb(b.glass),
+    {
+      start: false,
+      end: false,
+    }
+  );
+  // Piers between the windows, the cornice over them.
+  for (let i = 0; i < b.cols; i += 1) {
+    const t = ((i + 0.5) / b.cols) * Math.PI * 2;
+    box(
+      paint,
+      [b.x + (R + 0.1) * Math.cos(t), (R + 0.1) * Math.sin(t), (b.z + top) / 2],
+      [0.6, 0.6, b.drumH],
+      drum,
+      t
+    );
+  }
+  cylinder(
+    paint,
+    [b.x, 0, top - 0.1],
+    [b.x, 0, top + 0.5],
+    R + 0.45,
+    R + 0.45,
+    b.cols * 2,
+    white,
+    { start: false, end: true }
+  );
+  // The glass shell.
+  dome(paint, [b.x, 0, top + 0.5], R, R, b.domeH, b.cols, b.rows, rgb(b.glass));
+  if (!ctx.q.vents) return;
+  const rib = rgb(b.rib);
+  const on = (row: number, i: number): V3 => {
+    const el = (row / b.rows) * (Math.PI / 2);
+    const t = (i / b.cols) * Math.PI * 2;
+    const rr = R * Math.cos(el) + 0.06;
+    return [
+      b.x + rr * Math.cos(t),
+      rr * Math.sin(t),
+      top + 0.5 + (b.domeH + 0.06) * Math.sin(el),
+    ];
+  };
+  const ribR = 0.16;
+  for (let i = 0; i < b.cols; i += 1)
+    for (let row = 0; row < b.rows - 1; row += 1)
+      cylinder(paint, on(row, i), on(row + 1, i), ribR, ribR, 4, rib, {
+        start: false,
+        end: false,
+      });
+  for (let row = 1; row < b.rows - 1; row += 1)
+    for (let i = 0; i < b.cols; i += 1)
+      cylinder(paint, on(row, i), on(row, i + 1), ribR, ribR, 4, rib, {
+        start: false,
+        end: false,
+      });
+  // The lantern at the crown.
+  cylinder(
+    paint,
+    [b.x, 0, on(b.rows - 1, 0)[2]],
+    [b.x, 0, top + 0.5 + b.domeH + 0.9],
+    R * Math.cos(((b.rows - 1) / b.rows) * (Math.PI / 2)) + 0.2,
+    0.6,
+    b.cols,
+    rib
+  );
+}
+
 function buildCruiseParts(ctx: Ctx): void {
   const { r, q } = ctx;
   const paint = ctx.d.paint;
@@ -1709,6 +1800,7 @@ function buildCruiseParts(ctx: Ctx): void {
       white
     );
   }
+  for (const b of r.ballrooms ?? []) buildBallroom(ctx, b);
   const dark = rgb(COLORS.interior);
   for (const t of r.thrusters ?? []) {
     if (!inPart(ctx, [t.x, 0, t.z])) continue;

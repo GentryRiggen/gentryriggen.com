@@ -35,15 +35,29 @@ export function funnelGeometry(
   // Buff and black unless the ship says otherwise.
   const buff = rgb(paint?.funnel ?? COLORS.buff);
   const black = rgb(paint?.funnelTop ?? COLORS.black);
+  // A tapering funnel (the Poseidon's) narrows linearly to `taper` of its
+  // foot's size at the top; the others stay straight (k = 1 exactly).
+  const taper = f.taper;
+  const k = (z: number): number =>
+    taper === undefined ? 1 : 1 - ((1 - taper) * Math.max(0, z)) / H;
   const ringAt = (z: number, grow = 0): V3[] => {
     const out: V3[] = [];
+    const kz = k(z);
     for (let i = 0; i < seg; i += 1) {
       const t = (i / seg) * Math.PI * 2;
-      out.push([
-        -lean * z + (f.semiA + grow) * Math.cos(t),
-        (f.semiB + grow) * Math.sin(t),
-        z,
-      ]);
+      out.push(
+        taper === undefined
+          ? [
+              -lean * z + (f.semiA + grow) * Math.cos(t),
+              (f.semiB + grow) * Math.sin(t),
+              z,
+            ]
+          : [
+              -lean * z + (f.semiA * kz + grow) * Math.cos(t),
+              (f.semiB * kz + grow) * Math.sin(t),
+              z,
+            ]
+      );
     }
     return out;
   };
@@ -132,6 +146,21 @@ export function funnelGeometry(
     );
   }
   if (f.emblem) funnelEmblem(buf, f, f.emblem, H);
+  if (f.wave) funnelWave(buf, f, f.wave, H, seg, k);
+  if (f.wing) {
+    // A fin either side of the top, swept with the rake, in the top's
+    // colour (the Poseidon's).
+    const w = f.wing;
+    const z = H - w.thick / 2 - 0.4;
+    const half = f.semiB * k(z);
+    for (const s of [1, -1])
+      box(
+        buf,
+        [-lean * z - w.chord * 0.2, s * (half + w.span / 2 - 0.3), z],
+        [w.chord, w.span + 0.6, w.thick],
+        black
+      );
+  }
   if (f.hasWhistle) {
     const z = H * 0.76;
     const x = -lean * z + f.semiA + 0.75;
@@ -140,6 +169,47 @@ export function funnelGeometry(
     cylinder(buf, [x - 0.4, 0, z + 0.4], [x, 0, z + 0.4], 0.08, 0.08, 5, brass);
   }
   return buf.toGeometry();
+}
+
+/**
+ * A wavy stripe all round a funnel (the Poseidon's gold wave): three swells
+ * a side, just proud of the surface.
+ */
+function funnelWave(
+  buf: GeoBuffer,
+  f: FunnelRecipe,
+  w: NonNullable<FunnelRecipe["wave"]>,
+  H: number,
+  seg: number,
+  k: (z: number) => number
+): void {
+  const lean = Math.tan(f.rake);
+  const color = rgb(w.color);
+  const n = seg * 2;
+  const at = (i: number, dz: number): V3 => {
+    const t = (i / n) * Math.PI * 2;
+    const z = H * w.z + w.amp * Math.sin(6 * t) + dz;
+    const kz = k(z);
+    return [
+      -lean * z + (f.semiA * kz + 0.05) * Math.cos(t),
+      (f.semiB * kz + 0.05) * Math.sin(t),
+      z,
+    ];
+  };
+  for (let i = 0; i < n; i += 1) {
+    const t = ((i + 0.5) / n) * Math.PI * 2;
+    quad(
+      buf,
+      [
+        at(i, -w.height / 2),
+        at(i + 1, -w.height / 2),
+        at(i + 1, w.height / 2),
+        at(i, w.height / 2),
+      ],
+      [Math.cos(t) / f.semiA, Math.sin(t) / f.semiB, 0],
+      color
+    );
+  }
 }
 
 /**

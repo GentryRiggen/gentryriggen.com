@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import type { PlaybackState, PlaybackStore } from "@/lib/shipwreck/playback";
 import { getShip } from "@/lib/shipwreck/ships";
-import { eventsBetween } from "@/lib/shipwreck/sim/track";
 import {
   captionContext,
+  captionEventsBetween,
   captionFor,
   clockText,
   runInCaption,
@@ -47,13 +47,14 @@ export default function Captions({ store }: CaptionsProps) {
     const hits = Math.max(1, s.hits.length);
     if (s.t < 0) {
       // The torpedo's run-in (the collision's caption comes at the hit).
-      const run = runInCaption(ship, runInCount(s));
+      const run = runInCaption(ship, runInCount(s), s.t, s.waveRun?.variant);
       return run ? `${clockText(s.t, ship.clockStartS)} — ${run}` : null;
     }
     return s.t < CAPTION_RECENT_S
       ? captionFor({ kind: "collision", t: 0, realT: 0 }, ship, {
           hits,
           openings: s.openings,
+          ...(s.waveRun ? { wave: s.waveRun } : {}),
         })
       : null;
   });
@@ -62,10 +63,15 @@ export default function Captions({ store }: CaptionsProps) {
     return store.subscribe((s, prev) => {
       // Back before the hit (a new run, a replay, a scrub): the run-in.
       const hits = Math.max(1, s.hits.length);
-      if (s.t < 0 && !(prev.t < 0)) {
+      if (s.t < 0) {
         const ship = getShip(s.ship);
-        const run = runInCaption(ship, runInCount(s));
-        if (run) setText(`${clockText(s.t, ship.clockStartS)} — ${run}`);
+        const say = (t: number) =>
+          runInCaption(ship, runInCount(s), t, s.waveRun?.variant);
+        const run = say(s.t);
+        // A wave ship's run-in has two lines: say the next as it comes
+        // (or the right one after a seek).
+        if (!(prev.t < 0) || (ship.cause === "wave" && run !== say(prev.t)))
+          if (run) setText(`${clockText(s.t, ship.clockStartS)} — ${run}`);
         return;
       }
       if (!s.track || s.t < 0) return;
@@ -74,7 +80,7 @@ export default function Captions({ store }: CaptionsProps) {
       const seek = s.t < prev.t || s.t - prev.t > CAPTION_RECENT_S;
       if (!(s.t > prev.t) && !seek) return;
       const from = seek ? s.t - CAPTION_RECENT_S : prev.t;
-      const evs = eventsBetween(s.track, from, s.t);
+      const evs = captionEventsBetween(s.track, getShip(s.ship), from, s.t);
       for (let i = evs.length - 1; i >= 0; i -= 1) {
         // After a long seek, only what just happened.
         if (s.t - evs[i].t > CAPTION_RECENT_S) break;
@@ -82,6 +88,7 @@ export default function Captions({ store }: CaptionsProps) {
           ...captionContext(s.track, evs[i].t, evs[i]),
           hits,
           openings: s.openings,
+          ...(s.waveRun ? { wave: s.waveRun } : {}),
         });
         if (c) {
           setText(c);

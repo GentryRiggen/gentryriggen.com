@@ -1,0 +1,393 @@
+{
+  "titanic:real": {
+    "timeOfDay": "night",
+    "sun": null,
+    "fog": "#1f2632",
+    "underwaterFog": "#02121c",
+    "coast": false,
+    "iceberg": true
+  },
+  "titanic:morning": {
+    "coast": false,
+    "iceberg": true,
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 10,
+      "azimuthDeg": 105
+    },
+    "fog": "#c9d3dc",
+    "underwaterFog": "#1f6a9a"
+  },
+  "titanic:afternoon": {
+    "coast": false,
+    "iceberg": true,
+    "timeOfDay": "afternoon",
+    "sun": {
+      "elevationDeg": 50,
+      "azimuthDeg": 205
+    },
+    "fog": "#bccddb",
+    "underwaterFog": "#2f7564"
+  },
+  "titanic:sunset": {
+    "coast": false,
+    "iceberg": true,
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 4,
+      "azimuthDeg": 265
+    },
+    "fog": "#d8b8a4",
+    "underwaterFog": "#25506e",
+    "dayLook": {
+      "fogDensity": 0.00004,
+      "deepWater": 402506,
+      "sunColor": 16756858,
+      "warm": 16756858,
+      "sunIntensity": 3,
+      "sunUnder": 12628128,
+      "skyColor": 13153480,
+      "skyGround": 6969946,
+      "skyIntensity": 1.1,
+      "skySun": [1, 0.62, 0.34],
+      "zenith": [0.04, 0.08, 0.26],
+      "dawnGlow": [0.55, 0.2, 0.05],
+      "seaDeep": [0.006, 0.016, 0.05],
+      "seaScatter": [0.01, 0.022, 0.05],
+      "seaUnder": [0.16, 0.3, 0.42],
+      "floorColor": 13814454,
+      "floorBase": "#b4aa94",
+      "shaft": [0.85, 0.6, 0.45],
+      "caustic": [0.95, 0.75, 0.6],
+      "shaftStrength": 0.14
+    }
+  },
+  "lusitania:real": {
+    "timeOfDay": "afternoon",
+    "sun": {
+      "elevationDeg": 50.01,
+      "azimuthDeg": 218.66
+    },
+    "fog": "#bccddb",
+    "underwaterFog": "#2f7564",
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 93
+  },
+  "lusitania:morning": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 93,
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 10,
+      "azimuthDeg": 105
+    },
+    "fog": "#c9d3dc",
+    "underwaterFog": "#1f6a9a"
+  },
+  "lusitania:sunset": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 93,
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 4,
+      "azimuthDeg": 265
+    },
+    "fog": "#d8b8a4",
+    "underwaterFog": "#25506e",
+    "dayLook": {
+      "fogDensity": 0.00004,
+      "deepWater": 402506,
+      "sunColor": 16756858,
+      "warm": 16756858,
+      "sunIntensity": 3,
+      "sunUnder": 12628128,
+      "skyColor": 13153480,
+      "skyGround": 6969946,
+      "skyIntensity": 1.1,
+      "skySun": [1, 0.62, 0.34],
+      "zenith": [0.04, 0.08, 0.26],
+      "dawnGlow": [0.55, 0.2, 0.05],
+      "seaDeep": [0.006, 0.016, 0.05],
+      "seaScatter": [0.01, 0.022, 0.05],
+      "seaUnder": [0.16, 0.3, 0.42],
+      "floorColor": 13814454,
+      "floorBase": "#b4aa94",
+      "shaft": [0.85, 0.6, 0.45],
+      "caustic": [0.95, 0.75, 0.6],
+      "shaftStrength": 0.14
+    }
+  },
+  "lusitania:night": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 93,
+    "timeOfDay": "night",
+    "sun": null,
+    "fog": "#1f2632",
+    "underwaterFog": "#02121c"
+  },
+  "fitzgerald:real": {
+    "timeOfDay": "storm-dusk",
+    "sun": null,
+    "fog": "#6b7377",
+    "underwaterFog": "#1d302d",
+    "coast": false,
+    "iceberg": false,
+    "headingDeg": 141,
+    "storm": true,
+    "snow": true
+  },
+  "fitzgerald:storm-day": {
+    "timeOfDay": "storm-dusk",
+    "sun": null,
+    "fog": "#6b7377",
+    "underwaterFog": "#1d302d",
+    "coast": false,
+    "iceberg": false,
+    "headingDeg": 141,
+    "storm": true,
+    "snow": true,
+    "stormLight": 1
+  },
+  "carpathia:real": {
+    "timeOfDay": "afternoon",
+    "sun": {
+      "elevationDeg": 29.93,
+      "azimuthDeg": 91.6
+    },
+    "fog": "#b3bcc4",
+    "underwaterFog": "#1e5a82",
+    "coast": false,
+    "iceberg": false,
+    "headingDeg": 270,
+    "convoy": true,
+    "daylight": {
+      "zenith": [0.11, 0.2, 0.42],
+      "hazeDensity": 0.000055,
+      "seaDeep": [0.004, 0.02, 0.06],
+      "seaScatter": [0.005, 0.026, 0.07],
+      "seaUnder": [0.12, 0.3, 0.52],
+      "deepWater": "#04121f",
+      "underDensity": [0.0062, 0.0082],
+      "sunUnder": "#a4cbe6",
+      "shafts": [0.45, 0.65, 0.9],
+      "floor": "#8e877b",
+      "caustics": 0.035,
+      "sunColor": 16773596,
+      "sunIntensity": 3.6,
+      "skyColor": 13161698,
+      "skyGround": 8162714,
+      "skyIntensity": 1.5,
+      "ripple": 0.75,
+      "clouds": 0.5,
+      "whitecaps": 0.03,
+      "mirror": 0.2
+    }
+  },
+  "carpathia:afternoon": {
+    "coast": false,
+    "iceberg": false,
+    "headingDeg": 270,
+    "convoy": true,
+    "timeOfDay": "afternoon",
+    "sun": {
+      "elevationDeg": 50,
+      "azimuthDeg": 205
+    },
+    "fog": "#bccddb",
+    "underwaterFog": "#2f7564"
+  },
+  "carpathia:sunset": {
+    "coast": false,
+    "iceberg": false,
+    "headingDeg": 270,
+    "convoy": true,
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 4,
+      "azimuthDeg": 265
+    },
+    "fog": "#d8b8a4",
+    "underwaterFog": "#25506e",
+    "dayLook": {
+      "fogDensity": 0.00004,
+      "deepWater": 402506,
+      "sunColor": 16756858,
+      "warm": 16756858,
+      "sunIntensity": 3,
+      "sunUnder": 12628128,
+      "skyColor": 13153480,
+      "skyGround": 6969946,
+      "skyIntensity": 1.1,
+      "skySun": [1, 0.62, 0.34],
+      "zenith": [0.04, 0.08, 0.26],
+      "dawnGlow": [0.55, 0.2, 0.05],
+      "seaDeep": [0.006, 0.016, 0.05],
+      "seaScatter": [0.01, 0.022, 0.05],
+      "seaUnder": [0.16, 0.3, 0.42],
+      "floorColor": 13814454,
+      "floorBase": "#b4aa94",
+      "shaft": [0.85, 0.6, 0.45],
+      "caustic": [0.95, 0.75, 0.6],
+      "shaftStrength": 0.14
+    }
+  },
+  "carpathia:night": {
+    "coast": false,
+    "iceberg": false,
+    "headingDeg": 270,
+    "convoy": true,
+    "timeOfDay": "night",
+    "sun": null,
+    "fog": "#1f2632",
+    "underwaterFog": "#02121c"
+  },
+  "britannic:real": {
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 9.97,
+      "azimuthDeg": 124.87
+    },
+    "fog": "#c9d3dc",
+    "underwaterFog": "#1f6a9a",
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 18,
+    "wakePath": true
+  },
+  "britannic:afternoon": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 18,
+    "wakePath": true,
+    "timeOfDay": "afternoon",
+    "sun": {
+      "elevationDeg": 50,
+      "azimuthDeg": 205
+    },
+    "fog": "#bccddb",
+    "underwaterFog": "#2f7564"
+  },
+  "britannic:sunset": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 18,
+    "wakePath": true,
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 4,
+      "azimuthDeg": 265
+    },
+    "fog": "#d8b8a4",
+    "underwaterFog": "#25506e",
+    "dayLook": {
+      "fogDensity": 0.00004,
+      "deepWater": 402506,
+      "sunColor": 16756858,
+      "warm": 16756858,
+      "sunIntensity": 3,
+      "sunUnder": 12628128,
+      "skyColor": 13153480,
+      "skyGround": 6969946,
+      "skyIntensity": 1.1,
+      "skySun": [1, 0.62, 0.34],
+      "zenith": [0.04, 0.08, 0.26],
+      "dawnGlow": [0.55, 0.2, 0.05],
+      "seaDeep": [0.006, 0.016, 0.05],
+      "seaScatter": [0.01, 0.022, 0.05],
+      "seaUnder": [0.16, 0.3, 0.42],
+      "floorColor": 13814454,
+      "floorBase": "#b4aa94",
+      "shaft": [0.85, 0.6, 0.45],
+      "caustic": [0.95, 0.75, 0.6],
+      "shaftStrength": 0.14
+    }
+  },
+  "britannic:night": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 18,
+    "wakePath": true,
+    "timeOfDay": "night",
+    "sun": null,
+    "fog": "#1f2632",
+    "underwaterFog": "#02121c"
+  },
+  "concordia:real": {
+    "timeOfDay": "night",
+    "sun": null,
+    "fog": "#1f2632",
+    "underwaterFog": "#031a26",
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 350,
+    "moon": {
+      "latDeg": 42.36,
+      "lonDeg": 10.92,
+      "utcMs": 1326487507000
+    },
+    "chop": 0.4,
+    "clouds": 0.3
+  },
+  "concordia:morning": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 350,
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 10,
+      "azimuthDeg": 105
+    },
+    "fog": "#c9d3dc",
+    "underwaterFog": "#1f6a9a"
+  },
+  "concordia:afternoon": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 350,
+    "timeOfDay": "afternoon",
+    "sun": {
+      "elevationDeg": 50,
+      "azimuthDeg": 205
+    },
+    "fog": "#bccddb",
+    "underwaterFog": "#2f7564"
+  },
+  "concordia:sunset": {
+    "coast": true,
+    "iceberg": false,
+    "headingDeg": 350,
+    "timeOfDay": "morning",
+    "sun": {
+      "elevationDeg": 4,
+      "azimuthDeg": 265
+    },
+    "fog": "#d8b8a4",
+    "underwaterFog": "#25506e",
+    "dayLook": {
+      "fogDensity": 0.00004,
+      "deepWater": 402506,
+      "sunColor": 16756858,
+      "warm": 16756858,
+      "sunIntensity": 3,
+      "sunUnder": 12628128,
+      "skyColor": 13153480,
+      "skyGround": 6969946,
+      "skyIntensity": 1.1,
+      "skySun": [1, 0.62, 0.34],
+      "zenith": [0.04, 0.08, 0.26],
+      "dawnGlow": [0.55, 0.2, 0.05],
+      "seaDeep": [0.006, 0.016, 0.05],
+      "seaScatter": [0.01, 0.022, 0.05],
+      "seaUnder": [0.16, 0.3, 0.42],
+      "floorColor": 13814454,
+      "floorBase": "#b4aa94",
+      "shaft": [0.85, 0.6, 0.45],
+      "caustic": [0.95, 0.75, 0.6],
+      "shaftStrength": 0.14
+    }
+  }
+}

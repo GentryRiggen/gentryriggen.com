@@ -1,6 +1,7 @@
 import type { ShipSpec, StormSpec, WaveComponent } from "../ships/types";
 import { DRIFT_MPS, GRAV } from "./constants";
 import { headwayRun } from "./headway";
+import { type WaveVariant, withWave } from "./wave";
 
 // Local bindings: global lookups are slow inside test sandboxes (vm).
 const { cos, exp, max, sin, sqrt } = Math;
@@ -384,12 +385,17 @@ export function predictedPath(spec: ShipSpec): ShipPath {
  * The ship's storm as it is known before a run: every wave group without
  * a place of its own locked onto the sea's crest along her predicted path
  * (`predictedPath`: her headway and the sim's drift; `lockGroups`).
- * Undefined without a storm. The sim re-locks each such group on her own
- * path, surge and all, `GROUP_RELOCK_S` before it (`SimTrack.storm` is the
- * field as it ran: the scene draws that).
+ * Undefined without a storm. A wave ship's rogue wave (`spec.wave`, the
+ * variant `wave`) is one more group (`withWave`). The sim re-locks each
+ * such group on her own path, surge and all, `GROUP_RELOCK_S` before it
+ * (`SimTrack.storm` is the field as it ran: the scene draws that).
  */
-export function stormOf(spec: ShipSpec): StormSpec | undefined {
-  const storm = spec.storm;
+export function stormOf(
+  spec: ShipSpec,
+  wave: WaveVariant = "real"
+): StormSpec | undefined {
+  // A wave ship's rogue wave (`spec.wave`) joins her storm as a group.
+  const storm = spec.wave ? withWave(spec.storm, spec, wave) : spec.storm;
   if (!storm || !storm.groups) return storm;
   return lockGroups(storm, predictedPath(spec));
 }

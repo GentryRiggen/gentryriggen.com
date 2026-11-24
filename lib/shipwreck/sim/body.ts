@@ -6,21 +6,26 @@ import {
   FLOOR_DAMP_S,
   FLOOR_FRICTION,
   FLOOR_SLIP_MS,
+  FLOW_CAP,
   GRAV,
   HEAVE_ZETA,
   PITCH_ZETA,
+  P_ATM,
   PUMP_DEPTH_M,
   ROLL_ADDED,
   ROLL_GYRATION,
   ROLL_ZETA,
   VERTICAL_GYRATION,
 } from "./constants";
+import { airHeadM, cellSealed, gasOutflow } from "./air";
 import { type DeckWater, deckFlows } from "./deckWater";
 import { type DoorLink, doorFlow } from "./doors";
 import { STEADY_AVG_S } from "./events";
 import {
+  type AirStep,
   type Cell,
   type DeckSea,
+  capAirFlow,
   capSeaFlow,
   cellBounds,
   cellSea,
@@ -143,6 +148,13 @@ export interface Body {
   bottom: number;
   /** Her wreck's rest rule in radians (`spec.wreck`), or null (1.0). */
   wreck: { rest: number; min: number } | null;
+  /** A wave ship's whole hull once `capsized` has fired: its dive keeps
+   *  her keel up even if she rolled off her keel as she went under
+   *  (`descent.ts`, `keelUpDive`). */
+  capsized: boolean;
+  /** Her keel went under while `capsized` (a rule): from then her roll is
+   *  eased keel up (run.ts `stepKeelUnder`). */
+  keelUnder: boolean;
   /** A stern part that rolls over as it falls (`wreckParts.stern`): the
    *  roll it lands at (radians, magnitude), or null. */
   capsize: number | null;
@@ -218,6 +230,26 @@ export interface Body {
   hold?: { x: number; y: number };
   /** The rest aground (`spec.aground`), once it has begun. */
   aground?: AgroundState;
+  /** Her trapped air (`spec.trappedAir`), per cell of `all`; missing: none. */
+  air?: TrappedAir;
+}
+
+/**
+ * The air caught in a body's cells (`spec.trappedAir`, air.ts), one entry
+ * per cell of `Body.all`.
+ */
+export interface TrappedAir {
+  /** Air mass (atmosphere·m³: the volume it would fill at the surface). */
+  mass: Float64Array;
+  /** Gauge head of the air this step (m of her water; 0 unsealed). */
+  head: Float64Array;
+  /** Sealed this step (1) or open to the air above the sea (0). */
+  sealed: Uint8Array;
+  /** Her stated slow leak (m²) from each cell's top. */
+  leak: Float64Array;
+  /** Air out this step (atm·m³/s), and the step's scratch. */
+  out: Float64Array;
+  step: AirStep;
 }
 
 /** The floor's earth z under an earth x, y. */
@@ -438,6 +470,123 @@ function massProps(b: Body): { ip: number } {
   return { ip };
 }
 
+/** A sealed pocket's air volume never reaches 0 (m³, for the head). */
+const AIR_VOL_MIN = 1e-6;
+
+/** The air in fresh cells: each holds its air volume at the surface. */
+export function makeTrappedAir(
+  all: readonly Cell[],
+  leak: Float64Array,
+  step: AirStep
+): TrappedAir {
+  const n = all.length;
+  const mass = new Float64Array(n);
+  for (let i = 0; i < n; i += 1) mass[i] = max(0, all[i].cap - all[i].water);
+  return {
+    mass,
+    head: new Float64Array(n),
+    sealed: new Uint8Array(n),
+    leak,
+    out: new Float64Array(n),
+    step,
+  };
+}
+
+/**
+ * Trapped air at the pose, before the flows: a cell open to the air above
+ * the sea holds its air volume at the surface (h = 0); a sealed one keeps
+ * its air, whose Boyle head the flows see.
+ */
+function airHeads(
+  b: Body,
+  air: TrappedAir,
+  nx: number,
+  ny: number,
+  nz: number
+): void {
+  const all = b.all;
+  for (let i = 0; i < all.length; i += 1) {
+    const c = all[i];
+    const vol = c.cap - c.water;
+    if (!cellSealed(c, nx, ny, nz, b.z)) {
+      air.sealed[i] = 0;
+      air.mass[i] = max(0, vol);
+      air.head[i] = 0;
+      continue;
+    }
+    air.sealed[i] = 1;
+    if (vol <= 0) air.mass[i] = 0;
+    // A full space has none: its head is the sea's on its water (0).
+    air.head[i] =
+      vol <= 0 ? 0 : airHeadM(air.mass[i], max(vol, AIR_VOL_MIN), b.rho);
+  }
+}
+
+/**
+ * Cell i's sea inflow with its trapped air (m³/s, capped): the orifice law
+ * on the sea's head less the inside's plus the air's, the Boyle cap, and
+ * the air it lets out this step (`air.out`: through openings under the sea
+ * where its pressure beats the sea's, its stated leak, and the exchange
+ * through its ceiling), never more than brings its head down to the sea's
+ * at the shallowest way out.
+ */
+function airInflow(
+  b: Body,
+  air: TrappedAir,
+  i: number,
+  nx: number,
+  ny: number,
+  nz: number,
+  dt: number
+): number {
+  const c = b.all[i];
+  const st = air.step;
+  st.h = air.head[i];
+  let q = seaInflow(c, nx, ny, nz, b.z, b.ramHead, st);
+  air.out[i] = 0;
+  if (!air.sealed[i]) return capSeaFlow(c, q, dt);
+  const m = air.mass[i];
+  const vol = max(c.cap - c.water, AIR_VOL_MIN);
+  q = capSeaFlow(c, capAirFlow(q, m, vol, st, dt), dt);
+  if (m <= 0) return q;
+  const h = st.h;
+  const rg = b.rho * GRAV;
+  // Her stated leak, out of the pocket's top to the sea or the air there.
+  let out = st.out;
+  let hsOut = st.hsOut;
+  const leak = air.leak[i];
+  if (leak > 0) {
+    const hsTop = max(0, -c.zMax);
+    const dp = (h - hsTop) * rg;
+    if (dp > 0) {
+      out += gasOutflow(leak, dp, P_ATM + h * rg);
+      hsOut = min(hsOut, hsTop);
+    }
+  }
+  // Never past the head of the shallowest way out (FLOW_CAP of the gap).
+  if (out > 0) {
+    const eq = vol * (1 + (hsOut * rg) / P_ATM);
+    out = min(out, (FLOW_CAP * max(0, m - eq)) / dt);
+  }
+  // The ceiling's exchange: each m³ of water in lets a m³ of air out.
+  const glug = min(st.glug, max(0, q));
+  if (glug > 0) out += glug * (m / vol);
+  air.out[i] = min(out, m / dt);
+  return q;
+}
+
+/** Trapped air after the water has moved: sealed cells lose what left. */
+function airAfter(b: Body, air: TrappedAir, dt: number): void {
+  const all = b.all;
+  for (let i = 0; i < all.length; i += 1) {
+    const c = all[i];
+    const vol = c.cap - c.water;
+    if (!air.sealed[i]) air.mass[i] = max(0, vol);
+    else if (vol <= AIR_VOL_MIN) air.mass[i] = 0;
+    else air.mass[i] = max(0, air.mass[i] - air.out[i] * dt);
+  }
+}
+
 /**
  * One fixed step of a floating body: hydrostatics at the current pose, the
  * water's levels, the flows (applied), then the motion. `areas` asks the
@@ -504,6 +653,9 @@ export function stepFloat(
   // Water surfaces.
   for (const c of b.all) solveLevel(c, nx, ny, nz, b.z, areas);
   const { ip } = massProps(b);
+  // Trapped air: which cells are sealed, and their air's heads.
+  const air = b.air;
+  if (air) airHeads(b, air, nx, ny, nz);
 
   // Flows at this pose.
   let inflow = 0;
@@ -529,7 +681,9 @@ export function stepFloat(
     );
   for (let i = 0; i < all.length; i += 1) {
     const c = all[i];
-    const q = capSeaFlow(c, seaInflow(c, nx, ny, nz, b.z, b.ramHead), dt);
+    const q = air
+      ? airInflow(b, air, i, nx, ny, nz, dt)
+      : capSeaFlow(c, seaInflow(c, nx, ny, nz, b.z, b.ramHead), dt);
     c.inflow = q;
     inflow += q;
     dw[i] = q * dt;
@@ -561,7 +715,9 @@ export function stepFloat(
       b.z,
       dt,
       ny,
-      l.y
+      l.y,
+      air ? air.head[l.a] : 0,
+      air ? air.head[l.b] : 0
     );
     dw[l.a] -= q * dt;
     dw[l.b] += q * dt;
@@ -578,14 +734,28 @@ export function stepFloat(
       ny,
       nz,
       b.z,
-      dt
+      dt,
+      air ? air.head[l.a] : 0,
+      air ? air.head[l.b] : 0
     );
     dw[l.a] -= q * dt;
     dw[l.b] += q * dt;
   }
   if (b.doors)
     for (const l of b.doors) {
-      const q = doorFlow(b.cells[l.a], b.cells[l.b], l, nx, nz, b.z, dt);
+      const q = air
+        ? doorFlow(
+            b.cells[l.a],
+            b.cells[l.b],
+            l,
+            nx,
+            nz,
+            b.z,
+            dt,
+            air.head[l.a],
+            air.head[l.b]
+          )
+        : doorFlow(b.cells[l.a], b.cells[l.b], l, nx, nz, b.z, dt);
       dw[l.a] -= q * dt;
       dw[l.b] += q * dt;
     }
@@ -607,6 +777,7 @@ export function stepFloat(
     c.water = min(c.cap, max(0, c.water + dw[i]));
     after += c.water;
   }
+  if (air) airAfter(b, air, dt);
   b.inflow = inflow;
   b.netFlow = (after - before) / dt;
   b.flowAvg = Number.isFinite(b.flowAvg)

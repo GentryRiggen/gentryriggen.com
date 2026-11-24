@@ -31,7 +31,9 @@ import {
   rocketFlash,
   type AfternoonFrame,
 } from "./afternoonEffects";
-import { STORM_MIN_PX, STORM_PARTICLES } from "./storm";
+import { STORM_MIN_PX, STORM_PARTICLES, stormLightAt } from "./storm";
+import { PoseidonEffects, type PoseidonFrame } from "./poseidonEffects";
+import { STAR_SEA } from "./StormSea";
 import { FUNNEL_SINK_S, FUNNEL_TOPPLE_S, layFunnel } from "./funnelWreck";
 import { poseForemast } from "./mastWreck";
 import { StormEffects, type StormFrame } from "./stormEffects";
@@ -247,12 +249,29 @@ export default function Effects({
             runtime,
             dayPts.pos.array as Float32Array,
             dayPts.col.array as Float32Array,
+            dayPts.size.array as Float32Array,
+            { snow: settings.snow === true, wave: spec.cause === "wave" }
+          )
+        : null,
+    [storm, spec, hull, runtime, dayPts, settings]
+  );
+  const stormFrame = useMemo(() => ({}) as StormFrame, []);
+  // The rogue wave's spray, rolled-over foam and bubbles (the Poseidon).
+  const waveFx = useMemo(
+    () =>
+      storm && spec.cause === "wave"
+        ? new PoseidonEffects(
+            spec,
+            hull,
+            runtime,
+            dayPts.pos.array as Float32Array,
+            dayPts.col.array as Float32Array,
             dayPts.size.array as Float32Array
           )
         : null,
     [storm, spec, hull, runtime, dayPts]
   );
-  const stormFrame = useMemo(() => ({}) as StormFrame, []);
+  const waveFrame = useMemo(() => ({}) as PoseidonFrame, []);
   const lastSnap = useRef(-1);
   // Per track: where each boat touched the water (sampled once).
   const launch = useRef<{
@@ -591,9 +610,11 @@ export default function Effects({
       f.camY = cam.y;
       f.camZ = cam.z;
       f.under = runtime.underwater;
+      // (A wave ship's diesels stop at her blackout.)
+      const firesOutAt = spec.cause === "wave" ? "lights-out" : "bow-under";
       let out = false;
       for (const e of events)
-        if (e.kind === "bow-under" && e.t <= t) {
+        if (e.kind === firesOutAt && e.t <= t) {
           out = true;
           break;
         }
@@ -602,6 +623,26 @@ export default function Effects({
       dayPts.mat.uniforms.uMaxPx.value = STORM_PARTICLES[s.quality].maxPx;
       dn = stormFx.update(f);
     }
+    if (waveFx) {
+      const f = waveFrame;
+      const cam = state.camera.position;
+      f.track = track;
+      f.frame = frame;
+      f.openings = s.openings;
+      f.t = t;
+      f.wall = wall;
+      f.quality = s.quality;
+      f.camX = cam.x;
+      f.camY = cam.y;
+      f.camZ = cam.z;
+      f.under = runtime.underwater;
+      f.white = Math.max(
+        0.03 + 0.97 * stormLightAt(runtime, t),
+        STAR_SEA.white
+      );
+      f.lamps = runtime.lampPower;
+      dn = waveFx.update(f, dn);
+    } else runtime.foamPatch[3] = 0;
     lastSnap.current = s.snapId;
     // Lanterns of boats still on the falls.
     if (visible && !day) {

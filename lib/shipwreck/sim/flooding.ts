@@ -1,11 +1,14 @@
 import type { StormSpec } from "../ships/types";
+import { edgeFloods, edgeVertex, gasOutflow } from "./air";
 import {
+  AIR_CEILING_M,
   BOX_FLOOD_M2_PER_M,
   CD_OPENING,
   DOWNFLOOD_M2_PER_M,
   FLOW_CAP,
   GRAV,
   HEAD_EPS,
+  P_ATM,
   SPILL_BREADTH,
   VENT_BURST_M,
   VENT_BURST_M2,
@@ -113,6 +116,8 @@ export interface Cell {
   /** Index of the original compartment, or -1 for a superstructure box. */
   comp: number;
   box: boolean;
+  /** A box: its index in `spec.superstructure` (-1 for a hull cell). */
+  boxIndex: number;
   slice: Slice;
   /** Ship-frame tops of the bulkheads at its ends (spill heights). */
   aftTopZ: number;
@@ -177,7 +182,8 @@ export function makeCell(
   aftWall: boolean,
   fwdWall: boolean,
   perm: number,
-  cross = 0
+  cross = 0,
+  boxIndex = -1
 ): Cell {
   let footprint = 0;
   const width = slice.width;
@@ -193,6 +199,7 @@ export function makeCell(
   return {
     comp,
     box,
+    boxIndex,
     slice,
     aftTopZ,
     fwdTopZ,
@@ -403,8 +410,10 @@ export function seaInflow(
   ny: number,
   nz: number,
   z0: number,
-  ram = 0
+  ram = 0,
+  air: AirStep | null = null
 ): number {
+  if (air) return seaInflowAir(c, nx, ny, nz, z0, ram, air);
   const full = c.water >= c.cap;
   const inside = full ? headLevel(c) : c.water > 0 ? c.level : -Infinity;
   let q = 0;
@@ -460,6 +469,168 @@ export function seaInflow(
   return q;
 }
 
+/**
+ * A step's trapped air for one cell (`ShipSpec.trappedAir`): its air's
+ * head going in, what `seaInflowAir` found coming out. One per body,
+ * reused for each cell (allocation-free).
+ */
+export interface AirStep {
+  /** In: the air's gauge head (m; 0 unsealed) and the water's density. */
+  h: number;
+  rho: number;
+  /** Out: air leaving through openings under the sea (atm·m³/s). */
+  out: number;
+  /** Out: the sea's least head (m) at a point the air is leaving by
+   *  (Infinity: none), so a step cannot let out more than brings the
+   *  air's head down to it. */
+  hsOut: number;
+  /** Out: water in through the pocket's ceiling (m³/s; each m³ lets the
+   *  same volume of air out: an exchange flow). */
+  glug: number;
+  /** Out: the largest and smallest head driving water (m; 0 if none). */
+  dhMax: number;
+  dhMin: number;
+}
+
+export function makeAirStep(rho: number): AirStep {
+  return { h: 0, rho, out: 0, hsOut: Infinity, glug: 0, dhMax: 0, dhMin: 0 };
+}
+
+/**
+ * `seaInflow` for a ship with trapped air: the same openings, deck edge,
+ * lower edge and burst, with the air's head `air.h` added to the inside
+ * head (q = Cd·A·√(2g·Δh), Δh = sea head − (inside head + h)), and where a
+ * way out touches the air (above the water inside) and is under the sea:
+ * water in while the sea's head beats the air's, air out (`gasOutflow`)
+ * while the air's beats the sea's. A box floods over its lowest edge at the
+ * pose (`edgeVertex`). With h = 0 and the box edge aside, the same sums as
+ * `seaInflow`.
+ */
+function seaInflowAir(
+  c: Cell,
+  nx: number,
+  ny: number,
+  nz: number,
+  z0: number,
+  ram: number,
+  air: AirStep
+): number {
+  const full = c.water >= c.cap;
+  pInside = full ? headLevel(c) : c.water > 0 ? c.level : -Infinity;
+  pH = air.h;
+  pRg = air.rho * GRAV;
+  pAbs = P_ATM + pRg * pH;
+  pCeiling = c.zMax - AIR_CEILING_M;
+  pQ = 0;
+  air.out = 0;
+  air.hsOut = Infinity;
+  air.glug = 0;
+  air.dhMax = 0;
+  air.dhMin = 0;
+  pAir = air;
+  for (const o of c.openings) {
+    const strip = o.area / 4;
+    const dyn = o.ram ? ram : 0;
+    for (let k = 0; k < 4; k += 1) {
+      const z = o.zLow + ((o.zHigh - o.zLow) * (k + 0.5)) / 4;
+      airPoint(strip, z0 + nx * o.x + ny * o.y + nz * z, dyn);
+    }
+  }
+  const s = c.slice;
+  const perM = c.box ? BOX_FLOOD_M2_PER_M : DOWNFLOOD_M2_PER_M;
+  const edge = s.span && s.span.side === "centre" ? s.edgeHb : undefined;
+  const floods = edgeFloods(c);
+  let deepest = 0;
+  for (let i = 0; i < s.n; i += 1) {
+    const dx =
+      ((i < s.n - 1 ? s.xs[i + 1] : s.xs[i]) -
+        (i > 0 ? s.xs[i - 1] : s.xs[i])) /
+      2;
+    if (dx <= 0 || s.fullA[i] <= 0) continue;
+    const base = z0 + nx * s.xs[i];
+    for (let side = 0; side < 2; side += 1) {
+      const v = edgeVertex(c, i, side, ny, nz, true);
+      const y = edge ? (side === 0 ? edge[i] : -edge[i]) : s.ys[v];
+      const ze = base + ny * y + nz * s.zs[v];
+      if (ze >= 0) continue;
+      deepest = min(deepest, ze);
+      if (floods) airPoint(perM * dx, ze, 0);
+    }
+  }
+  // Deep under, the burst vents: one more way in, or out for the air.
+  if (deepest < -VENT_BURST_M) airPoint(c.burst, deepest, 0);
+  return pQ;
+}
+
+// `seaInflowAir`'s cell, for `airPoint` (module state: no closures).
+let pInside = 0;
+let pH = 0;
+let pRg = 0;
+let pAbs = 0;
+let pCeiling = 0;
+let pQ = 0;
+let pAir: AirStep = makeAirStep(1025);
+
+/** One way in or out of area `a` at earth z `ze` (`dyn`: the ram head). */
+function airPoint(a: number, ze: number, dyn: number): void {
+  const air = pAir;
+  const hs = max(0, -ze);
+  if (ze > pInside) {
+    // In the air: above the sea it only vents the cell (it is unsealed).
+    if (hs <= 0) return;
+    const dh = (dyn > 0 ? hs + dyn : hs) - pH;
+    if (dh > 0) {
+      const qi = orifice(a, dh);
+      pQ += qi;
+      if (ze >= pCeiling) air.glug += qi;
+      if (dh > air.dhMax) air.dhMax = dh;
+    } else if (dh < 0) {
+      air.out += gasOutflow(a, -dh * pRg, pAbs);
+      if (hs < air.hsOut) air.hsOut = hs;
+    }
+    return;
+  }
+  const hi = max(0, pInside - ze) + pH;
+  if (hs <= 0 && hi <= 0) return;
+  const dh = (dyn > 0 && hs > 0 ? hs + dyn : hs) - hi;
+  pQ += orifice(a, dh);
+  if (dh > air.dhMax) air.dhMax = dh;
+  if (dh < air.dhMin) air.dhMin = dh;
+}
+
+/**
+ * The Boyle cap for a sealed cell (`ShipSpec.trappedAir`): one step may
+ * close no more than FLOW_CAP of the gap to the water at which the air's
+ * head would meet the sea's (h + Δh, Δh the largest head driving water in,
+ * or the smallest driving it out), so the 1 s step cannot squeeze the
+ * pocket past its balance. The water through its ceiling (`air.glug`)
+ * trades its own volume of air and leaves the head as it was: not capped
+ * here. `m` its air (atm·m³), `vol` its air's volume (m³).
+ */
+export function capAirFlow(
+  q: number,
+  m: number,
+  vol: number,
+  air: AirStep,
+  dt: number
+): number {
+  const glug = q > 0 ? min(q, air.glug) : 0;
+  const rest = q - glug;
+  const p = P_ATM / (air.rho * GRAV);
+  if (rest > 0) {
+    const r = 1 + (air.h + air.dhMax) / p;
+    const left = r > 0 ? max(0, vol - m / r) : 0;
+    return glug + min(rest, (FLOW_CAP * left) / dt);
+  }
+  if (rest < 0) {
+    const r = 1 + (air.h + air.dhMin) / p;
+    if (r <= 0) return q;
+    const room = max(0, m / r - vol);
+    return glug + max(rest, (-FLOW_CAP * room) / dt);
+  }
+  return q;
+}
+
 /** Cap a sea inflow so one step cannot overfill past the sea level. */
 export function capSeaFlow(c: Cell, q: number, dt: number): number {
   if (q > 0) {
@@ -487,10 +658,14 @@ export function spill(
   z0: number,
   dt: number,
   ny = 0,
-  yb = 0
+  yb = 0,
+  airA = 0,
+  airB = 0
 ): number {
   let zt = z0 + nx * xb + nz * topZ;
   if (yb !== 0) zt += ny * yb;
+  if (airA !== 0 || airB !== 0)
+    return spillAir(a, b, zt, breadth, dt, airA, airB);
   const ha = headLevel(a);
   const hb = headLevel(b);
   if (ha <= zt && hb <= zt) return 0;
@@ -507,6 +682,56 @@ export function spill(
   // One step may not more than half-equalise the two sides.
   const downSurface = down.water > 0 ? down.level : down.zMin;
   const dh = hUp - max(downSurface, zt);
+  const aUp = max(up.fsArea, 1);
+  const aDown = max(down.fsArea, 1);
+  const eq = (dh * aUp * aDown) / (aUp + aDown);
+  const limit = min(max(0, eq) * FLOW_CAP, up.water, down.cap - down.water);
+  q = min(q, limit / dt);
+  return up === a ? q : -q;
+}
+
+/**
+ * A cell's pressure at earth z as a level (m): its water's surface plus its
+ * air's head where z is under its water, else z plus its air's head (z in
+ * its air: the air's pressure alone).
+ */
+export function pressureLevel(c: Cell, z: number, air: number): number {
+  const h = headLevel(c);
+  return h > z ? h + air : z + air;
+}
+
+/**
+ * `spill` between cells with trapped air (`ShipSpec.trappedAir`): the
+ * weir on each side's pressure at the top (water plus air), and only water
+ * goes over it: the side the pressure drives from must have water over
+ * the top (no air passes between cells: README "Trapped air").
+ */
+function spillAir(
+  a: Cell,
+  b: Cell,
+  zt: number,
+  breadth: number,
+  dt: number,
+  airA: number,
+  airB: number
+): number {
+  const pa = pressureLevel(a, zt, airA);
+  const pb = pressureLevel(b, zt, airB);
+  if (pa === pb) return 0;
+  const up = pa > pb ? a : b;
+  const down = up === a ? b : a;
+  const pUp = up === a ? pa : pb;
+  const pDown = up === a ? pb : pa;
+  const airDown = up === a ? airB : airA;
+  if (!(headLevel(up) > zt) || down.water >= down.cap) return 0;
+  const h1 = pUp - zt;
+  const h2 = max(0, pDown - zt);
+  if (h1 <= 0) return 0;
+  const r = h2 / h1;
+  const drown = r > 0 ? pow(max(0, 1 - pow(r, 1.5)), 0.385) : 1;
+  let q = WEIR_CW * SPILL_BREADTH * breadth * pow(h1, 1.5) * drown;
+  const downSurface = (down.water > 0 ? down.level : down.zMin) + airDown;
+  const dh = pUp - max(downSurface, zt);
   const aUp = max(up.fsArea, 1);
   const aDown = max(down.fsArea, 1);
   const eq = (dh * aUp * aDown) / (aUp + aDown);
@@ -534,8 +759,28 @@ export function crossFlow(
   ny: number,
   nz: number,
   z0: number,
-  dt: number
+  dt: number,
+  airA = 0,
+  airB = 0
 ): number {
+  if (airA !== 0 || airB !== 0) {
+    // Trapped air: each side's pressure at the doors, water only.
+    const zd0 = z0 + nx * xd + ny * yd + nz * zd;
+    const pa = pressureLevel(a, zd0, airA);
+    const pb = pressureLevel(b, zd0, airB);
+    if (pa === pb) return 0;
+    const up = pa > pb ? a : b;
+    const down = up === a ? b : a;
+    if (!(headLevel(up) > zd0) || down.water >= down.cap) return 0;
+    const dh = abs(pa - pb);
+    let q = orifice(area, dh);
+    const aUp = max(up.fsArea, 1);
+    const aDown = max(down.fsArea, 1);
+    const eq = (dh * aUp * aDown) / (aUp + aDown);
+    const limit = min(eq * FLOW_CAP, up.water, down.cap - down.water);
+    q = min(q, limit / dt);
+    return up === a ? q : -q;
+  }
   const ha = headLevel(a);
   const hb = headLevel(b);
   if (ha === hb) return 0;

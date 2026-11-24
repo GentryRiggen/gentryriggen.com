@@ -24,9 +24,11 @@ import type { WaveFieldArrays } from "@/lib/shipwreck/sim/waves";
 import type { SceneSettings } from "./settings";
 import { STORM_NIGHT_WHITE, stormLightAt } from "./storm";
 import {
+  SEA_MAX_GROUPS,
   SEA_WAVES_GLSL,
   createSeaWaves,
   packSeaWaves,
+  rogueLookOf,
   windOf,
 } from "./seaWaves";
 
@@ -109,16 +111,27 @@ const vertex = /* glsl */ `
   varying vec2 vLocal;
   varying vec3 vNormal;
   varying float vE;
+  varying float vLip;
+  varying float vRogue;
   void main() {
     // Earth (x, y) offset from the centre: three x, -three z.
     vec2 d = vec2(position.x, -position.z);
     float r = length(d);
     float calm = 1.0 - smoothstep(uWaveR * 0.55, uWaveR, r);
     vec3 w = seaWave(d, aSpacing) * calm;
-    vec3 p = vec3(position.x, w.x, position.z);
-    vNormal = normalize(vec3(-w.y, 1.0, w.z));
+    // The rogue wave's sharpened, leaning crest (none on other seas).
+    float rogueE;
+    vec4 rg = seaRogue(d, rogueE);
+    vec2 shift = rg.xy * calm;
+    float squeeze = mix(1.0, rg.w, calm);
+    vec3 p = vec3(position.x + shift.x, w.x, position.z - shift.y);
+    vec2 slope = w.yz / max(squeeze, 0.25);
+    vNormal = normalize(vec3(-slope.x, 1.0, slope.y));
     vE = w.x;
-    vLocal = position.xz;
+    // (With its second-order part: the whitecaps read the swell alone.)
+    vRogue = (rogueE + 0.5 * uMeanK * rogueE * rogueE) * calm;
+    vLip = rg.z * calm;
+    vLocal = position.xz + vec2(shift.x, -shift.y);
     vec4 world = modelMatrix * vec4(p, 1.0);
     vWorld = world.xyz;
     vec4 mvPosition = viewMatrix * world;
@@ -130,12 +143,22 @@ const vertex = /* glsl */ `
 /** Her deck lamps the sea catches (`runtime.lamps`). */
 export const SEA_LAMPS = 8;
 
+/**
+ * A starlit night's sea (`settings.stars`): the night horizon's haze the
+ * low facets reflect (times the fog colour), the dark sky overhead, the
+ * water's own light (as `uLight`) and white water's floor of light.
+ * Looks only (README, "The Poseidon's night").
+ */
+export const STAR_SEA = { low: 2.2, high: 0.6, light: 0.12, white: 0.3 };
+
 const fragment = /* glsl */ `
   #include <fog_pars_fragment>
   varying vec3 vWorld;
   varying vec2 vLocal;
   varying vec3 vNormal;
   varying float vE;
+  varying float vLip;
+  varying float vRogue;
   uniform float uTime;
   uniform float uOpacity;
   uniform float uHs;
@@ -159,6 +182,12 @@ const fragment = /* glsl */ `
   // Her deck edge's height at her middle and its slope along her (her
   // trim): where the sea stands over it she is awash.
   uniform vec2 uDeck;
+  // Her emergency lights glowing under the water round her hull
+  // (runtime.underGlow; 0: none).
+  uniform float uUnderGlow;
+  // White water where she rolled over (runtime.foamPatch): centre
+  // (from the mesh's centre, three x, z), radius, strength (0: none).
+  uniform vec4 uPatch;
 
   // The lattice cell is taken mod 289 first (exact for whole floats), so
   // the hash keeps its precision however far the noise's argument runs
@@ -204,8 +233,8 @@ const fragment = /* glsl */ `
       if (i >= uLampCount) break;
       vec3 l = uLamps[i] - vWorld;
       float d = length(l);
-      l /= d;
-      float fall = 1.0 / (1.0 + d * d / 160.0);
+      l /= max(d, 1e-3);
+      float fall = 1.0 / max(1.0 + d * d / 160.0, 1.0);
       float diff = max(dot(n, l), 0.0);
       float spec = pow(max(dot(reflect(-l, n), v), 0.0), 40.0);
       sum += (diff * 0.12 + spec * 1.0) * fall;
@@ -216,21 +245,22 @@ const fragment = /* glsl */ `
   void main() {
     vec3 toEye = cameraPosition - vWorld;
     float dist = length(toEye);
-    vec3 v = toEye / dist;
+    vec3 v = toEye / max(dist, 1e-3);
     vec2 p = vLocal + uNoise;
     float fine = clamp(1.0 - dist / 900.0, 0.0, 1.0);
     // Foam detail thins out far off (it would shimmer).
     float fine2 = clamp(1.0 - dist / 4000.0, 0.3, 1.0);
-    float e = 0.7;
     float h0 = chop(p);
-    vec2 grad = vec2(chop(p + vec2(e, 0.0)) - h0, chop(p + vec2(0.0, e)) - h0) / e;
+    vec2 grad = vec2(chop(p + vec2(0.7, 0.0)) - h0, chop(p + vec2(0.0, 0.7)) - h0) / 0.7;
     vec3 n = normalize(normalize(vNormal) + vec3(-grad.x, 0.0, -grad.y) * 0.55 * fine);
 
     // Whitecaps on the crests (by the sea's height now), more on the
     // faces running down the wind, broken up by smooth noise.
     vec3 vn = normalize(vNormal);
     float front = smoothstep(0.0, 0.12, dot(vn.xz, uWind));
-    float crest = smoothstep(0.28 * uHs, 0.6 * uHs, vE);
+    // (A rogue wave's own height is left out: its face is a dark wall,
+    // its crest white from its lip below.)
+    float crest = smoothstep(0.28 * uHs, 0.6 * uHs, vE - vRogue);
     float breakup = fbm(p * 0.06 + uWind * uTime * 0.25);
     float foam = crest * smoothstep(0.56, 0.74, breakup + 0.1 * crest + 0.08 * front);
     // Beaufort 10: dense streaks of foam along the wind, in broad rows.
@@ -241,6 +271,7 @@ const fragment = /* glsl */ `
       * (0.5 + 0.5 * noise(p * 0.3));
     // White water where the sea meets her hull, and over her deck where
     // a sea stands on it (the sea drawn there is above her deck).
+    float glow = 0.0;
     if (uHullSize.z > 0.5) {
       vec2 d = vLocal - uHull.xy;
       float sx = dot(d, vec2(uHull.z, -uHull.w));
@@ -254,6 +285,16 @@ const fragment = /* glsl */ `
       // Awash: the sea breaking over her deck edge and just off it.
       float deck = uDeck.x + uDeck.y * sx;
       foam += (1.0 - smoothstep(4.0, 16.0, sd)) * smoothstep(-0.6, 0.6, vE - deck) * churn;
+      // Her lit decks under the water: light welling up round her.
+      glow = uUnderGlow * exp(-max(sd, 0.0) * 0.035);
+    }
+    // The rogue wave's breaking lip, torn by the noise.
+    foam += vLip * (0.55 + 0.45 * fbm(p * 0.09 + uWind * uTime * 0.5));
+    // Where she rolled over: churned white water spreading and fading.
+    if (uPatch.w > 0.0) {
+      float pd = length(vLocal - uPatch.xy);
+      float churn2 = 0.5 + 0.5 * fbm(p * 0.12 - uWind * uTime * 0.3);
+      foam += uPatch.w * (1.0 - smoothstep(0.45 * uPatch.z, uPatch.z, pd)) * churn2;
     }
     foam = clamp(foam, 0.0, 1.0) * fine2;
 
@@ -265,7 +306,7 @@ const fragment = /* glsl */ `
     if (!gl_FrontFacing) {
       // From under the water: a dim grey window overhead, dark beyond.
       float up = clamp(-v.y, 0.0, 1.0);
-      vec3 c = mix(uUnder * 0.2, uUnder, pow(up, 3.0)) * (0.2 + 0.8 * uLight);
+      vec3 c = mix(uUnder * 0.2, uUnder, pow(clamp(up, 0.0, 1.0), 3.0)) * (0.2 + 0.8 * uLight);
       c += uFoam * foam * 0.15 * white;
       gl_FragColor = vec4(c, 1.0);
       #include <fog_fragment>
@@ -273,7 +314,7 @@ const fragment = /* glsl */ `
     }
 
     float cosT = clamp(dot(n, v), 0.0, 1.0);
-    float fres = 0.02 + 0.98 * pow(1.0 - cosT, 5.0);
+    float fres = 0.02 + 0.98 * pow(max(1.0 - cosT, 0.0), 5.0);
     vec3 r = reflect(-v, n);
     vec3 sky = mix(uSkyLow, uSkyHigh, pow(clamp(r.y, 0.0, 1.0), 0.6));
     // Grey-green water, the light coming through the thin crests.
@@ -283,10 +324,14 @@ const fragment = /* glsl */ `
     c += lit * (0.4 + foam);
     vec3 foamLit = uFoam * (white * (0.55 + 0.45 * n.y)) + lit * 2.0;
     c = mix(c, foamLit, foam * 0.85);
+    c += vec3(0.55, 0.62, 0.5) * glow * (1.0 - foam * 0.5);
     gl_FragColor = vec4(c, uOpacity);
     #include <fog_fragment>
   }
 `;
+
+/** The storm sea's shaders, for the NaN guard test (`shaderGuards.test.ts`). */
+export const STORM_SEA_GLSL = { vertex, fragment } as const;
 
 interface StormSeaProps {
   runtime: SceneRuntime;
@@ -321,6 +366,7 @@ export default function StormSea({
             uWave: { value: null },
             uGroupA: { value: null },
             uGroupB: { value: null },
+            uGroupC: { value: null },
             uWaveCount: { value: 0 },
             uGroupCount: { value: 0 },
             uMeanK: { value: 0 },
@@ -360,6 +406,8 @@ export default function StormSea({
             uHull: { value: new Vector4() },
             uHullSize: { value: new Vector3() },
             uDeck: { value: new Vector2() },
+            uPatch: { value: new Vector4() },
+            uUnderGlow: { value: 0 },
           },
         ]),
       }),
@@ -393,9 +441,17 @@ export default function StormSea({
       anchorZ: 0,
       field: null as WaveFieldArrays | null,
       wind: new Vector2(1, 0),
+      // The rogue wave's look, per storm (zeros without one).
+      lookStorm: null as unknown,
+      look: new Float32Array(4 * SEA_MAX_GROUPS),
     }),
     []
   );
+  // A starlit night (the Poseidon's): the sky the waves reflect is the
+  // night's (a faint blue-grey low, near black overhead), not the dark
+  // overcast; white water keeps a little more light (her lit decks and
+  // the stars over a clear sea: a look, as STORM_NIGHT_WHITE).
+  const starlit = settings.stars === true;
   // Set once (a string colour parsed every frame allocates).
   useEffect(() => {
     (material.uniforms.uUnder.value as Color).set(settings.underwaterFog);
@@ -420,11 +476,16 @@ export default function StormSea({
     u.uWave.value = waves.wave;
     u.uGroupA.value = waves.groupA;
     u.uGroupB.value = waves.groupB;
+    u.uGroupC.value = waves.groupC;
+    if (scratch.lookStorm !== sea.storm) {
+      scratch.lookStorm = sea.storm;
+      rogueLookOf(sea.storm, scratch.look);
+    }
     if (!field) {
       u.uWaveCount.value = 0;
       u.uGroupCount.value = 0;
     } else {
-      packSeaWaves(field, sea.t, cx, -cz, waves);
+      packSeaWaves(field, sea.t, cx, -cz, waves, scratch.look);
       u.uWaveCount.value = waves.count;
       u.uGroupCount.value = waves.groupCount;
       u.uMeanK.value = waves.meanK;
@@ -459,6 +520,16 @@ export default function StormSea({
     (u.uSkyHigh.value as Color)
       .copy(fogColor)
       .multiplyScalar(0.4 * (0.02 + 0.98 * d));
+    if (starlit && d < 1) {
+      (u.uSkyLow.value as Color).copy(fogColor).multiplyScalar(STAR_SEA.low);
+      (u.uSkyHigh.value as Color).copy(fogColor).multiplyScalar(STAR_SEA.high);
+      u.uLight.value = STAR_SEA.light;
+    }
+    u.uWhite.value = starlit ? STAR_SEA.white : STORM_NIGHT_WHITE;
+    u.uUnderGlow.value = runtime.underGlow;
+    // Where she rolled over (none on other seas).
+    const fp = runtime.foamPatch;
+    (u.uPatch.value as Vector4).set(fp[0] - cx, fp[1] - cz, fp[2], fp[3]);
     u.uLamps.value = runtime.lamps;
     u.uLampCount.value = Math.min(SEA_LAMPS, runtime.lampCount);
     u.uLampPower.value = runtime.lampPower;

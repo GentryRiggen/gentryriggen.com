@@ -108,6 +108,7 @@ const SHIPWRECK_SHIPS = [
   "carpathia",
   "britannic",
   "concordia",
+  "poseidon",
 ] as const;
 
 /** The most spots any ship's What if? offers (the Fitzgerald's 25). */

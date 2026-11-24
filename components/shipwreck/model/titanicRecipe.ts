@@ -113,6 +113,29 @@ export interface FunnelRecipe {
     /** In her real paint only: a fun paint leaves it off. */
     realOnly?: true;
   };
+  /**
+   * The top's size as a share of the foot's (the Poseidon's tapering
+   * funnel); default 1 (straight).
+   */
+  taper?: number;
+  /**
+   * A wing-like fin either side of the top (the Poseidon's): `span` m out
+   * from the funnel's side, `chord` m fore and aft, `thick` m deep, in the
+   * top's colour.
+   */
+  wing?: { span: number; chord: number; thick: number };
+  /**
+   * A wavy stripe round the funnel (the Poseidon's gold wave): its middle
+   * at fraction `z` of the height, `height` m tall, swinging `amp` m up and
+   * down; `realOnly`: her real paint only.
+   */
+  wave?: {
+    z: number;
+    height: number;
+    amp: number;
+    color: number;
+    realOnly?: true;
+  };
 }
 
 export interface MastRecipe {
@@ -511,6 +534,24 @@ export interface ShipRecipe {
    * `a`, half-breadth `b`, half-height `c`, in the hull's paint.
    */
   bulb?: { x: number; z: number; a: number; b: number; c: number };
+  /**
+   * A round room under a glass dome (the Poseidon's ballroom): a drum of
+   * tall windows between piers, `radius` m, `drumH` tall from `z`, under a
+   * lat-long glass dome `domeH` high of `rows` × `cols` panes, ribbed along
+   * every meridian and parallel (ribs dropped at low quality).
+   */
+  ballrooms?: {
+    x: number;
+    z: number;
+    radius: number;
+    drumH: number;
+    domeH: number;
+    rows: number;
+    cols: number;
+    glass: number;
+    rib: number;
+    drum: number;
+  }[];
   /** Thruster tunnels through the hull: dark discs on both sides. */
   thrusters?: { x: number; z: number; r: number }[];
   /**

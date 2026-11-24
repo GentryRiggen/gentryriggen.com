@@ -6,6 +6,7 @@ import {
   type RunOpening,
   type ShipSpec,
   type TorpedoSpec,
+  type WaveGroup,
   hullOpenings,
   isDeckOpening,
 } from "../ships/types";
@@ -23,6 +24,7 @@ import {
   FAST_STEP_S,
   FLOOR_SINK_M,
   GRAV,
+  KEEL_UP_REST_DEG,
   KNOT_MS,
   PERMEABILITY,
   PORTHOLE_HEIGHT_M,
@@ -43,7 +45,10 @@ import {
   FLOOR_MEMO_M,
   type FloorFn,
   type SpillLink,
+  earthOf,
   earthZ,
+  makeTrappedAir,
+  placeAbout,
   stepFloat,
   turnTo,
   upOf,
@@ -51,7 +56,7 @@ import {
 } from "./body";
 import { agroundBegins, beginAground, stepAground } from "./aground";
 import { type DeckWater, makeDeckWater } from "./deckWater";
-import { stepFall, stepLanding, sternDown } from "./descent";
+import { keelUpRoll, stepFall, stepLanding, sternDown } from "./descent";
 import { doorLinks, openDoors } from "./doors";
 import {
   DYNAMO_FLOOD_M,
@@ -73,6 +78,7 @@ import {
   type Cell,
   type DeckCellOpening,
   type DeckSea,
+  makeAirStep,
   makeCell,
 } from "./flooding";
 import {
@@ -101,6 +107,19 @@ import { floorAt, floorTopNear, seabedSlopeNear } from "./seabed";
 import type { BodyPose, SimFrame, SimTrack } from "./track";
 import { GROUP_RELOCK_S, lockGroups, stormOf } from "./waves";
 import { rideWeight, waveRide } from "./waveRide";
+import {
+  CAPSIZED_DEG,
+  type WaveVariant,
+  groupPassed,
+  rogueGroup,
+  rulePeakDeg,
+  ruleRoll,
+  swellFade,
+  waveOpenings,
+  waveSpots,
+  waveStartT,
+  withWave,
+} from "./wave";
 
 // Local bindings: global lookups are slow inside test sandboxes (vm).
 const { abs, cos, floor, max, min, sin } = Math;
@@ -156,6 +175,9 @@ export interface SimOptions {
   enginesStopped?: boolean;
   /** Drift by `headway.pathToSea` (the What if "blown out to sea"). */
   toSea?: boolean;
+  /** The wave ship's wave (`spec.wave`): as it was, the smaller one, or
+   *  from ahead (no roll rule). Default "real". */
+  wave?: WaveVariant;
 }
 
 const DEG = Math.PI / 180;
@@ -178,9 +200,11 @@ export const FINISHER_SPOT = "finisher";
  * also opens its starboard side bunker), aft to forward, then her later
  * torpedo (`FINISHER_SPOT`) if she has one (`spec.torpedo.finisher`). A
  * storm ship: each hatch (its deck opening's id, No. 1 first), her topside
- * damage (`VENTS_SPOT`) and each grounding strip (`shoalSpot(k)`).
+ * damage (`VENTS_SPOT`) and each grounding strip (`shoalSpot(k)`). A
+ * wave ship: what the wave smashes (`wave.spots`).
  */
 export function whatIfSpots(spec: ShipSpec): string[] {
+  if (spec.cause === "wave") return waveSpots(spec);
   if (spec.cause === "storm") {
     const deck = spec.deckOpenings ?? [];
     const spots = deck.filter((d) => d.kind === "hatch").map((d) => d.id);
@@ -204,12 +228,15 @@ export function whatIfSpots(spec: ShipSpec): string[] {
 
 /**
  * The openings of a What-if run: the real damage where there was some.
- * Any number of spots may be chosen for every ship.
+ * Any number of spots may be chosen for every ship. A wave ship's are her
+ * chosen spots' (`wave`: from ahead, only the forward ones).
  */
 export function whatIfOpenings(
   spec: ShipSpec,
-  ids: readonly string[]
+  ids: readonly string[],
+  wave: WaveVariant = "real"
 ): RunOpening[] {
+  if (spec.cause === "wave") return waveOpenings(spec, ids, wave);
   if (spec.cause === "storm") return stormOpenings(spec, ids);
   if (spec.cause === "torpedo")
     return spec.torpedo
@@ -283,9 +310,10 @@ function stormOpenings(spec: ShipSpec, ids: readonly string[]): RunOpening[] {
  * compartments the iceberg opened; for a torpedo ship her own
  * `torpedo.realSpots`, else the one spot where the real hit lands (the hit
  * moved there is the real afternoon); for a storm ship every hatch (none
- * was tight) and her topside damage.
+ * was tight) and her topside damage; for a wave ship every spot.
  */
 export function whatIfRealIds(spec: ShipSpec): string[] {
+  if (spec.cause === "wave") return waveSpots(spec);
   if (spec.cause === "storm") {
     // Every hatch, her topside damage, and each grounding strip her real
     // run holds.
@@ -598,11 +626,12 @@ interface World {
   forecastle: { x: number; z: number } | null;
   bridge: { x: number; z: number } | null;
   probe?: (p: SimProbe) => void;
-  /** Settling before the collision (s left), and the holes to open then. */
+  /** Settling before the collision (s left), and the holes to open then
+   *  (`i` the compartment, or with `box` the superstructure box). */
   settleLeft: number;
-  pending: { i: number; o: Cell["openings"][number] }[];
+  pending: RunHole[];
   /** Openings that open later (shown seconds), soonest first. */
-  timed: { t: number; i: number; o: Cell["openings"][number] }[];
+  timed: (RunHole & { t: number })[];
   /** A `spec.torpedo` ship's later hits (shown s, soonest first) still to
    *  land, and the next one's number (`torpedo-hit` index). */
   hitTimes: number[];
@@ -639,6 +668,39 @@ interface World {
   agroundScale: number;
   /** The floor under an earth x, y (the seabed's, or the flat floor). */
   floor: FloorFn;
+  /** Some box has an `id`: frames carry `boxWater`. */
+  namedBoxes: boolean;
+  /** Her storm's groups before any lock (her rogue wave's included), for
+   *  the re-lock. */
+  rawGroups: readonly WaveGroup[];
+  /** The wave's roll rule (`spec.wave`, a rule), or null (none, or from
+   *  ahead): its peak (rad), and once begun its start (real s) and the
+   *  roll it began from; `done` once it has let go. */
+  rule: {
+    peak: number;
+    t0: number;
+    roll0: number;
+    on: boolean;
+    done: boolean;
+  } | null;
+  /** `capsized` has fired: shown time runs `capsizeScale` slower. */
+  capsized: boolean;
+  capsizeScale: number;
+  /** The real wave's box flood (`spec.wave.boxFlood`, a rule): each box's
+   *  index and its fill and pace; empty for any other run. */
+  boxFlood: { k: number; fill: number; fromU: number; toU: number }[];
+}
+
+/** A hole in compartment `i`, or in box `box` (`spec.superstructure`). */
+interface RunHole {
+  i: number;
+  box?: number;
+  o: Cell["openings"][number];
+}
+
+/** The whole body's cell a hole opens into (before any break). */
+function cellFor(body: Body, p: RunHole): Cell {
+  return p.box === undefined ? body.cells[p.i] : body.boxes[p.box];
 }
 
 /** Settle her level before the collision, then open the holes at t = 0. */
@@ -666,7 +728,8 @@ function settle(w: World): void {
   body.x = 0;
   body.y = 0;
   for (const c of body.cells.concat(body.boxes)) c.water = 0;
-  for (const p of w.pending) body.cells[p.i].openings.push(p.o);
+  if (body.air) body.all.forEach((c, i) => (body.air!.mass[i] = c.cap));
+  for (const p of w.pending) cellFor(body, p).openings.push(p.o);
   for (const p of w.pendingDeck) body.cells[p.i].deck.push(p.o);
   if (body.deckWater) body.deckWater.vol.fill(0);
   if (w.path) onPath(w, body, 0);
@@ -676,9 +739,17 @@ function settle(w: World): void {
   w.nextFrameT = SLOW_FRAME_S;
 }
 
-function cellOpening(hull: HullModel, o: Opening): Cell["openings"][number] {
+function cellOpening(
+  hull: HullModel,
+  o: Opening,
+  box?: ShipSpec["superstructure"][number]
+): Cell["openings"][number] {
   const zMid = (o.zLow + o.zHigh) / 2;
-  const hb = hullHalfBreadth(hull, o.x, zMid);
+  // A box's side: the deck's breadth, or its own if narrower.
+  const deck = box ? sectionAt(hull, o.x).hb : null;
+  const hb = deck
+    ? min(deck[deck.length - 1], box!.halfBreadthM ?? Infinity)
+    : hullHalfBreadth(hull, o.x, zMid);
   return {
     x: o.x,
     y: (o.side === "port" ? 1 : -1) * hb,
@@ -957,6 +1028,8 @@ function makeBody(
           min: rule.minListDeg * DEG,
         }
       : null,
+    capsized: false,
+    keelUnder: false,
     capsize:
       part === "stern" && parts?.stern?.capsize
         ? parts.stern.restDeg * DEG
@@ -968,7 +1041,19 @@ function makeBody(
     deckWater: null,
     ...(w.spec.boxWaterAtSide ? { boxWaterAtSide: true } : {}),
     ...(w.spec.seabed ? seabedOf(w.spec, xFrom, xTo, w.hull) : {}),
+    ...(w.spec.trappedAir ? { air: airOf(w.spec, cells, boxes) } : {}),
   };
+}
+
+/** A trapped-air ship's cells' air (`spec.trappedAir`), each at the surface. */
+function airOf(spec: ShipSpec, cells: Cell[], boxes: Cell[]) {
+  const leakM2 = (spec.trappedAir as NonNullable<ShipSpec["trappedAir"]>)
+    .leakM2;
+  const all = cells.concat(boxes);
+  const leak = Float64Array.from(all, (c) =>
+    max(0, (c.box ? leakM2.box : leakM2[spec.compartments[c.comp].kind]) ?? 0)
+  );
+  return makeTrappedAir(all, leak, makeAirStep(spec.waterDensity ?? RHO));
 }
 
 /** A seabed ship's floor lookup and the reach of her hull from its origin. */
@@ -1205,7 +1290,7 @@ function buildWorld(
     fullArea[i] = whole.fullA[k];
   }
   const boxSlices = spec.superstructure.map((s) =>
-    boxSlice(hull, spec.sheerZ, s.fromX, s.toX, s.topZ, s.halfBreadthM)
+    boxSlice(hull, spec.sheerZ, s.fromX, s.toX, s.topZ, s.halfBreadthM, s.baseZ)
   );
   const mass = buildMass(spec, hull, fullArea, boxSlices);
   const cells = spec.compartments.map((c, i) =>
@@ -1229,8 +1314,8 @@ function buildWorld(
       c.pumped ?? (ownPumps || c.kind === "boiler" || c.kind === "engine");
     if (c.burstM2 !== undefined) cells[i].burst = c.burstM2;
   });
-  const boxes = boxSlices.map((s) =>
-    makeCell(s, -1, true, 0, 0, false, false, BOX_PERMEABILITY)
+  const boxes = boxSlices.map((s, k) =>
+    makeCell(s, -1, true, 0, 0, false, false, BOX_PERMEABILITY, 0, k)
   );
   // A rocks ship's door was opened by hand on her real night ([SaS]): a
   // What if that is not her whole real damage keeps it shut. Each real
@@ -1258,14 +1343,29 @@ function buildWorld(
         (spec.shoalOpenings ?? []).filter((o) => !openings.includes(o))
       )
     : openings;
+  // Each into its compartment, or into the box it names (`superstructure[i].id`).
   const all = hullOpenings
-    .map((o) => ({
-      t: o.t ?? 0,
-      i: spec.compartments.findIndex((c) => c.id === o.compartmentId),
-      o: cellOpening(hull, o),
-    }))
-    .filter((p) => p.i >= 0);
-  const pending = all.filter((p) => p.t <= 0).map((p) => ({ i: p.i, o: p.o }));
+    .map((o) => {
+      const i = spec.compartments.findIndex((c) => c.id === o.compartmentId);
+      const k =
+        i >= 0
+          ? -1
+          : spec.superstructure.findIndex((s) => s.id === o.compartmentId);
+      return k >= 0
+        ? {
+            t: o.t ?? 0,
+            i,
+            box: k,
+            o: cellOpening(hull, o, spec.superstructure[k]),
+          }
+        : { t: o.t ?? 0, i, o: cellOpening(hull, o) };
+    })
+    .filter((p) => p.i >= 0 || p.box !== undefined);
+  const pending: RunHole[] = all
+    .filter((p) => p.t <= 0)
+    .map((p) =>
+      p.box === undefined ? { i: p.i, o: p.o } : { i: p.i, box: p.box, o: p.o }
+    );
   const timed = all.filter((p) => p.t > 0).sort((a, b) => a.t - b.t);
   // A ship with her own hits: each later time her holes open is a torpedo
   // (each hit's pieces share its time), numbered on from the first event's.
@@ -1279,7 +1379,11 @@ function buildWorld(
   if (ramX !== undefined)
     for (const p of pending.concat(timed)) if (p.o.x >= ramX) p.o.ram = true;
   const pendingDeck = deckOpenings(spec, deckList, opts, body.deckWater);
-  const storm = stormOf(spec) ?? null;
+  const variant = opts.wave ?? "real";
+  const storm = stormOf(spec, variant) ?? null;
+  const peak = rulePeakDeg(spec, variant);
+  // Her storm's groups as given, a wave ship's rogue wave the last.
+  const rawGroups = withWave(spec.storm, spec, variant)?.groups ?? [];
 
   // Landmarks for the geometric events.
   const fwdBox = spec.superstructure
@@ -1338,7 +1442,7 @@ function buildWorld(
     frames: [],
     done: false,
     outcome: "floated",
-    endT: opts.endT ?? END_T,
+    endT: opts.endT ?? spec.endS ?? END_T,
     girderState: { hog: new Float64Array(0), worst: 0, worstX: 0, worstHog: 0 },
     strength: strengthProfile(hull.xs, spec.compartments),
     settleLeft: SETTLE_S,
@@ -1350,13 +1454,14 @@ function buildWorld(
     wayLost: false,
     wayLostAt: null,
     rho: spec.waterDensity ?? RHO,
+    // A wave ship always sees her storm (her ride, her rogue wave's time).
     sea:
-      pendingDeck.length > 0
+      pendingDeck.length > 0 || spec.wave
         ? { storm, scale: STORM_SCALE[opts.storm ?? "real"], t: 0 }
         : null,
     deck: pendingDeck.map((p) => p.o),
     pendingDeck,
-    relock: (spec.storm?.groups ?? []).flatMap((g, i) =>
+    relock: rawGroups.flatMap((g, i) =>
       g.x === undefined || g.y === undefined ? [i] : []
     ),
     bowUnderRealT: null,
@@ -1369,6 +1474,18 @@ function buildWorld(
     aground: false,
     agroundScale: spec.agroundTimeScale ?? 1,
     floor: body.floorFn ?? (() => -spec.seaDepthM),
+    namedBoxes: spec.superstructure.some((s) => s.id !== undefined),
+    rawGroups,
+    rule:
+      peak === null
+        ? null
+        : { peak: peak * DEG, t0: 0, roll0: 0, on: false, done: false },
+    capsized: false,
+    capsizeScale: spec.capsizeTimeScale ?? 1,
+    boxFlood:
+      variant === "real" && spec.wave?.boxFlood
+        ? boxFloodOf(spec, spec.wave.boxFlood, hullOpenings)
+        : [],
     probe: opts.probe,
     forecastle: fwdBox
       ? { x: (fwdBox.fromX + fwdBox.toX) / 2, z: fwdBox.topZ }
@@ -1438,6 +1555,7 @@ function frame(w: World): SimFrame {
   const lead = w.bodies.find((b) => b.part === "stern") ?? w.bodies[0];
   // Her deck's green water while she is whole (the liners have none).
   const deck = w.broken ? null : w.bodies[0].deckWater;
+  const boxWater = w.namedBoxes ? boxFill(w) : null;
   return {
     t: w.t,
     realT: w.realT,
@@ -1453,7 +1571,20 @@ function frame(w: World): SimFrame {
       .filter((b) => b.grounded || b.mode === "landing" || b.mode === "landed")
       .map((b) => b.part),
     ...(deck ? { deckWater: Array.from(deck.vol) } : {}),
+    ...(boxWater ? { boxWater } : {}),
   };
+}
+
+/** 0..1 fill per superstructure box (spec order), its parts summed. */
+function boxFill(w: World): number[] {
+  const water = w.spec.superstructure.map(() => 0);
+  const cap = w.spec.superstructure.map(() => 0);
+  for (const b of w.bodies)
+    for (const c of b.boxes) {
+      water[c.boxIndex] += c.water;
+      cap[c.boxIndex] += c.cap;
+    }
+  return water.map((v, k) => (cap[k] > 0 ? min(1, v / cap[k]) : 0));
 }
 
 const splitBuf = new Float64Array(R_SIZE);
@@ -1468,6 +1599,20 @@ function breakUp(w: World, xRaw: number): void {
   const [nx, ny, nz] = upInShip(whole.pitch, whole.roll);
   const sternCells: Cell[] = [];
   const bowCells: Cell[] = [];
+  // Trapped air (`spec.trappedAir`): each cell's air goes with it; a cell
+  // cut in two shares its air by the halves' air volumes.
+  const air = whole.air;
+  const airIn = new Map<Cell, number>();
+  if (air) whole.all.forEach((c, i) => airIn.set(c, air.mass[i]));
+  const shareAir = (c: Cell, aft: Cell, fwd: Cell) => {
+    const m = airIn.get(c);
+    if (m === undefined) return;
+    const va = max(0, aft.cap - aft.water);
+    const vf = max(0, fwd.cap - fwd.water);
+    const f = va + vf > 0 ? va / (va + vf) : 0.5;
+    airIn.set(aft, m * f);
+    airIn.set(fwd, m * (1 - f));
+  };
   for (const c of whole.cells) {
     if (c.slice.xTo <= x + 1e-6) sternCells.push(c);
     else if (c.slice.xFrom >= x - 1e-6) bowCells.push(c);
@@ -1509,6 +1654,7 @@ function breakUp(w: World, xRaw: number): void {
       }
       aft.burst = c.burst;
       fwd.burst = c.burst;
+      shareAir(c, aft, fwd);
       for (const o of c.openings) (o.x < x ? aft : fwd).openings.push(o);
       for (const o of c.deck) (o.x < x ? aft : fwd).deck.push(o);
       sternCells.push(aft);
@@ -1523,28 +1669,51 @@ function breakUp(w: World, xRaw: number): void {
     else if (s.fromX >= x) bowBoxes.push(c);
     else {
       const aft = makeCell(
-        boxSlice(w.hull, w.spec.sheerZ, s.fromX, x, s.topZ, s.halfBreadthM),
+        boxSlice(
+          w.hull,
+          w.spec.sheerZ,
+          s.fromX,
+          x,
+          s.topZ,
+          s.halfBreadthM,
+          s.baseZ
+        ),
         -1,
         true,
         0,
         0,
         false,
         false,
-        BOX_PERMEABILITY
+        BOX_PERMEABILITY,
+        0,
+        i
       );
       const fwd = makeCell(
-        boxSlice(w.hull, w.spec.sheerZ, x, s.toX, s.topZ, s.halfBreadthM),
+        boxSlice(
+          w.hull,
+          w.spec.sheerZ,
+          x,
+          s.toX,
+          s.topZ,
+          s.halfBreadthM,
+          s.baseZ
+        ),
         -1,
         true,
         0,
         0,
         false,
         false,
-        BOX_PERMEABILITY
+        BOX_PERMEABILITY,
+        0,
+        i
       );
       const f = c.cap > 0 ? c.water / c.cap : 0;
       aft.water = f * aft.cap;
       fwd.water = f * fwd.cap;
+      shareAir(c, aft, fwd);
+      // A named box keeps its openings, each in the half it is in.
+      for (const o of c.openings) (o.x < x ? aft : fwd).openings.push(o);
       sternBoxes.push(aft);
       bowBoxes.push(fwd);
     }
@@ -1591,6 +1760,12 @@ function breakUp(w: World, xRaw: number): void {
     makeBody(ctx, "stern", sternCells, sternBoxes),
     makeBody(ctx, "bow", bowCells, bowBoxes),
   ];
+  if (air)
+    for (const p of parts)
+      p.all.forEach((c, i) => {
+        const m = airIn.get(c);
+        if (m !== undefined && p.air) p.air.mass[i] = m;
+      });
   const c = cos(whole.pitch);
   const s = sin(whole.pitch);
   for (const p of parts) {
@@ -1669,6 +1844,27 @@ function watch(w: World): void {
           dyn = i;
           break;
         }
+    // Her blackout by list (`blackout.listDeg`, a rule).
+    if (
+      out?.listDeg !== undefined &&
+      !w.lightsOut &&
+      listOf(whole.roll) > out.listDeg * DEG
+    ) {
+      w.lightsOut = true;
+      emit(w, "lights-out");
+    }
+    // Keel up (a wave ship): the rule let her go past CAPSIZED_DEG, or
+    // physics took her there.
+    if (
+      spec.wave &&
+      !w.rule?.on &&
+      listOf(whole.roll) > CAPSIZED_DEG * DEG &&
+      !w.fired.has("capsized")
+    ) {
+      once(w, "capsized", "capsized");
+      w.capsized = true;
+      whole.capsized = true;
+    }
     if (dyn >= 0 && !w.lightsOut) {
       const cell = whole.cells[dyn];
       if (
@@ -1717,6 +1913,18 @@ function cellAt(w: World, i: number, x: number): Cell | null {
   return best;
 }
 
+/** The cell that now holds box k at ship-frame x (after a break too). */
+function boxAt(w: World, k: number, x: number): Cell | null {
+  let best: Cell | null = null;
+  for (const b of w.bodies)
+    for (const c of b.boxes) {
+      if (c.boxIndex !== k) continue;
+      if (x >= c.slice.xFrom - X_EPS && x <= c.slice.xTo + X_EPS) return c;
+      best = best ?? c;
+    }
+  return best;
+}
+
 /** Floor contact afloat: the first touch of each end is its landing. */
 function touched(w: World, b: Body): void {
   if (!b.grounded) return;
@@ -1726,6 +1934,158 @@ function touched(w: World, b: Body): void {
   const stern = b.part === "stern" || (b.part === "whole" && b.touchStern);
   if (bow) once(w, "bow-lands", "bow-lands");
   if (stern) once(w, "stern-lands", "stern-lands");
+}
+
+/** Her rogue wave's group as the run has it (`spec.wave`), or null. */
+function rogueOrWave(w: World): WaveGroup | null {
+  const g = rogueGroup(w.sea?.storm);
+  if (g) return g;
+  // From ahead it is in her ride: her storm's last group (`withWave`).
+  const groups = w.sea?.storm?.groups;
+  return groups && groups.length > 0 ? groups[groups.length - 1] : null;
+}
+
+/**
+ * The wave's roll rule (`spec.wave`, a rule) on the whole hull afloat, at
+ * the end of a physics step to real second `tEnd`: from her rogue wave's
+ * time her roll is set by the smoothstep (`ruleRoll`) from where it was,
+ * about her centre of mass (heave, pitch and the rest stay physics); at
+ * `rollS` it lets go at the peak with her roll rate zeroed.
+ */
+function stepWaveRule(w: World, b: Body, rollBefore: number, tEnd: number) {
+  const rule = w.rule as NonNullable<World["rule"]>;
+  const wave = w.spec.wave as NonNullable<ShipSpec["wave"]>;
+  if (!rule.on) {
+    const g = rogueGroup(w.sea?.storm);
+    if (!g || w.broken) return;
+    const t0 = waveStartT(g);
+    if (tEnd <= t0) return;
+    rule.on = true;
+    rule.t0 = t0;
+    rule.roll0 = rollBefore;
+    // Small steps from the wave on (her roll moves fast).
+    w.fast = true;
+  }
+  const r = ruleRoll(rule.roll0, rule.peak, rule.t0, wave.rollS, tEnd, ruleBuf);
+  const g = earthOf(b, b.gx, b.gy, b.gz);
+  b.roll = r[0];
+  b.wr = r[1];
+  if (tEnd >= rule.t0 + wave.rollS) {
+    b.roll = rule.peak;
+    b.wr = 0;
+    rule.on = false;
+    rule.done = true;
+  }
+  placeAbout(b, [b.gx, b.gy, b.gz], g);
+  updateBounds(b);
+  if (w.boxFlood.length > 0) floodBoxes(w, b, (tEnd - rule.t0) / wave.rollS);
+}
+
+/**
+ * The real wave's green water (`spec.wave.boxFlood`, a rule): each box
+ * filled to at least its share of `fill` at u (0..1 of `rollS`), its
+ * air (if any) going out with the volume the water takes, at its
+ * pressure (its mass scaled with its air volume).
+ */
+function floodBoxes(w: World, b: Body, u: number): void {
+  const air = b.air;
+  const n = b.cells.length;
+  for (const f of w.boxFlood) {
+    const c = b.boxes[f.k];
+    if (!c || c.cap <= 0) continue;
+    const span = f.toU - f.fromU;
+    const share =
+      span > 0 ? min(1, max(0, (u - f.fromU) / span)) : u >= f.toU ? 1 : 0;
+    const target = f.fill * share * c.cap;
+    if (c.water >= target) continue;
+    const before = c.cap - c.water;
+    c.water = target;
+    if (air && before > 0) air.mass[n + f.k] *= (c.cap - target) / before;
+  }
+}
+
+const ruleBuf: [number, number] = [0, 0];
+
+/**
+ * The real wave's box flood for a run (`spec.wave.boxFlood`): the boxes
+ * one of whose spots is open, every opening of the spot in the run
+ * (matched by its space, x and heights, as a copied list of them is).
+ */
+function boxFloodOf(
+  spec: ShipSpec,
+  list: NonNullable<NonNullable<ShipSpec["wave"]>["boxFlood"]>,
+  openings: readonly Opening[]
+): World["boxFlood"] {
+  const open = new Set(
+    (spec.wave?.spots ?? [])
+      .filter((s) =>
+        s.openings.every((o) =>
+          openings.some(
+            (p) =>
+              p.compartmentId === o.compartmentId &&
+              p.x === o.x &&
+              p.zLow === o.zLow &&
+              p.zHigh === o.zHigh
+          )
+        )
+      )
+      .map((s) => s.id)
+  );
+  const out: World["boxFlood"] = [];
+  for (const f of list) {
+    const k = spec.superstructure.findIndex((s) => s.id === f.id);
+    if (k < 0)
+      throw new Error(`${spec.id}: boxFlood "${f.id}" is none of hers`);
+    if (f.spots.some((id) => open.has(id)))
+      out.push({ k, fill: f.fill, fromU: f.fromU, toU: f.toU });
+  }
+  return out;
+}
+
+/**
+ * The keel-under rule (a rule, not physics): a capsized whole hull whose
+ * wreck rests keel up (`keelUpDive`'s terms) and whose keel amidships has
+ * gone under the sea has no waterplane left, and one air pocket per cell
+ * cannot say how her air holds her; from then (latched) her roll is eased
+ * keel up as the dive's is (`keelUpRoll`), turned about her centre of
+ * mass. Heave, pitch, flooding and air stay physics.
+ */
+function stepKeelUnder(b: Body, dt: number): void {
+  if (
+    b.part !== "whole" ||
+    !b.wreck ||
+    abs(b.wreck.rest) < KEEL_UP_REST_DEG * DEG
+  )
+    return;
+  if (!b.keelUnder) {
+    if (earthZ(b, 0, 0, 0) >= 0) return;
+    b.keelUnder = true;
+  }
+  const g = earthOf(b, b.gx, b.gy, b.gz);
+  const before = b.roll;
+  b.roll = keelUpRoll(b, dt);
+  b.wr = (b.roll - before) / dt;
+  placeAbout(b, [b.gx, b.gy, b.gz], g);
+  updateBounds(b);
+}
+
+/**
+ * `spec.rideOut` (a rule): whole, afloat, never `capsized`, at least
+ * `afterS` shown seconds after her rogue wave, and within `maxListDeg`.
+ */
+function rodeOut(w: World): boolean {
+  const r = w.spec.rideOut;
+  if (!r || w.broken || w.fired.has("capsized") || w.rule?.on) return false;
+  const whole = w.bodies[0];
+  if (whole.mode !== "float") return false;
+  const g = rogueOrWave(w);
+  if (!g || w.t < waveStartT(g) + r.afterS) return false;
+  return listOf(whole.roll) <= r.maxListDeg * DEG;
+}
+
+/** Her list however far round she has rolled (rad, 0..π): roll is unwrapped. */
+function listOf(roll: number): number {
+  return abs(Math.atan2(sin(roll), cos(roll)));
 }
 
 /** R22 (`spec.pivotDrag`): a whole hull landing on its bow swings down. */
@@ -1741,7 +2101,10 @@ function step(w: World): void {
   const spec = w.spec;
   while (w.timed.length > 0 && w.timed[0].t <= w.t) {
     const p = w.timed.shift() as World["timed"][number];
-    cellAt(w, p.i, p.o.x)?.openings.push(p.o);
+    (p.box === undefined
+      ? cellAt(w, p.i, p.o.x)
+      : boxAt(w, p.box, p.o.x)
+    )?.openings.push(p.o);
   }
   // A torpedo that lands while some part of her still floats.
   while (w.hitTimes.length > 0 && w.hitTimes[0] <= w.t) {
@@ -1757,9 +2120,11 @@ function step(w: World): void {
       ? FAST_STEP_S * w.descentScale
       : w.aground
         ? FAST_STEP_S * w.agroundScale
-        : w.fast
-          ? FAST_STEP_S
-          : SIM_STEP_S;
+        : w.capsized
+          ? FAST_STEP_S * w.capsizeScale
+          : w.fast
+            ? FAST_STEP_S
+            : SIM_STEP_S;
   // Steady way lasts until she goes under (the bow first).
   if (w.wayLostAt === null && w.fired.has("bow-under")) w.wayLostAt = w.realT;
   // A drift path places her itself (below): no way of her own.
@@ -1829,6 +2194,7 @@ function step(w: World): void {
       }
       if (b.mode === "float") {
         const girderNow = !w.broken;
+        const rollBefore = b.roll;
         stepFloat(
           b,
           dt,
@@ -1841,6 +2207,9 @@ function step(w: World): void {
           (spec.heel?.wind ? windHeel(spec, b.yaw) : 0) +
             (spec.heel?.muster ? musterHeel(spec, w.t) : 0)
         );
+        if (w.rule && !w.rule.done && b.part === "whole")
+          stepWaveRule(w, b, rollBefore, w.realT + dt);
+        if (b.capsized) stepKeelUnder(b, dt);
         touched(w, b);
         // On a seabed or a drift path her way, once lost on the floor,
         // leaves her where she touched: no sway, no slide.
@@ -1907,7 +2276,9 @@ function step(w: World): void {
     ? dt / w.descentScale
     : w.aground
       ? dt / w.agroundScale
-      : dt;
+      : w.capsized
+        ? dt / w.capsizeScale
+        : dt;
   // Her drift path (a rule) carries her while she floats with her way.
   if (w.path && !w.wayLost && w.wayLostAt === null)
     for (const b of w.bodies) if (b.mode === "float") onPath(w, b, w.t);
@@ -1938,10 +2309,14 @@ function step(w: World): void {
   // Not in a storm: the next wave over her deck can always come. Not while
   // a torpedo is still to come (`spec.torpedo.finisher`): a frozen hull
   // would never take its water.
+  // A wave ship (`spec.wave`): in her storm, once her rogue wave has
+  // passed (her hull's physics is on still water; the pose box on).
+  const rogue = spec.wave ? rogueOrWave(w) : null;
   if (
     !w.steady &&
-    w.t > 1800 &&
-    !(w.sea && w.sea.storm) &&
+    (rogue
+      ? groupPassed(rogue, w.realT)
+      : w.t > 1800 && !(w.sea && w.sea.storm)) &&
     w.timed.length === 0
   ) {
     for (const b of w.bodies) {
@@ -1968,7 +2343,8 @@ function step(w: World): void {
       // Settled (1.5): only a ship whose U-boat comes back (the Carpathia's
       // forward peak trades water in a cycle too slow for the rate test);
       // every other ship keeps the rate test exactly.
-      else if (w.spec.torpedo?.finisher && settled(b, w.t)) b.frozen = true;
+      else if ((w.spec.torpedo?.finisher || w.spec.wave) && settled(b, w.t))
+        b.frozen = true;
     }
     if (
       w.bodies.some((b) => b.frozen) &&
@@ -2012,13 +2388,21 @@ function step(w: World): void {
     emit(w, "sheltered");
     w.done = true;
     w.outcome = "floated";
+  } else if (rodeOut(w)) {
+    // She rode it out (`spec.rideOut`, a rule).
+    emit(w, "sheltered");
+    w.done = true;
+    w.outcome = "floated";
   } else if (w.t >= w.endT) {
     w.done = true;
+    const afloat = w.bodies.filter((b) => b.mode === "float");
     w.outcome = w.aground
       ? "aground"
-      : w.bodies.some((b) => b.mode === "float")
-        ? "floated"
-        : "sank";
+      : afloat.length === 0
+        ? "sank"
+        : spec.endS !== undefined && afloat.some((b) => cos(b.roll) < 0)
+          ? "capsized"
+          : "floated";
   }
   if (w.done && w.frames[w.frames.length - 1].t < w.t) w.frames.push(frame(w));
 }
@@ -2041,8 +2425,8 @@ export interface SimRunner {
  */
 function relockGroups(w: World): void {
   const sea = w.sea;
-  const raw = w.spec.storm?.groups;
-  if (!sea || !sea.storm || !raw || w.relock.length === 0) return;
+  const raw = w.rawGroups;
+  if (!sea || !sea.storm || w.relock.length === 0) return;
   const b = w.bodies[0];
   const now = w.realT;
   const due = w.relock.filter((i) => raw[i].t - GROUP_RELOCK_S <= now);
@@ -2089,7 +2473,16 @@ function rideFor(w: World, dt: number): void {
       rideBuf[3 * j + 2] = 0;
       continue;
     }
-    waveRide(storm, sea.scale, b.x, b.y, w.spec, ts, rideOne);
+    waveRide(
+      storm,
+      sea.scale,
+      b.x,
+      b.y,
+      w.spec,
+      ts,
+      rideOne,
+      swellFade(w.spec, storm, ts)
+    );
     rideBuf[3 * j] = k * rideOne[0];
     rideBuf[3 * j + 1] = k * rideOne[1];
     rideBuf[3 * j + 2] = k * rideOne[2];

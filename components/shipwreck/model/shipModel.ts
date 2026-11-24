@@ -39,6 +39,7 @@ import {
 } from "./materials";
 import { carpathiaRecipe } from "./carpathiaRecipe";
 import { concordiaRecipe } from "./concordiaRecipe";
+import { poseidonRecipe } from "./poseidonRecipe";
 import {
   attachBritannicLivery,
   britannicModelRecipe,
@@ -216,7 +217,9 @@ export function recipeFor(spec: ShipSpec, livery?: string | null): ShipRecipe {
               ? britannicRecipe(spec, id as BritannicPaint)
               : spec.id === "concordia"
                 ? concordiaRecipe(spec)
-                : titanicRecipe(spec);
+                : spec.id === "poseidon"
+                  ? poseidonRecipe(spec)
+                  : titanicRecipe(spec);
     byLivery.set(key, r);
   }
   return r;

@@ -6,6 +6,7 @@ import {
   WHAT_IF_STORMS,
   type ShipWhatIf,
   type WhatIfStorm,
+  type WhatIfWave,
 } from "@/lib/shipwreck/save";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import {
@@ -24,15 +25,17 @@ import {
   MINE_TOGGLES,
   STORM_LABEL,
   TO_SEA_TOGGLE,
+  WAVE_CHOICES,
   finisherClock,
   type MineToggle,
   spotAria,
   spotLabel,
   stormChoiceText,
   stormSpotGroups,
+  waveChoiceText,
 } from "@/lib/shipwreck/whatIf";
 import HullDiagram from "./HullDiagram";
-import Icon from "./Icon";
+import Icon, { type IconName } from "./Icon";
 import { FOCUS, PANEL, PRIMARY, ROUND, SECONDARY } from "./styles";
 
 /**
@@ -60,6 +63,8 @@ export interface WhatIfChoice {
   enginesStopped?: boolean;
   /** Rocks ships only: the wind blows her out to sea. */
   toSea?: boolean;
+  /** Wave ships only: the wave as it was, a smaller one or one from ahead. */
+  wave?: WhatIfWave;
 }
 
 interface WhatIfEditorProps {
@@ -130,6 +135,19 @@ function wordsOf(spec: ShipSpec) {
         icon: "torpedo" as const,
         go: "Go: start the afternoon with these torpedoes",
       };
+    case "wave":
+      return {
+        lead: "Tap what the wave smashes, and choose the wave. Will she turn over?",
+        group: "What the wave smashes",
+        diagram: `${spec.name}'s side, bow to the right. Tap a spot to let the wave smash it, or tap it again to leave it whole.`,
+        note: "Stern ← · → Bow. Red: the giant wave smashes her left (port) side there, and the sea can pour in.",
+        real: "Like the real night",
+        realAria:
+          "Like the real night: the giant wave smashes all seven spots on her left side",
+        clear: "Clear: the wave smashes nothing",
+        icon: "wave" as const,
+        go: "Go: start the night with these choices",
+      };
     case "rocks":
       return {
         lead: "Tap where the rock tears her left side, and choose the wind. Will she float?",
@@ -158,6 +176,17 @@ function wordsOf(spec: ShipSpec) {
   }
 }
 
+/** The picture on each of a wave ship's spot buttons. */
+const WAVE_SPOT_ICON: Record<string, IconName> = {
+  stern: "door",
+  "aft-win": "windows",
+  "mid-win": "windows",
+  vents: "vents",
+  ballroom: "dome",
+  "fwd-win": "windows",
+  lobby: "double-door",
+};
+
 /**
  * Tap any number of spots, then Go. The same picker for every ship: an
  * iceberg ship's compartments, a torpedo ship's hits along her starboard
@@ -177,6 +206,8 @@ export default function WhatIfEditor({
   const side = torpedo || mine;
   const storm = spec.cause === "storm";
   const rocks = spec.cause === "rocks";
+  // A wave ship: seven spots the wave smashes, and how big a wave.
+  const wavy = spec.cause === "wave";
   // Portholes to open or shut: only a torpedo ship that has them (the
   // Lusitania; a mine ship's are among her toggles).
   const hasPortholes = torpedo && (spec.portholes?.length ?? 0) > 0;
@@ -186,14 +217,19 @@ export default function WhatIfEditor({
   const real = useMemo(() => realWhatIfIds(spec), [spec]);
   const [ids, setIds] = useState<string[]>(() => {
     const known = initial.ids.filter((id) => spots.includes(id));
-    // A storm ship's saved What if may be no damage at all.
-    const saved = known.length > 0 || (storm && initial.storm !== undefined);
+    // A storm ship's saved What if may be no damage at all, and so may a
+    // wave ship's (the wave is always saved with it).
+    const saved =
+      known.length > 0 ||
+      (storm && initial.storm !== undefined) ||
+      (wavy && initial.wave !== undefined);
     return saved ? known : real;
   });
   const [portholesOpen, setPortholesOpen] = useState(
     initial.portholesOpen ?? true
   );
   const [sea, setSea] = useState<WhatIfStorm>(initial.storm ?? "real");
+  const [wave, setWave] = useState<WhatIfWave>(initial.wave ?? "real");
   // A mine ship's toggles, on for the real morning (R14).
   const [doorsStuck, setDoorsStuck] = useState(initial.doorsClosed !== true);
   const [runForKea, setRunForKea] = useState(initial.enginesStopped !== true);
@@ -227,13 +263,15 @@ export default function WhatIfEditor({
   // along the middle are tapped on the hull, so Go stays on a short screen).
   const chips = storm
     ? spots
-    : [...spots]
-        .reverse()
-        .filter(
-          (id) =>
-            id !== FINISHER_SPOT &&
-            !spec.compartments.find((c) => c.id === id)?.noChip
-        );
+    : wavy
+      ? spots
+      : [...spots]
+          .reverse()
+          .filter(
+            (id) =>
+              id !== FINISHER_SPOT &&
+              !spec.compartments.find((c) => c.id === id)?.noChip
+          );
   const groups = storm ? stormSpotGroups(spec) : null;
   const isReal =
     ids.length === real.length &&
@@ -241,10 +279,11 @@ export default function WhatIfEditor({
     (!(hasPortholes || mine) || portholesOpen) &&
     (!mine || (doorsStuck && runForKea)) &&
     (!rocks || !toSea) &&
-    (!storm || sea === "real");
+    (!storm || sea === "real") &&
+    (!wavy || wave === "real");
   // No damage at all is a storm ship's question too (every cover tight),
   // and a rocks ship's: no tear, and she sails safely past.
-  const canGo = storm || rocks || ids.length > 0;
+  const canGo = storm || rocks || wavy || ids.length > 0;
 
   const chip = (id: string, short?: string) => {
     const on = selected.has(id);
@@ -272,6 +311,7 @@ export default function WhatIfEditor({
 
   let count: string;
   if (storm) count = stormChoiceText(spec, ids);
+  else if (wavy) count = waveChoiceText(ids);
   else if (torpedo) {
     count =
       hitIds.length === 0
@@ -372,6 +412,32 @@ export default function WhatIfEditor({
                 {groups.shoal.map((id) => chip(id))}
               </div>
             </>
+          ) : wavy ? (
+            chips.map((id) => {
+              const on = selected.has(id);
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  aria-label={spotAria(spec, id, on)}
+                  data-testid={`shipwreck-chip-${id}`}
+                  onClick={() => toggle(id)}
+                  className={`flex min-h-16 w-24 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-2xl border px-1.5 py-1.5 text-center text-xs font-semibold leading-tight sm:w-28 sm:text-sm ${
+                    on
+                      ? "border-red-300 bg-red-500/80 text-white"
+                      : "border-white/15 bg-slate-900/80 text-slate-200"
+                  } ${FOCUS}`}
+                >
+                  <Icon
+                    name={WAVE_SPOT_ICON[id] ?? "wave"}
+                    className="size-8"
+                  />
+                  {spotLabel(spec, id)}
+                </button>
+              );
+            })
           ) : (
             <>
               {chips.map((id) => chip(id))}
@@ -506,6 +572,43 @@ export default function WhatIfEditor({
                 ))}
               </div>
             )}
+            {wavy && (
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  role="radiogroup"
+                  aria-label="The wave"
+                  aria-describedby={`${helpId}-wave`}
+                  data-testid="shipwreck-wave"
+                  className="flex items-center gap-1.5"
+                >
+                  {WAVE_CHOICES.map((w) => (
+                    <button
+                      key={w.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={wave === w.id}
+                      aria-label={w.aria}
+                      data-testid={`whatif-wave-${w.id}`}
+                      onClick={() => setWave(w.id)}
+                      className={`flex min-h-14 touch-manipulation items-center gap-1.5 rounded-full border px-3 text-sm font-semibold sm:px-4 sm:text-base ${
+                        wave === w.id
+                          ? "border-sky-300 bg-sky-500 text-white"
+                          : "border-white/15 bg-slate-900/80 text-slate-200"
+                      } ${FOCUS}`}
+                    >
+                      <Icon name={w.icon} className="size-7 shrink-0" />
+                      {w.label}
+                    </button>
+                  ))}
+                </div>
+                <p
+                  id={`${helpId}-wave`}
+                  className="text-center text-xs leading-snug text-slate-300"
+                >
+                  {WAVE_CHOICES.find((w) => w.id === wave)?.help}
+                </p>
+              </div>
+            )}
             <button
               type="button"
               data-testid="shipwreck-preset-real"
@@ -518,6 +621,7 @@ export default function WhatIfEditor({
                 setDoorsStuck(true);
                 setRunForKea(true);
                 setToSea(false);
+                setWave("real");
               }}
               className={`${SECONDARY} min-h-14 px-5 text-base sm:text-lg`}
             >
@@ -580,7 +684,9 @@ export default function WhatIfEditor({
                         ? { ids, storm: sea }
                         : rocks
                           ? { ids, toSea }
-                          : { ids }
+                          : wavy
+                            ? { ids, wave }
+                            : { ids }
                 )
               }
               className={`${PRIMARY} min-w-36 disabled:cursor-not-allowed disabled:opacity-40`}

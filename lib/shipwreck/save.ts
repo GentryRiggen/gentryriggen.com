@@ -51,7 +51,18 @@ export interface ShipWhatIf {
   /** Rocks ships (1.9): blown out to sea by the wind, the real tear
    *  (default false: the real night's wind, back onto the rocks). */
   toSea?: boolean;
+  /** Wave ships (1.11): the wave as it was, a smaller one or one from
+   *  ahead (default "real"). */
+  wave?: WhatIfWave;
 }
+
+/** A wave ship's What-if wave. */
+export type WhatIfWave = "real" | "smaller" | "ahead";
+export const WHAT_IF_WAVES: readonly WhatIfWave[] = [
+  "real",
+  "smaller",
+  "ahead",
+];
 
 /** A storm ship's What-if storm. */
 export type WhatIfStorm = "real" | "calmer" | "worse";
@@ -69,6 +80,7 @@ export const SAVE_SHIP_IDS: readonly ShipId[] = [
   "carpathia",
   "britannic",
   "concordia",
+  "poseidon",
 ];
 
 export const SAVE_KEY = "shipwreck:v1";
@@ -157,6 +169,8 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
       if (typeof value.enginesStopped === "boolean")
         entry.enginesStopped = value.enginesStopped;
       if (typeof value.toSea === "boolean") entry.toSea = value.toSea;
+      if ((WHAT_IF_WAVES as readonly unknown[]).includes(value.wave))
+        entry.wave = value.wave as WhatIfWave;
       byShip[ship] = entry;
     }
     if (Object.keys(byShip).length > 0) save.whatIfByShip = byShip;

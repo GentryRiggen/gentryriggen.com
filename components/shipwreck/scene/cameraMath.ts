@@ -4,7 +4,9 @@ import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import type { ShipId, ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
 import { HARBOUR_MOUTH, groundZ } from "./giglio";
+import { poseidonShot, poseidonView, type PoseidonShot } from "./poseidonShots";
 
 /**
  * Camera maths with no three.js: points are [x, y, z] in three.js axes
@@ -219,8 +221,32 @@ export const CARPATHIA_HULL_BOXES: readonly HullBox[] =
 export const CONCORDIA_HULL_BOXES: readonly HullBox[] =
   carpathiaBoxes(concordia);
 
+/**
+ * The Poseidon's (lib/shipwreck/ships/poseidon.ts), made as the
+ * Carpathia's: her hull to deck 1, her beam across, then her tiers (lower
+ * decks 1–6 and upper decks 7–11 fore, midships and aft, the top tier to
+ * deck 14) and the ballroom's box, each to its top with 2.5 m for rails
+ * and glass; the dome's crown over it (9 m over deck 14) gets its own box.
+ * Her funnel and masts are not boxed. Posed by the body's full rotation
+ * (`keepClear` works in her frame), so they hold at any roll.
+ */
+export const POSEIDON_HULL_BOXES: readonly HullBox[] = [
+  ...carpathiaBoxes(poseidon),
+  ...poseidon.superstructure
+    .filter((b) => b.id === "ballroom")
+    .map((b): HullBox => {
+      const r = b.halfBreadthM ?? poseidon.beam / 2;
+      return {
+        x: [b.fromX, b.toX],
+        y: [-r, r],
+        z: [b.topZ, poseidon.decks[0].z + 9.5],
+      };
+    }),
+];
+
 /** The hull boxes of a ship (the camera's bounds and the double-tap proxies). */
 export function hullBoxesFor(ship: ShipId): readonly HullBox[] {
+  if (ship === "poseidon") return POSEIDON_HULL_BOXES;
   if (ship === "concordia") return CONCORDIA_HULL_BOXES;
   if (ship === "fitzgerald") return FITZGERALD_HULL_BOXES;
   if (ship === "carpathia") return CARPATHIA_HULL_BOXES;
@@ -440,7 +466,9 @@ export type ShotId =
   | "giglio-strike"
   | "giglio-drift"
   | "giglio-boats"
-  | "giglio-aground";
+  | "giglio-aground"
+  // The Poseidon's night (poseidonShots.ts).
+  | PoseidonShot;
 
 export interface View {
   pos: V3;
@@ -512,6 +540,7 @@ export function lifeboatView(ctx: ShotContext, distance = 420): View {
 /** Follows the bow down (under water), then circles the wreck. */
 export function underwaterView(ctx: ShotContext): View {
   if (ctx.ship === "concordia") return concordiaUnderwater(ctx);
+  if (ctx.ship === "poseidon") return poseidonUnderwater(ctx);
   if (ctx.ship === "lusitania" || ctx.ship === "britannic")
     return lusitaniaUnderwater(ctx);
   if (ctx.ship === "carpathia") return carpathiaUnderwater(ctx);
@@ -564,6 +593,8 @@ export function cinematicShot(
   if (ship === "britannic") return hit ? britannicShot(track, t) : "morning";
   if (ship === "fitzgerald") return hit ? fitzgeraldShot(track, t) : "storm";
   if (ship === "concordia") return hit ? concordiaShot(track, t) : "giglio";
+  if (ship === "poseidon")
+    return hit ? poseidonShot(track, t) : "poseidon-party";
   const firstOf = (kind: string): number | null => {
     for (const e of track.events) if (e.kind === kind) return e.t;
     return null;
@@ -608,6 +639,14 @@ export function shotView(shot: ShotId, ctx: ShotContext): View {
     case "giglio-boats":
     case "giglio-aground":
       return concordiaView(shot, ctx);
+    case "poseidon-party":
+    case "poseidon-wave":
+    case "poseidon-roll":
+    case "poseidon-keel":
+    case "poseidon-dome":
+    case "poseidon-dive":
+    case "poseidon-floor":
+      return poseidonView(shot, ctx);
     case "storm":
     case "storm-beam":
     case "deck":
@@ -1446,4 +1485,18 @@ function concordiaUnderwater(ctx: ShotContext): View {
   }
   pos[1] = clamp(tgt[1] + 1, fl + 3, -4);
   return { pos, target: tgt };
+}
+
+/**
+ * The Poseidon under water: by the dome while she floats keel up, then
+ * following her dive, then over her on the floor (poseidonShots.ts).
+ */
+function poseidonUnderwater(ctx: ShotContext): View {
+  const b =
+    ctx.bodies.find((x) => x.part === "whole") ??
+    ctx.bodies.find((x) => x.part === "stern") ??
+    ctx.bodies[0];
+  if (b.z < -ctx.seaDepthM + 120) return poseidonView("poseidon-floor", ctx);
+  if (b.z > -20) return poseidonView("poseidon-dome", ctx);
+  return poseidonView("poseidon-dive", ctx);
 }
