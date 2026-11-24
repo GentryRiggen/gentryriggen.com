@@ -47,6 +47,7 @@ describe("the Lusitania's data", () => {
       "carpathia",
       "britannic",
       "concordia",
+      "poseidon",
     ]);
     expect(Object.keys(SHIPS).sort()).toEqual([
       "britannic",
@@ -54,6 +55,7 @@ describe("the Lusitania's data", () => {
       "concordia",
       "fitzgerald",
       "lusitania",
+      "poseidon",
       "titanic",
     ]);
     expect(lusitania.cause).toBe("torpedo");

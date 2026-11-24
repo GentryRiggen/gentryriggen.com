@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.11.0",
+    date: "2026-11-24",
+    title: "The Poseidon",
+    highlights: [
+      "A seventh ship joins the game, and she is a made-up one: the Poseidon, a long white cruise ship with rows of balconies, orange lifeboats, a tall swept-back funnel and a ballroom under a big glass dome",
+      "On New Year's Eve, in the middle of the Atlantic, a giant wave hits her side and rolls her right over, upside down. Watch her float on the air caught inside her, with her propellers up in the sky, until the water wins and she sinks, still upside down",
+      "Try What if: there are seven spots where the water can get in, and a wave chip. Shut the spots and she may keep floating upside down. Pick the smaller wave and she can stand back up. Send it from straight ahead and she rides right over it",
+      "Her paint box works too: her made-up colours, or fun ones",
+      "She starts on a starry night, and the time button shows her by day. She has no sounds yet, and you can't walk her decks yet",
+    ],
+  },
+  {
     version: "1.10.0",
     date: "2026-11-23",
     title: "Any time of day",

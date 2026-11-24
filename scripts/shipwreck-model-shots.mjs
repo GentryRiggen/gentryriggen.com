@@ -27,7 +27,7 @@ const [
 // Where each ship's sim breaks her (the Fitzgerald near hatch No. 9).
 const BREAK_X = { lusitania: 4, fitzgerald: 18 }[ship] ?? -27.1;
 // The Carpathia does not break (her girder holds): no broken shots.
-const UNBROKEN = new Set(["carpathia", "concordia"]);
+const UNBROKEN = new Set(["carpathia", "concordia", "poseidon"]);
 const COMMON = [
   { id: "bow-day", view: { camera: "bow" } },
   { id: "stern-day", view: { camera: "stern" } },
@@ -67,14 +67,27 @@ const CONCORDIA = [
   { id: "fun-navy-hull", view: { camera: "bow", livery: "fun-navy-hull" } },
   { id: "fun-white-red", view: { camera: "bow", livery: "fun-white-red" } },
 ];
+// The Poseidon (never breaks): her funnel, the ballroom's dome close, keel
+// up (rolled 180°: the red bottom, propellers and rudders), two fun paints.
+const POSEIDON = [
+  ...COMMON.filter((s) => !s.id.startsWith("broken")),
+  { id: "funnel-day", view: { camera: "funnel" } },
+  { id: "dome-day", view: { camera: "dome" } },
+  { id: "dome-night", view: { camera: "dome", stage: "night", power: 1 } },
+  { id: "keel-up-day", view: { camera: "keel", roll: 180 } },
+  { id: "fun-navy-hull", view: { camera: "bow", livery: "fun-navy-hull" } },
+  { id: "fun-black-red", view: { camera: "bow", livery: "fun-black-red" } },
+];
 const SHOTS =
   ship === "britannic"
     ? BRITANNIC
-    : ship === "concordia"
-      ? CONCORDIA
-      : UNBROKEN.has(ship)
-        ? COMMON.filter((s) => s.view.breakX === undefined)
-        : COMMON;
+    : ship === "poseidon"
+      ? POSEIDON
+      : ship === "concordia"
+        ? CONCORDIA
+        : UNBROKEN.has(ship)
+          ? COMMON.filter((s) => s.view.breakX === undefined)
+          : COMMON;
 const BASE = {
   breakX: null,
   power: 0,
@@ -83,6 +96,7 @@ const BASE = {
   camera: "bow",
   stage: "day",
   bowBend: 0,
+  roll: 0,
 };
 
 mkdirSync(outDir, { recursive: true });

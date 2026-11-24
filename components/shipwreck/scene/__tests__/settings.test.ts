@@ -19,12 +19,15 @@ import {
   LUSITANIA_DAYLIGHT,
   NIGHT_FOG,
   NIGHT_SEA_FOG,
+  POSEIDON_DAY_LOOK,
   SCENE_SETTINGS,
+  sceneSettingsFor,
   sunDirection,
   sunPosition,
   LUSITANIA_HIT,
 } from "../settings";
 import otherShips from "./fixtures/otherShipsSettings.json";
+import otherTimes from "./fixtures/otherShipsTimes.json";
 
 describe("SCENE_SETTINGS", () => {
   it("has a scene for every ship", () => {
@@ -444,5 +447,56 @@ describe("the Concordia's January night (Task 6)", () => {
     expect(rest.azimuthDeg).toBeLessThan(124);
     expect(rest.lit).toBeGreaterThan(0.74);
     expect(rest.lit).toBeLessThan(0.84);
+  });
+});
+
+describe("the Poseidon's night (Task 9)", () => {
+  it("leaves every other ship's scene, at every hour, as it was", () => {
+    // Written from sceneSettingsFor at 1.10.0's settings (before her
+    // night), every ship but her, every time she offers.
+    const before = otherTimes as Record<string, unknown>;
+    expect(Object.keys(before).length).toBeGreaterThanOrEqual(20);
+    for (const key of Object.keys(before)) {
+      const [id, time] = key.split(":");
+      expect(
+        JSON.parse(
+          JSON.stringify(
+            sceneSettingsFor(id as keyof typeof SCENE_SETTINGS, time)
+          )
+        )
+      ).toEqual(before[key]);
+    }
+  });
+
+  it("is a starlit, moonless storm night in the open ocean", () => {
+    const s = SCENE_SETTINGS.poseidon;
+    expect(s.timeOfDay).toBe("storm-dusk");
+    expect(s.storm).toBe(true);
+    expect(s.stormLight).toBe(0);
+    expect(s.stars).toBe(true);
+    expect(s.moon).toBeUndefined();
+    expect(s.sun).toBeNull();
+    expect(s.coast).toBe(false);
+    expect(s.iceberg).toBe(false);
+    expect(s.snow).toBeUndefined();
+    // The 1.0 night's horizon haze; a deep blue ocean under it.
+    expect(s.fog).toBe(`#${NIGHT_FOG.getHexString()}`);
+    const under = new Color(s.underwaterFog);
+    expect(under.b).toBeGreaterThan(under.r);
+  });
+
+  it("is a grey overcast by day (the time button), with no stars", () => {
+    const day = sceneSettingsFor("poseidon", "storm-day");
+    expect(day.stormLight).toBe(1);
+    expect(day.stars).toBeUndefined();
+    expect(day.storm).toBe(true);
+    expect(day.fog).toBe(POSEIDON_DAY_LOOK.fog);
+    expect(day.underwaterFog).toBe(POSEIDON_DAY_LOOK.underwaterFog);
+    expect(sceneSettingsFor("poseidon", "real")).toBe(SCENE_SETTINGS.poseidon);
+    // The Fitzgerald's storm by day is her overcast, lit (unchanged).
+    expect(sceneSettingsFor("fitzgerald", "storm-day")).toEqual({
+      ...SCENE_SETTINGS.fitzgerald,
+      stormLight: 1,
+    });
   });
 });

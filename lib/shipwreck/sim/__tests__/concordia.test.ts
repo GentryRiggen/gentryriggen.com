@@ -49,10 +49,11 @@ function upright(draught: number) {
 const at = (id: string) => concordia.compartments.find((c) => c.id === id)!;
 
 describe("the Costa Concordia's data", () => {
-  it("is in the registry, last, a rocks ship at 21:45:07 in 30 m", () => {
+  it("is in the registry, after the Britannic, a rocks ship at 21:45:07 in 30 m", () => {
     expect(getShip("concordia")).toBe(concordia);
-    expect(SHIP_IDS[SHIP_IDS.length - 1]).toBe("concordia");
-    expect(SHIP_IDS.indexOf("britannic")).toBe(SHIP_IDS.length - 2);
+    expect(SHIP_IDS.indexOf("concordia")).toBe(
+      SHIP_IDS.indexOf("britannic") + 1
+    );
     expect(SHIPS.concordia).toBe(concordia);
     expect(concordia.cause).toBe("rocks");
     expect(concordia.clockStartS).toBe(21 * 3600 + 45 * 60 + 7);

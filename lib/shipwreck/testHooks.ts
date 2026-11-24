@@ -28,7 +28,9 @@ export interface ModelViewOptions {
     | "bow-port"
     | "gantry"
     | "funnel"
-    | "rock";
+    | "rock"
+    | "dome"
+    | "keel";
   stage?: "day" | "night";
   /**
    * A livery id (repainted live, no rebuild), e.g. "cunard-1907" or the
@@ -37,6 +39,11 @@ export interface ModelViewOptions {
   livery?: string;
   /** The bent bow (R12), radians (ships with a hinge; default 0). */
   bowBend?: number;
+  /**
+   * Turn the whole ship about her length, degrees to starboard (180: keel
+   * up, the Poseidon's; default 0).
+   */
+  roll?: number;
 }
 
 export interface ModelInfo {
@@ -80,6 +87,8 @@ export interface ScenePlaybackInfo {
   done: boolean;
   computedT: number;
   progress: number;
+  /** Her lean now (degrees, + to starboard, unwrapped: keel up is about 180); 0 before a run. */
+  listDeg: number;
 }
 
 /** The scene's hooks (`?scene`, and later the game itself). */
@@ -92,6 +101,8 @@ export interface ShipwreckSceneHooks {
   setXray(on: boolean): void;
   flyToPlace(place: string | null): void;
   setQuality(quality: "high" | "medium" | "low"): void;
+  /** The time button's hour ("real" or one she offers). */
+  setTime?(id: string): void;
   /** Free camera to a ship-frame view (target and camera, x fwd, y port, z up). */
   flyToView(
     target: [number, number, number],
@@ -155,7 +166,8 @@ export interface ShipwreckGameHooks {
    * portholes are open, for a storm ship the storm ("real" | "calmer" |
    * "worse"), and for a mine ship whether every watertight door is shut
    * and her engines stopped at once (default: neither, as the real
-   * morning), and for a rocks ship whether the wind blows her out to sea.
+   * morning), and for a rocks ship whether the wind blows her out to sea,
+   * and for a wave ship the wave ("real" | "smaller" | "ahead").
    */
   startWhatIf(
     ids: string[],
@@ -163,9 +175,10 @@ export interface ShipwreckGameHooks {
     storm?: string,
     doorsClosed?: boolean,
     enginesStopped?: boolean,
-    toSea?: boolean
+    toSea?: boolean,
+    wave?: string
   ): void;
-  /** "sank" | "floated" | "broke-in-two" once the run is done, else null. */
+  /** "sank" | "floated" | "broke-in-two" | "aground" | "capsized" once the run is done, else null. */
   getOutcome(): string | null;
   /** Paints the ship on the stage in livery `id`, as the paint button does. */
   setLivery(id: string): void;

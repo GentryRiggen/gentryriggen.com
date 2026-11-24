@@ -2,10 +2,12 @@ import { render } from "@testing-library/react";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { fitzgeraldRecipe } from "../../model/fitzgeraldRecipe";
 import { lusitaniaRecipe } from "../../model/lusitaniaRecipe";
 import { spotAria } from "@/lib/shipwreck/whatIf";
+import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import HullDiagram from "../HullDiagram";
 
 function funnelFills(spec: typeof titanic): string[] {
@@ -182,5 +184,125 @@ describe("the struck side's label", () => {
     expect(
       container.querySelector("[data-testid='shipwreck-plan']")
     ).toContainElement(label);
+  });
+});
+
+describe("the diagram of a wave ship (the Poseidon)", () => {
+  const pose = (rollDeg: number, pitchDeg = 0, z = 0): BodyPose => ({
+    part: "whole",
+    x: 0,
+    y: 0,
+    z,
+    pitch: (pitchDeg * Math.PI) / 180,
+    roll: (rollDeg * Math.PI) / 180,
+    yaw: 0,
+  });
+
+  it("stays finite at every roll, keel up and past it", () => {
+    for (const roll of [0, 45, 90, 135, 180, 190]) {
+      for (const z of [-9, 0, 9]) {
+        const { container, unmount } = render(
+          <HullDiagram spec={poseidon} pose={pose(roll, 1, z)} title="Side" />
+        );
+        const bad: string[] = [];
+        for (const el of container.querySelectorAll("*"))
+          for (const a of el.getAttributeNames())
+            if (/NaN|Infinity/.test(el.getAttribute(a) ?? ""))
+              bad.push(`${el.tagName} ${a}`);
+        expect(bad).toEqual([]);
+        // The sea line is drawn only where it can be read.
+        const line = container.querySelector(
+          "[data-testid='shipwreck-sea-line']"
+        );
+        if (roll === 90) expect(line).toBeNull();
+        else expect(line).not.toBeNull();
+        unmount();
+      }
+    }
+  });
+
+  it("draws her upside down once she is past her side, never for other ships", () => {
+    const body = (spec: typeof poseidon, roll: number) => {
+      const { container, unmount } = render(
+        <HullDiagram spec={spec} pose={pose(roll, 0, 9)} title="Side" />
+      );
+      const g = container.querySelector(
+        "[data-testid='shipwreck-diagram-body']"
+      )!;
+      const out = [g.getAttribute("data-flipped"), g.getAttribute("transform")];
+      unmount();
+      return out;
+    };
+    expect(body(poseidon, 0)[0]).toBe("false");
+    expect(body(poseidon, 80)[0]).toBe("false");
+    expect(body(poseidon, 100)[0]).toBe("true");
+    const [flipped, transform] = body(poseidon, 180);
+    expect(flipped).toBe("true");
+    expect(transform).toMatch(/^translate\(0 \d+\) scale\(1 -1\)$/);
+    // A ship with a plan (the Carpathia's side bunkers) is never turned.
+    expect(body(carpathia, 180)[0]).toBe("false");
+  });
+
+  it("marks her seven spots on her side, each a tap target, no plan", () => {
+    const onToggle = jest.fn();
+    const { container, getByTestId } = render(
+      <HullDiagram
+        spec={poseidon}
+        selected={new Set(["vents"])}
+        onToggle={onToggle}
+        title="Side"
+      />
+    );
+    expect(
+      container.querySelector("[data-testid='shipwreck-plan']")
+    ).toBeNull();
+    const ids = poseidon.wave!.spots.map((s) => s.id);
+    expect(ids).toHaveLength(7);
+    for (const id of ids)
+      expect(getByTestId(`shipwreck-spot-${id}`)).toHaveAttribute(
+        "aria-checked",
+        id === "vents" ? "true" : "false"
+      );
+    getByTestId("shipwreck-spot-lobby").dispatchEvent(
+      new MouseEvent("click", { bubbles: true })
+    );
+    expect(onToggle).toHaveBeenCalledWith("lobby");
+    // No per-compartment targets: her spots are what the wave smashes.
+    expect(
+      container.querySelector("[data-testid^='shipwreck-comp-']")
+    ).toBeNull();
+    // Her whole funnel and dome fit: the picture is as tall as she is.
+    const [, , , h] = container
+      .querySelector("svg")!
+      .getAttribute("viewBox")!
+      .split(" ")
+      .map(Number);
+    expect(h).toBeGreaterThan(78 * 2);
+  });
+});
+
+describe("the water in her named boxes (the Poseidon, Task 9)", () => {
+  it("draws each box's water from its floor, only where there is some", () => {
+    const fills = poseidon.superstructure.map((b, i) =>
+      b.id === "ballroom" ? 0.5 : i === 0 ? 1 : 0
+    );
+    const { container } = render(
+      <HullDiagram spec={poseidon} boxWater={fills} title="Side" />
+    );
+    const rects = container.querySelectorAll("[data-box-water]");
+    expect(rects).toHaveLength(2);
+    const ball = container.querySelector("[data-box-water='ballroom']")!;
+    const full = container.querySelector(
+      `[data-box-water='${poseidon.superstructure[0].id}']`
+    )!;
+    const h = (r: Element) => Number(r.getAttribute("height"));
+    expect(h(ball)).toBeGreaterThan(0);
+    for (const r of rects)
+      for (const a of ["x", "y", "width", "height"])
+        expect(Number.isFinite(Number(r.getAttribute(a)))).toBe(true);
+    expect(h(full)).toBeGreaterThan(h(ball));
+    // Without box water (every other ship), none.
+    const plain = render(<HullDiagram spec={poseidon} title="Side" />);
+    expect(plain.container.querySelector("[data-box-water]")).toBeNull();
   });
 });

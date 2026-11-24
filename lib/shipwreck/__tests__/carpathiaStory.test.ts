@@ -48,9 +48,10 @@ describe("the Carpathia's captions", () => {
       }
     // The explosion is her torpedoes' own; her lights went out with the
     // engine room (no flicker back on); no storm, no wireless (R14); she
-    // never rests aground (no `spec.aground`).
+    // never rests aground (no `spec.aground`) or capsizes (no `spec.wave`).
     expect([...new Set(none)].sort()).toEqual([
       "aground",
+      "capsized",
       "explosion",
       "hatch-fails",
       "lights-flicker",

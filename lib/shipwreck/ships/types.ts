@@ -13,7 +13,8 @@ export type ShipId =
   | "fitzgerald"
   | "carpathia"
   | "britannic"
-  | "concordia";
+  | "concordia"
+  | "poseidon";
 
 export interface HullStation {
   x: number;
@@ -60,6 +61,7 @@ export interface Compartment {
 }
 
 export interface Opening {
+  /** A compartment's id, or a superstructure box's (`superstructure[i].id`). */
   compartmentId: string;
   areaM2: number;
   zLow: number;
@@ -140,6 +142,17 @@ export interface WaveGroup {
    */
   x?: number;
   y?: number;
+  /** `false`: left out of her ride (`waveRide`): her rogue wave
+   *  (`ShipSpec.wave`), whose roll is a rule. Missing: in her ride. */
+  ride?: false;
+}
+
+/** A What-if spot of a wave ship (`ShipSpec.wave.spots`): what the wave
+ *  smashes there. */
+export interface WaveSpot {
+  id: string;
+  label: string;
+  openings: readonly Opening[];
 }
 
 export interface StormSpec {
@@ -398,7 +411,7 @@ export interface ShipSpec {
   sheerZ: (x: number) => number; // height of the uppermost continuous deck edge at x
   /**
    * Buoyant volume above the hull once sealed decks submerge (coarse
-   * boxes, from the deck edge up to `topZ`). `halfBreadthM`: a deckhouse
+   * boxes, from the deck edge, or their own `baseZ`, up to `topZ`). `halfBreadthM`: a deckhouse
    * inboard of an open deck, no wider than this either side of the centre
    * line (the Carpathia's stern house); missing, as wide as the deck.
    */
@@ -407,6 +420,12 @@ export interface ShipSpec {
     toX: number;
     topZ: number;
     halfBreadthM?: number;
+    /** A named space: openings may name it (`Opening.compartmentId`), its
+     *  water is in `SimFrame.boxWater`. */
+    id?: string;
+    /** Its floor (m above the keel): a tier stacked on another box.
+     *  Missing: the deck edge (`sheerZ`), as every earlier ship. */
+    baseZ?: number;
   }[];
   compartments: readonly Compartment[]; // the 16 watertight compartments, aft to fwd
   realNight: readonly Opening[]; // the iceberg damage
@@ -426,7 +445,7 @@ export interface ShipSpec {
   /** Seconds after midnight of the first event (Titanic 23*3600+40*60). */
   clockStartS: number;
   /** What opened the hull: drives words, scene and What-if. */
-  cause: "iceberg" | "torpedo" | "storm" | "mine" | "rocks";
+  cause: "iceberg" | "torpedo" | "storm" | "mine" | "rocks" | "wave";
   /** Torpedo ship's hits (side, order, hole). Missing: the 1.1 rule (the real
    *  hit moved along her starboard side, aft first, HIT_STAGGER_S apart). */
   torpedo?: TorpedoSpec;
@@ -623,7 +642,14 @@ export interface ShipSpec {
    * `emergencyLight`, never 0. Replaces the 1.0 dynamo rule. Missing: the
    * dynamo rule.
    */
-  blackout?: { compartmentId: string; depthM: number; emergencyLight: number };
+  blackout?: {
+    compartmentId: string;
+    depthM: number;
+    emergencyLight: number;
+    /** Out once |roll| passes this (degrees; a rule, its threshold
+     *  calibrated). Missing: only the water. */
+    listDeg?: number;
+  };
   /**
    * The rest aground (a rule, not physics, like `wreck`): a floating body
    * touching the floor with its way lost and listed at least `minListDeg`
@@ -658,4 +684,73 @@ export interface ShipSpec {
    * deck cut up by cabins and passages).
    */
   spillBreadth?: number;
+  /**
+   * Air caught in her spaces (physics: Boyle, the orifice laws; sim README
+   * "Trapped air"). Each space sealed from the air above the sea keeps its
+   * air, squeezed by the sea, and loses it only through openings under the
+   * sea where its pressure beats the sea's, and through these leaks.
+   * Missing: none (the 1.0 flooding: a space fills to the sea's level).
+   */
+  trappedAir?: {
+    /** Stated slow leak per space (m²), by kind; boxes use `box`. */
+    leakM2: Partial<Record<Compartment["kind"] | "box", number>>;
+  };
+  /**
+   * The rogue wave (a rule, not physics, for her roll): its group joins
+   * her storm (`stormOf`), its biggest crest at her at `group.t`, and is
+   * left out of her ride (`ride: false`); from then her roll eases
+   * (smoothstep) to `peakDeg` over `rollS` real seconds, then physics owns
+   * it from rest (`wave.ts`). Missing: no wave.
+   */
+  wave?: {
+    group: WaveGroup;
+    /** The roll rule's peak (degrees, + to starboard). */
+    peakDeg: number;
+    /** Its duration (real s). */
+    rollS: number;
+    /** What if: the smaller wave (its height and its rule's peak). */
+    smaller: { heightM: number; peakDeg: number };
+    /** What if: the wave from ahead (its direction); no roll rule, the
+     *  group is in her ride. */
+    ahead: { dirDeg: number };
+    /** What it smashes, aft to forward. `fwd` spots only from ahead (it
+     *  breaks over her bow). */
+    spots: readonly (WaveSpot & { fwd?: true })[];
+    /**
+     * The breaking wave's green water and burst windows in her boxes (a
+     * rule, not physics: no breaking-wave impact model): during the real
+     * wave's roll rule, box `id` (a `superstructure[i].id`) fills to at
+     * least `fill` of its volume, linearly from `fromU` to `toU` of
+     * `rollS` (0..1); its air goes out with the water's volume. From the
+     * hand-off physics carries the water. Only in a run of the real wave
+     * (not the smaller one or from ahead) with one of `spots` open (its
+     * glass broken: every opening of that spot in the run). Missing: none.
+     */
+    boxFlood?: readonly {
+      id: string;
+      fill: number;
+      fromU: number;
+      toU: number;
+      /** The What-if spots whose broken glass lets it in. */
+      spots: readonly string[];
+    }[];
+  };
+  /**
+   * Once `capsized` fires, shown time runs this many times slower than
+   * real (as `agroundTimeScale`). Missing: 1.
+   */
+  capsizeTimeScale?: number;
+  /**
+   * A rule: a run whose ship is whole, afloat and never `capsized` ends
+   * `floated` (`sheltered`) once she is within `maxListDeg` at or after
+   * `afterS` shown seconds from the wave (`wave.group.t`). Missing: no
+   * such end.
+   */
+  rideOut?: { afterS: number; maxListDeg: number };
+  /**
+   * The run's end (shown s after the first event; a rule): there a body
+   * afloat keel up ends `capsized`. Missing: END_T (6:00 AM), no such
+   * outcome.
+   */
+  endS?: number;
 }

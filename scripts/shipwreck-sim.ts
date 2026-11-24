@@ -35,6 +35,10 @@
  *   npx tsx scripts/shipwreck-sim.ts --ship=concordia --to-sea # blown out to sea
  *   npx tsx scripts/shipwreck-sim.ts --ship=concordia wtc5 wtc6 # What if? these
  *   (her clock is real time: shown time runs 6× once she is aground)
+ *   npx tsx scripts/shipwreck-sim.ts --ship=poseidon           # her New Year's Eve
+ *   npx tsx scripts/shipwreck-sim.ts --ship=poseidon ballroom vents  # What if? these spots
+ *   for a wave ship --wave=real|smaller|ahead (her rogue wave, `spec.wave`:
+ *   as it was, the smaller one, or from ahead; her clock is real time)
  */
 import { SHIPS, type ShipId } from "../lib/shipwreck/ships";
 import {
@@ -118,9 +122,12 @@ function clock(t: number): string {
   return `${h12}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
 }
 
-/** Her clock: real time for a ship whose shown time runs fast aground. */
+/** Her clock: real time for a ship whose shown time runs slower aground
+ *  or once capsized. */
 const when = (e: { t: number; realT: number }) =>
-  spec.agroundTimeScale === undefined ? e.t : e.realT;
+  spec.agroundTimeScale === undefined && spec.capsizeTimeScale === undefined
+    ? e.t
+    : e.realT;
 
 const storm = spec.cause === "storm";
 const showWater = args.includes("--water");
@@ -128,7 +135,11 @@ const portholesOpen = !args.includes("--shut");
 const first = option("first");
 const every = Number(
   option("every") ??
-    (spec.cause === "torpedo" || spec.cause === "mine" ? 60 : storm ? 900 : 600)
+    (spec.cause === "torpedo" || spec.cause === "mine" || spec.cause === "wave"
+      ? 60
+      : storm
+        ? 900
+        : 600)
 );
 const noFinisher = args.includes("--no-finisher");
 const named = [
@@ -149,14 +160,21 @@ let label =
       : storm
         ? "Her last afternoon"
         : "The real night";
-let openings: readonly RunOpening[] = spec.realNight;
+const waveOption = option("wave");
+if (waveOption && !["real", "smaller", "ahead"].includes(waveOption))
+  throw new Error(`--wave=real|smaller|ahead, not ${waveOption}`);
+const wave = (waveOption ?? "real") as NonNullable<SimOptions["wave"]>;
+let openings: readonly RunOpening[] =
+  spec.wave && wave !== "real"
+    ? whatIfOpenings(spec, whatIfRealIds(spec), wave)
+    : spec.realNight;
 if (first) {
   const n = Number(first);
   const forward = whatIfSpots(spec).slice(-n);
-  openings = whatIfOpenings(spec, forward);
+  openings = whatIfOpenings(spec, forward, wave);
   label = `What if: the first ${n} forward (${forward.join(", ")})`;
 } else if (ids.length > 0) {
-  openings = whatIfOpenings(spec, ids);
+  openings = whatIfOpenings(spec, ids, wave);
   label =
     named.length === 0
       ? `${label}, no later torpedo`
@@ -181,7 +199,10 @@ const opts: SimOptions = {
   doorsClosed: args.includes("--doors-closed"),
   enginesStopped: args.includes("--engines-stopped"),
   toSea: args.includes("--to-sea"),
+  ...(spec.wave ? { wave } : {}),
 };
+if (spec.wave && wave !== "real")
+  label += wave === "smaller" ? ", the smaller wave" : ", the wave from ahead";
 if (opts.doorsClosed) label += ", doors closed";
 if (opts.enginesStopped) label += ", engines stopped";
 if (opts.toSea) label += ", blown out to sea";
@@ -250,8 +271,10 @@ const pct =
     : ((track.breakX + spec.lbp / 2) / spec.lbp) * 100;
 console.log(
   `\nOutcome: ${track.outcome}` +
-    (track.sankAtT === null ? "" : `, under at ${clock(track.sankAtT)}`) +
+    (track.sankAtT === null
+      ? ""
+      : `, under at ${clock(when(sampleTrack(track, track.sankAtT)))}`) +
     (track.brokeAtT === null
       ? ", no breakup"
-      : `, broke at ${clock(track.brokeAtT)} at x = ${track.breakX?.toFixed(1)} m (${pct?.toFixed(1)}% of LBP from the stern)`)
+      : `, broke at ${clock(when(sampleTrack(track, track.brokeAtT)))} at x = ${track.breakX?.toFixed(1)} m (${pct?.toFixed(1)}% of LBP from the stern)`)
 );

@@ -40,14 +40,21 @@ export interface SimFrame {
    * without an open deck (the liners) and after a break.
    */
   deckWater?: number[];
+  /**
+   * 0..1 fill per superstructure box (as `ShipSpec.superstructure`, its
+   * parts summed after a break), only for a ship with a named box
+   * (`superstructure[i].id`): the X-ray's rooms. Missing otherwise.
+   */
+  boxWater?: number[];
 }
 
 export interface SimTrack {
   frames: SimFrame[];
   events: SimEvent[];
   /** "aground": she came to rest on the floor still afloat in part
-   *  (`spec.aground`), a lost ship that did not go under. */
-  outcome: "sank" | "floated" | "aground";
+   *  (`spec.aground`), a lost ship that did not go under. "capsized":
+   *  afloat keel up at her end (`spec.endS`). */
+  outcome: "sank" | "floated" | "aground" | "capsized";
   /** When the last of her went under (s), or null. */
   sankAtT: number | null;
   brokeAtT: number | null;
@@ -139,6 +146,13 @@ export function sampleTrack(track: SimTrack, t: number): SimFrame {
           ),
         }
       : {}),
+    ...(a.boxWater && b.boxWater && a.boxWater.length === b.boxWater.length
+      ? {
+          boxWater: a.boxWater.map((v, k) =>
+            lerp(v, (b.boxWater as number[])[k], u)
+          ),
+        }
+      : {}),
   };
 }
 
@@ -216,6 +230,13 @@ export function sampleTrackInto(
     dw.length = da.length;
     for (let k = 0; k < da.length; k += 1) dw[k] = lerp(da[k], db[k], u);
   } else if (out.deckWater) out.deckWater = undefined;
+  const ba = a.boxWater;
+  const bb = b.boxWater;
+  if (ba && bb && ba.length === bb.length) {
+    const bw = out.boxWater ?? (out.boxWater = []);
+    bw.length = ba.length;
+    for (let k = 0; k < ba.length; k += 1) bw[k] = lerp(ba[k], bb[k], u);
+  } else if (out.boxWater) out.boxWater = undefined;
   return out;
 }
 

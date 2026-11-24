@@ -3,6 +3,7 @@ import { carpathia } from "./carpathia";
 import { concordia } from "./concordia";
 import { fitzgerald } from "./fitzgerald";
 import { lusitania } from "./lusitania";
+import { poseidon } from "./poseidon";
 import { titanic } from "./titanic";
 import type { ShipId, ShipSpec } from "./types";
 
@@ -59,6 +60,13 @@ export {
   CONCORDIA_LIVERIES,
   type ConcordiaBoat,
 } from "./concordia";
+export {
+  poseidon,
+  POSEIDON_BOATS,
+  POSEIDON_DECKS,
+  POSEIDON_LIVERIES,
+  type PoseidonBoat,
+} from "./poseidon";
 
 /** Every ship the game knows, in the order the title screen lists them. */
 export const SHIP_IDS = [
@@ -68,6 +76,7 @@ export const SHIP_IDS = [
   "carpathia",
   "britannic",
   "concordia",
+  "poseidon",
 ] as const satisfies readonly ShipId[];
 /** Every ShipId is in SHIP_IDS: this fails to compile if one is missing. */
 const ALL_SHIP_IDS: [Exclude<ShipId, (typeof SHIP_IDS)[number]>] extends [never]
@@ -83,6 +92,7 @@ export const SHIPS: Record<ShipId, ShipSpec> = {
   carpathia,
   britannic,
   concordia,
+  poseidon,
 };
 
 export function getShip(id: ShipId): ShipSpec {

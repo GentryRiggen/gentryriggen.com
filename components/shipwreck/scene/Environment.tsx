@@ -449,7 +449,7 @@ function NightEnvironment({
     sky.intensity = walkAmbient(
       under
         ? lookUnderAmbient(shelf ? 0.6 : 0.25, runtime.walkLookUnder) *
-          L.ambient
+            L.ambient
         : 0.9 + runtime.flash * 5,
       runtime.walkInfo?.phase === "deck"
     );
@@ -908,6 +908,22 @@ const STORM_FOG_SQUALL = 0.0011;
 const STORM_DEEP_WATER = new Color(0x02080b);
 const STORM_NIGHT_WATER = new Color(0x041210);
 
+/**
+ * A starlit storm night (`settings.stars`, the Poseidon's): the 1.0
+ * night's clear haze in place of the snow, and starlight a little
+ * stronger than the Titanic's (a look, not physics, as her starlight: a
+ * moonless open ocean is darker, but a young player must see her lit
+ * decks, the wave and her red bottom keel up). Her deep water: the
+ * Atlantic's dark blue, black toward her 4,000 m floor.
+ */
+export const STARLIT = {
+  fogDensity: 0.00011,
+  sky: 0x8a96b4,
+  ground: 0x1a2028,
+  intensity: 1.9,
+  deepWater: new Color(0x01060e),
+} as const;
+
 function StormEnvironment({
   runtime,
   seaDepthM: SEA_DEPTH,
@@ -978,6 +994,9 @@ function StormEnvironment({
 
   const water = useMemo(() => new Color(), []);
   const lightWater = useMemo(() => new Color(), []);
+  const starlit = settings.stars === true;
+  const starSky = useMemo(() => new Color(STARLIT.sky), []);
+  const starGround = useMemo(() => new Color(STARLIT.ground), []);
   useFrame((state) => {
     const y = camera.position.y;
     const under = runtime.underwater;
@@ -986,13 +1005,25 @@ function StormEnvironment({
     const k = Math.min(1, Math.max(0, -y / SEA_DEPTH));
     lights.sky.color.copy(lights.nightSky).lerp(lights.daySky, d);
     lights.sky.groundColor.copy(lights.nightGround).lerp(lights.dayGround, d);
-    if (under) {
+    if (starlit && !under) {
+      // A clear night: starlight, the night's haze (no snow).
+      lights.sky.color.copy(starSky);
+      lights.sky.groundColor.copy(starGround);
+      lights.sky.intensity = STARLIT.intensity;
+      fog.color.copy(haze);
+      fog.density = STARLIT.fogDensity;
+      (scene.background as Color).copy(haze);
+    } else if (under) {
       // Grey-green under the storm's surface, black toward the floor.
       // (Lake Superior is clear: the murk is the storm's, near the top.)
+      // (A starlit night's deep blue ocean: her own water, black below.)
       water
-        .copy(STORM_NIGHT_WATER)
+        .copy(starlit ? shallow : STORM_NIGHT_WATER)
         .lerp(shallow, d)
-        .lerp(STORM_DEEP_WATER, Math.min(1, k * 1.4));
+        .lerp(
+          starlit ? STARLIT.deepWater : STORM_DEEP_WATER,
+          Math.min(1, k * 1.4)
+        );
       // The water-light button: toward her shallow water, made lighter.
       const L = underLightOf(runtime.underLight);
       if (L.lift > 0)

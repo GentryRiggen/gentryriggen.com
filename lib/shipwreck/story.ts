@@ -1,7 +1,8 @@
 import { titanic } from "./ships/titanic";
 import type { Opening, ShipId, ShipSpec } from "./ships/types";
 import type { SimEvent } from "./sim/events";
-import type { SimTrack } from "./sim/track";
+import { eventsBetween, type SimTrack } from "./sim/track";
+import type { WaveVariant } from "./sim/wave";
 import type { OutcomeId } from "./types";
 
 /**
@@ -68,6 +69,14 @@ export function storyOf(
       realLabel: "The real morning",
     };
   }
+  if (ship.cause === "wave")
+    return {
+      cause: "the wave",
+      justHit: "Just hit by the wave",
+      justBefore: "Just before the wave",
+      period: "night",
+      realLabel: "The big wave",
+    };
   if (ship.cause === "rocks")
     return {
       cause: "the rocks",
@@ -113,9 +122,25 @@ function countWord(n: number): string {
  * null for a ship without one. `hits`: how many torpedoes (default one).
  */
 export function runInCaption(
-  ship: Pick<ShipSpec, "cause"> & Partial<Pick<ShipSpec, "torpedo">>,
-  hits = 1
+  ship: Pick<ShipSpec, "cause"> &
+    Partial<Pick<ShipSpec, "torpedo" | "preRollS" | "name">>,
+  hits = 1,
+  /** A wave ship: shown seconds (negative) into the run-in. */
+  t = -Infinity,
+  /** A wave ship: which wave is coming (default the real one). */
+  wave: WaveVariant = "real"
 ): string | null {
+  // A wave ship: all lit up on New Year's Eve, then the wave is seen.
+  if (ship.cause === "wave") {
+    const late = t >= -(ship.preRollS ?? 60) * 0.4;
+    if (!late)
+      return `It's New Year's Eve. The ${ship.name ?? "Poseidon"} is lit up from end to end.`;
+    return wave === "real"
+      ? "A giant wave is coming!"
+      : wave === "smaller"
+        ? "A smaller wave is coming!"
+        : "A wave is coming from ahead!";
+  }
   // A rocks ship sails in close to the island, all lit up, before the rock.
   if (ship.cause === "rocks")
     return "She sails close to the island, all lit up.";
@@ -207,14 +232,21 @@ export interface CaptionContext {
   aground?: boolean;
   /** A rocks ship: how far she leans at the end of the run (degrees). */
   restListDeg?: number;
+  /** A wave ship: the run's wave and whether anything was open to it. */
+  wave?: { variant: WaveVariant; smashed: boolean };
 }
 
 /** The calm caption for an event, without the clock (null: no caption). */
 export function captionText(
-  e: Pick<SimEvent, "kind" | "index"> & Partial<Pick<SimEvent, "t">>,
+  event: Pick<CaptionEvent, "kind" | "index"> & Partial<Pick<SimEvent, "t">>,
   ship: ShipSpec = titanic,
   ctx: CaptionContext = {}
 ): string | null {
+  if (ship.cause === "wave") return waveCaption(event, ship, ctx);
+  // A moment is only a wave ship's: no other ship's story has one.
+  if (isMoment(event.kind)) return null;
+  const e = event as Pick<SimEvent, "kind" | "index"> &
+    Partial<Pick<SimEvent, "t">>;
   const first = e.index === 0 || e.index === undefined;
   const depth = `${ship.seaDepthM.toLocaleString("en-US")} m`;
   // The sea is shallower than she is long: her ends touch the floor while
@@ -670,11 +702,174 @@ function rocksCaption(
   }
 }
 
+/**
+ * The moments of a wave ship's night that the sim has no event for, found
+ * in her frames: her roll passing 30° and 90° (when she goes on to
+ * capsize), the air starting to leak out while she floats keel up, and the
+ * ballroom filling.
+ */
+export const WAVE_MOMENT_KINDS = [
+  "rolling",
+  "on-her-side",
+  "keel-up-flooding",
+  "ballroom-full",
+] as const;
+export type WaveMomentKind = (typeof WAVE_MOMENT_KINDS)[number];
+
+/** A moment: an event's shape, found from the frames. */
+export interface WaveMoment {
+  t: number;
+  realT: number;
+  kind: WaveMomentKind;
+  index?: number;
+}
+
+/** What a caption is for: a sim event or a wave ship's moment. */
+export type CaptionEvent = SimEvent | (WaveMoment & { index?: number });
+
+export function isMoment(kind: CaptionEvent["kind"]): kind is WaveMomentKind {
+  return (WAVE_MOMENT_KINDS as readonly string[]).includes(kind);
+}
+
+/** How far she leans from upright (0° to 180°), as the lean chip reads it. */
+export function leanFromUpright(listDeg: number): number {
+  const a = ((Math.abs(listDeg) % 360) + 360) % 360;
+  return a > 180 ? 360 - a : a;
+}
+
+/**
+ * Real seconds into her keel-up float when "water is coming in" is said,
+ * and when the ballroom is said to be full (shown time runs 6 times slower
+ * than this once she is keel up: 2.5 minutes is 25 shown seconds).
+ */
+const KEEL_UP_NOTE_S = 150;
+const BALLROOM_NOTE_S = 300;
+/** The ballroom counts as full at this share. */
+const BALLROOM_FULL = 0.9;
+
+/**
+ * A wave ship's moments, from her frames (empty for any other ship). The
+ * first frame at or past each mark; none if the run never gets there.
+ */
+export function waveMoments(
+  track: SimTrack | null,
+  ship: Pick<ShipSpec, "cause" | "superstructure">
+): WaveMoment[] {
+  if (!track || ship.cause !== "wave" || track.frames.length === 0) return [];
+  const out: WaveMoment[] = [];
+  const frames = track.frames;
+  const mark = (kind: WaveMomentKind, f: { t: number; realT: number }) =>
+    out.push({ kind, t: f.t, realT: f.realT });
+  // She rolls on only when she goes past her side: a lean that she
+  // recovers from is no "rolling over".
+  const rollsOver = frames.some((f) => leanFromUpright(f.listDeg) >= 90);
+  if (rollsOver) {
+    const a = frames.find((f) => leanFromUpright(f.listDeg) >= 30);
+    if (a) mark("rolling", a);
+    const b = frames.find((f) => leanFromUpright(f.listDeg) >= 90);
+    if (b) mark("on-her-side", b);
+  }
+  const keelUp = track.events.find((e) => e.kind === "capsized");
+  if (keelUp) {
+    const f = frames.find((x) => x.realT >= keelUp.realT + KEEL_UP_NOTE_S);
+    if (f) mark("keel-up-flooding", f);
+    const room = ship.superstructure.findIndex((b) => b.id === "ballroom");
+    if (room >= 0) {
+      const f2 = frames.find((x) => x.realT >= keelUp.realT + BALLROOM_NOTE_S);
+      if (f2 && (f2.boxWater?.[room] ?? 0) >= BALLROOM_FULL)
+        mark("ballroom-full", f2);
+    }
+  }
+  return out.sort((a, b) => a.t - b.t);
+}
+
+/**
+ * Every event and moment in (from, to], in time order: what the captions
+ * walk through (`eventsBetween` plus a wave ship's moments).
+ */
+export function captionEventsBetween(
+  track: SimTrack,
+  ship: Pick<ShipSpec, "cause" | "superstructure">,
+  from: number,
+  to: number
+): CaptionEvent[] {
+  const evs: CaptionEvent[] = eventsBetween(track, from, to);
+  for (const m of waveMoments(track, ship))
+    if (m.t > from && m.t <= to) evs.push(m);
+  return evs.sort((a, b) => a.t - b.t);
+}
+
+/**
+ * A wave ship's captions (the Poseidon's): the wave, her roll, the lights,
+ * the air holding her, the ballroom filling, her sinking and her rest.
+ * Calm: no people, no deaths, nothing of the film.
+ */
+function waveCaption(
+  e: Pick<CaptionEvent, "kind">,
+  ship: ShipSpec,
+  ctx: CaptionContext
+): string | null {
+  const variant = ctx.wave?.variant ?? "real";
+  const depth = `${ship.seaDepthM.toLocaleString("en-US")} metres`;
+  switch (e.kind) {
+    case "collision":
+      if (variant === "smaller") return "A smaller wave hits her side!";
+      if (variant === "ahead") return "The wave hits her bow!";
+      return ctx.wave?.smashed === false
+        ? "The wave hits her side!"
+        : "The wave hits her side! Windows break.";
+    case "rolling":
+      return "She's rolling over\u2026";
+    case "on-her-side":
+      return "She's on her side\u2026";
+    case "lights-out":
+      return "Her lights go out. Only her emergency lights are on.";
+    case "capsized":
+      return "She's upside down! Air caught inside is holding her up.";
+    case "keel-up-flooding":
+      return "Water is coming in through the broken windows. Air is bubbling out.";
+    case "ballroom-full":
+      return "The ballroom has filled with water.";
+    case "bow-under":
+      return "Not enough air is left. She's sinking.";
+    case "stern-under":
+      return "She slips under the waves, upside down.";
+    case "bow-lands":
+      return `She rests upside down on the ocean floor, ${depth} down.`;
+    case "sheltered":
+      return variant === "ahead"
+        ? "She rides over the wave."
+        : "She stands up again!";
+    // No sound of boats, rockets or steam; nobody aboard to show. Her
+    // lights flicker only as the sea takes her, and her stern lands with
+    // her bow.
+    case "explosion":
+    case "steam-start":
+    case "steam-stop":
+    case "rocket":
+    case "boat-lowered":
+    case "last-boat":
+    case "forecastle-under":
+    case "bridge-under":
+    case "funnel-falls":
+    case "lights-flicker":
+    case "breakup":
+    case "stern-lands":
+    case "floating-steady":
+    case "hatch-fails":
+    case "radio":
+    case "torpedo-hit":
+    case "aground":
+    default:
+      return null;
+  }
+}
+
 /** What the track says about the run at an event's time (for its caption). */
 export function captionContext(
   track: SimTrack | null,
   t: number,
-  event?: SimEvent
+  event?: CaptionEvent
 ): CaptionContext {
   if (!track) return {};
   const ctx: CaptionContext = {
@@ -692,7 +887,7 @@ export function captionContext(
 
 /** A caption with its clock ("12:45 AM — The first lifeboat is lowered."). */
 export function captionFor(
-  e: SimEvent,
+  e: CaptionEvent,
   ship: ShipSpec = titanic,
   ctx: CaptionContext = {}
 ): string | null {
@@ -711,7 +906,8 @@ export type MarkKind =
   | "afloat"
   | "hatch"
   | "shelter"
-  | "torpedo";
+  | "torpedo"
+  | "capsized";
 
 export interface TimelineMark {
   kind: MarkKind;
@@ -732,6 +928,7 @@ const MARK_OF: Partial<Record<SimEvent["kind"], [MarkKind, string]>> = {
   sheltered: ["shelter", "Whitefish Bay"],
   "torpedo-hit": ["torpedo", "Torpedo"],
   aground: ["aground", "Stern on the rocks"],
+  capsized: ["capsized", "Upside down"],
 };
 
 /**
@@ -803,6 +1000,7 @@ export const MARK_PRIORITY: Record<MarkKind, number> = {
   break: 2,
   hatch: 1,
   torpedo: 2,
+  capsized: 2,
   iceberg: 1,
   rocket: 1,
   boat: 1,
@@ -832,6 +1030,8 @@ export function outcomeOf(track: SimTrack): OutcomeId {
   if (track.outcome === "floated") return "floated";
   // A rocks ship that rests on the rocks (a rule, not a sinking).
   if (track.outcome === "aground") return "aground";
+  // A wave ship still afloat keel up when her night ends.
+  if (track.outcome === "capsized") return "capsized";
   return track.brokeAtT !== null ? "broke-in-two" : "sank";
 }
 
@@ -1031,6 +1231,71 @@ function depthWords(seaDepthM: number): string {
   return `${m}\u00a0m (${Math.round(seaDepthM / 0.3048).toLocaleString("en-US")}\u00a0feet)`;
 }
 
+/** She leaned this far or less: the wave only rocked her (degrees). */
+const RODE_OVER_DEG = 15;
+
+/**
+ * A wave ship's ends (the Poseidon's), from the run's own outcome and
+ * times, never from the wave chosen: she sank keel up after floating on
+ * her trapped air, she was still floating upside down when the night
+ * ended, she leaned far over and stood up again, or the wave went under
+ * her. Calm: no people, no deaths.
+ */
+function waveEnd(
+  track: SimTrack,
+  ship: ShipSpec,
+  outcome: OutcomeId
+): EndWords {
+  if (outcome === "floated") {
+    const far = track.frames.some(
+      (f) => leanFromUpright(f.listDeg) > RODE_OVER_DEG
+    );
+    return far
+      ? {
+          outcome,
+          title: "She leaned far over, then stood up again.",
+          lines: [
+            "The wave pushed her far over, but she swung back upright.",
+            "On the real night the giant wave was taller still. It rolled her all the way over.",
+          ],
+        }
+      : {
+          outcome,
+          title: "She rode over the wave.",
+          lines: [
+            "The wave hardly leaned her, so it only lifted her.",
+            "On the real night the giant wave hit her side. That rolled her right over.",
+          ],
+        };
+  }
+  if (outcome === "capsized") {
+    const last = track.frames[track.frames.length - 1];
+    const endAt = last?.realT ?? track.endT;
+    return {
+      outcome,
+      title: "Upside down, she was still floating.",
+      lines: [
+        `Air caught inside her was still holding her up at ${clockText(endAt, ship.clockStartS)}, like a cup pushed upside down into the bath.`,
+      ],
+    };
+  }
+  const sank = track.events.find((e) => e.kind === "stern-under");
+  const at = sank?.realT ?? track.sankAtT ?? track.endT;
+  const up = track.events.find((e) => e.kind === "capsized");
+  const when = clockText(at, ship.clockStartS);
+  const depth = `${ship.seaDepthM.toLocaleString("en-US")} metres`;
+  return {
+    outcome,
+    title: up
+      ? `Upside down, she floated for ${durationWords(at - up.realT)}, then sank at ${when}.`
+      : `She sank at ${when}.`,
+    lines: [
+      "Air caught inside her held her up, like a cup pushed upside down into the bath. As it leaked out, the sea took its place and she went down.",
+      `She rests upside down on the ocean floor, ${depth} down.`,
+    ],
+  };
+}
+
 /** The end card's words. `holes` is how many compartments were opened. */
 export function endWords(
   track: SimTrack,
@@ -1039,6 +1304,7 @@ export function endWords(
   ctx: EndContext = {}
 ): EndWords {
   const outcome = outcomeOf(track);
+  if (ship.cause === "wave") return waveEnd(track, ship, outcome);
   if (ship.cause === "rocks") return rocksEnd(track, ship, holes, ctx, outcome);
   if (outcome === "floated" && ship.cause === "mine")
     return mineAfloat(track, ship, ctx);
@@ -1136,6 +1402,8 @@ export const HISTORY_NOTE =
 
 /** Each ship's "What really happened" note. */
 export function historyNote(ship: Pick<ShipSpec, "id">): string {
+  if (ship.id === "poseidon")
+    return "What really happened: nothing. The Poseidon is a made-up ship. Real ships have met waves nearly this big, and this shows what physics says could happen to a ship turned upside down.";
   if (ship.id === "carpathia")
     return "What really happened: the real Carpathia sank at about 11:00\u00a0AM, ten minutes after the U-boat's third torpedo. At about 1\u00a0PM the warship HMS Snowdrop came and picked up her lifeboats.";
   if (ship.id === "britannic")

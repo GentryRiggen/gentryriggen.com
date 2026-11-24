@@ -11,7 +11,7 @@ interface EndCardProps {
   /** "What really happened" (default: the Titanic's). */
   history?: string;
   /** What sank her: the What if? button's icon. */
-  cause?: "iceberg" | "torpedo" | "storm" | "mine" | "rocks";
+  cause?: "iceberg" | "torpedo" | "storm" | "mine" | "rocks" | "wave";
   /** First time this ending was seen: a small celebration. */
   isNew: boolean;
   onWatchAgain: () => void;
@@ -32,7 +32,8 @@ export default function EndCard({
 }: EndCardProps) {
   const firstRef = useRef<HTMLButtonElement>(null);
   useEffect(() => firstRef.current?.focus(), []);
-  const floated = words.outcome === "floated";
+  // Afloat at the end, even upside down: look around her, no wreck.
+  const floated = words.outcome === "floated" || words.outcome === "capsized";
 
   return (
     <div
@@ -96,7 +97,7 @@ export default function EndCard({
             onClick={onWhatIf}
             className={SECONDARY}
           >
-            <Icon name={cause} className="size-7" />
+            <Icon name={cause === "wave" ? "wave" : cause} className="size-7" />
             Try What if?
           </button>
         </div>

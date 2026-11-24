@@ -360,3 +360,16 @@ describe("the Costa Concordia's places", () => {
     expect(placeFor("concordia", "grand-staircase")).toBeNull();
   });
 });
+
+describe("the Poseidon's places (1.11)", () => {
+  it("are found by id for her and for no other ship", () => {
+    expect(placeFor("poseidon", "ballroom")?.label).toBe("Ballroom");
+    expect(placeFor("poseidon", "engine-room")?.compartmentId).toBe("wtc6");
+    expect(placeFor("poseidon", "propeller")?.interior).toBe(false);
+    // Another ship's "bridge" and "funnel" are her own, not hers.
+    expect(placeFor("poseidon", "bridge")?.at[0]).toBeGreaterThan(90);
+    expect(placeFor("concordia", "bridge")?.at[0]).toBe(118);
+    expect(placeFor("titanic", "ballroom")).toBeNull();
+    expect(placeFor("poseidon", "grand-staircase")).toBeNull();
+  });
+});

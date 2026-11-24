@@ -126,5 +126,17 @@
   "shipwreck-concordia-aground": {
     "calls": 52,
     "triangles": 375511
+  },
+  "shipwreck-poseidon-party": {
+    "calls": 34,
+    "triangles": 285475
+  },
+  "shipwreck-poseidon-wave": {
+    "calls": 34,
+    "triangles": 285475
+  },
+  "shipwreck-poseidon-keelup": {
+    "calls": 34,
+    "triangles": 285475
   }
 }

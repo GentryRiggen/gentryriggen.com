@@ -3,6 +3,7 @@ import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
 import { simulate, whatIfOpenings } from "@/lib/shipwreck/sim/run";
 import type { SimEvent } from "@/lib/shipwreck/sim/events";
 import type { SimTrack } from "@/lib/shipwreck/sim/track";
@@ -233,4 +234,61 @@ describe("the Costa Concordia's end cards (1.9)", () => {
     expect(sea).toHaveTextContent("Blown out to sea, she sank.");
     expect(sea).not.toHaveTextContent(/rolled|capsiz/);
   });
+});
+
+describe("the end card for the Poseidon (1.11)", () => {
+  function waveCard(track: SimTrack, holes: number) {
+    const words = endWords(track, poseidon, holes);
+    render(
+      <EndCard
+        words={words}
+        history={historyNote(poseidon)}
+        cause="wave"
+        isNew={false}
+        onWatchAgain={() => {}}
+        onWhatIf={() => {}}
+        onLook={() => {}}
+      />
+    );
+    return screen.getByTestId("shipwreck-end");
+  }
+  const run = (ids: string[], wave: "real" | "smaller" | "ahead" = "real") =>
+    simulate(poseidon, whatIfOpenings(poseidon, ids, wave), { wave });
+
+  it("reads her real night from the run: floated upside down, then sank", () => {
+    const real = simulate(poseidon, poseidon.realNight);
+    const card = waveCard(real, 7);
+    expect(card).toHaveAttribute("data-outcome", "sank");
+    expect(card).toHaveTextContent(
+      /Upside down, she floated for 47 minutes, then sank at 12:45 AM\./
+    );
+    expect(card).toHaveTextContent(/What really happened: nothing/);
+    expect(screen.getByTestId("shipwreck-look")).toHaveTextContent(
+      "Look at the wreck"
+    );
+    // A wave, not the iceberg or the storm cloud.
+    const icon = screen
+      .getByTestId("shipwreck-try-what-if")
+      .querySelector("svg path")!;
+    expect(icon.getAttribute("d")).toMatch(/^M2 20c3\.5/);
+  });
+
+  it("reads each What if from its own outcome, not the wave chosen", () => {
+    expect(waveCard(run([], "smaller"), 0)).toHaveTextContent(
+      "She leaned far over, then stood up again."
+    );
+    cleanup();
+    expect(waveCard(run([], "ahead"), 0)).toHaveTextContent(
+      "She rode over the wave."
+    );
+    cleanup();
+    const up = waveCard(run([]), 0);
+    expect(up).toHaveAttribute("data-outcome", "capsized");
+    expect(up).toHaveTextContent("Upside down, she was still floating.");
+    // Afloat, even upside down: look around her, no wreck.
+    expect(screen.getByTestId("shipwreck-look")).toHaveTextContent(
+      "Look around"
+    );
+    expect(up).not.toHaveTextContent("What really happened");
+  }, 30_000);
 });

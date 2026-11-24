@@ -7,6 +7,14 @@ import {
 import { CONCORDIA_BOATS, concordia } from "./ships/concordia";
 import { FITZGERALD_HATCHES, fitzgerald } from "./ships/fitzgerald";
 import { lusitania } from "./ships/lusitania";
+import {
+  BALLROOM,
+  BOAT_DECK_Z,
+  POSEIDON_BOATS,
+  deckZ as poseidonDeckZ,
+  poseidon,
+  poseidonComp,
+} from "./ships/poseidon";
 import { titanic } from "./ships/titanic";
 import type { ShipId, ShipSpec } from "./ships/types";
 
@@ -79,6 +87,17 @@ export const CONCORDIA_PLACE_IDS = [
   "pool",
 ] as const;
 
+/** The Poseidon's places (a made-up ship). */
+export const POSEIDON_PLACE_IDS = [
+  "bridge",
+  "ballroom",
+  "lobby",
+  "engine-room",
+  "funnel",
+  "propeller",
+  "lifeboat",
+] as const;
+
 /** Any ship's place (looked up with the ship: several have a bridge). */
 export type PlaceId =
   | TitanicPlaceId
@@ -86,7 +105,8 @@ export type PlaceId =
   | (typeof FITZGERALD_PLACE_IDS)[number]
   | (typeof CARPATHIA_PLACE_IDS)[number]
   | (typeof BRITANNIC_PLACE_IDS)[number]
-  | (typeof CONCORDIA_PLACE_IDS)[number];
+  | (typeof CONCORDIA_PLACE_IDS)[number]
+  | (typeof POSEIDON_PLACE_IDS)[number];
 
 export interface Place {
   id: PlaceId;
@@ -99,6 +119,12 @@ export interface Place {
   floorZ: number;
   /** The watertight compartment it is in, or null for open decks. */
   compartmentId: string | null;
+  /**
+   * The superstructure box it is in (`superstructure[i].id`, the
+   * Poseidon's), whose water (`SimFrame.boxWater`) "Water here" reads.
+   * Missing: none (open decks, or a compartment).
+   */
+  boxId?: string;
   /** Inside the hull: flying there turns X-ray on. */
   interior: boolean;
   /** Camera offset from `at` (ship frame, m) when flying there. */
@@ -650,6 +676,100 @@ export const CONCORDIA_PLACES: Record<
   },
 };
 
+/**
+ * The Poseidon's places, from her data and her model: the bridge forward on
+ * deck 9, the ballroom under its glass dome, the lobby (the atrium on deck
+ * 5), the middle generator room (WTC 6), her tall funnel, a propeller on
+ * its open shaft and a starboard lifeboat in the recess on deck 4. All ours
+ * (a made-up ship).
+ */
+const P_BOAT = POSEIDON_BOATS[6];
+const P_FUNNEL = poseidon.funnels[0];
+const P_ENGINE = poseidonComp("wtc6");
+const P_BALLROOM_X =
+  Math.round(((BALLROOM.fromX + BALLROOM.toX) / 2) * 10) / 10;
+const P_BRIDGE_X = 104;
+const P_LOBBY_X = 20;
+
+export const POSEIDON_PLACES: Record<
+  (typeof POSEIDON_PLACE_IDS)[number],
+  Place
+> = {
+  bridge: {
+    id: "bridge",
+    label: "Bridge",
+    fact: "A wide room of windows at her front. The windows were smashed, and the sea got in.",
+    at: [P_BRIDGE_X, 0, poseidonDeckZ(9) + 1.6],
+    floorZ: poseidonDeckZ(9),
+    compartmentId: null,
+    boxId: "fwd-upper",
+    interior: true,
+    view: [-16, -14, 8],
+  },
+  ballroom: {
+    id: "ballroom",
+    label: "Ballroom",
+    fact: "A round room high on the ship, under a glass dome. When the ship rolled over, the dome was under the water.",
+    at: [P_BALLROOM_X, 0, BALLROOM.baseZ + 1.6],
+    floorZ: BALLROOM.baseZ,
+    compartmentId: null,
+    boxId: "ballroom",
+    interior: true,
+    view: [-20, -20, 10],
+  },
+  lobby: {
+    id: "lobby",
+    label: "Lobby",
+    fact: "A tall room with glass doors on her side. A giant wave smashed them and filled the room with water.",
+    at: [P_LOBBY_X, 0, poseidonDeckZ(5) + 1.6],
+    floorZ: poseidonDeckZ(5),
+    compartmentId: null,
+    boxId: "mid-lower",
+    interior: true,
+    view: [-14, 20, 8],
+  },
+  "engine-room": {
+    id: "engine-room",
+    label: "Engine Room",
+    fact: "Big engines here made the electricity for the whole ship. When she rolled over, the lights went out and little emergency lights came on.",
+    at: [Math.round(((P_ENGINE.fromX + P_ENGINE.toX) / 2) * 10) / 10, 0, 6],
+    floorZ: 1.6,
+    compartmentId: "wtc6",
+    interior: true,
+    view: [-14, 20, 10],
+  },
+  funnel: {
+    id: "funnel",
+    label: "Funnel",
+    fact: "Her tall white funnel, with a gold wave on it. Upside down, it was under the water.",
+    at: [P_FUNNEL.x, 0, P_FUNNEL.baseZ + 2],
+    floorZ: P_FUNNEL.baseZ,
+    compartmentId: null,
+    interior: false,
+    view: [-14, -26, 6],
+  },
+  propeller: {
+    id: "propeller",
+    label: "Propeller",
+    fact: "One of her two big propellers, which push her through the sea. Keel up, they stuck up in the air.",
+    at: [-134, 7.5, 3.1],
+    floorZ: 0,
+    compartmentId: null,
+    interior: false,
+    view: [-12, 14, 6],
+  },
+  lifeboat: {
+    id: "lifeboat",
+    label: "Lifeboat",
+    fact: "She carried 24 big lifeboats, 12 on each side. They stayed in their places on deck 4.",
+    at: [P_BOAT.x, -11, BOAT_DECK_Z + 1.4],
+    floorZ: BOAT_DECK_Z,
+    compartmentId: null,
+    interior: false,
+    view: [-12, -26, 7],
+  },
+};
+
 /** Each ship's places, in the order the HUD lists them. */
 export const PLACES_BY_SHIP: Record<ShipId, readonly Place[]> = {
   titanic: PLACE_IDS.map((id) => PLACES[id]),
@@ -658,6 +778,7 @@ export const PLACES_BY_SHIP: Record<ShipId, readonly Place[]> = {
   carpathia: CARPATHIA_PLACE_IDS.map((id) => CARPATHIA_PLACES[id]),
   britannic: BRITANNIC_PLACE_IDS.map((id) => BRITANNIC_PLACES[id]),
   concordia: CONCORDIA_PLACE_IDS.map((id) => CONCORDIA_PLACES[id]),
+  poseidon: POSEIDON_PLACE_IDS.map((id) => POSEIDON_PLACES[id]),
 };
 
 /** A ship's place by id, or null if she has none by that id. */

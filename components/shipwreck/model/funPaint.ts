@@ -40,8 +40,11 @@ export function withFunPaint(base: ShipRecipe, fun: FunPaint): ShipRecipe {
     },
     dazzle: false,
   };
-  // A mark only her real paint carries (the Concordia's "C") comes off.
-  const marked = base.funnels.some((f) => f.emblem?.realOnly);
+  // A mark only her real paint carries (the Concordia's "C", the
+  // Poseidon's gold wave) comes off.
+  const marked = base.funnels.some(
+    (f) => f.emblem?.realOnly || f.wave?.realOnly
+  );
   return {
     ...base,
     paint,
@@ -50,9 +53,11 @@ export function withFunPaint(base: ShipRecipe, fun: FunPaint): ShipRecipe {
     ),
     ...(marked && {
       funnels: base.funnels.map((f) => {
-        if (!f.emblem?.realOnly) return f;
+        if (!f.emblem?.realOnly && !f.wave?.realOnly) return f;
         const rest = { ...f };
-        delete rest.emblem;
+        if (rest.emblem?.realOnly) delete rest.emblem;
+        // The Poseidon's gold wave.
+        if (rest.wave?.realOnly) delete rest.wave;
         return rest;
       }),
     }),

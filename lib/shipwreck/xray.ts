@@ -209,3 +209,70 @@ export function partCompartments(
   });
   return out;
 }
+
+/** A superstructure box (`ShipSpec.superstructure[i]`). */
+type SuperBox = ShipSpec["superstructure"][number];
+
+/**
+ * A box's extent in the ship frame as the sim floods it (its floor its
+ * `baseZ`, or the deck edge at its middle; its breadth its `halfBreadthM`
+ * or her half beam): x, y and z ranges.
+ */
+export function boxExtent(
+  spec: Pick<ShipSpec, "beam" | "sheerZ">,
+  b: SuperBox
+): { x: [number, number]; y: [number, number]; z: [number, number] } {
+  const hb = b.halfBreadthM ?? spec.beam / 2;
+  const base = b.baseZ ?? spec.sheerZ((b.fromX + b.toX) / 2);
+  return { x: [b.fromX, b.toX], y: [-hb, hb], z: [base, b.topZ] };
+}
+
+/** Weighted sample points through a superstructure box (a plain block). */
+export function boxSamples(
+  spec: Pick<ShipSpec, "beam" | "sheerZ">,
+  b: SuperBox
+): VolumeSamples {
+  const e = boxExtent(spec, b);
+  const n = NX * NZ * NY;
+  const points = new Float32Array(n * 3);
+  const weights = new Float32Array(n);
+  const dx = (e.x[1] - e.x[0]) / NX;
+  const dy = (e.y[1] - e.y[0]) / NY;
+  const dz = (e.z[1] - e.z[0]) / NZ;
+  const w = Math.max(0, dx * dy * dz);
+  let k = 0;
+  for (let i = 0; i < NX; i += 1)
+    for (let j = 0; j < NZ; j += 1)
+      for (let m = 0; m < NY; m += 1) {
+        points[k * 3] = e.x[0] + dx * (i + 0.5);
+        points[k * 3 + 1] = e.y[0] + dy * (m + 0.5);
+        points[k * 3 + 2] = e.z[0] + dz * (j + 0.5);
+        weights[k] = w;
+        k += 1;
+      }
+  const order = new Uint16Array(n);
+  for (let i = 0; i < n; i += 1) order[i] = i;
+  return { points, weights, total: w * n, heights: new Float32Array(n), order };
+}
+
+/**
+ * The depth of water (m) at a place inside a superstructure box, for
+ * "Water here": from the lowest of the place's floor and the box's roof
+ * over it (her floor, or keel up her ceiling, which is then underneath)
+ * up to the water's earth level, never over the room's height there (a
+ * full room reads its height, not the sea's depth).
+ */
+export function boxDepthAt(
+  pose: BodyPose,
+  at: readonly [number, number],
+  floorZ: number,
+  roofZ: number,
+  level: number
+): number {
+  if (level === -Infinity) return 0;
+  const a = earthZ(pose, at[0], at[1], floorZ);
+  const b = earthZ(pose, at[0], at[1], roofZ);
+  const lo = Math.min(a, b);
+  const hi = Math.max(a, b);
+  return Math.max(0, Math.min(level, hi) - lo);
+}

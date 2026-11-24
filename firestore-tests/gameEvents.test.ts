@@ -632,6 +632,7 @@ describe("shipwreck specifics", () => {
       "carpathia",
       "britannic",
       "concordia",
+      "poseidon",
     ]) {
       await assertSucceeds(
         create(
@@ -685,6 +686,20 @@ describe("shipwreck specifics", () => {
       )
     );
     await assertFails(create(anon(), end({ ship: "titanic", userId: 7 })));
+    // The Poseidon's wave chip is not counted: no wave prop, and "capsized"
+    // is folded into "sank" by the client.
+    await assertFails(
+      create(
+        anon(),
+        docFor("shipwreck_start", {
+          props: { mode: "real", opened: 0, ship: "poseidon", wave: 1 },
+        })
+      )
+    );
+    await assertFails(create(anon(), end({ ship: "poseidon", wave: 1 })));
+    await assertFails(
+      create(anon(), end({ ship: "poseidon", outcome: "capsized" }))
+    );
     // A ship does not belong on the camera event.
     await assertFails(
       create(

@@ -157,6 +157,13 @@ export interface SceneSettings {
   stormLight?: number;
   /** A daylit scene's look of its own (the time button's sunset). */
   dayLook?: DayLook;
+  /**
+   * A storm's sea under a clear, starlit sky (the Poseidon's): the night
+   * sky's stars (`Sky`, moonless) over the storm's waves, starlight in
+   * place of the overcast, no snow haze. Only at night: the time button's
+   * storm by day drops it (the grey overcast). Missing: the overcast.
+   */
+  stars?: true;
 }
 
 // --- The night of 14–15 April 1912 (1.0's constants).
@@ -722,7 +729,35 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
     chop: 0.4,
     clouds: 0.3,
   },
+  // Just before midnight on New Year's Eve in the open North Atlantic
+  // (spec R12; README, "The Poseidon's night"): the storm's pipeline held
+  // at night (`stormLight: 0`), so the sea is her track's own waves (her
+  // winter swell and the rogue wave's group, `StormSea`), under a clear
+  // sky full of stars with no moon (a made-up date: none is worked out),
+  // the 1.0 night's horizon haze, no coast, no iceberg, and under it the
+  // deep Atlantic's dark blue water down to her 4,000 m floor.
+  poseidon: {
+    timeOfDay: "storm-dusk",
+    sun: null,
+    fog: `#${NIGHT_FOG.getHexString()}`,
+    underwaterFog: "#04203a",
+    coast: false,
+    iceberg: false,
+    storm: true,
+    stormLight: 0,
+    stars: true,
+  },
 };
+
+/**
+ * Her storm by day (the time button's "The big wave by day"): a grey
+ * winter overcast over the Atlantic in place of her starry night, and
+ * the sea's grey-blue water under it (ours).
+ */
+export const POSEIDON_DAY_LOOK = {
+  fog: "#8d99a3",
+  underwaterFog: "#1a4a66",
+} as const;
 
 // --- The time button (1.9): any ship at another hour, live (the
 // options and their chips: `lib/shipwreck/times.ts`).
@@ -730,7 +765,14 @@ export const SCENE_SETTINGS: Record<ShipId, SceneSettings> = {
 function buildTime(ship: ShipId, id: TimeId): SceneSettings {
   const real = SCENE_SETTINGS[ship];
   if (id === "real") return real;
-  if (id === "storm-day") return { ...real, stormLight: 1 };
+  if (id === "storm-day") {
+    // (The Fitzgerald's: her overcast, lit. A starlit storm night has no
+    // overcast to light: hers by day is a grey one, POSEIDON_DAY_LOOK.)
+    if (!real.stars) return { ...real, stormLight: 1 };
+    const { stars: _night, ...day } = real;
+    void _night;
+    return { ...day, ...POSEIDON_DAY_LOOK, stormLight: 1 };
+  }
   // Her place stays (the coast, the iceberg, the convoy, her heading and
   // her wake's path); the sky, the light and the water change.
   const base = {

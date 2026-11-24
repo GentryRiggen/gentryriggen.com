@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { CARPATHIA_FUNNEL_PAINT } from "@/lib/shipwreck/ships/carpathia";
 import TitleScreen from "../TitleScreen";
 
@@ -10,6 +10,7 @@ function title(
     | "carpathia"
     | "britannic"
     | "concordia"
+    | "poseidon"
 ) {
   const onShip = jest.fn();
   render(
@@ -46,6 +47,7 @@ describe("the ship picker", () => {
       "shipwreck-ship-carpathia",
       "shipwreck-ship-britannic",
       "shipwreck-ship-concordia",
+      "shipwreck-ship-poseidon",
     ]);
     const fitz = screen.getByRole("radio", { name: /Ship: Edmund Fitzgerald/ });
     expect(fitz).toHaveTextContent("1975 · 222 m long");
@@ -66,6 +68,7 @@ describe("the ship picker", () => {
       "shipwreck-ship-carpathia",
       "shipwreck-ship-britannic",
       "shipwreck-ship-concordia",
+      "shipwreck-ship-poseidon",
     ]);
     const brit = screen.getByRole("radio", { name: /Ship: Britannic/ });
     expect(brit).toHaveAccessibleName("Ship: Britannic, 1916, 269 metres long");
@@ -173,5 +176,45 @@ describe("the Costa Concordia's card (1.9)", () => {
     );
     fireEvent.click(screen.getByRole("radio", { name: /Ship: Titanic/ }));
     expect(onShip).toHaveBeenCalledWith("titanic");
+  });
+});
+
+describe("the Poseidon's card (1.11)", () => {
+  it("is the seventh, with a made-up mark and no year", () => {
+    const onShip = title("titanic");
+    const card = screen.getByRole("radio", { name: /Ship: Poseidon/ });
+    expect(card).toHaveAccessibleName(
+      "Ship: Poseidon, a made-up ship from a film, 305 metres long"
+    );
+    expect(card).toHaveTextContent("Made up · 305 m long");
+    expect(card).not.toHaveTextContent(/2006/);
+    expect(
+      within(card).getByRole("img", { name: "A made-up ship from a film" })
+    ).toBeInTheDocument();
+    // Her side picture: one tall funnel, her hull, her boxes.
+    expect(
+      screen.getByTestId("shipwreck-ship-picture-poseidon")
+    ).toBeInTheDocument();
+    // No other card has the mark.
+    expect(screen.getAllByRole("img")).toHaveLength(1);
+    fireEvent.click(card);
+    expect(onShip).toHaveBeenCalledWith("poseidon");
+  });
+
+  it("says what the What if is about, with a wave", () => {
+    title("poseidon");
+    expect(screen.getByTestId("shipwreck-what-if")).toHaveAccessibleName(
+      "What if? Choose what the wave smashes, and how big the wave is"
+    );
+    expect(screen.getByTestId("shipwreck-real-night")).toHaveTextContent(
+      "The big wave"
+    );
+    expect(screen.getByTestId("shipwreck-parent-line")).toHaveTextContent(
+      /^The Poseidon is not a real ship/
+    );
+    const icon = screen
+      .getByTestId("shipwreck-what-if")
+      .querySelector("svg path")!;
+    expect(icon.getAttribute("d")).toMatch(/^M2 20c3\.5/);
   });
 });

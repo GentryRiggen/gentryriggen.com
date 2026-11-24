@@ -181,7 +181,7 @@ export default function NightScene({
             zenith={settings.daylight?.zenith}
             clouds={settings.daylight?.clouds}
           />
-        ) : storm ? (
+        ) : storm && !settings.stars ? (
           <StormSky runtime={runtime} fog={settings.fog} dpr={dpr} />
         ) : (
           <Sky

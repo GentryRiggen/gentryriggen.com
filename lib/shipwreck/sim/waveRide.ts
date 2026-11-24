@@ -130,7 +130,9 @@ function termsFor(storm: StormSpec, spec: ShipSpec): Float64Array {
  * Her ride on the storm at real time t, her ship-frame origin (midships)
  * at earth (x, y): writes heave (m, + up), pitch (rad, + bow down) and
  * roll (rad, + starboard down) into out[0..2]. `scale` is the run's
- * STORM_SCALE. No allocation (the response terms are cached per storm).
+ * STORM_SCALE; `swell` weighs the components alone (a wave ship's swell
+ * fading at her rogue wave: `swellFade`), and a group with `ride: false`
+ * adds nothing. No allocation (the response terms are cached per storm).
  */
 export function waveRide(
   storm: StormSpec,
@@ -139,11 +141,12 @@ export function waveRide(
   y: number,
   spec: ShipSpec,
   t: number,
-  out: Float64Array
+  out: Float64Array,
+  swell = 1
 ): void {
   const tr = termsFor(storm, spec);
   const comps = storm.components;
-  const ramp = storm.ramp ? rampAt(storm, t) : 1;
+  const ramp = (storm.ramp ? rampAt(storm, t) : 1) * swell;
   let heave = 0;
   let sx = 0;
   let sy = 0;
@@ -161,6 +164,8 @@ export function waveRide(
   if (groups)
     for (let i = 0; i < groups.length; i += 1) {
       const g = groups[i];
+      // Her rogue wave (`ride: false`): the rule owns her roll.
+      if (g.ride === false) continue;
       const o = (comps.length + i) * TERM;
       const w = TWO_PI / g.periodS;
       const k = (w * w) / GRAV;

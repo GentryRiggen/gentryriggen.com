@@ -16,6 +16,7 @@ export const OUTCOME_IDS = [
   "floated",
   "broke-in-two",
   "aground",
+  "capsized",
 ] as const;
 export type OutcomeId = (typeof OUTCOME_IDS)[number];
 

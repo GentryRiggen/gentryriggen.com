@@ -1,6 +1,6 @@
 import type { BulkheadDoor, Compartment } from "../ships/types";
 import { FLOW_CAP } from "./constants";
-import { type Cell, headLevel, orifice } from "./flooding";
+import { type Cell, headLevel, orifice, pressureLevel } from "./flooding";
 
 // Local bindings: global lookups are slow inside test sandboxes (vm).
 const { max, min } = Math;
@@ -85,8 +85,12 @@ export function doorFlow(
   nx: number,
   nz: number,
   z0: number,
-  dt: number
+  dt: number,
+  airA = 0,
+  airB = 0
 ): number {
+  if (airA !== 0 || airB !== 0)
+    return doorFlowAir(a, b, d, nx, nz, z0, dt, airA, airB);
   const ha = headLevel(a);
   const hb = headLevel(b);
   if (ha === hb) return 0;
@@ -108,6 +112,49 @@ export function doorFlow(
   if (down.water >= down.cap) return 0;
   const downSurface = down.water > 0 ? down.level : down.zMin;
   const dh = hUp - max(downSurface, base + nz * d.zLow);
+  if (dh <= 0) return 0;
+  const aUp = max(up.fsArea, 1);
+  const aDown = max(down.fsArea, 1);
+  const eq = (dh * aUp * aDown) / (aUp + aDown);
+  const limit = min(eq * FLOW_CAP, up.water, down.cap - down.water) / dt;
+  return q > 0 ? min(q, limit) : max(q, -limit);
+}
+
+/**
+ * `doorFlow` between cells with trapped air (`ShipSpec.trappedAir`): each
+ * strip on the two sides' pressures there (water plus air), water only,
+ * from a side with water at the strip (no air passes between cells).
+ */
+function doorFlowAir(
+  a: Cell,
+  b: Cell,
+  d: DoorLink,
+  nx: number,
+  nz: number,
+  z0: number,
+  dt: number,
+  airA: number,
+  airB: number
+): number {
+  const ha = headLevel(a);
+  const hb = headLevel(b);
+  const base = z0 + nx * d.x;
+  const strip = d.area / 4;
+  let q = 0;
+  for (let k = 0; k < 4; k += 1) {
+    const ze = base + nz * (d.zLow + ((d.zHigh - d.zLow) * (k + 0.5)) / 4);
+    const dp = pressureLevel(a, ze, airA) - pressureLevel(b, ze, airB);
+    if (dp === 0 || !((dp > 0 ? ha : hb) > ze)) continue;
+    q += orifice(strip, dp);
+  }
+  if (q === 0) return 0;
+  const up = q > 0 ? a : b;
+  const down = up === a ? b : a;
+  if (down.water >= down.cap) return 0;
+  const pUp = headLevel(up) + (up === a ? airA : airB);
+  const downSurface =
+    (down.water > 0 ? down.level : down.zMin) + (up === a ? airB : airA);
+  const dh = pUp - max(downSurface, base + nz * d.zLow);
   if (dh <= 0) return 0;
   const aUp = max(up.fsArea, 1);
   const aDown = max(down.fsArea, 1);

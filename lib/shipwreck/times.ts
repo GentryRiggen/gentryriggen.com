@@ -8,7 +8,7 @@ import type { ShipId } from "./ships/types";
  */
 
 /** Ships whose real scene is a storm: they keep it, offered by day too. */
-const STORM_SHIPS: ReadonlySet<ShipId> = new Set(["fitzgerald"]);
+const STORM_SHIPS: ReadonlySet<ShipId> = new Set(["fitzgerald", "poseidon"]);
 
 /** A time the button offers: "real" is her own (`SCENE_SETTINGS`). */
 export type TimeId =
@@ -54,6 +54,10 @@ const REAL: Record<ShipId, { label: string; chip: TimeChip }> = {
   },
   britannic: { label: "Real: 8:12 in the morning", chip: CHIPS.morning },
   concordia: { label: "Real: 9:45 at night", chip: CHIPS.night },
+  poseidon: {
+    label: "Real: New Year's Eve, just before midnight",
+    chip: { top: "#070b14", low: "#1c2733", sea: "#0a1118", sun: "cloud" },
+  },
 };
 
 const LABELS: Record<Exclude<TimeId, "real">, string> = {
@@ -64,6 +68,9 @@ const LABELS: Record<Exclude<TimeId, "real">, string> = {
   "storm-day": "The storm by day",
 };
 
+/** Her own words for the time button's by-day choice. */
+const POSEIDON_DAY = "The big wave by day";
+
 /** Which of the made-up hours stands for her real one (not offered twice). */
 const REAL_IS: Record<ShipId, Exclude<TimeId, "real"> | null> = {
   titanic: "night",
@@ -72,6 +79,7 @@ const REAL_IS: Record<ShipId, Exclude<TimeId, "real"> | null> = {
   carpathia: "morning",
   britannic: "morning",
   concordia: "night",
+  poseidon: null,
 };
 
 /** Her real time first, then the others to try. */
@@ -84,7 +92,12 @@ export function timesOf(ship: ShipId): TimeOption[] {
       );
   return [
     real,
-    ...others.map((id) => ({ id, label: LABELS[id], chip: CHIPS[id] })),
+    ...others.map((id) => ({
+      id,
+      label:
+        ship === "poseidon" && id === "storm-day" ? POSEIDON_DAY : LABELS[id],
+      chip: CHIPS[id],
+    })),
   ];
 }
 

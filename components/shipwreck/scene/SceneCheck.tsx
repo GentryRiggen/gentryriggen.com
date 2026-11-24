@@ -20,7 +20,7 @@ interface SceneCheckProps {
  * `&quality=high|medium|low` to pin a tier (the frame-rate monitor is off),
  * `&ship=lusitania` for her real afternoon, `&ship=fitzgerald` for her
  * storm, `&ship=carpathia` for her summer morning, `&ship=britannic` for
- * hers, `&ship=concordia` for her January night by Giglio (default the Titanic's night). A torpedo ship's hits are her real
+ * hers, `&ship=concordia` for her January night by Giglio, `&ship=poseidon` for her wave night (default the Titanic's night). A torpedo ship's hits are her real
  * run's (`torpedoHits`), as the game starts them.
  */
 export default function SceneCheck({ runtime }: SceneCheckProps) {
@@ -35,7 +35,8 @@ export default function SceneCheck({ runtime }: SceneCheckProps) {
     asked === "fitzgerald" ||
     asked === "carpathia" ||
     asked === "britannic" ||
-    asked === "concordia"
+    asked === "concordia" ||
+    asked === "poseidon"
       ? asked
       : "titanic";
 

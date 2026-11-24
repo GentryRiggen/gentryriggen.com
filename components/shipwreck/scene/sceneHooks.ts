@@ -4,6 +4,7 @@ import {
   phaseAt,
   type PlaybackStore,
 } from "@/lib/shipwreck/playback";
+import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import type { ShipwreckSceneHooks } from "@/lib/shipwreck/testHooks";
 import { CAMERA_IDS, type CameraId } from "@/lib/shipwreck/types";
 import { WALK_TURN_PER_PX, walkInput } from "@/lib/shipwreck/walk";
@@ -36,6 +37,9 @@ export function sceneHooks(
       else if (placeFor(get().ship, place)) get().flyToPlace(place as PlaceId);
     },
     setQuality: (q) => get().setQuality(q),
+    // The time button's hour ("real" or one she offers), on the checking
+    // entry too (the Poseidon's by-day screenshots).
+    setTime: (id) => get().setTime(id === "real" ? null : id),
     flyToView: (target, cam, snap) => get().flyToView({ target, cam, snap }),
     getEvents: () => (get().track?.events ?? []).map((e) => ({ ...e })),
     getState: () => {
@@ -56,6 +60,7 @@ export function sceneHooks(
         done: s.done,
         computedT: s.computedT,
         progress: s.progress,
+        listDeg: s.track ? sampleTrack(s.track, s.t).listDeg : 0,
       };
     },
     getRenderInfo: () => {

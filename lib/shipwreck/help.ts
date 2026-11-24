@@ -2,6 +2,8 @@ import { PLACES_BY_SHIP } from "./places";
 import { titanic } from "./ships/titanic";
 import { resolveLivery, type ShipSpec } from "./ships/types";
 import type { SimFrame } from "./sim/track";
+import type { WaveVariant } from "./sim/wave";
+import { leanFromUpright } from "./story";
 import { walkMapFor } from "./walk";
 
 /** The controls card's walk line (a ship you can walk on only). */
@@ -46,6 +48,8 @@ const LIVERY_WORDS: Readonly<Record<string, string>> = {
     "She was built to carry passengers in White Star's colours, like her sisters: a black hull, white decks and buff funnels with black tops. She never sailed in them.",
   "costa-2012":
     "Her real Costa colours: all white, with a thin blue line at the water and a big yellow funnel with a blue C on it.",
+  poseidon:
+    "Her own colours: all white, with a sea-blue band and a white funnel with a blue top. She is a made-up ship.",
 };
 
 /** What the paint brush says when tapped: the livery she is in now. */
@@ -96,10 +100,24 @@ export function bowDownText(
 export function leanText(f: Pick<SimFrame, "listDeg">): string {
   const a = Math.abs(f.listDeg);
   if (a < 0.05) return "Upright";
-  return `${a.toFixed(1)}° to ${f.listDeg < 0 ? "port" : "starboard"}`;
+  // Past her side the angle means little: say where she is (a ship that
+  // rolls right over, the Poseidon, can go past 180\u00b0 and round again).
+  const far = leanFromUpright(f.listDeg);
+  if (far > 135) return "upside down";
+  if (far >= 90) return "on her side";
+  // Round to (-180, 180]: 287\u00b0 to starboard is 73\u00b0 to port.
+  const n = ((((f.listDeg + 180) % 360) + 360) % 360) - 180;
+  return `${Math.abs(n).toFixed(1)}\u00b0 to ${n < 0 ? "port" : "starboard"}`;
 }
 
-export function powerText(f: Pick<SimFrame, "power">): string {
+export function powerText(
+  f: Pick<SimFrame, "power">,
+  /** A wave ship holds her emergency level: that is no flicker. */
+  ship?: Pick<ShipSpec, "cause" | "blackout">
+): string {
+  const em = ship?.cause === "wave" ? ship.blackout?.emergencyLight : undefined;
+  if (em !== undefined && f.power > 0.001 && Math.abs(f.power - em) < 0.02)
+    return "Emergency lights";
   if (f.power >= 0.999) return "Lights on";
   if (f.power <= 0.001) return "Lights out";
   return "Lights flickering";
@@ -333,6 +351,80 @@ function rocksHelp(
   }
 }
 
+/** The lean card's second line, by the wave the run has. */
+const LEAN_WAVE: Record<WaveVariant, string> = {
+  real: "The wave hit her port side and rolled her all the way over, until she floated upside down. Air caught inside her, like a cup pushed upside down into the bath, kept her up.",
+  smaller:
+    "A smaller wave hit her port side and leaned her far over, but not all the way. Air and her own weight swung her back upright.",
+  ahead:
+    "The wave came at her bow, not her side, so it mostly lifted her. It leaned her far less than a wave on her side.",
+};
+
+/**
+ * The wave ship's cards (the Poseidon's): a giant wave, a roll right over,
+ * the air that holds her up and the sea that takes its place. A made-up
+ * ship; no people.
+ */
+function waveHelp(
+  topic: HelpTopic,
+  frame: SimFrame | null,
+  ship: ShipSpec,
+  variant: WaveVariant = "real"
+): Help {
+  switch (topic) {
+    case "water":
+      return {
+        title: "Water aboard",
+        now: frame ? waterText(frame) : undefined,
+        lines: [
+          "How much sea water has come inside the ship, in tonnes. One tonne is about a bathtub and a half.",
+          `${ship.name} weighed about ${(Math.round(ship.displacementT / 1000) * 1000).toLocaleString("en-US")} t. The wave smashed windows and doors, and the sea poured in through them.`,
+        ],
+      };
+    case "bow":
+      return {
+        title: "Bow down",
+        now: frame ? bowDownText(frame) : undefined,
+        lines: [
+          "How far the front of the ship tips down. Upside down, she floats level for a long time.",
+          `At the end her bow goes down first, and she sinks to the sea floor, ${ship.seaDepthM.toLocaleString("en-US")} m below.`,
+        ],
+      };
+    case "lean":
+      return {
+        title: "Lean",
+        now: frame ? leanText(frame) : undefined,
+        lines: [
+          "How far the ship leans to one side. Port is the left side looking forward, starboard the right.",
+          LEAN_WAVE[variant],
+        ],
+      };
+    case "power":
+      return {
+        title: "Power",
+        now: frame ? powerText(frame) : undefined,
+        lines: [
+          "Her engines turned generators that made the electricity for everything on board.",
+          "When she rolled over, the generators stopped and her main lights went out. Small emergency lights stayed on.",
+        ],
+      };
+    case "controls":
+    default:
+      return {
+        title: "How to watch",
+        lines: [
+          "Drag to look around the ship. Pinch to zoom in and out. Two fingers move the view. Double-tap the ship to fly close.",
+          "Play and pause, and choose how fast the night goes: ×1 is real time. The wave comes fast, then she floats upside down for most of an hour, so try ×30 after the roll.",
+          "Drag the timeline, or tap an icon on it, to jump to that moment.",
+          `X-ray shows the water inside. The pins fly you to ${placeList(ship)}.`,
+          "The camera button picks a view: the bridge, the stern, a lifeboat, under the water, or the movie camera.",
+          ...liveryLines(ship),
+          TIME_LINE,
+        ],
+      };
+  }
+}
+
 /** The storm ship's cards (the Fitzgerald's): a laker in a lake storm. */
 function stormHelp(
   topic: HelpTopic,
@@ -397,8 +489,10 @@ function stormHelp(
 export function helpFor(
   topic: HelpTopic,
   frame: SimFrame | null,
-  ship: ShipSpec = titanic
+  ship: ShipSpec = titanic,
+  wave?: WaveVariant
 ): Help {
+  if (ship.cause === "wave") return waveHelp(topic, frame, ship, wave);
   if (ship.cause === "storm") return stormHelp(topic, frame, ship);
   if (ship.cause === "torpedo") return torpedoHelp(topic, frame, ship);
   if (ship.cause === "mine") return mineHelp(topic, frame, ship);

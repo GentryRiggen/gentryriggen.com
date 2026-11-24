@@ -45,6 +45,11 @@ import {
   type V3,
   type View,
 } from "./cameraMath";
+import {
+  orbitOnceCapsized,
+  poseidonBridgeView,
+  poseidonSternView,
+} from "./poseidonShots";
 import type { SceneRuntime } from "./runtime";
 import { torpedoHole, trackSideY } from "./Torpedo";
 import { viewDirection } from "./walkCamera";
@@ -485,11 +490,22 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
                 ? "storm"
                 : spec.id === "concordia"
                   ? "giglio"
-                  : "establishing";
+                  : spec.id === "poseidon"
+                    ? "poseidon-party"
+                    : "establishing";
         // Reduced motion: cut between the shots instead of flying.
         if (reducedMotion && shot !== s.shot) cut = true;
         s.shot = shot;
         view = shotView(shot, ctx);
+      }
+      // Keel up, the cameras that stand on her or by her hand over to the
+      // free camera (the Poseidon), from her keel-up shot: never upside
+      // down in her flooded bridge or under her.
+      const handOver =
+        p.track !== null && orbitOnceCapsized(p.camera, p.track.events, p.t);
+      if (handOver) {
+        view = shotView("poseidon-keel", ctx);
+        cut = true;
       }
       if (snap || cut) {
         s.pos = [...view.pos];
@@ -537,6 +553,7 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       controls.target.set(s.tgt[0], s.tgt[1], s.tgt[2]);
       camera.lookAt(controls.target);
       reanchor();
+      if (handOver) p.takeControl();
     }
 
     // Never under the floor (or in the island's land); never inside the
@@ -593,6 +610,7 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
 }
 
 function bridgeView(ctx: ShotContext): View {
+  if (ctx.ship === "poseidon") return poseidonBridgeView(ctx);
   const b = ctx.bodies.find((x) => x.part === "bow") ?? ctx.bodies[0];
   if (ctx.ship === "fitzgerald")
     // Her pilothouse's starboard wing, forward, looking aft down her deck
@@ -629,6 +647,7 @@ function bridgeView(ctx: ShotContext): View {
 }
 
 function sternView(ctx: ShotContext): View {
+  if (ctx.ship === "poseidon") return poseidonSternView(ctx);
   const b = ctx.bodies.find((x) => x.part === "stern") ?? ctx.bodies[0];
   if (ctx.ship === "fitzgerald")
     // On her after house by the funnel, looking forward along her deck.

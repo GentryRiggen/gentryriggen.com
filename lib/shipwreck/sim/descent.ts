@@ -6,6 +6,8 @@ import {
   PLOUGH_TIME_S,
   DRAG_CD,
   GRAV,
+  KEEL_UP_REST_DEG,
+  KEEL_UP_TAU_S,
   STEEL_BUOYANCY,
   STERN_CRUSH_M,
   STERN_GLIDE,
@@ -22,7 +24,7 @@ import {
 } from "./body";
 
 // Local bindings: global lookups are slow inside test sandboxes (vm).
-const { abs, asin, cos, exp, max, min, sin, sqrt } = Math;
+const { abs, asin, atan2, cos, exp, max, min, sin, sqrt } = Math;
 
 /**
  * The way down. Once a body is wholly under, it is flooded: it falls under
@@ -69,6 +71,68 @@ function capsizeRoll(
   return abs(d) <= step ? target : roll + (d > 0 ? step : -step);
 }
 
+/** A wreck that rests keel up (`keelUpDive`), radians. */
+const KEEL_UP_REST = KEEL_UP_REST_DEG * (Math.PI / 180);
+const HALF_TURN = Math.PI / 2;
+
+/**
+ * The dive keel up (a rule, like `wreck`): a whole hull whose wreck rests
+ * keel up (`wreck.restDeg` ≥ 150) and that goes under more than half over
+ * (cos roll < 0) keeps its roll as it falls, eased toward the rest on the
+ * side it lies (never back through 90°), and meets the floor with her
+ * superstructure, now her lowest part. One that capsized (`b.capsized`, a
+ * wave ship) dives keel up however she went under: under the sea her last
+ * air is in her hull, on her keel side, above her centre of mass, so keel
+ * up is the way she hangs (sim README, "The wave, capsized, short ends and
+ * the dive keel up"). Anything else dives as in 1.0.
+ */
+function keelUpDive(b: Body): boolean {
+  return (
+    b.part === "whole" &&
+    b.wreck !== null &&
+    abs(b.wreck.rest) >= KEEL_UP_REST &&
+    (cos(b.roll) < 0 || b.capsized)
+  );
+}
+
+/**
+ * One step of the dive's keel-up rule (`keelUpDive`): her roll eased
+ * toward the keel-up rest on the side she lies (KEEL_UP_TAU_S), never back
+ * through her beam ends (a capsized hull on the far side of them turns on
+ * back to keel up). Also her keel-under rule afloat (run.ts).
+ */
+export function keelUpRoll(b: Body, dt: number): number {
+  const side = sin(b.roll) >= 0 ? 1 : -1;
+  const roll = relax(b.roll, keelUpRest(b), dt, KEEL_UP_TAU_S);
+  return cos(roll) < 0 || cos(b.roll) >= 0
+    ? roll
+    : roll + wrap(side * HALF_TURN - roll);
+}
+
+/** An angle wrapped to (−π, π]. */
+function wrap(a: number): number {
+  return atan2(sin(a), cos(a));
+}
+
+/**
+ * Right way up nearest her roll: 0, or a whole turn from it once she has
+ * rolled past keel up and on round (her roll is unwrapped), so she never
+ * turns a full circle back. Exactly 0 for |roll| ≤ π (every 1.0 ship).
+ */
+function upright(roll: number): number {
+  return abs(roll) > Math.PI ? roll - wrap(roll) : 0;
+}
+
+/**
+ * Her keel-up rest nearest her roll, on the side she lies (roll is
+ * unwrapped: past keel up it may be more than π).
+ */
+function keelUpRest(b: Body): number {
+  const rest = abs((b.wreck as NonNullable<Body["wreck"]>).rest);
+  const side = sin(b.roll) >= 0 ? 1 : -1;
+  return b.roll + wrap(side * rest - b.roll);
+}
+
 /** Centre of mass of a flooded body, ship frame. */
 function floodedCentre(b: Body): [number, number, number] {
   let m = b.lightMass;
@@ -84,12 +148,12 @@ function floodedCentre(b: Body): [number, number, number] {
   return [mx / m, my / m, mz / m];
 }
 
-/** The body's lowest point now: ship frame. */
-function lowestPoint(b: Body): [number, number, number] {
+/** The body's lowest point now: ship frame (her boxes too, `boxes`). */
+function lowestPoint(b: Body, boxes = false): [number, number, number] {
   const [nx, ny, nz] = upOf(b);
   let best = Infinity;
   let p: [number, number, number] = [b.gx, 0, 0];
-  for (const c of b.cells) {
+  for (const c of boxes ? b.all : b.cells) {
     const s = c.slice;
     for (let i = 0; i < s.n; i += 1) {
       if (s.fullA[i] <= 0) continue;
@@ -187,7 +251,8 @@ function fall(b: Body, dt: number, flatZ: number, floor?: FloorFn): boolean {
   } else {
     b.pitch = relax(b.pitch, BOW_DESCENT_PITCH, dt, 25);
     b.wp = 0;
-    b.roll = relax(b.roll, 0, dt, 40);
+    if (keelUpDive(b)) b.roll = keelUpRoll(b, dt);
+    else b.roll = relax(b.roll, upright(b.roll), dt, 40);
     b.vx = down * BOW_GLIDE;
   }
   ge[0] += b.vx * dt;
@@ -198,15 +263,23 @@ function fall(b: Body, dt: number, flatZ: number, floor?: FloorFn): boolean {
   placeAbout(b, g, ge);
   updateBounds(b);
   const floorZ = floor ? floorUnder(b, floor) : flatZ;
-  if (b.bottom > floorZ) return false;
-  b.z += floorZ - b.bottom;
+  const bottom = keelUpDive(b) ? boxBottom(b) : b.bottom;
+  if (bottom > floorZ) return false;
+  b.z += floorZ - bottom;
   return true;
+}
+
+/** Earth z of her lowest point, her boxes included (bounds are fresh). */
+function boxBottom(b: Body): number {
+  let z = b.bottom;
+  for (const c of b.boxes) z = min(z, c.zMin);
+  return z;
 }
 
 /** Touched: from here it turns about the point in the mud. */
 function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
   b.mode = "landing";
-  const p = lowestPoint(b);
+  const p = lowestPoint(b, keelUpDive(b));
   const e = earthOf(b, p[0], p[1], p[2]);
   b.contactP = p;
   b.contactE = [e[0], e[1], floorZ];
@@ -223,10 +296,13 @@ function touch(b: Body, floorZ: number, onFloor: boolean): boolean {
   // to it if she lands listed toward it, else keeps her list; any other
   // ship rights (the 1.0 rest).
   const w = b.wreck;
-  if (b.capsize !== null)
+  if (keelUpDive(b))
+    // Keel up (`keelUpDive`): she settles to her rest keel up.
+    b.restRoll = keelUpRest(b);
+  else if (b.capsize !== null)
     // Upside down (wreckParts.stern): it finishes its roll on the floor.
     b.restRoll = b.roll >= 0 ? b.capsize : -b.capsize;
-  else if (!w) b.restRoll = b.part === "stern" ? 0.05 : 0;
+  else if (!w) b.restRoll = b.part === "stern" ? 0.05 : upright(b.roll);
   else if (b.roll * w.rest > 0 && abs(b.roll) >= w.min)
     b.restRoll = (w.rest > 0 ? 1 : -1) * max(abs(b.roll), abs(w.rest));
   else b.restRoll = b.roll;

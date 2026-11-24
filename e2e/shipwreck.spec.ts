@@ -1098,3 +1098,193 @@ test("the Costa Concordia's paint tray repaints her and puts her own colours bac
     "night"
   );
 });
+
+/** Starts a Poseidon What if? from the editor: spots chosen, then a wave. */
+async function poseidonWhatIf(
+  page: import("@playwright/test").Page,
+  wave: "real" | "smaller" | "ahead",
+  spots: "all" | "none"
+) {
+  await page.getByTestId("shipwreck-ship-poseidon").click();
+  await page.getByTestId("shipwreck-what-if").click();
+  await expect(page.getByTestId("shipwreck-editor")).toHaveAttribute(
+    "data-ship",
+    "poseidon"
+  );
+  await page
+    .getByTestId(
+      spots === "all" ? "shipwreck-preset-real" : "shipwreck-preset-clear"
+    )
+    .click();
+  const chip = page.getByTestId(`whatif-wave-${wave}`);
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("shipwreck-go").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "poseidon"
+  );
+}
+
+async function seekToEnd(page: import("@playwright/test").Page) {
+  await computeAll(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT);
+  });
+}
+
+test("the Poseidon's real night turns her keel up, then ends floated-then-sank at ×100, then the Fitzgerald and the Concordia are back @smoke", async ({
+  page,
+}) => {
+  test.setTimeout(540_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-poseidon").click();
+  await expect(page.getByTestId("shipwreck-ship-poseidon")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "poseidon"
+  );
+  // No Giglio, no iceberg; her deck is not walkable.
+  expect(
+    await page.evaluate(() => window.__shipwreck!.isShown!("giglio-lights"))
+  ).toBe(false);
+  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+
+  // Upright before the wave; keel up (|roll| > 150) after she capsizes.
+  await computeAll(page);
+  expect(
+    Math.abs(await page.evaluate(() => window.__shipwreck!.getState!().listDeg))
+  ).toBeLessThan(10);
+  const upAt = await page.evaluate(
+    () => window.__shipwreck!.getEvents!().find((e) => e.kind === "capsized")!.t
+  );
+  await page.evaluate((t) => window.__shipwreck!.seek!(t + 20), upAt);
+  await expect
+    .poll(() =>
+      page.evaluate(() => Math.abs(window.__shipwreck!.getState!().listDeg))
+    )
+    .toBeGreaterThan(150);
+  expect(
+    await page.evaluate(() => window.__shipwreck!.getState!().eventsSeen)
+  ).toContain("capsized");
+
+  // The last ten minutes at ×100.
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT - 600);
+  });
+  await page.getByTestId("shipwreck-cameras-button").click();
+  await page.getByTestId("shipwreck-camera-orbit").click();
+  await page.getByTestId("shipwreck-speed-100").click();
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toBeVisible({ timeout: 300_000 });
+  await expect(end).toHaveAttribute("data-outcome", "sank");
+  await expect(end).toContainText(/Upside down, she floated for \d+ minutes/);
+  await expect(end).toContainText(/then sank at 12:\d\d AM/);
+
+  // The Fitzgerald, then the Concordia (Giglio only for her).
+  await page.getByTestId("shipwreck-look").click();
+  await page.getByTestId("shipwreck-back").click();
+  await expect(page.getByTestId("shipwreck-title")).toBeVisible();
+  await page.getByTestId("shipwreck-ship-fitzgerald").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "fitzgerald"
+  );
+  expect(
+    await page.evaluate(() => window.__shipwreck!.isShown!("giglio-lights"))
+  ).toBe(false);
+  await page.getByTestId("shipwreck-back").click();
+  await expect(page.getByTestId("shipwreck-title")).toBeVisible();
+  await page.getByTestId("shipwreck-ship-concordia").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await expect
+    .poll(
+      () => page.evaluate(() => window.__shipwreck!.isShown!("giglio-lights")),
+      { timeout: 120_000 }
+    )
+    .toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test("What if? on the Poseidon's real wave with no spots open leaves her floating upside down", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await poseidonWhatIf(page, "real", "none");
+  await seekToEnd(page);
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toHaveAttribute("data-outcome", "capsized");
+  await expect(end).toContainText("Upside down, she was still floating.");
+  expect(
+    Math.abs(await page.evaluate(() => window.__shipwreck!.getState!().listDeg))
+  ).toBeGreaterThan(150);
+});
+
+test("What if? on the Poseidon's smaller wave leans her far over, then she stands up again", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await poseidonWhatIf(page, "smaller", "none");
+  await seekToEnd(page);
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toHaveAttribute("data-outcome", "floated");
+  await expect(end).toContainText("She leaned far over, then stood up again.");
+});
+
+test("What if? on the Poseidon with the wave from ahead has her ride over it", async ({
+  page,
+}) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await poseidonWhatIf(page, "ahead", "none");
+  await seekToEnd(page);
+  const end = page.getByTestId("shipwreck-end");
+  await expect(end).toHaveAttribute("data-outcome", "floated");
+  await expect(end).toContainText("She rode over the wave.");
+});
+
+test("the Poseidon's paint tray repaints her and puts her own colours back", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1133, height: 744 });
+  await page.goto("/shipwreck");
+  await page.getByTestId("shipwreck-ship-poseidon").click();
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await page.evaluate(() => window.__shipwreck!.pause!());
+  expect(await page.evaluate(() => window.__shipwreck!.livery!())).toBe(
+    "poseidon"
+  );
+  await page.getByTestId("shipwreck-livery").click();
+  await expect(page.getByTestId("shipwreck-paint-tray")).toBeVisible();
+  const paint = (id: string) =>
+    page.locator(`[data-testid="shipwreck-paint"][data-livery="${id}"]`);
+  await paint("fun-navy-hull").click();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.livery!()))
+    .toBe("fun-navy-hull");
+  await paint("poseidon").click();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.livery!()))
+    .toBe("poseidon");
+  expect(await page.evaluate(() => window.__shipwreck!.getScreen())).toBe(
+    "night"
+  );
+});

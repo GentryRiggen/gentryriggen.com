@@ -6,6 +6,7 @@ import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import type { SimRunner } from "@/lib/shipwreck/sim/run";
 import type { SimEvent } from "@/lib/shipwreck/sim/events";
@@ -216,6 +217,29 @@ describe("switching to and from the Costa Concordia", () => {
   });
 });
 
+describe("switching to and from the Poseidon", () => {
+  it("title → Poseidon → back → Fitzgerald builds the right model and disposes the other", () => {
+    const store = createPlaybackStore({ createRunner: () => idle });
+    const runtime = createSceneRuntime();
+    act(() => store.getState().setShip("poseidon"));
+    act(() => store.getState().start(poseidon, [], { preview: true }));
+    render(<ShipOnStage store={store} runtime={runtime} />);
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual(["poseidon"]);
+    const first = mockBuilt[0];
+    expect(first.dispose).not.toHaveBeenCalled();
+    expect(runtime.whole?.root).toBe(first.handles.root);
+
+    act(() => store.getState().setShip("fitzgerald"));
+    act(() => store.getState().start(fitzgerald, [], { preview: true }));
+    act(() => jest.runAllTimers());
+    expect(mockBuilt.map((m) => m.ship)).toEqual(["poseidon", "fitzgerald"]);
+    expect(first.dispose).toHaveBeenCalledTimes(1);
+    expect(mockBuilt[1].dispose).not.toHaveBeenCalled();
+    expect(runtime.whole?.root).toBe(mockBuilt[1].handles.root);
+  });
+});
+
 describe("her livery, switched live", () => {
   it("repaints the built model from the store, never rebuilding it", () => {
     const store = createPlaybackStore({ createRunner: () => idle });
@@ -391,5 +415,41 @@ describe("her rails after the blackout", () => {
     dimRails(model, concordia.blackout!.emergencyLight);
     expect(mat.color.r).toBeCloseTo(0.25, 6);
     expect(mat.color.b).toBeCloseTo(0.25, 6);
+  });
+});
+
+describe("the Poseidon's lights (Task 9)", () => {
+  it("puts her lit window rows on the sea: three a side, just outboard, at deck 3", () => {
+    const lights = deckLightsOf(poseidon);
+    expect(lights).toHaveLength(6);
+    expect(lights.length).toBeLessThanOrEqual(MAX_LAMPS - 2);
+    const deck3 = poseidon.decks.find((d) => d.name === "3")!.z;
+    for (const [x, y, z] of lights) {
+      expect(Math.abs(y)).toBeGreaterThan(poseidon.beam / 2);
+      expect(z).toBeCloseTo(deck3, 1);
+      expect(x).toBeGreaterThan(poseidon.stations[0].x);
+      expect(x).toBeLessThan(poseidon.stations[poseidon.stations.length - 1].x);
+    }
+    expect(lights.filter(([, y]) => y > 0)).toHaveLength(3);
+  });
+
+  it("goes to her emergency mask at lights-out, none before it", () => {
+    const out = 9.4;
+    const track = {
+      events: [{ kind: "lights-out", t: out, realT: out } as SimEvent],
+    };
+    expect(blackoutLights(poseidon, track, out - 1, 1)).toEqual({
+      lit: 1,
+      flicker: 0,
+      emergency: 0,
+    });
+    const after = blackoutLights(
+      poseidon,
+      track,
+      out + BLACKOUT_FLICKER_S + 1,
+      0
+    );
+    expect(after.lit).toBe(0);
+    expect(after.emergency).toBe(poseidon.blackout!.emergencyLight);
   });
 });

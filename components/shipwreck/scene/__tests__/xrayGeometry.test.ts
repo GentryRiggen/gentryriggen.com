@@ -2,20 +2,29 @@ import {
   BRITANNIC_PLACE_IDS,
   CARPATHIA_PLACE_IDS,
   FITZGERALD_PLACE_IDS,
+  POSEIDON_PLACES,
 } from "@/lib/shipwreck/places";
 import { SHIP_IDS, SHIPS } from "@/lib/shipwreck/ships";
 import { carpathia } from "@/lib/shipwreck/ships/carpathia";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
+import { poseidon } from "@/lib/shipwreck/ships/poseidon";
+import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { buildHull } from "@/lib/shipwreck/sim/geometry";
 import {
   CARGO_BULK_T_M3,
+  boxDepthAt,
+  boxExtent,
+  boxSamples,
   cargoLayer,
+  earthZ,
   partCompartments,
+  waterLevel,
 } from "@/lib/shipwreck/xray";
 import {
   XRAY_SLOTS,
+  boxWaterGeometry,
   cargoGeometry,
   doubleBottomLines,
   openingGeometry,
@@ -157,5 +166,102 @@ describe("the Britannic's X-ray (1.4)", () => {
       const { solid, glow } = placeGeometry("britannic", id);
       expect(solid ?? glow).not.toBeNull();
     }
+  });
+});
+
+describe("the Poseidon's X-ray: her boxes' water (Task 9)", () => {
+  const named = poseidon.superstructure
+    .map((b, i) => (b.id ? i : -1))
+    .filter((i) => i >= 0);
+  const deg = Math.PI / 180;
+  const pose = (rollDeg: number, z: number): BodyPose => ({
+    part: "whole",
+    x: 0,
+    y: 0,
+    z,
+    roll: rollDeg * deg,
+    pitch: 0.4 * deg,
+    yaw: 0,
+  });
+  /** A box's lowest and highest earth heights (its eight corners). */
+  const span = (i: number, p: BodyPose): [number, number] => {
+    const e = boxExtent(poseidon, poseidon.superstructure[i]);
+    const hs: number[] = [];
+    for (const x of e.x)
+      for (const y of e.y) for (const z of e.z) hs.push(earthZ(p, x, y, z));
+    return [Math.min(...hs), Math.max(...hs)];
+  };
+
+  it("draws every named box (the ballroom as a drum) in the water slots", () => {
+    expect(named.length).toBeGreaterThan(5);
+    expect(named.length).toBeLessThanOrEqual(XRAY_SLOTS);
+    const g = boxWaterGeometry(poseidon, named)!;
+    const slots = new Set(
+      Array.from(g.getAttribute("aComp").array as Float32Array)
+    );
+    expect(slots.size).toBe(named.length);
+    const pos = g.getAttribute("position").array as Float32Array;
+    for (const v of pos) expect(Number.isFinite(v)).toBe(true);
+    expect(boxWaterGeometry(poseidon, [])).toBeNull();
+    // Inside her boxes: three y is ship z (no water above her top box).
+    let topY = -Infinity;
+    for (let k = 1; k < pos.length; k += 3) topY = Math.max(topY, pos[k]);
+    expect(topY).toBeLessThanOrEqual(
+      Math.max(...poseidon.superstructure.map((b) => b.topZ))
+    );
+  });
+
+  for (const roll of [0, 90, 180])
+    it(`keeps each box's water level inside the box at ${roll}°`, () => {
+      const p = pose(roll, roll === 180 ? 10 : -8);
+      for (const i of named) {
+        const s = boxSamples(poseidon, poseidon.superstructure[i]);
+        const [lo, hi] = span(i, p);
+        for (const fill of [0.1, 0.5, 0.9]) {
+          const level = waterLevel(s, p, fill);
+          expect(level).toBeGreaterThanOrEqual(lo - 1e-6);
+          expect(level).toBeLessThanOrEqual(hi + 1e-6);
+        }
+        expect(waterLevel(s, p, 0)).toBe(-Infinity);
+        expect(waterLevel(s, p, 1)).toBe(Infinity);
+      }
+    });
+
+  it("reads water at her bridge, ballroom and lobby from their boxes, upside down too", () => {
+    for (const id of ["bridge", "ballroom", "lobby"] as const) {
+      const place = POSEIDON_PLACES[id];
+      const i = poseidon.superstructure.findIndex((b) => b.id === place.boxId);
+      expect(i).toBeGreaterThanOrEqual(0);
+      const e = boxExtent(poseidon, poseidon.superstructure[i]);
+      // The place stands in its box.
+      expect(place.at[0]).toBeGreaterThan(e.x[0]);
+      expect(place.at[0]).toBeLessThan(e.x[1]);
+      expect(place.floorZ).toBeGreaterThanOrEqual(e.z[0] - 0.01);
+      expect(place.floorZ).toBeLessThan(e.z[1]);
+      for (const roll of [0, 180]) {
+        const p = pose(roll, roll === 180 ? 10 : -8);
+        const s = boxSamples(poseidon, poseidon.superstructure[i]);
+        const top = poseidon.superstructure[i].topZ;
+        const at = [place.at[0], place.at[1]] as const;
+        expect(boxDepthAt(p, at, place.floorZ, top, -Infinity)).toBe(0);
+        const most = boxDepthAt(
+          p,
+          at,
+          place.floorZ,
+          top,
+          waterLevel(s, p, 0.9)
+        );
+        const full = boxDepthAt(p, at, place.floorZ, top, Infinity);
+        expect(most).toBeGreaterThan(0);
+        expect(full).toBeGreaterThanOrEqual(most);
+        // Never more than the room is tall there.
+        expect(full).toBeCloseTo(top - place.floorZ, 3);
+      }
+    }
+  });
+
+  it("has blockouts for her bridge, ballroom, lobby and engine room", () => {
+    for (const id of ["bridge", "ballroom", "lobby", "engine-room"] as const)
+      expect(placeGeometry("poseidon", id).solid).not.toBeNull();
   });
 });
