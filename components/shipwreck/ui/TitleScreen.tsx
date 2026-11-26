@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
 import { SHIP_IDS, getShip } from "@/lib/shipwreck/ships";
 import {
@@ -151,32 +152,43 @@ export default function TitleScreen({
   const spec = getShip(ship);
   const story = storyOf(spec);
   const whatIf = WHAT_IF[spec.cause];
+  // On a phone the ship cards are one sideways-scrolling row: keep the
+  // chosen ship's card in view (a saved choice may be far along the row).
+  const picker = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const strip = picker.current;
+    const card = strip?.querySelector<HTMLElement>('[aria-checked="true"]');
+    if (!strip || !card || strip.scrollWidth <= strip.clientWidth) return;
+    strip.scrollLeft =
+      card.offsetLeft - (strip.clientWidth - card.offsetWidth) / 2;
+  }, [ship]);
 
   return (
     <main
       data-testid="shipwreck-screen"
       className={`pointer-events-none absolute inset-0 flex flex-col items-center justify-between overflow-y-auto ${SAFE_TOP} ${SAFE_BOTTOM} ${SAFE_SIDES}`}
     >
-      <div className="flex w-full max-w-2xl flex-col items-center gap-2 pt-4 text-center">
+      <div className="flex w-full max-w-2xl flex-col items-center gap-2 pt-4 text-center short:max-w-3xl short:gap-1 short:pt-1">
         <h1
           data-testid="shipwreck-title"
-          className="text-5xl font-semibold tracking-wide text-slate-50 drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] sm:text-7xl"
+          className="text-4xl font-semibold tracking-wide text-slate-50 drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)] sm:text-7xl short:text-4xl"
         >
           Shipwreck
         </h1>
         <p
           data-testid="shipwreck-parent-line"
-          className="max-w-md rounded-xl bg-slate-950/50 px-3 py-1 text-sm text-slate-300 backdrop-blur-sm"
+          className="max-w-md rounded-xl bg-slate-950/50 px-3 py-1 text-xs text-slate-300 backdrop-blur-sm sm:text-sm short:max-w-2xl short:text-xs"
         >
           {PARENT_LINES[ship]}
         </p>
       </div>
 
-      <div className="flex w-full max-w-4xl flex-col items-center gap-4 pb-2">
+      <div className="flex w-full max-w-4xl flex-col items-center gap-3 pb-2 sm:gap-4 short:gap-2 short:pb-1">
         <div
           role="radiogroup"
           aria-label="Choose a ship"
-          className="flex w-full shrink-0 flex-wrap justify-center gap-2 p-1"
+          ref={picker}
+          className="pointer-events-auto flex w-full shrink-0 snap-x gap-2 overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] sm:flex-wrap sm:justify-center sm:overflow-x-visible short:flex-nowrap short:justify-start short:overflow-x-auto [&::-webkit-scrollbar]:hidden"
         >
           {SHIP_IDS.map((id) => {
             const s = getShip(id);
@@ -196,7 +208,7 @@ export default function TitleScreen({
                 }
                 data-testid={`shipwreck-ship-${id}`}
                 onClick={() => onShip(id)}
-                className={`${PANEL} pointer-events-auto flex min-h-16 shrink-0 touch-manipulation flex-col items-start px-4 py-2 text-left active:scale-95 ${
+                className={`${PANEL} pointer-events-auto flex min-h-16 shrink-0 snap-center touch-manipulation flex-col items-start px-3 py-1.5 text-left active:scale-95 sm:px-4 sm:py-2 short:px-3 short:py-1.5 ${
                   on
                     ? "border-sky-300/70 ring-2 ring-sky-400/60"
                     : "opacity-80 hover:opacity-100"
@@ -204,12 +216,12 @@ export default function TitleScreen({
               >
                 <ShipPicture spec={s} livery={on ? livery : null} />
                 <span
-                  className={`text-xl font-semibold ${on ? "text-white" : "text-slate-200"}`}
+                  className={`whitespace-nowrap text-lg font-semibold sm:text-xl short:text-lg ${on ? "text-white" : "text-slate-200"}`}
                 >
                   {s.name}
                 </span>
                 {madeUp ? (
-                  <span className="flex items-center gap-1.5 text-sm text-slate-300">
+                  <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-slate-300 sm:text-sm short:text-xs">
                     <span
                       role="img"
                       aria-label="A made-up ship from a film"
@@ -221,7 +233,7 @@ export default function TitleScreen({
                     Made up · {length} m long
                   </span>
                 ) : (
-                  <span className="text-sm text-slate-300">
+                  <span className="whitespace-nowrap text-xs text-slate-300 sm:text-sm short:text-xs">
                     {s.year} · {length} m long
                   </span>
                 )}
@@ -241,13 +253,13 @@ export default function TitleScreen({
             </div>
           ))}
         </div>
-        <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row">
+        <div className="flex w-full flex-wrap items-center justify-center gap-3 sm:w-auto sm:flex-nowrap short:gap-2">
           <button
             type="button"
             data-testid="shipwreck-real-night"
             aria-label={`${story.realLabel}: watch what happened`}
             onClick={onRealNight}
-            className={PRIMARY}
+            className={`${PRIMARY} w-full sm:w-auto short:w-auto`}
           >
             <Icon name="clock" className="size-8" />
             {story.realLabel}
@@ -257,13 +269,13 @@ export default function TitleScreen({
             data-testid="shipwreck-what-if"
             aria-label={whatIf.label}
             onClick={onWhatIf}
-            className={SECONDARY}
+            className={`${SECONDARY} flex-1 sm:flex-none`}
           >
             <Icon name={whatIf.icon} className="size-8" />
             What if?
           </button>
           {onLivery && (
-            <div className="self-center">
+            <div className="shrink-0">
               <LiveryButton
                 spec={spec}
                 livery={livery}
