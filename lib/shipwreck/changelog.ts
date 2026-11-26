@@ -17,6 +17,15 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.13.1",
+    date: "2026-11-26",
+    title: "Fits on a phone",
+    highlights: [
+      "On a phone the ship cards are now one row you swipe sideways, so you can see the ship and reach the play buttons without scrolling",
+      "The title and words are smaller on a phone, and the ship you picked last time is already in view",
+    ],
+  },
+  {
     version: "1.13.0",
     date: "2026-11-24",
     title: "Jump!",
