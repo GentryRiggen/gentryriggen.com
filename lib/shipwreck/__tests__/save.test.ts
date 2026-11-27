@@ -13,6 +13,7 @@ import {
   withLivery,
   withWhatIf,
   writeSave,
+  wreckOf,
 } from "../save";
 import { SHIP_IDS, getShip } from "../ships";
 import { resolveLivery } from "../ships/types";
@@ -554,5 +555,25 @@ describe("save: the Poseidon's What if (1.11)", () => {
       seen: { realNight: true, endings: ["capsized", "sank", "upside-down"] },
     })!.save;
     expect(save.seen.endings).toEqual(["capsized", "sank"]);
+  });
+});
+
+describe("the wreck chosen (any ship in any wreck, 1.14)", () => {
+  it("keeps a known wreck and drops an unknown one", () => {
+    const base = { ...emptySave(), ship: "titanic" };
+    expect(
+      parseSaveSalvaging({ ...base, wreck: "fitzgerald" })?.save.wreck
+    ).toBe("fitzgerald");
+    expect(
+      parseSaveSalvaging({ ...base, wreck: "queen-mary" })?.save.wreck
+    ).toBeUndefined();
+  });
+
+  it("is her own when none was chosen (an older save)", () => {
+    expect(wreckOf(emptySave())).toBe("titanic");
+    expect(wreckOf({ ...emptySave(), ship: "carpathia" })).toBe("carpathia");
+    expect(
+      wreckOf({ ...emptySave(), ship: "carpathia", wreck: "titanic" })
+    ).toBe("titanic");
   });
 });

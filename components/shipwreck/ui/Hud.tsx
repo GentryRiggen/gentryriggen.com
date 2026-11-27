@@ -6,8 +6,7 @@ import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
 import { trackCamera } from "@/lib/shipwreck/analytics";
 import { helpFor } from "@/lib/shipwreck/help";
 import { PLACES_BY_SHIP, type PlaceId } from "@/lib/shipwreck/places";
-import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { getShip } from "@/lib/shipwreck/ships";
+import { stageSpec, type PlaybackStore } from "@/lib/shipwreck/playback";
 import { clockText, firstHitS, sinceText } from "@/lib/shipwreck/story";
 import { walkMapFor } from "@/lib/shipwreck/walk";
 import {
@@ -82,7 +81,10 @@ export default function Hud({
   onLivery,
   savedLivery = null,
 }: HudProps) {
-  const ship = getShip(useStore(store, (s) => s.ship));
+  const ship = stageSpec({
+    ship: useStore(store, (s) => s.ship),
+    wreck: useStore(store, (s) => s.wreck),
+  });
   const realMinute = useStore(store, (s) => Math.floor(s.realT / 60));
   const hits = useStore(store, (s) => s.hits.length);
   // A first torpedo that comes later (the Carpathia's U-boat alone): the

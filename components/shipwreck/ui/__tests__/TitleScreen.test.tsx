@@ -218,3 +218,53 @@ describe("the Poseidon's card (1.11)", () => {
     expect(icon.getAttribute("d")).toMatch(/^M2 20c3\.5/);
   });
 });
+
+describe("the wreck picker (any ship in any wreck)", () => {
+  it("shows a picture card for every wreck, her own starred", () => {
+    const onWreck = jest.fn();
+    render(
+      <TitleScreen
+        ship="lusitania"
+        onShip={() => {}}
+        wreck="lusitania"
+        onWreck={onWreck}
+        onRealNight={() => {}}
+        onWhatIf={() => {}}
+      />
+    );
+    const group = screen.getByRole("radiogroup", {
+      name: /Choose what happens to the Lusitania/,
+    });
+    expect(within(group).getAllByRole("radio")).toHaveLength(7);
+    expect(screen.getByTestId("shipwreck-wreck-real-lusitania")).toBeTruthy();
+    expect(screen.queryByTestId("shipwreck-wreck-real-titanic")).toBeNull();
+    expect(
+      screen
+        .getByTestId("shipwreck-wreck-lusitania")
+        .getAttribute("aria-checked")
+    ).toBe("true");
+    fireEvent.click(screen.getByTestId("shipwreck-wreck-fitzgerald"));
+    expect(onWreck).toHaveBeenCalledWith("fitzgerald");
+  });
+
+  it("plays another ship's wreck with a Play button", () => {
+    render(
+      <TitleScreen
+        ship="titanic"
+        onShip={() => {}}
+        wreck="fitzgerald"
+        onWreck={() => {}}
+        onRealNight={() => {}}
+        onWhatIf={() => {}}
+      />
+    );
+    const play = screen.getByTestId("shipwreck-real-night");
+    expect(play.textContent).toBe("Play");
+    expect(play.getAttribute("aria-label")).toMatch(
+      /Titanic meets a snow storm on Lake Superior/
+    );
+    expect(screen.getByTestId("shipwreck-parent-line").textContent).toMatch(
+      /Here the Titanic takes her place/
+    );
+  });
+});

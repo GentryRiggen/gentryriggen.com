@@ -47,6 +47,7 @@ export function sceneHooks(
       const s = get();
       return {
         ship: s.ship,
+        wreck: s.wreck ?? s.ship,
         t: s.t,
         realT: s.realT,
         phase: phaseAt(s.track, s.t),

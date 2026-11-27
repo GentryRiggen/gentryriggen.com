@@ -17,9 +17,12 @@ import {
   disposeRockMesh,
 } from "@/components/shipwreck/model/rock";
 import type { TitanicHandles } from "@/components/shipwreck/model/shipModel";
-import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { getShip } from "@/lib/shipwreck/ships";
-import { resolveLivery, type ShipSpec } from "@/lib/shipwreck/ships/types";
+import { stageSpec, type PlaybackStore } from "@/lib/shipwreck/playback";
+import {
+  resolveLivery,
+  storyIdOf,
+  type ShipSpec,
+} from "@/lib/shipwreck/ships/types";
 import {
   createFrame,
   sampleTrackInto,
@@ -107,9 +110,9 @@ function lampsOf(
  * the model's shaders are not touched). The liners have none.
  */
 export function deckLightsOf(spec: ShipSpec): [number, number, number][] {
-  if (SCENE_SETTINGS[spec.id].storm && spec.cause === "wave")
-    return cruiseSideLights(spec);
-  if (!SCENE_SETTINGS[spec.id].storm || !spec.openDeck) return [];
+  const storm = SCENE_SETTINGS[storyIdOf(spec)].storm;
+  if (storm && spec.cause === "wave") return cruiseSideLights(spec);
+  if (!storm || !spec.openDeck) return [];
   const { fromX, toX } = spec.openDeck;
   const out: [number, number, number][] = [];
   const n = 6;
@@ -250,7 +253,7 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
 
   // Her lights follow the time button's hour (lit at night, out by day).
   const time = useStore(store, (s) => s.time);
-  const settings = sceneSettingsFor(spec.id, time);
+  const settings = sceneSettingsFor(storyIdOf(spec), time);
   const lampPositions = useMemo(
     () => lampsOf(spec, settings),
     [spec, settings]
@@ -705,7 +708,13 @@ export default function ShipRig({ store, runtime, spec }: ShipRigProps) {
  */
 export function ShipOnStage({ store, runtime }: Omit<ShipRigProps, "spec">) {
   const ship = useStore(store, (s) => s.ship);
+  const wreck = useStore(store, (s) => s.wreck);
   return (
-    <ShipRig key={ship} store={store} runtime={runtime} spec={getShip(ship)} />
+    <ShipRig
+      key={`${ship}>${wreck}`}
+      store={store}
+      runtime={runtime}
+      spec={stageSpec({ ship, wreck })}
+    />
   );
 }

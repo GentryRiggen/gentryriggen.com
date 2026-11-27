@@ -9,6 +9,7 @@ import {
   type ShipSpec,
   isDeckOpening,
 } from "./ships/types";
+import { specFor } from "./ships";
 import {
   createSimRunner,
   FINISHER_SPOT,
@@ -135,6 +136,12 @@ export { FINISHER_SPOT };
 export interface PlaybackState {
   /** The ship on the stage (the title's choice, then the run's). */
   ship: ShipId;
+  /**
+   * The wreck she plays (any ship in any wreck): the ship whose story it
+   * is, or null for her own. `stageSpec` is the pair's spec, `stageStory`
+   * the story's ship.
+   */
+  wreck: ShipId | null;
   /** The track so far (live arrays while computing), or null before a run. */
   track: SimTrack | null;
   /** The holes in her hull this run was started with (the real night's or
@@ -231,10 +238,11 @@ export interface PlaybackActions {
     options?: StartOptions
   ): void;
   /**
-   * Puts another ship on the stage: a different one drops the run (the
-   * game then starts her own; the scene rebuilds the model).
+   * Puts another ship (or another wreck: `wreck`, default her own) on the
+   * stage: a different one drops the run (the game then starts her own;
+   * the scene rebuilds the model).
    */
-  setShip(ship: ShipId): void;
+  setShip(ship: ShipId, wreck?: ShipId): void;
   /** Steps the runner for up to `budgetMs`; call once per frame until done. */
   pump(budgetMs?: number): void;
   /**
@@ -291,10 +299,21 @@ export interface PlaybackActions {
   reset(): void;
 }
 
+/** The spec on the stage: her ship in her wreck (`specFor`). */
+export function stageSpec(s: Pick<PlaybackState, "ship" | "wreck">): ShipSpec {
+  return specFor(s.ship, s.wreck);
+}
+
+/** The ship whose story is on the stage (hers, or a crossover's wreck). */
+export function stageStory(s: Pick<PlaybackState, "ship" | "wreck">): ShipId {
+  return s.wreck ?? s.ship;
+}
+
 export type PlaybackStore = StoreApi<PlaybackState & PlaybackActions>;
 
 const INITIAL: PlaybackState = {
   ship: "titanic",
+  wreck: null,
   track: null,
   openings: [],
   hits: [],
@@ -602,6 +621,7 @@ export function createPlaybackStore(
         const tail = preview ? 0 : (spec.timelineTail ?? 0);
         set({
           ship: spec.id,
+          wreck: spec.story ?? null,
           track: null,
           openings,
           hits,
@@ -625,11 +645,14 @@ export function createPlaybackStore(
           snapId: get().snapId + 1,
         });
       },
-      setShip(ship) {
-        if (ship === get().ship) return;
+      setShip(ship, story = ship) {
+        const was = get();
+        const wreck = story === ship ? null : story;
+        if (ship === was.ship && wreck === was.wreck) return;
         runner = null;
         set({
           ship,
+          wreck,
           track: null,
           openings: [],
           hits: [],
@@ -649,8 +672,9 @@ export function createPlaybackStore(
           place: null,
           placeWaterM: 0,
           flyView: null,
-          // Her own default until the game applies her saved livery.
-          livery: null,
+          // Her own default until the game applies her saved livery (the
+          // same ship in another wreck keeps hers).
+          livery: ship === was.ship ? was.livery : null,
           // Her real time again.
           time: null,
           ...walkOff(),

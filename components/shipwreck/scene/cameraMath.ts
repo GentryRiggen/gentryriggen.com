@@ -482,8 +482,11 @@ export interface ShotContext {
   bodies: readonly BodyPose[];
   breakX: number | null;
   seaDepthM: number;
-  /** The ship on the stage (default the Titanic). */
+  /** The wreck on the stage (her story's shots; default the Titanic's). */
   ship?: ShipId;
+  /** The ship herself (her bridge and stern cameras), when another ship's
+   *  wreck is on the stage (a crossover). Missing: `ship`. */
+  hull?: ShipId;
   /** Ship-frame x where the torpedo struck (her shots aim there). */
   hitX?: number;
   /** Where it struck on the sea (three.js), fixed where it happened. */

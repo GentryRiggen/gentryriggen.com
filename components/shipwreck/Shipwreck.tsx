@@ -16,15 +16,16 @@ import { useGameUpdate } from "@/components/game-kit/useGameUpdate";
 import useVisibilityPause from "@/components/game-kit/useVisibilityPause";
 import UpdatePill from "@/components/update/UpdatePill";
 import { trackEnd, trackStart, type RunMode } from "@/lib/shipwreck/analytics";
-import { playback, startSpeed } from "@/lib/shipwreck/playback";
+import { playback, stageStory, startSpeed } from "@/lib/shipwreck/playback";
 import {
   liveryOf,
   shipOf,
   whatIfOf,
   withLivery,
   withWhatIf,
+  wreckOf,
 } from "@/lib/shipwreck/save";
-import { SHIP_IDS, getShip } from "@/lib/shipwreck/ships";
+import { SHIP_IDS, getShip, specFor } from "@/lib/shipwreck/ships";
 import { resolveLivery, type ShipId } from "@/lib/shipwreck/ships/types";
 import {
   torpedoHitXs,
@@ -119,9 +120,27 @@ const WRECK_VIEW: Record<ShipId, { target: V3; cam: V3 }> = {
   poseidon: { target: [0, 0, 5], cam: [-170, 130, -100] },
 };
 
+/**
+ * Another ship in her wreck (a crossover) lies however she landed: from
+ * off her port quarter and well above, far enough back for her length.
+ */
+function crossoverWreckView(spec: { lbp: number }): { target: V3; cam: V3 } {
+  const l = spec.lbp;
+  return { target: [0, 0, 10], cam: [-0.45 * l, 0.5 * l, 0.3 * l] };
+}
+
+/** The save with no wreck chosen: her own. */
+function withoutWreck<T extends { wreck?: ShipId }>(v: T): T {
+  const out = { ...v };
+  delete out.wreck;
+  return out;
+}
+
 interface Run {
   id: number;
   ship: ShipId;
+  /** The wreck she played (her own, or another ship's story). */
+  wreck: ShipId;
   mode: RunMode;
   /** Compartments opened. */
   holes: number;
@@ -169,7 +188,9 @@ export default function Shipwreck() {
 
   // The chosen ship: the save's (a 1.0 save has none: the Titanic).
   const ship = shipOf(save);
-  const spec = getShip(ship);
+  // Her wreck: her own, or another ship's story (any ship in any wreck).
+  const wreck = wreckOf(save);
+  const spec = specFor(ship, wreck);
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;
@@ -188,31 +209,51 @@ export default function Shipwreck() {
   useEffect(() => {
     if (!isGame || screen === "night") return;
     const s = playback.getState();
-    const id = shipOf(currentShipwreckSave());
+    const now = currentShipwreckSave();
+    const id = shipOf(now);
+    const story = wreckOf(now);
     if (
       s.ship !== id ||
+      stageStory(s) !== story ||
       s.track === null ||
       !s.preview ||
       s.openings.length > 0 ||
       s.t > 0
     ) {
-      s.start(getShip(id), [], { endT: PREVIEW_END_S, preview: true });
+      s.start(specFor(id, story), [], { endT: PREVIEW_END_S, preview: true });
       s.setXray(false);
       s.flyToPlace(null, false);
     }
     s.pause();
     s.setCamera("cinematic");
-  }, [isGame, screen, ship]);
+  }, [isGame, screen, ship, wreck]);
 
   const shipRef = useRef(ship);
+  const wreckRef = useRef(wreck);
   useEffect(() => {
     shipRef.current = ship;
+    wreckRef.current = wreck;
   });
 
+  /** A ship card: her, in her own wreck (a crossover is chosen after). */
   const pickShip = useCallback(
     (id: ShipId) => {
-      update((v) => ({ ...v, ship: id }));
+      // Her own card again: keep the wreck chosen for her.
+      if (id === shipRef.current && playback.getState().ship === id) return;
+      update((v) => ({ ...withoutWreck(v), ship: id }));
       playback.getState().setShip(id);
+      persist();
+    },
+    [update, persist]
+  );
+  /** A wreck card: the chosen ship in that ship's story. */
+  const pickWreck = useCallback(
+    (story: ShipId) => {
+      const id = shipRef.current;
+      update((v) =>
+        story === shipOf(v) ? withoutWreck(v) : { ...v, wreck: story }
+      );
+      playback.getState().setShip(id, story);
       persist();
     },
     [update, persist]
@@ -222,7 +263,8 @@ export default function Shipwreck() {
     (mode: RunMode, choice: WhatIfChoice) => {
       const s = playback.getState();
       const id = shipRef.current;
-      const runSpec = getShip(id);
+      const story = wreckRef.current;
+      const runSpec = specFor(id, story);
       const openings =
         mode === "real"
           ? runSpec.realNight
@@ -285,11 +327,15 @@ export default function Shipwreck() {
       update((v) =>
         mode === "real"
           ? { ...v, seen: { ...v.seen, realNight: true } }
-          : withWhatIf(v, id, choice)
+          : // A crossover's What if is not kept (her own spots differ).
+            story !== id
+            ? v
+            : withWhatIf(v, id, choice)
       );
       setRun((r) => ({
         id: (r?.id ?? 0) + 1,
         ship: id,
+        wreck: story,
         mode,
         holes,
         choice: { ...choice, ids: [...choice.ids] },
@@ -337,7 +383,13 @@ export default function Shipwreck() {
     const isNew = !saveRef.current.seen.endings.includes(outcome);
     // Seen only when its badge shows: her real run has none (R16), so it
     // must not quietly use up an ending she has not shown yet.
-    const shows = showsNewEnding(run.ship, run.mode, isNew);
+    // Another ship in her wreck is never her real run (R16 is about the
+    // real Fitzgerald's loss): it counts as a What if.
+    const shows = showsNewEnding(
+      run.ship,
+      run.wreck === run.ship ? run.mode : "whatif",
+      isNew
+    );
     setNewEnding(shows);
     if (shows)
       update((v) => ({
@@ -420,9 +472,17 @@ export default function Shipwreck() {
           pickShip(id as ShipId);
           setScreen("title");
         },
+        setWreck: (id) => {
+          if (!(SHIP_IDS as readonly string[]).includes(id)) return;
+          leaveRef.current();
+          pickWreck(id as ShipId);
+          setScreen("title");
+        },
         ship: () => shipRef.current,
         startReal: () =>
-          startRun("real", { ids: realWhatIfIds(getShip(shipRef.current)) }),
+          startRun("real", {
+            ids: realWhatIfIds(specFor(shipRef.current, wreckRef.current)),
+          }),
         startWhatIf: (
           ids,
           portholesOpen,
@@ -462,12 +522,20 @@ export default function Shipwreck() {
         },
         time: () => {
           const s = playback.getState();
-          return resolveTime(s.ship, s.time);
+          return resolveTime(stageStory(s), s.time);
         },
         setUnderLight: (level) => playback.getState().setUnderLight(level),
       }
     );
-  }, [isModelView, isSceneView, startRun, pickShip, chooseLivery, runtime]);
+  }, [
+    isModelView,
+    isSceneView,
+    startRun,
+    pickShip,
+    pickWreck,
+    chooseLivery,
+    runtime,
+  ]);
 
   useVisibilityPause({ onPersist: persist });
 
@@ -498,7 +566,7 @@ export default function Shipwreck() {
 
   // At the end the run is done, so the track no longer changes.
   const endTrack = showEnd && hasTrack ? playback.getState().track : null;
-  const runSpec = run ? getShip(run.ship) : spec;
+  const runSpec = run ? specFor(run.ship, run.wreck) : spec;
   const words = endTrack
     ? endWords(endTrack, runSpec, run!.holes, {
         portholesOpen: run!.choice.portholesOpen,
@@ -527,6 +595,8 @@ export default function Shipwreck() {
         <TitleScreen
           ship={ship}
           onShip={pickShip}
+          wreck={wreck}
+          onWreck={pickWreck}
           onRealNight={() =>
             startRun("real", { ids: realWhatIfIds(spec), portholesOpen: true })
           }
@@ -537,9 +607,11 @@ export default function Shipwreck() {
       )}
       {screen === "editor" && (
         <WhatIfEditor
-          key={ship}
+          key={`${ship}>${wreck}`}
           spec={spec}
-          initial={whatIfOf(save, ship)}
+          initial={
+            wreck === ship ? whatIfOf(save, ship) : { ids: realWhatIfIds(spec) }
+          }
           onBack={() => setScreen("title")}
           onGo={(choice) => startRun("whatif", choice)}
         />
@@ -572,7 +644,14 @@ export default function Shipwreck() {
             // Afloat (even upside down): look around her, not at a wreck.
             if (words.outcome === "floated" || words.outcome === "capsized")
               playback.getState().setCamera("orbit");
-            else playback.getState().flyToView(WRECK_VIEW[runSpec.id]);
+            else
+              playback
+                .getState()
+                .flyToView(
+                  runSpec.story
+                    ? crossoverWreckView(runSpec)
+                    : WRECK_VIEW[runSpec.id]
+                );
           }}
           onWatchAgain={() => startRun(run!.mode, run!.choice)}
           onWhatIf={goEditor}

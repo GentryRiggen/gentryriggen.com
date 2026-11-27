@@ -17,7 +17,7 @@ import {
 import { OrbitControls } from "three-stdlib";
 import { placeFor } from "@/lib/shipwreck/places";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { storyIdOf, type ShipSpec } from "@/lib/shipwreck/ships/types";
 import { createFrame, sampleTrackInto } from "@/lib/shipwreck/sim/track";
 import { partAt } from "@/lib/shipwreck/xray";
 import {
@@ -89,8 +89,10 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
   const { camera, gl } = useThree();
   const SEA_DEPTH = spec.seaDepthM;
   const boxes = hullBoxesFor(spec.id);
+  // Her wreck's story (her own, or another ship's: a crossover).
+  const story = storyIdOf(spec);
   // The Concordia's island and sloping floor (else her flat floor).
-  const ground = groundFor(spec.id);
+  const ground = groundFor(story);
   const controls = useMemo(() => {
     const c = new OrbitControls(camera, gl.domElement);
     c.enableDamping = true;
@@ -445,7 +447,8 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
             bodies: frame.bodies,
             breakX: p.track?.breakX ?? null,
             seaDepthM: SEA_DEPTH,
-            ship: spec.id,
+            ship: story,
+            hull: spec.id,
             hitX: own.x,
             hitT: own.t,
             hitAt: p.track!.frames.length > 0 ? hitScratch.out : undefined,
@@ -456,7 +459,8 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
             bodies: frame.bodies,
             breakX: p.track?.breakX ?? null,
             seaDepthM: SEA_DEPTH,
-            ship: spec.id,
+            ship: story,
+            hull: spec.id,
             hitX: hole?.x,
             // Where it struck: her first frame, into scratch arrays.
             hitAt:
@@ -479,18 +483,18 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
           ? cinematicShot(
               p.track,
               p.t,
-              spec.id,
+              story,
               cinematicHit(p.openings.length, spec.cause, p.preview)
             )
-          : spec.id === "lusitania" || spec.id === "carpathia"
+          : story === "lusitania" || story === "carpathia"
             ? "afternoon"
-            : spec.id === "britannic"
+            : story === "britannic"
               ? "morning"
-              : spec.id === "fitzgerald"
+              : story === "fitzgerald"
                 ? "storm"
-                : spec.id === "concordia"
+                : story === "concordia"
                   ? "giglio"
-                  : spec.id === "poseidon"
+                  : story === "poseidon"
                     ? "poseidon-party"
                     : "establishing";
         // Reduced motion: cut between the shots instead of flying.
@@ -525,9 +529,9 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       // length shows); under water at most 1.2 (lost in the dark water).
       const pull = portraitPullBack(cam.aspect);
       let back =
-        spec.id !== "titanic" && s.pos[1] < 0 ? Math.min(1.2, pull) : pull;
+        story !== "titanic" && s.pos[1] < 0 ? Math.min(1.2, pull) : pull;
       if (
-        spec.id === "fitzgerald" &&
+        story === "fitzgerald" &&
         p.camera === "cinematic" &&
         s.pos[1] >= 0 &&
         cam.aspect < 1.2 &&
@@ -610,30 +614,30 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
 }
 
 function bridgeView(ctx: ShotContext): View {
-  if (ctx.ship === "poseidon") return poseidonBridgeView(ctx);
+  if ((ctx.hull ?? ctx.ship) === "poseidon") return poseidonBridgeView(ctx);
   const b = ctx.bodies.find((x) => x.part === "bow") ?? ctx.bodies[0];
-  if (ctx.ship === "fitzgerald")
+  if ((ctx.hull ?? ctx.ship) === "fitzgerald")
     // Her pilothouse's starboard wing, forward, looking aft down her deck
     // (the hatches, the seas coming up from astern).
     return {
       pos: shipThree(b, [101, -8.5, 22.5]),
       target: shipThree(b, [-60, -2, 13]),
     };
-  if (ctx.ship === "concordia")
+  if ((ctx.hull ?? ctx.ship) === "concordia")
     // Her starboard bridge wing on deck 8, out over her side, looking aft
     // along her balconies and boats.
     return {
       pos: shipThree(b, [127, -18.6, 36]),
       target: shipThree(b, [-60, -15, 30]),
     };
-  if (ctx.ship === "carpathia")
+  if ((ctx.hull ?? ctx.ship) === "carpathia")
     // Her port bridge wing (the side the torpedo's track was seen on),
     // over the bridge house's front, looking aft along her port boats.
     return {
       pos: shipThree(b, [16, 9.6, 24.5]),
       target: shipThree(b, [-40, 7, 21]),
     };
-  if (ctx.ship === "lusitania")
+  if ((ctx.hull ?? ctx.ship) === "lusitania")
     // Her starboard bridge wing (the bridge at 68 m, over the boat deck),
     // looking aft along the boats.
     return {
@@ -647,29 +651,29 @@ function bridgeView(ctx: ShotContext): View {
 }
 
 function sternView(ctx: ShotContext): View {
-  if (ctx.ship === "poseidon") return poseidonSternView(ctx);
+  if ((ctx.hull ?? ctx.ship) === "poseidon") return poseidonSternView(ctx);
   const b = ctx.bodies.find((x) => x.part === "stern") ?? ctx.bodies[0];
-  if (ctx.ship === "fitzgerald")
+  if ((ctx.hull ?? ctx.ship) === "fitzgerald")
     // On her after house by the funnel, looking forward along her deck.
     return {
       pos: shipThree(b, [-84, 0, 20.5]),
       target: shipThree(b, [60, 0, 13]),
     };
-  if (ctx.ship === "concordia")
+  if ((ctx.hull ?? ctx.ship) === "concordia")
     // Her stepped terraces aft (deck 9's open deck), looking forward to
     // the funnel and the top tier.
     return {
       pos: shipThree(b, [-124, 0, 39]),
       target: shipThree(b, [10, 0, 42]),
     };
-  if (ctx.ship === "carpathia")
+  if ((ctx.hull ?? ctx.ship) === "carpathia")
     // Over her stern deckhouse on the open after deck (R21), looking
     // forward past the jigger and the boat platform.
     return {
       pos: shipThree(b, [-84, 0, 19.6]),
       target: shipThree(b, [10, 0, 21]),
     };
-  if (ctx.ship === "lusitania")
+  if ((ctx.hull ?? ctx.ship) === "lusitania")
     // Her open Shelter deck aft (no raised poop), looking forward.
     return {
       pos: shipThree(b, [-116, 0, 22.5]),

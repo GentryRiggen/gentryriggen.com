@@ -1,3 +1,4 @@
+import { getShip } from "./ships";
 import { titanic } from "./ships/titanic";
 import type { Opening, ShipId, ShipSpec } from "./ships/types";
 import type { SimEvent } from "./sim/events";
@@ -41,14 +42,20 @@ export interface ShipStory {
 }
 
 /** A ship as the story's words need it: what sank her, and which she is. */
-type StoryShip = Pick<ShipSpec, "cause"> & Partial<Pick<ShipSpec, "id">>;
+type StoryShip = Pick<ShipSpec, "cause"> &
+  Partial<Pick<ShipSpec, "id" | "story">>;
+
+/** The story a ship's words tell: a crossover's wreck, else her own. */
+function storyIdFor(ship: StoryShip): ShipId | undefined {
+  return ship.story ?? ship.id;
+}
 
 export function storyOf(
   ship: StoryShip,
   /** Torpedo and mine ships: how many hit (a What if may have more than one). */
   hits = 1
 ): ShipStory {
-  if (ship.id === "carpathia") {
+  if (storyIdFor(ship) === "carpathia") {
     // Her clock counts from the first torpedo (more may come later).
     const torpedo = hits > 1 ? "the first torpedo" : "the torpedo";
     return {
@@ -253,7 +260,7 @@ export function captionText(
   // the rest of her is still up.
   const shallow = ship.seaDepthM < ship.lbp;
   if (ship.cause === "storm") return stormCaption(e, ship, ctx);
-  if (ship.id === "carpathia") return carpathiaCaption(e, ship, ctx);
+  if (storyIdFor(ship) === "carpathia") return carpathiaCaption(e, ship, ctx);
   if (ship.cause === "mine") return mineCaption(e, ship, ctx);
   if (ship.cause === "rocks") return rocksCaption(e, ctx);
   if (ship.cause === "torpedo") {
@@ -1304,6 +1311,9 @@ export function endWords(
   ctx: EndContext = {}
 ): EndWords {
   const outcome = outcomeOf(track);
+  // Another ship in her wreck: her own words, never the story ship's.
+  if (ship.story && ship.story !== ship.id)
+    return crossoverEnd(track, ship, holes, ctx, outcome);
   if (ship.cause === "wave") return waveEnd(track, ship, outcome);
   if (ship.cause === "rocks") return rocksEnd(track, ship, holes, ctx, outcome);
   if (outcome === "floated" && ship.cause === "mine")
@@ -1331,7 +1341,7 @@ export function endWords(
         ],
       };
     }
-    if (ship.id === "carpathia")
+    if (storyIdFor(ship) === "carpathia")
       return {
         outcome,
         title: "She stayed afloat!",
@@ -1366,7 +1376,7 @@ export function endWords(
   const fromHit = Math.max(0, at - (ctx.firstHitS ?? 0));
   const hit = storm
     ? `her ${clockText(0, ship.clockStartS).replace(" ", "\u00a0")} report`
-    : ship.id === "carpathia"
+    : storyIdFor(ship) === "carpathia"
       ? `${storyOf(ship, ctx.hits ?? 1).cause} hit`
       : torpedo
         ? `${torpedoes} hit`
@@ -1396,12 +1406,115 @@ export function endWords(
   };
 }
 
+/**
+ * A crossover's end card (another ship in her wreck, `ShipSpec.story`):
+ * what happened to her, and that the real ship of that story was another
+ * ship. None of the story ship's own lines (her real night, her harbour,
+ * her engines' lesson) are hers to say.
+ */
+function crossoverEnd(
+  track: SimTrack,
+  ship: ShipSpec,
+  holes: number,
+  ctx: EndContext,
+  outcome: OutcomeId
+): EndWords {
+  const real = getShip(ship.story!);
+  const realName = END_NAME[real.id] ?? real.name;
+  const name = END_NAME[ship.id] ?? ship.name;
+  const many = (ctx.hits ?? 1) > 1;
+  const what =
+    ship.cause === "torpedo"
+      ? many
+        ? "the torpedoes"
+        : "the torpedo"
+      : ship.cause === "mine"
+        ? many
+          ? "the mines"
+          : "the mine"
+        : ship.cause === "rocks"
+          ? "the rocks"
+          : ship.cause === "wave"
+            ? "the wave"
+            : ship.cause === "storm"
+              ? "the storm"
+              : "the iceberg";
+  const different = `The ${name} is a different ship from the ${realName}: her own size, weight and walls between her rooms decided what happened.`;
+  if (outcome === "floated") {
+    const safe = track.events.find((e) => e.kind === "sheltered");
+    if (ship.cause === "storm")
+      return {
+        outcome,
+        title: `The ${name} made it to ${ship.shelter?.name ?? "shelter"}!`,
+        lines: [
+          `She held on through the storm and reached the shelter of ${ship.shelter?.name ?? "the bay"} at ${clockText(safe?.realT ?? track.endT, ship.clockStartS).replace(" ", "\u00a0")}, where the waves are smaller.`,
+          `The real ${realName} sank in that storm. ${different}`,
+        ],
+      };
+    return {
+      outcome,
+      title: `The ${name} stayed afloat!`,
+      lines: [
+        ship.cause === "wave"
+          ? `She rode out ${what} and floated on.`
+          : `The water stayed in the ${holes === 1 ? "room" : "rooms"} ${what} opened, and she floated on.`,
+        `The real ${realName} did not. ${different}`,
+      ],
+    };
+  }
+  if (outcome === "aground")
+    return {
+      outcome,
+      title: `The ${name} ran aground`,
+      lines: [
+        "She came to rest on the rocks by the shore, still partly out of the water, so she never sank all the way.",
+        different,
+      ],
+    };
+  if (outcome === "capsized")
+    return {
+      outcome,
+      title: `The ${name} turned upside down`,
+      lines: [
+        "She floats upside down, held up by air trapped inside her.",
+        different,
+      ],
+    };
+  const sank = track.events.find((e) => e.kind === "stern-under");
+  const at = sank?.realT ?? track.sankAtT ?? track.endT;
+  const fromHit = Math.max(0, at - (ctx.firstHitS ?? 0));
+  const after =
+    ship.cause === "storm"
+      ? `the storm's ${clockText(0, ship.clockStartS).replace(" ", "\u00a0")} report`
+      : ship.cause === "rocks"
+        ? "hitting the rocks"
+        : ship.cause === "iceberg"
+          ? "hitting the iceberg"
+          : `${what} hit`;
+  const broke = outcome === "broke-in-two" ? "broke in two and sank" : "sank";
+  return {
+    outcome,
+    title: `${name} sank at ${clockText(at, ship.clockStartS)}`,
+    lines: [
+      `She ${broke} ${durationWords(fromHit)} after ${after}. She lies ${depthWords(ship.seaDepthM)} down.`,
+      different,
+    ],
+  };
+}
+
 /** The "What really happened" note (history, labelled as such). */
 export const HISTORY_NOTE =
   "What really happened: the real Titanic sank at 2:20 AM. The ship Carpathia raced through the night, arrived at 4:10 AM and picked up the people in the lifeboats.";
 
 /** Each ship's "What really happened" note. */
-export function historyNote(ship: Pick<ShipSpec, "id">): string {
+export function historyNote(
+  ship: Pick<ShipSpec, "id" | "name"> & Partial<Pick<ShipSpec, "story">>
+): string {
+  // Another ship in her wreck: whose story it was, then its history.
+  if (ship.story && ship.story !== ship.id) {
+    const real = getShip(ship.story);
+    return `This was the ${END_NAME[real.id] ?? real.name}'s ${storyOf(real).period} with the ${ship.name} in it instead. ${historyNote(real)}`;
+  }
   if (ship.id === "poseidon")
     return "What really happened: nothing. The Poseidon is a made-up ship. Real ships have met waves nearly this big, and this shows what physics says could happen to a ship turned upside down.";
   if (ship.id === "carpathia")

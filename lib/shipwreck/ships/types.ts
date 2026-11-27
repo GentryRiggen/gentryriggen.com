@@ -311,6 +311,11 @@ export interface FunPaint {
   boat?: { hull: number; bottom: number; cover?: number };
 }
 
+/** The story a ship plays: a crossover's `story`, else her own. */
+export function storyIdOf(spec: Pick<ShipSpec, "id" | "story">): ShipId {
+  return spec.story ?? spec.id;
+}
+
 /** Her real paints (the tray's first row), in her list's order. */
 export function realLiveries(spec: ShipSpec): readonly Livery[] {
   return (spec.liveries ?? []).filter((l) => !l.fun);
@@ -395,6 +400,12 @@ export interface SeabedSpec {
 
 export interface ShipSpec {
   id: ShipId;
+  /**
+   * Any ship in any wreck (`crossover`): the ship whose story (sea, place,
+   * time, what opened the hull) she plays. Missing: her own. `id` stays
+   * hers: her model, rooms, decks and paint.
+   */
+  story?: ShipId;
   name: string;
   year: number;
   lbp: number;

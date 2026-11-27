@@ -4,7 +4,8 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { IcosahedronGeometry, Mesh, MeshStandardMaterial } from "three";
-import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import { stageSpec, type PlaybackStore } from "@/lib/shipwreck/playback";
+import { titanic } from "@/lib/shipwreck/ships";
 
 /**
  * The iceberg: a large, irregular, dark berg (procedural, nothing
@@ -60,10 +61,14 @@ export default function Iceberg({ store }: { store: PlaybackStore }) {
   );
 
   useFrame(() => {
-    const { t, openings } = store.getState();
-    // Off the starboard bow at the collision, then slipping astern.
-    const x = 105 - t * 0.38;
-    const z = 46 + t * 0.06;
+    const s = store.getState();
+    const { t, openings } = s;
+    // Off the starboard bow at the collision, then slipping astern: the
+    // Titanic's (105 m forward, 46 m out), as far along and out from any
+    // ship in her wreck (a crossover).
+    const spec = stageSpec(s);
+    const x = 105 * (spec.lbp / titanic.lbp) - t * 0.38;
+    const z = 46 + (spec.beam - titanic.beam) / 2 + t * 0.06;
     berg.m.position.set(x, 0, z);
     berg.m.rotation.y = 0.4 + t * 0.00004;
     // No holes (the title's calm ship before the collision): no iceberg yet.

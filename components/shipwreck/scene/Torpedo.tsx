@@ -11,8 +11,11 @@ import {
   UniformsLib,
   UniformsUtils,
 } from "three";
-import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { getShip } from "@/lib/shipwreck/ships";
+import {
+  stageSpec,
+  stageStory,
+  type PlaybackStore,
+} from "@/lib/shipwreck/playback";
 import type { Opening, ShipSpec } from "@/lib/shipwreck/ships/types";
 import { isDaylit, sceneSettingsFor } from "./settings";
 import TrackPoses from "./torpedoPose";
@@ -232,9 +235,9 @@ export default function Torpedo({ store }: TorpedoProps) {
     const hole = torpedoes.length > 0 ? null : torpedoHole(s.openings);
     const n = torpedoes.length > 0 ? torpedoes.length : hole ? 1 : 0;
     const ready = s.track !== null && s.track.frames.length > 0;
-    const spec = getShip(s.ship);
+    const spec = stageSpec(s);
     // The froth is unlit: dim at night (the time button's starry night).
-    const light = isDaylit(sceneSettingsFor(s.ship, s.time))
+    const light = isDaylit(sceneSettingsFor(stageStory(s), s.time))
       ? 1
       : NIGHT_TRACK_LIGHT;
     // Where they struck, on the sea at the moment of each hit (they stay
