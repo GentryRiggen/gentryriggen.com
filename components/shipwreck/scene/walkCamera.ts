@@ -78,7 +78,7 @@ export function deckEyes(
 ): WalkerView {
   feetAt[0] = w.x;
   feetAt[1] = w.y;
-  feetAt[2] = floorZ(map, w.area, w.x, spec);
+  feetAt[2] = floorZ(map, w.area, w.x, spec, w.y);
   shipToThreeInto(pose, feetAt, feet);
   out.pos[0] = feet[0];
   out.pos[1] = feet[1] + WALK_EYE_M + jumpHeight(w.jumpS);

@@ -3,13 +3,18 @@ import type { BodyPose } from "../sim/track";
 import { deckSlope, shipToEarth, type V3 } from "./slope";
 import {
   areaById,
+  blockersIn,
   floorZ,
   JUMP_S,
+  seamEdges,
   WALK_IN_WATER_DEPTH_M,
+  WALK_INSIDE_SPEED_MS,
+  WALK_LIFT_MAX_DEPTH_M,
   WALK_RADIUS_M,
   WALK_SPEED_MS,
   WALK_TURN_PER_PX,
   pointInPolygon,
+  type Stair,
   type V2,
   type WalkArea,
   type WalkMap,
@@ -58,6 +63,13 @@ export interface StepContext {
   breakX: number | null;
   /** Earth z of the sea surface at an earth (x, y). */
   seaZ(x: number, y: number): number;
+  /**
+   * Earth z of the water over a ship-frame point of an area (a room's own
+   * level inside). Missing: the sea (`seaZ`) at the feet, as on deck.
+   */
+  waterZ?(areaId: string, x: number, y: number): number;
+  /** Whether deck doors lead inside (false after the break); default true. */
+  interiorsOpen?: boolean;
 }
 
 export type StepResult = {
@@ -72,6 +84,8 @@ export type StepResult = {
    * the scene shows the fall to the sea.
    */
   overboard?: boolean;
+  /** A door, lift or stair taken during this step (the last one). */
+  via?: { kind: "door" | "lift" | "stair"; id: string };
 };
 
 /** The fixed substep (s). */
@@ -103,10 +117,13 @@ export function partFor(
 
 const feet: V3 = [0, 0, 0];
 
-/** Sea over the walker's feet at (x, y) on an area (m). */
+/** Water over the walker's feet at (x, y) on an area (m). */
 function depthAt(ctx: StepContext, areaId: string, x: number, y: number) {
-  shipToEarth(ctx.pose, [x, y, floorZ(ctx.map, areaId, x, ctx.spec)], feet);
-  return ctx.seaZ(feet[0], feet[1]) - feet[2];
+  shipToEarth(ctx.pose, [x, y, floorZ(ctx.map, areaId, x, ctx.spec, y)], feet);
+  const water = ctx.waterZ
+    ? ctx.waterZ(areaId, x, y)
+    : ctx.seaZ(feet[0], feet[1]);
+  return water - feet[2];
 }
 
 /** The decision that ends a walk (the "go down with the ship" switch). */
@@ -148,9 +165,20 @@ interface Sub {
   area: string;
 }
 
-/** Moves the walker by (mx, my) inside the area's outline, sliding along it. */
-function moveInOutline(area: WalkArea, s: Sub, mx: number, my: number): void {
-  const poly = area.outline;
+/**
+ * Moves the walker by (mx, my) inside their area's outline, sliding along
+ * it. A seam edge is open: the move crosses into the area beyond (s.area
+ * changes) and carries on inside that outline. Four passes in all.
+ */
+function moveInOutline(
+  map: WalkMap,
+  area: WalkArea,
+  s: Sub,
+  mx: number,
+  my: number
+): void {
+  let poly = area.outline;
+  let seams = seamEdges(map, s.area);
   let x0 = s.x;
   let y0 = s.y;
   let x1 = x0 + mx;
@@ -182,6 +210,17 @@ function moveInOutline(area: WalkArea, s: Sub, mx: number, my: number): void {
     const b = poly[(best + 1) % poly.length];
     const n = outward(a, b);
     const hit: V2 = [x0 + rx * bestT, y0 + ry * bestT];
+    const across = seams ? seams[best] : null;
+    const next = across !== null ? areaById(map, across) : undefined;
+    if (next) {
+      // Through the doorway: just past the edge, same motion, new outline.
+      s.area = next.id;
+      poly = next.outline;
+      seams = seamEdges(map, next.id);
+      x0 = hit[0] + n[0] * EPS;
+      y0 = hit[1] + n[1] * EPS;
+      continue;
+    }
     // Stop at the edge and keep only the motion along it.
     const qx = hit[0] - n[0] * EPS;
     const qy = hit[1] - n[1] * EPS;
@@ -200,10 +239,11 @@ function moveInOutline(area: WalkArea, s: Sub, mx: number, my: number): void {
 /** Pushes the walker's body out of blockers and off the edges. */
 function resolveBody(ctx: StepContext, area: WalkArea, s: Sub): void {
   const R = WALK_RADIUS_M;
+  const blockers = blockersIn(ctx.map, area.id);
+  const seams = seamEdges(ctx.map, area.id);
   for (let iter = 0; iter < 3; iter += 1) {
     let moved = false;
-    for (const b of ctx.map.blockers) {
-      if (b.area !== area.id) continue;
+    for (const b of blockers) {
       let nx = 0;
       let ny = 0;
       let push = 0;
@@ -249,9 +289,10 @@ function resolveBody(ctx: StepContext, area: WalkArea, s: Sub): void {
       s.y += ny * push;
       moved = true;
     }
-    // Keep the body off the railings and walls.
+    // Keep the body off the railings and walls (a seam is no wall).
     const poly = area.outline;
     for (let i = 0; i < poly.length; i += 1) {
+      if (seams && seams[i] !== null) continue;
       const a = poly[i];
       const b = poly[(i + 1) % poly.length];
       const { q, d } = nearestOnSegment([s.x, s.y], a, b);
@@ -299,9 +340,20 @@ function overSeaRail(
   return false;
 }
 
-/** Steps through a stair when the walker has just entered one end. */
-function takeStairs(ctx: StepContext, s: Sub, px: number, py: number): void {
+/**
+ * Steps through a stair, door or lift when the walker has just entered one
+ * end, and returns it (null when none was taken). A door is shut while
+ * interiors are closed; a lift stays put while its arrival is flooded
+ * deeper than WALK_LIFT_MAX_DEPTH_M.
+ */
+function takeStairs(
+  ctx: StepContext,
+  s: Sub,
+  px: number,
+  py: number
+): Stair | null {
   for (const st of ctx.map.stairs) {
+    if (st.kind === "door" && ctx.interiorsOpen === false) continue;
     for (const [end, other] of [
       [st.from, st.to],
       [st.to, st.from],
@@ -311,13 +363,20 @@ function takeStairs(ctx: StepContext, s: Sub, px: number, py: number): void {
       const before = Math.hypot(px - end.at[0], py - end.at[1]);
       const now = Math.hypot(s.x - end.at[0], s.y - end.at[1]);
       if (before >= r && now < r) {
+        if (
+          st.kind === "lift" &&
+          depthAt(ctx, other.area, other.at[0], other.at[1]) >
+            WALK_LIFT_MAX_DEPTH_M
+        )
+          return null;
         s.area = other.area;
         s.x = other.at[0];
         s.y = other.at[1];
-        return;
+        return st;
       }
     }
   }
+  return null;
 }
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -353,15 +412,22 @@ export function stepWalker(
   }
   const cy = Math.cos(yaw);
   const sy = Math.sin(yaw);
-  const baseX = WALK_SPEED_MS * (f * cy + r * sy);
-  const baseY = WALK_SPEED_MS * (f * sy - r * cy);
+  // Unit stick direction; the speed is the area's (inside or on deck).
+  const dirX = f * cy + r * sy;
+  const dirY = f * sy - r * cy;
 
   let inWater: StepResult["inWater"] = null;
   let overboard = false;
-  // A jump starts on the floor only.
+  let via: StepResult["via"];
+  // A jump starts on the floor only, and never inside.
   let jumpS = s.jumpS ?? null;
   let jumpFrom = s.jumpFrom ?? null;
-  if (input.jump && jumpS === null && n > 0) {
+  if (
+    input.jump &&
+    jumpS === null &&
+    n > 0 &&
+    !areaById(ctx.map, s.area)?.interior
+  ) {
     jumpS = 0;
     jumpFrom = [s.x, s.y];
   }
@@ -369,8 +435,14 @@ export function stepWalker(
   for (let k = 0; k < n; k += 1) {
     const area = areaById(ctx.map, sub.area);
     if (!area) break;
+    const speed = area.interior ? WALK_INSIDE_SPEED_MS : WALK_SPEED_MS;
+    const baseX = speed * dirX;
+    const baseY = speed * dirY;
     if (jumpS !== null) {
-      if (overSeaRail(area, sub, baseX, baseY, jumpFrom ?? [sub.x, sub.y])) {
+      if (
+        !area.interior &&
+        overSeaRail(area, sub, baseX, baseY, jumpFrom ?? [sub.x, sub.y])
+      ) {
         overboard = true;
         inWater = "deep";
         break;
@@ -388,18 +460,22 @@ export function stepWalker(
         : 1;
     const px = sub.x;
     const py = sub.y;
-    moveInOutline(area, sub, baseX * wade * h, baseY * wade * h);
-    resolveBody(ctx, area, sub);
+    moveInOutline(ctx.map, area, sub, baseX * wade * h, baseY * wade * h);
+    // A seam may have carried them into the next room.
+    const now = sub.area === area.id ? area : areaById(ctx.map, sub.area);
+    if (now) resolveBody(ctx, now, sub);
     // Never leave the outline, nor step off the break onto the other piece.
     const offBreak =
       ctx.breakX !== null &&
       s.part !== "whole" &&
       (s.part === "bow" ? sub.x < ctx.breakX : sub.x >= ctx.breakX);
-    if (offBreak || !pointInPolygon([sub.x, sub.y], area.outline)) {
+    if (offBreak || !now || !pointInPolygon([sub.x, sub.y], now.outline)) {
       sub.x = px;
       sub.y = py;
+      sub.area = area.id;
     }
-    takeStairs(ctx, sub, px, py);
+    const taken = takeStairs(ctx, sub, px, py);
+    if (taken) via = { kind: taken.kind ?? "stair", id: taken.id };
     depth = depthAt(ctx, sub.area, sub.x, sub.y);
     inWater = inWaterFromDepth(depth);
     if (inWater) break;
@@ -418,6 +494,7 @@ export function stepWalker(
     },
     inWater,
     ...(overboard ? { overboard } : {}),
+    ...(via ? { via } : {}),
     depthM: depth,
     slopeDeg: deckSlope(ctx.pose).deg,
   };

@@ -87,6 +87,41 @@ heights the maps do not have yet.
 `inWaterFromDepth` is the one decision that ends a walk. **"Go down with
 the ship"** (the next ask) changes only that decision in `stepWalker`.
 
+## Inside (interiors, 1.15)
+
+Rooms inside her are walk areas too, on the `whole` piece, so they pitch
+and list with her as the deck does. Everything below is keyed on the
+area's flags or the map's extra fields; a deck map without them walks
+exactly as before.
+
+- **Interior areas** (`interior: true`): every edge is a wall unless it is
+  a seam. No jump starts there (one already in the air lands), the walker
+  goes at `WALK_INSIDE_SPEED_MS` (3 m/s) and never goes over a rail.
+  `kind` names the room for the scene, `axis` is a corridor's centre line
+  and `noWalk` marks a room that is drawn but not walked.
+- **Ramps** (`ramp: { from, to, dropM }`): a flight of stairs as a slope.
+  `floorZ(map, area, x, spec, y = 0)` is the deck's height plus `raiseM`,
+  less `dropM · u`, where `u` is (x, y) projected on `from → to` and
+  clamped to 0..1. Every caller that knows y passes it (`depthAt`,
+  `placeWalker`, `swimmerFrom`, the scene's `deckEyes`).
+- **Seams** (`WalkMap.seams`, `{ a, b, at }`): an open edge (a doorway)
+  between two areas at equal floor height. `at` matches an edge of both
+  outlines, either way round, within 1 mm (looked up once per map). The
+  move crosses a seam into the next area and carries on inside its
+  outline (still four passes in all); the body is never pushed off a
+  seam; the "never leave the outline" undo tests the area the walker
+  ended in.
+- **Links** (`Stair.kind`): `"stair"` (the default) as before; a `"door"`
+  (deck door) does nothing while `StepContext.interiorsOpen` is false
+  (after the break); a `"lift"` stays put while the water at its arrival
+  is deeper than `WALK_LIFT_MAX_DEPTH_M` (the knee, 0.5 m).
+  `StepResult.via` (`{ kind, id }`) reports a link taken that step.
+- **Water** (`StepContext.waterZ?(area, x, y)`): the earth level of the
+  water over a ship-frame point, so a room can hold its own level. Without
+  it, the depth is the sea (`seaZ`) at the feet, as on deck.
+- **Blockers by area**: looked up per area (built once per map on first
+  use), so many furniture blockers inside do not slow the deck.
+
 ## The swimmer (`swim.ts`)
 
 `swimmerFrom` floats a walker who has just gone in off the side they were
@@ -108,7 +143,8 @@ layer and the keys write it; the walk runner reads it each frame and zeroes
 
 All in `types.ts`: `WALK_EYE_M` 1.6, `WALK_IN_WATER_DEPTH_M` 1.0, `WALK_KNEE_DEPTH_M` 0.5,
 `WALK_SPEED_MS` 4, `WALK_TURN_PER_PX` 0.005 (dragging right turns right),
-`WALK_RADIUS_M` 0.3; `SWIM_SPEED_MS` 2 in
+`WALK_RADIUS_M` 0.3, `WALK_INSIDE_SPEED_MS` 3, `WALK_LIFT_MAX_DEPTH_M`
+(the knee); `SWIM_SPEED_MS` 2 in
 `swim.ts`. They are tuning: change them here and the tests say what moved.
 
 ## Where the rest lives
