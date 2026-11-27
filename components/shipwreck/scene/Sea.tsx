@@ -65,7 +65,7 @@ const vertex = /* glsl */ `
   }
 `;
 
-const fragment = /* glsl */ `
+export const SEA_FRAGMENT = /* glsl */ `
   #include <fog_pars_fragment>
   varying vec3 vWorld;
   varying vec4 vReflect;
@@ -263,9 +263,9 @@ const fragment = /* glsl */ `
       float tex = noise(vWorld.xz * 0.9 + r1 * 50.0) * 0.6
         + noise(vWorld.xz * 2.7 + r2 * 30.0) * 0.4;
       float flare = smoothstep(0.0, 0.05, life) * (1.0 - smoothstep(0.05, 0.6, life));
-      float body = smoothstep(0.6, 0.22, shape + (tex - 0.5) * 0.55);
+      float body = (1.0 - smoothstep(0.22, 0.6, shape + (tex - 0.5) * 0.55));
       float cap = breaks * body * flare * (0.45 + 0.55 * tex) * (0.6 + 0.4 * r3);
-      float near = smoothstep(700.0, 120.0, dist);
+      float near = (1.0 - smoothstep(120.0, 700.0, dist));
       foam = max(foam, mix(WHITECAPS * 1.2, cap * 0.8, near));
     }
     #endif
@@ -326,7 +326,7 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
     () =>
       new ShaderMaterial({
         vertexShader: vertex,
-        fragmentShader: fragment,
+        fragmentShader: SEA_FRAGMENT,
         side: DoubleSide,
         fog: true,
         // A ship's own ripple strength (`DaylightLook.ripple`) is a define:
@@ -507,7 +507,8 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
     }
     // The sea follows the camera so its edge never shows.
     mesh.position.set(camera.position.x, 0, camera.position.z);
-    if (!target || camera.position.y < 0.3) return;
+    // Inside her the sea is a glimpse through a porthole: no mirror pass.
+    if (!target || runtime.walkInside || camera.position.y < 0.3) return;
     const cam = camera as PerspectiveCamera;
     const m = mirror;
     const v = m.camera;

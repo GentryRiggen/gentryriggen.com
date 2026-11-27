@@ -153,7 +153,7 @@ export function swimmerFrom(
 ): SwimmerState {
   const side = w.y > 0 ? 1 : -1;
   const py = side * (footprintHalfBreadth(spec, w.x) + CLEAR_M);
-  const [x, y] = onSea(pose, w.x, py, floorZ(map, w.area, w.x, spec));
+  const [x, y] = onSea(pose, w.x, py, floorZ(map, w.area, w.x, spec, w.y));
   return { x, y, yaw: pose.yaw + w.yaw };
 }
 
@@ -178,7 +178,11 @@ export function placeWalker(
   const part = partFor(x, breakX, broken);
   const pose = frame.bodies.find((b) => b.part === part);
   if (!pose) return null;
-  const feet = shipToEarth(pose, [x, y, floorZ(map, map.spawn.area, x, spec)]);
+  const feet = shipToEarth(pose, [
+    x,
+    y,
+    floorZ(map, map.spawn.area, x, spec, y),
+  ]);
   if (seaZ(feet[0], feet[1]) - feet[2] >= -WALK_KNEE_DEPTH_M) return null;
   return {
     part,

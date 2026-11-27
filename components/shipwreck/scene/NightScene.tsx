@@ -35,6 +35,7 @@ import Torpedo, { hasTorpedoTrack } from "./Torpedo";
 import WalkRunner from "./WalkRunner";
 import Wreckage from "./Wreckage";
 import XRay from "./XRay";
+import Interior from "../interior/Interior";
 import { stepQuality } from "./quality";
 import { createSceneRuntime, type SceneRuntime } from "./runtime";
 import {
@@ -67,6 +68,8 @@ export interface RenderInfo {
   triangles: number;
   /** The camera's position (three.js axes), for tests. */
   camera: [number, number, number];
+  /** The camera's vertical field of view (degrees), for tests. */
+  fov: number;
   quality: QualityTier;
   dpr: number;
   /** Whether a named object (and every parent) is visible, for tests. */
@@ -222,6 +225,13 @@ export default function NightScene({
           dark={!day && isDaylit(real)}
         />
         <XRay store={store} runtime={runtime} spec={spec} />
+        <Interior
+          key={`interior-${spec.id}`}
+          store={store}
+          runtime={runtime}
+          spec={spec}
+          sky={settings.fog}
+        />
         <SeaFromStore store={store} runtime={runtime} settings={settings} />
         <WalkRunner key={spec.id} store={store} runtime={runtime} spec={spec} />
         <CameraRig store={store} runtime={runtime} spec={spec} />
@@ -341,6 +351,7 @@ function RenderInfoProbe({
       calls: gl.info.render.calls,
       triangles: gl.info.render.triangles,
       camera: [camera.position.x, camera.position.y, camera.position.z],
+      fov: (camera as { fov?: number }).fov ?? 0,
       quality,
       dpr,
       isShown,

@@ -29,6 +29,30 @@ export interface WalkArea {
    * bulkhead, or a rail over a lower deck rather than the sea.
    */
   wallEdges?: readonly number[];
+  /**
+   * A room inside her (see README "Inside"): no jumping, the inside speed,
+   * every edge a wall unless it is a seam, never a sea railing.
+   */
+  interior?: true;
+  /** A flight of stairs as a ramp: the floor falls dropM from `from` to `to`. */
+  ramp?: { from: V2; to: V2; dropM: number };
+  /** A corridor's centre line (hall assist). */
+  axis?: readonly [V2, V2];
+  /** What the room is ("foyer", "corridor", "cabin", ...), for the scene. */
+  kind?: string;
+  /** Drawn but not walkable (no link or seam leads into it). */
+  noWalk?: true;
+}
+
+/**
+ * An open edge between two areas at equal floor height (a doorway): the
+ * walker crosses it instead of stopping. `at` matches an edge of each
+ * area's outline (either way round, within 1 mm).
+ */
+export interface Seam {
+  a: string;
+  b: string;
+  at: readonly [V2, V2];
 }
 
 export type Blocker =
@@ -42,6 +66,11 @@ export interface Stair {
   from: { area: string; at: V2 };
   to: { area: string; at: V2 };
   widthM: number;
+  /**
+   * "door" (a deck door: shut while interiors are closed), "lift" (stays
+   * put while its arrival is flooded) or "stair" (the default).
+   */
+  kind?: "stair" | "door" | "lift";
 }
 
 export interface WalkMap {
@@ -49,6 +78,8 @@ export interface WalkMap {
   areas: readonly WalkArea[];
   blockers: readonly Blocker[];
   stairs: readonly Stair[];
+  /** Open edges between areas (interiors). */
+  seams?: readonly Seam[];
   spawn: { area: string; at: V2; yaw: number };
 }
 
@@ -77,6 +108,46 @@ export const WALK_SPEED_MS = 4;
 export const WALK_TURN_PER_PX = 0.005;
 /** The walker's body radius for blockers and railings (m). */
 export const WALK_RADIUS_M = 0.3;
+/** Walking speed in an interior area (m/s): calmer for narrow halls. */
+export const WALK_INSIDE_SPEED_MS = 3;
+/** A lift does not go while its arrival is deeper than this (m). */
+export const WALK_LIFT_MAX_DEPTH_M = WALK_KNEE_DEPTH_M;
+
+// --- The joystick in narrow halls (interior areas only; README "Inside") ---
+
+/** Inside, speed ramps from 0 to full over this from standing (s). */
+export const WALK_INSIDE_EASE_S = 0.15;
+/**
+ * Sliding along a wall inside keeps at least this share of the stick's
+ * speed while the stick is within SLIDE_KEEP_DEG of the wall's direction.
+ */
+export const SLIDE_KEEP = 0.75;
+export const SLIDE_KEEP_DEG = 60;
+/** Hall assist: a stick this near a room's axis is steered fully onto it (°). */
+export const HALL_SNAP_DEG = 10;
+/** ...fading to no steering at this angle off the axis (°). */
+export const HALL_FADE_DEG = 25;
+/** Door funnel: within this of a doorway (m)... */
+export const DOOR_ASSIST_M = 1.5;
+/** ...and heading within this of straight through it (°)... */
+export const DOOR_ASSIST_DEG = 40;
+/** ...up to this share of the sideways part bends toward its centre line. */
+export const DOOR_ASSIST_SHARE = 0.5;
+/**
+ * Walking by a doorway in the side of a hall, the part of the walk toward
+ * it goes, so a corridor walk scraping that wall stays in the corridor:
+ * when the walk's line misses the opening (by DOOR_PASS_MISS_M for the
+ * full effect), or whatever the line, once the walk is this far or more
+ * off straight through (°; within 15° of the hall, fading in over 10°).
+ * Aiming at the doorway itself always goes in (fun over realism).
+ */
+export const DOOR_PASS_DEG = 75;
+/** How far past a doorway's jamb the walk's line must miss for pass-by (m). */
+export const DOOR_PASS_MISS_M = 0.3;
+/** The funnel and pass-by fade in over the last of DOOR_ASSIST_M (m). */
+export const DOOR_ASSIST_FADE_M = 0.4;
+/** A move into water deeper than this, and deeper than here, is refused (m). */
+export const WALK_WADE_STOP_M = 0.8;
 
 // --- Plan geometry ----------------------------------------------------------
 
@@ -93,6 +164,144 @@ export function pointInPolygon(p: V2, poly: readonly V2[]): boolean {
   return inside;
 }
 
+// --- Per-map lookups, built once per map on first use ----------------------
+
+/**
+ * A doorway as seen from one side (the door funnel): its centre, the unit
+ * normal out of this area through it, the unit tangent along it, its half
+ * width, and whether it opens in the side of a hall (normal across the
+ * area's axis) rather than its end.
+ */
+export interface DoorFrame {
+  cx: number;
+  cy: number;
+  nx: number;
+  ny: number;
+  tx: number;
+  ty: number;
+  half: number;
+  side: boolean;
+}
+
+/** A seam is a doorway when a room either side is one of these kinds. */
+const DOOR_ROOM_KINDS: ReadonlySet<string> = new Set(["corridor", "cabin"]);
+
+interface MapIndex {
+  blockers: Map<string, Blocker[]>;
+  /** Per area, per outline edge: the area across that seam, or null. */
+  seams: Map<string, (string | null)[]>;
+  /** Per area, its doorways (seams with a corridor or cabin either side). */
+  doors: Map<string, DoorFrame[]>;
+}
+
+const INDEX = new WeakMap<WalkMap, MapIndex>();
+const NO_BLOCKERS: readonly Blocker[] = [];
+const SEAM_TOL_M = 1e-3;
+
+function near(p: V2, q: V2): boolean {
+  return (
+    Math.abs(p[0] - q[0]) <= SEAM_TOL_M && Math.abs(p[1] - q[1]) <= SEAM_TOL_M
+  );
+}
+
+function mapIndex(map: WalkMap): MapIndex {
+  let ix = INDEX.get(map);
+  if (ix) return ix;
+  const blockers = new Map<string, Blocker[]>();
+  for (const b of map.blockers) {
+    const list = blockers.get(b.area);
+    if (list) list.push(b);
+    else blockers.set(b.area, [b]);
+  }
+  const seams = new Map<string, (string | null)[]>();
+  for (const seam of map.seams ?? []) {
+    for (const [self, other] of [
+      [seam.a, seam.b],
+      [seam.b, seam.a],
+    ] as const) {
+      const area = map.areas.find((x) => x.id === self);
+      if (!area) continue;
+      const poly = area.outline;
+      let edges = seams.get(self);
+      if (!edges) {
+        edges = poly.map(() => null);
+        seams.set(self, edges);
+      }
+      for (let i = 0; i < poly.length; i += 1) {
+        const a = poly[i];
+        const b = poly[(i + 1) % poly.length];
+        const [p, q] = seam.at;
+        if ((near(a, p) && near(b, q)) || (near(a, q) && near(b, p)))
+          edges[i] = other;
+      }
+    }
+  }
+  const doors = new Map<string, DoorFrame[]>();
+  for (const seam of map.seams ?? []) {
+    const a = map.areas.find((x) => x.id === seam.a);
+    const b = map.areas.find((x) => x.id === seam.b);
+    if (!a || !b) continue;
+    if (
+      !DOOR_ROOM_KINDS.has(a.kind ?? "") &&
+      !DOOR_ROOM_KINDS.has(b.kind ?? "")
+    )
+      continue;
+    const [p, q] = seam.at;
+    const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    if (!(len > 0)) continue;
+    const tx = (q[0] - p[0]) / len;
+    const ty = (q[1] - p[1]) / len;
+    const cx = (p[0] + q[0]) / 2;
+    const cy = (p[1] + q[1]) / 2;
+    for (const self of [a, b]) {
+      // Out of `self`: the side of the seam that is not inside it.
+      let nx = ty;
+      let ny = -tx;
+      if (!pointInPolygon([cx - nx * 0.01, cy - ny * 0.01], self.outline)) {
+        nx = -nx;
+        ny = -ny;
+      }
+      let side = false;
+      if (self.axis) {
+        const [s0, s1] = self.axis;
+        const al = Math.hypot(s1[0] - s0[0], s1[1] - s0[1]) || 1;
+        side =
+          Math.abs((nx * (s1[0] - s0[0]) + ny * (s1[1] - s0[1])) / al) < 0.5;
+      }
+      const frame: DoorFrame = { cx, cy, nx, ny, tx, ty, half: len / 2, side };
+      const list = doors.get(self.id);
+      if (list) list.push(frame);
+      else doors.set(self.id, [frame]);
+    }
+  }
+  ix = { blockers, seams, doors };
+  INDEX.set(map, ix);
+  return ix;
+}
+
+const NO_DOORS: readonly DoorFrame[] = [];
+
+/** An area's doorways, each seen from inside it (precomputed per map). */
+export function doorsOf(map: WalkMap, areaId: string): readonly DoorFrame[] {
+  return mapIndex(map).doors.get(areaId) ?? NO_DOORS;
+}
+
+/** The blockers in one area (precomputed per map). */
+export function blockersIn(map: WalkMap, areaId: string): readonly Blocker[] {
+  return mapIndex(map).blockers.get(areaId) ?? NO_BLOCKERS;
+}
+
+/**
+ * Per outline edge of an area, the area across it when it is a seam (null
+ * for a wall or railing), or null when the area has no seams.
+ */
+export function seamEdges(
+  map: WalkMap,
+  areaId: string
+): readonly (string | null)[] | null {
+  return mapIndex(map).seams.get(areaId) ?? null;
+}
+
 /** Whether a body of radius `r` at p overlaps any blocker in that area. */
 export function insideBlocker(
   map: WalkMap,
@@ -100,8 +309,7 @@ export function insideBlocker(
   p: V2,
   r: number
 ): boolean {
-  for (const b of map.blockers) {
-    if (b.area !== areaId) continue;
+  for (const b of blockersIn(map, areaId)) {
     if (b.kind === "circle") {
       if (Math.hypot(p[0] - b.at[0], p[1] - b.at[1]) < b.r + r) return true;
     } else {
@@ -126,16 +334,29 @@ export function areaById(map: WalkMap, id: string): WalkArea | undefined {
   return map.areas.find((a) => a.id === id);
 }
 
-/** The floor's height (ship-frame z) of an area at x. */
+/**
+ * The floor's height (ship-frame z) of an area at (x, y). A ramp falls
+ * `dropM` linearly along `from → to` (the projection clamped to its ends);
+ * every other floor ignores y.
+ */
 export function floorZ(
   map: WalkMap,
   areaId: string,
   x: number,
-  spec: ShipSpec
+  spec: ShipSpec,
+  y = 0
 ): number {
   const a = areaById(map, areaId);
   if (!a) throw new Error(`walk map ${map.ship} has no area ${areaId}`);
-  return deckZAt(a.deck, x, spec) + (a.raiseM ?? 0);
+  const z = deckZAt(a.deck, x, spec) + (a.raiseM ?? 0);
+  const ramp = a.ramp;
+  if (!ramp) return z;
+  const dx = ramp.to[0] - ramp.from[0];
+  const dy = ramp.to[1] - ramp.from[1];
+  const len2 = dx * dx + dy * dy;
+  if (len2 <= 0) return z;
+  const u = ((x - ramp.from[0]) * dx + (y - ramp.from[1]) * dy) / len2;
+  return z - ramp.dropM * Math.max(0, Math.min(1, u));
 }
 
 /**

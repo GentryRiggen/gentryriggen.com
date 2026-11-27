@@ -71,6 +71,33 @@ export interface SceneRuntime {
   /** For the test hooks: where the walker is (null when not walking). */
   walkInfo: WalkInfo | null;
   /**
+   * Inside her (WalkRunner writes them): whether the walker stands in an
+   * interior room, the area they stand in (null off her deck), the deck
+   * door they last came in by (Go outside's first choice), and a counter
+   * bumped each time the lift goes (the HUD's wipe).
+   */
+  walkInside: boolean;
+  walkRoom: string | null;
+  walkCameInBy: string | null;
+  walkLift: number;
+  /**
+   * On her deck: the index (in the map's stairs) of the deck door within
+   * reach to go in by, or −1. WalkRunner writes it a few times a second.
+   */
+  walkDoor: number;
+  /**
+   * A test hook's request to stand the walker somewhere (ship frame, on
+   * her whole piece or the piece under x); WalkRunner takes it next frame.
+   */
+  walkPlace: { area: string; x: number; y: number; yaw: number } | null;
+  /**
+   * Inside her: each room's shown water level (Interior eases it each
+   * frame for the rooms it draws, priority −1.4); WalkRunner's `waterZ`
+   * reads it, and a room's target when it is not drawn. Null while the
+   * interior is not built.
+   */
+  interiorLevels: InteriorLevels | null;
+  /**
    * Riding a lifeboat: the player's look, a yaw turned from facing her
    * (radians, + to port) and a pitch (WalkRunner turns both by the drag),
    * and whether a ride's first frame has zeroed it. Effects writes
@@ -140,6 +167,18 @@ export interface WalkInfo {
   /** Sea over the feet (m; negative when dry); 0 in the water. */
   depthM: number;
   area: string | null;
+  /** Standing in a room inside her. */
+  inside: boolean;
+}
+
+/** The rooms' eased water levels (`SceneRuntime.interiorLevels`). */
+export interface InteriorLevels {
+  /** Each room's index in `shown` and `drawn`. */
+  slot: ReadonlyMap<string, number>;
+  /** Earth z (−Infinity dry), valid where `drawn` is 1. */
+  shown: Float64Array;
+  /** 1 for a room eased last frame (its zone drawn), else 0. */
+  drawn: Uint8Array;
 }
 
 /** Points along a turning ship's wake (`SceneRuntime.wake.path`). */
@@ -179,6 +218,13 @@ export function createSceneRuntime(): SceneRuntime {
     walkCanReboard: false,
     walkInputOff: false,
     walkInfo: null,
+    walkInside: false,
+    walkRoom: null,
+    walkCameInBy: null,
+    walkLift: 0,
+    walkDoor: -1,
+    walkPlace: null,
+    interiorLevels: null,
     ride: { yaw: 0, pitch: 0, aimed: false },
     rideView: { pos: [0, 0, 0], yaw: 0, pitch: 0 },
     boardable: -1,

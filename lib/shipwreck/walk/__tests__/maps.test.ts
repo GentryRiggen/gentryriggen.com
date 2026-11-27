@@ -153,8 +153,10 @@ describe.each(["titanic", "lusitania", "britannic", "carpathia"] as const)(
           floorZ(map, s.to.area, s.to.at[0], spec) -
           floorZ(map, s.from.area, s.from.at[0], spec);
         // A ladder; the Lusitania's gangway instead bridges the mast gap
-        // between two decks at the same height.
-        if (s.id.includes("gangway")) expect(Math.abs(dz)).toBeLessThan(0.5);
+        // between two decks at the same height, and a deck door (1.15)
+        // steps from the deck into a room on it.
+        if (s.id.includes("gangway") || s.kind === "door")
+          expect(Math.abs(dz)).toBeLessThan(0.5);
         else expect(Math.abs(dz)).toBeGreaterThan(1);
       }
     });
@@ -173,22 +175,32 @@ describe.each(["titanic", "lusitania", "britannic", "carpathia"] as const)(
       }
     });
 
-    it("reaches every area from the spawn by stairs", () => {
+    it("reaches every area from the spawn by stairs (and an interior's seams)", () => {
       const seen = new Set([map.spawn.area]);
+      const links = [
+        ...map.stairs.map((s) => [s.from.area, s.to.area] as const),
+        ...(map.seams ?? []).map((s) => [s.a, s.b] as const),
+      ];
       let grew = true;
       while (grew) {
         grew = false;
-        for (const s of map.stairs) {
-          const a = seen.has(s.from.area);
-          const b = seen.has(s.to.area);
+        for (const [from, to] of links) {
+          const a = seen.has(from);
+          const b = seen.has(to);
           if (a !== b) {
-            seen.add(s.from.area);
-            seen.add(s.to.area);
+            seen.add(from);
+            seen.add(to);
             grew = true;
           }
         }
       }
-      expect([...seen].sort()).toEqual(map.areas.map((x) => x.id).sort());
+      // A room drawn but not walked (noWalk) has no way in.
+      expect([...seen].sort()).toEqual(
+        map.areas
+          .filter((x) => !x.noWalk)
+          .map((x) => x.id)
+          .sort()
+      );
     });
 
     it("gives floor heights from the deck and its sheer", () => {

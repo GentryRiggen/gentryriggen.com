@@ -37,13 +37,28 @@ interface Feel {
   boardable: number;
   /** The splash being rippled (its count), or 0: none. */
   ripple: number;
+  /** The deck door within reach (a stairs index), or −1: none. */
+  door: number;
+  /** Standing inside her (a room, the staircase, Scotland Road). */
+  inside: boolean;
+  /** The lift wipe being shown (its count), or 0: none. */
+  lift: number;
 }
 
 /** How long the ripple wipe shows (ms; its keyframes run 600 ms). */
 const RIPPLE_MS = 700;
+/** And the lift wipe (ms; its keyframes run 900 ms). */
+const LIFT_MS = 1000;
 
-function readFeel(rt: SceneRuntime, ripple = 0): Feel {
-  return { canReboard: rt.walkCanReboard, boardable: rt.boardable, ripple };
+function readFeel(rt: SceneRuntime, ripple = 0, lift = 0): Feel {
+  return {
+    canReboard: rt.walkCanReboard,
+    boardable: rt.boardable,
+    ripple,
+    door: rt.walkDoor,
+    inside: rt.walkInside,
+    lift,
+  };
 }
 
 /**
@@ -58,17 +73,30 @@ function useFeel(runtime: SceneRuntime, on: boolean): Feel {
     let raf = 0;
     let seen = runtime.walkSplash;
     let rippleUntil = -Infinity;
+    let liftSeen = runtime.walkLift;
+    let liftUntil = -Infinity;
     const loop = () => {
       const now = performance.now();
       if (runtime.walkSplash !== seen) {
         seen = runtime.walkSplash;
         rippleUntil = now + RIPPLE_MS;
       }
-      const next = readFeel(runtime, now < rippleUntil ? seen : 0);
+      if (runtime.walkLift !== liftSeen) {
+        liftSeen = runtime.walkLift;
+        liftUntil = now + LIFT_MS;
+      }
+      const next = readFeel(
+        runtime,
+        now < rippleUntil ? seen : 0,
+        now < liftUntil ? liftSeen : 0
+      );
       setFeel((f) =>
         f.canReboard === next.canReboard &&
         f.boardable === next.boardable &&
-        f.ripple === next.ripple
+        f.ripple === next.ripple &&
+        f.door === next.door &&
+        f.inside === next.inside &&
+        f.lift === next.lift
           ? f
           : next
       );
@@ -142,6 +170,16 @@ export default function WalkHud({
         </div>
       )}
 
+      {/* The lift: the screen goes dark and clears (not with reduced motion). */}
+      {feel.lift > 0 && (
+        <div
+          key={feel.lift}
+          aria-hidden="true"
+          data-testid="shipwreck-walk-lift"
+          className="pointer-events-none absolute inset-0 animate-[shipwreck-lift_900ms_ease-in-out_both] bg-black motion-reduce:hidden"
+        />
+      )}
+
       {/* Fly: back to the free camera (next to the help button). */}
       <button
         type="button"
@@ -161,7 +199,7 @@ export default function WalkHud({
           <WalkJoystick />
           {/* Jump, beside the stick (on her deck: a running jump at the
               railing goes over the side). */}
-          {deck && (
+          {deck && !feel.inside && (
             <button
               type="button"
               aria-label="Jump"
@@ -180,6 +218,46 @@ export default function WalkHud({
               <Icon name="jump" className="size-11" />
             </button>
           )}
+        </div>
+      )}
+
+      {/* Inside her: back out by the door (the way they came in if dry). */}
+      {deck && feel.inside && (
+        <div
+          className={`absolute right-[max(1rem,env(safe-area-inset-right))] ${OVER_MARKS}`}
+        >
+          <button
+            type="button"
+            aria-label="Go outside"
+            data-testid="shipwreck-go-outside"
+            data-walk-control
+            onClick={() => {
+              walkInput.outside = true;
+            }}
+            className={BIG_OFF}
+          >
+            <Icon name="door-out" className="size-11" />
+          </button>
+        </div>
+      )}
+
+      {/* At a deck door: go in. Beside the lifeboat button's place on a wide
+          screen; stacked above it on a phone, where the Jump button sits in
+          that row. */}
+      {deck && !feel.inside && feel.door >= 0 && (
+        <div className="absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+20rem)] right-[max(1rem,env(safe-area-inset-right))] sm:bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+11rem)] sm:right-[calc(max(1rem,env(safe-area-inset-right))+5.5rem)]">
+          <button
+            type="button"
+            aria-label="Go inside"
+            data-testid="shipwreck-go-inside"
+            data-walk-control
+            onClick={() => {
+              walkInput.door = true;
+            }}
+            className={BOARD}
+          >
+            <Icon name="door-in" className="size-11" />
+          </button>
         </div>
       )}
 

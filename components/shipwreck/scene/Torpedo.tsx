@@ -102,7 +102,7 @@ const vertex = /* glsl */ `
     #include <fog_vertex>
   }
 `;
-const fragment = /* glsl */ `
+export const TORPEDO_FRAGMENT = /* glsl */ `
   #include <fog_pars_fragment>
   varying vec2 vUv;
   varying vec3 vWorld;
@@ -135,7 +135,7 @@ const fragment = /* glsl */ `
     float ahead = max(-age, 0.0) * uSpeed;
     if (ahead > 4.0) discard;
     float a0 = max(age, 0.0);
-    float head = smoothstep(4.0, 0.0, a0);
+    float head = (1.0 - smoothstep(0.0, 4.0, a0));
     // Narrow where the bubbles are just breaking, opening out behind:
     // the running head comes to a soft point, not a square edge.
     float w = mix(0.9, 3.0, smoothstep(0.0, 3.0, a0)) + a0 * 0.12 + head * 0.8;
@@ -179,7 +179,7 @@ export default function Torpedo({ store }: TorpedoProps) {
     geo.translate(0, 0.5, 0);
     const mat = new ShaderMaterial({
       vertexShader: vertex,
-      fragmentShader: fragment,
+      fragmentShader: TORPEDO_FRAGMENT,
       transparent: true,
       depthWrite: false,
       fog: true,

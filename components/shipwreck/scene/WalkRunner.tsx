@@ -8,6 +8,15 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose, SimFrame } from "@/lib/shipwreck/sim/track";
 import {
+  doorExit,
+  doorToEnter,
+  interiorFor,
+  roomWaterTargets,
+  type DoorPlace,
+  type Room,
+} from "@/lib/shipwreck/interior";
+import {
+  areaById,
   canReboard,
   floorZ,
   partFor,
@@ -22,12 +31,15 @@ import {
   WALK_TURN_PER_PX,
   type HullPiece,
   type SwimmerState,
+  type StepContext,
   type WalkerState,
 } from "@/lib/shipwreck/walk";
 import { shipToThreeInto, type V3 } from "./cameraMath";
 import type { SceneRuntime, WalkInfo } from "./runtime";
 import {
   deckEyes,
+  easeEyes,
+  EYE_EASE_S,
   FLOAT_EYE_M,
   followShipPitch,
   LOOK_UNDER_EYE_Y,
@@ -44,10 +56,20 @@ import {
  * the sea, and writes the eyes to `runtime.walker` for CameraRig. Reads the
  * sim, never writes it. The keys (WASD / arrows) write `walkInput` while
  * walking; the on-screen joystick (Task 6) writes the same.
+ *
+ * Inside her (1.15, a ship with rooms): the rooms' water is passed to the
+ * walker (the level Interior shows, eased, or the room's target while it
+ * is not drawn), deck doors open while she is whole, and the runner writes
+ * `walkInside`, `walkRoom`, `walkCameInBy` and `walkLift`. The door and Go
+ * outside buttons (`walkInput.door`, `.outside`) and the test hooks'
+ * `walkPlace` are taken here. Inside when she breaks, or washed out by
+ * the water, is the same splash into the sea as going in from the deck.
  */
 
 /** The sea's surface for the walk rules: the sea quad is flat (y = 0). */
 const FLAT_SEA = () => 0;
+/** No sim frame yet: every compartment dry. */
+const NO_FILL: readonly number[] = [];
 /** Look under follows her down while she is nearer than this (m). */
 const LOOK_UNDER_SIGHT_M = 600;
 /** How quickly Look under's tilt follows her (1/s). */
@@ -67,6 +89,14 @@ interface WalkRunnerProps {
 
 export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   const map = useMemo(() => walkMapFor(spec.id), [spec]);
+  /** Her rooms by id (none for a ship you cannot go inside). */
+  const rooms = useMemo(() => {
+    const out = new Map<string, Room>();
+    for (const r of interiorFor(spec.id)?.rooms ?? []) out.set(r.id, r);
+    return out;
+  }, [spec]);
+  /** Each room's water target (compartment samples cached). */
+  const target = useMemo(() => roomWaterTargets(spec), [spec]);
   const walking = useStore(store, (s) => s.camera === "walk");
   useWalkKeys(walking, runtime, store);
   const st = useRef({
@@ -89,6 +119,12 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       t: number;
       dur: number;
     },
+    /** Seconds since a door was walked through (null: no easing). */
+    easeT: null as number | null,
+    /** Seconds until the door in reach is looked up again. */
+    doorT: 0,
+    /** The eyes just before that door (three.js). */
+    eyeFrom: [0, 0, 0] as V3,
   });
   // Written in place every frame (no per-frame allocations).
   const scratch = useMemo(
@@ -108,6 +144,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         y: 0,
         slopeDeg: 0,
         depthM: 0,
+        inside: false,
       } as WalkInfo,
       ctx: {
         map: map!,
@@ -115,10 +152,43 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         pose: null! as BodyPose,
         breakX: null as number | null,
         seaZ: FLAT_SEA,
-      },
+        interiorsOpen: true,
+        // A ship with rooms: each room's water as Interior shows it
+        // (eased), else its target (the sea, or its compartment's level
+        // from the sim's fill); the sea on her decks.
+        ...(rooms.size > 0
+          ? {
+              waterZ: (area: string) => {
+                const room = rooms.get(area);
+                if (!room) return 0;
+                const lv = runtime.interiorLevels;
+                const k = lv?.slot.get(area);
+                if (lv && k !== undefined && lv.drawn[k] === 1)
+                  return lv.shown[k];
+                return target(
+                  room,
+                  scratch.ctx.pose,
+                  runtime.frame?.water ?? NO_FILL
+                );
+              },
+            }
+          : {}),
+      } as StepContext,
+      feet: [0, 0, 0] as V3,
     }),
-    [spec, map]
+    [spec, map, rooms, runtime, target]
   );
+  /** Water over the floor at a point (m), on the walker's piece. */
+  const depthAt = (area: string, x: number, y: number): number => {
+    const ctx = scratch.ctx;
+    const feet = scratch.feet;
+    scratch.p[0] = x;
+    scratch.p[1] = y;
+    scratch.p[2] = floorZ(map!, area, x, spec, y);
+    shipToEarth(ctx.pose, scratch.p, feet);
+    const water = ctx.waterZ ? ctx.waterZ(area, x, y) : FLAT_SEA();
+    return water - feet[2];
+  };
   const stemX = spec.stations[spec.stations.length - 1].x;
   const sternX = spec.stations[0].x;
 
@@ -133,10 +203,14 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     s.surfacing = false;
     s.wasUnder = false;
     s.fall = null;
+    s.easeT = null;
     runtime.walker = null;
     runtime.walkLookUnder = false;
     runtime.walkCanReboard = false;
     runtime.walkInfo = null;
+    notInside(runtime);
+    runtime.walkCameInBy = null;
+    runtime.walkPlace = null;
   }, [walking, runtime]);
   useEffect(
     () => () => {
@@ -144,6 +218,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       runtime.walkLookUnder = false;
       runtime.walkCanReboard = false;
       runtime.walkInfo = null;
+      notInside(runtime);
+      runtime.walkCameInBy = null;
     },
     [runtime]
   );
@@ -195,6 +271,21 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     return scratch.centre;
   }
 
+  /**
+   * Off her and into the sea beside her with a splash (washed out of a
+   * room, inside at the break, or no dry way out): the same "went in" as
+   * from the deck.
+   */
+  function goInSea(w: WalkerState, pose: BodyPose): void {
+    const s = st.current;
+    s.walker = null;
+    s.easeT = null;
+    s.swimmer = swimmerFrom(w, pose, spec, map!);
+    notInside(runtime);
+    runtime.walkSplash += 1;
+    store.getState().wentInWater();
+  }
+
   useFrame((state, dt) => {
     const p = store.getState();
     const frame = runtime.frame;
@@ -210,6 +301,10 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         s.fall = null;
       }
       walkInput.jump = false;
+      walkInput.door = undefined;
+      walkInput.outside = undefined;
+      runtime.walkPlace = null;
+      notInside(runtime);
       const r = runtime.ride;
       if (!runtime.walkInputOff) {
         r.yaw -= walkInput.lookDx * WALK_TURN_PER_PX;
@@ -243,6 +338,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       s.reboardIn = 0;
       s.pitch = 0;
       s.fall = null;
+      s.easeT = null;
+      runtime.walkCameInBy = null;
       const w = placeWalker(map, spec, frame, breakX, FLAT_SEA);
       if (w) {
         s.walker = w;
@@ -259,7 +356,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         const e = shipToEarth(pose, [
           x,
           y,
-          floorZ(map, map.spawn.area, x, spec),
+          floorZ(map, map.spawn.area, x, spec, y),
         ]);
         s.walker = null;
         // Facing her nearest piece, so she is in view.
@@ -292,6 +389,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     const fall = s.fall;
     if (fall) {
       walkInput.jump = false;
+      walkInput.door = undefined;
+      walkInput.outside = undefined;
       walkInput.lookDx = 0;
       fall.t += Math.min(dt, 0.1);
       const u = Math.min(1, fall.t / fall.dur);
@@ -310,6 +409,25 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       return;
     }
 
+    // A test hook stands the walker somewhere (a deck or a room).
+    const place = runtime.walkPlace;
+    runtime.walkPlace = null;
+    if (place && areaById(map, place.area) && p.walk.phase !== "boat") {
+      s.walker = {
+        part: partFor(place.x, breakX, broken),
+        area: place.area,
+        x: place.x,
+        y: place.y,
+        yaw: place.yaw,
+      };
+      s.swimmer = null;
+      s.easeT = null;
+      if (store.getState().walk.phase === "water") {
+        store.getState().backOnDeck();
+        s.seq = store.getState().walk.seq;
+      }
+    }
+
     if (s.walker) {
       let w = s.walker;
       let pose = poseOf(frame, w.part);
@@ -321,9 +439,92 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       const ctx = scratch.ctx;
       ctx.pose = pose;
       ctx.breakX = breakX;
+      ctx.interiorsOpen = !broken;
+      // The area underfoot, looked up once (again only if a door moves them).
+      let inRoom = areaById(map, w.area)?.interior === true;
+
+      // The deck door within reach, a few times a second (the HUD's button).
+      s.doorT -= dt;
+      if (s.doorT <= 0) {
+        s.doorT = DOOR_LOOK_S;
+        const near =
+          !inRoom && !broken && w.part === "whole"
+            ? doorToEnter(map, w.area, [w.x, w.y], depthAt)
+            : null;
+        runtime.walkDoor = near
+          ? map.stairs.findIndex((st) => st.id === near.id)
+          : -1;
+      }
+
+      // The door button and Go outside (read once, then cleared).
+      const doorAsk = walkInput.door;
+      const outAsk = walkInput.outside;
+      walkInput.door = undefined;
+      walkInput.outside = undefined;
+      let moved: DoorPlace | null = null;
+      let gone = false;
+      if (doorAsk && !inRoom && !broken && w.part === "whole") {
+        moved = doorToEnter(
+          map,
+          w.area,
+          [w.x, w.y],
+          depthAt,
+          typeof doorAsk === "string" ? doorAsk : undefined
+        );
+        if (moved) runtime.walkCameInBy = moved.id;
+      } else if (outAsk && inRoom && !broken) {
+        moved = doorExit(map, runtime.walkCameInBy, depthAt, [w.x, w.y]);
+        if (!moved) {
+          // No dry door: the spawn, else the sea (as Back on deck).
+          const spawn = placeWalker(map, spec, frame, breakX, FLAT_SEA);
+          if (spawn) w = spawn;
+          else gone = true;
+        }
+      }
+      if (moved) {
+        w = {
+          part: w.part,
+          area: moved.area,
+          x: moved.at[0],
+          y: moved.at[1],
+          yaw: moved.yaw,
+        };
+        s.easeT = null;
+      }
+      if (w.area !== s.walker.area)
+        inRoom = areaById(map, w.area)?.interior === true;
+
+      // Inside when she breaks: interiors close, into the sea beside her.
+      if (broken && inRoom) gone = true;
+      // Into the sea: the swimmer below takes over this frame.
+      if (gone) goInSea(w, pose);
+      else s.walker = w;
+    }
+
+    if (s.walker) {
+      const w = s.walker;
+      const pose = scratch.ctx.pose;
+      const ctx = scratch.ctx;
+      const before = s.eyeFrom;
+      const lastEyes = runtime.walker;
       const r = stepWalker(w, walkInput, ctx, dt);
       walkInput.lookDx = 0;
       walkInput.jump = false;
+      // The area after the step, looked up once.
+      const inside = areaById(map, r.state.area)?.interior === true;
+      if (r.via?.kind === "door") {
+        // Through a deck door: remember it going in; the eyes ease.
+        if (inside) runtime.walkCameInBy = r.via.id;
+        if (lastEyes) {
+          before[0] = lastEyes.pos[0];
+          before[1] = lastEyes.pos[1];
+          before[2] = lastEyes.pos[2];
+          s.easeT = 0;
+        }
+      } else if (r.via?.kind === "lift") {
+        runtime.walkLift += 1;
+        s.easeT = null;
+      }
       if (r.inWater && r.overboard) {
         // Over the rail: fall from where the eyes are to the sea.
         s.walker = null;
@@ -348,20 +549,18 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         return;
       }
       if (r.inWater) {
-        s.walker = null;
-        s.swimmer = swimmerFrom(r.state, pose, spec, map);
-        runtime.walkSplash += 1;
-        store.getState().wentInWater();
+        goInSea(r.state, pose);
       } else {
         s.walker = r.state;
-        runtime.walker = deckEyes(
-          r.state,
-          pose,
-          spec,
-          map,
-          s.pitch,
-          scratch.view
-        );
+        const view = deckEyes(r.state, pose, spec, map, s.pitch, scratch.view);
+        if (s.easeT !== null) {
+          s.easeT += Math.min(dt, 0.1);
+          easeEyes(view, before, s.easeT);
+          if (s.easeT >= EYE_EASE_S) s.easeT = null;
+        }
+        runtime.walker = view;
+        runtime.walkInside = inside;
+        runtime.walkRoom = r.state.area;
         runtime.walkLookUnder = false;
         runtime.walkCanReboard = false;
         const info = scratch.info;
@@ -372,15 +571,19 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         info.y = r.state.y;
         info.slopeDeg = r.slopeDeg;
         info.depthM = r.depthM;
+        info.inside = inside;
         runtime.walkInfo = info;
         return;
       }
     }
+    notInside(runtime);
 
     const sw = s.swimmer;
     if (!sw) return;
-    // No jumping in the sea (nor saved for the next time on deck).
+    // No jumping in the sea (nor saved for the next time on deck), nor doors.
     walkInput.jump = false;
+    walkInput.door = undefined;
+    walkInput.outside = undefined;
     const lookUnder = store.getState().walk.lookUnder;
     if (
       lookUnder &&
@@ -440,6 +643,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     info.y = next.y;
     info.slopeDeg = 0;
     info.depthM = 0;
+    info.inside = false;
     runtime.walkInfo = info;
   }, -1.5);
 
@@ -528,4 +732,14 @@ function useWalkKeys(
       clear();
     };
   }, [walking, runtime, store]);
+}
+
+/** How often the door in reach is looked up (s). */
+const DOOR_LOOK_S = 0.25;
+
+/** Not in a room (in the sea, a boat or not walking). */
+function notInside(runtime: SceneRuntime): void {
+  runtime.walkDoor = -1;
+  runtime.walkInside = false;
+  runtime.walkRoom = null;
 }

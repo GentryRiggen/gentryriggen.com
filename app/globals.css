@@ -244,6 +244,17 @@ button:focus-visible {
   }
 }
 
+/* Shipwreck: a lift ride, the screen goes dark and clears. */
+@keyframes shipwreck-lift {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @keyframes blink {
   0%,
   100% {

@@ -296,6 +296,7 @@ export default function Effects({
     y: 0,
     slopeDeg: 0,
     depthM: 0,
+    inside: false,
   });
   // Per track: where each boat touched the water (sampled once).
   const launch = useRef<{
@@ -668,7 +669,12 @@ export default function Effects({
       info.y = -tmp.v.z;
       runtime.walkInfo = info;
     }
-    if (s.walk.phase === "deck" && runtime.walkInfo?.phase === "deck") {
+    // No lifeboat to get into from a room inside her.
+    if (
+      s.walk.phase === "deck" &&
+      runtime.walkInfo?.phase === "deck" &&
+      !runtime.walkInfo.inside
+    ) {
       boardIn.current -= dt;
       if (boardIn.current <= 0 && visible) {
         boardIn.current = BOARD_CHECK_S;

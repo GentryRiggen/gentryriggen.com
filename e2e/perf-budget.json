@@ -138,5 +138,13 @@
   "shipwreck-poseidon-keelup": {
     "calls": 34,
     "triangles": 285475
+  },
+  "shipwreck-walk-staircase": {
+    "calls": 47,
+    "triangles": 158732
+  },
+  "shipwreck-walk-scotland-road": {
+    "calls": 50,
+    "triangles": 158442
   }
 }
