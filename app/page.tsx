@@ -18,7 +18,8 @@ export default function Home() {
 
 function HomeContent() {
   const [terminalState, setTerminalState] = useState<TerminalState>("normal");
-  // Key to force re-mount Terminal on relaunch (replays boot sequence)
+  // Bumped when a closed terminal is reopened: a fresh program replays the
+  // boot. Minimize and fullscreen keep the same running terminal.
   const [terminalKey, setTerminalKey] = useState(0);
 
   const handleKill = useCallback(() => {
@@ -36,9 +37,9 @@ function HomeContent() {
   }, []);
 
   const handleRelaunch = useCallback(() => {
+    if (terminalState === "killed") setTerminalKey((prev) => prev + 1);
     setTerminalState("normal");
-    setTerminalKey((prev) => prev + 1);
-  }, []);
+  }, [terminalState]);
 
   const isHidden = terminalState === "minimized" || terminalState === "killed";
 
@@ -135,52 +136,48 @@ function HomeContent() {
         </div>
       )}
 
-      {/* Normal / Fullscreen terminal */}
-      {!isHidden && (
-        <>
-          {terminalState === "fullscreen" ? (
-            <div className="fixed inset-0 z-50 bg-term-page flex flex-col">
-              <Terminal
-                key={terminalKey}
-                onKill={handleKill}
-                onMinimize={handleMinimize}
-                onFullscreen={handleFullscreen}
-                isFullscreen
-              />
-            </div>
-          ) : (
-            <main className="relative z-10 min-h-[100dvh] sm:min-h-0 max-w-3xl mx-auto px-0 sm:px-6 py-0 sm:py-16 flex flex-col">
-              <Terminal
-                key={terminalKey}
-                onKill={handleKill}
-                onMinimize={handleMinimize}
-                onFullscreen={handleFullscreen}
-              />
+      {/* One terminal for normal, fullscreen and minimized, so it keeps
+          running (and keeps its history) like a real program. Closing it
+          ends the program. */}
+      {terminalState !== "killed" && (
+        <main
+          className={
+            terminalState === "fullscreen"
+              ? "fixed inset-0 z-50 bg-term-page flex flex-col"
+              : `relative z-10 min-h-[100dvh] sm:min-h-0 max-w-3xl mx-auto px-0 sm:px-6 py-0 sm:py-16 flex flex-col ${terminalState === "minimized" ? "hidden" : ""}`
+          }
+        >
+          <Terminal
+            key={terminalKey}
+            onKill={handleKill}
+            onMinimize={handleMinimize}
+            onFullscreen={handleFullscreen}
+            isFullscreen={terminalState === "fullscreen"}
+          />
 
-              {/* Footer / copyright */}
-              <footer className="py-4 sm:mt-8 text-center text-xs text-term-faint font-mono">
-                <p>&copy; {new Date().getFullYear()} Gentry Riggen</p>
-                <p className="mt-1 px-4 text-[10px]">
-                  Protected by reCAPTCHA: Google&apos;s{" "}
-                  <a
-                    href="https://policies.google.com/privacy"
-                    className="underline underline-offset-2"
-                  >
-                    Privacy Policy
-                  </a>{" "}
-                  and{" "}
-                  <a
-                    href="https://policies.google.com/terms"
-                    className="underline underline-offset-2"
-                  >
-                    Terms
-                  </a>{" "}
-                  apply.
-                </p>
-              </footer>
-            </main>
+          {terminalState === "normal" && (
+            <footer className="py-4 sm:mt-8 text-center text-xs text-term-faint font-mono">
+              <p>&copy; {new Date().getFullYear()} Gentry Riggen</p>
+              <p className="mt-1 px-4 text-[10px]">
+                Protected by reCAPTCHA: Google&apos;s{" "}
+                <a
+                  href="https://policies.google.com/privacy"
+                  className="underline underline-offset-2"
+                >
+                  Privacy Policy
+                </a>{" "}
+                and{" "}
+                <a
+                  href="https://policies.google.com/terms"
+                  className="underline underline-offset-2"
+                >
+                  Terms
+                </a>{" "}
+                apply.
+              </p>
+            </footer>
           )}
-        </>
+        </main>
       )}
     </div>
   );

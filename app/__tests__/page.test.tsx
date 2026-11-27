@@ -64,3 +64,40 @@ describe("Home theme menu", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("Home terminal window", () => {
+  function runPwd() {
+    fireEvent.keyDown(window, { key: "Enter" });
+    const input = screen.getByLabelText("Terminal command input");
+    fireEvent.change(input, { target: { value: "pwd" } });
+    fireEvent.submit(input);
+    expect(screen.getByText("/home/gentry/portfolio")).toBeInTheDocument();
+  }
+
+  it("keeps its history through minimize and restore", () => {
+    renderWithTheme(<Home />);
+    runPwd();
+    fireEvent.click(screen.getByRole("button", { name: "Minimize terminal" }));
+    fireEvent.click(screen.getByRole("button", { name: /Minimized/ }));
+    expect(screen.getByText("/home/gentry/portfolio")).toBeInTheDocument();
+  });
+
+  it("keeps its history through fullscreen and back", () => {
+    renderWithTheme(<Home />);
+    runPwd();
+    fireEvent.click(screen.getByRole("button", { name: "Enter fullscreen" }));
+    expect(screen.getByText("/home/gentry/portfolio")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Exit fullscreen" }));
+    expect(screen.getByText("/home/gentry/portfolio")).toBeInTheDocument();
+  });
+
+  it("starts fresh after close and reopen", () => {
+    renderWithTheme(<Home />);
+    runPwd();
+    fireEvent.click(screen.getByRole("button", { name: "Close terminal" }));
+    fireEvent.click(screen.getByRole("button", { name: /Closed/ }));
+    expect(
+      screen.queryByText("/home/gentry/portfolio")
+    ).not.toBeInTheDocument();
+  });
+});
