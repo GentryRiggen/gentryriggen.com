@@ -56,6 +56,7 @@ module.exports = [
   "lib/plane-builder/balance/__tests__/balance.test.ts",
   "lib/shipwreck/sim/__tests__/carpathiaWhatIf.test.ts",
   "lib/shipwreck/sim/__tests__/concordiaNight.test.ts",
+  "lib/shipwreck/sim/__tests__/crossoverRuns.test.ts",
   "lib/shipwreck/sim/__tests__/concordiaToSeaFixture.test.ts",
   "lib/shipwreck/sim/__tests__/concordiaWhatIf.test.ts",
   "lib/shipwreck/sim/__tests__/perf.test.ts",

@@ -17,6 +17,17 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.14.0",
+    date: "2026-11-27",
+    title: "Any ship in any wreck",
+    highlights: [
+      "Pick a ship, then pick what happens to her from the new row of picture cards: the iceberg, a torpedo, the snow storm on Lake Superior, three torpedoes, a mine, the rocks or the giant wave",
+      "The star shows each ship's real wreck. Try the Titanic hit by the Carpathia's torpedoes, or the Edmund Fitzgerald meeting the iceberg",
+      "The ship keeps her own size, rooms and walls, so she may sink faster, slower or not at all. The Britannic was built after the Titanic to survive more flooding: give her the Titanic's iceberg and see",
+      "What if? works with every pair too",
+    ],
+  },
+  {
     version: "1.13.1",
     date: "2026-11-26",
     title: "Fits on a phone",

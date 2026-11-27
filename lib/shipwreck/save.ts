@@ -21,6 +21,11 @@ export interface ShipwreckSave {
   /** The ship chosen last on the title screen (missing: the Titanic). */
   ship?: ShipId;
   /**
+   * The wreck chosen for her (1.14, any ship in any wreck): the ship whose
+   * story she plays. Missing: her own. Picking a ship resets it.
+   */
+  wreck?: ShipId;
+  /**
    * The last What if? of every other ship (1.1). The Titanic's stays in
    * `lastWhatIf`, where 1.0 kept it.
    */
@@ -154,6 +159,7 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
     lastWhatIf,
   };
   if (isShipId(raw.ship)) save.ship = raw.ship;
+  if (isShipId(raw.wreck)) save.wreck = raw.wreck;
   if (isObj(raw.whatIfByShip)) {
     const byShip: Partial<Record<ShipId, ShipWhatIf>> = {};
     for (const [ship, value] of Object.entries(raw.whatIfByShip)) {
@@ -210,6 +216,11 @@ function parseIds(raw: unknown): string[] {
 /** The ship a save chose (the Titanic for a 1.0 save). */
 export function shipOf(save: ShipwreckSave): ShipId {
   return save.ship ?? "titanic";
+}
+
+/** The wreck a save chose for her ship (missing: her own). */
+export function wreckOf(save: ShipwreckSave): ShipId {
+  return save.wreck ?? shipOf(save);
 }
 
 /** A ship's last What if? (the Titanic's from `lastWhatIf`). */

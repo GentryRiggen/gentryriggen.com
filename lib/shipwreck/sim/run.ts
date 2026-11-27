@@ -2343,7 +2343,12 @@ function step(w: World): void {
       // Settled (1.5): only a ship whose U-boat comes back (the Carpathia's
       // forward peak trades water in a cycle too slow for the rate test);
       // every other ship keeps the rate test exactly.
-      else if ((w.spec.torpedo?.finisher || w.spec.wave) && settled(b, w.t))
+      // So does any ship in another's wreck (a crossover, 1.14): none of
+      // her pairs was calibrated, so none should hold her afloat for hours.
+      else if (
+        (w.spec.torpedo?.finisher || w.spec.wave || w.spec.story) &&
+        settled(b, w.t)
+      )
         b.frozen = true;
     }
     if (

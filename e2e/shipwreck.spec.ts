@@ -1288,3 +1288,57 @@ test("the Poseidon's paint tray repaints her and puts her own colours back", asy
     "night"
   );
 });
+
+test("any ship in any wreck: the Lusitania in the Carpathia's torpedoes plays to the end card", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.goto("/shipwreck");
+  await page.waitForFunction(() => Boolean(window.__shipwreck));
+  await page.getByTestId("shipwreck-ship-lusitania").click();
+  await expect(
+    page.getByTestId("shipwreck-wreck-real-lusitania")
+  ).toBeVisible();
+  await page.getByTestId("shipwreck-wreck-carpathia").click();
+  await expect(page.getByTestId("shipwreck-wreck-carpathia")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await expect(page.getByTestId("shipwreck-real-night")).toHaveText("Play");
+  // Kept after a reload.
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.__shipwreck));
+  await expect(page.getByTestId("shipwreck-wreck-carpathia")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect
+    .poll(() => page.evaluate(() => window.__shipwreck!.getState!().wreck))
+    .toBe("carpathia");
+  expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
+    "lusitania"
+  );
+  await computeAll(page);
+  await page.evaluate(() => {
+    const h = window.__shipwreck!;
+    h.seek!(h.getState!().computedT);
+  });
+  await expect(page.getByTestId("shipwreck-end")).toBeVisible();
+  await expect(page.getByTestId("shipwreck-end")).toHaveAttribute(
+    "data-outcome",
+    /^(sank|broke-in-two)$/
+  );
+  await expect(page.getByTestId("shipwreck-end")).toContainText(
+    "Lusitania sank"
+  );
+  // Picking a ship again goes back to her own wreck.
+  await page.evaluate(() => window.__shipwreck!.setShip!("titanic"));
+  await expect(page.getByTestId("shipwreck-wreck-titanic")).toHaveAttribute(
+    "aria-checked",
+    "true"
+  );
+  expect(errors).toEqual([]);
+});

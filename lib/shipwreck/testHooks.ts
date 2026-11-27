@@ -73,6 +73,8 @@ export interface ScenePlaybackInfo {
   /** The ship on the stage ("titanic" | "lusitania" | "fitzgerald" |
    *  "carpathia" | "britannic"). */
   ship: string;
+  /** The wreck she plays (her own id, or another ship's: a crossover). */
+  wreck: string;
   t: number;
   realT: number;
   phase: string;
@@ -159,6 +161,9 @@ export interface WalkHookInfo {
 export interface ShipwreckGameHooks {
   /** Picks a ship as the title screen does (and shows the title). */
   setShip(id: string): void;
+  /** Picks a wreck for the chosen ship as its card does (another ship's
+   *  story, or her own id for hers). */
+  setWreck(id: string): void;
   /** The ship chosen ("titanic" | "lusitania" | "fitzgerald" | "carpathia" |
    *  "britannic"). */
   ship(): string;

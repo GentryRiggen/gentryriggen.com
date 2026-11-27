@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 import { useResilientAudio } from "@/components/game-audio/useResilientAudio";
-import { effectiveSpeed, type PlaybackStore } from "@/lib/shipwreck/playback";
+import {
+  effectiveSpeed,
+  stageStory,
+  type PlaybackStore,
+} from "@/lib/shipwreck/playback";
 import type { VoiceEngine } from "@/components/game-audio/primitives";
 import type { SceneRuntime } from "@/components/shipwreck/scene/runtime";
 import { createBeds, type Beds } from "./beds";
@@ -134,7 +138,8 @@ export function useShipwreckSound(
         snapId: s.snapId,
         underwater: s.camera === "underwater",
         now,
-        ship: s.ship,
+        // Her wreck's sounds (its sea, its whistles and blasts).
+        ship: stageStory(s),
         walk: runtime ? walkNow(s.walk.phase) : undefined,
         hits: s.hits.length,
         storm: s.track.storm,

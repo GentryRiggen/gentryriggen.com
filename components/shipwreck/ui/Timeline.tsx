@@ -9,8 +9,7 @@ import {
   type PointerEvent,
 } from "react";
 import { useStore } from "zustand";
-import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import { getShip } from "@/lib/shipwreck/ships";
+import { stageSpec, type PlaybackStore } from "@/lib/shipwreck/playback";
 import {
   clockText,
   MARK_PRIORITY,
@@ -55,7 +54,10 @@ export default function Timeline({ store }: TimelineProps) {
   // from there.
   const start = useStore(store, (s) => s.minT);
   const span = Math.max(1, end - start);
-  const ship = getShip(useStore(store, (s) => s.ship));
+  const ship = stageSpec({
+    ship: useStore(store, (s) => s.ship),
+    wreck: useStore(store, (s) => s.wreck),
+  });
   // The runner stores a new track object every frame while it computes:
   // follow only the number of events (and a new run), not the object.
   const events = useStore(store, (s) => s.track?.events.length ?? -1);

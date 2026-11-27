@@ -12,8 +12,12 @@ import { ToneMappingMode } from "postprocessing";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Color, type Object3D, type WebGLRenderer } from "three";
 import { useStore } from "zustand";
-import type { PlaybackStore, QualityTier } from "@/lib/shipwreck/playback";
-import { getShip } from "@/lib/shipwreck/ships";
+import {
+  stageSpec,
+  type PlaybackStore,
+  type QualityTier,
+} from "@/lib/shipwreck/playback";
+import { storyIdOf } from "@/lib/shipwreck/ships/types";
 import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import CameraRig from "./CameraRig";
 import Coast, { GiglioBuild } from "./Coast";
@@ -91,13 +95,18 @@ export default function NightScene({
   const own = useMemo(() => createSceneRuntime(), []);
   const runtime = given ?? own;
   const quality = useStore(store, (s) => s.quality);
-  const spec = getShip(useStore(store, (s) => s.ship));
+  const spec = stageSpec({
+    ship: useStore(store, (s) => s.ship),
+    wreck: useStore(store, (s) => s.wreck),
+  });
+  // Her wreck's story: the sky, sea, coast and weather are its own.
+  const story = storyIdOf(spec);
   // The time button's hour (her real one unless changed), live: the sky,
   // light and water follow it; what happens (her boats, smoke, rockets)
   // stays her real day's (`real`).
   const time = useStore(store, (s) => s.time);
-  const settings = sceneSettingsFor(spec.id, time);
-  const real = SCENE_SETTINGS[spec.id];
+  const settings = sceneSettingsFor(story, time);
+  const real = SCENE_SETTINGS[story];
   const day = isDaylit(settings);
   useEffect(() => {
     runtime.stormLight = settings.stormLight ?? null;
@@ -169,7 +178,7 @@ export default function NightScene({
         {TEST_HOOKS_ENABLED && <RenderInfoProbe quality={quality} dpr={dpr} />}
         <Environment
           runtime={runtime}
-          ship={spec.id}
+          ship={story}
           seaDepthM={spec.seaDepthM}
           settings={settings}
         />
@@ -192,8 +201,8 @@ export default function NightScene({
             runtime={runtime}
           />
         )}
-        {settings.coast && <Coast ship={spec.id} />}
-        {spec.id === "concordia" && <GiglioBuild store={store} />}
+        {settings.coast && <Coast ship={story} />}
+        {story === "concordia" && <GiglioBuild store={store} />}
         {settings.convoy && quality !== "low" && <Convoy store={store} />}
         {/* Another ship builds her own model, disposing the old. */}
         <ShipOnStage store={store} runtime={runtime} />
@@ -256,6 +265,7 @@ function SeaFromStore({
   const quality = useStore(store, (s) => s.quality);
   const xray = useStore(store, (s) => s.xray);
   const ship = useStore(store, (s) => s.ship);
+  const wreck = useStore(store, (s) => s.wreck);
   // The storm's sea is her track's waves (no mirror: trap 3).
   if (settings.storm)
     return (
@@ -264,7 +274,7 @@ function SeaFromStore({
         quality={quality}
         xray={xray}
         settings={settings}
-        spec={getShip(ship)}
+        spec={stageSpec({ ship, wreck })}
       />
     );
   return (

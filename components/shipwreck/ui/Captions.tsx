@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { PlaybackState, PlaybackStore } from "@/lib/shipwreck/playback";
-import { getShip } from "@/lib/shipwreck/ships";
+import {
+  stageSpec,
+  type PlaybackState,
+  type PlaybackStore,
+} from "@/lib/shipwreck/playback";
 import {
   captionContext,
   captionEventsBetween,
@@ -43,7 +46,7 @@ export function runInCount(
 export default function Captions({ store }: CaptionsProps) {
   const [text, setText] = useState<string | null>(() => {
     const s = store.getState();
-    const ship = getShip(s.ship);
+    const ship = stageSpec(s);
     const hits = Math.max(1, s.hits.length);
     if (s.t < 0) {
       // The torpedo's run-in (the collision's caption comes at the hit).
@@ -64,7 +67,7 @@ export default function Captions({ store }: CaptionsProps) {
       // Back before the hit (a new run, a replay, a scrub): the run-in.
       const hits = Math.max(1, s.hits.length);
       if (s.t < 0) {
-        const ship = getShip(s.ship);
+        const ship = stageSpec(s);
         const say = (t: number) =>
           runInCaption(ship, runInCount(s), t, s.waveRun?.variant);
         const run = say(s.t);
@@ -80,11 +83,11 @@ export default function Captions({ store }: CaptionsProps) {
       const seek = s.t < prev.t || s.t - prev.t > CAPTION_RECENT_S;
       if (!(s.t > prev.t) && !seek) return;
       const from = seek ? s.t - CAPTION_RECENT_S : prev.t;
-      const evs = captionEventsBetween(s.track, getShip(s.ship), from, s.t);
+      const evs = captionEventsBetween(s.track, stageSpec(s), from, s.t);
       for (let i = evs.length - 1; i >= 0; i -= 1) {
         // After a long seek, only what just happened.
         if (s.t - evs[i].t > CAPTION_RECENT_S) break;
-        const c = captionFor(evs[i], getShip(s.ship), {
+        const c = captionFor(evs[i], stageSpec(s), {
           ...captionContext(s.track, evs[i].t, evs[i]),
           hits,
           openings: s.openings,

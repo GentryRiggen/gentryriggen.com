@@ -15,7 +15,10 @@ import {
   slowMoSpeed,
   startSpeed,
   inOwnHitWindow,
+  stageSpec,
+  stageStory,
 } from "../playback";
+import { specFor } from "../ships";
 import { carpathia, CARPATHIA_HIT_T } from "../ships/carpathia";
 import {
   FINISHER_SPOT,
@@ -1033,3 +1036,48 @@ describe("playback: riding a lifeboat", () => {
     expect(store.getState().walk.phase).toBe("off");
   });
 });
+
+describe("the wreck on the stage (any ship in any wreck, 1.14)", () => {
+  it("is null for her own and the story's ship for a crossover", () => {
+    const store = createPlaybackStore();
+    store.getState().setShip("titanic", "fitzgerald");
+    expect(store.getState().wreck).toBe("fitzgerald");
+    expect(stageStory(store.getState())).toBe("fitzgerald");
+    expect(stageSpec(store.getState()).story).toBe("fitzgerald");
+    expect(stageSpec(store.getState()).id).toBe("titanic");
+    store.getState().setShip("titanic", "titanic");
+    expect(store.getState().wreck).toBeNull();
+    expect(stageSpec(store.getState()).story).toBeUndefined();
+    // Another ship: her own wreck, unless one is given.
+    store.getState().setShip("titanic", "carpathia");
+    store.getState().setShip("lusitania");
+    expect(store.getState().wreck).toBeNull();
+  });
+
+  it("starts a crossover's run with its wreck", () => {
+    const store = createPlaybackStore({ createRunner: fakeRunnerForWreck });
+    store.getState().start(specFor("fitzgerald", "titanic"), []);
+    expect(store.getState().ship).toBe("fitzgerald");
+    expect(store.getState().wreck).toBe("titanic");
+  });
+});
+
+function fakeRunnerForWreck() {
+  return {
+    advance: () => {},
+    track: () => ({
+      frames: [],
+      events: [],
+      outcome: "floated" as const,
+      sankAtT: null,
+      brokeAtT: null,
+      breakX: null,
+      endT: 10,
+    }),
+    done: () => false,
+    progress: () => 0,
+  } as unknown as ReturnType<
+    NonNullable<Parameters<typeof createPlaybackStore>[0]>["createRunner"] &
+      object
+  >;
+}

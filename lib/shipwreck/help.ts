@@ -1,6 +1,6 @@
 import { PLACES_BY_SHIP } from "./places";
 import { titanic } from "./ships/titanic";
-import { resolveLivery, type ShipSpec } from "./ships/types";
+import { resolveLivery, storyIdOf, type ShipSpec } from "./ships/types";
 import type { SimFrame } from "./sim/track";
 import type { WaveVariant } from "./sim/wave";
 import { leanFromUpright } from "./story";
@@ -143,7 +143,7 @@ function torpedoLines(ship: ShipSpec): {
   speed: string;
   extra: string[];
 } {
-  if (ship.id === "carpathia")
+  if (storyIdOf(ship) === "carpathia")
     return {
       lean: "The first torpedo let the sea into a coal bunker on her port side, so she leaned a little to port. As the water spread inside her, she came nearly upright again.",
       power:

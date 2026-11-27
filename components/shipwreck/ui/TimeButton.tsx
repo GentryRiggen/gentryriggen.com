@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useStore } from "zustand";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
-import type { ShipSpec } from "@/lib/shipwreck/ships/types";
+import { storyIdOf, type ShipSpec } from "@/lib/shipwreck/ships/types";
 import {
   resolveTime,
   timesOf,
@@ -116,8 +116,9 @@ export default function TimeButton({
   }, [said]);
   const time = useStore(store, (s) => s.time);
   const underLight = useStore(store, (s) => s.underLight);
-  const now = resolveTime(spec.id, time);
-  const options = timesOf(spec.id);
+  // Her wreck's times (a crossover's are its story's).
+  const now = resolveTime(storyIdOf(spec), time);
+  const options = timesOf(storyIdOf(spec));
   const real = options.filter((o) => o.id === "real");
   const fun = options.filter((o) => o.id !== "real");
   const current = options.find((o) => o.id === now) ?? options[0];

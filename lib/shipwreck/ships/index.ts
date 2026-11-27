@@ -1,6 +1,7 @@
 import { britannic } from "./britannic";
 import { carpathia } from "./carpathia";
 import { concordia } from "./concordia";
+import { crossover } from "./crossover";
 import { fitzgerald } from "./fitzgerald";
 import { lusitania } from "./lusitania";
 import { poseidon } from "./poseidon";
@@ -97,4 +98,22 @@ export const SHIPS: Record<ShipId, ShipSpec> = {
 
 export function getShip(id: ShipId): ShipSpec {
   return SHIPS[id];
+}
+
+const crossovers = new Map<string, ShipSpec>();
+
+/**
+ * Ship `id` in the story of ship `wreck` (any ship in any wreck): her own
+ * spec when `wreck` is hers or missing, else the crossover (one object
+ * per pair, so it can be compared and cached by identity).
+ */
+export function specFor(id: ShipId, wreck?: ShipId | null): ShipSpec {
+  if (!wreck || wreck === id) return SHIPS[id];
+  const key = `${id}>${wreck}`;
+  let spec = crossovers.get(key);
+  if (!spec) {
+    spec = crossover(SHIPS[id], SHIPS[wreck]);
+    crossovers.set(key, spec);
+  }
+  return spec;
 }

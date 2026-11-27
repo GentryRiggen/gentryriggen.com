@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
-import { SHIP_IDS, getShip } from "@/lib/shipwreck/ships";
+import { SHIP_IDS, getShip, specFor } from "@/lib/shipwreck/ships";
 import {
   funnelPaintOf,
   type ShipId,
@@ -15,11 +15,15 @@ import { PARENT_LINES } from "../parentLine";
 import Icon from "./Icon";
 import LiveryButton from "./LiveryButton";
 import { FOCUS, PANEL, PRIMARY, SECONDARY } from "./styles";
+import WreckPicker, { wreckWords } from "./WreckPicker";
 
 interface TitleScreenProps {
   /** The chosen ship. */
   ship: ShipId;
   onShip: (ship: ShipId) => void;
+  /** The chosen wreck (her own, or another ship's story) and its picker. */
+  wreck?: ShipId;
+  onWreck?: (wreck: ShipId) => void;
   onRealNight: () => void;
   onWhatIf: () => void;
   /** The chosen ship's livery (null: hers) and the paint button's choice. */
@@ -144,12 +148,16 @@ function ShipPicture({ spec, livery = null }: ShipPictureProps) {
 export default function TitleScreen({
   ship,
   onShip,
+  wreck = ship,
+  onWreck,
   onRealNight,
   onWhatIf,
   livery = null,
   onLivery,
 }: TitleScreenProps) {
-  const spec = getShip(ship);
+  const spec = specFor(ship, wreck);
+  // Another ship's wreck (a crossover): the play button says so.
+  const crossover = wreck !== ship;
   const story = storyOf(spec);
   const whatIf = WHAT_IF[spec.cause];
   // On a phone the ship cards are one sideways-scrolling row: keep the
@@ -179,7 +187,9 @@ export default function TitleScreen({
           data-testid="shipwreck-parent-line"
           className="max-w-md rounded-xl bg-slate-950/50 px-3 py-1 text-xs text-slate-300 backdrop-blur-sm sm:text-sm short:max-w-2xl short:text-xs"
         >
-          {PARENT_LINES[ship]}
+          {crossover
+            ? `${PARENT_LINES[wreck].replace(" You can walk her open decks.", "")} Here the ${spec.name} takes her place: what happens next is the game's physics, not history.`
+            : PARENT_LINES[ship]}
         </p>
       </div>
 
@@ -253,16 +263,21 @@ export default function TitleScreen({
             </div>
           ))}
         </div>
+        {onWreck && <WreckPicker ship={ship} wreck={wreck} onWreck={onWreck} />}
         <div className="flex w-full flex-wrap items-center justify-center gap-3 sm:w-auto sm:flex-nowrap short:gap-2">
           <button
             type="button"
             data-testid="shipwreck-real-night"
-            aria-label={`${story.realLabel}: watch what happened`}
+            aria-label={
+              crossover
+                ? `Play: the ${spec.name} meets ${wreckWords(wreck)}`
+                : `${story.realLabel}: watch what happened`
+            }
             onClick={onRealNight}
             className={`${PRIMARY} w-full sm:w-auto short:w-auto`}
           >
-            <Icon name="clock" className="size-8" />
-            {story.realLabel}
+            <Icon name={crossover ? "play" : "clock"} className="size-8" />
+            {crossover ? "Play" : story.realLabel}
           </button>
           <button
             type="button"
