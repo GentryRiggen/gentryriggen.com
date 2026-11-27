@@ -11,6 +11,7 @@ import {
   floodsFromSea,
   roomFloorZ,
   roomWaterTarget,
+  roomWaterTargets,
 } from "../water";
 import type { Room } from "../types";
 
@@ -203,5 +204,19 @@ describe("a room inside the watertight envelope", () => {
         { spec, pose: pose(), seaZ: -0.5 }
       )
     ).toBe(-0.5);
+  });
+
+  it("caches each compartment's samples for the scene (roomWaterTargets)", () => {
+    const target = roomWaterTargets(spec);
+    const fill = spec.compartments.map(() => 0);
+    const p = pose();
+    // A compartment room: its compartment's fill, from the frame's water.
+    expect(target(r, p, fill)).toBe(-Infinity);
+    fill[br6Index] = 0.3;
+    expect(target(r, p, fill)).toBe(waterLevel(samples, p, 0.3));
+    // A sea room: the sea, no samples needed.
+    expect(target(room("scotland-road"), p, fill)).toBe(0);
+    // A missing fill reads as dry, never throws.
+    expect(target(r, p, [])).toBe(-Infinity);
   });
 });

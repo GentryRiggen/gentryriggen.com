@@ -74,7 +74,12 @@ floor): the third-class cabin wet at 0:13 and waist deep at 0:31; Scotland
 Road wet at its forward end at 0:15, at x 20 at 1:07 and at its after end
 at 2:01; the staircase from below: the C landing at 2:07, the B foyer at
 2:09, the A foyer at 2:12; the Boat deck entrance dry until the break
-(2:14). The scene eases each room's shown level toward its target.
+(2:14). The scene eases each room's shown level toward its target
+(`easeLevel.ts`: at most `LEVEL_EASE_M_PER_S`, 0.5 m per real second; a dry
+room or a first sight snaps). `roomWaterTargets(spec)` is the scene's
+per-frame target: each room's rule worked out once, each compartment's
+X-ray samples built the first time a room in it asks, the fill from the sim
+frame's `water`.
 
 ## Doors (`doorExit.ts`)
 

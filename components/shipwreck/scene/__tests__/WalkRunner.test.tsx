@@ -317,6 +317,33 @@ describe("walking in the scene", () => {
     expect(runtime.walkInside).toBe(false);
   });
 
+  it("reads a drawn room's eased water level, its target when not drawn", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    // 12:20 AM: Scotland Road at x 20 is still dry.
+    store.setState({ t: 40 * 60 });
+    frame();
+    hooks.placeWalk("scotland-road", 20, 0, 0);
+    frame();
+    expect(runtime.walkInside).toBe(true);
+    const atTarget = runtime.walkInfo!.depthM;
+    expect(atTarget).toBeLessThan(0);
+    // Interior's eased level for the room: the walker's depth follows it.
+    const slot = new Map([["scotland-road", 0]]);
+    const lv = {
+      slot,
+      shown: new Float64Array([-0.4]),
+      drawn: new Uint8Array([1]),
+    };
+    runtime.interiorLevels = lv;
+    frame(0);
+    expect(runtime.walkInfo!.depthM).toBeCloseTo(atTarget - 0.4, 3);
+    // Not drawn: the target (the sea), whatever was shown before.
+    lv.drawn[0] = 0;
+    frame(0);
+    expect(runtime.walkInfo!.depthM).toBeCloseTo(atTarget, 3);
+  });
+
   it("a deck door does not open after the break, nor the button", () => {
     const { store, runtime, frame, hooks } = setup();
     act(() => store.getState().startWalk());

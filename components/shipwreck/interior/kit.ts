@@ -120,7 +120,7 @@ class Shell {
 }
 
 /** An outline with each edge cut into the walls' panels (PANEL_M). */
-function refine(outline: readonly V2[]): V2[] {
+export function refine(outline: readonly V2[]): V2[] {
   const out: V2[] = [];
   for (let i = 0; i < outline.length; i += 1) {
     const a = outline[i];
@@ -139,7 +139,9 @@ function refine(outline: readonly V2[]): V2[] {
 }
 
 /** Triangles of a plan outline (index triples), each counter-clockwise. */
-function triangulate(outline: readonly V2[]): [number, number, number][] {
+export function triangulate(
+  outline: readonly V2[]
+): [number, number, number][] {
   const pts = outline.map(([x, y]) => new Vector2(x, y));
   const tris = ShapeUtils.triangulateShape(pts, []);
   return tris.map(([a, b, c]) => {
@@ -156,7 +158,7 @@ function same(p: V2, q: V2): boolean {
 }
 
 /** A room's flat ceiling (ship z) over (x, y): a flight's over its top. */
-function ceilingZ(room: Room, x: number, y: number, spec: Spec): number {
+export function ceilingZ(room: Room, x: number, y: number, spec: Spec): number {
   if (!room.ramp) return roomFloorZ(room, x, y, spec) + room.ceilingM;
   const [fx, fy] = room.ramp.from;
   return roomFloorZ(room, fx, fy, spec) + room.ceilingM;
@@ -224,7 +226,10 @@ function alongEdge(a: V2, b: V2, c: V2, d: V2): number {
 }
 
 export interface EdgeInfo {
-  /** "wall" to the ceiling, "rail" (a balustrade), or "seam" (open). */
+  /**
+   * "wall" to the ceiling, "rail" (a balustrade), or "seam" (open: a
+   * doorway, or level with a drawn-only room such as the roped flight).
+   */
   kind: "wall" | "rail" | "seam";
   /** A seam that needs a lintel (a doorway, not a stair's open edge). */
   lintel?: { other: Room };
@@ -252,7 +257,11 @@ export function edgeKinds(
         return stair ? { kind: "seam" } : { kind: "seam", lintel: { other } };
       }
       // Along another room's edge at a different height in the same zone
-      // (over a stair or the well): a balustrade, not a wall.
+      // (over a stair or the well): a balustrade, not a wall. Level with a
+      // drawn-only room (the roped B → C flight and its landing) wins over
+      // a balustrade to a room stacked above: open, so you can look down
+      // it (the rope, not a wall, keeps you out; the walker has no seam).
+      let rail = false;
       for (const other of interior.rooms) {
         if (other === room || other.zone !== room.zone) continue;
         const op = other.outline;
@@ -284,11 +293,12 @@ export function edgeKinds(
               ceilingZ(room, ox, oy, spec),
               ceilingZ(other, ox, oy, spec)
             ) - Math.max(mineF, theirF);
-          if (Math.abs(theirF - mineF) > 0.05 && open > RAIL_OPEN_M)
-            return { kind: "rail" };
+          if (open <= RAIL_OPEN_M) continue;
+          if (Math.abs(theirF - mineF) > 0.05) rail = true;
+          else if (room.noWalk || other.noWalk) return { kind: "seam" };
         }
       }
-      return { kind: "wall" };
+      return { kind: rail ? "rail" : "wall" };
     });
     out.set(room.id, infos);
   }

@@ -86,6 +86,13 @@ export interface SceneRuntime {
    */
   walkPlace: { area: string; x: number; y: number; yaw: number } | null;
   /**
+   * Inside her: each room's shown water level (Interior eases it each
+   * frame for the rooms it draws, priority −1.4); WalkRunner's `waterZ`
+   * reads it, and a room's target when it is not drawn. Null while the
+   * interior is not built.
+   */
+  interiorLevels: InteriorLevels | null;
+  /**
    * Riding a lifeboat: the player's look, a yaw turned from facing her
    * (radians, + to port) and a pitch (WalkRunner turns both by the drag),
    * and whether a ride's first frame has zeroed it. Effects writes
@@ -159,6 +166,16 @@ export interface WalkInfo {
   inside: boolean;
 }
 
+/** The rooms' eased water levels (`SceneRuntime.interiorLevels`). */
+export interface InteriorLevels {
+  /** Each room's index in `shown` and `drawn`. */
+  slot: ReadonlyMap<string, number>;
+  /** Earth z (−Infinity dry), valid where `drawn` is 1. */
+  shown: Float64Array;
+  /** 1 for a room eased last frame (its zone drawn), else 0. */
+  drawn: Uint8Array;
+}
+
 /** Points along a turning ship's wake (`SceneRuntime.wake.path`). */
 export const WAKE_PATH_POINTS = 8;
 
@@ -201,6 +218,7 @@ export function createSceneRuntime(): SceneRuntime {
     walkCameInBy: null,
     walkLift: 0,
     walkPlace: null,
+    interiorLevels: null,
     ride: { yaw: 0, pitch: 0, aimed: false },
     rideView: { pos: [0, 0, 0], yaw: 0, pitch: 0 },
     boardable: -1,

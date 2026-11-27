@@ -13,7 +13,7 @@ import {
 
 /**
  * The blockout kit: each zone's merged shell is finite and non-empty (its
- * triangle count is printed for the report), a flight's treads stand on
+ * triangle count printed with SHIPWRECK_PRINT_TRIANGLES=1), a flight's treads stand on
  * the walker's ramp, and the zones drawn together follow the doorways.
  */
 
@@ -51,8 +51,9 @@ describe("the blockout kit", () => {
       g.computeBoundingBox();
       expect(g.boundingBox!.isEmpty()).toBe(false);
     }
-    // Recorded for the report.
-    console.log(`interior triangles per zone: ${JSON.stringify(counts)}`);
+    // Printed only on request (SHIPWRECK_PRINT_TRIANGLES=1), for reports.
+    if (process.env.SHIPWRECK_PRINT_TRIANGLES)
+      console.log(`interior triangles per zone: ${JSON.stringify(counts)}`);
   });
 
   it("sits in her frame (three-local x, z, −y) round each room", () => {
@@ -165,6 +166,17 @@ describe("the blockout kit", () => {
     expect(edgeAt("gs-a", [41.4, -7], [41.4, -3])).toBe("wall");
     // A twin flight looks over the foyer beside it.
     expect(edgeAt("gs-flight-boat-a-port", [35, 3], [39, 3])).toBe("rail");
+    // The roped B → C flight is open from the B foyer (the rope keeps you
+    // out, not a wall): you look down it to the C landing.
+    const head = interior.rooms
+      .find((r) => r.id === "gs-flight-b-c")!
+      .outline.filter((p) => Math.abs(p[0] - 35) < 1e-3)
+      .map((p) => [p[0], p[1]] as [number, number]);
+    expect(head).toHaveLength(2);
+    expect(edgeAt("gs-flight-b-c", head[0], head[1])).toBe("seam");
+    // And open at its foot onto the C landing (not a balustrade to the
+    // A → B half landing stacked over the C landing).
+    expect(edgeAt("gs-flight-b-c", [39, -1.5], [39, 1.5])).toBe("seam");
     // A suite and the corridor are level: a wall either side of the door.
     const suite = interior.rooms.find((r) => r.id === "suite-1")!;
     const kindsSuite = kinds.get("suite-1")!;

@@ -223,7 +223,12 @@ export default function NightScene({
           dark={!day && isDaylit(real)}
         />
         <XRay store={store} runtime={runtime} spec={spec} />
-        <Interior store={store} runtime={runtime} spec={spec} />
+        <Interior
+          key={`interior-${spec.id}`}
+          store={store}
+          runtime={runtime}
+          spec={spec}
+        />
         <SeaFromStore store={store} runtime={runtime} settings={settings} />
         <WalkRunner key={spec.id} store={store} runtime={runtime} spec={spec} />
         <CameraRig store={store} runtime={runtime} spec={spec} />

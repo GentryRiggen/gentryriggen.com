@@ -1,7 +1,13 @@
 import { deckZAt } from "../places";
 import type { ShipSpec } from "../ships/types";
+import { buildHull, type HullModel } from "../sim/geometry";
 import type { BodyPose } from "../sim/track";
-import { compartmentTopZ, waterLevel, type VolumeSamples } from "../xray";
+import {
+  compartmentSamples,
+  compartmentTopZ,
+  waterLevel,
+  type VolumeSamples,
+} from "../xray";
 import type { Room } from "./types";
 
 /**
@@ -103,4 +109,40 @@ export function roomWaterTarget(room: Room, ctx: RoomWaterContext): number {
   if (!ctx.samples || ctx.fill === undefined)
     throw new Error(`room ${room.id} needs its compartment's samples and fill`);
   return Math.min(sea, waterLevel(ctx.samples, ctx.pose, ctx.fill));
+}
+
+/**
+ * The scene's per-frame targets: `target(room, pose, fill)` is
+ * `roomWaterTarget` with each room's rule worked out once and each
+ * compartment's samples built the first time a room in it asks (her hull
+ * too), the fill from the sim frame's `water` (missing: dry). The sea is
+ * flat 0 (the walk's). Allocation-free after the first call per room.
+ */
+export function roomWaterTargets(
+  spec: ShipSpec
+): (room: Room, pose: BodyPose, fill: readonly number[]) => number {
+  let hull: HullModel | null = null;
+  const samples = new Map<number, VolumeSamples>();
+  /** Per room: −1 floods from the sea, else its compartment's index. */
+  const comp = new Map<string, number>();
+  const sea = 0;
+  return (room, pose, fill) => {
+    let i = comp.get(room.id);
+    if (i === undefined) {
+      const mode =
+        room.water ?? (floodsFromSea(room, spec) ? "sea" : "compartment");
+      i = mode === "sea" ? -1 : compartmentIndexOf(room, spec);
+      comp.set(room.id, i);
+    }
+    // A compartment room outside every compartment: the sea's rule.
+    if (i < 0) return sea;
+    let s = samples.get(i);
+    if (!s) {
+      hull ??= buildHull(spec);
+      s = compartmentSamples(hull, spec.compartments[i]);
+      samples.set(i, s);
+    }
+    // As roomWaterTarget's compartment rule, without re-deciding the rule.
+    return Math.min(sea, waterLevel(s, pose, fill[i] ?? 0));
+  };
 }

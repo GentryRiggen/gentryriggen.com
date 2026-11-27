@@ -1,5 +1,6 @@
 import { SEA_WAVES_GLSL } from "../seaWaves";
 import { STORM_SEA_GLSL } from "../StormSea";
+import { waterShaders } from "../../interior/water";
 
 /**
  * NaN is a black screen on a real GPU and invisible in headless
@@ -9,12 +10,17 @@ import { STORM_SEA_GLSL } from "../StormSea";
  * literal or a max( / clamp( guard. The strings scanned: the storm sea's
  * wave function (her rogue wave's sharpening and lip) and the storm sea's
  * own shaders (her lip, rolled-over foam, under-glow and starlit sky).
+ * 1.15: the water inside her rooms (`interior/water.ts`).
  */
 
 const SHADERS: Record<string, string> = {
   SEA_WAVES_GLSL,
   "StormSea vertex": STORM_SEA_GLSL.vertex,
   "StormSea fragment": STORM_SEA_GLSL.fragment,
+  "interior water surface vertex": waterShaders(26).surfaceVertex,
+  "interior water surface fragment": waterShaders(26).surfaceFragment,
+  "interior water body vertex": waterShaders(26).bodyVertex,
+  "interior water body fragment": waterShaders(26).bodyFragment,
 };
 
 /** The source with its comments and preprocessor lines removed. */

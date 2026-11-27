@@ -8,6 +8,7 @@ export * from "./kit";
 export * from "./lights";
 export * from "./merge";
 export * from "./water";
+export * from "./easeLevel";
 export * from "./doorExit";
 export { TITANIC_INTERIOR } from "./titanic";
 
