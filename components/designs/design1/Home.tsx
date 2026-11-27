@@ -56,23 +56,13 @@ function HomeContent() {
     <div className="min-h-screen bg-term-page text-term-fg transition-colors font-mono">
       {/* Subtle scanline overlay for CRT effect in dark mode */}
       <div
-        className="fixed inset-0 pointer-events-none z-10 opacity-0 dark:opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(0deg, transparent, transparent 1px, rgba(0,0,0,0.3) 1px, rgba(0,0,0,0.3) 2px)",
-          backgroundSize: "100% 2px",
-        }}
+        className="home-scanlines fixed inset-0 pointer-events-none z-10 opacity-0 dark:opacity-[0.03]"
         aria-hidden="true"
       />
 
       {/* Background grid pattern */}
       <div
-        className="fixed inset-0 pointer-events-none z-0 opacity-[0.03] dark:opacity-[0.04]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(34,197,94,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(34,197,94,0.4) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
+        className="home-grid fixed inset-0 pointer-events-none z-0 opacity-[0.03] dark:opacity-[0.04]"
         aria-hidden="true"
       />
 
@@ -162,6 +152,7 @@ function HomeContent() {
             onMinimize={handleMinimize}
             onFullscreen={handleFullscreen}
             isFullscreen={terminalState === "fullscreen"}
+            isActive={terminalState !== "minimized"}
           />
 
           {terminalState === "normal" && (

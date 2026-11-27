@@ -15,8 +15,9 @@ export default function Shipped() {
             key={release.gameId}
             className="grid grid-cols-[1.25rem_1fr_auto] gap-x-2"
           >
-            <span className="text-term-ok" aria-label="done">
-              ☒
+            <span className="text-term-ok">
+              <span aria-hidden="true">☒</span>
+              <span className="sr-only">done:</span>
             </span>
             <span className="min-w-0">
               <a href={release.href} className={LINK_CLASS}>
@@ -30,7 +31,10 @@ export default function Shipped() {
           </li>
         ))}
         <li className="grid grid-cols-[1.25rem_1fr] gap-x-2 text-term-muted">
-          <span aria-label="to do">☐</span>
+          <span>
+            <span aria-hidden="true">☐</span>
+            <span className="sr-only">to do:</span>
+          </span>
           <span>The next release (the boys have already filed bugs)</span>
         </li>
       </ul>

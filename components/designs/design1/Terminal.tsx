@@ -55,6 +55,8 @@ interface TerminalProps {
   onMinimize?: () => void;
   onFullscreen?: () => void;
   isFullscreen?: boolean;
+  /** False while minimized: a hidden terminal must not catch page keys. */
+  isActive?: boolean;
 }
 
 export default function Terminal({
@@ -62,6 +64,7 @@ export default function Terminal({
   onMinimize,
   onFullscreen,
   isFullscreen,
+  isActive = true,
 }: TerminalProps) {
   const reducedMotion = usePrefersReducedMotion();
   const shipped = useShipped();
@@ -103,7 +106,7 @@ export default function Terminal({
 
   // Any key skips the boot; the listener goes once the prompt is up.
   useEffect(() => {
-    if (isBootComplete) return;
+    if (isBootComplete || !isActive) return;
     const skip = (e: KeyboardEvent) => {
       // Navigation, shortcuts and keys meant for a control (the theme menu,
       // a link) shouldn't skip.
@@ -124,15 +127,17 @@ export default function Terminal({
         return;
       }
       // The input exists by the time the browser acts on this key, so stop
-      // it there: Enter would submit an empty command.
-      e.preventDefault();
-      if (e.key.length === 1 && e.key !== " ") setSeedInput(e.key);
+      // the keys it would take: Enter would submit an empty command and a
+      // letter would be typed twice. Others (F5, Space, PageDown) still work.
+      const isPrintable = e.key.length === 1 && e.key !== " ";
+      if (e.key === "Enter" || isPrintable) e.preventDefault();
+      if (isPrintable) setSeedInput(e.key);
       focusWhenReadyRef.current = true;
       setIsSkipped(true);
     };
     window.addEventListener("keydown", skip);
     return () => window.removeEventListener("keydown", skip);
-  }, [isBootComplete]);
+  }, [isBootComplete, isActive]);
 
   useEffect(() => {
     if (!isBootComplete) return;

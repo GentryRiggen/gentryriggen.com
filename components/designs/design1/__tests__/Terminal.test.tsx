@@ -148,4 +148,17 @@ describe("Terminal boot sequence", () => {
     const notPrevented = fireEvent.keyDown(window, { key: "Enter" });
     expect(notPrevented).toBe(false);
   });
+
+  it("leaves F5 and Space to the browser", () => {
+    render(<Terminal />);
+    expect(fireEvent.keyDown(window, { key: "F5" })).toBe(true);
+    render(<Terminal />);
+    expect(fireEvent.keyDown(window, { key: " " })).toBe(true);
+  });
+
+  it("ignores keys while minimized", () => {
+    render(<Terminal isActive={false} />);
+    expect(fireEvent.keyDown(window, { key: "Enter" })).toBe(true);
+    expect(queryPrompt()).not.toBeInTheDocument();
+  });
 });

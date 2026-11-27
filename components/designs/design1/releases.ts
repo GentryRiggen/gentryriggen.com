@@ -17,9 +17,8 @@ export interface ChangelogEntry {
 export interface ShippedRelease {
   gameId: string;
   gameName: string;
-  emoji: string;
   version: string;
-  /** e.g. "Nov 27" */
+  /** e.g. "Nov 27", or "Nov 27, 2026" when not from the current year */
   date: string;
   title: string;
   /** The game's Versions page. */
@@ -36,10 +35,12 @@ function isPatch(version: string): boolean {
   return !version.endsWith(".0");
 }
 
-function shortDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
+function shortDate(iso: string, currentYear: number): string {
+  const date = new Date(`${iso}T00:00:00Z`);
+  return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
+    year: date.getUTCFullYear() === currentYear ? undefined : "numeric",
     timeZone: "UTC",
   });
 }
@@ -50,8 +51,11 @@ function shortDate(iso: string): string {
  * what got built.
  */
 export function summarizeReleases(
-  changelogs: Readonly<Record<string, readonly ChangelogEntry[]>>
+  changelogs: Readonly<Record<string, readonly ChangelogEntry[]>>,
+  /** The build's date; the year is shown on releases from other years. */
+  now: Date = new Date()
 ): ShippedSummary {
+  const currentYear = now.getUTCFullYear();
   const latest: { release: ShippedRelease; iso: string; order: number }[] = [];
   let total = 0;
   GAMES.forEach((game, order) => {
@@ -63,9 +67,8 @@ export function summarizeReleases(
       release: {
         gameId: game.id,
         gameName: game.name,
-        emoji: game.emoji,
         version: entry.version,
-        date: shortDate(entry.date),
+        date: shortDate(entry.date, currentYear),
         title: entry.title,
         href: `${game.href}/versions`,
       },
