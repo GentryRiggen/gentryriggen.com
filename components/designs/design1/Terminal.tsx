@@ -18,6 +18,8 @@ import SideProjects from "./SideProjects";
 import { SPINNER_VERBS } from "./Spinner";
 import Spinner from "./Spinner";
 import TerminalWindow from "./TerminalWindow";
+import Shipped from "./Shipped";
+import { useShipped } from "./ShippedContext";
 import ToolCall from "./ToolCall";
 import WelcomeBox from "./WelcomeBox";
 import { GAMES } from "./games";
@@ -27,18 +29,25 @@ const FIRST_STEP_DELAY = 900;
 const STEP_DELAY = 650;
 
 interface BootStep {
+  id: string;
   tool: string;
-  arg: string;
+  arg?: string;
   content: ReactNode;
 }
 
 const BOOT_STEPS: readonly BootStep[] = [
-  { tool: "Bash", arg: "whoami", content: <Whoami /> },
-  { tool: "Read", arg: "bio.txt", content: <Bio /> },
-  { tool: "Read", arg: "about.txt", content: <About /> },
-  { tool: "Bash", arg: "ls ~/side-projects/", content: <SideProjects /> },
-  { tool: "Read", arg: "skills.md", content: <Skills /> },
-  { tool: "Read", arg: "links.txt", content: <Links /> },
+  { id: "whoami", tool: "Bash", arg: "whoami", content: <Whoami /> },
+  { id: "bio", tool: "Read", arg: "bio.txt", content: <Bio /> },
+  { id: "about", tool: "Read", arg: "about.txt", content: <About /> },
+  {
+    id: "games",
+    tool: "Bash",
+    arg: "ls ~/side-projects/",
+    content: <SideProjects />,
+  },
+  { id: "shipped", tool: "Update Todos", content: <Shipped /> },
+  { id: "skills", tool: "Read", arg: "skills.md", content: <Skills /> },
+  { id: "links", tool: "Read", arg: "links.txt", content: <Links /> },
 ];
 
 interface TerminalProps {
@@ -55,6 +64,7 @@ export default function Terminal({
   isFullscreen,
 }: TerminalProps) {
   const reducedMotion = usePrefersReducedMotion();
+  const shipped = useShipped();
   const [stepsShown, setStepsShown] = useState(0);
   const [isSkipped, setIsSkipped] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -113,10 +123,10 @@ export default function Terminal({
       ) {
         return;
       }
-      if (e.key.length === 1 && e.key !== " ") {
-        e.preventDefault();
-        setSeedInput(e.key);
-      }
+      // The input exists by the time the browser acts on this key, so stop
+      // it there: Enter would submit an empty command.
+      e.preventDefault();
+      if (e.key.length === 1 && e.key !== " ") setSeedInput(e.key);
       focusWhenReadyRef.current = true;
       setIsSkipped(true);
     };
@@ -171,7 +181,7 @@ export default function Terminal({
           </p>
 
           {BOOT_STEPS.slice(0, visibleSteps).map((step) => (
-            <ToolCall key={step.arg} tool={step.tool} arg={step.arg}>
+            <ToolCall key={step.id} tool={step.tool} arg={step.arg}>
               {step.content}
             </ToolCall>
           ))}
@@ -189,7 +199,8 @@ export default function Terminal({
                   ⏺
                 </span>
                 <p className="text-term-fg">
-                  A software leader who still ships: {GAMES.length} games deep
+                  A software leader who still ships: {GAMES.length} games
+                  {shipped.total > 0 && ` and ${shipped.total} releases`} deep
                   for two very demanding QA testers. Want to work together? Type{" "}
                   <span className="text-term-accent">hire me</span>.
                 </p>

@@ -101,3 +101,15 @@ describe("Home terminal window", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("Home recently shipped", () => {
+  it("shows each game's latest release from the real changelogs", () => {
+    renderWithTheme(<Home />);
+    fireEvent.keyDown(window, { key: "Enter" });
+    expect(screen.getByText("Update Todos")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /^Shipwreck \d+\.\d+\.0$/ })
+    ).toHaveAttribute("href", "/shipwreck/versions");
+    expect(screen.getByText(/releases deep/)).toBeInTheDocument();
+  });
+});

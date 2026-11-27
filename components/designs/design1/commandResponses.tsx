@@ -8,6 +8,7 @@
 
 import { type ReactNode } from "react";
 import About from "./About";
+import Shipped from "./Shipped";
 import SideProjects from "./SideProjects";
 import Bio from "./Bio";
 import HireMe from "./HireMe";
@@ -46,6 +47,7 @@ export const BOOT_COMMANDS = [
   "cat bio.txt",
   "cat about.txt",
   "ls ~/side-projects/",
+  "todos",
   "cat skills.md",
   "cat links.txt",
 ];
@@ -166,6 +168,7 @@ ${[
   ["bio", "Read bio"],
   ["about", "Life off the clock"],
   ["games", "List my side projects"],
+  ["shipped", "What shipped lately"],
   ["skills", "Show skills"],
   ["links", "Show social links"],
   ["hire me", "Get in touch"],
@@ -344,6 +347,11 @@ export function getCommandResponse(
         <SideProjects />
       );
     return { output, shouldClear: false };
+  }
+
+  // --- shipped ---
+  if (["shipped", "todos", "changelog", "releases"].includes(lower)) {
+    return { output: <Shipped />, shouldClear: false };
   }
 
   // --- skills ---

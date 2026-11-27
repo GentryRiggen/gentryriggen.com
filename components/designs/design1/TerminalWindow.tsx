@@ -23,7 +23,7 @@ export default function TerminalWindow({
 }: TerminalWindowProps) {
   return (
     <div
-      className={`group w-full overflow-clip border-term-border shadow-2xl shadow-black/10 transition-[border-color,box-shadow] duration-300 focus-within:border-term-accent/60 focus-within:shadow-[0_0_30px_color-mix(in_srgb,var(--term-accent)_20%,transparent)] flex flex-col flex-1 sm:flex-initial ${isFullscreen ? "border-0" : "border-y sm:border sm:rounded-lg"}`}
+      className={`group w-full overflow-clip border-term-border shadow-2xl shadow-black/10 transition-[border-color,box-shadow] duration-300 focus-within:border-term-accent/60 focus-within:shadow-[0_0_30px_color-mix(in_srgb,var(--term-accent)_20%,transparent)] flex flex-col flex-1 min-h-0 ${isFullscreen ? "border-0" : "sm:flex-initial border-y sm:border sm:rounded-lg"}`}
     >
       {/* Title bar */}
       <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 bg-term-bar border-b border-term-border transition-[border-color] duration-300">
@@ -75,7 +75,7 @@ export default function TerminalWindow({
       {/* Terminal body - click anywhere to focus input */}
       <div
         onClick={onClick}
-        className={`bg-term-bg p-4 sm:p-6 font-mono text-sm leading-relaxed flex-1 sm:flex-initial sm:min-h-[200px] overflow-y-auto overflow-x-auto cursor-text ${isFullscreen ? "" : "sm:max-h-[80vh]"}`}
+        className={`bg-term-bg p-4 sm:p-6 font-mono text-sm leading-relaxed flex-1 min-h-0 sm:min-h-[200px] overflow-y-auto overflow-x-auto cursor-text ${isFullscreen ? "" : "sm:flex-initial sm:max-h-[80vh]"}`}
       >
         {children}
       </div>

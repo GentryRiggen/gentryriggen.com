@@ -142,4 +142,10 @@ describe("Terminal boot sequence", () => {
     fireEvent.click(screen.getByRole("button", { name: "skills" }));
     expect(input).toHaveValue("theme dra");
   });
+
+  it("Enter skips without submitting an empty command", () => {
+    render(<Terminal />);
+    const notPrevented = fireEvent.keyDown(window, { key: "Enter" });
+    expect(notPrevented).toBe(false);
+  });
 });
