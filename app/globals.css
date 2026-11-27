@@ -32,6 +32,25 @@
   visibility: hidden !important;
 }
 
+/* Homepage overlays: CRT scanlines (dark mode) and a faint grid. */
+.home-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    rgba(0, 0, 0, 0.3) 1px,
+    rgba(0, 0, 0, 0.3) 2px
+  );
+  background-size: 100% 2px;
+}
+
+.home-grid {
+  background-image:
+    linear-gradient(rgba(34, 197, 94, 0.4) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(34, 197, 94, 0.4) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
 /* Homepage terminal themes (`/theme`). Components use bg-term-bg,
    text-term-fg… The defaults follow the site's light/dark toggle; a named
    theme on <html data-term-theme> (set before paint by THEME_SCRIPT) or on
