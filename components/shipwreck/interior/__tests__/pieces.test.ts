@@ -12,8 +12,14 @@ import {
   sconce,
   shutDoor,
   TILE,
+  FURNITURE,
+  pipes,
+  fireBuckets,
+  hoseReel,
   type Lamp,
 } from "../pieces";
+import { PIECE_FOOTPRINT } from "@/lib/shipwreck/interior/kit";
+import type { PieceId } from "@/lib/shipwreck/interior";
 
 /**
  * The kit's pieces: each builds finite, non-degenerate geometry within a
@@ -38,6 +44,27 @@ const PIECES: [string, Build, number][] = [
   ["white door", (L) => shutDoor(L, AT, 0, "white"), 120],
   ["steel door", (L) => shutDoor(L, AT, 0, "steel"), 80],
   ["balustrade (4 m)", (L) => balustrade(L, [0, 0, 1], [4, 0, 2], 0.06), 400],
+  ["pipes (8 m)", (L) => pipes(L, AT, 0.4, 2.4), 260],
+  ["fire buckets", (L) => fireBuckets(L, AT, 0.4), 260],
+  ["hose reel", (L) => hoseReel(L, AT, 0.4), 260],
+  // The rooms' furniture (blocking pieces: centred on their footprint).
+  ...(
+    [
+      ["bed", 600],
+      ["single-bed", 500],
+      ["bunk", 600],
+      ["wardrobe", 260],
+      ["washstand", 300],
+      ["washbasin", 260],
+      ["sofa", 360],
+      ["table", 300],
+      ["chair", 200],
+    ] as const
+  ).map(([id, n]): [string, Build, number] => [
+    id,
+    (L) => FURNITURE[id]!(L, AT, 0.4),
+    n,
+  ]),
 ];
 
 describe("the kit's pieces", () => {
@@ -102,6 +129,49 @@ describe("the kit's pieces", () => {
       if (t === TILE.dome) us.push(g.uv[i * 2]);
     });
     expect(Math.max(...us) - Math.min(...us)).toBeGreaterThan(20);
+  });
+
+  it("every blocking piece stays inside its footprint (the walker's blocker), front to +x", () => {
+    for (const id of Object.keys(PIECE_FOOTPRINT) as PieceId[]) {
+      const build = FURNITURE[id];
+      expect([id, !!build]).toEqual([id, true]);
+      if (!build) continue;
+      const fp = PIECE_FOOTPRINT[id]!;
+      const L = new Layers();
+      build(L, [0, 0, 0], 0);
+      let x0 = Infinity;
+      let x1 = -Infinity;
+      let y0 = Infinity;
+      let y1 = -Infinity;
+      let top = 0;
+      for (const b of L.all)
+        for (let i = 0; i < b.pos.length; i += 3) {
+          x0 = Math.min(x0, b.pos[i]);
+          x1 = Math.max(x1, b.pos[i]);
+          y0 = Math.min(y0, -b.pos[i + 2]);
+          y1 = Math.max(y1, -b.pos[i + 2]);
+          top = Math.max(top, b.pos[i + 1]);
+        }
+      const slack = 0.03;
+      expect([id, x0 >= -fp.lx / 2 - slack, x1 <= fp.lx / 2 + slack]).toEqual([
+        id,
+        true,
+        true,
+      ]);
+      expect([id, y0 >= -fp.ly / 2 - slack, y1 <= fp.ly / 2 + slack]).toEqual([
+        id,
+        true,
+        true,
+      ]);
+      // It fills most of it (no blocker much bigger than what you see).
+      expect([id, x1 - x0 > fp.lx * 0.8, y1 - y0 > fp.ly * 0.8]).toEqual([
+        id,
+        true,
+        true,
+      ]);
+      // Under the eyes and the ceiling (2.3 m).
+      expect([id, top > 0.3 && top < 2.2]).toEqual([id, true]);
+    }
   });
 
   it("a balustrade's balusters stand between its rails, on the floor line", () => {

@@ -3,6 +3,7 @@ import { TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
 import { floorZ, walkMapFor, type WalkMap } from "@/lib/shipwreck/walk";
 import { doorGlowGeometry } from "../doorGlow";
 import {
+  addPiece,
   buildInterior,
   edgeKinds,
   rampTreads,
@@ -13,7 +14,7 @@ import {
   ZONE_MESH_BUDGET,
   ZONE_TRIANGLE_BUDGET,
 } from "../kit";
-import { TILE } from "../pieces";
+import { Layers, TILE } from "../pieces";
 
 /**
  * The room kit: each zone's layers are finite, tagged and lit, within the
@@ -104,6 +105,37 @@ describe("the room kit", () => {
       console.log(
         `interior triangles per zone: ${JSON.stringify(counts)} total ${total}, build ${built.ms.toFixed(1)} ms`
       );
+  });
+
+  it("keeps the B deck and E deck zones (the suites, Scotland Road) in budget", () => {
+    for (const zone of ["b-deck", "e-deck"]) {
+      const layers = built.zones.get(zone)!;
+      const meshes = Object.values(layers).filter(Boolean).length;
+      // Four layers at most, plus the water's surface and body.
+      expect([zone, meshes + 2 <= 6]).toEqual([zone, true]);
+      let tris = 0;
+      for (const g of Object.values(layers)) if (g) tris += triangles(g);
+      expect([zone, tris <= 40000]).toEqual([zone, true]);
+      // Dressed: wood (beds, wardrobes, tables) or metal (bunks, pipes).
+      expect(layers.wood ?? layers.metal).toBeDefined();
+    }
+    expect(ZONE_TRIANGLE_BUDGET).toBe(40000);
+    let total = 0;
+    for (const n of built.triangles.values()) total += n;
+    expect(total).toBeLessThanOrEqual(120000);
+  });
+
+  it("draws every furniture piece in the Titanic's rooms", () => {
+    const byId = new Map(interior.rooms.map((r) => [r.id, r]));
+    for (const f of interior.furniture) {
+      const L = new Layers();
+      addPiece(L, f, byId.get(f.room)!, spec);
+      expect([f.room, f.piece, L.triangles > 0]).toEqual([
+        f.room,
+        f.piece,
+        true,
+      ]);
+    }
   });
 
   it("the Grand Staircase glows: lamps and the dome in its glass, HDR", () => {

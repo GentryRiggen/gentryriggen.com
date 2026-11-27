@@ -1,4 +1,5 @@
 import { BufferGeometry, Float32BufferAttribute } from "three";
+import type { PieceId } from "@/lib/shipwreck/interior";
 
 /**
  * The room kit's pieces (README.md "The look"): a geometry builder that
@@ -71,6 +72,28 @@ export const COLOR = {
   /** The dome's panes, lit from above at night. */
   domeGlass: lin(0.95, 0.88, 0.72),
   clockFace: lin(0.92, 0.88, 0.76),
+  /** Bed linen, pillows. */
+  sheet: lin(0.93, 0.92, 0.88),
+  /** The brass bed's eiderdown, the twin beds' coverlets. */
+  rose: lin(0.66, 0.24, 0.28),
+  coverlet: lin(0.36, 0.5, 0.62),
+  /** Third class: a warm wool blanket with dark stripes. */
+  blanket: lin(0.6, 0.24, 0.16),
+  stripe: lin(0.24, 0.12, 0.09),
+  /** Painted steel bunk frames (white enamel). */
+  bunkFrame: lin(0.86, 0.86, 0.82),
+  ticking: lin(0.8, 0.8, 0.74),
+  green: lin(0.24, 0.42, 0.3),
+  marble: lin(0.9, 0.89, 0.86),
+  enamel: lin(0.94, 0.94, 0.92),
+  mirror: lin(0.58, 0.66, 0.72),
+  fireRed: lin(0.8, 0.13, 0.09),
+  canvas: lin(0.82, 0.74, 0.56),
+  lagging: lin(0.86, 0.84, 0.76),
+  copper: lin(0.62, 0.32, 0.18),
+  pipeGrey: lin(0.46, 0.47, 0.47),
+  flowers: lin(0.92, 0.5, 0.62),
+  leaf: lin(0.3, 0.52, 0.28),
 } as const;
 
 /** A lamp for the baked light: ship frame, its strength and reach (m). */
@@ -365,6 +388,53 @@ export class Builder {
           ring(r0, z0, i),
           scale(color, 0.6)
         );
+    }
+  }
+
+  /**
+   * A tube from p to q (local, any direction), radius r, `n` sides,
+   * outward faces; `caps` closes both ends.
+   */
+  tube(p: P3, q: P3, r: number, n: number, color: RGB, caps = false): void {
+    const dx = q[0] - p[0];
+    const dy = q[1] - p[1];
+    const dz = q[2] - p[2];
+    const dl = Math.hypot(dx, dy, dz);
+    if (!(dl > 1e-6)) return;
+    const d: P3 = [dx / dl, dy / dl, dz / dl];
+    // u ⟂ d (from a helper axis not along d), v = d × u: (u, v, d) is
+    // right-handed, as (x, y, z) for `cyl`, so the same winding is out.
+    const h: P3 = Math.abs(d[2]) < 0.9 ? [0, 0, 1] : [1, 0, 0];
+    let ux = d[1] * h[2] - d[2] * h[1];
+    let uy = d[2] * h[0] - d[0] * h[2];
+    let uz = d[0] * h[1] - d[1] * h[0];
+    const ul = Math.hypot(ux, uy, uz);
+    ux /= ul;
+    uy /= ul;
+    uz /= ul;
+    const vx = d[1] * uz - d[2] * uy;
+    const vy = d[2] * ux - d[0] * uz;
+    const vz = d[0] * uy - d[1] * ux;
+    const ring = (o: P3, i: number): P3 => {
+      const a = (i / n) * Math.PI * 2;
+      const c = Math.cos(a) * r;
+      const s = Math.sin(a) * r;
+      return [
+        o[0] + ux * c + vx * s,
+        o[1] + uy * c + vy * s,
+        o[2] + uz * c + vz * s,
+      ];
+    };
+    for (let i = 0; i < n; i += 1) {
+      const shade = scale(
+        color,
+        0.78 + 0.22 * Math.abs(Math.cos(((i + 0.5) / n) * Math.PI * 2 - 0.6))
+      );
+      this.quad(ring(p, i), ring(p, i + 1), ring(q, i + 1), ring(q, i), shade);
+      if (caps) {
+        this.tri(q, ring(q, i), ring(q, i + 1), scale(color, 1.04));
+        this.tri(p, ring(p, i + 1), ring(p, i), scale(color, 0.8));
+      }
     }
   }
 
@@ -1059,3 +1129,517 @@ export function balustrade(L: Layers, p: P3, q: P3, inset: number): Lamp[] {
   }
   return [];
 }
+
+// --- Furniture -----------------------------------------------------------------
+//
+// The rooms' furniture (Task 7: the suites and third class). A blocking
+// piece is centred on its footprint (`PIECE_FOOTPRINT`, lib's kit.ts: the
+// walker's blocker), its back (the wall side) to −x and its front to +x; a
+// bed's or bunk's head is at −x. Painted and fabric parts are `shell`,
+// varnished oak `wood`, brass and iron `metal`.
+
+/** Runs `fn` with a builder's detail tile set, then puts it back. */
+function tiled(b: Builder, tile: number, fn: () => void): void {
+  const t = b.tileId;
+  b.tileId = tile;
+  fn();
+  b.tileId = t;
+}
+
+/** Bedding: a mattress, a cover over its foot, a turned-down sheet, pillows. */
+function bedding(
+  L: Layers,
+  len: number,
+  wide: number,
+  z: number,
+  cover: RGB,
+  pillows: number,
+  ticking: RGB = COLOR.sheet
+): void {
+  const s = L.shell;
+  tiled(s, TILE.none, () => {
+    s.box([0, 0, z + 0.09], len, wide, 0.18, ticking, { bottom: true });
+    const cl = len * 0.7;
+    const cx = len / 2 - cl / 2 + 0.01;
+    s.box([cx, 0, z + 0.13], cl, wide + 0.05, 0.12, cover, { bottom: true });
+    // The sheet turned down over the cover's head.
+    s.box(
+      [cx - cl / 2 + 0.05, 0, z + 0.19],
+      0.13,
+      wide + 0.06,
+      0.02,
+      COLOR.sheet,
+      {
+        bottom: true,
+      }
+    );
+    const pw = (wide - 0.1) / pillows;
+    for (let k = 0; k < pillows; k += 1)
+      s.box(
+        [-len / 2 + 0.2, -wide / 2 + 0.05 + pw * (k + 0.5), z + 0.24],
+        0.32,
+        pw - 0.04,
+        0.11,
+        COLOR.sheet,
+        { bottom: true }
+      );
+  });
+}
+
+/**
+ * The brass bed (2.0 × 1.5): a brass frame with ball finials, a tall
+ * spindled head and a lower foot, a rose eiderdown and two pillows.
+ */
+export function brassBed(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    tiled(L.shell, TILE.none, () =>
+      L.shell.box([0, 0, 0.2], 1.86, 1.38, 0.22, scale(COLOR.rose, 0.7), {
+        bottom: true,
+      })
+    );
+    bedding(L, 1.9, 1.4, 0.31, COLOR.rose, 2);
+    const m = L.metal;
+    const X = 0.96;
+    const Y = 0.71;
+    for (const [x, h] of [
+      [-X, 1.32],
+      [X, 0.98],
+    ] as const)
+      for (const y of [-Y, Y]) {
+        m.cyl([x, y, 0], 0.026, 0.026, h, 6, COLOR.brass, false);
+        m.ball([x, y, h + 0.035], 0.045, COLOR.brass);
+      }
+    for (const [x, top, low, n] of [
+      [-X, 1.22, 0.62, 7],
+      [X, 0.9, 0.6, 5],
+    ] as const) {
+      m.beam([x, -Y, top], [x, Y, top], 0.04, 0.04, COLOR.brass, false);
+      m.beam([x, -Y, low], [x, Y, low], 0.03, 0.03, COLOR.brass, false);
+      for (let k = 1; k < n; k += 1) {
+        const y = -Y + (2 * Y * k) / n;
+        m.beam([x, y, low], [x, y, top], 0.018, 0.018, COLOR.brass, false);
+      }
+      m.ball([x, 0, top + 0.03], 0.045, COLOR.gilt);
+    }
+    for (const y of [-Y, Y])
+      m.beam([-X, y, 0.3], [X, y, 0.3], 0.03, 0.06, COLOR.iron, false);
+  });
+  return [];
+}
+
+/** A twin bed (2.0 × 0.95): an oak bedstead, a blue coverlet. */
+export function singleBed(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const w = L.wood;
+    tiled(w, TILE.grain, () => {
+      for (const [x, h] of [
+        [-0.96, 1.1],
+        [0.96, 0.78],
+      ] as const) {
+        w.box([x, 0, h / 2], 0.06, 0.95, h, COLOR.oak, { bottom: true });
+        w.box([x, 0, h + 0.025], 0.09, 0.95, 0.05, COLOR.oakDark);
+        const px = x < 0 ? x + 0.035 : x - 0.035;
+        w.box(
+          [px, 0, h * 0.62],
+          0.012,
+          0.62,
+          h * 0.42,
+          scale(COLOR.oak, 1.25),
+          {
+            back: true,
+          }
+        );
+      }
+      for (const y of [-0.44, 0.44])
+        w.box([0, y, 0.28], 1.86, 0.05, 0.18, COLOR.oakDark, { bottom: true });
+    });
+    bedding(L, 1.84, 0.84, 0.3, COLOR.coverlet, 1);
+  });
+  return [];
+}
+
+/**
+ * Third class's steel bunk (1.9 × 0.8): a white tube frame, two berths
+ * with wool blankets (two dark stripes) and pillows, a guard rail on the
+ * top berth and a ladder on its right (−y), away from the wall.
+ */
+export function bunk(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const m = L.metal;
+    const f = COLOR.bunkFrame;
+    const X = 0.92;
+    const Y = 0.37;
+    const H = 1.78;
+    for (const x of [-X, X])
+      for (const y of [-Y, Y]) {
+        m.cyl([x, y, 0], 0.025, 0.025, H, 6, f, false);
+        m.ball([x, y, H + 0.02], 0.032, f);
+      }
+    for (const x of [-X, X])
+      m.beam([x, -Y, H - 0.08], [x, Y, H - 0.08], 0.03, 0.03, f, false);
+    for (const z of [0.3, 1.2]) {
+      for (const y of [-Y, Y])
+        m.beam([-X, y, z], [X, y, z], 0.035, 0.04, f, false);
+      for (const x of [-X, X])
+        m.beam([x, -Y, z], [x, Y, z], 0.035, 0.04, f, false);
+      bedding(L, 1.78, 0.68, z + 0.02, COLOR.blanket, 1, COLOR.ticking);
+      // The blanket's stripes.
+      for (const sx of [0.02, 0.62])
+        tiled(L.shell, TILE.none, () =>
+          L.shell.box([sx, 0, z + 0.155], 0.07, 0.735, 0.122, COLOR.stripe, {
+            bottom: true,
+          })
+        );
+    }
+    // The top berth's guard rail, and the ladder at its foot.
+    m.beam([-X, -Y, 1.52], [0.35, -Y, 1.52], 0.03, 0.03, f, false);
+    m.beam([0.35, -Y, 1.2], [0.35, -Y, 1.52], 0.025, 0.025, f, false);
+    for (const x of [0.5, 0.82])
+      m.beam([x, -Y - 0.02, 0], [x, -Y - 0.02, 1.5], 0.03, 0.03, f, false);
+    for (const z of [0.55, 0.85, 1.12, 1.4])
+      m.beam([0.5, -Y - 0.02, z], [0.82, -Y - 0.02, z], 0.025, 0.025, f, false);
+  });
+  return [];
+}
+
+/** An oak wardrobe (0.6 × 1.2): two doors, one with a mirror, a cornice. */
+export function wardrobe(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const w = L.wood;
+    tiled(w, TILE.grain, () => {
+      w.box([-0.02, 0, 1.0], 0.54, 1.16, 1.84, COLOR.oak, {
+        back: true,
+        bottom: true,
+      });
+      w.box([0, 0, 0.05], 0.58, 1.18, 0.1, COLOR.oakDark, {
+        back: true,
+        bottom: true,
+      });
+      w.box([0, 0, 1.97], 0.6, 1.2, 0.1, COLOR.oakDark, { back: true });
+      w.box([-0.03, 0, 2.06], 0.48, 0.9, 0.08, COLOR.oak, {
+        back: true,
+        bottom: true,
+      });
+      for (const y of [-0.285, 0.285]) {
+        w.box([0.256, y, 1.0], 0.012, 0.54, 1.76, scale(COLOR.oak, 1.1), {
+          back: true,
+        });
+        w.box([0.266, y, 0.5], 0.01, 0.4, 0.55, scale(COLOR.oak, 1.3), {
+          back: true,
+        });
+        if (y < 0)
+          w.box([0.266, y, 1.35], 0.01, 0.4, 0.85, scale(COLOR.oak, 1.3), {
+            back: true,
+          });
+      }
+    });
+    tiled(L.shell, TILE.none, () =>
+      L.shell.box([0.266, 0.285, 1.33], 0.01, 0.38, 0.88, COLOR.mirror, {
+        back: true,
+      })
+    );
+    for (const y of [-0.04, 0.04])
+      L.metal.ball([0.28, y, 1.0], 0.022, COLOR.brass);
+  });
+  return [];
+}
+
+/**
+ * A first-class washstand (0.5 × 0.9): an oak cupboard, a marble top and
+ * splashback, a white basin with brass taps, a jug, a mirror over it.
+ */
+export function washstand(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const w = L.wood;
+    const s = L.shell;
+    const m = L.metal;
+    tiled(w, TILE.grain, () => {
+      w.box([0, 0, 0.39], 0.46, 0.86, 0.7, COLOR.oak, {
+        back: true,
+        bottom: true,
+      });
+      w.box([0.0, 0, 0.04], 0.48, 0.88, 0.08, COLOR.oakDark, {
+        back: true,
+        bottom: true,
+      });
+      for (const y of [-0.2, 0.2])
+        w.box([0.235, y, 0.42], 0.014, 0.34, 0.5, scale(COLOR.oak, 1.25), {
+          back: true,
+        });
+      w.box([-0.225, 0, 1.5], 0.03, 0.6, 0.62, COLOR.oakDark, { back: true });
+    });
+    tiled(s, TILE.none, () => {
+      s.box([0.01, 0, 0.765], 0.5, 0.9, 0.05, COLOR.marble, { bottom: true });
+      s.box([-0.22, 0, 0.95], 0.04, 0.9, 0.32, COLOR.marble, {
+        back: true,
+        bottom: true,
+      });
+      s.cyl([0.05, 0, 0.79], 0.15, 0.19, 0.05, 10, COLOR.enamel);
+      s.box([-0.205, 0, 1.5], 0.01, 0.5, 0.52, COLOR.mirror, { back: true });
+      s.cyl([0.08, 0.31, 0.79], 0.07, 0.05, 0.2, 8, COLOR.enamel);
+    });
+    m.cyl([0.05, 0, 0.841], 0.03, 0.03, 0.002, 6, COLOR.iron);
+    for (const y of [-0.07, 0.07]) {
+      m.cyl([-0.14, y, 0.79], 0.016, 0.016, 0.12, 6, COLOR.brass, false);
+      m.beam([-0.14, y, 0.9], [-0.07, y, 0.88], 0.022, 0.022, COLOR.brass);
+    }
+    for (const y of [-0.2, 0.2])
+      m.ball([0.25, y > 0 ? 0.04 : -0.04, 0.55], 0.018, COLOR.brass);
+  });
+  return [];
+}
+
+/**
+ * Third class's enamel washbasin (0.45 × 0.6): a white enamelled stand
+ * and basin, one brass tap, a small mirror.
+ */
+export function washbasin(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const s = L.shell;
+    const m = L.metal;
+    tiled(s, TILE.none, () => {
+      s.box([-0.02, 0, 0.38], 0.4, 0.56, 0.76, scale(COLOR.enamel, 0.92), {
+        back: true,
+        bottom: true,
+      });
+      s.box([0.183, 0, 0.4], 0.01, 0.44, 0.56, scale(COLOR.enamel, 0.82), {
+        back: true,
+      });
+      s.box([0, 0, 0.79], 0.45, 0.6, 0.06, COLOR.enamel, { bottom: true });
+      s.cyl([0.03, 0, 0.82], 0.13, 0.16, 0.03, 10, COLOR.enamel);
+      s.box([-0.21, 0, 1.0], 0.03, 0.6, 0.36, COLOR.enamel, {
+        back: true,
+        bottom: true,
+      });
+      s.box([-0.2, 0, 1.45], 0.01, 0.28, 0.36, COLOR.mirror, { back: true });
+    });
+    m.box([-0.212, 0, 1.45], 0.015, 0.34, 0.42, COLOR.bunkFrame, {
+      back: true,
+    });
+    m.cyl([0.03, 0, 0.851], 0.025, 0.025, 0.002, 6, COLOR.iron);
+    m.cyl([-0.15, 0, 0.82], 0.016, 0.016, 0.12, 6, COLOR.brass, false);
+    m.beam([-0.15, 0, 0.93], [-0.07, 0, 0.91], 0.022, 0.022, COLOR.brass);
+    m.ball([0.195, 0.15, 0.45], 0.018, COLOR.brass);
+  });
+  return [];
+}
+
+/** A green velvet sofa (0.8 × 1.9): rolled back and arms, two cushions. */
+export function sofa(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const s = L.shell;
+    const g = COLOR.green;
+    tiled(s, TILE.none, () => {
+      s.box([0.02, 0, 0.21], 0.74, 1.6, 0.26, scale(g, 0.8), { bottom: true });
+      s.box([0.06, 0, 0.4], 0.66, 1.56, 0.12, g, { bottom: true });
+      s.box([-0.3, 0, 0.6], 0.18, 1.84, 0.62, scale(g, 0.92), { bottom: true });
+      s.tube([-0.3, -0.9, 0.9], [-0.3, 0.9, 0.9], 0.09, 8, g, true);
+      for (const y of [-0.85, 0.85]) {
+        s.box([0.0, y, 0.42], 0.74, 0.18, 0.5, scale(g, 0.95), {
+          bottom: true,
+        });
+        s.tube([-0.36, y, 0.68], [0.36, y, 0.68], 0.09, 8, g, true);
+      }
+      for (const y of [-0.5, 0.5])
+        s.box([-0.15, y, 0.62], 0.12, 0.38, 0.34, COLOR.rose, { bottom: true });
+    });
+    tiled(L.wood, TILE.grain, () => {
+      for (const x of [-0.3, 0.3])
+        for (const y of [-0.85, 0.85])
+          L.wood.box([x, y, 0.04], 0.06, 0.06, 0.08, COLOR.oakDark, {
+            bottom: true,
+          });
+    });
+  });
+  return [];
+}
+
+/** A round oak table (1.0 × 1.0) on a pedestal, a vase of flowers on it. */
+export function table(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const w = L.wood;
+    tiled(w, TILE.grain, () => {
+      w.cyl([0, 0, 0.7], 0.48, 0.48, 0.04, 14, COLOR.oak);
+      w.cyl([0, 0, 0.64], 0.42, 0.42, 0.06, 14, COLOR.oakDark, false);
+      w.cyl([0, 0, 0.1], 0.07, 0.05, 0.54, 8, COLOR.oak, false);
+      w.beam([-0.34, 0, 0.05], [0.34, 0, 0.05], 0.08, 0.08, COLOR.oakDark);
+      w.beam([0, -0.34, 0.05], [0, 0.34, 0.05], 0.08, 0.08, COLOR.oakDark);
+    });
+    const s = L.shell;
+    tiled(s, TILE.none, () => {
+      s.cyl([0, 0, 0.74], 0.22, 0.22, 0.004, 12, COLOR.sheet);
+      s.cyl([0, 0, 0.744], 0.045, 0.07, 0.15, 8, COLOR.mirror, false);
+      for (const [x, y, z] of [
+        [0, 0, 0.99],
+        [0.06, 0.04, 0.95],
+        [-0.06, 0.03, 0.95],
+        [0.01, -0.07, 0.95],
+      ])
+        s.ball([x, y, z], 0.045, COLOR.flowers, 0.04);
+      for (const [x, y] of [
+        [0.08, 0.04],
+        [-0.06, 0.07],
+        [0.0, -0.09],
+      ])
+        s.ball([x, y, 0.9], 0.05, COLOR.leaf, 0.035);
+    });
+  });
+  return [];
+}
+
+/** An oak dining chair with a green velvet seat (not blocking). */
+export function chair(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const w = L.wood;
+    tiled(w, TILE.grain, () => {
+      for (const x of [-0.19, 0.19])
+        for (const y of [-0.19, 0.19])
+          w.beam([x, y, 0], [x, y, 0.42], 0.04, 0.04, COLOR.oakDark, false);
+      w.box([0, 0, 0.44], 0.44, 0.44, 0.04, COLOR.oak);
+      for (const y of [-0.19, 0.19])
+        w.beam([-0.19, y, 0.46], [-0.23, y, 0.96], 0.04, 0.04, COLOR.oak);
+      w.beam([-0.23, -0.2, 0.92], [-0.23, 0.2, 0.92], 0.05, 0.08, COLOR.oak);
+      w.box([-0.21, 0, 0.68], 0.02, 0.14, 0.4, COLOR.oak);
+    });
+    tiled(L.shell, TILE.none, () =>
+      L.shell.box([0.01, 0, 0.485], 0.4, 0.4, 0.05, COLOR.green, {
+        bottom: true,
+      })
+    );
+  });
+  return [];
+}
+
+/**
+ * A run of pipes high on a wall, 8 m along it (local y ±4): a fat lagged
+ * steam pipe with bands, a copper and a grey pipe, on iron brackets.
+ * Origin: the wall's foot; x out of the wall. `ceilingM` over the floor.
+ */
+export function pipes(
+  L: Layers,
+  at: P3,
+  yaw: number,
+  ceilingM: number
+): Lamp[] {
+  placed(L, at, yaw, () => {
+    const c = ceilingM;
+    tiled(L.shell, TILE.none, () => {
+      L.shell.tube(
+        [0.14, -4, c - 0.15],
+        [0.14, 4, c - 0.15],
+        0.06,
+        6,
+        COLOR.lagging
+      );
+      for (const y of [-2, 0, 2])
+        L.shell.tube(
+          [0.14, y - 0.03, c - 0.15],
+          [0.14, y + 0.03, c - 0.15],
+          0.068,
+          6,
+          scale(COLOR.lagging, 0.75)
+        );
+    });
+    const m = L.metal;
+    m.tube([0.05, -4, c - 0.2], [0.05, 4, c - 0.2], 0.028, 6, COLOR.pipeGrey);
+    m.tube([0.26, -4, c - 0.21], [0.26, 4, c - 0.21], 0.03, 6, COLOR.copper);
+    for (const y of [-3, -1, 1, 3])
+      m.box([0.15, y, c - 0.25], 0.3, 0.04, 0.02, COLOR.iron, { back: true });
+  });
+  return [];
+}
+
+/**
+ * Fire buckets: four red round-bottomed buckets of sand on an iron shelf,
+ * a red board behind them. Origin: the wall's foot; x out of the wall.
+ */
+export function fireBuckets(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const s = L.shell;
+    const m = L.metal;
+    tiled(s, TILE.none, () => {
+      s.box([0.01, 0, 1.02], 0.02, 1.0, 0.62, scale(COLOR.fireRed, 0.62), {
+        back: true,
+      });
+      const sand = lin(0.72, 0.62, 0.42);
+      for (const y of [-0.33, -0.11, 0.11, 0.33]) {
+        s.cyl([0.14, y, 0.795], 0.07, 0.1, 0.24, 8, COLOR.fireRed, false);
+        for (let i = 0; i < 8; i += 1) {
+          const a0 = (i / 8) * Math.PI * 2;
+          const a1 = ((i + 1) / 8) * Math.PI * 2;
+          s.tri(
+            [0.14, y, 1.0],
+            [0.14 + 0.094 * Math.cos(a0), y + 0.094 * Math.sin(a0), 1.0],
+            [0.14 + 0.094 * Math.cos(a1), y + 0.094 * Math.sin(a1), 1.0],
+            sand
+          );
+        }
+        m.cyl([0.14, y, 1.02], 0.103, 0.103, 0.02, 8, COLOR.iron, false);
+      }
+    });
+    m.box([0.13, 0, 0.78], 0.26, 0.92, 0.03, COLOR.iron, { back: true });
+    for (const y of [-0.42, 0.42])
+      m.beam([0.0, y, 0.55], [0.24, y, 0.765], 0.025, 0.025, COLOR.iron);
+  });
+  return [];
+}
+
+/**
+ * A fire hose reel: a red drum of canvas hose on an iron bracket, the
+ * hose's end hanging with its brass nozzle, a red valve wheel beside it.
+ * Origin: the wall's foot; x out of the wall.
+ */
+export function hoseReel(L: Layers, at: P3, yaw: number): Lamp[] {
+  placed(L, at, yaw, () => {
+    const s = L.shell;
+    const m = L.metal;
+    const z = 1.45;
+    m.box([0.04, 0, z], 0.08, 0.2, 0.5, COLOR.iron, { back: true });
+    m.tube([0.0, 0, z], [0.35, 0, z], 0.03, 6, COLOR.iron, true);
+    tiled(s, TILE.none, () => {
+      for (const x of [0.1, 0.3])
+        s.tube([x, 0, z], [x + 0.02, 0, z], 0.3, 12, COLOR.fireRed, true);
+      s.tube([0.12, 0, z], [0.3, 0, z], 0.22, 12, COLOR.canvas);
+      s.tube(
+        [0.205, 0, z],
+        [0.215, 0, z],
+        0.226,
+        12,
+        scale(COLOR.canvas, 0.75)
+      );
+      s.beam(
+        [0.21, 0.0, z - 0.2],
+        [0.21, 0.08, z - 0.5],
+        0.05,
+        0.05,
+        COLOR.canvas
+      );
+      // The valve wheel and its pipe.
+      s.tube([0.05, -0.45, z], [0.08, -0.45, z], 0.08, 8, COLOR.fireRed, true);
+    });
+    m.cyl([0.21, 0.08, z - 0.66], 0.014, 0.03, 0.16, 6, COLOR.brass);
+    m.tube(
+      [0.03, -0.45, 0.6],
+      [0.03, -0.45, z + 0.7],
+      0.025,
+      6,
+      COLOR.pipeGrey
+    );
+  });
+  return [];
+}
+
+/** The floor-standing pieces by id (wall pieces take more: see kit.ts). */
+export const FURNITURE: Partial<
+  Record<PieceId, (L: Layers, at: P3, yaw: number) => Lamp[]>
+> = {
+  bed: brassBed,
+  "single-bed": singleBed,
+  bunk,
+  wardrobe,
+  washstand,
+  washbasin,
+  sofa,
+  table,
+  chair,
+};

@@ -31,6 +31,16 @@ const rooms = interior.rooms;
 const roomById = new Map(rooms.map((r) => [r.id, r]));
 const walkable = rooms.filter((r) => !r.noWalk);
 
+/** Pieces hung on a wall (their `at` is the wall's foot). */
+const WALL_PIECES: ReadonlySet<string> = new Set([
+  "sconce",
+  "porthole",
+  "pipes",
+  "fire-buckets",
+  "hose-reel",
+  "clock-panel",
+]);
+
 const TOL = 1e-3;
 const near = (p: V2, q: V2) =>
   Math.abs(p[0] - q[0]) <= TOL && Math.abs(p[1] - q[1]) <= TOL;
@@ -457,6 +467,190 @@ describe("the Titanic's interior", () => {
           mid,
           false,
         ]);
+    }
+  });
+
+  it("leaves every doorway and corridor passable round the furniture (a BFS with the body's radius)", () => {
+    // Per walkable room, a 0.1 m grid of the spots the walker's body fits
+    // (inside, WALK_RADIUS_M clear of every wall edge and every blocker);
+    // every doorway's mouth, link end and corridor end must be one
+    // connected patch, and every blocking piece must be reachable (you can
+    // walk up to the bed).
+    const STEP = 0.1;
+    const R = WALK_RADIUS_M;
+    for (const room of walkable) {
+      const walls = edges(room.outline).filter(
+        ([a, b]) => !isSeamEdge(room.id, a, b)
+      );
+      const xs = room.outline.map((p) => p[0]);
+      const ys = room.outline.map((p) => p[1]);
+      const x0 = Math.min(...xs);
+      const y0 = Math.min(...ys);
+      const nx = Math.ceil((Math.max(...xs) - x0) / STEP) + 1;
+      const ny = Math.ceil((Math.max(...ys) - y0) / STEP) + 1;
+      const at = (i: number, j: number): V2 => [x0 + i * STEP, y0 + j * STEP];
+      const free = new Uint8Array(nx * ny);
+      for (let i = 0; i < nx; i += 1)
+        for (let j = 0; j < ny; j += 1) {
+          const p = at(i, j);
+          if (!pointInPolygon(p, room.outline)) continue;
+          if (walls.some(([a, b]) => segDist(p, a, b) < R)) continue;
+          if (insideBlocker(map, room.id, p, R)) continue;
+          free[i * ny + j] = 1;
+        }
+      /** The free cell nearest p (within 0.2 m), or -1. */
+      const cellNear = (p: V2): number => {
+        let best = -1;
+        let bestD = 0.2;
+        const ci = Math.round((p[0] - x0) / STEP);
+        const cj = Math.round((p[1] - y0) / STEP);
+        for (let i = ci - 2; i <= ci + 2; i += 1)
+          for (let j = cj - 2; j <= cj + 2; j += 1) {
+            if (i < 0 || j < 0 || i >= nx || j >= ny || !free[i * ny + j])
+              continue;
+            const q = at(i, j);
+            const d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+            if (d <= bestD) {
+              bestD = d;
+              best = i * ny + j;
+            }
+          }
+        return best;
+      };
+      // Where the walker must get to: 0.4 m in from each doorway's middle,
+      // each link end, each end of a corridor's axis.
+      const targets: [string, V2][] = [];
+      for (const s of interior.seams) {
+        if (s.a !== room.id && s.b !== room.id) continue;
+        const k = seamEdgeIndex(room, s.at);
+        const a = room.outline[k];
+        const b = room.outline[(k + 1) % room.outline.length];
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        targets.push([
+          `doorway to ${s.a === room.id ? s.b : s.a}`,
+          [
+            (a[0] + b[0]) / 2 - ((b[1] - a[1]) / len) * 0.4,
+            (a[1] + b[1]) / 2 + ((b[0] - a[0]) / len) * 0.4,
+          ],
+        ]);
+      }
+      for (const l of interior.links)
+        for (const end of [l.from, l.to])
+          if (end.area === room.id) targets.push([`link ${l.id}`, end.at]);
+      if (room.axis && !room.ramp) {
+        const [p, q] = room.axis;
+        const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        const ux = (q[0] - p[0]) / len;
+        const uy = (q[1] - p[1]) / len;
+        targets.push(["axis start", [p[0] + ux * 0.4, p[1] + uy * 0.4]]);
+        targets.push(["axis end", [q[0] - ux * 0.4, q[1] - uy * 0.4]]);
+      }
+      expect([room.id, targets.length > 0]).toEqual([room.id, true]);
+      const cells = targets.map(([name, p]) => [name, cellNear(p)] as const);
+      for (const [name, c] of cells)
+        expect([room.id, name, c >= 0]).toEqual([room.id, name, true]);
+      // Flood from the first target.
+      const reached = new Uint8Array(nx * ny);
+      const queue = [cells[0][1]];
+      reached[cells[0][1]] = 1;
+      while (queue.length) {
+        const c = queue.pop()!;
+        const i = Math.floor(c / ny);
+        const j = c % ny;
+        for (const [di, dj] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          const a = i + di;
+          const b = j + dj;
+          if (a < 0 || b < 0 || a >= nx || b >= ny) continue;
+          const k = a * ny + b;
+          if (!free[k] || reached[k]) continue;
+          reached[k] = 1;
+          queue.push(k);
+        }
+      }
+      for (const [name, c] of cells)
+        expect([room.id, name, reached[c] === 1]).toEqual([
+          room.id,
+          name,
+          true,
+        ]);
+      // Every blocking piece can be walked up to (a reached spot within
+      // 0.25 m of where the body touches it).
+      for (const f of interior.furniture) {
+        if (f.room !== room.id || !f.blocks) continue;
+        const box = map.blockers.find(
+          (b) =>
+            b.kind === "box" &&
+            b.area === room.id &&
+            f.at[0] > b.min[0] &&
+            f.at[0] < b.max[0] &&
+            f.at[1] > b.min[1] &&
+            f.at[1] < b.max[1]
+        );
+        expect([room.id, f.piece, !!box]).toEqual([room.id, f.piece, true]);
+        if (!box || box.kind !== "box") continue;
+        let near = false;
+        for (let k = 0; k < reached.length && !near; k += 1) {
+          if (!reached[k]) continue;
+          const p = at(Math.floor(k / ny), k % ny);
+          const dx = Math.max(box.min[0] - p[0], 0, p[0] - box.max[0]);
+          const dy = Math.max(box.min[1] - p[1], 0, p[1] - box.max[1]);
+          if (Math.hypot(dx, dy) < R + 0.25) near = true;
+        }
+        expect([room.id, f.piece, f.at, near]).toEqual([
+          room.id,
+          f.piece,
+          f.at,
+          true,
+        ]);
+      }
+    }
+  });
+
+  it("dresses the suites, the third-class cabin and Scotland Road", () => {
+    const pieces = (room: string) =>
+      interior.furniture.filter((f) => f.room === room).map((f) => f.piece);
+    expect(pieces("suite-1")).toEqual(
+      expect.arrayContaining(["bed", "wardrobe", "porthole", "sconce"])
+    );
+    expect(pieces("suite-2").filter((p) => p === "single-bed")).toHaveLength(2);
+    expect(pieces("suite-2")).toContain("washstand");
+    expect(pieces("suite-3")).toEqual(
+      expect.arrayContaining(["sofa", "table", "chair"])
+    );
+    // Two pairs of steel bunks, an enamel washbasin, a porthole.
+    expect(pieces("third-cabin").filter((p) => p === "bunk")).toHaveLength(2);
+    expect(pieces("third-cabin")).toEqual(
+      expect.arrayContaining(["washbasin", "porthole", "caged-bulb"])
+    );
+    // Pipes, caged bulbs, fire buckets and hose reels down Scotland Road;
+    // steel doors along both its walls.
+    const sr = pieces("scotland-road");
+    for (const p of ["pipes", "caged-bulb", "fire-buckets", "hose-reel"])
+      expect([p, sr.includes(p as never)]).toEqual([p, true]);
+    const steel = interior.shutDoors.filter(
+      (d) => d.room === "scotland-road" && d.style === "steel"
+    );
+    expect(steel.length).toBeGreaterThan(30);
+    // Wall pieces stand on a wall (within 0.1 m), not out in the room.
+    for (const f of interior.furniture) {
+      if (!WALL_PIECES.has(f.piece)) continue;
+      const r = roomById.get(f.room)!;
+      const d = Math.min(
+        ...edges(r.outline)
+          .filter(([a, b]) => !isSeamEdge(r.id, a, b))
+          .map(([a, b]) => segDist(f.at, a, b))
+      );
+      expect([f.room, f.piece, f.at, d <= 0.1 + 1e-6]).toEqual([
+        f.room,
+        f.piece,
+        f.at,
+        true,
+      ]);
     }
   });
 

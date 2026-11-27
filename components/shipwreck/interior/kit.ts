@@ -16,11 +16,15 @@ import {
   COLOR,
   dome,
   DOME_LX,
+  fireBuckets,
+  FURNITURE,
+  hoseReel,
   DOME_LY,
   Layers,
   LAYERS,
   lin,
   newel,
+  pipes,
   porthole,
   rope,
   scale,
@@ -521,7 +525,7 @@ export function buildInterior(
       underDome(room, domes, rooms, spec)
     );
   });
-  // The furniture this kit draws (the rest is Task 7's), and its lamps.
+  // The furniture, and its lamps.
   const byId = new Map(rooms.map((r) => [r.id, r]));
   for (const f of interior.furniture) {
     const room = byId.get(f.room);
@@ -723,8 +727,13 @@ function blockedBy(
   return false;
 }
 
-/** One furniture piece (the ones this kit draws); its lamps. */
-function addPiece(L: Layers, f: Furniture, room: Room, spec: Spec): Lamp[] {
+/** One furniture piece, placed in its room; its lamps. */
+export function addPiece(
+  L: Layers,
+  f: Furniture,
+  room: Room,
+  spec: Spec
+): Lamp[] {
   const fz = roomFloorZ(room, f.at[0], f.at[1], spec);
   const floor: P3 = [f.at[0], f.at[1], fz];
   const ceil: P3 = [f.at[0], f.at[1], ceilingZ(room, f.at[0], f.at[1], spec)];
@@ -745,10 +754,17 @@ function addPiece(L: Layers, f: Furniture, room: Room, spec: Spec): Lamp[] {
       return rope(L, floor, f.yaw);
     case "porthole":
       return porthole(L, floor, f.yaw);
-    default:
-      // Beds, bunks, wardrobes, washstands, sofas, tables, chairs, pipes:
-      // the suites' and third class's pieces (Task 7).
-      return [];
+    case "pipes":
+      return pipes(L, floor, f.yaw, ceil[2] - fz);
+    case "fire-buckets":
+      return fireBuckets(L, floor, f.yaw);
+    case "hose-reel":
+      return hoseReel(L, floor, f.yaw);
+    default: {
+      // Beds, bunks, wardrobes, washstands, sofas, tables, chairs.
+      const build = FURNITURE[f.piece];
+      return build ? build(L, floor, f.yaw) : [];
+    }
   }
 }
 

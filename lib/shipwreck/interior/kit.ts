@@ -228,8 +228,10 @@ export function chamferReflex(
 
 /**
  * The floor footprint of each piece that can block the walker (m): its
- * extent along x and y at yaw 0; a quarter turn swaps them. A bed's yaw
- * points from its head to its foot.
+ * extent along x and y at yaw 0; a quarter turn swaps them. A piece is
+ * centred on its footprint, its back (the wall side) to −x and its front
+ * to +x; a bed's (or a bunk's) yaw points from its head to its foot, and a
+ * bunk's ladder is on its right (−y), away from the wall on its left.
  */
 export const PIECE_FOOTPRINT: Partial<
   Record<PieceId, { lx: number; ly: number }>
@@ -239,6 +241,7 @@ export const PIECE_FOOTPRINT: Partial<
   bunk: { lx: 1.9, ly: 0.8 },
   wardrobe: { lx: 0.6, ly: 1.2 },
   washstand: { lx: 0.5, ly: 0.9 },
+  washbasin: { lx: 0.45, ly: 0.6 },
   sofa: { lx: 0.8, ly: 1.9 },
   table: { lx: 1.0, ly: 1.0 },
 };

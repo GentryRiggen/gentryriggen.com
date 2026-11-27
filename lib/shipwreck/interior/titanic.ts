@@ -568,6 +568,25 @@ shutDoors.push({
   facing: 0,
   style: "white",
 });
+// Each suite's door through to the next room (aft wall), and another
+// third-class cabin off the passage.
+for (const [room, x0] of [
+  ["suite-1", 26.0],
+  ["suite-2", 21.0],
+  ["suite-3", 16.0],
+] as const)
+  shutDoors.push({
+    room,
+    at: [x0, -7.0],
+    facing: 0,
+    style: room === "suite-2" ? "white" : "oak",
+  });
+shutDoors.push({
+  room: "third-passage",
+  at: [71.0, 5.6],
+  facing: PORT_FACING,
+  style: "white",
+});
 // The foyers' after and side walls.
 for (const [room, halfY, aft] of [
   ["gs-a", 7.0, [4.5, -4.5]],
@@ -616,7 +635,8 @@ const furniture: Furniture[] = [
   { room: "gs-a", piece: "newel", at: [34.8, -3.2], yaw: 0 },
   { room: "gs-boat", piece: "newel", at: [34.8, 1.7], yaw: 0 },
   { room: "gs-boat", piece: "newel", at: [34.8, -1.7], yaw: 0 },
-  // Side walls (between the shut doors) and the forward walls.
+  // Side walls (between the shut doors) and the forward walls (clear of
+  // the B foyer's lift doorway).
   ...(
     [
       ["gs-boat", 4.8, [36.5, 39.5]],
@@ -630,7 +650,7 @@ const furniture: Furniture[] = [
     ])
   ),
   ...(["gs-a", "gs-b"] as const).flatMap((room) =>
-    [5.0, -5.0].map((y): Furniture => ({
+    [6.2, -6.2].map((y): Furniture => ({
       room,
       piece: "sconce",
       at: [GS_FWD - 0.05, y],
@@ -690,7 +710,9 @@ const furniture: Furniture[] = [
   ...SUITES.flatMap(([room, x0, x1]): Furniture[] => [
     { room, piece: "porthole", at: [x0 + 1.2, -10.95], yaw: Q },
     { room, piece: "porthole", at: [x1 - 1.2, -10.95], yaw: Q },
-    { room, piece: "sconce", at: [(x0 + x1) / 2, -6.05], yaw: -Q },
+    // Beside the door (not in it), and over the middle of the outboard wall.
+    { room, piece: "sconce", at: [x0 + 0.9, -6.05], yaw: -Q },
+    { room, piece: "sconce", at: [(x0 + x1) / 2, -10.95], yaw: Q },
   ]),
   // The third-class cabin: two pairs of bunks, a washbasin, a porthole.
   {
@@ -709,8 +731,8 @@ const furniture: Furniture[] = [
   },
   {
     room: "third-cabin",
-    piece: "washstand",
-    at: [73.65, 5.85],
+    piece: "washbasin",
+    at: [73.65, 5.825],
     yaw: Q,
     blocks: true,
   },
@@ -730,27 +752,35 @@ const furniture: Furniture[] = [
     }
   ),
   { room: "e-lobby", piece: "caged-bulb", at: [LIFT_AT[0], 0], yaw: 0 },
-  ...Array.from({ length: 11 }, (_, i): Furniture[] => {
-    const x = 66 - i * 8;
-    const bulb: Furniture = {
+  // Scotland Road: a caged bulb every 8 m; along the port wall, high up,
+  // runs of pipes end to end from its forward end; fire buckets on the
+  // starboard wall and hose reels on the port wall, between the doors.
+  ...Array.from({ length: 11 }, (_, i): Furniture => ({
+    room: "scotland-road",
+    piece: "caged-bulb",
+    at: [66 - i * 8, 4.3],
+    yaw: 0,
+  })),
+  ...Array.from({ length: 11 }, (_, i) => SR_FWD - 4 - i * 8)
+    .filter((x) => x - 4 >= BULKHEAD_J)
+    .map((x): Furniture => ({
       room: "scotland-road",
-      piece: "caged-bulb",
-      at: [x, 4.3],
-      yaw: 0,
-    };
-    // A run of pipes along the port wall between the bulbs.
-    return x - 4 > BULKHEAD_J + 0.5
-      ? [
-          bulb,
-          {
-            room: "scotland-road",
-            piece: "pipes",
-            at: [x - 4, 5.4],
-            yaw: Math.PI,
-          },
-        ]
-      : [bulb];
-  }).flat(),
+      piece: "pipes",
+      at: [x, SR_Y1 - 0.05],
+      yaw: -Q,
+    })),
+  ...[60, 36, 12, -8].map((x): Furniture => ({
+    room: "scotland-road",
+    piece: "fire-buckets",
+    at: [x, SR_Y0 + 0.05],
+    yaw: Q,
+  })),
+  ...[48, 24, 0].map((x): Furniture => ({
+    room: "scotland-road",
+    piece: "hose-reel",
+    at: [x, SR_Y1 - 0.05],
+    yaw: -Q,
+  })),
 ];
 
 export const TITANIC_INTERIOR: InteriorMap = {
