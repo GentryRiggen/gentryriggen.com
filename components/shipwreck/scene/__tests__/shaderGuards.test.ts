@@ -1,6 +1,8 @@
 import { SEA_WAVES_GLSL } from "../seaWaves";
 import { STORM_SEA_GLSL } from "../StormSea";
 import { waterShaders } from "../../interior/water";
+import { roomShaders } from "../../interior/materials";
+import { LAYERS } from "../../interior/pieces";
 
 /**
  * NaN is a black screen on a real GPU and invisible in headless
@@ -10,7 +12,8 @@ import { waterShaders } from "../../interior/water";
  * literal or a max( / clamp( guard. The strings scanned: the storm sea's
  * wave function (her rogue wave's sharpening and lip) and the storm sea's
  * own shaders (her lip, rolled-over foam, under-glow and starlit sky).
- * 1.15: the water inside her rooms (`interior/water.ts`).
+ * 1.15: the water inside her rooms (`interior/water.ts`) and the rooms'
+ * own shaders, every layer (`interior/materials.ts`).
  */
 
 const SHADERS: Record<string, string> = {
@@ -21,6 +24,12 @@ const SHADERS: Record<string, string> = {
   "interior water surface fragment": waterShaders(26).surfaceFragment,
   "interior water body vertex": waterShaders(26).bodyVertex,
   "interior water body fragment": waterShaders(26).bodyFragment,
+  ...Object.fromEntries(
+    LAYERS.flatMap((layer) => [
+      [`interior ${layer} vertex`, roomShaders(layer, 26).vertex],
+      [`interior ${layer} fragment`, roomShaders(layer, 26).fragment],
+    ])
+  ),
 };
 
 /** The source with its comments and preprocessor lines removed. */

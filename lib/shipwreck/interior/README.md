@@ -99,6 +99,9 @@ while the water over the room's floor is under 0.3 m, flickering
 (deterministic dips, the sim's own flicker, keyed on the time and depth)
 from 0.3 to 0.6 m, and out from 0.6 m (the water reached the wiring).
 `torchOn(roomPower)` is true under 0.35: the torch comes on by itself.
+The scene reads the depth at the room's floor middle (a flight's head)
+and gives a dark room a little of a lit neighbour's light
+(`components/shipwreck/interior/README.md`).
 
 ## Adding a ship's rooms
 

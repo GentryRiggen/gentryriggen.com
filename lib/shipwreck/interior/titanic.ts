@@ -149,7 +149,20 @@ add(
     2 * BROAD_Y,
     step("B", "C") / 2
   ),
-  cabin("gs-c", [GS_TURN, -WELL_Y], [GS_FWD, WELL_Y])
+  // Its after edge is cut where the flight's foot meets it: only the
+  // middle (the foot) is open; either side, under the A → B twin flights,
+  // is a wall (one whole open edge left holes under them).
+  {
+    id: "gs-c",
+    outline: [
+      [GS_TURN, -WELL_Y],
+      [GS_FWD, -WELL_Y],
+      [GS_FWD, WELL_Y],
+      [GS_TURN, WELL_Y],
+      [GS_TURN, BROAD_Y],
+      [GS_TURN, -BROAD_Y],
+    ],
+  }
 );
 for (const [upper, prefix, lower] of [
   ["gs-boat", "gs-flight-boat-a", "gs-a"],
@@ -573,8 +586,15 @@ for (const [room, halfY, aft] of [
 
 const Q = Math.PI / 2;
 const furniture: Furniture[] = [
-  // The Grand Staircase.
-  { room: "gs-flight-boat-a", piece: "dome", at: [37.4, 0], yaw: 0 },
+  // The Grand Staircase: the dome over the well's middle, the clock on
+  // the A → B half landing, the cherub lamp and newels at the flights'
+  // feet, sconces round the foyers' walls.
+  {
+    room: "gs-flight-boat-a",
+    piece: "dome",
+    at: [(GS_AFT + GS_FWD) / 2, 0],
+    yaw: 0,
+  },
   {
     room: "gs-flight-a-b-landing",
     piece: "clock-panel",
@@ -592,6 +612,37 @@ const furniture: Furniture[] = [
       yaw: 0,
     }))
   ),
+  { room: "gs-a", piece: "cherub-lamp", at: [34.8, 3.2], yaw: 0 },
+  { room: "gs-a", piece: "newel", at: [34.8, -3.2], yaw: 0 },
+  { room: "gs-boat", piece: "newel", at: [34.8, 1.7], yaw: 0 },
+  { room: "gs-boat", piece: "newel", at: [34.8, -1.7], yaw: 0 },
+  // Side walls (between the shut doors) and the forward walls.
+  ...(
+    [
+      ["gs-boat", 4.8, [36.5, 39.5]],
+      ["gs-a", 7.0, [36.0]],
+      ["gs-b", 8.0, [36.0]],
+    ] as const
+  ).flatMap(([room, halfY, xs]) =>
+    xs.flatMap((x): Furniture[] => [
+      { room, piece: "sconce", at: [x, halfY - 0.05], yaw: -Q },
+      { room, piece: "sconce", at: [x, -halfY + 0.05], yaw: Q },
+    ])
+  ),
+  ...(["gs-a", "gs-b"] as const).flatMap((room) =>
+    [5.0, -5.0].map((y): Furniture => ({
+      room,
+      piece: "sconce",
+      at: [GS_FWD - 0.05, y],
+      yaw: Math.PI,
+    }))
+  ),
+  ...[2.4, -2.4].map((y): Furniture => ({
+    room: "gs-boat",
+    piece: "sconce",
+    at: [33.45, y],
+    yaw: 0,
+  })),
   // The B deck corridor's lamps, between the shut doors.
   ...[27, 23, 19, 15].map((x): Furniture => ({
     room: "b-corridor",

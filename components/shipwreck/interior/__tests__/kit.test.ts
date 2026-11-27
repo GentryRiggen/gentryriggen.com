@@ -7,13 +7,18 @@ import {
   edgeKinds,
   rampTreads,
   RISER_M,
+  GS_TRIANGLE_BUDGET,
+  INTERIOR_TRIANGLE_BUDGET,
   zonesSeen,
+  ZONE_MESH_BUDGET,
   ZONE_TRIANGLE_BUDGET,
 } from "../kit";
+import { TILE } from "../pieces";
 
 /**
- * The blockout kit: each zone's merged shell is finite and non-empty (its
- * triangle count printed with SHIPWRECK_PRINT_TRIANGLES=1), a flight's treads stand on
+ * The room kit: each zone's layers are finite, tagged and lit, within the
+ * budgets (triangle counts and the build time printed with
+ * SHIPWRECK_PRINT_TRIANGLES=1), a flight's treads stand on
  * the walker's ramp, and the zones drawn together follow the doorways.
  */
 
@@ -23,42 +28,130 @@ const map = walkMapFor("titanic") as WalkMap;
 const built = buildInterior(interior, spec);
 
 afterAll(() => {
-  for (const g of built.zones.values()) g.dispose();
+  for (const z of built.zones.values())
+    for (const g of Object.values(z)) g?.dispose();
 });
 
 function triangles(g: import("three").BufferGeometry): number {
   return (g.index ? g.index.count : g.getAttribute("position").count) / 3;
 }
 
-describe("the blockout kit", () => {
-  it("builds one shell per zone: finite, non-empty, under budget", () => {
+const ATTRS: [string, number][] = [
+  ["position", 3],
+  ["normal", 3],
+  ["color", 3],
+  ["uv", 2],
+  ["aTile", 1],
+  ["aRoom", 1],
+  ["aGlow", 1],
+  ["aLight", 1],
+];
+
+describe("the room kit", () => {
+  it("builds each zone's layers: finite, tagged, lit, within budget", () => {
     const zones = new Set(interior.rooms.map((r) => r.zone));
     expect(new Set(built.zones.keys())).toEqual(zones);
     const counts: Record<string, number> = {};
-    for (const [zone, g] of built.zones) {
-      const pos = g.getAttribute("position");
-      const col = g.getAttribute("color");
-      expect(pos.count).toBeGreaterThan(0);
-      expect(col.count).toBe(pos.count);
-      for (const a of [pos.array, col.array])
-        for (let i = 0; i < a.length; i += 1)
-          expect(Number.isFinite(a[i])).toBe(true);
-      // Colours stay under 1 (bloom's threshold): a shell never glows.
-      for (let i = 0; i < col.array.length; i += 1)
-        expect(col.array[i]).toBeLessThan(1);
-      counts[zone] = triangles(g);
-      expect(counts[zone]).toBeLessThan(ZONE_TRIANGLE_BUDGET);
-      g.computeBoundingBox();
-      expect(g.boundingBox!.isEmpty()).toBe(false);
+    let total = 0;
+    for (const [zone, layers] of built.zones) {
+      let tris = 0;
+      let meshes = 0;
+      for (const [layer, g] of Object.entries(layers)) {
+        if (!g) continue;
+        meshes += 1;
+        const n = g.getAttribute("position").count;
+        expect(n).toBeGreaterThan(0);
+        for (const [name, size] of ATTRS) {
+          const a = g.getAttribute(name);
+          expect([layer, name, a?.count, a?.itemSize]).toEqual([
+            layer,
+            name,
+            n,
+            size,
+          ]);
+          expect(Array.from(a.array).every(Number.isFinite)).toBe(true);
+        }
+        // Room slots are rooms; the light is lit (never 0) and bounded.
+        const room = g.getAttribute("aRoom").array;
+        const light = g.getAttribute("aLight").array;
+        expect(Math.min(...room)).toBeGreaterThanOrEqual(0);
+        expect(Math.max(...room)).toBeLessThan(interior.rooms.length);
+        expect(Math.min(...light)).toBeGreaterThan(0.05);
+        expect(Math.max(...light)).toBeLessThanOrEqual(1.6 + 1e-6);
+        // Colours stay under 1 (bloom's threshold): only glass glows,
+        // by its aGlow.
+        const col = g.getAttribute("color").array;
+        expect(Math.max(...col)).toBeLessThan(1);
+        const glow = g.getAttribute("aGlow").array;
+        if (layer !== "glass") expect(Math.max(...glow)).toBe(0);
+        tris += triangles(g);
+      }
+      counts[zone] = tris;
+      expect(built.triangles.get(zone)).toBe(tris);
+      expect(meshes + 2).toBeLessThanOrEqual(ZONE_MESH_BUDGET); // + water
+      expect(tris).toBeLessThanOrEqual(
+        zone === "gs" ? GS_TRIANGLE_BUDGET : ZONE_TRIANGLE_BUDGET
+      );
+      total += tris;
     }
+    expect(GS_TRIANGLE_BUDGET).toBe(45000);
+    expect(ZONE_MESH_BUDGET).toBe(6);
+    expect(INTERIOR_TRIANGLE_BUDGET).toBe(120000);
+    expect(total).toBeLessThanOrEqual(INTERIOR_TRIANGLE_BUDGET);
+    expect(built.ms).toBeGreaterThan(0);
     // Printed only on request (SHIPWRECK_PRINT_TRIANGLES=1), for reports.
     if (process.env.SHIPWRECK_PRINT_TRIANGLES)
-      console.log(`interior triangles per zone: ${JSON.stringify(counts)}`);
+      console.log(
+        `interior triangles per zone: ${JSON.stringify(counts)} total ${total}, build ${built.ms.toFixed(1)} ms`
+      );
+  });
+
+  it("the Grand Staircase glows: lamps and the dome in its glass, HDR", () => {
+    const glass = built.zones.get("gs")!.glass!;
+    const glow = glass.getAttribute("aGlow").array;
+    const col = glass.getAttribute("color").array;
+    let hdr = 0;
+    for (let i = 0; i < glow.length; i += 1)
+      if (glow[i] * Math.max(col[i * 3], col[i * 3 + 1]) > 1) hdr += 1;
+    expect(hdr).toBeGreaterThan(100);
+    // The dome's panes (TILE.dome) are there, over the well.
+    const tile = glass.getAttribute("aTile").array;
+    expect(
+      Array.from(tile).filter((t) => t === TILE.dome).length
+    ).toBeGreaterThan(100);
+  });
+
+  it("each room's lamps read the water at its floor's middle, a flight's at its head", () => {
+    expect(built.slot.size).toBe(interior.rooms.length);
+    for (const room of interior.rooms) {
+      const k = built.slot.get(room.id)!;
+      const x = built.floors[k * 3];
+      const y = -built.floors[k * 3 + 2];
+      const z = built.floors[k * 3 + 1];
+      expect(z).toBeCloseTo(floorZ(map, room.id, x, spec, y), 4);
+      if (room.ramp)
+        expect([x, y]).toEqual(
+          [room.ramp.from[0], room.ramp.from[1]].map((v) =>
+            expect.closeTo(v, 4)
+          )
+        );
+    }
+  });
+
+  it("knows which rooms are open to each other (the lights' spill)", () => {
+    const n = (id: string) =>
+      built.neighbours[built.slot.get(id)!].map((k) => interior.rooms[k].id);
+    expect(n("gs-c")).toContain("gs-flight-b-c");
+    expect(n("suite-1")).toContain("b-corridor");
+    expect(n("third-cabin")).toContain("third-stairs-e");
+    // Never itself; a wall between is no opening.
+    expect(n("suite-1")).not.toContain("suite-1");
+    expect(n("suite-1")).not.toContain("suite-2");
   });
 
   it("sits in her frame (three-local x, z, −y) round each room", () => {
     // The Grand Staircase zone's box covers the well and the foyers.
-    const g = built.zones.get("gs")!;
+    const g = built.zones.get("gs")!.shell!;
     g.computeBoundingBox();
     const b = g.boundingBox!;
     expect(b.min.x).toBeLessThanOrEqual(31.01);
@@ -177,6 +270,40 @@ describe("the blockout kit", () => {
     // And open at its foot onto the C landing (not a balustrade to the
     // A → B half landing stacked over the C landing).
     expect(edgeAt("gs-flight-b-c", [39, -1.5], [39, 1.5])).toBe("seam");
+    // The C landing's after edge is open only at the flight's foot; either
+    // side, under the A → B twin flights, it is closed (no holes there).
+    expect(edgeAt("gs-c", [39, 1.5], [39, -1.5])).toBe("seam");
+    expect(edgeAt("gs-c", [39, 3], [39, 1.5])).not.toBe("seam");
+    expect(edgeAt("gs-c", [39, -1.5], [39, -3])).not.toBe("seam");
+    // Under an A → B twin flight is nothing: its balustrade over the roped
+    // flight carries a cheek down to the floor beside (no see-through
+    // void under the stair); the A foyer's over the well has the B foyer
+    // stacked under it, so none.
+    const info = (id: string, p: [number, number], q: [number, number]) => {
+      edgeAt(id, p, q);
+      const room = interior.rooms.find((r) => r.id === id)!;
+      const o = room.outline;
+      const i = o.findIndex((a, k) => {
+        const b = o[(k + 1) % o.length];
+        const on = (v: readonly number[], w: [number, number]) =>
+          Math.abs(v[0] - w[0]) < 1e-3 && Math.abs(v[1] - w[1]) < 1e-3;
+        return (on(a, p) && on(b, q)) || (on(a, q) && on(b, p));
+      });
+      return kinds.get(id)![i];
+    };
+    const twin = interior.rooms.find((r) => r.id === "gs-flight-a-b-port")!;
+    const inner = twin.outline.filter((p) => Math.abs(p[1] - 1.5) < 1e-3);
+    expect(inner).toHaveLength(2);
+    const cheek = info(
+      "gs-flight-a-b-port",
+      [inner[0][0], inner[0][1]],
+      [inner[1][0], inner[1][1]]
+    );
+    expect(cheek.kind).toBe("rail");
+    expect(cheek.cheek).toBeDefined();
+    const foyerRail = info("gs-a", [41.4, 3], [35, 3]);
+    expect(foyerRail.kind).toBe("rail");
+    expect(foyerRail.cheek).toBeUndefined();
     // A suite and the corridor are level: a wall either side of the door.
     const suite = interior.rooms.find((r) => r.id === "suite-1")!;
     const kindsSuite = kinds.get("suite-1")!;

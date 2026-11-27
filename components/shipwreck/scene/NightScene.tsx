@@ -228,6 +228,7 @@ export default function NightScene({
           store={store}
           runtime={runtime}
           spec={spec}
+          sky={settings.fog}
         />
         <SeaFromStore store={store} runtime={runtime} settings={settings} />
         <WalkRunner key={spec.id} store={store} runtime={runtime} spec={spec} />

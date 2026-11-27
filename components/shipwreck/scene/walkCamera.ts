@@ -185,16 +185,17 @@ export const WALK_OUTSIDE_FOV = 42;
 export const WALK_FOV_EASE_S = 0.4;
 
 /**
- * The field of view a frame later (degrees): toward 65° inside, 42°
- * outside, at a steady rate that crosses the whole change in 0.4 s, and
- * never past the target.
+ * The field of view a frame later (degrees): toward 65° inside, the
+ * scene's own (`outside`, 42° unless given) outside, at a steady rate that
+ * crosses 42° to 65° in 0.4 s, and never past the target.
  */
 export function insideFov(
   current: number,
   inside: boolean,
-  dt: number
+  dt: number,
+  outside: number = WALK_OUTSIDE_FOV
 ): number {
-  const want = inside ? WALK_INSIDE_FOV : WALK_OUTSIDE_FOV;
+  const want = inside ? WALK_INSIDE_FOV : outside;
   if (!(dt > 0)) return current;
   const step =
     ((WALK_INSIDE_FOV - WALK_OUTSIDE_FOV) / WALK_FOV_EASE_S) * Math.min(dt, 1);

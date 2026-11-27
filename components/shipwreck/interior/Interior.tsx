@@ -9,21 +9,28 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
+  type Texture,
 } from "three";
 import { useStore } from "zustand";
 import {
   easeLevel,
   interiorFor,
+  roomPower,
   roomWaterTargets,
+  torchOn,
   type InteriorMap,
   type Room,
 } from "@/lib/shipwreck/interior";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipId, ShipSpec } from "@/lib/shipwreck/ships/types";
+import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import { walkMapFor, type WalkMap } from "@/lib/shipwreck/walk";
 import type { InteriorLevels, SceneRuntime } from "../scene/runtime";
 import { doorGlowGeometry } from "./doorGlow";
 import { buildInterior } from "./kit";
+import { roomMaterials, type SharedUniforms } from "./materials";
+import { LAYERS } from "./pieces";
+import { detailTexture } from "./textures";
 import {
   DRY_LEVEL,
   interiorWater,
@@ -35,24 +42,29 @@ import {
 /**
  * Her rooms inside (see README.md), mounted beside XRay. Nothing at all
  * until the first time walk starts on a ship with rooms (the Titanic):
- * then the blockout and its water are built once (behind the walk start's
+ * then the rooms and their water are built once (behind the walk start's
  * cut) and their shaders warmed with `gl.compile`. Each frame while
  * walking on her whole: the group rides her `whole` part, the walker's
  * room's zone and the zones it has doorways to are drawn with their
  * water, each drawn room's water level eased toward its target (into the
- * water's uniform and `runtime.interiorLevels`, which the walker's depth
- * reads), and on the open deck only the deck doors' glow. Nothing off the
- * walk camera or after the break. Disposed on unmount or a change of ship.
+ * shaders' uniform and `runtime.interiorLevels`, which the walker's depth
+ * reads), each drawn room's lamps set from the ship's power and its water
+ * (`roomPower`), the torch eased on in a dim room (`torchOn`) and aimed
+ * from the eyes, and on the open deck only the deck doors' glow. Nothing
+ * off the walk camera or after the break. Disposed on unmount or a change
+ * of ship.
  *
  * Inside wins: while a room is drawn, the depth is cleared just before the
- * rooms (drawn last of the opaque things), so her exterior's decks, roofs
- * and walls that run through a room never show in it, and what the rooms
- * leave open (the doorways) still shows the outside drawn before. One
- * clear a frame, only inside, never in the sea's reflection. The water is
- * see-through, so it draws after every opaque thing (renderOrder 11, 12).
+ * rooms, so her exterior's decks, roofs and walls that run through a room
+ * never show in it, and what the rooms leave open (the doorways) still
+ * shows the outside drawn before. The clear and the rooms are in the
+ * transparent pass (the rooms with blending off: still opaque), after
+ * every exterior piece in either pass, so nothing outside draws over a
+ * room. One clear a frame, only inside, never in the sea's reflection.
+ * The water is see-through and draws after the rooms (renderOrder 11, 12).
  */
 
-/** The rooms draw after everything else opaque; the clear just before. */
+/** The rooms draw after everything else; the clear just before. */
 const ROOMS_ORDER = 10;
 const CLEAR_ORDER = ROOMS_ORDER - 1;
 
@@ -60,9 +72,32 @@ interface InteriorProps {
   store: PlaybackStore;
   runtime: SceneRuntime;
   spec: ShipSpec;
+  /** The sky the portholes and the dome show (sRGB hex: the scene's haze). */
+  sky?: string;
 }
 
-export default function Interior({ store, runtime, spec }: InteriorProps) {
+/** The share of a lit neighbour's light a dark room still gets. */
+const SPILL = 0.22;
+/** How fast the torch comes on and goes off (per second, 0..1). */
+const TORCH_EASE_PER_S = 4;
+/** The room must stay dim (or lit) this long to switch the torch (s). */
+const TORCH_HOLD_S = 0.5;
+/** The torch is held a little under the eyes (m). */
+const TORCH_DROP_M = 0.25;
+
+/**
+ * The lamps' shimmer while the ship's power dips (`frame.power` under 1):
+ * a fast hash of real time, mostly near full, now and then a deep dip, so
+ * the flicker shows even with the clock paused.
+ */
+export function lampFlicker(power: number, seconds: number): number {
+  if (!(power > 0 && power < 1)) return 1;
+  const k = Math.floor(seconds * 14);
+  const h = (((k * 2654435761) >>> 0) % 1000) / 1000;
+  return h < 0.12 ? 0.3 + h : 0.82 + 0.18 * h;
+}
+
+export default function Interior({ store, runtime, spec, sky }: InteriorProps) {
   const walking = useStore(store, (s) => s.camera === "walk");
   const interior = interiorFor(spec.id);
   // Built from the first walk on her on (kept while she is the ship; a
@@ -81,6 +116,7 @@ export default function Interior({ store, runtime, spec }: InteriorProps) {
       spec={spec}
       interior={interior}
       map={map}
+      sky={sky}
     />
   );
 }
@@ -92,7 +128,7 @@ interface SceneProps extends InteriorProps {
 
 type Built = ReturnType<typeof build>;
 
-/** The blockout, its water, the door glow and the depth clear. */
+/** The rooms, their water, the door glow and the depth clear. */
 function build(
   interior: InteriorMap,
   map: WalkMap,
@@ -100,22 +136,39 @@ function build(
   runtime: SceneRuntime
 ) {
   const b = buildInterior(interior, spec);
+  if (TEST_HOOKS_ENABLED && process.env.NODE_ENV !== "test")
+    console.info(`interior built in ${b.ms.toFixed(1)} ms`);
   const water = interiorWater(interior, spec);
   const waterMats = waterMaterials(water.count);
-  // Indoors: no sea fog (it greys a long hall to nothing).
-  const shell = new MeshBasicMaterial({ vertexColors: true, fog: false });
+  // The rooms share the water's room power, levels, torch and time.
+  const u = waterMats.surface.uniforms;
+  const shared: SharedUniforms = {
+    uRoomPower: u.uRoomPower,
+    uLevel: u.uLevel,
+    uTorchOn: u.uTorchOn,
+    uTorchPos: u.uTorchPos,
+    uTorchDir: u.uTorchDir,
+    uTime: u.uTime,
+  };
+  const detail: Texture = detailTexture();
+  const mats = roomMaterials(water.count, shared, detail);
   const glowMat = new MeshBasicMaterial({ vertexColors: true });
   const group = new Group();
   group.name = "interior";
   group.matrixAutoUpdate = false;
   group.visible = false;
   const zones: { zone: string; meshes: Mesh[]; slots: number[] }[] = [];
-  for (const [zone, geom] of b.zones) {
-    const mesh = new Mesh(geom, shell);
-    mesh.name = `interior-${zone}`;
-    mesh.renderOrder = ROOMS_ORDER;
-    group.add(mesh);
-    const meshes: Mesh[] = [mesh];
+  for (const [zone, layers] of b.zones) {
+    const meshes: Mesh[] = [];
+    for (const layer of LAYERS) {
+      const geom = layers[layer];
+      if (!geom) continue;
+      const mesh = new Mesh(geom, mats[layer]);
+      mesh.name = `interior-${zone}-${layer}`;
+      mesh.renderOrder = ROOMS_ORDER;
+      group.add(mesh);
+      meshes.push(mesh);
+    }
     const w = water.zones.get(zone);
     if (w) {
       const body = new Mesh(w.body, waterMats.body);
@@ -141,10 +194,12 @@ function build(
     "position",
     new Float32BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0], 3)
   );
+  // In the transparent pass, as the rooms (see above).
   const clearMat = new MeshBasicMaterial({
     colorWrite: false,
     depthWrite: false,
     depthTest: false,
+    transparent: true,
   });
   const clear = new Mesh(clearGeom, clearMat);
   clear.name = "interior-depth-clear";
@@ -164,7 +219,8 @@ function build(
   };
   return {
     ...b,
-    shell,
+    mats,
+    detail,
     glowMat,
     group,
     zones,
@@ -179,6 +235,14 @@ function build(
     now: new Uint8Array(water.count),
     target: roomWaterTargets(spec),
     compiled: false,
+    /** Each room's own lamps this frame (scratch). */
+    own: new Float32Array(water.count),
+    /** How long the walker's room has been dim, or lit (s). */
+    dimFor: 0,
+    litFor: 0,
+    torchWanted: false,
+    /** The torch, eased (0..1). */
+    torch: 0,
   };
 }
 
@@ -186,7 +250,8 @@ function dispose(b: Built): void {
   for (const { meshes } of b.zones)
     for (const m of meshes) m.geometry.dispose();
   b.glow.geometry.dispose();
-  b.shell.dispose();
+  b.mats.dispose();
+  b.detail.dispose();
   b.glowMat.dispose();
   b.clear.geometry.dispose();
   b.clearMat.dispose();
@@ -194,7 +259,14 @@ function dispose(b: Built): void {
   b.waterMats.body.dispose();
 }
 
-function InteriorScene({ store, runtime, spec, interior, map }: SceneProps) {
+function InteriorScene({
+  store,
+  runtime,
+  spec,
+  interior,
+  map,
+  sky,
+}: SceneProps) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -213,6 +285,10 @@ function InteriorScene({ store, runtime, spec, interior, map }: SceneProps) {
       dispose(b);
     };
   }, [interior, map, spec, runtime, scene]);
+  useEffect(() => {
+    const b = built.current;
+    if (b && sky) b.mats.sky.value.set(sky);
+  });
 
   useFrame((state, dt) => {
     const b = built.current;
@@ -264,6 +340,53 @@ function InteriorScene({ store, runtime, spec, interior, map }: SceneProps) {
     }
     lv.drawn.set(now);
     b.waterMats.surface.uniforms.uTime.value = state.clock.elapsedTime;
+
+    // The lights: each drawn room's from the ship's power and the water
+    // over its floor (its lowest point, in her frame); the lamps shimmer
+    // while the power dips.
+    const shipPower = Number.isFinite(frame.power) ? frame.power : 1;
+    b.mats.flicker.value = lampFlicker(shipPower, state.clock.elapsedTime);
+    const m = b.group.matrix.elements;
+    const power = b.waterMats.power;
+    const f = b.floors;
+    const own = b.own;
+    for (let k = 0; k < now.length; k += 1) {
+      if (!now[k]) continue;
+      const floorY =
+        m[1] * f[k * 3] + m[5] * f[k * 3 + 1] + m[9] * f[k * 3 + 2] + m[13];
+      own[k] = roomPower(shipPower, lv.shown[k] - floorY, p.t);
+    }
+    // A dark room still catches a little of a lit room open to it (down
+    // a stair, through a doorway): never pitch black beside the light.
+    for (let k = 0; k < now.length; k += 1) {
+      if (!now[k]) continue;
+      let spill = 0;
+      const nb = b.neighbours[k];
+      for (let i = 0; i < nb.length; i += 1)
+        if (now[nb[i]]) spill = Math.max(spill, own[nb[i]]);
+      power[k] = Math.max(own[k], SPILL * spill);
+    }
+    // The torch: on by itself in a dim room, held under the eyes, aimed
+    // where they look.
+    // Held a moment either way, so a flicker's dip does not blink it.
+    const k = room !== null ? b.slot.get(room) : undefined;
+    const dim = k !== undefined && torchOn(power[k] * b.mats.flicker.value);
+    const d = Math.min(dt, 0.1);
+    b.dimFor = dim ? b.dimFor + d : 0;
+    b.litFor = dim ? 0 : b.litFor + d;
+    if (b.dimFor >= TORCH_HOLD_S) b.torchWanted = true;
+    else if (b.litFor >= TORCH_HOLD_S || k === undefined) b.torchWanted = false;
+    const want = b.torchWanted ? 1 : 0;
+    const step = TORCH_EASE_PER_S * d;
+    b.torch =
+      want > b.torch
+        ? Math.min(want, b.torch + step)
+        : Math.max(want, b.torch - step);
+    const u = b.waterMats.surface.uniforms;
+    u.uTorchOn.value = b.torch;
+    camera.getWorldPosition(u.uTorchPos.value);
+    u.uTorchPos.value.y -= TORCH_DROP_M;
+    camera.getWorldDirection(u.uTorchDir.value);
     b.clear.visible = seen !== undefined;
     // On deck only: inside, the glow would be drawn over by the rooms.
     b.glow.visible = seen === undefined;

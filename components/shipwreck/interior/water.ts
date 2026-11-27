@@ -42,8 +42,8 @@ import {
  *   the walls go dark under the water, with a wet line at the surface.
  *
  * Lit by `uRoomPower[]` (the room's lamps, 0..1) and the torch
- * (`uTorchOn`, `uTorchPos`, `uTorchDir`, world): Task 6 drives them; for
- * now every room's lamps are on and the torch is off. No three.js lights,
+ * (`uTorchOn` eased 0..1, `uTorchPos`, `uTorchDir`, world), shared with
+ * the rooms' shader (materials.ts) and driven by Interior. No three.js lights,
  * no fog (as the rooms). Every pow/sqrt/division is guarded
  * (`shaderGuards.test.ts`).
  */
@@ -197,7 +197,11 @@ function addRoom(
   }
 }
 
-/** The shaders for `count` rooms (exported for the NaN guard test). */
+/**
+ * The shaders for `count` rooms (exported for the NaN guard test). The
+ * torch (`uTorchOn`, eased 0..1) and the room power are the rooms'
+ * (materials.ts shares these uniforms).
+ */
 export function waterShaders(count: number) {
   const n = Math.max(1, count);
   const lighting = /* glsl */ `
@@ -210,11 +214,11 @@ export function waterShaders(count: number) {
       float power = clamp(uRoomPower[int(room + 0.5)], 0.0, 1.0);
       // Never black: a faint blue night light.
       vec3 lit = (c + sheen) * (0.22 + 0.78 * power) + vec3(0.003, 0.008, 0.013);
-      if (uTorchOn > 0.5) {
+      if (uTorchOn > 0.001) {
         vec3 tl = world - uTorchPos;
         float td = length(tl);
         float cone = smoothstep(0.86, 0.97, dot(tl / max(td, 0.001), uTorchDir));
-        lit += vec3(0.55, 0.45, 0.3) * cone * (c * 5.0 + 0.04) / max(1.0 + 0.08 * td * td, 1.0);
+        lit += uTorchOn * vec3(0.55, 0.45, 0.3) * cone * (c * 5.0 + 0.04) / max(1.0 + 0.08 * td * td, 1.0);
       }
       return lit;
     }
@@ -322,7 +326,7 @@ export interface WaterMaterials {
   body: ShaderMaterial;
   /** Each room's shown level (earth z), shared by both; dry: DRY_LEVEL. */
   levels: Float32Array;
-  /** Each room's lamps (0..1), shared by both (Task 6 drives it). */
+  /** Each room's lamps (0..1), shared by both and the rooms. */
   power: Float32Array;
 }
 

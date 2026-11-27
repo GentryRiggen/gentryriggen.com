@@ -371,7 +371,7 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       camera.lookAt(controls.target);
       const near = nearFor(0.5);
       // Inside her the view widens (and narrows again on the way out).
-      const fov = insideFov(cam.fov, runtime.walkInside, d);
+      const fov = insideFov(cam.fov, runtime.walkInside, d, s.baseFov);
       if (Math.abs(cam.near - near) > near * 0.1 || fov !== cam.fov) {
         cam.near = near;
         cam.fov = fov;

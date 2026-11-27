@@ -175,6 +175,14 @@ describe("inside her: the wider view and the step through a door", () => {
     expect(insideFov(50, true, Number.NaN)).toBe(50);
   });
 
+  it("eases back outside to the scene's own view, not a fixed 42°", () => {
+    // A scene whose Canvas FOV is 50: walking out settles on 50.
+    let fov = 65;
+    for (let i = 0; i < 60; i += 1) fov = insideFov(fov, false, 1 / 60, 50);
+    expect(fov).toBe(50);
+    expect(insideFov(50, false, 1 / 60, 50)).toBe(50);
+  });
+
   it("the eyes ease over 0.12 s after a door, then follow exactly", () => {
     expect(EYE_EASE_S).toBeCloseTo(0.12, 9);
     const from: [number, number, number] = [0, 10, 0];
