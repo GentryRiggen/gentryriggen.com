@@ -23,10 +23,10 @@ export default function TerminalWindow({
 }: TerminalWindowProps) {
   return (
     <div
-      className={`group w-full overflow-clip border-gray-300 dark:border-green-500/30 shadow-2xl shadow-green-500/5 dark:shadow-green-500/10 transition-[border-color,box-shadow] duration-300 focus-within:border-green-500/70 dark:focus-within:border-green-400/60 focus-within:shadow-[0_0_30px_rgba(34,197,94,0.25),0_4px_20px_rgba(0,0,0,0.15)] dark:focus-within:shadow-[0_0_30px_rgba(34,197,94,0.2)] flex flex-col flex-1 sm:flex-initial ${isFullscreen ? "border-0" : "border-y sm:border sm:rounded-lg"}`}
+      className={`group w-full overflow-clip border-term-border shadow-2xl shadow-black/10 transition-[border-color,box-shadow] duration-300 focus-within:border-term-accent/60 focus-within:shadow-[0_0_30px_color-mix(in_srgb,var(--term-accent)_20%,transparent)] flex flex-col flex-1 sm:flex-initial ${isFullscreen ? "border-0" : "border-y sm:border sm:rounded-lg"}`}
     >
       {/* Title bar */}
-      <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 bg-gray-200 dark:bg-gray-900 border-b border-gray-300 dark:border-green-500/20 transition-[border-color] duration-300">
+      <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 bg-term-bar border-b border-term-border transition-[border-color] duration-300">
         <div className="flex gap-1.5">
           <button
             type="button"
@@ -68,14 +68,14 @@ export default function TerminalWindow({
             </span>
           </button>
         </div>
-        <span className="ml-2 text-xs font-mono text-gray-400 dark:text-green-500/40 transition-colors duration-300 group-focus-within:text-gray-600 dark:group-focus-within:text-green-500/80">
+        <span className="ml-2 text-xs font-mono text-term-muted transition-colors duration-300 group-focus-within:text-term-fg">
           {title}
         </span>
       </div>
       {/* Terminal body - click anywhere to focus input */}
       <div
         onClick={onClick}
-        className={`bg-gray-50 dark:bg-black p-4 sm:p-6 font-mono text-sm leading-relaxed flex-1 sm:flex-initial sm:min-h-[200px] overflow-y-auto overflow-x-auto cursor-text ${isFullscreen ? "" : "sm:max-h-[80vh]"}`}
+        className={`bg-term-bg p-4 sm:p-6 font-mono text-sm leading-relaxed flex-1 sm:flex-initial sm:min-h-[200px] overflow-y-auto overflow-x-auto cursor-text ${isFullscreen ? "" : "sm:max-h-[80vh]"}`}
       >
         {children}
       </div>

@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import Home from "../page";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
@@ -25,7 +25,7 @@ const renderWithTheme = (component: React.ReactElement) => {
 describe("Home Page", () => {
   it("renders the terminal window", () => {
     renderWithTheme(<Home />);
-    expect(screen.getByText("gentry@portfolio ~ (bash)")).toBeInTheDocument();
+    expect(screen.getByText("✻ claude — ~/gentry")).toBeInTheDocument();
   });
 
   it("renders the footer with copyright", () => {
@@ -43,10 +43,24 @@ describe("Home Page", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders the theme toggle", () => {
+  it("renders the theme menu", () => {
     renderWithTheme(<Home />);
     expect(
-      screen.getByRole("button", { name: "Toggle theme" })
+      screen.getByRole("button", { name: "Choose theme" })
     ).toBeInTheDocument();
+  });
+});
+
+describe("Home theme menu", () => {
+  it("opens a menu of themes and closes after picking one", () => {
+    renderWithTheme(<Home />);
+    fireEvent.click(screen.getByRole("button", { name: "Choose theme" }));
+    fireEvent.click(screen.getByRole("button", { name: /Gruvbox/ }));
+    expect(document.documentElement.getAttribute("data-term-theme")).toBe(
+      "gruvbox"
+    );
+    expect(
+      screen.queryByRole("list", { name: "Themes" })
+    ).not.toBeInTheDocument();
   });
 });

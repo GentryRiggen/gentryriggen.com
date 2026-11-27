@@ -159,3 +159,49 @@ describe("ships command", () => {
     expect(result.output).toEqual(expect.stringMatching(/^\s+ships\s/m));
   });
 });
+
+describe("homepage commands", () => {
+  it.each(["/help", "/HELP"])("treats %s like help", (input) => {
+    expect(getCommandResponse(input, []).output).toEqual(
+      expect.stringMatching(/^\s+games\s/m)
+    );
+  });
+
+  it("launches a game from its route", () => {
+    expect(getCommandResponse("/ship-builder", []).navigateTo).toBe(
+      "/ship-builder"
+    );
+  });
+
+  it.each(["games", "ls ~/side-projects/", "cat hobbies.txt"])(
+    "%s lists every game",
+    (input) => {
+      render(<>{getCommandResponse(input, []).output}</>);
+      expect(screen.getByRole("link", { name: "shipwreck/" })).toHaveAttribute(
+        "href",
+        "/shipwreck"
+      );
+    }
+  );
+
+  it("hire me links to LinkedIn", () => {
+    render(<>{getCommandResponse("hire me", []).output}</>);
+    expect(
+      screen.getByRole("link", { name: /linkedin\.com\/in\/gentryriggen/ })
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    "bio",
+    "cat bio.txt",
+    "about",
+    "skills",
+    "links",
+    "claude",
+    "/model",
+    "/cost",
+  ])("%s is not an unknown command", (input) => {
+    const unknown = getCommandResponse("zzzz-not-a-command", []).output;
+    expect(getCommandResponse(input, []).output).not.toEqual(unknown);
+  });
+});

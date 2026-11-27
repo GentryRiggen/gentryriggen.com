@@ -25,6 +25,155 @@
   --color-ayu-red: #f28779;
 }
 
+/* Firebase App Check loads reCAPTCHA Enterprise, whose badge sits over the
+   bottom-right corner on phones. Google allows hiding it when the page says
+   it is protected by reCAPTCHA instead (the homepage footer does). */
+.grecaptcha-badge {
+  visibility: hidden !important;
+}
+
+/* Homepage terminal themes (`/theme`). Components use bg-term-bg,
+   text-term-fg… The defaults follow the site's light/dark toggle; a named
+   theme on <html data-term-theme> (set before paint by THEME_SCRIPT) or on
+   any element (the swatches, which also use "light" and "dark") overrides
+   them. */
+@theme inline {
+  --color-term-page: var(--term-page);
+  --color-term-bg: var(--term-bg);
+  --color-term-bar: var(--term-bar);
+  --color-term-border: var(--term-border);
+  --color-term-fg: var(--term-fg);
+  --color-term-text: var(--term-text);
+  --color-term-muted: var(--term-muted);
+  --color-term-faint: var(--term-faint);
+  --color-term-accent: var(--term-accent);
+  --color-term-ok: var(--term-ok);
+  --color-term-link: var(--term-link);
+  --color-term-key: var(--term-key);
+}
+
+:root,
+[data-term-theme="light"] {
+  --term-page: #ffffff;
+  --term-bg: #f9fafb;
+  --term-bar: #e5e7eb;
+  --term-border: #d1d5db;
+  --term-fg: #111827;
+  --term-text: #374151;
+  --term-muted: #6b7280;
+  --term-faint: #9ca3af;
+  --term-accent: #ea580c;
+  --term-ok: #16a34a;
+  --term-link: #15803d;
+  --term-key: #b45309;
+}
+
+.dark,
+[data-term-theme="dark"] {
+  --term-page: #030712;
+  --term-bg: #000000;
+  --term-bar: #111827;
+  --term-border: rgb(34 197 94 / 0.3);
+  --term-fg: #f3f4f6;
+  --term-text: #d1d5db;
+  --term-muted: #9ca3af;
+  --term-faint: #6b7280;
+  --term-accent: #fb923c;
+  --term-ok: #4ade80;
+  --term-link: #86efac;
+  --term-key: #fbbf24;
+}
+
+[data-term-theme="ayu-mirage"] {
+  --term-page: #171b24;
+  --term-bg: #1f2430;
+  --term-bar: #242936;
+  --term-border: #33415e;
+  --term-fg: #e6e1cf;
+  --term-text: #cccac2;
+  --term-muted: #8a9199;
+  --term-faint: #707a8c;
+  --term-accent: #ffad66;
+  --term-ok: #87d96c;
+  --term-link: #73d0ff;
+  --term-key: #ffcc66;
+}
+
+[data-term-theme="dracula"] {
+  --term-page: #1e1f29;
+  --term-bg: #282a36;
+  --term-bar: #21222c;
+  --term-border: #44475a;
+  --term-fg: #f8f8f2;
+  --term-text: #e2e2dc;
+  --term-muted: #a0a8cd;
+  --term-faint: #6272a4;
+  --term-accent: #ffb86c;
+  --term-ok: #50fa7b;
+  --term-link: #8be9fd;
+  --term-key: #f1fa8c;
+}
+
+[data-term-theme="nord"] {
+  --term-page: #242933;
+  --term-bg: #2e3440;
+  --term-bar: #3b4252;
+  --term-border: #4c566a;
+  --term-fg: #eceff4;
+  --term-text: #d8dee9;
+  --term-muted: #a3adc2;
+  --term-faint: #7b88a1;
+  --term-accent: #d08770;
+  --term-ok: #a3be8c;
+  --term-link: #88c0d0;
+  --term-key: #ebcb8b;
+}
+
+[data-term-theme="gruvbox"] {
+  --term-page: #1d2021;
+  --term-bg: #282828;
+  --term-bar: #32302f;
+  --term-border: #504945;
+  --term-fg: #fbf1c7;
+  --term-text: #ebdbb2;
+  --term-muted: #bdae93;
+  --term-faint: #928374;
+  --term-accent: #fe8019;
+  --term-ok: #b8bb26;
+  --term-link: #83a598;
+  --term-key: #fabd2f;
+}
+
+[data-term-theme="catppuccin"] {
+  --term-page: #11111b;
+  --term-bg: #1e1e2e;
+  --term-bar: #181825;
+  --term-border: #45475a;
+  --term-fg: #cdd6f4;
+  --term-text: #bac2de;
+  --term-muted: #9399b2;
+  --term-faint: #6c7086;
+  --term-accent: #fab387;
+  --term-ok: #a6e3a1;
+  --term-link: #89b4fa;
+  --term-key: #f9e2af;
+}
+
+[data-term-theme="solarized-light"] {
+  --term-page: #eee8d5;
+  --term-bg: #fdf6e3;
+  --term-bar: #eee8d5;
+  --term-border: #d3cbb7;
+  --term-fg: #073642;
+  --term-text: #3d5961;
+  --term-muted: #657b83;
+  --term-faint: #93a1a1;
+  --term-accent: #cb4b16;
+  --term-ok: #859900;
+  --term-link: #268bd2;
+  --term-key: #b58900;
+}
+
 * {
   scroll-behavior: smooth;
 }

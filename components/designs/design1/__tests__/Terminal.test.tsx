@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import Terminal from "../Terminal";
 import { SOCIAL_LINKS } from "../constants";
+import { GAMES } from "../games";
 
 jest.mock("canvas-confetti", () => ({ __esModule: true, default: jest.fn() }));
 jest.mock("next/image", () => ({
@@ -13,26 +14,6 @@ jest.mock("next/image", () => ({
     return <img {...props} />;
   },
 }));
-
-const SHIPS_LINE = (_: string, el: Element | null) =>
-  el?.tagName === "P" &&
-  el.textContent ===
-    "⚓ I also love building fun things for my kids, like a ship-building game: /ship-builder (or type 'ships').";
-
-const PLANES_LINE = (_: string, el: Element | null) =>
-  el?.tagName === "P" &&
-  el.textContent ===
-    "✈️ And a plane game where you upgrade a slingshot plane until it reaches the finish line: /plane-builder (or type 'planes').";
-
-const MACHINES_LINE = (_: string, el: Element | null) =>
-  el?.tagName === "P" &&
-  el.textContent ===
-    "💡 And a little series of incremental games about robots who take one job too far: /ever-onward (or type 'onward').";
-
-const PLANETS_LINE = (_: string, el: Element | null) =>
-  el?.tagName === "P" &&
-  el.textContent ===
-    "🌍 And a planet-smashing game where you wreck whole worlds with asteroids, nukes and black holes: /planet-smasher (or type 'planets').";
 
 const queryPrompt = () => screen.queryByLabelText("Terminal command input");
 
@@ -59,7 +40,7 @@ describe("Terminal boot sequence", () => {
     jest.useRealTimers();
   });
 
-  it("shows the prompt only after the `cat links.txt` block has finished", () => {
+  it("shows the prompt only after the `Read(links.txt)` step", () => {
     render(<Terminal />);
     let promptShownEarly = false;
     advanceUntil(() => {
@@ -70,37 +51,43 @@ describe("Terminal boot sequence", () => {
     });
 
     expect(promptShownEarly).toBe(false);
-    advance(100);
     expect(queryPrompt()).toBeInTheDocument();
   });
 
-  it("points visitors at the `ships` command from the hobbies section", () => {
+  it("skips straight to the prompt on any key", () => {
+    render(<Terminal />);
+    expect(queryPrompt()).not.toBeInTheDocument();
+    fireEvent.keyDown(window, { key: "a" });
+    expect(queryPrompt()).toBeInTheDocument();
+    expect(
+      screen.getByText(SOCIAL_LINKS[SOCIAL_LINKS.length - 1].url)
+    ).toBeInTheDocument();
+    // Each step appears once.
+    expect(screen.getAllByText("(links.txt)")).toHaveLength(1);
+  });
+
+  it("lists every game with its version and a link", () => {
     render(<Terminal />);
     advanceUntil(() => false);
 
-    expect(screen.getByText(SHIPS_LINE)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "/ship-builder" })).toHaveAttribute(
-      "href",
-      "/ship-builder"
-    );
-    expect(screen.getByText(PLANES_LINE)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "/plane-builder" })
-    ).toHaveAttribute("href", "/plane-builder");
-    expect(screen.getByText(MACHINES_LINE)).toBeInTheDocument();
-    expect(screen.getByText(PLANETS_LINE)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "/planet-smasher" })
-    ).toHaveAttribute("href", "/planet-smasher");
-    expect(screen.getByRole("link", { name: "/ever-onward" })).toHaveAttribute(
-      "href",
-      "/ever-onward"
-    );
-    expect(screen.queryByText("cat ships.txt")).not.toBeInTheDocument();
+    for (const game of GAMES) {
+      expect(screen.getByRole("link", { name: `${game.id}/` })).toHaveAttribute(
+        "href",
+        game.href
+      );
+      expect(screen.getByText(`v${game.version}`)).toBeInTheDocument();
+    }
     expect(queryPrompt()).toBeInTheDocument();
   });
 
-  it("no longer lists `cat ships.txt` in the command history", () => {
+  it("runs a suggestion when tapped", () => {
+    render(<Terminal />);
+    fireEvent.keyDown(window, { key: "Enter" });
+    fireEvent.click(screen.getByRole("button", { name: "hire me" }));
+    expect(screen.getByText(/Let's connect/)).toBeInTheDocument();
+  });
+
+  it("lists the boot steps in the command history", () => {
     render(<Terminal />);
     advanceUntil(() => false);
     const input = screen.getByLabelText("Terminal command input");
@@ -111,6 +98,6 @@ describe("Terminal boot sequence", () => {
       (_, el) =>
         el?.tagName === "PRE" && !!el.textContent?.includes("cat links.txt")
     );
-    expect(history.textContent).not.toContain("cat ships.txt");
+    expect(history.textContent).toContain("ls ~/side-projects/");
   });
 });

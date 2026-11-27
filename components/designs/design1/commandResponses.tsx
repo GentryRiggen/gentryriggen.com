@@ -7,9 +7,13 @@
  */
 
 import { type ReactNode } from "react";
-import Hobbies from "./Hobbies";
-import Image from "next/image";
-import { SKILLS, SOCIAL_LINKS } from "./constants";
+import About from "./About";
+import SideProjects from "./SideProjects";
+import { Bio, HireMe, Links, Skills, Whoami } from "./Sections";
+import { GAMES, gameForCommand, type Game } from "./games";
+import { LINK_CLASS } from "./styles";
+import ThemePicker from "./ThemePicker";
+import { TERMINAL_THEMES, findTerminalTheme } from "./terminalTheme";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +29,8 @@ export interface CommandResult {
   shouldConfetti?: boolean;
   /** If set, the caller should navigate here shortly after showing the output */
   navigateTo?: string;
+  /** If set, the caller should switch the terminal to this theme id */
+  terminalTheme?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -34,8 +40,9 @@ export interface CommandResult {
 export const BOOT_COMMANDS = [
   "whoami",
   "cat bio.txt",
-  "cat hobbies.txt",
-  "ls -la skills/",
+  "cat about.txt",
+  "ls ~/side-projects/",
+  "cat skills.md",
   "cat links.txt",
 ];
 
@@ -146,44 +153,49 @@ const CONFETTI_RESPONSES: readonly string[] = [
   "Achievement unlocked: Party Animal!",
 ];
 
-const HELP_TEXT = `Available commands:
-  help             Show this help message
-  whoami           Display profile information
-  cat bio.txt      Read bio
-  cat hobbies.txt  Read hobbies
-  cat links.txt    Show social links
-  ls -la skills/   Show skills table
-  skills           Show skills table
-  ls               List directory contents
-  pwd              Print working directory
-  date             Show current date/time
-  uptime           Show system uptime
-  history          Show command history
-  cat <file>       Read a file (try: resume.pdf)
-  echo <msg>       Echo a message
-  clear            Clear terminal output
-  ping             Ping-pong
-  curl             Try fetching something
-  neofetch         System information
-  cowsay           A cow says things
-  fortune          Get a random fortune
-  weather          Check the weather
-  coffee           Brew some coffee
-  matrix           Enter the matrix
-  confetti         Celebrate!
-  ships            Play my ship-building game
-  planes           Play my plane-flying game
-  onward           Play Ever Onward, my incremental game
-  planets          Play my planet-smashing game
-  flamelings       Hatch a little flame pet
-  shipwreck        Watch the Titanic's last night
-  hire me          Get in touch
-  git status       Check repository status
-  git blame        Find out who did it
-  exit             Try to leave
+const HELP_LEFT = 17;
 
-  vim/nano/emacs   Start an editor (or not)
-  sudo <cmd>       Run as root (good luck)`;
+const HELP_TEXT = `Available commands (a leading / works too):
+${[
+  ["help", "Show this help message"],
+  ["whoami", "Who's this guy?"],
+  ["bio", "Read bio"],
+  ["about", "Life off the clock"],
+  ["games", "List my side projects"],
+  ["skills", "Show skills"],
+  ["links", "Show social links"],
+  ["hire me", "Get in touch"],
+  ...GAMES.map((game) => [game.command, game.help]),
+  ["ls", "List directory contents"],
+  ["pwd", "Print working directory"],
+  ["date", "Show current date/time"],
+  ["uptime", "Show system uptime"],
+  ["history", "Show command history"],
+  ["cat <file>", "Read a file (try: resume.pdf)"],
+  ["echo <msg>", "Echo a message"],
+  ["clear", "Clear terminal output"],
+  ["ping", "Ping-pong"],
+  ["curl", "Try fetching something"],
+  ["neofetch", "System information"],
+  ["cowsay", "A cow says things"],
+  ["fortune", "Get a random fortune"],
+  ["weather", "Check the weather"],
+  ["coffee", "Brew some coffee"],
+  ["matrix", "Enter the matrix"],
+  ["confetti", "Celebrate!"],
+  ["/theme", "Change the color theme"],
+  ["claude", "Start Claude Code"],
+  ["/model", "Pick a model"],
+  ["/cost", "See what this session cost"],
+  ["git status", "Check repository status"],
+  ["git blame", "Find out who did it"],
+  ["exit", "Try to leave"],
+  ["", ""],
+  ["vim/nano/emacs", "Start an editor (or not)"],
+  ["sudo <cmd>", "Run as root (good luck)"],
+]
+  .map(([cmd, text]) => (cmd ? `  ${cmd.padEnd(HELP_LEFT)}${text}` : ""))
+  .join("\n")}`;
 
 // ---------------------------------------------------------------------------
 // Neofetch output
@@ -248,180 +260,14 @@ const COFFEE_ART = `    ( (
 // Rich JSX output for boot-sequence commands
 // ---------------------------------------------------------------------------
 
-function whoamiOutput(): ReactNode {
-  return (
-    <div className="flex flex-col sm:flex-row gap-4 items-start">
-      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-green-500/40 shrink-0">
-        <Image
-          src="/gentry-riggen_web Medium.jpeg"
-          alt="Gentry Riggen"
-          width={80}
-          height={80}
-          unoptimized
-          className="object-cover w-full h-full"
-        />
-      </div>
-      <div>
-        <p className="text-green-600 dark:text-green-400 font-bold text-lg">
-          Gentry Riggen
-        </p>
-        <p className="text-amber-600 dark:text-amber-400">
-          Software Leader &amp; Developer
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function skillsOutput(): ReactNode {
-  return (
-    <div className="space-y-2">
-      {SKILLS.map((group) => (
-        <div key={group.category} className="flex flex-wrap gap-x-1">
-          <span className="text-amber-600 dark:text-amber-400 w-28 shrink-0">
-            {group.category}/
-          </span>
-          <span className="text-gray-600 dark:text-gray-400">
-            {group.items.map((item, i) => (
-              <span key={item}>
-                <span className="text-green-600 dark:text-green-300">
-                  {item}
-                </span>
-                {i < group.items.length - 1 && (
-                  <span className="text-gray-400 dark:text-gray-600">
-                    {" | "}
-                  </span>
-                )}
-              </span>
-            ))}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function linksOutput(): ReactNode {
+function gameOutput(game: Game): ReactNode {
   return (
     <div className="space-y-1">
-      {SOCIAL_LINKS.map((link) => (
-        <div key={link.label} className="flex items-center gap-2">
-          <span className="text-amber-600 dark:text-amber-400 w-12">
-            [{link.icon}]
-          </span>
-          <a
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
-          >
-            {link.url}
-          </a>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function shipsOutput(): ReactNode {
-  return (
-    <div className="space-y-1">
-      <p>A ship-building game I made for my boys ⚓</p>
+      <p>{game.blurb}</p>
       <p>
-        Setting sail in a moment...{" "}
-        <a
-          href="/ship-builder"
-          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
-        >
-          /ship-builder
-        </a>
-      </p>
-    </div>
-  );
-}
-
-function planesOutput(): ReactNode {
-  return (
-    <div className="space-y-1">
-      <p>A plane-flying game I made for my boys ✈️</p>
-      <p>
-        Taking off in a moment...{" "}
-        <a
-          href="/plane-builder"
-          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
-        >
-          /plane-builder
-        </a>
-      </p>
-    </div>
-  );
-}
-
-function planetsOutput(): ReactNode {
-  return (
-    <div className="space-y-1">
-      <p>A planet-smashing game I made for my boys 🌍☄️</p>
-      <p>
-        Launching the asteroids...{" "}
-        <a
-          href="/planet-smasher"
-          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
-        >
-          /planet-smasher
-        </a>
-      </p>
-    </div>
-  );
-}
-
-function flamelingsOutput(): ReactNode {
-  return (
-    <div className="space-y-1">
-      <p>A little flame pet I made for my boys 🔥</p>
-      <p>
-        Lighting the egg...{" "}
-        <a
-          href="/flamelings"
-          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
-        >
-          /flamelings
-        </a>
-      </p>
-    </div>
-  );
-}
-
-function shipwreckOutput(): ReactNode {
-  return (
-    <div className="space-y-1">
-      <p>A realistic sinking-ship simulator. The Titanic goes first 🚢</p>
-      <p>
-        Checking the bulkheads...{" "}
-        <a
-          href="/shipwreck"
-          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
-        >
-          /shipwreck
-        </a>
-      </p>
-    </div>
-  );
-}
-
-function everOnwardOutput(): ReactNode {
-  return (
-    <div className="space-y-1">
-      <p>
-        Ever Onward. A little series of incremental games about robots who take
-        one job too far. 💡
-      </p>
-      <p>
-        Lighting the lamp...{" "}
-        <a
-          href="/ever-onward"
-          className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
-        >
-          /ever-onward
+        {game.launch}{" "}
+        <a href={game.href} className={LINK_CLASS}>
+          {game.href}
         </a>
       </p>
     </div>
@@ -442,7 +288,8 @@ export function getCommandResponse(
   rawInput: string,
   commandHistory: readonly string[]
 ): CommandResult {
-  const trimmed = rawInput.trim();
+  // Claude Code style slash commands: `/help` is `help`.
+  const trimmed = rawInput.trim().replace(/^\/(?=\S)/, "");
   const lower = trimmed.toLowerCase();
 
   // Empty input
@@ -460,74 +307,112 @@ export function getCommandResponse(
     return { output: HELP_TEXT, shouldClear: false };
   }
 
-  // --- ships ---
-  if (lower === "ships" || lower === "ship-builder") {
+  // --- games ---
+  const game = gameForCommand(lower);
+  if (game) {
     return {
-      output: shipsOutput(),
+      output: gameOutput(game),
       shouldClear: false,
-      navigateTo: "/ship-builder",
+      navigateTo: game.href,
     };
   }
 
-  // --- planes ---
-  if (lower === "planes" || lower === "plane-builder") {
-    return {
-      output: planesOutput(),
-      shouldClear: false,
-      navigateTo: "/plane-builder",
-    };
-  }
-
-  // --- planets ---
-  if (lower === "planets" || lower === "planet-smasher" || lower === "smash") {
-    return {
-      output: planetsOutput(),
-      shouldClear: false,
-      navigateTo: "/planet-smasher",
-    };
-  }
-
-  // --- flamelings ---
-  if (lower === "flamelings" || lower === "pets" || lower === "pet") {
-    return {
-      output: flamelingsOutput(),
-      shouldClear: false,
-      navigateTo: "/flamelings",
-    };
-  }
-
-  // --- shipwreck ---
-  if (lower === "shipwreck" || lower === "titanic") {
-    return {
-      output: shipwreckOutput(),
-      shouldClear: false,
-      navigateTo: "/shipwreck",
-    };
-  }
-
-  // --- ever onward (machines and little-machines are old aliases) ---
+  // --- side projects ---
   if (
-    lower === "onward" ||
-    lower === "ever-onward" ||
-    lower === "ever onward" ||
-    lower === "machines" ||
-    lower === "little-machines" ||
-    lower === "little machines"
+    [
+      "games",
+      "projects",
+      "side-projects",
+      "ls ~/side-projects/",
+      "ls ~/side-projects",
+      "ls side-projects",
+      "ls side-projects/",
+      "cat hobbies.txt",
+    ].includes(lower)
   ) {
+    const output =
+      lower === "cat hobbies.txt" ? (
+        <div className="space-y-3">
+          <About />
+          <SideProjects />
+        </div>
+      ) : (
+        <SideProjects />
+      );
+    return { output, shouldClear: false };
+  }
+
+  // --- skills ---
+  if (
+    [
+      "skills",
+      "ls -la skills/",
+      "ls skills/",
+      "ls skills",
+      "cat skills.md",
+    ].includes(lower)
+  ) {
+    return { output: <Skills />, shouldClear: false };
+  }
+
+  // --- bio / about / links ---
+  if (lower === "bio" || lower === "cat bio.txt") {
+    return { output: <Bio />, shouldClear: false };
+  }
+  if (lower === "about" || lower === "cat about.txt") {
+    return { output: <About />, shouldClear: false };
+  }
+  if (lower === "links" || lower === "cat links.txt") {
+    return { output: <Links />, shouldClear: false };
+  }
+
+  // --- theme ---
+  if (lower === "theme" || lower === "themes") {
+    return { output: <ThemePicker />, shouldClear: false };
+  }
+  if (lower.startsWith("theme ")) {
+    const theme = findTerminalTheme(trimmed.slice(6));
+    if (!theme) {
+      return {
+        output: `theme: no theme called '${trimmed.slice(6).trim()}'. Try: ${TERMINAL_THEMES.map((t) => t.id).join(", ")}`,
+        shouldClear: false,
+      };
+    }
     return {
-      output: everOnwardOutput(),
+      output: `Theme set to ${theme.name}.`,
       shouldClear: false,
-      navigateTo: "/ever-onward",
+      terminalTheme: theme.id,
     };
   }
 
-  // --- ls -la skills/ (matches boot command exactly) ---
-  if (
-    lower === "ls -la skills/" ||
-    lower === "ls skills/" ||
-    lower === "ls skills"
-  ) {
-    return { output: skillsOutput(), shouldClear: false };
+  // --- Claude Code jokes ---
+  if (lower === "claude" || lower === "claude code") {
+    return {
+      output:
+        "You're already in it. This whole page is the session; I'm just the one typing.",
+      shouldClear: false,
+    };
+  }
+  if (lower === "model" || lower.startsWith("model ")) {
+    return {
+      output:
+        "Current model: gentry-1 (handcrafted, caffeinated, occasionally hallucinates golf scores).",
+      shouldClear: false,
+    };
+  }
+  if (lower === "cost") {
+    return {
+      output:
+        "Total cost:            $0.00\nTotal duration (wall): however long you've been reading\nCoffee consumed:       3 cups",
+      shouldClear: false,
+    };
+  }
+  if (lower === "ultrathink" || lower === "think harder") {
+    return {
+      output:
+        "✻ Thinking very hard...\n\nConclusion: you should probably hire me.",
+      shouldClear: false,
+    };
   }
 
   // --- ls ---
@@ -542,13 +427,12 @@ export function getCommandResponse(
       output: `total 42
 drwxr-xr-x  8 gentry staff  256 ${new Date().toLocaleDateString()}  .
 drwxr-xr-x  3 gentry staff   96 ${new Date().toLocaleDateString()}  ..
--rw-r--r--  1 gentry staff  420 ${new Date().toLocaleDateString()}  about.md
-drwxr-xr-x  5 gentry staff  160 ${new Date().toLocaleDateString()}  projects/
--rw-r--r--  1 gentry staff 1337 ${new Date().toLocaleDateString()}  resume.pdf
-drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
--rw-r--r--  1 gentry staff  256 ${new Date().toLocaleDateString()}  links.txt
+-rw-r--r--  1 gentry staff  420 ${new Date().toLocaleDateString()}  about.txt
 -rw-r--r--  1 gentry staff  512 ${new Date().toLocaleDateString()}  bio.txt
--rw-r--r--  1 gentry staff  128 ${new Date().toLocaleDateString()}  hobbies.txt`,
+-rw-r--r--  1 gentry staff  256 ${new Date().toLocaleDateString()}  links.txt
+-rw-r--r--  1 gentry staff 1337 ${new Date().toLocaleDateString()}  resume.pdf
+drwxr-xr-x  ${GAMES.length + 2} gentry staff  192 ${new Date().toLocaleDateString()}  side-projects/
+-rw-r--r--  1 gentry staff  128 ${new Date().toLocaleDateString()}  skills.md`,
       shouldClear: false,
     };
   }
@@ -591,7 +475,7 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
 
   // --- whoami ---
   if (lower === "whoami") {
-    return { output: whoamiOutput(), shouldClear: false };
+    return { output: <Whoami />, shouldClear: false };
   }
 
   // --- date ---
@@ -615,35 +499,12 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
   // --- cat (other files) ---
   if (lower.startsWith("cat ")) {
     const file = trimmed.slice(4).trim();
-    if (file === "bio.txt") {
-      return {
-        output: (
-          <p className="whitespace-pre-wrap leading-relaxed">
-            🚀 I build products and lead teams using React, Next.js, Node.js,
-            TypeScript, Tailwind CSS, Postgres, Prisma, GraphQL, Docker,
-            Terraform, GitHub Actions, and more. These days I&apos;m focused on
-            leading projects and empowering teams to ship exceptional work —
-            while still getting my hands dirty with code. 💻
-          </p>
-        ),
-        shouldClear: false,
-      };
-    }
-    if (file === "hobbies.txt") {
-      return {
-        output: <Hobbies />,
-        shouldClear: false,
-      };
-    }
     if (file === "about.md") {
       return {
         output:
           "# About Gentry Riggen\n\nSoftware leader and developer passionate about building great\nproducts with great teams. Based in the real world, deployed\nto the cloud.",
         shouldClear: false,
       };
-    }
-    if (file === "links.txt") {
-      return { output: linksOutput(), shouldClear: false };
     }
     return {
       output: `cat: ${file}: No such file or directory`,
@@ -760,15 +621,7 @@ drwxr-xr-x  4 gentry staff  128 ${new Date().toLocaleDateString()}  skills/
 
   // --- hire / hire me ---
   if (lower === "hire" || lower === "hire me" || lower === "contact") {
-    return {
-      output: `Awesome! Let's connect!\n\nLinkedIn: https://linkedin.com/in/gentryriggen\nGitHub:   https://github.com/gentryriggen\n\nI'm always open to interesting opportunities and conversations.\nDon't be a stranger!`,
-      shouldClear: false,
-    };
-  }
-
-  // --- skills ---
-  if (lower === "skills") {
-    return { output: skillsOutput(), shouldClear: false };
+    return { output: <HireMe />, shouldClear: false };
   }
 
   // --- weather ---

@@ -59,6 +59,9 @@ export function fixedThemeColor(p: string): string | null {
   return null;
 }
 
+/** localStorage key for the homepage terminal's theme (see terminalTheme.tsx). */
+export const TERM_THEME_KEY = "term-theme";
+
 /**
  * Runs before paint on every page (app/layout.tsx): applies the saved or
  * system theme and sets the theme-color for iOS Safari's browser chrome.
@@ -73,6 +76,11 @@ export const THEME_SCRIPT = `
     document.documentElement.classList.add('dark');
   } else {
     document.documentElement.classList.remove('dark');
+  }
+  // The homepage terminal's colour theme (/theme); CSS ignores unknown ids.
+  var termTheme = localStorage.getItem('${TERM_THEME_KEY}');
+  if (termTheme) {
+    document.documentElement.setAttribute('data-term-theme', termTheme);
   }
   var p = location.pathname;
   var jim = p === '/jim' || p === '/jim.html' || p.indexOf('/jim/') === 0;

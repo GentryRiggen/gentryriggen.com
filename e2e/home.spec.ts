@@ -6,7 +6,7 @@ test.describe("Home Page", () => {
     { tag: "@smoke" },
     async ({ page }) => {
       await page.goto("/");
-      await expect(page.getByText("gentry@portfolio ~ (bash)")).toBeVisible();
+      await expect(page.getByText("✻ claude — ~/gentry")).toBeVisible();
     }
   );
 

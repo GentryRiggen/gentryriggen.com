@@ -3,6 +3,7 @@ import {
   FLAMELINGS_THEME_COLOR,
   SHIPWRECK_THEME_COLOR,
   JIM_THEME_COLOR,
+  TERM_THEME_KEY,
   THEME_SCRIPT,
   fixedThemeColor,
   isEverOnwardPath,
@@ -12,10 +13,16 @@ import {
 interface Run {
   themeColor: string | null;
   dark: boolean;
+  termTheme?: string;
 }
 
 /** Runs the exact inline script against a fake page at `path`. */
-function run(path: string, saved: string | null = "dark"): Run {
+function run(
+  path: string,
+  saved: string | null = "dark",
+  savedTermTheme: string | null = null
+): Run {
+  const attributes: Record<string, string> = {};
   const meta = { content: "#ffffff" as string | null };
   const classes = new Set<string>();
   const document = {
@@ -23,6 +30,9 @@ function run(path: string, saved: string | null = "dark"): Run {
       classList: {
         add: (c: string) => classes.add(c),
         remove: (c: string) => classes.delete(c),
+      },
+      setAttribute: (name: string, value: string) => {
+        attributes[name] = value;
       },
     },
     querySelector: () => ({
@@ -39,12 +49,19 @@ function run(path: string, saved: string | null = "dark"): Run {
     THEME_SCRIPT
   );
   fn(
-    { getItem: () => saved },
+    {
+      getItem: (key: string) =>
+        key === TERM_THEME_KEY ? savedTermTheme : saved,
+    },
     { matchMedia: () => ({ matches: false }) },
     document,
     { pathname: path }
   );
-  return { themeColor: meta.content, dark: classes.has("dark") };
+  const result: Run = { themeColor: meta.content, dark: classes.has("dark") };
+  if (attributes["data-term-theme"]) {
+    result.termTheme = attributes["data-term-theme"];
+  }
+  return result;
 }
 
 it("is valid JavaScript", () => {
@@ -121,4 +138,9 @@ it("keeps Shipwreck its own night blue, light or dark", () => {
   }
   expect(run("/shipwreckx", "light").themeColor).toBe("#ffffff");
   expect(fixedThemeColor("/shipwreck/versions")).toBe(SHIPWRECK_THEME_COLOR);
+});
+
+it("applies the saved homepage terminal theme before paint", () => {
+  expect(run("/", "dark", "dracula").termTheme).toBe("dracula");
+  expect(run("/", "dark", null).termTheme).toBeUndefined();
 });
