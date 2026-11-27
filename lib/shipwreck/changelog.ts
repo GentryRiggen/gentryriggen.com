@@ -17,6 +17,19 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.15.0",
+    date: "2026-11-27",
+    title: "Go inside the Titanic",
+    highlights: [
+      "Walk up to a glowing door on the Titanic's deck and step inside",
+      "Walk down the Grand Staircase under its glass dome, from the top deck down to B deck",
+      "Visit first class rooms with big beds and wooden walls, and a third class cabin with bunk beds",
+      "Ride the lift down to Scotland Road, the long hallway the crew used",
+      "Watch the sea come down the hallway and up the stairs as she sinks. When the lights go out, a torch comes on",
+      "Tap the door button to go back out on deck",
+    ],
+  },
+  {
     version: "1.14.0",
     date: "2026-11-27",
     title: "Any ship in any wreck",

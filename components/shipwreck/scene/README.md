@@ -136,7 +136,8 @@ Every time the scene shows or computes comes from the track: events carry
 `setQuality(tier)`, `getEvents()`, `getState()` (`t`, `realT`, `phase`,
 `eventsSeen`, `quality`, `camera`, `xray`, `place`, `playing`, `speed`,
 `slowMo`, `done`, `computedT`, `progress`), `getRenderInfo()` (last frame's
-draw calls and triangles over every pass, and the camera position).
+draw calls and triangles over every pass, the camera position and its
+vertical `fov`).
 `window.__shipwreckRenderInfo` has the same plus the tier and DPR. Walking:
 `startWalk()`, `setWalkInput(forward, strafe)`, `turnWalk(yawRad)`,
 `setLookUnder(on)`, `getWalk()` (phase, part, x, y, slope, depth, look under,
@@ -195,6 +196,8 @@ shot framed for landscape still fits the ship.
   to 65° inside (`insideFov`, 0.4 s; restored to the Canvas's 42° when walk
   ends) and the eyes ease 0.12 s through a deck door (`easeEyes`). The
   rooms are drawn by `components/shipwreck/interior/` (see its README).
+  The sea skips its planar reflection pass while `walkInside` (it is only a
+  porthole glimpse): the two interior perf scenes are about half the cost.
 - **Bounds per ship**: `hullBoxesFor(ship)`; `keepClear` pushes the free
   camera out of the boxes through a face that leaves it above the floor (a
   wreck on her side has a face on the floor).

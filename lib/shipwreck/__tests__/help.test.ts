@@ -74,6 +74,12 @@ describe("the walk line", () => {
     );
   });
 
+  it("says the door button takes you back out on deck", () => {
+    expect(helpFor("controls", null, titanic).lines.join(" ")).toMatch(
+      /inside, the door button takes you back out on deck/
+    );
+  });
+
   it("is left out for a ship you cannot walk on", () => {
     const noWalk = { ...titanic, id: "nope" as typeof titanic.id };
     expect(helpFor("controls", null, noWalk).lines.join(" ")).not.toMatch(

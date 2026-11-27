@@ -507,7 +507,8 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
     }
     // The sea follows the camera so its edge never shows.
     mesh.position.set(camera.position.x, 0, camera.position.z);
-    if (!target || camera.position.y < 0.3) return;
+    // Inside her the sea is a glimpse through a porthole: no mirror pass.
+    if (!target || runtime.walkInside || camera.position.y < 0.3) return;
     const cam = camera as PerspectiveCamera;
     const m = mirror;
     const v = m.camera;

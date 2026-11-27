@@ -71,7 +71,12 @@ export function sceneHooks(
           ? undefined
           : window.__shipwreckRenderInfo;
       return r
-        ? { calls: r.calls, triangles: r.triangles, camera: r.camera }
+        ? {
+            calls: r.calls,
+            triangles: r.triangles,
+            camera: r.camera,
+            fov: r.fov,
+          }
         : null;
     },
     isShown: (name) =>

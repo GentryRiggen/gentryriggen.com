@@ -68,6 +68,8 @@ export interface RenderInfo {
   triangles: number;
   /** The camera's position (three.js axes), for tests. */
   camera: [number, number, number];
+  /** The camera's vertical field of view (degrees), for tests. */
+  fov: number;
   quality: QualityTier;
   dpr: number;
   /** Whether a named object (and every parent) is visible, for tests. */
@@ -349,6 +351,7 @@ function RenderInfoProbe({
       calls: gl.info.render.calls,
       triangles: gl.info.render.triangles,
       camera: [camera.position.x, camera.position.y, camera.position.z],
+      fov: (camera as { fov?: number }).fov ?? 0,
       quality,
       dpr,
       isShown,

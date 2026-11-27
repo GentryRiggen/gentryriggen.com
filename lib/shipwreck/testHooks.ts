@@ -119,6 +119,8 @@ export interface ShipwreckSceneHooks {
     calls: number;
     triangles: number;
     camera: [number, number, number];
+    /** Vertical field of view in degrees. */
+    fov: number;
   } | null;
   /** Whether a named scene object ("iceberg", "coast") is on screen. */
   isShown(name: string): boolean;

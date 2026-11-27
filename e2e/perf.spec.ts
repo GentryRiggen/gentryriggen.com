@@ -147,6 +147,8 @@ const SCENES = [
   "shipwreck-underwater",
   "shipwreck-walk-boat-deck",
   "shipwreck-walk-look-under",
+  "shipwreck-walk-staircase",
+  "shipwreck-walk-scotland-road",
   "shipwreck-lusitania-hit",
   "shipwreck-lusitania-list",
   "shipwreck-lusitania-grounded",
@@ -552,6 +554,24 @@ test.describe("Shipwreck budget", () => {
         h.seek!(2 * 3600 - 10 * 60); // 1:30 AM (1 h 50 min after 11:40 PM)
         h.startWalk!();
         h.turnWalk!(Math.PI); // look aft
+      })
+    );
+    // Inside (1.15): the Grand Staircase's top foyer under its dome, and
+    // Scotland Road, both at 1:30 AM.
+    record(
+      "shipwreck-walk-staircase",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.seek!(2 * 3600 - 10 * 60);
+        h.startWalk!();
+        h.placeWalk!("gs-boat", 34, 4, 0);
+      })
+    );
+    record(
+      "shipwreck-walk-scotland-road",
+      await at(() => {
+        const h = window.__shipwreck!;
+        h.placeWalk!("scotland-road", 20, 4.3, 0);
       })
     );
     // In the water 10 s before her stern goes under, looking under: she is

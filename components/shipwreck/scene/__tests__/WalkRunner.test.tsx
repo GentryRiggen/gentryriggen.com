@@ -266,6 +266,29 @@ describe("walking in the scene", () => {
     expect(runtime.walkCameInBy).toBe("third-class-door");
   });
 
+  it("walkDoor is a door index in reach, and -1 inside or not walking", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    frame(0.3);
+    expect(runtime.walkDoor).toBe(-1); // the spawn is far from every door
+    hooks.placeWalk("boat-deck", 33, 6.5, 0);
+    frame(0.3);
+    frame(0.3);
+    expect(runtime.walkDoor).toBeGreaterThanOrEqual(0);
+    hooks.enterDoor();
+    frame(0.3);
+    expect(runtime.walkInside).toBe(true);
+    frame(0.3);
+    expect(runtime.walkDoor).toBe(-1);
+    hooks.goOutside();
+    frame(0.3);
+    frame(0.3);
+    expect(runtime.walkDoor).toBeGreaterThanOrEqual(0);
+    act(() => store.getState().leaveWalk());
+    frame(0.3);
+    expect(runtime.walkDoor).toBe(-1);
+  });
+
   it("the lift takes you from B deck to E deck and bumps the wipe", () => {
     const { store, runtime, frame, hooks } = setup();
     act(() => store.getState().startWalk());
