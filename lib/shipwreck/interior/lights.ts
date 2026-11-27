@@ -1,3 +1,6 @@
+import type { V2 } from "../walk/types";
+import type { Room } from "./types";
+
 /**
  * The lights inside (see README.md): the ship's power (the sim's
  * `frame.power`, flickering from 10° bow down, out at the break), times
@@ -33,4 +36,56 @@ export function roomPower(power: number, depthM: number, t = 0): number {
 /** Whether the torch is on in a room with this power. */
 export function torchOn(roomPowerValue: number): boolean {
   return roomPowerValue < TORCH_BELOW;
+}
+
+/** A hall longer than this (m, along its axis) has its lamps in parts. */
+export const LONG_ROOM_M = 12;
+/** Each part of a long hall's lamps is at most this long (m). */
+export const LIGHT_SEGMENT_M = 8;
+
+/** A part of a long hall: its span along the axis (m) and its middle. */
+export interface LightSegment {
+  from: number;
+  to: number;
+  mid: V2;
+}
+
+/**
+ * A long hall's lamps in parts (Scotland Road's 86 m), each going out by
+ * the water at its own middle, so the dark creeps along the hall with the
+ * water instead of the whole hall going out at once. Empty for any other
+ * room (a stair, a short room): its lamps go by one depth.
+ */
+export function lightSegments(room: Room): LightSegment[] {
+  if (!room.axis || room.ramp) return [];
+  const [p, q] = room.axis;
+  const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+  if (!(len > LONG_ROOM_M)) return [];
+  const n = Math.ceil(len / LIGHT_SEGMENT_M);
+  const out: LightSegment[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const from = (len * i) / n;
+    const to = i === n - 1 ? len : (len * (i + 1)) / n;
+    const t = (from + to) / 2 / len;
+    out.push({
+      from,
+      to,
+      mid: [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t],
+    });
+  }
+  return out;
+}
+
+/** The part of a long hall over (x, y) (clamped to the ends), or 0. */
+export function segmentAt(room: Room, x: number, y: number): number {
+  if (!room.axis) return 0;
+  const [p, q] = room.axis;
+  const dx = q[0] - p[0];
+  const dy = q[1] - p[1];
+  const len = Math.hypot(dx, dy);
+  if (!(len > LONG_ROOM_M)) return 0;
+  const n = Math.ceil(len / LIGHT_SEGMENT_M);
+  const t = ((x - p[0]) * dx + (y - p[1]) * dy) / len;
+  const i = Math.floor((t / len) * n);
+  return i <= 0 ? 0 : i >= n ? n - 1 : i;
 }

@@ -1,6 +1,8 @@
 import { ShapeUtils, Vector2, type BufferGeometry } from "three";
 import {
+  lightSegments,
   roomFloorZ,
+  segmentAt,
   type Furniture,
   type InteriorMap,
   type Room,
@@ -15,6 +17,7 @@ import {
   clockPanel,
   COLOR,
   dome,
+  doorFrame,
   DOME_LX,
   fireBuckets,
   FURNITURE,
@@ -22,6 +25,7 @@ import {
   DOME_LY,
   Layers,
   LAYERS,
+  liftGate,
   lin,
   newel,
   pipes,
@@ -32,6 +36,7 @@ import {
   shutDoor,
   TILE,
   type Builder,
+  type DoorStyle,
   type Lamp,
   type Layer,
   type P3,
@@ -116,7 +121,7 @@ const COLUMN_M = 0.75;
 const SHADE = {
   floor: 1.0,
   riser: 0.72,
-  ceiling: 0.78,
+  ceiling: 0.68,
   soffit: 0.6,
 };
 
@@ -262,6 +267,8 @@ export interface EdgeInfo {
   kind: "wall" | "rail" | "seam";
   /** A seam that needs a lintel (a doorway, not a stair's open edge). */
   lintel?: { other: Room };
+  /** A seam's room on the other side. */
+  other?: Room;
   /**
    * A balustrade over a void (no room stacked under this one at the edge,
    * as under a twin flight): its outer face goes down to the lowest floor
@@ -290,7 +297,9 @@ export function edgeKinds(
           continue;
         const other = byId.get(s.a === room.id ? s.b : s.a)!;
         const stair = STAIR_KINDS.has(room.kind) || STAIR_KINDS.has(other.kind);
-        return stair ? { kind: "seam" } : { kind: "seam", lintel: { other } };
+        return stair
+          ? { kind: "seam", other }
+          : { kind: "seam", lintel: { other }, other };
       }
       // Along another room's edge at a different height in the same zone
       // (over a stair or the well): a balustrade, not a wall. Level with a
@@ -342,6 +351,11 @@ export function edgeKinds(
         }
       }
       if (!rail) return { kind: "wall" };
+      // A room of another zone walled off along this line, at our height
+      // (the third-class passage beside the D → E flight): a wall, so no
+      // face of ours lies on its wall facing the same way (z-fighting).
+      if (backedByWall(room, a, b, interior.rooms, spec))
+        return { kind: "wall" };
       if (
         Number.isFinite(lowA) &&
         Number.isFinite(lowB) &&
@@ -358,11 +372,59 @@ export function edgeKinds(
       if (Math.hypot(b[0] - a[0], b[1] - a[1]) > CHAMFER_EDGE_M) return;
       const prev = infos[(i + poly.length - 1) % poly.length].kind;
       const next = infos[(i + 1) % poly.length].kind;
-      if (prev !== "wall" && next !== "wall") infos[i] = { kind: "rail" };
+      if (
+        prev !== "wall" &&
+        next !== "wall" &&
+        !backedByWall(room, a, b, interior.rooms, spec)
+      )
+        infos[i] = { kind: "rail" };
     });
     out.set(room.id, infos);
   }
   return out;
+}
+
+/**
+ * Whether a room of another zone has an edge along a → b (beside it, run
+ * the other way) whose floor-to-ceiling span overlaps this edge's rail and
+ * slab (half a metre under the floor to the rail's top).
+ */
+function backedByWall(
+  room: Room,
+  a: V2,
+  b: V2,
+  rooms: readonly Room[],
+  spec: Spec
+): boolean {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < TOL) return false;
+  const ux = (b[0] - a[0]) / len;
+  const uy = (b[1] - a[1]) / len;
+  for (const other of rooms) {
+    if (other === room || other.zone === room.zone) continue;
+    const op = other.outline;
+    for (let j = 0; j < op.length; j += 1) {
+      const c = op[j];
+      const d = op[(j + 1) % op.length];
+      if (alongEdge(a, b, c, d) < 0.05) continue;
+      if ((d[0] - c[0]) * ux + (d[1] - c[1]) * uy >= 0) continue;
+      const tc = (c[0] - a[0]) * ux + (c[1] - a[1]) * uy;
+      const td = (d[0] - a[0]) * ux + (d[1] - a[1]) * uy;
+      const m =
+        (Math.max(0, Math.min(tc, td)) + Math.min(len, Math.max(tc, td))) / 2;
+      const x = a[0] + ux * m;
+      const y = a[1] + uy * m;
+      const mine = roomFloorZ(room, x, y, spec);
+      const theirs = roomFloorZ(other, x, y, spec);
+      if (
+        Math.min(mine + RAIL_M, theirs + other.ceilingM) -
+          Math.max(mine - 0.5, theirs) >
+        0.05
+      )
+        return true;
+    }
+  }
+  return false;
 }
 
 /** A room's floor at the point of it nearest p (a ramp clamps itself). */
@@ -462,6 +524,13 @@ export function zonesSeen(
   return out;
 }
 
+/** A part of a long hall's lamps: its room's slot, part and own slot. */
+export interface InteriorSegment {
+  room: number;
+  part: number;
+  slot: number;
+}
+
 export interface InteriorBuild {
   /** Per zone, its non-empty layers' geometry (three.js axes, her part). */
   zones: Map<string, Partial<Record<Layer, BufferGeometry>>>;
@@ -471,10 +540,14 @@ export interface InteriorBuild {
   seen: Map<string, ReadonlySet<string>>;
   /** Each room's slot (its index in the map: `aRoom`, the water's). */
   slot: Map<string, number>;
+  /** Slots in the power and level uniforms: the rooms', then the parts'. */
+  slots: number;
+  /** A long hall's parts (`lightSegments`): their slots follow the rooms'. */
+  segments: InteriorSegment[];
   /**
    * Per slot, the point whose water puts the room's lamps out, in her
    * part's local frame (three.js axes, x y z): its floor's middle, or a
-   * flight's head (its lamps are at the top).
+   * flight's head (its lamps are at the top); a part's middle.
    */
   floors: Float32Array;
   /** Per slot, the rooms open to it (a doorway, a stair, the well). */
@@ -513,17 +586,19 @@ export function buildInterior(
   const lamps: PlacedLamp[] = [];
   const domes = interior.furniture.filter((f) => f.piece === "dome");
 
+  // Rooms with no ceiling of their own drawn (a stair through it, the dome).
+  const open = new Set(
+    rooms
+      .filter(
+        (r) =>
+          underDome(r, domes, rooms, spec) || ceilingBlocked(r, rooms, spec)
+      )
+      .map((r) => r.id)
+  );
   rooms.forEach((room, k) => {
     const L = layersOf(room.zone);
     L.room(k);
-    addRoom(
-      L,
-      room,
-      rooms,
-      kinds.get(room.id)!,
-      spec,
-      underDome(room, domes, rooms, spec)
-    );
+    addRoom(L, room, rooms, kinds.get(room.id)!, spec, open);
   });
   // The furniture, and its lamps.
   const byId = new Map(rooms.map((r) => [r.id, r]));
@@ -533,7 +608,9 @@ export function buildInterior(
     const k = slot.get(f.room)!;
     const L = layersOf(room.zone);
     L.room(k);
+    L.pieces(true);
     const got = addPiece(L, f, room, spec);
+    L.pieces(false);
     for (const l of got)
       lamps.push({ ...l, room: k, wide: f.piece === "dome" });
   }
@@ -564,6 +641,18 @@ export function buildInterior(
   // Bake the light, then the meshes.
 
   const light = new LightBake(interior, kinds, lamps, spec);
+  // A long hall's lamps in parts (lightSegments): each part its own slot
+  // after the rooms', so its lamps go out by the water at its middle.
+  const segments: InteriorSegment[] = [];
+  const firstPart = new Map<number, number>();
+  rooms.forEach((room, k) => {
+    const parts = lightSegments(room);
+    if (parts.length === 0) return;
+    firstPart.set(k, rooms.length + segments.length);
+    parts.forEach((_, i) =>
+      segments.push({ room: k, part: i, slot: rooms.length + segments.length })
+    );
+  });
   const zones = new Map<string, Partial<Record<Layer, BufferGeometry>>>();
   const triangles = new Map<string, number>();
   for (const [zone, L] of zoneLayers) {
@@ -571,13 +660,22 @@ export function buildInterior(
     LAYERS.forEach((layer, i) => {
       const b = L.all[i];
       if (b.triangles === 0) return;
-      out[layer] = b.geometry(light.bake(b, layer === "shell"));
+      const lit = light.bake(b, layer === "shell");
+      // Baked by room; then a long hall's vertices to their part's slot.
+      if (firstPart.size > 0)
+        for (let v = 0; v < b.room.length; v += 1) {
+          const first = firstPart.get(b.room[v]);
+          if (first === undefined) continue;
+          const room = rooms[b.room[v]];
+          b.room[v] = first + segmentAt(room, b.pos[v * 3], -b.pos[v * 3 + 2]);
+        }
+      out[layer] = b.geometry(lit);
     });
     zones.set(zone, out);
     triangles.set(zone, L.triangles);
   }
   // Each room's lowest floor point, in her part's frame (three axes).
-  const floors = new Float32Array(rooms.length * 3);
+  const floors = new Float32Array((rooms.length + segments.length) * 3);
   rooms.forEach((room, k) => {
     if (room.ramp) {
       // A flight's lamps are at its head: its top step.
@@ -594,6 +692,14 @@ export function buildInterior(
     floors[k * 3 + 1] = roomFloorZ(room, x, y, spec);
     floors[k * 3 + 2] = -y;
   });
+  // Each part's middle.
+  for (const seg of segments) {
+    const room = rooms[seg.room];
+    const [x, y] = lightSegments(room)[seg.part].mid;
+    floors[seg.slot * 3] = x;
+    floors[seg.slot * 3 + 1] = roomFloorZ(room, x, y, spec);
+    floors[seg.slot * 3 + 2] = -y;
+  }
 
   const t1 =
     typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -602,6 +708,8 @@ export function buildInterior(
     roomZone: new Map(rooms.map((r) => [r.id, r.zone])),
     seen: zonesSeen(interior),
     slot,
+    slots: rooms.length + segments.length,
+    segments,
     floors,
     neighbours: light.open.map((set, k) => [...set].filter((j) => j !== k)),
     triangles,
@@ -777,7 +885,7 @@ function addRoom(
   rooms: readonly Room[],
   edges: readonly EdgeInfo[],
   spec: Spec,
-  domed: boolean
+  open: ReadonlySet<string>
 ): void {
   const shell = L.shell;
   const poly = room.outline;
@@ -870,7 +978,7 @@ function addRoom(
 
   // The ceiling, unless a stair or a floor comes down through it, or the
   // dome stands over it.
-  if (!domed && !ceilingBlocked(room, rooms, spec)) {
+  if (!open.has(room.id)) {
     const c = scale(ceiling, SHADE.ceiling);
     for (const cell of cells(poly))
       for (const [a, b, d] of cellTris(cell))
@@ -1002,7 +1110,35 @@ function addRoom(
       shell.tileId = oak ? TILE.oak : TILE.none;
       outward(shell, a, b, loA, loB, fz(a), fz(b), fascia, fascia);
       shell.tileId = TILE.none;
-    } else if (info.lintel) {
+    }
+    // A seam onto a room with a higher ceiling (the third-class landing
+    // onto its passage): the step between the ceilings, facing into the
+    // higher room, so no slit shows the outside through it.
+    if (
+      info.kind === "seam" &&
+      info.other &&
+      !info.lintel &&
+      !info.other.noWalk &&
+      !open.has(room.id) &&
+      !open.has(info.other.id)
+    ) {
+      const o = info.other;
+      const hiA = ceilingZ(o, a[0], a[1], spec);
+      const hiB = ceilingZ(o, b[0], b[1], spec);
+      if (hiA > cz(a) + 0.02 || hiB > cz(b) + 0.02)
+        outward(
+          shell,
+          a,
+          b,
+          cz(a),
+          cz(b),
+          Math.max(hiA, cz(a)),
+          Math.max(hiB, cz(b)),
+          scale(ceiling, 0.9),
+          scale(ceiling, 0.9)
+        );
+    }
+    if (info.kind === "seam" && info.lintel) {
       // Over a doorway: from the door's head to the higher ceiling.
       const other = info.lintel.other;
       const hiA = Math.max(cz(a), ceilingZ(other, a[0], a[1], spec));
@@ -1024,9 +1160,27 @@ function addRoom(
         );
         shell.tileId = TILE.none;
       }
+      // Its frame, so the doorway reads as a door (and a lift's gates).
+      const mid: P3 = [
+        (a[0] + b[0]) / 2,
+        (a[1] + b[1]) / 2,
+        fz([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]),
+      ];
+      const yaw = Math.atan2(ny, nx);
+      doorFrame(L, mid, yaw, len, DOOR_STYLE[room.look.finish], DOOR_HEAD_M);
+      if (room.kind === "lift") liftGate(L, mid, yaw, len);
+      L.place(null);
     }
   }
 }
+
+/** A doorway's frame by the room's finish. */
+const DOOR_STYLE: Record<Room["look"]["finish"], DoorStyle> = {
+  oak: "oak",
+  "white-panel": "white",
+  enamel: "white",
+  steel: "steel",
+};
 
 /**
  * An outline cut into CELL_M squares (each piece the outline's part in
@@ -1168,7 +1322,7 @@ function outward(
 // --- The baked light -----------------------------------------------------------
 
 /** The light every surface has without a lamp near (with the power on). */
-const AMBIENT = 0.13;
+const AMBIENT = 0.1;
 /** A lamp reaches this many of its radii, squared. */
 const REACH2 = 2.6 * 2.6;
 /** No vertex gets more than this (bloom's threshold stays the lamps'). */
@@ -1263,14 +1417,18 @@ class LightBake {
   }
 
   /** Each vertex's light (`aLight`) for one layer's builder. */
-  bake(b: Builder, room: boolean): Float32Array {
+  bake(b: Builder, shell: boolean): Float32Array {
     const count = b.pos.length / 3;
     const out = new Float32Array(count);
     const spec = this.spec;
     // A piece is small: lit once per 0.3 m cell (its facing evened out),
-    // not per vertex.
-    const cache = new Map<number, number>();
+    // not per vertex. Room surfaces and pieces keep their own caches.
+    const surfaces = new Map<number, number>();
+    const pieces = new Map<number, number>();
     for (let v = 0; v < count; v += 1) {
+      // The shell's room surfaces (not the pieces painted in it).
+      const room = shell && b.piece[v] === 0;
+      const cache = room ? surfaces : pieces;
       // Back to the ship frame.
       const x = b.pos[v * 3];
       const z = b.pos[v * 3 + 1];

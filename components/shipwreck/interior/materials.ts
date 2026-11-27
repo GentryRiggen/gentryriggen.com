@@ -189,7 +189,7 @@ export function roomShaders(layer: Layer, count: number) {
           // a little of the room's light on the glass.
           vec3 sky = uSky * 0.35 + vec3(0.004, 0.007, 0.02);
           vec3 sea = vec3(0.003, 0.022, 0.02);
-          float under = smoothstep(0.03, -0.03, vWorld.y);
+          float under = 1.0 - smoothstep(-0.03, 0.03, vWorld.y);
           lit = mix(sky, sea, under)
             + vec3(0.03, 0.026, 0.02) * vLight * power
             + TORCH * torch * 0.15;

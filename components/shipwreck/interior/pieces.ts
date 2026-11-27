@@ -113,10 +113,14 @@ export class Builder {
   readonly tile: number[] = [];
   readonly room: number[] = [];
   readonly glow: number[] = [];
+  /** 1 where a vertex is a piece's, not a room surface (the light bake). */
+  readonly piece: number[] = [];
   /** The current room's slot (`aRoom`), tile and glow. */
   slot = 0;
   tileId: number = TILE.none;
   glowV = 0;
+  /** What follows is a piece (lit as one, not as a wall or floor). */
+  pieceV = 0;
   /** Wall uvs measure height from here (ship z): panels start at the floor. */
   vBase = 0;
   /** Own uvs instead (local point, the triangle's local centroid). */
@@ -260,6 +264,7 @@ export class Builder {
     this.tile.push(this.tileId);
     this.room.push(this.slot);
     this.glow.push(this.glowV);
+    this.piece.push(this.pieceV);
   }
 
   /** A quad a→b→c→d, counter-clockwise from its front. */
@@ -490,6 +495,11 @@ export class Layers {
     for (const b of this.all) b.place(origin, yaw);
   }
 
+  /** Marks what follows as a piece (1) or a room surface (0). */
+  pieces(on: boolean): void {
+    for (const b of this.all) b.pieceV = on ? 1 : 0;
+  }
+
   /** Tags what follows with a room's slot (its lamps' power). */
   room(slot: number): void {
     for (const b of this.all) b.slot = slot;
@@ -613,7 +623,7 @@ export function ceilingLamp(L: Layers, at: P3): Lamp[] {
     lit(L, 1.9, (g) => g.cyl([0, 0, -0.34], 0.1, 0.24, 0.14, 8, COLOR.lamp));
     L.metal.cyl([0, 0, -0.21], 0.245, 0.25, 0.015, 8, COLOR.gilt, false);
   });
-  return [{ p: [at[0], at[1], at[2] - 0.4], intensity: 1.35, radius: 3.6 }];
+  return [{ p: [at[0], at[1], at[2] - 0.4], intensity: 1.15, radius: 2.5 }];
 }
 
 // --- The Grand Staircase -----------------------------------------------------
@@ -1643,3 +1653,98 @@ export const FURNITURE: Partial<
   table,
   chair,
 };
+
+// --- Doorways --------------------------------------------------------------------
+
+/**
+ * The frame round an open doorway (an architrave: two jambs and a head),
+ * on the wall either side of the opening, so a doorway reads as a door
+ * and not a gap. Origin: the opening's middle at the floor, x into the
+ * room; `width` the opening's.
+ */
+export function doorFrame(
+  L: Layers,
+  at: P3,
+  yaw: number,
+  width: number,
+  style: DoorStyle,
+  head = 2.1
+): Lamp[] {
+  placed(L, at, yaw, () => {
+    const oak = style === "oak";
+    const b = oak ? L.wood : L.shell;
+    const trim =
+      style === "oak"
+        ? COLOR.oakDark
+        : style === "white"
+          ? lin(0.95, 0.93, 0.88)
+          : lin(0.5, 0.51, 0.48);
+    tiled(b, oak ? TILE.grain : TILE.none, () => {
+      for (const s of [-1, 1])
+        b.box(
+          [0.025, s * (width / 2 + 0.06), head / 2],
+          0.05,
+          0.12,
+          head,
+          trim,
+          {
+            back: true,
+            bottom: true,
+          }
+        );
+      b.box([0.025, 0, head + 0.04], 0.05, width + 0.24, 0.08, trim, {
+        back: true,
+      });
+    });
+  });
+  return [];
+}
+
+/**
+ * The lift's folding brass gates, folded back to each side of the car's
+ * opening (a lattice of bars), and a brass rail across the top. Origin:
+ * the opening's middle at the floor, x into the car.
+ */
+export function liftGate(
+  L: Layers,
+  at: P3,
+  yaw: number,
+  width: number
+): Lamp[] {
+  placed(L, at, yaw, () => {
+    const m = L.metal;
+    const h = 2.05;
+    for (const s of [-1, 1]) {
+      const y0 = s * (width / 2 - 0.02);
+      // Folded leaves: bars close together, a diagonal lattice across them.
+      for (let i = 0; i < 5; i += 1) {
+        const y = y0 - s * i * 0.035;
+        m.beam([0.06, y, 0.02], [0.06, y, h], 0.015, 0.015, COLOR.brass, false);
+      }
+      for (let z = 0.2; z < h - 0.1; z += 0.3)
+        m.beam(
+          [0.06, y0, z],
+          [0.06, y0 - s * 0.14, z + 0.15],
+          0.012,
+          0.012,
+          COLOR.brass,
+          false
+        );
+    }
+    m.beam(
+      [0.06, -width / 2, h],
+      [0.06, width / 2, h],
+      0.03,
+      0.05,
+      COLOR.brass
+    );
+    m.beam(
+      [0.06, -width / 2, 0.02],
+      [0.06, width / 2, 0.02],
+      0.03,
+      0.03,
+      COLOR.brass
+    );
+  });
+  return [];
+}

@@ -15,6 +15,8 @@ import {
   ZONE_TRIANGLE_BUDGET,
 } from "../kit";
 import { Layers, TILE } from "../pieces";
+import { MAX_ROOM_SLOTS } from "../materials";
+import { lightSegments, segmentAt } from "@/lib/shipwreck/interior";
 
 /**
  * The room kit: each zone's layers are finite, tagged and lit, within the
@@ -76,7 +78,7 @@ describe("the room kit", () => {
         const room = g.getAttribute("aRoom").array;
         const light = g.getAttribute("aLight").array;
         expect(Math.min(...room)).toBeGreaterThanOrEqual(0);
-        expect(Math.max(...room)).toBeLessThan(interior.rooms.length);
+        expect(Math.max(...room)).toBeLessThan(built.slots);
         expect(Math.min(...light)).toBeGreaterThan(0.05);
         expect(Math.max(...light)).toBeLessThanOrEqual(1.6 + 1e-6);
         // Colours stay under 1 (bloom's threshold): only glass glows,
@@ -105,6 +107,79 @@ describe("the room kit", () => {
       console.log(
         `interior triangles per zone: ${JSON.stringify(counts)} total ${total}, build ${built.ms.toFixed(1)} ms`
       );
+  });
+
+  it("tags a long hall's surfaces by part, so its lamps die by the water at each part", () => {
+    const sr = interior.rooms.find((r) => r.id === "scotland-road")!;
+    const parts = lightSegments(sr);
+    expect(parts.length).toBeGreaterThan(5);
+    expect(built.slots).toBe(interior.rooms.length + built.segments.length);
+    expect(built.slots).toBeLessThanOrEqual(MAX_ROOM_SLOTS);
+    expect(built.floors.length).toBe(built.slots * 3);
+    const mine = built.segments.filter(
+      (s) => s.room === built.slot.get("scotland-road")
+    );
+    expect(mine.map((s) => s.part)).toEqual(parts.map((_, i) => i));
+    // Each part's floor point is its middle, on the walker's floor.
+    for (const s of mine) {
+      const x = built.floors[s.slot * 3];
+      const y = -built.floors[s.slot * 3 + 2];
+      expect(x).toBeCloseTo(parts[s.part].mid[0], 4);
+      expect(built.floors[s.slot * 3 + 1]).toBeCloseTo(
+        floorZ(map, "scotland-road", x, spec, y),
+        4
+      );
+    }
+    // Every e-deck vertex of the hall carries its own part's slot.
+    let checked = 0;
+    for (const g of Object.values(built.zones.get("e-deck")!)) {
+      if (!g) continue;
+      const pos = g.getAttribute("position").array;
+      const room = g.getAttribute("aRoom").array;
+      for (let v = 0; v < room.length; v += 1) {
+        const seg = mine.find((s) => s.slot === room[v]);
+        if (!seg) continue;
+        expect(seg.part).toBe(segmentAt(sr, pos[v * 3], -pos[v * 3 + 2]));
+        checked += 1;
+      }
+      // No vertex is left on the hall's own slot.
+      expect(
+        Array.from(room).filter((r) => r === built.slot.get("scotland-road"))
+      ).toHaveLength(0);
+    }
+    expect(checked).toBeGreaterThan(1000);
+  });
+
+  it("closes the step between ceilings across an open stair seam (no slit to the sky)", () => {
+    // The third-class E landing (ceiling 2.4 m) opens onto its passage
+    // (2.3 m) at x 74.4: a face from the passage's ceiling up to the
+    // landing's, facing the landing (+x).
+    const g = built.zones.get("e-deck")!.shell!;
+    const pos = g.getAttribute("position").array;
+    const nrm = g.getAttribute("normal").array;
+    const floor = floorZ(map, "third-passage", 74.4, spec, 4.9);
+    let found = 0;
+    for (let v = 0; v < pos.length / 3; v += 1) {
+      if (Math.abs(pos[v * 3] - 74.4) > 1e-3) continue;
+      const y = -pos[v * 3 + 2];
+      const z = pos[v * 3 + 1] - floor;
+      if (y < 4.2 - 1e-3 || y > 5.6 + 1e-3) continue;
+      if (z < 2.28 || z > 2.42) continue;
+      if (nrm[v * 3] > 0.99) found += 1;
+    }
+    expect(found).toBeGreaterThanOrEqual(4);
+  });
+
+  it("frames the lift's doorway with brass gates (it reads as a lift, not a wall)", () => {
+    const metal = built.zones.get("gs")!.metal!;
+    const pos = metal.getAttribute("position").array;
+    let gate = 0;
+    for (let v = 0; v < pos.length / 3; v += 1) {
+      const x = pos[v * 3];
+      const y = -pos[v * 3 + 2];
+      if (x > 41.4 && x < 41.6 && y > -5.25 && y < -3.95) gate += 1;
+    }
+    expect(gate).toBeGreaterThan(100);
   });
 
   it("keeps the B deck and E deck zones (the suites, Scotland Road) in budget", () => {
@@ -268,6 +343,58 @@ describe("the room kit", () => {
     g.dispose();
   });
 
+  it("never puts a balustrade's outer faces on another room's wall (no z-fighting)", () => {
+    // A rail draws faces on its edge line facing out of its room; a wall
+    // of the room beside (any zone) on the same line, at overlapping
+    // heights, faces the same way and fights it (the black jagged patch
+    // beside the third-class passage).
+    const kinds = edgeKinds(interior, spec);
+    const fz = (id: string, x: number, y: number) =>
+      floorZ(map, id, x, spec, y);
+    const bad: string[] = [];
+    for (const A of interior.rooms)
+      A.outline.forEach((a, i) => {
+        if (kinds.get(A.id)![i].kind !== "rail") return;
+        const b = A.outline[(i + 1) % A.outline.length];
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const ux = (b[0] - a[0]) / len;
+        const uy = (b[1] - a[1]) / len;
+        for (const B of interior.rooms) {
+          if (B === A) continue;
+          B.outline.forEach((c, j) => {
+            if (kinds.get(B.id)![j].kind !== "wall") return;
+            const d = B.outline[(j + 1) % B.outline.length];
+            const off = (p: readonly number[]) =>
+              Math.abs((p[0] - a[0]) * uy - (p[1] - a[1]) * ux);
+            if (off(c) > 1e-3 || off(d) > 1e-3) return;
+            if ((d[0] - c[0]) * ux + (d[1] - c[1]) * uy >= 0) return;
+            const t = (p: readonly number[]) =>
+              (p[0] - a[0]) * ux + (p[1] - a[1]) * uy;
+            const t0 = Math.max(0, Math.min(t(c), t(d)));
+            const t1 = Math.min(len, Math.max(t(c), t(d)));
+            if (t1 - t0 < 0.05) return;
+            const m = (t0 + t1) / 2;
+            // Just inside each room at the overlap's middle.
+            const pa: [number, number] = [
+              a[0] + ux * m - uy * 0.01,
+              a[1] + uy * m + ux * 0.01,
+            ];
+            const pb: [number, number] = [
+              a[0] + ux * m + uy * 0.01,
+              a[1] + uy * m - ux * 0.01,
+            ];
+            const aLo = fz(A.id, ...pa) - 0.5;
+            const aHi = fz(A.id, ...pa) + 1.0;
+            const bLo = fz(B.id, ...pb);
+            const bHi = bLo + B.ceilingM;
+            if (Math.min(aHi, bHi) - Math.max(aLo, bLo) > 0.05)
+              bad.push(`${A.id} rail on ${B.id}'s wall at ${m.toFixed(1)}`);
+          });
+        }
+      });
+    expect(bad).toEqual([]);
+  });
+
   it("walls where rooms are stacked or level, balustrades beside a stair", () => {
     const kinds = edgeKinds(interior, spec);
     const edgeAt = (id: string, p: [number, number], q: [number, number]) => {
@@ -305,8 +432,8 @@ describe("the room kit", () => {
     // The C landing's after edge is open only at the flight's foot; either
     // side, under the A → B twin flights, it is closed (no holes there).
     expect(edgeAt("gs-c", [39, 1.5], [39, -1.5])).toBe("seam");
-    expect(edgeAt("gs-c", [39, 3], [39, 1.5])).not.toBe("seam");
-    expect(edgeAt("gs-c", [39, -1.5], [39, -3])).not.toBe("seam");
+    expect(edgeAt("gs-c", [39, 3], [39, 1.5])).toBe("wall");
+    expect(edgeAt("gs-c", [39, -1.5], [39, -3])).toBe("wall");
     // Under an A → B twin flight is nothing: its balustrade over the roped
     // flight carries a cheek down to the floor beside (no see-through
     // void under the stair); the A foyer's over the well has the B foyer

@@ -60,7 +60,16 @@ sRGB per finish (`RoomLook`), all under 1 (only glass glows, by `aGlow`).
   lamp in the room or a room open to it (a seam, a stair, the well; the
   dome's over the zone) by distance, facing and not through a wall (for a
   lamp through a doorway), darker into corners and toward the floor.
-  Pieces are lit per 0.3 m cell.
+  Pieces (furniture, flagged with `Layers.pieces`) are lit per 0.3 m
+  cell, as one, without the walls' corner darkening.
+- **Long halls in parts**: after the bake, a long hall's vertices move to
+  their part's slot (`segments`, slots after the rooms'), so each part's
+  lamps go by the water at its middle; the parts share the hall's level.
+- **Doorways** get a frame (oak, white or steel by the finish); the lift
+  car's opening its folded brass gates. A seam with no lintel between
+  ceilings at different heights (the third-class landing and its passage)
+  closes the step between them. A balustrade edge backed by another
+  zone's room on the same line is a wall instead (no z-fighting).
 
 **Inside wins**: while a room is drawn, an empty mesh drawn just before the
 rooms (`renderOrder` 9, the rooms 10) clears the depth, so her exterior's

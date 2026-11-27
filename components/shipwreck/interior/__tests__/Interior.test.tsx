@@ -1,6 +1,7 @@
 import { act, render } from "@testing-library/react";
-import { Group, Mesh, NoBlending, type Material } from "three";
-import { TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
+import { Vector3, Group, Mesh, NoBlending, type Material } from "three";
+import { lightSegments, TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
+import { floorZ, walkMapFor } from "@/lib/shipwreck/walk";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -43,8 +44,10 @@ beforeEach(() => {
 });
 afterEach(() => {
   // Interior renders nothing to the DOM: React has nothing to warn about.
-  expect(errors).not.toHaveBeenCalled();
+  // Restore first, so a failing assert never leaks the spy.
+  const calls = errors.mock.calls.slice();
   jest.restoreAllMocks();
+  expect(calls).toEqual([]);
 });
 
 function setup() {
@@ -196,5 +199,78 @@ describe("Interior", () => {
     expect(mat.uniforms.uTorchOn.value).toBeCloseTo(1, 5);
     const dir = mat.uniforms.uTorchDir.value as import("three").Vector3;
     expect(dir.length()).toBeCloseTo(1, 5);
+  });
+
+  it("puts Scotland Road's lamps out part by part as the water creeps aft", () => {
+    const { store, runtime } = setup();
+    act(() => store.getState().startWalk());
+    act(() => store.getState().seek(110 * 60));
+    runtime.frame = sampleTrack(track, store.getState().t);
+    const whole = new Group();
+    // Bow down 3°: the hall's forward end lower in the water.
+    whole.rotation.z = -0.05;
+    runtime.whole = { whole } as unknown as typeof runtime.whole;
+    runtime.walkRoom = "scotland-road";
+    const frame = mockFrames[mockFrames.length - 1];
+    const lv = runtime.interiorLevels!;
+    const sr = lv.slot.get("scotland-road")!;
+    const room = TITANIC_INTERIOR.rooms.find((r) => r.id === "scotland-road")!;
+    const parts = lightSegments(room);
+    // Parts' slots follow the rooms', in room order.
+    let first = TITANIC_INTERIOR.rooms.length;
+    for (const r of TITANIC_INTERIOR.rooms) {
+      if (r === room) break;
+      first += lightSegments(r).length;
+    }
+    // Its floor at the hall's middle, in the world: the water 0.3 m under it.
+    whole.updateMatrixWorld(true);
+    const mid = new Vector3(
+      27,
+      floorZ(walkMapFor("titanic")!, "scotland-road", 27, titanic, 4.3),
+      -4.3
+    ).applyMatrix4(whole.matrixWorld);
+    const level = mid.y - 0.3;
+    const group = mockScene.add.mock.calls[
+      mockScene.add.mock.calls.length - 1
+    ][0] as Group;
+    const shell = group.children.find(
+      (c) => c.name === "interior-e-deck-shell"
+    ) as Mesh;
+    const mat = shell.material as import("three").ShaderMaterial;
+    const power = mat.uniforms.uRoomPower.value as Float32Array;
+    const levels = mat.uniforms.uLevel.value as Float32Array;
+    const at = (x: number) => {
+      runtime.walkInfo = {
+        phase: "deck",
+        part: "whole",
+        x,
+        y: 4.3,
+        slopeDeg: 0,
+        depthM: -1,
+        area: "scotland-road",
+        inside: true,
+      };
+      for (let i = 0; i < 80; i += 1) {
+        lv.shown[sr] = level;
+        frame({ clock: { elapsedTime: 5 + i / 60 } }, 1 / 60);
+      }
+    };
+    at(-10);
+    const lit = parts.map((_, i) => power[first + i] > 0.5);
+    // Forward parts out, after parts lit, one change between them.
+    expect(lit[0]).toBe(false);
+    expect(lit[lit.length - 1]).toBe(true);
+    let changes = 0;
+    for (let i = 1; i < lit.length; i += 1)
+      if (lit[i] !== lit[i - 1]) changes += 1;
+    expect(changes).toBe(1);
+    // Each part sees the hall's level.
+    for (let i = 0; i < parts.length; i += 1)
+      expect(levels[first + i]).toBeCloseTo(levels[sr], 6);
+    // Standing in the lit after end: no torch. Up in the dark forward end:
+    // the torch comes on.
+    expect(mat.uniforms.uTorchOn.value).toBe(0);
+    at(64);
+    expect(mat.uniforms.uTorchOn.value).toBeGreaterThan(0.5);
   });
 });

@@ -101,7 +101,11 @@ from 0.3 to 0.6 m, and out from 0.6 m (the water reached the wiring).
 `torchOn(roomPower)` is true under 0.35: the torch comes on by itself.
 The scene reads the depth at the room's floor middle (a flight's head)
 and gives a dark room a little of a lit neighbour's light
-(`components/shipwreck/interior/README.md`).
+(`components/shipwreck/interior/README.md`). A hall longer than 12 m
+(`LONG_ROOM_M`: Scotland Road, the B deck corridor) has its lamps in parts
+of at most 8 m (`lightSegments`), each going out by the water at its own
+middle, so the dark creeps along the hall with the water; `segmentAt`
+finds the part a point (the walker, for the torch) is in.
 
 ## Adding a ship's rooms
 

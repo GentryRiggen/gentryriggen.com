@@ -17,6 +17,7 @@ import {
   interiorFor,
   roomPower,
   roomWaterTargets,
+  segmentAt,
   torchOn,
   type InteriorMap,
   type Room,
@@ -139,7 +140,8 @@ function build(
   if (TEST_HOOKS_ENABLED && process.env.NODE_ENV !== "test")
     console.info(`interior built in ${b.ms.toFixed(1)} ms`);
   const water = interiorWater(interior, spec);
-  const waterMats = waterMaterials(water.count);
+  // Slots: the rooms', then a long hall's lamp parts (kit `segments`).
+  const waterMats = waterMaterials(b.slots);
   // The rooms share the water's room power, levels, torch and time.
   const u = waterMats.surface.uniforms;
   const shared: SharedUniforms = {
@@ -151,7 +153,7 @@ function build(
     uTime: u.uTime,
   };
   const detail: Texture = detailTexture();
-  const mats = roomMaterials(water.count, shared, detail);
+  const mats = roomMaterials(b.slots, shared, detail);
   const glowMat = new MeshBasicMaterial({ vertexColors: true });
   const group = new Group();
   group.name = "interior";
@@ -212,6 +214,10 @@ function build(
   group.add(clear);
   const rooms: Room[] = [];
   for (const r of interior.rooms) rooms[water.slot.get(r.id)!] = r;
+  // A long hall's first part's slot (or -1): its lamps go by parts.
+  const firstPart = new Int32Array(water.count).fill(-1);
+  for (const seg of b.segments)
+    if (firstPart[seg.room] < 0) firstPart[seg.room] = seg.slot;
   const levels: InteriorLevels = {
     slot: water.slot,
     shown: new Float64Array(water.count).fill(-Infinity),
@@ -230,13 +236,16 @@ function build(
     water,
     waterMats,
     rooms,
+    firstPart,
     levels,
     /** Rooms eased this frame (scratch, reused). */
     now: new Uint8Array(water.count),
     target: roomWaterTargets(spec),
     compiled: false,
-    /** Each room's own lamps this frame (scratch). */
-    own: new Float32Array(water.count),
+    /** Each slot's own lamps this frame (scratch). */
+    own: new Float32Array(b.slots),
+    /** Each room's best lit neighbour this frame (scratch). */
+    spill: new Float32Array(water.count),
     /** How long the walker's room has been dim, or lit (s). */
     dimFor: 0,
     litFor: 0,
@@ -339,6 +348,11 @@ function InteriorScene({
       }
     }
     lv.drawn.set(now);
+    // A long hall's parts share its level.
+    for (let i = 0; i < b.segments.length; i += 1) {
+      const seg = b.segments[i];
+      if (now[seg.room]) levels[seg.slot] = levels[seg.room];
+    }
     b.waterMats.surface.uniforms.uTime.value = state.clock.elapsedTime;
 
     // The lights: each drawn room's from the ship's power and the water
@@ -356,6 +370,14 @@ function InteriorScene({
         m[1] * f[k * 3] + m[5] * f[k * 3 + 1] + m[9] * f[k * 3 + 2] + m[13];
       own[k] = roomPower(shipPower, lv.shown[k] - floorY, p.t);
     }
+    // A long hall's parts: each by the water over its own middle.
+    for (let i = 0; i < b.segments.length; i += 1) {
+      const { room: r, slot: k } = b.segments[i];
+      if (!now[r]) continue;
+      const floorY =
+        m[1] * f[k * 3] + m[5] * f[k * 3 + 1] + m[9] * f[k * 3 + 2] + m[13];
+      own[k] = roomPower(shipPower, lv.shown[r] - floorY, p.t);
+    }
     // A dark room still catches a little of a lit room open to it (down
     // a stair, through a doorway): never pitch black beside the light.
     for (let k = 0; k < now.length; k += 1) {
@@ -364,12 +386,23 @@ function InteriorScene({
       const nb = b.neighbours[k];
       for (let i = 0; i < nb.length; i += 1)
         if (now[nb[i]]) spill = Math.max(spill, own[nb[i]]);
+      b.spill[k] = spill;
       power[k] = Math.max(own[k], SPILL * spill);
+    }
+    for (let i = 0; i < b.segments.length; i += 1) {
+      const { room: r, slot: k } = b.segments[i];
+      if (now[r]) power[k] = Math.max(own[k], SPILL * b.spill[r]);
     }
     // The torch: on by itself in a dim room, held under the eyes, aimed
     // where they look.
     // Held a moment either way, so a flicker's dip does not blink it.
-    const k = room !== null ? b.slot.get(room) : undefined;
+    // In a long hall, the part the walker stands in.
+    const rk = room !== null ? b.slot.get(room) : undefined;
+    const info = runtime.walkInfo;
+    const k =
+      rk !== undefined && b.firstPart[rk] >= 0 && info
+        ? b.firstPart[rk] + segmentAt(b.rooms[rk], info.x, info.y)
+        : rk;
     const dim = k !== undefined && torchOn(power[k] * b.mats.flicker.value);
     const d = Math.min(dt, 0.1);
     b.dimFor = dim ? b.dimFor + d : 0;

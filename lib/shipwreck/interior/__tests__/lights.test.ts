@@ -1,4 +1,8 @@
+import { TITANIC_INTERIOR } from "../titanic";
 import {
+  LIGHT_SEGMENT_M,
+  lightSegments,
+  segmentAt,
   ROOM_DARK_AT_M,
   ROOM_FLICKER_FROM_M,
   TORCH_BELOW,
@@ -45,5 +49,64 @@ describe("torchOn", () => {
     expect(torchOn(0.34)).toBe(true);
     expect(torchOn(0.35)).toBe(false);
     expect(torchOn(1)).toBe(false);
+  });
+});
+
+describe("light segments (a long hall's lamps die by the water at each part)", () => {
+  const sr = TITANIC_INTERIOR.rooms.find((r) => r.id === "scotland-road")!;
+
+  it("cuts Scotland Road into about 8 m parts along its axis; short rooms are one", () => {
+    expect(LIGHT_SEGMENT_M).toBe(8);
+    const segs = lightSegments(sr);
+    const [p, q] = sr.axis!;
+    const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+    expect(segs.length).toBe(Math.ceil(len / LIGHT_SEGMENT_M));
+    // End to end, in order from the axis's start, each mid on the axis.
+    expect(segs[0].from).toBe(0);
+    expect(segs[segs.length - 1].to).toBeCloseTo(len, 9);
+    for (let i = 1; i < segs.length; i += 1)
+      expect(segs[i].from).toBeCloseTo(segs[i - 1].to, 9);
+    for (const s of segs) {
+      expect(s.to - s.from).toBeLessThanOrEqual(LIGHT_SEGMENT_M + 1e-9);
+      expect(s.mid[1]).toBeCloseTo(p[1], 9);
+    }
+    for (const r of TITANIC_INTERIOR.rooms) {
+      if (r.id === "scotland-road") continue;
+      // Only halls longer than LONG_ROOM_M are cut (no stair: its floor
+      // is a ramp, its lamps at its head).
+      const n = lightSegments(r).length;
+      if (n > 0) {
+        expect(r.ramp).toBeUndefined();
+        expect(r.axis).toBeDefined();
+      }
+    }
+    expect(
+      lightSegments(TITANIC_INTERIOR.rooms.find((r) => r.id === "suite-1")!)
+    ).toEqual([]);
+  });
+
+  it("finds the part a point is in, clamped to the ends", () => {
+    const segs = lightSegments(sr);
+    const [p, q] = sr.axis!;
+    expect(segmentAt(sr, p[0], p[1])).toBe(0);
+    expect(segmentAt(sr, q[0], q[1])).toBe(segs.length - 1);
+    expect(segmentAt(sr, p[0] + 100, p[1])).toBe(0);
+    expect(segmentAt(sr, q[0] - 100, q[1])).toBe(segs.length - 1);
+    for (let i = 0; i < segs.length; i += 1)
+      expect(segmentAt(sr, segs[i].mid[0], 4.3)).toBe(i);
+  });
+
+  it("puts the forward lamps out first as the water creeps aft", () => {
+    // Water over each part's middle with her bow down: deeper forward.
+    const segs = lightSegments(sr);
+    const depth = (x: number) => 0.9 - (70 - x) * 0.02; // 0.9 m at x 70
+    const lit = segs.map((s) => roomPower(1, depth(s.mid[0]), 0) > 0);
+    // Out at the forward end, lit at the after end, one change between.
+    expect(lit[0]).toBe(false);
+    expect(lit[lit.length - 1]).toBe(true);
+    let changes = 0;
+    for (let i = 1; i < lit.length; i += 1)
+      if (lit[i] !== lit[i - 1]) changes += 1;
+    expect(changes).toBe(1);
   });
 });
