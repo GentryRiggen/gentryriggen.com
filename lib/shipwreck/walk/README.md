@@ -135,11 +135,18 @@ exactly as before.
     (1.5 m) of the nearest one you are heading toward, and within
     `DOOR_ASSIST_DEG` (40°) of straight through it (full to 30°), up to
     `DOOR_ASSIST_SHARE` (half) of the sideways part bends toward its centre
-    line (aiming 0.5 m past it). Walking by a doorway in a hall's side
-    (40° → `DOOR_PASS_DEG` 60° or more off straight through), the part
-    toward it fades out, so a corridor walk scraping one wall does not
-    fall into the suites (a ruling: the spec's corridor test at ±20–30°
-    needs it).
+    line (aiming 0.5 m past it). **Pass-by**: walking by a doorway in a
+    hall's side, the part of the walk toward it goes when the walk's line
+    misses the opening (fully once it misses by `DOOR_PASS_MISS_M`, 0.3 m,
+    past the jamb), or whatever the line once the walk is within 15° of the
+    hall (`DOOR_PASS_DEG`, 75° off straight through, fading in over 10°).
+    So aiming at a door always goes in (ruling: a child aiming at a door
+    must get in), and a walk scraping the wall beside it stays in the
+    hall. Both rules fade in over the last `DOOR_ASSIST_FADE_M` (0.4 m) of
+    reach, so neither kinks the walk when a doorway comes in reach. A
+    corridor walk at ±30° toward the doors' wall may end in the first
+    door (its line meets the opening once it scrapes the wall); ±20° and
+    less walks on past them (the hall assist turns it to within 15°).
   - **Wall slide keeps speed**: after a move, if the body slid (walls,
     jambs or furniture) to under `SLIDE_KEEP` (0.75) of the stick's move
     while the stick is within `SLIDE_KEEP_DEG` (60°) of the slide, it
@@ -182,7 +189,8 @@ All in `types.ts`: `WALK_EYE_M` 1.6, `WALK_IN_WATER_DEPTH_M` 1.0, `WALK_KNEE_DEP
 (the knee), and inside: `WALK_INSIDE_EASE_S` 0.15, `SLIDE_KEEP` 0.75 within
 `SLIDE_KEEP_DEG` 60, `HALL_SNAP_DEG` 10, `HALL_FADE_DEG` 25,
 `DOOR_ASSIST_M` 1.5, `DOOR_ASSIST_DEG` 40, `DOOR_ASSIST_SHARE` 0.5,
-`DOOR_PASS_DEG` 60, `WALK_WADE_STOP_M` 0.8; `SWIM_SPEED_MS` 2 in
+`DOOR_PASS_DEG` 75, `DOOR_PASS_MISS_M` 0.3, `DOOR_ASSIST_FADE_M` 0.4,
+`WALK_WADE_STOP_M` 0.8; `SWIM_SPEED_MS` 2 in
 `swim.ts`. They are tuning: change them here and the tests say what moved.
 
 ## Where the rest lives

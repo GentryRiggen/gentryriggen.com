@@ -5,9 +5,11 @@ import {
   areaById,
   blockersIn,
   DOOR_ASSIST_DEG,
+  DOOR_ASSIST_FADE_M,
   DOOR_ASSIST_M,
   DOOR_ASSIST_SHARE,
   DOOR_PASS_DEG,
+  DOOR_PASS_MISS_M,
   doorsOf,
   floorZ,
   HALL_FADE_DEG,
@@ -513,9 +515,10 @@ function hallAssist(axis: readonly [V2, V2]): void {
  * The door funnel. Within DOOR_ASSIST_M of a doorway and heading within
  * DOOR_ASSIST_DEG of straight through it, up to DOOR_ASSIST_SHARE of the
  * sideways part bends toward the doorway's centre line. Walking by a
- * doorway in a hall's side (heading DOOR_PASS_DEG or more off straight
- * through, fading in from DOOR_ASSIST_DEG), the part toward it goes, so the
- * hall keeps you straight.
+ * doorway in a hall's side, the part toward it goes when the walk's line
+ * misses the opening, or when the walk is within 15° of the hall
+ * (DOOR_PASS_DEG off straight through): aiming at the doorway goes in, a
+ * walk scraping the wall beside it stays in the hall.
  */
 function doorFunnel(map: WalkMap, area: WalkArea, x: number, y: number): void {
   const doors = doorsOf(map, area.id);
@@ -537,13 +540,17 @@ function doorFunnel(map: WalkMap, area: WalkArea, x: number, y: number): void {
   const a = dir.x * d.nx + dir.y * d.ny; // through it
   const b = dir.x * d.tx + dir.y * d.ty; // sideways
   const off = Math.acos(clamp(a, -1, 1)) / DEG;
+  // Full strength inside the last DOOR_ASSIST_FADE_M of reach, so neither
+  // rule kinks the walk the moment a doorway comes in reach.
+  const reach = clamp((DOOR_ASSIST_M - bestDist) / DOOR_ASSIST_FADE_M, 0, 1);
   let na = a;
   let nb = b;
   if (off < DOOR_ASSIST_DEG) {
     const share =
-      off <= DOOR_FULL_DEG
+      reach *
+      (off <= DOOR_FULL_DEG
         ? 1
-        : (DOOR_ASSIST_DEG - off) / (DOOR_ASSIST_DEG - DOOR_FULL_DEG);
+        : (DOOR_ASSIST_DEG - off) / (DOOR_ASSIST_DEG - DOOR_FULL_DEG));
     // Aim a little past the centre: the sideways part of that aim.
     const vx = d.cx + d.nx * DOOR_AIM_PAST_M - x;
     const vy = d.cy + d.ny * DOOR_AIM_PAST_M - y;
@@ -551,11 +558,14 @@ function doorFunnel(map: WalkMap, area: WalkArea, x: number, y: number): void {
     const want = vl > EPS ? (vx * d.tx + vy * d.ty) / vl : 0;
     nb = b - DOOR_ASSIST_SHARE * share * (b - want);
   } else if (d.side) {
-    const share = clamp(
-      (off - DOOR_ASSIST_DEG) / (DOOR_PASS_DEG - DOOR_ASSIST_DEG),
-      0,
-      1
-    );
+    // Where the walk's line meets the doorway's line, from its centre.
+    const ahead = (d.cx - x) * d.nx + (d.cy - y) * d.ny;
+    const hit = (x - d.cx) * d.tx + (y - d.cy) * d.ty + (b * ahead) / a;
+    const miss = clamp((Math.abs(hit) - d.half) / DOOR_PASS_MISS_M, 0, 1);
+    const byLine = miss * clamp((off - DOOR_ASSIST_DEG) / 10, 0, 1);
+    const byAngle = clamp((off - (DOOR_PASS_DEG - 10)) / 10, 0, 1);
+    const share = reach * Math.max(byLine, byAngle);
+    if (share <= 0) return;
     na = a * (1 - share);
   } else return;
   const nx = na * d.nx + nb * d.tx;

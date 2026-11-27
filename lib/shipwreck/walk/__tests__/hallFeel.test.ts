@@ -10,6 +10,7 @@ import {
   type WalkInput,
 } from "../step";
 import {
+  doorsOf,
   floorZ,
   insideBlocker,
   pointInPolygon,
@@ -128,6 +129,28 @@ function roomAcross(id: string, p: V2): string | null {
   return best;
 }
 
+/** A hall's side doorways (from inside it) and the room each opens into. */
+function sideDoors(id: string) {
+  return doorsOf(map, id)
+    .filter((d) => d.side)
+    .map((d) => {
+      const seam = seams.find(
+        (s) =>
+          (s.a === id || s.b === id) &&
+          Math.abs((s.at[0][0] + s.at[1][0]) / 2 - d.cx) < 1e-6 &&
+          Math.abs((s.at[0][1] + s.at[1][1]) / 2 - d.cy) < 1e-6
+      );
+      if (!seam) throw new Error(`no seam for a door of ${id}`);
+      return { d, to: seam.a === id ? seam.b : seam.a };
+    });
+}
+
+/**
+ * Ruling (Gentry via the controller, 2026-11-27): a child aiming at a door
+ * must get in. So a corridor walk at ±30° toward the wall with side doors
+ * may end in the first of them (its line meets the opening once it scrapes
+ * that wall); 0°, ±10° and ±20° must still walk the corridor end to end.
+ */
 describe("corridors end to end, view turned off the axis", () => {
   const corridors = rooms.filter(
     (a) => a.axis && (a.kind === "corridor" || a.kind === "passage")
@@ -155,11 +178,17 @@ describe("corridors end to end, view turned off the axis", () => {
           const progress: number[] = [];
           let worstWindow = Infinity;
           const W = Math.round(0.5 / DT);
+          const sideRooms = new Set(sideDoors(c.id).map((x) => x.to));
+          let wentIn = false;
           const run = bot(
             { ...walker(c.id, start, yaw), moveShare: 0 },
             FORWARD,
             limit,
             (r) => {
+              if (sideRooms.has(r.state.area)) {
+                wentIn = true;
+                return true;
+              }
               const p = (r.state.x - a[0]) * ux + (r.state.y - a[1]) * uy;
               progress.push(p);
               const n = progress.length;
@@ -168,6 +197,12 @@ describe("corridors end to end, view turned off the axis", () => {
               return p >= goal;
             }
           );
+          if (wentIn && Math.abs(off) === 30) {
+            // Allowed by the ruling: it went in by a side door, steadily.
+            expect(run.outside).toBe(0);
+            expect(run.r.state.yaw).toBe(yaw);
+            return;
+          }
           expect({
             arrived: progress[progress.length - 1] >= goal,
             yawKept: run.r.state.yaw,
@@ -181,7 +216,74 @@ describe("corridors end to end, view turned off the axis", () => {
   }
 });
 
-describe("doorways from 1 m either side, aimed within ±30°", () => {
+/**
+ * The spec's door case: a child up the corridor turns to the door and
+ * pushes. From 1 m and 1.5 m along the hall either side of each side
+ * doorway, on the centre line, aimed at its centre plus an error (+ is
+ * steeper at the door, − is toward the hall's axis). Every aim whose line
+ * meets the opening goes through within 1.5 s. Aims within 15° of the hall
+ * (1 m: −20°, −30°; 1.5 m: −10° and beyond) miss the opening and are walks
+ * down the corridor: the hall assist and pass-by keep those in the hall.
+ */
+describe("side doorways from up the corridor, aimed at the door", () => {
+  const halls = rooms.filter((a) => a.axis && sideDoors(a.id).length > 0);
+  it("covers the B deck suites and the E deck lobby", () => {
+    expect(halls.map((h) => h.id).sort()).toEqual([
+      "b-corridor",
+      "scotland-road",
+    ]);
+  });
+  const GRID: readonly [dist: number, errs: readonly number[]][] = [
+    [1, [-10, 0, 10, 20, 30]],
+    [1.5, [0, 10, 20, 30]],
+  ];
+  for (const hall of halls) {
+    for (const { d, to } of sideDoors(hall.id)) {
+      it(`${hall.id} → ${to}`, () => {
+        const [a0, a1] = hall.axis!;
+        const [ux, uy] = unit(a0, a1);
+        const u0 = (d.cx - a0[0]) * ux + (d.cy - a0[1]) * uy;
+        const missed: string[] = [];
+        let passed = 0;
+        for (const [dist, errs] of GRID) {
+          for (const side of [-1, 1]) {
+            const p: V2 = [
+              a0[0] + ux * (u0 + side * dist),
+              a0[1] + uy * (u0 + side * dist),
+            ];
+            const bearing = Math.atan2(d.cy - p[1], d.cx - p[0]);
+            // Which way is "steeper at the door" from this side.
+            const back = Math.atan2(-side * uy, -side * ux);
+            const steeper = Math.sign(
+              Math.sin(bearing - back) // bearing turned off the axis
+            );
+            for (const err of [...errs, -30]) {
+              const yaw = bearing + steeper * err * DEG;
+              const run = bot(
+                { ...walker(hall.id, p, yaw), moveShare: 0 },
+                FORWARD,
+                1.5,
+                (r) => r.state.area === to
+              );
+              const inside = run.r.state.area === to;
+              if (run.outside > 0)
+                missed.push(`${dist} ${side} ${err} outside`);
+              if (err === -30) {
+                // Down the corridor, not at the door: it stays in the hall.
+                if (inside) missed.push(`${dist} ${side} ${err} went in`);
+              } else if (inside) passed += 1;
+              else missed.push(`${dist} ${side} ${err} missed`);
+            }
+          }
+        }
+        expect(missed).toEqual([]);
+        expect(passed).toBe(18);
+      });
+    }
+  }
+});
+
+describe("doorways from 1 m straight out either side, aimed within ±30°", () => {
   const DOOR_KINDS = new Set(["corridor", "cabin"]);
   const doorways = seams.filter(
     (s) =>
@@ -388,17 +490,33 @@ describe("a seeded random walk in every zone", () => {
       let stuck = 0;
       let worstFloor = 0;
       let insideSteps = 0;
+      let picks = 0;
+      let lastPick = 0;
+      let stops = 0;
       for (let i = 0; i < Math.round(120 / DT); i += 1) {
         const t = i * DT;
         const n = hist.length;
         // A child: a new direction every 0.4–1.2 s, or sooner when stopped.
+        // Stopped for 0.5 s since the last new direction (so a real trap
+        // gets six fresh directions in 3 s and still fails "stuck").
         const stopped =
+          t - lastPick >= 0.5 &&
           n > W05 &&
           Math.hypot(s.x - hist[n - W05][0], s.y - hist[n - W05][1]) < 0.15;
+        if (stopped) stops += 1;
         if (t >= next || stopped) {
-          s = { ...s, yaw: rand() * 2 * Math.PI };
+          picks += 1;
+          lastPick = t;
+          // Stopped: turn away (within 90° of straight back), as a child
+          // would; so only a real trap can hold the walker for 3 s.
+          s = {
+            ...s,
+            yaw: stopped
+              ? s.yaw + Math.PI + (rand() - 0.5) * Math.PI
+              : rand() * 2 * Math.PI,
+          };
           const m = 0.5 + 0.5 * rand();
-          const side = rand() < 0.25 ? (rand() - 0.5) * 1.2 : 0;
+          const side = !stopped && rand() < 0.25 ? (rand() - 0.5) * 1.2 : 0;
           input = { forward: m, strafe: side, lookDx: 0, lookDy: 0 };
           next = t + 0.4 + 0.8 * rand();
         }
@@ -428,6 +546,9 @@ describe("a seeded random walk in every zone", () => {
         }
       }
       expect({ outside, stuck }).toEqual({ outside: 0, stuck: 0 });
+      // Re-aims forced by being stopped stay rare (walls and corners, not
+      // traps): otherwise the 3 s check above could hide a sticky spot.
+      expect(stops / picks).toBeLessThan(0.25);
       expect(worstFloor).toBeLessThanOrEqual(0.1);
       expect(insideSteps).toBeGreaterThan(Math.round(60 / DT));
     });

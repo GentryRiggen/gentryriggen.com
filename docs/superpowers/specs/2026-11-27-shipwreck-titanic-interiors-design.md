@@ -246,7 +246,9 @@ All in `stepWalker`, interior areas only, as named constants in
    along the wall, so pushing 30° into a wall loses half your speed and
    feels sticky. Inside, the slid motion is scaled back up to at least
    `SLIDE_KEEP` (0.75) of the stick's speed when the stick is within 60° of
-   the wall's direction. Pushing straight into a wall still stops you.
+   the wall's direction, fading linearly to nothing from 60° to 90° (no
+   speed cliff at 60°). Pushing straight into a wall still stops you. It is
+   measured after the move, so it covers furniture and jambs too.
 3. **Hall assist.** In a room with an `axis`, a stick within 25° of the
    axis is steered onto it (fully within 10°, fading out at 25°), so a
    corridor walk does not zig-zag or scrape. Only the walk direction is
@@ -255,9 +257,22 @@ All in `stepWalker`, interior areas only, as named constants in
    and a room) and heading within 40° of it, the walk direction bends
    toward the doorway's centre line (up to half the sideways part), so a
    child aiming roughly at a door goes through it instead of catching on
-   the jamb.
-5. **No corner traps.** The kit chamfers reflex corners and the body's
-   push-out uses the inward normal (as now), so no spot holds the walker.
+   the jamb (full to 30°, fading out at 40°, and over the last 0.4 m of
+   reach). Doorways are seams with a `corridor` or `cabin` either side.
+   **Pass-by** (built in Task 4, a ruling: a child aiming at a door must
+   get in): walking by a doorway in a hall's side, the part of the walk
+   toward it goes only when the walk's line misses the opening (fully
+   0.3 m past the jamb, `DOOR_PASS_MISS_M`) or the walk is within 15° of
+   the hall (`DOOR_PASS_DEG` 75° off straight through). Aiming at the door
+   goes in; scraping the wall beside it stays in the hall.
+5. **No corner traps.** The kit chamfers reflex corners. Inside, where the
+   body's nearest point on a wall is that wall's end (a doorway's jamb, a
+   seam-end corner the kit kept unchamfered, as at the A and B foyers'
+   twin-flight landings), the push-out is straight away from that end
+   point (disc against segment end), so the walker rolls round it. The
+   inward normal there acts as if the wall went on past its end and holds
+   the walker shuddering at a kept corner. The deck keeps the inward
+   normal.
 6. **Deep water is a wall.** A move into water deeper than 0.8 m
    (`WALK_WADE_STOP_M`) that is deeper than where you stand is refused, one
    axis at a time, so you still slide along the water's edge. You can wade
@@ -268,13 +283,25 @@ lane): a bot holds the stick and walks the real Titanic interior.
 
 - Every corridor end to end with the view turned 0°, ±10°, ±20° and ±30°
   off the axis: arrives within its length ÷ (0.8 × inside speed) + 1 s, and
-  never spends 0.5 s with under 0.5 m of progress.
-- Every doorway from 1 m along the corridor either side, aimed within ±30°
-  of it: through within 1.5 s.
+  never spends 0.5 s with under 0.5 m of progress. At ±30° toward the wall
+  with side doors it may instead go in by the first of them (the ruling
+  above).
+- Every side doorway from 1 m along the corridor either side, aimed at it
+  within −10°..+30° (and from 1.5 m, 0°..+30°; + is steeper at the door):
+  through within 1.5 s. Aims nearer the corridor's axis than that miss the
+  opening and are walks down the corridor (the hall assist governs); at
+  −30° the walker stays in the hall. Every doorway also from 1 m straight
+  out either side within ±30°, crossing clear of the jambs.
+- Every reflex corner probed at ±20° and ±40°, and pushed square into and
+  backed out of.
 - Every flight up and down: the floor under the walker never changes by
   more than 0.1 m in a substep, and the walker stays inside some room.
-- A random walk (seeded, 2 minutes of turning and pushing) in every zone:
-  never outside every outline, never stuck for 3 s.
+- A random walk (seeded, 2 minutes of turning and pushing; a stopped
+  walker turns away after 0.5 s) in every zone: never outside every
+  outline, never stuck for 3 s, under a quarter of new directions forced
+  by stopping.
+- Deep water as a wall: the edge holds, sliding along it moves, and
+  wading in deep water still moves.
 
 ### Rendering (`components/shipwreck/interior/`)
 

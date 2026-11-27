@@ -134,11 +134,18 @@ export const DOOR_ASSIST_DEG = 40;
 /** ...up to this share of the sideways part bends toward its centre line. */
 export const DOOR_ASSIST_SHARE = 0.5;
 /**
- * Walking by a doorway in the side of a hall: a stick this far or more off
- * the doorway's straight-through line (°) loses its part toward the
- * doorway (fading in from DOOR_ASSIST_DEG), so the hall keeps you straight.
+ * Walking by a doorway in the side of a hall, the part of the walk toward
+ * it goes, so a corridor walk scraping that wall stays in the corridor:
+ * when the walk's line misses the opening (by DOOR_PASS_MISS_M for the
+ * full effect), or whatever the line, once the walk is this far or more
+ * off straight through (°; within 15° of the hall, fading in over 10°).
+ * Aiming at the doorway itself always goes in (fun over realism).
  */
-export const DOOR_PASS_DEG = 60;
+export const DOOR_PASS_DEG = 75;
+/** How far past a doorway's jamb the walk's line must miss for pass-by (m). */
+export const DOOR_PASS_MISS_M = 0.3;
+/** The funnel and pass-by fade in over the last of DOOR_ASSIST_M (m). */
+export const DOOR_ASSIST_FADE_M = 0.4;
 /** A move into water deeper than this, and deeper than here, is refused (m). */
 export const WALK_WADE_STOP_M = 0.8;
 
