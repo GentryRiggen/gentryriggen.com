@@ -1,21 +1,45 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import Image from "next/image";
-import AsciiArt from "./AsciiArt";
-import CommandBlock from "./CommandBlock";
-import Hobbies from "./Hobbies";
-import { SKILLS, SOCIAL_LINKS } from "./constants";
+import {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react";
+import usePrefersReducedMotion from "@/components/game-kit/usePrefersReducedMotion";
+import About from "./About";
 import InteractivePrompt from "./InteractivePrompt";
+import Bio from "./Bio";
+import Links from "./Links";
+import Skills from "./Skills";
+import Whoami from "./Whoami";
+import SideProjects from "./SideProjects";
+import { SPINNER_VERBS } from "./Spinner";
+import Spinner from "./Spinner";
 import TerminalWindow from "./TerminalWindow";
+import ToolCall from "./ToolCall";
+import WelcomeBox from "./WelcomeBox";
+import { GAMES } from "./games";
 
-/** Delay before the first command starts typing after MOTD appears */
-const INITIAL_COMMAND_DELAY = 600;
-/** Delay between each subsequent command */
-const INTER_COMMAND_DELAY = 400;
+/** How long the spinner thinks before the first and each later tool call */
+const FIRST_STEP_DELAY = 900;
+const STEP_DELAY = 650;
 
-/** Number of scripted boot commands; the prompt appears after the last one */
-const BOOT_COMMAND_COUNT = 5;
+interface BootStep {
+  tool: string;
+  arg: string;
+  content: ReactNode;
+}
+
+const BOOT_STEPS: readonly BootStep[] = [
+  { tool: "Bash", arg: "whoami", content: <Whoami /> },
+  { tool: "Read", arg: "bio.txt", content: <Bio /> },
+  { tool: "Read", arg: "about.txt", content: <About /> },
+  { tool: "Bash", arg: "ls ~/side-projects/", content: <SideProjects /> },
+  { tool: "Read", arg: "skills.md", content: <Skills /> },
+  { tool: "Read", arg: "links.txt", content: <Links /> },
+];
 
 interface TerminalProps {
   onKill?: () => void;
@@ -30,12 +54,22 @@ export default function Terminal({
   onFullscreen,
   isFullscreen,
 }: TerminalProps) {
-  const [visibleCommands, setVisibleCommands] = useState(0);
-  const [showMotd, setShowMotd] = useState(false);
-  const [isBootComplete, setIsBootComplete] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
+  const [stepsShown, setStepsShown] = useState(0);
+  const [isSkipped, setIsSkipped] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isCleared, setIsCleared] = useState(false);
+  const startedAtRef = useRef(0);
+  /** A key skipped the boot: focus the input once it exists. */
+  const focusWhenReadyRef = useRef(false);
+  /** The printable key that skipped the boot, so it isn't lost. */
+  const [seedInput, setSeedInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const visibleSteps =
+    isSkipped || reducedMotion ? BOOT_STEPS.length : stepsShown;
+  const isBootComplete = visibleSteps >= BOOT_STEPS.length;
 
   const scrollToBottom = useCallback(() => {
     if (typeof bottomRef.current?.scrollIntoView === "function") {
@@ -43,32 +77,74 @@ export default function Terminal({
     }
   }, []);
 
-  const handleWindowClick = useCallback(() => {
-    inputRef.current?.focus();
+  useEffect(() => {
+    startedAtRef.current = Date.now();
   }, []);
 
-  // Show MOTD after a small delay to simulate boot
+  // Reveal one tool call at a time, with the spinner thinking in between.
   useEffect(() => {
-    const timeout = setTimeout(() => setShowMotd(true), 300);
+    if (isBootComplete) return;
+    const timeout = setTimeout(
+      () => setStepsShown((n) => n + 1),
+      stepsShown === 0 ? FIRST_STEP_DELAY : STEP_DELAY
+    );
     return () => clearTimeout(timeout);
-  }, []);
+  }, [stepsShown, isBootComplete]);
+
+  // Any key skips the boot; the listener goes once the prompt is up.
+  useEffect(() => {
+    if (isBootComplete) return;
+    const skip = (e: KeyboardEvent) => {
+      // Navigation, shortcuts and keys meant for a control (the theme menu,
+      // a link) shouldn't skip.
+      if (
+        e.key === "Tab" ||
+        e.key === "Shift" ||
+        e.key === "Escape" ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey
+      ) {
+        return;
+      }
+      if (
+        e.target instanceof Element &&
+        e.target.closest("button, a, input, select, textarea")
+      ) {
+        return;
+      }
+      if (e.key.length === 1 && e.key !== " ") {
+        e.preventDefault();
+        setSeedInput(e.key);
+      }
+      focusWhenReadyRef.current = true;
+      setIsSkipped(true);
+    };
+    window.addEventListener("keydown", skip);
+    return () => window.removeEventListener("keydown", skip);
+  }, [isBootComplete]);
+
+  useEffect(() => {
+    if (!isBootComplete) return;
+    if (focusWhenReadyRef.current) {
+      focusWhenReadyRef.current = false;
+      inputRef.current?.focus();
+    }
+    setElapsedSeconds(
+      Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000))
+    );
+  }, [isBootComplete]);
 
   // Auto-scroll as boot content appears
   useEffect(() => {
     scrollToBottom();
-  }, [showMotd, visibleCommands, isBootComplete, scrollToBottom]);
+  }, [visibleSteps, scrollToBottom]);
 
-  const advanceCommand = useCallback(() => {
-    setVisibleCommands((prev) => {
-      const next = prev + 1;
-      // When the last boot command completes, mark boot as done so the
-      // interactive prompt appears.
-      if (next >= BOOT_COMMAND_COUNT) {
-        // Use a microtask to avoid setting state during render
-        queueMicrotask(() => setIsBootComplete(true));
-      }
-      return next;
-    });
+  // A tap during boot only skips: focusing would pop the phone keyboard
+  // over what it just revealed. Once the prompt is up, a tap focuses it.
+  const handleWindowClick = useCallback(() => {
+    setIsSkipped(true);
+    inputRef.current?.focus();
   }, []);
 
   /** Called by InteractivePrompt when the user runs `clear` */
@@ -76,164 +152,64 @@ export default function Terminal({
     setIsCleared(true);
   }, []);
 
-  // When cleared, hide the boot sequence output and show only the interactive prompt
-  const showBootContent = !isCleared;
-
   return (
     <TerminalWindow
-      title="gentry@portfolio ~ (bash)"
+      title="✻ claude — ~/gentry"
       onClick={handleWindowClick}
       onKill={onKill}
       onMinimize={onMinimize}
       onFullscreen={onFullscreen}
       isFullscreen={isFullscreen}
     >
-      {/* Boot / MOTD */}
-      {showBootContent && showMotd && (
-        <div className="mb-6 animate-fadeIn">
-          <AsciiArt />
-          <p className="mt-3 text-gray-500 dark:text-green-500/60 text-xs">
-            Welcome to Gentry Riggen&apos;s portfolio terminal v1.0.0
-          </p>
-          <p className="text-gray-500 dark:text-green-500/60 text-xs">
-            Last login:{" "}
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </p>
-          <div className="mt-2 mb-4 border-t border-gray-300 dark:border-green-500/20" />
-        </div>
-      )}
+      {!isCleared && (
+        <>
+          <WelcomeBox />
 
-      {/* Command 1: whoami */}
-      {showBootContent && showMotd && (
-        <CommandBlock
-          command="whoami"
-          startDelay={INITIAL_COMMAND_DELAY}
-          onComplete={advanceCommand}
-        >
-          <div className="flex flex-col sm:flex-row gap-4 items-start">
-            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-green-500/40 shrink-0">
-              <Image
-                src="/gentry-riggen_web Medium.jpeg"
-                alt="Gentry Riggen"
-                width={80}
-                height={80}
-                unoptimized
-                className="object-cover w-full h-full"
-              />
-            </div>
-            <div>
-              <p className="text-green-600 dark:text-green-400 font-bold text-lg">
-                Gentry Riggen
-              </p>
-              <p className="text-amber-600 dark:text-amber-400">
-                Software Leader & Developer
+          <p className="mb-5 text-term-fg">
+            <span className="text-term-muted select-none">&gt; </span>
+            who is gentry riggen?
+          </p>
+
+          {BOOT_STEPS.slice(0, visibleSteps).map((step) => (
+            <ToolCall key={step.arg} tool={step.tool} arg={step.arg}>
+              {step.content}
+            </ToolCall>
+          ))}
+
+          {!isBootComplete && (
+            <Spinner
+              verb={SPINNER_VERBS[visibleSteps % SPINNER_VERBS.length]}
+            />
+          )}
+
+          {isBootComplete && (
+            <div className="animate-fadeIn">
+              <div className="mb-2 flex gap-2">
+                <span className="text-term-fg select-none" aria-hidden="true">
+                  ⏺
+                </span>
+                <p className="text-term-fg">
+                  A software leader who still ships: {GAMES.length} games deep
+                  for two very demanding QA testers. Want to work together? Type{" "}
+                  <span className="text-term-accent">hire me</span>.
+                </p>
+              </div>
+              <p className="mb-5 text-term-muted">
+                <span className="text-term-accent">✻</span> Brewed for{" "}
+                {elapsedSeconds}s
               </p>
             </div>
-          </div>
-        </CommandBlock>
+          )}
+        </>
       )}
 
-      {/* Command 2: cat bio.txt */}
-      {showBootContent && visibleCommands >= 1 && (
-        <CommandBlock
-          command="cat bio.txt"
-          startDelay={INTER_COMMAND_DELAY}
-          onComplete={advanceCommand}
-        >
-          <p className="whitespace-pre-wrap leading-relaxed">
-            🚀 I build products and lead teams using React, Next.js, Node.js,
-            TypeScript, Tailwind CSS, Postgres, Prisma, GraphQL, Docker,
-            Terraform, GitHub Actions, and more. These days I&apos;m focused on
-            leading projects and empowering teams to ship exceptional work —
-            while still getting my hands dirty with code. 💻
-          </p>
-        </CommandBlock>
-      )}
-
-      {/* Command 3: cat hobbies.txt */}
-      {showBootContent && visibleCommands >= 2 && (
-        <CommandBlock
-          command="cat hobbies.txt"
-          startDelay={INTER_COMMAND_DELAY}
-          onComplete={advanceCommand}
-        >
-          <Hobbies />
-        </CommandBlock>
-      )}
-
-      {/* Command 4: ls -la skills/ */}
-      {showBootContent && visibleCommands >= 3 && (
-        <CommandBlock
-          command="ls -la skills/"
-          startDelay={INTER_COMMAND_DELAY}
-          onComplete={advanceCommand}
-        >
-          <div className="space-y-2">
-            {SKILLS.map((group) => (
-              <div key={group.category} className="flex flex-wrap gap-x-1">
-                <span className="text-amber-600 dark:text-amber-400 w-28 shrink-0">
-                  {group.category}/
-                </span>
-                <span className="text-gray-600 dark:text-gray-400">
-                  {group.items.map((item, i) => (
-                    <span key={item}>
-                      <span className="text-green-600 dark:text-green-300">
-                        {item}
-                      </span>
-                      {i < group.items.length - 1 && (
-                        <span className="text-gray-400 dark:text-gray-600">
-                          {" | "}
-                        </span>
-                      )}
-                    </span>
-                  ))}
-                </span>
-              </div>
-            ))}
-          </div>
-        </CommandBlock>
-      )}
-
-      {/* Command 5: cat links.txt */}
-      {showBootContent && visibleCommands >= 4 && (
-        <CommandBlock
-          command="cat links.txt"
-          startDelay={INTER_COMMAND_DELAY}
-          onComplete={advanceCommand}
-        >
-          <div className="space-y-1">
-            {SOCIAL_LINKS.map((link) => (
-              <div key={link.label} className="flex items-center gap-2">
-                <span className="text-amber-600 dark:text-amber-400 w-12">
-                  [{link.icon}]
-                </span>
-                <a
-                  href={link.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-green-600 dark:text-green-300 underline underline-offset-2 decoration-green-500/40 hover:decoration-green-500 hover:text-green-500 dark:hover:text-green-200 transition-colors"
-                >
-                  {link.url}
-                </a>
-              </div>
-            ))}
-          </div>
-        </CommandBlock>
-      )}
-
-      {/* Interactive prompt — replaces the static BlinkingCursor */}
       {isBootComplete && (
         <div className="animate-fadeIn">
           <InteractivePrompt
             onClear={handleClear}
             inputRef={inputRef}
             onContentChange={scrollToBottom}
+            initialInput={seedInput}
           />
         </div>
       )}

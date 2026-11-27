@@ -11,6 +11,8 @@ import {
 } from "react";
 import confetti from "canvas-confetti";
 import { getCommandResponse } from "./commandResponses";
+import { GAMES } from "./games";
+import { useTerminalTheme } from "./terminalTheme";
 import { navigateTo } from "./navigate";
 
 /** Gives the visitor a moment to read the output before navigating away */
@@ -34,6 +36,8 @@ interface InteractivePromptProps {
   inputRef?: React.RefObject<HTMLInputElement | null>;
   /** Called when new output is added so parent can scroll */
   onContentChange?: () => void;
+  /** Text to start the input with (the key that skipped the boot) */
+  initialInput?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -41,8 +45,11 @@ interface InteractivePromptProps {
 // ---------------------------------------------------------------------------
 
 const HINT_COMMANDS = [
-  "help",
+  "games",
   "hire me",
+  "/help",
+  "claude",
+  "/theme",
   "cowsay",
   "skills",
   "whoami",
@@ -55,6 +62,9 @@ const HINT_COMMANDS = [
   "party",
 ];
 
+/** Tappable suggestions under the input, for visitors who won't type. */
+const SUGGESTIONS = ["games", "skills", "hire me", "/theme", "/help"];
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -63,18 +73,20 @@ let nextId = 0;
 
 export default function InteractivePrompt({
   onClear,
-  prompt = "gentry@portfolio:~$",
+  prompt = ">",
   inputRef: externalInputRef,
   onContentChange,
+  initialInput = "",
 }: InteractivePromptProps) {
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState(initialInput);
   const [executedCommands, setExecutedCommands] = useState<ExecutedCommand[]>(
     []
   );
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isFocused, setIsFocused] = useState(false);
-  const [hasInteracted, setHasInteracted] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(initialInput !== "");
+  const { setThemeId } = useTerminalTheme();
 
   // Ghost typing state
   const [ghostText, setGhostText] = useState("");
@@ -154,19 +166,16 @@ export default function InteractivePrompt({
     setIsFocused(false);
   }, []);
 
-  /** Process the command when the user presses Enter */
-  const handleSubmit = useCallback(
-    (e: FormEvent) => {
-      e.preventDefault();
-
-      const trimmed = inputValue.trim();
+  /** Run a command, typed or tapped */
+  const runCommand = useCallback(
+    (raw: string) => {
+      const trimmed = raw.trim();
 
       if (trimmed === "") {
         setExecutedCommands((prev) => [
           ...prev,
           { id: nextId++, command: "", output: "" },
         ]);
-        setInputValue("");
         return;
       }
 
@@ -183,7 +192,6 @@ export default function InteractivePrompt({
 
       if (result.shouldClear) {
         setExecutedCommands([]);
-        setInputValue("");
         onClear();
         return;
       }
@@ -208,6 +216,8 @@ export default function InteractivePrompt({
         frame();
       }
 
+      if (result.terminalTheme) setThemeId(result.terminalTheme);
+
       if (result.navigateTo) {
         const destination = result.navigateTo;
         if (navigationTimerRef.current) {
@@ -223,9 +233,19 @@ export default function InteractivePrompt({
         ...prev,
         { id: nextId++, command: trimmed, output: result.output },
       ]);
+    },
+    [commandHistory, onClear, setThemeId]
+  );
+
+  /** Process the command when the user presses Enter */
+  const handleSubmit = useCallback(
+    (e: FormEvent) => {
+      e.preventDefault();
+      runCommand(inputValue);
+      // Only typed input is cleared: a tapped chip leaves half-typed text.
       setInputValue("");
     },
-    [inputValue, commandHistory, onClear]
+    [inputValue, runCommand]
   );
 
   /** Handle up/down arrows for command history navigation */
@@ -264,39 +284,39 @@ export default function InteractivePrompt({
       {/* Previously executed commands + output */}
       <div aria-live="polite" aria-relevant="additions">
         {executedCommands.map((entry) => (
-          <div key={entry.id} className="mb-6 animate-fadeIn">
-            {/* Command line */}
-            <div className="flex flex-wrap gap-x-2">
-              <span className="text-green-600 dark:text-green-400 shrink-0 select-none">
-                {prompt}
-              </span>
-              <span className="text-gray-800 dark:text-gray-200">
-                {entry.command}
-              </span>
-            </div>
+          <div key={entry.id} className="mb-5 animate-fadeIn">
+            {/* The visitor's message */}
+            <p className="text-term-fg break-words">
+              <span className="text-term-muted select-none">{prompt} </span>
+              {entry.command}
+            </p>
             {/* Output */}
-            {entry.output &&
-              (typeof entry.output === "string" ? (
-                <pre className="mt-2 text-gray-700 dark:text-gray-300 whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
-                  {entry.output}
-                </pre>
-              ) : (
-                <div className="mt-2 text-gray-700 dark:text-gray-300 font-mono text-sm leading-relaxed">
-                  {entry.output}
-                </div>
-              ))}
+            {entry.output && (
+              <div className="mt-2 flex gap-2">
+                <span className="text-term-fg select-none" aria-hidden="true">
+                  ⏺
+                </span>
+                {typeof entry.output === "string" ? (
+                  <pre className="flex-1 min-w-0 text-term-text whitespace-pre-wrap break-words font-mono text-sm leading-relaxed">
+                    {entry.output}
+                  </pre>
+                ) : (
+                  <div className="flex-1 min-w-0 text-term-text font-mono text-sm leading-relaxed">
+                    {entry.output}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
       </div>
 
-      {/* Active input line — sticky so it's always visible at the bottom */}
+      {/* Input box (sticky at the bottom), suggestions and status line */}
       <form
         onSubmit={handleSubmit}
-        className="sticky bottom-0 flex flex-wrap gap-x-2 items-center bg-gray-50 dark:bg-black py-1"
+        className="sticky bottom-0 bg-term-bg flex gap-x-2 items-center rounded-md border border-term-faint px-3 py-2 transition-colors focus-within:border-term-accent/70"
       >
-        <span className="text-green-600 dark:text-green-400 shrink-0 select-none">
-          {prompt}
-        </span>
+        <span className="text-term-muted shrink-0 select-none">{prompt}</span>
         <div className="flex-1 min-w-0 relative">
           <input
             ref={inputRef}
@@ -309,7 +329,7 @@ export default function InteractivePrompt({
             onKeyDown={handleKeyDown}
             onFocus={handleFocus}
             onBlur={handleBlur}
-            className="w-full bg-transparent border-none outline-none text-gray-800 dark:text-gray-200 font-mono text-base sm:text-sm caret-green-500 dark:caret-green-400 p-0 m-0"
+            className="w-full bg-transparent border-none outline-none text-term-fg font-mono text-base sm:text-sm caret-term-accent p-0 m-0"
             spellCheck={false}
             autoComplete="off"
             autoCorrect="off"
@@ -322,16 +342,39 @@ export default function InteractivePrompt({
               className="absolute inset-0 flex items-center pointer-events-none"
               aria-hidden="true"
             >
-              <span className="text-gray-400/60 dark:text-green-500/35 font-mono text-sm">
+              <span className="text-term-faint font-mono text-sm">
                 {ghostText}
               </span>
-              <span className="animate-blink text-gray-400/60 dark:text-green-500/35 ml-px">
-                |
-              </span>
+              <span className="animate-blink text-term-faint ml-px">|</span>
             </div>
           )}
         </div>
       </form>
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        {SUGGESTIONS.map((suggestion) => (
+          <button
+            key={suggestion}
+            type="button"
+            onClick={(e) => {
+              // Don't focus the input: on phones that pops the keyboard.
+              e.stopPropagation();
+              setHasInteracted(true);
+              runCommand(suggestion);
+            }}
+            className="rounded border border-term-faint/60 px-3 py-1.5 text-sm sm:px-2 sm:py-0.5 sm:text-xs text-term-text hover:border-term-accent/70 hover:text-term-accent transition-colors"
+          >
+            {suggestion}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-2 flex justify-between gap-2 text-xs text-term-muted">
+        <span>? /help for shortcuts</span>
+        <span className="text-right">
+          gentry-1 · {GAMES.length} games shipped
+        </span>
+      </div>
     </div>
   );
 }

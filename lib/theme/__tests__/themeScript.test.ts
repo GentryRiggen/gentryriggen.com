@@ -3,6 +3,7 @@ import {
   FLAMELINGS_THEME_COLOR,
   SHIPWRECK_THEME_COLOR,
   JIM_THEME_COLOR,
+  TERM_THEME_KEY,
   THEME_SCRIPT,
   fixedThemeColor,
   isEverOnwardPath,
@@ -12,10 +13,18 @@ import {
 interface Run {
   themeColor: string | null;
   dark: boolean;
+  termTheme?: string;
+  droppedTermTheme?: boolean;
 }
 
 /** Runs the exact inline script against a fake page at `path`. */
-function run(path: string, saved: string | null = "dark"): Run {
+function run(
+  path: string,
+  saved: string | null = "dark",
+  savedTermTheme: string | null = null
+): Run {
+  const attributes: Record<string, string> = {};
+  const removed: string[] = [];
   const meta = { content: "#ffffff" as string | null };
   const classes = new Set<string>();
   const document = {
@@ -23,6 +32,9 @@ function run(path: string, saved: string | null = "dark"): Run {
       classList: {
         add: (c: string) => classes.add(c),
         remove: (c: string) => classes.delete(c),
+      },
+      setAttribute: (name: string, value: string) => {
+        attributes[name] = value;
       },
     },
     querySelector: () => ({
@@ -39,12 +51,23 @@ function run(path: string, saved: string | null = "dark"): Run {
     THEME_SCRIPT
   );
   fn(
-    { getItem: () => saved },
+    {
+      getItem: (key: string) =>
+        key === TERM_THEME_KEY ? savedTermTheme : saved,
+      removeItem: (key: string) => {
+        if (key === TERM_THEME_KEY) removed.push(key);
+      },
+    },
     { matchMedia: () => ({ matches: false }) },
     document,
     { pathname: path }
   );
-  return { themeColor: meta.content, dark: classes.has("dark") };
+  const result: Run = { themeColor: meta.content, dark: classes.has("dark") };
+  if (removed.length) result.droppedTermTheme = true;
+  if (attributes["data-term-theme"]) {
+    result.termTheme = attributes["data-term-theme"];
+  }
+  return result;
 }
 
 it("is valid JavaScript", () => {
@@ -121,4 +144,29 @@ it("keeps Shipwreck its own night blue, light or dark", () => {
   }
   expect(run("/shipwreckx", "light").themeColor).toBe("#ffffff");
   expect(fixedThemeColor("/shipwreck/versions")).toBe(SHIPWRECK_THEME_COLOR);
+});
+
+it("applies the saved homepage terminal theme before paint", () => {
+  expect(run("/", "dark", "dracula")).toEqual({
+    themeColor: "#1e1f29",
+    dark: true,
+    termTheme: "dracula",
+  });
+  expect(run("/", "light", "solarized-light").termTheme).toBe(
+    "solarized-light"
+  );
+  expect(run("/", "dark", null).termTheme).toBeUndefined();
+});
+
+it("keeps the site colour off the homepage", () => {
+  expect(run("/ship-builder", "dark", "dracula").themeColor).toBe("#030712");
+});
+
+it("drops a saved terminal theme the light/dark toggle has moved away from", () => {
+  expect(run("/", "light", "dracula")).toEqual({
+    themeColor: "#ffffff",
+    dark: false,
+    droppedTermTheme: true,
+  });
+  expect(run("/", "dark", "not-a-theme").droppedTermTheme).toBe(true);
 });

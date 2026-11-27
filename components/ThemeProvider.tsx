@@ -8,12 +8,14 @@ import {
   useCallback,
 } from "react";
 import { fixedThemeColor } from "@/lib/theme/themeScript";
+import { terminalThemeColor } from "@/lib/theme/terminalThemes";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -70,6 +72,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       themeColorMeta.setAttribute(
         "content",
         fixedThemeColor(window.location.pathname) ??
+          terminalThemeColor(window.location.pathname) ??
           (theme === "dark" ? "#030712" : "#ffffff")
       );
     }
@@ -81,7 +84,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
