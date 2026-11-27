@@ -121,6 +121,9 @@ exactly as before.
   it, the depth is the sea (`seaZ`) at the feet, as on deck.
 - **Blockers by area**: looked up per area (built once per map on first
   use), so many furniture blockers inside do not slow the deck.
+- **The rooms' data** is `lib/shipwreck/interior/` (the room kit, its
+  README): `walkMapFor("titanic")` is `TITANIC_WALK` with her interior
+  merged in (`withInterior`, built once on first use).
 
 ## The swimmer (`swim.ts`)
 
