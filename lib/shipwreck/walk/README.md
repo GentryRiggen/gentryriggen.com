@@ -121,6 +121,38 @@ exactly as before.
   it, the depth is the sea (`seaZ`) at the feet, as on deck.
 - **Blockers by area**: looked up per area (built once per map on first
   use), so many furniture blockers inside do not slow the deck.
+- **The joystick in narrow halls** (inside only, all in `stepWalker`;
+  `hallFeel.test.ts` is the bot that walks the real Titanic rooms):
+  - **Ease-in**: the speed share (`WalkerState.moveShare`, missing = 1, so
+    a deck state never carries it) climbs from 0 to 1 over
+    `WALK_INSIDE_EASE_S` (0.15 s) while the stick is pushed and drops to 0
+    the moment it is let go (stopping is instant).
+  - **Hall assist**: in an area with an `axis`, a walk direction within
+    `HALL_FADE_DEG` (25°) of it (either way) turns toward it, fully onto
+    it within `HALL_SNAP_DEG` (10°). Only the walk direction: never `yaw`.
+  - **Door funnel**: doorways are seams with a `corridor` or `cabin` on
+    either side (precomputed per map, `doorsOf`). Within `DOOR_ASSIST_M`
+    (1.5 m) of the nearest one you are heading toward, and within
+    `DOOR_ASSIST_DEG` (40°) of straight through it (full to 30°), up to
+    `DOOR_ASSIST_SHARE` (half) of the sideways part bends toward its centre
+    line (aiming 0.5 m past it). Walking by a doorway in a hall's side
+    (40° → `DOOR_PASS_DEG` 60° or more off straight through), the part
+    toward it fades out, so a corridor walk scraping one wall does not
+    fall into the suites (a ruling: the spec's corridor test at ±20–30°
+    needs it).
+  - **Wall slide keeps speed**: after a move, if the body slid (walls,
+    jambs or furniture) to under `SLIDE_KEEP` (0.75) of the stick's move
+    while the stick is within `SLIDE_KEEP_DEG` (60°) of the slide, it
+    moves on along the slide to make it up; past 60° the share fades to 0
+    square on, so pushing straight into a wall still stops you.
+  - **Round wall ends**: the body is pushed straight away from the end of
+    a wall (a jamb, a corner the kit kept unchamfered) instead of along
+    the wall's normal, so it rolls round instead of catching or
+    shuddering on the spot (the deck keeps the normal push).
+  - **Deep water is a wall**: a move ending in water deeper than
+    `WALK_WADE_STOP_M` (0.8 m) and deeper than where the walker stood is
+    undone and retried along x, then y, so the walker slides along the
+    edge. Standing in deep water you can still move to water no deeper.
 - **The rooms' data** is `lib/shipwreck/interior/` (the room kit, its
   README): `walkMapFor("titanic")` is `TITANIC_WALK` with her interior
   merged in (`withInterior`, built once on first use).
@@ -147,7 +179,10 @@ layer and the keys write it; the walk runner reads it each frame and zeroes
 All in `types.ts`: `WALK_EYE_M` 1.6, `WALK_IN_WATER_DEPTH_M` 1.0, `WALK_KNEE_DEPTH_M` 0.5,
 `WALK_SPEED_MS` 4, `WALK_TURN_PER_PX` 0.005 (dragging right turns right),
 `WALK_RADIUS_M` 0.3, `WALK_INSIDE_SPEED_MS` 3, `WALK_LIFT_MAX_DEPTH_M`
-(the knee); `SWIM_SPEED_MS` 2 in
+(the knee), and inside: `WALK_INSIDE_EASE_S` 0.15, `SLIDE_KEEP` 0.75 within
+`SLIDE_KEEP_DEG` 60, `HALL_SNAP_DEG` 10, `HALL_FADE_DEG` 25,
+`DOOR_ASSIST_M` 1.5, `DOOR_ASSIST_DEG` 40, `DOOR_ASSIST_SHARE` 0.5,
+`DOOR_PASS_DEG` 60, `WALK_WADE_STOP_M` 0.8; `SWIM_SPEED_MS` 2 in
 `swim.ts`. They are tuning: change them here and the tests say what moved.
 
 ## Where the rest lives
@@ -162,5 +197,7 @@ All in `types.ts`: `WALK_EYE_M` 1.6, `WALK_IN_WATER_DEPTH_M` 1.0, `WALK_KNEE_DEP
   with Fly, Back on deck and Look under, `WalkJoystick`, `WalkLookLayer`).
 
 Tests: `__tests__/maps.test.ts` (the maps hold together), `slope.test.ts`,
-`step.test.ts` (every rule above) and `swim.test.ts` (the swimmer, and
+`step.test.ts` (every rule above), `interiorStep.test.ts` (the inside
+rules on small maps), `hallFeel.test.ts` (the joystick bot on the real
+Titanic rooms) and `swim.test.ts` (the swimmer, and
 `placeWalker` on the real night's track).

@@ -4,15 +4,26 @@ import { deckSlope, shipToEarth, type V3 } from "./slope";
 import {
   areaById,
   blockersIn,
+  DOOR_ASSIST_DEG,
+  DOOR_ASSIST_M,
+  DOOR_ASSIST_SHARE,
+  DOOR_PASS_DEG,
+  doorsOf,
   floorZ,
+  HALL_FADE_DEG,
+  HALL_SNAP_DEG,
   JUMP_S,
   seamEdges,
+  SLIDE_KEEP,
+  SLIDE_KEEP_DEG,
   WALK_IN_WATER_DEPTH_M,
+  WALK_INSIDE_EASE_S,
   WALK_INSIDE_SPEED_MS,
   WALK_LIFT_MAX_DEPTH_M,
   WALK_RADIUS_M,
   WALK_SPEED_MS,
   WALK_TURN_PER_PX,
+  WALK_WADE_STOP_M,
   pointInPolygon,
   type Stair,
   type V2,
@@ -42,6 +53,12 @@ export interface WalkerState {
   jumpS?: number | null;
   /** Where that jump took off (ship frame x, y): the run-up is from here. */
   jumpFrom?: V2 | null;
+  /**
+   * Share of full speed the walker is moving at (0..1): inside, it eases in
+   * from standing over WALK_INSIDE_EASE_S. Missing: 1 (deck states never
+   * carry it).
+   */
+  moveShare?: number;
 }
 
 /** Stick −1..1 (forward, strafe right), look in px since last read. */
@@ -244,6 +261,14 @@ function moveInOutline(
   s.y = y1;
 }
 
+/** Whether q is (within float error) one end of segment a→b. */
+function atEnd(q: V2, a: V2, b: V2): boolean {
+  return (
+    (Math.abs(q[0] - a[0]) < 1e-9 && Math.abs(q[1] - a[1]) < 1e-9) ||
+    (Math.abs(q[0] - b[0]) < 1e-9 && Math.abs(q[1] - b[1]) < 1e-9)
+  );
+}
+
 /** Pushes the walker's body out of blockers and off the edges. */
 function resolveBody(ctx: StepContext, area: WalkArea, s: Sub): void {
   const R = WALK_RADIUS_M;
@@ -308,6 +333,20 @@ function resolveBody(ctx: StepContext, area: WalkArea, s: Sub): void {
       const n = outward(a, b);
       // Along the inward normal, so a corner never shoves it outside.
       const toward = (s.x - q[0]) * -n[0] + (s.y - q[1]) * -n[1];
+      if (area.interior && d > EPS && atEnd(q, a, b)) {
+        // Inside, off the end of a wall (a doorway's jamb, a corner the kit
+        // kept): straight away from that point, so the body rolls round it
+        // instead of catching. The inward normal would act as if the wall
+        // went on past its end, and past a kept (reflex) corner, where the
+        // room goes on behind the wall's line, that shoves the walker back
+        // and forth on the spot. Moving away from the end never crosses
+        // this wall; the outline check still undoes anything else.
+        const push = R - d;
+        s.x += ((s.x - q[0]) / d) * push;
+        s.y += ((s.y - q[1]) / d) * push;
+        moved = true;
+        continue;
+      }
       const push = R - Math.max(0, toward);
       if (push <= 0) continue;
       s.x -= n[0] * push;
@@ -392,6 +431,216 @@ function clamp(v: number, lo: number, hi: number): number {
 }
 
 /**
+ * One substep's move: inside the outline (sliding, through seams), the
+ * body pushed clear, and undone when it would end outside the outline or
+ * across the break. Returns whether it stood.
+ */
+function tryMove(
+  ctx: StepContext,
+  part: WalkerState["part"],
+  area: WalkArea,
+  sub: Sub,
+  mx: number,
+  my: number
+): boolean {
+  const px = sub.x;
+  const py = sub.y;
+  moveInOutline(ctx.map, area, sub, mx, my);
+  // A seam may have carried them into the next room.
+  const now = sub.area === area.id ? area : areaById(ctx.map, sub.area);
+  if (now) resolveBody(ctx, now, sub);
+  // Never leave the outline, nor step off the break onto the other piece.
+  const offBreak =
+    ctx.breakX !== null &&
+    part !== "whole" &&
+    (part === "bow" ? sub.x < ctx.breakX : sub.x >= ctx.breakX);
+  if (offBreak || !now || !pointInPolygon([sub.x, sub.y], now.outline)) {
+    sub.x = px;
+    sub.y = py;
+    sub.area = area.id;
+    return false;
+  }
+  return true;
+}
+
+const DEG = Math.PI / 180;
+/** The funnel is full this near straight through, fading out at DOOR_ASSIST_DEG. */
+const DOOR_FULL_DEG = DOOR_ASSIST_DEG - 10;
+/** The funnel aims at the centre line this far past the doorway (m). */
+const DOOR_AIM_PAST_M = 0.5;
+
+/** The walk direction (unit) for this substep, steered inside (scratch). */
+const dir = { x: 0, y: 0 };
+
+/** Rotates `dir` by angle (rad). */
+function rotateDir(angle: number): void {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const x = dir.x * c - dir.y * s;
+  dir.y = dir.x * s + dir.y * c;
+  dir.x = x;
+}
+
+/**
+ * Hall assist: a walk direction within HALL_FADE_DEG of the area's axis
+ * (either way along it) is turned onto it, fully within HALL_SNAP_DEG.
+ */
+function hallAssist(axis: readonly [V2, V2]): void {
+  let ax = axis[1][0] - axis[0][0];
+  let ay = axis[1][1] - axis[0][1];
+  const len = Math.hypot(ax, ay);
+  if (!(len > 0)) return;
+  ax /= len;
+  ay /= len;
+  if (dir.x * ax + dir.y * ay < 0) {
+    ax = -ax;
+    ay = -ay;
+  }
+  const off = Math.acos(clamp(dir.x * ax + dir.y * ay, -1, 1)) / DEG;
+  if (off >= HALL_FADE_DEG) return;
+  if (off <= HALL_SNAP_DEG) {
+    dir.x = ax;
+    dir.y = ay;
+    return;
+  }
+  const share = (HALL_FADE_DEG - off) / (HALL_FADE_DEG - HALL_SNAP_DEG);
+  // Toward the axis: the sign of dir × axis.
+  const sign = dir.x * ay - dir.y * ax >= 0 ? 1 : -1;
+  rotateDir(sign * share * off * DEG);
+}
+
+/**
+ * The door funnel. Within DOOR_ASSIST_M of a doorway and heading within
+ * DOOR_ASSIST_DEG of straight through it, up to DOOR_ASSIST_SHARE of the
+ * sideways part bends toward the doorway's centre line. Walking by a
+ * doorway in a hall's side (heading DOOR_PASS_DEG or more off straight
+ * through, fading in from DOOR_ASSIST_DEG), the part toward it goes, so the
+ * hall keeps you straight.
+ */
+function doorFunnel(map: WalkMap, area: WalkArea, x: number, y: number): void {
+  const doors = doorsOf(map, area.id);
+  // The nearest doorway in reach that the walker is heading toward.
+  let best = -1;
+  let bestDist = DOOR_ASSIST_M;
+  for (let i = 0; i < doors.length; i += 1) {
+    const d = doors[i];
+    if (dir.x * d.nx + dir.y * d.ny <= EPS) continue;
+    const along = clamp((x - d.cx) * d.tx + (y - d.cy) * d.ty, -d.half, d.half);
+    const dist = Math.hypot(x - d.cx - d.tx * along, y - d.cy - d.ty * along);
+    if (dist <= bestDist) {
+      bestDist = dist;
+      best = i;
+    }
+  }
+  if (best < 0) return;
+  const d = doors[best];
+  const a = dir.x * d.nx + dir.y * d.ny; // through it
+  const b = dir.x * d.tx + dir.y * d.ty; // sideways
+  const off = Math.acos(clamp(a, -1, 1)) / DEG;
+  let na = a;
+  let nb = b;
+  if (off < DOOR_ASSIST_DEG) {
+    const share =
+      off <= DOOR_FULL_DEG
+        ? 1
+        : (DOOR_ASSIST_DEG - off) / (DOOR_ASSIST_DEG - DOOR_FULL_DEG);
+    // Aim a little past the centre: the sideways part of that aim.
+    const vx = d.cx + d.nx * DOOR_AIM_PAST_M - x;
+    const vy = d.cy + d.ny * DOOR_AIM_PAST_M - y;
+    const vl = Math.hypot(vx, vy);
+    const want = vl > EPS ? (vx * d.tx + vy * d.ty) / vl : 0;
+    nb = b - DOOR_ASSIST_SHARE * share * (b - want);
+  } else if (d.side) {
+    const share = clamp(
+      (off - DOOR_ASSIST_DEG) / (DOOR_PASS_DEG - DOOR_ASSIST_DEG),
+      0,
+      1
+    );
+    na = a * (1 - share);
+  } else return;
+  const nx = na * d.nx + nb * d.tx;
+  const ny = na * d.ny + nb * d.ty;
+  const nl = Math.hypot(nx, ny);
+  if (nl <= EPS) return;
+  dir.x = nx / nl;
+  dir.y = ny / nl;
+}
+
+/**
+ * The share of the stick's speed a slide along a wall keeps inside, for a
+ * stick `deg` off the slide's direction: SLIDE_KEEP within SLIDE_KEEP_DEG,
+ * fading to nothing square on (so pushing straight in still stops you).
+ */
+function slideKeep(deg: number): number {
+  if (deg <= SLIDE_KEEP_DEG) return SLIDE_KEEP;
+  return SLIDE_KEEP * clamp((90 - deg) / (90 - SLIDE_KEEP_DEG), 0, 1);
+}
+
+/** Whether a move has taken the walker into water too deep to wade into. */
+function tooDeep(ctx: StepContext, sub: Sub, from: number): boolean {
+  const d = depthAt(ctx, sub.area, sub.x, sub.y);
+  return d > WALK_WADE_STOP_M && d > from;
+}
+
+/**
+ * One substep's move inside: the move, then a wall slide topped back up to
+ * the share `slideKeep` allows, then deep water as a wall (the move undone
+ * and retried along x, then y, so the walker slides along the edge).
+ */
+function insideMove(
+  ctx: StepContext,
+  part: WalkerState["part"],
+  area: WalkArea,
+  sub: Sub,
+  mx: number,
+  my: number,
+  depth: number
+): void {
+  const len = Math.hypot(mx, my);
+  if (len <= 0) return;
+  const x0 = sub.x;
+  const y0 = sub.y;
+  const a0 = sub.area;
+  if (tryMove(ctx, part, area, sub, mx, my)) {
+    const dx = sub.x - x0;
+    const dy = sub.y - y0;
+    const got = Math.hypot(dx, dy);
+    if (got > EPS * len) {
+      const deg =
+        Math.acos(clamp((dx * mx + dy * my) / (got * len), -1, 1)) / DEG;
+      const want = slideKeep(deg) * len;
+      if (got < want) {
+        const now = areaById(ctx.map, sub.area);
+        if (now)
+          tryMove(
+            ctx,
+            part,
+            now,
+            sub,
+            (dx / got) * (want - got),
+            (dy / got) * (want - got)
+          );
+      }
+    }
+  }
+  if (!tooDeep(ctx, sub, depth)) return;
+  // Deep water is a wall: undo, then try each axis alone.
+  for (let axis = 0; axis < 2; axis += 1) {
+    sub.x = x0;
+    sub.y = y0;
+    sub.area = a0;
+    if (
+      tryMove(ctx, part, area, sub, axis === 0 ? mx : 0, axis === 0 ? 0 : my) &&
+      !tooDeep(ctx, sub, depth)
+    )
+      return;
+  }
+  sub.x = x0;
+  sub.y = y0;
+  sub.area = a0;
+}
+
+/**
  * Walks the walker `dt` seconds: turns by the look drag once, then runs
  * ceil(dt / WALK_DT) substeps (dt clamped to 0.25 s), each applying the
  * stick in the ship frame (slowed by wading), the blockers, the railings,
@@ -420,9 +669,13 @@ export function stepWalker(
   }
   const cy = Math.cos(yaw);
   const sy = Math.sin(yaw);
-  // Unit stick direction; the speed is the area's (inside or on deck).
+  // The stick in the ship frame (length = how far it is pushed); the speed
+  // is the area's (inside or on deck).
   const dirX = f * cy + r * sy;
   const dirY = f * sy - r * cy;
+  const push = Math.hypot(dirX, dirY);
+  // Inside, the speed share eases in; on deck it is never touched.
+  let share = s.moveShare;
 
   let inWater: StepResult["inWater"] = null;
   let overboard = false;
@@ -443,9 +696,25 @@ export function stepWalker(
   for (let k = 0; k < n; k += 1) {
     const area = areaById(ctx.map, sub.area);
     if (!area) break;
-    const speed = area.interior ? WALK_INSIDE_SPEED_MS : WALK_SPEED_MS;
-    const baseX = speed * dirX;
-    const baseY = speed * dirY;
+    const inside = area.interior === true;
+    const speed = inside ? WALK_INSIDE_SPEED_MS : WALK_SPEED_MS;
+    let baseX = speed * dirX;
+    let baseY = speed * dirY;
+    if (inside) {
+      // Ease in from standing; stopping is instant.
+      share =
+        push > EPS ? Math.min(1, (share ?? 1) + h / WALK_INSIDE_EASE_S) : 0;
+      if (push > EPS) {
+        // Steer the walk direction (never the view): the hall, then a door.
+        dir.x = dirX / push;
+        dir.y = dirY / push;
+        if (area.axis) hallAssist(area.axis);
+        doorFunnel(ctx.map, area, sub.x, sub.y);
+        const k2 = speed * push * share;
+        baseX = k2 * dir.x;
+        baseY = k2 * dir.y;
+      }
+    }
     if (jumpS !== null) {
       if (
         !area.interior &&
@@ -468,19 +737,12 @@ export function stepWalker(
         : 1;
     const px = sub.x;
     const py = sub.y;
-    moveInOutline(ctx.map, area, sub, baseX * wade * h, baseY * wade * h);
-    // A seam may have carried them into the next room.
-    const now = sub.area === area.id ? area : areaById(ctx.map, sub.area);
-    if (now) resolveBody(ctx, now, sub);
-    // Never leave the outline, nor step off the break onto the other piece.
-    const offBreak =
-      ctx.breakX !== null &&
-      s.part !== "whole" &&
-      (s.part === "bow" ? sub.x < ctx.breakX : sub.x >= ctx.breakX);
-    if (offBreak || !now || !pointInPolygon([sub.x, sub.y], now.outline)) {
-      sub.x = px;
-      sub.y = py;
-      sub.area = area.id;
+    const mx = baseX * wade * h;
+    const my = baseY * wade * h;
+    if (!inside) {
+      tryMove(ctx, s.part, area, sub, mx, my);
+    } else {
+      insideMove(ctx, s.part, area, sub, mx, my, depth);
     }
     const taken = takeStairs(ctx, sub, px, py);
     if (taken) via = { kind: taken.kind ?? "stair", id: taken.id };
@@ -499,6 +761,7 @@ export function stepWalker(
       yaw,
       jumpS,
       jumpFrom,
+      ...(share !== undefined ? { moveShare: share } : {}),
     },
     inWater,
     ...(overboard ? { overboard } : {}),
