@@ -50,6 +50,17 @@ export interface LightSegment {
   mid: V2;
 }
 
+/** A long hall's axis and its split into parts, or null for any other room. */
+function segmentation(
+  room: Room
+): { p: V2; q: V2; len: number; n: number } | null {
+  if (!room.axis) return null;
+  const [p, q] = room.axis;
+  const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+  if (!(len > LONG_ROOM_M)) return null;
+  return { p, q, len, n: Math.ceil(len / LIGHT_SEGMENT_M) };
+}
+
 /**
  * A long hall's lamps in parts (Scotland Road's 86 m), each going out by
  * the water at its own middle, so the dark creeps along the hall with the
@@ -57,11 +68,10 @@ export interface LightSegment {
  * room (a stair, a short room): its lamps go by one depth.
  */
 export function lightSegments(room: Room): LightSegment[] {
-  if (!room.axis || room.ramp) return [];
-  const [p, q] = room.axis;
-  const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
-  if (!(len > LONG_ROOM_M)) return [];
-  const n = Math.ceil(len / LIGHT_SEGMENT_M);
+  if (room.ramp) return [];
+  const g = segmentation(room);
+  if (!g) return [];
+  const { p, q, len, n } = g;
   const out: LightSegment[] = [];
   for (let i = 0; i < n; i += 1) {
     const from = (len * i) / n;
@@ -78,14 +88,10 @@ export function lightSegments(room: Room): LightSegment[] {
 
 /** The part of a long hall over (x, y) (clamped to the ends), or 0. */
 export function segmentAt(room: Room, x: number, y: number): number {
-  if (!room.axis) return 0;
-  const [p, q] = room.axis;
-  const dx = q[0] - p[0];
-  const dy = q[1] - p[1];
-  const len = Math.hypot(dx, dy);
-  if (!(len > LONG_ROOM_M)) return 0;
-  const n = Math.ceil(len / LIGHT_SEGMENT_M);
-  const t = ((x - p[0]) * dx + (y - p[1]) * dy) / len;
+  const g = segmentation(room);
+  if (!g) return 0;
+  const { p, q, len, n } = g;
+  const t = ((x - p[0]) * (q[0] - p[0]) + (y - p[1]) * (q[1] - p[1])) / len;
   const i = Math.floor((t / len) * n);
   return i <= 0 ? 0 : i >= n ? n - 1 : i;
 }

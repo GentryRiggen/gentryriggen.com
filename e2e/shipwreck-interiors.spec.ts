@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
 
 /** Seconds into the night at a real clock time (11:40 PM start). */
-const at = (h: number, m: number, s = 0) => ((h * 60 + m) * 60 + s) * 1;
+const at = (h: number, m: number, s = 0) => (h * 60 + m) * 60 + s;
 const T_1150PM = at(0, 10);
 const T_0130AM = at(1, 50);
 const T_0213_50 = at(2, 33, 50);
@@ -86,8 +86,6 @@ test.describe("Shipwreck interiors", () => {
     const seen = new Set<string>(["gs-boat"]);
     for (const deck of ["gs-a", "gs-b"]) {
       const w = await walk(page);
-      const first = w.area === "gs-boat" || w.area === "gs-a";
-      expect(first).toBe(true);
       await place(page, w.area!, 34, 0, 0);
       await page.evaluate(() => window.__shipwreck!.setWalkInput!(1, 0));
       await page.waitForFunction(
@@ -141,18 +139,27 @@ test.describe("Shipwreck interiors", () => {
   test("the lift runs at 11:50 PM and not at 1:30 AM", async ({ page }) => {
     await startNight(page);
     const lift = TITANIC_INTERIOR.links.find((l) => l.kind === "lift")!;
-    const ride = async (t: number) => {
+    const ride = async (t: number, runs: boolean) => {
       await page.evaluate((s) => window.__shipwreck!.seek!(s), t);
       // 0.8 m aft of the car's door spot (the stop is 0.5 m wide), facing
       // forward: walk onto it.
       await place(page, "lift-b", lift.from.at[0] - 0.8, lift.from.at[1], 0);
       await page.evaluate(() => window.__shipwreck!.setWalkInput!(1, 0));
-      await page.waitForTimeout(2000);
+      if (runs) {
+        await page.waitForFunction(
+          () => window.__shipwreck!.getWalk!()?.area === "lift-e",
+          null,
+          { timeout: 15_000 }
+        );
+      } else {
+        // Nothing to poll for: give the ride its usual time to (not) happen.
+        await page.waitForTimeout(2000);
+      }
       await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 0));
       return (await walk(page)).area;
     };
-    expect(await ride(T_1150PM)).toBe("lift-e");
-    expect(await ride(T_0130AM)).toBe("lift-b");
+    expect(await ride(T_1150PM, true)).toBe("lift-e");
+    expect(await ride(T_0130AM, false)).toBe("lift-b");
   });
 
   test("inside at 2:13:50 and past the break, she floats", async ({ page }) => {

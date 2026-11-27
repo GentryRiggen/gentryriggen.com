@@ -1,6 +1,7 @@
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import {
+  areaById,
   floorZ,
   jumpHeight,
   WALK_EYE_M,
@@ -79,6 +80,18 @@ export function deckEyes(
   feetAt[0] = w.x;
   feetAt[1] = w.y;
   feetAt[2] = floorZ(map, w.area, w.x, spec, w.y);
+  if (areaById(map, w.area)?.interior) {
+    // Inside her rooms the eyes stand along the ship's own up axis, so a
+    // trim or list never slides them sideways through a one-sided wall.
+    feetAt[2] += WALK_EYE_M + jumpHeight(w.jumpS);
+    shipToThreeInto(pose, feetAt, feet);
+    out.pos[0] = feet[0];
+    out.pos[1] = feet[1];
+    out.pos[2] = feet[2];
+    out.yaw = pose.yaw + w.yaw;
+    out.pitch = lookPitch;
+    return out;
+  }
   shipToThreeInto(pose, feetAt, feet);
   out.pos[0] = feet[0];
   out.pos[1] = feet[1] + WALK_EYE_M + jumpHeight(w.jumpS);

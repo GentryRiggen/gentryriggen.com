@@ -52,7 +52,7 @@ import {
 } from "./poseidonShots";
 import type { SceneRuntime } from "./runtime";
 import { torpedoHole, trackSideY } from "./Torpedo";
-import { insideFov, viewDirection } from "./walkCamera";
+import { insideFov, viewDirection, WALK_OUTSIDE_FOV } from "./walkCamera";
 
 /**
  * Every camera. `orbit` is the free camera: one finger orbits, pinch or the
@@ -131,7 +131,6 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
     walked: false,
     dir: [0, 0, 0] as V3,
     /** The scene's field of view (the Canvas's), restored after walk. */
-    baseFov: null as number | null,
   });
   const reducedMotion = useMemo(
     () =>
@@ -351,7 +350,6 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       flyToPlace();
     }
     const d = Math.min(0.1, dt);
-    if (s.baseFov === null) s.baseFov = cam.fov;
 
     const walker = p.camera === "walk" ? runtime.walker : null;
     if (walker) {
@@ -371,7 +369,7 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       camera.lookAt(controls.target);
       const near = nearFor(0.5);
       // Inside her the view widens (and narrows again on the way out).
-      const fov = insideFov(cam.fov, runtime.walkInside, d, s.baseFov);
+      const fov = insideFov(cam.fov, runtime.walkInside, d, WALK_OUTSIDE_FOV);
       if (Math.abs(cam.near - near) > near * 0.1 || fov !== cam.fov) {
         cam.near = near;
         cam.fov = fov;
@@ -380,9 +378,9 @@ export default function CameraRig({ store, runtime, spec }: CameraRigProps) {
       runtime.underwater = camera.position.y < 0;
       return;
     }
-    if (cam.fov !== s.baseFov) {
+    if (cam.fov !== WALK_OUTSIDE_FOV) {
       // Walk ended: the scene's own view at once.
-      cam.fov = s.baseFov;
+      cam.fov = WALK_OUTSIDE_FOV;
       cam.updateProjectionMatrix();
     }
     if (s.walked) {

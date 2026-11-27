@@ -6,7 +6,8 @@ import {
   type SwimmerState,
   type WalkerState,
 } from "@/lib/shipwreck/walk";
-import { shipToThree } from "../cameraMath";
+import { shipToThree, threeToShip } from "../cameraMath";
+import { walkMapFor } from "@/lib/shipwreck/walk";
 import {
   bob,
   deckEyes,
@@ -207,5 +208,51 @@ describe("inside her: the wider view and the step through a door", () => {
       expect(x).toBeLessThan(1);
       prev = x;
     }
+  });
+});
+
+describe("eyes inside her rooms when she tilts", () => {
+  const rooms = walkMapFor("titanic")!;
+  const SR_WALL_Y = 3.0;
+  const inside: WalkerState = {
+    part: "whole",
+    area: "scotland-road",
+    x: 50,
+    y: SR_WALL_Y + 0.3,
+    yaw: 0,
+  };
+
+  it.each([
+    ["12 deg trim", { pitch: 12 * DEG, roll: 0 }],
+    ["-12 deg trim", { pitch: -12 * DEG, roll: 0 }],
+    ["20 deg list", { pitch: 0, roll: 20 * DEG }],
+    ["-20 deg list", { pitch: 0, roll: -20 * DEG }],
+  ])("keeps the eyes 0.2 m inside the wall at %s", (_n, tilt) => {
+    const p = pose(tilt);
+    const v = deckEyes(inside, p, spec, rooms, 0);
+    const eye = threeToShip(p, v.pos);
+    // The wall is the y = 3.0 plane (the walker is 0.3 m off it).
+    expect(eye[1] - SR_WALL_Y).toBeGreaterThanOrEqual(0.2);
+    expect(eye[0]).toBeCloseTo(inside.x, 6);
+    expect(eye[2]).toBeCloseTo(
+      floorZ(rooms, inside.area, inside.x, spec, inside.y) + 1.6,
+      6
+    );
+  });
+
+  it("keeps the view level with the horizon", () => {
+    const v = deckEyes(inside, pose({ pitch: 12 * DEG }), spec, rooms, -0.2);
+    expect(v.pitch).toBe(-0.2);
+    expect(v.yaw).toBeCloseTo(0, 9);
+  });
+
+  it("leaves a deck walker's eyes straight up in earth space", () => {
+    const p = pose({ pitch: 12 * DEG, roll: 20 * DEG });
+    const deck = deckEyes(walker, p, spec, rooms, 0);
+    const fz = floorZ(rooms, walker.area, walker.x, spec, walker.y);
+    const feet = shipToThree(p, [walker.x, walker.y, fz]);
+    expect(deck.pos[0]).toBeCloseTo(feet[0], 9);
+    expect(deck.pos[1]).toBeCloseTo(feet[1] + 1.6, 9);
+    expect(deck.pos[2]).toBeCloseTo(feet[2], 9);
   });
 });

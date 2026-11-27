@@ -1,5 +1,7 @@
 import { SEA_WAVES_GLSL } from "../seaWaves";
 import { STORM_SEA_GLSL } from "../StormSea";
+import { SEA_FRAGMENT } from "../Sea";
+import { TORPEDO_FRAGMENT } from "../Torpedo";
 import { waterShaders } from "../../interior/water";
 import { roomShaders } from "../../interior/materials";
 import { LAYERS } from "../../interior/pieces";
@@ -105,6 +107,16 @@ describe("the Poseidon path's GLSL guards", () => {
 
   for (const [name, src] of Object.entries(SHADERS))
     it(`${name}: every smoothstep's literal edges ascend`, () => {
+      expect(reversedSmoothsteps(src)).toEqual([]);
+    });
+
+  // Older shaders: only the smoothstep order is guarded.
+  for (const [name, src] of Object.entries({
+    "Torpedo fragment": TORPEDO_FRAGMENT,
+    "Sea fragment": SEA_FRAGMENT,
+  }))
+    it(`${name}: every smoothstep's literal edges ascend`, () => {
+      expect(src.length).toBeGreaterThan(100);
       expect(reversedSmoothsteps(src)).toEqual([]);
     });
 

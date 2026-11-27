@@ -1,3 +1,4 @@
+import { interiorFor } from "./interior";
 import { PLACES_BY_SHIP } from "./places";
 import { titanic } from "./ships/titanic";
 import { resolveLivery, storyIdOf, type ShipSpec } from "./ships/types";
@@ -11,7 +12,7 @@ function walkLines(ship: ShipSpec): string[] {
   return walkMapFor(ship.id)
     ? [
         "The walking button puts you on her deck: the stick walks, drag to look. If she sinks under you, you float; the eye button looks under the water, and the bird button goes back to flying." +
-          (ship.id === "titanic"
+          (interiorFor(ship.id)
             ? " Beside a door, the door button takes you inside; inside, the door button takes you back out on deck."
             : ""),
       ]
