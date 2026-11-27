@@ -76,6 +76,17 @@ at 2:01; the staircase from below: the C landing at 2:07, the B foyer at
 2:09, the A foyer at 2:12; the Boat deck entrance dry until the break
 (2:14). The scene eases each room's shown level toward its target.
 
+## Doors (`doorExit.ts`)
+
+- `doorToEnter(map, area, at, depthAt, id?)`: the door button. The nearest
+  deck door whose outside end is within `DOOR_REACH_M` (4 m) of the walker
+  on the same area, or door `id` from anywhere (the test hook); only when
+  its inside end is dry (`depthAt` < 0). Returns where to stand inside,
+  facing on in.
+- `doorExit(map, cameInBy, depthAt, near?)`: Go outside. The outside end of
+  the door they came in by when it is dry, else the nearest dry deck door,
+  else null (the scene then tries the spawn, else the sea). Facing out.
+
 ## Lights (`lights.ts`)
 
 `roomPower(power, depthM, t)`: the ship's power (the sim's `frame.power`)

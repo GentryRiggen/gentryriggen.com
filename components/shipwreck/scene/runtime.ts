@@ -71,6 +71,21 @@ export interface SceneRuntime {
   /** For the test hooks: where the walker is (null when not walking). */
   walkInfo: WalkInfo | null;
   /**
+   * Inside her (WalkRunner writes them): whether the walker stands in an
+   * interior room, the area they stand in (null off her deck), the deck
+   * door they last came in by (Go outside's first choice), and a counter
+   * bumped each time the lift goes (the HUD's wipe).
+   */
+  walkInside: boolean;
+  walkRoom: string | null;
+  walkCameInBy: string | null;
+  walkLift: number;
+  /**
+   * A test hook's request to stand the walker somewhere (ship frame, on
+   * her whole piece or the piece under x); WalkRunner takes it next frame.
+   */
+  walkPlace: { area: string; x: number; y: number; yaw: number } | null;
+  /**
    * Riding a lifeboat: the player's look, a yaw turned from facing her
    * (radians, + to port) and a pitch (WalkRunner turns both by the drag),
    * and whether a ride's first frame has zeroed it. Effects writes
@@ -140,6 +155,8 @@ export interface WalkInfo {
   /** Sea over the feet (m; negative when dry); 0 in the water. */
   depthM: number;
   area: string | null;
+  /** Standing in a room inside her. */
+  inside: boolean;
 }
 
 /** Points along a turning ship's wake (`SceneRuntime.wake.path`). */
@@ -179,6 +196,11 @@ export function createSceneRuntime(): SceneRuntime {
     walkCanReboard: false,
     walkInputOff: false,
     walkInfo: null,
+    walkInside: false,
+    walkRoom: null,
+    walkCameInBy: null,
+    walkLift: 0,
+    walkPlace: null,
     ride: { yaw: 0, pitch: 0, aimed: false },
     rideView: { pos: [0, 0, 0], yaw: 0, pitch: 0 },
     boardable: -1,

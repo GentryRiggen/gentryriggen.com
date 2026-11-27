@@ -259,19 +259,24 @@ const TREADS = {
 } as const;
 
 const half = (upper: string, lower: string) => step(upper, lower) / 2;
+/**
+ * The Boat deck entrance's ceiling (m over its floor), under the dome: the
+ * half landing and the twin flights below it reach up to the same height.
+ */
+const TOP_CEILING_M = 4.2;
 
 const INFO: Record<string, RoomInfo> = {
   "gs-boat": {
     kind: "foyer",
     deck: "Boat",
-    ceilingM: 4.2,
+    ceilingM: TOP_CEILING_M,
     zone: "gs",
     look: { finish: "oak", floor: "lino", lamp: "dome" },
   },
   "gs-flight-boat-a": {
     kind: "flight",
     deck: "Boat",
-    ceilingM: 4.2,
+    ceilingM: TOP_CEILING_M,
     zone: "gs",
     look: { finish: "oak", floor: "lino", lamp: "dome" },
   },
@@ -279,7 +284,7 @@ const INFO: Record<string, RoomInfo> = {
     kind: "landing",
     deck: "A",
     raiseM: half("Boat", "A"),
-    ceilingM: 4.0,
+    ceilingM: TOP_CEILING_M + half("Boat", "A"),
     zone: "gs",
     look: { finish: "oak", floor: "lino", lamp: "dome" },
   },
@@ -287,7 +292,7 @@ const INFO: Record<string, RoomInfo> = {
     kind: "flight",
     deck: "A",
     raiseM: half("Boat", "A"),
-    ceilingM: 4.0,
+    ceilingM: TOP_CEILING_M + half("Boat", "A"),
     zone: "gs",
     look: { finish: "oak", floor: "lino", lamp: "dome" },
   },
@@ -295,7 +300,7 @@ const INFO: Record<string, RoomInfo> = {
     kind: "flight",
     deck: "A",
     raiseM: half("Boat", "A"),
-    ceilingM: 4.0,
+    ceilingM: TOP_CEILING_M + half("Boat", "A"),
     zone: "gs",
     look: { finish: "oak", floor: "lino", lamp: "dome" },
   },

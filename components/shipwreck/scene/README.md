@@ -139,8 +139,11 @@ Every time the scene shows or computes comes from the track: events carry
 draw calls and triangles over every pass, and the camera position).
 `window.__shipwreckRenderInfo` has the same plus the tier and DPR. Walking:
 `startWalk()`, `setWalkInput(forward, strafe)`, `turnWalk(yawRad)`,
-`setLookUnder(on)`, `getWalk()` (phase, part, x, y, slope, depth, look under;
-read from the runtime's `walkInfo`). `pump(ms)` computes ahead (e2e). The
+`setLookUnder(on)`, `getWalk()` (phase, part, x, y, slope, depth, look under,
+area, inside; read from the runtime's `walkInfo`), `placeWalk(area, x, y,
+yaw)` (stand the walker in any walk area, a room inside included, via
+`runtime.walkPlace`), `enterDoor(id?)` and `goOutside()` (as the door
+buttons: `walkInput.door` / `.outside`). `pump(ms)` computes ahead (e2e). The
 game's own: `setLivery(id)` and `livery()` (her paint, as the paint button). Installed
 with `installTestHooks(getScreen, undefined, sceneHooks(playback, runtime))`.
 
@@ -185,6 +188,13 @@ shot framed for landscape still fits the ship.
   she is within 600 m; paddling comes back up. On deck the ambient light
   is lifted ×1.25. The rules are `lib/shipwreck/walk/` (see its README).
   Keys: WASD or the arrows (the HUD's ←/→ seek is off while walking).
+  **Inside her** (1.15, the Titanic): `WalkRunner` passes the rooms'
+  water and `interiorsOpen` (whole only) to the walker and writes
+  `walkInside`, `walkRoom`, `walkCameInBy` and `walkLift`; inside at the
+  break, or washed out, is the usual splash into the sea. The view widens
+  to 65° inside (`insideFov`, 0.4 s; restored to the Canvas's 42° when walk
+  ends) and the eyes ease 0.12 s through a deck door (`easeEyes`). The
+  rooms are drawn by `components/shipwreck/interior/` (see its README).
 - **Bounds per ship**: `hullBoxesFor(ship)`; `keepClear` pushes the free
   camera out of the boxes through a face that leaves it above the floor (a
   wreck on her side has a face on the floor).

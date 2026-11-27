@@ -22,4 +22,7 @@ export function resetWalkInput(): void {
   walkInput.lookDx = 0;
   walkInput.lookDy = 0;
   walkInput.jump = false;
+  // The door buttons' flags: cleared, not set false (unset when idle).
+  walkInput.door = undefined;
+  walkInput.outside = undefined;
 }

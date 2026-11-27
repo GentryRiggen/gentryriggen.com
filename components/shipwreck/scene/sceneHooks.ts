@@ -108,7 +108,19 @@ export function sceneHooks(
         slopeDeg: info.slopeDeg,
         depthM: info.depthM,
         lookUnder: w.lookUnder,
+        area: info.area,
+        inside: info.inside,
       };
+    },
+    placeWalk: (area, x, y, yaw) => {
+      if (!runtime || ![x, y, yaw].every(Number.isFinite)) return;
+      runtime.walkPlace = { area, x, y, yaw };
+    },
+    enterDoor: (id) => {
+      walkInput.door = id ?? true;
+    },
+    goOutside: () => {
+      walkInput.outside = true;
     },
     setLookUnder: (on) => get().setLookUnder(on),
   };

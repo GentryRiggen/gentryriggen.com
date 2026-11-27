@@ -8,6 +8,7 @@ export * from "./kit";
 export * from "./lights";
 export * from "./merge";
 export * from "./water";
+export * from "./doorExit";
 export { TITANIC_INTERIOR } from "./titanic";
 
 /** A ship's interior, or null for a ship you cannot go inside. */

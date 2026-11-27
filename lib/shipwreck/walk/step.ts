@@ -52,6 +52,14 @@ export interface WalkInput {
   lookDy: number;
   /** Jump (pressed since the runner last read it; it zeroes it). */
   jump?: boolean;
+  /**
+   * Go in by a deck door (the door button; the runner reads and clears
+   * it): true for the nearest in reach, or a door's id. The walker itself
+   * ignores it.
+   */
+  door?: boolean | string;
+  /** Go outside (the button; the runner reads and clears it). */
+  outside?: boolean;
 }
 
 export interface StepContext {

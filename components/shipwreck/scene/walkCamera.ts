@@ -176,3 +176,47 @@ export function lookUnderAmbient(
 ): number {
   return lookUnder ? Math.max(intensity, LOOK_UNDER_NIGHT_AMBIENT) : intensity;
 }
+
+/** The field of view inside her (degrees): wider for tight rooms. */
+export const WALK_INSIDE_FOV = 65;
+/** And outside (the Canvas's own, which CameraRig restores after walk). */
+export const WALK_OUTSIDE_FOV = 42;
+/** How long the view takes to widen or narrow (s). */
+export const WALK_FOV_EASE_S = 0.4;
+
+/**
+ * The field of view a frame later (degrees): toward 65° inside, 42°
+ * outside, at a steady rate that crosses the whole change in 0.4 s, and
+ * never past the target.
+ */
+export function insideFov(
+  current: number,
+  inside: boolean,
+  dt: number
+): number {
+  const want = inside ? WALK_INSIDE_FOV : WALK_OUTSIDE_FOV;
+  if (!(dt > 0)) return current;
+  const step =
+    ((WALK_INSIDE_FOV - WALK_OUTSIDE_FOV) / WALK_FOV_EASE_S) * Math.min(dt, 1);
+  if (Math.abs(want - current) <= step) return want;
+  return current + Math.sign(want - current) * step;
+}
+
+/**
+ * Crossing a deck door moves the feet about 0.7 m in one substep: the eyes
+ * ease there over this long (s), so it reads as a step, not a cut.
+ */
+export const EYE_EASE_S = 0.12;
+
+/**
+ * Blends the view's position from `from` (the eyes before the door) toward
+ * where it now is, `t` seconds after the door (smoothstep over
+ * EYE_EASE_S; exactly the view from then on). In place, no allocation.
+ */
+export function easeEyes(view: WalkerView, from: V3, t: number): WalkerView {
+  const u = Math.max(0, Math.min(1, t / EYE_EASE_S));
+  const k = u * u * (3 - 2 * u);
+  for (let i = 0; i < 3; i += 1)
+    view.pos[i] = from[i] + (view.pos[i] - from[i]) * k;
+  return view;
+}

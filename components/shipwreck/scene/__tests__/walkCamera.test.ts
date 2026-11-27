@@ -10,6 +10,11 @@ import { shipToThree } from "../cameraMath";
 import {
   bob,
   deckEyes,
+  easeEyes,
+  EYE_EASE_S,
+  insideFov,
+  WALK_INSIDE_FOV,
+  WALK_OUTSIDE_FOV,
   followShipPitch,
   LOOK_UNDER_EYE_Y,
   LOOK_UNDER_MIN_POWER,
@@ -139,5 +144,60 @@ describe("look under helps", () => {
   it("lifts the ambient a little only while walking", () => {
     expect(walkAmbient(0.9, true)).toBeCloseTo(1.125, 12);
     expect(walkAmbient(0.9, false)).toBe(0.9);
+  });
+});
+
+describe("inside her: the wider view and the step through a door", () => {
+  it("eases the field of view to 65° inside and back to 42° outside", () => {
+    expect(WALK_INSIDE_FOV).toBe(65);
+    expect(WALK_OUTSIDE_FOV).toBe(42);
+    // Settled: stays put.
+    expect(insideFov(42, false, 1 / 60)).toBe(42);
+    expect(insideFov(65, true, 1 / 60)).toBe(65);
+    // Going in: rises, monotonically, never past 65, there in about 0.4 s.
+    let fov = 42;
+    let prev = fov;
+    let t = 0;
+    while (fov < 65 && t < 2) {
+      fov = insideFov(fov, true, 1 / 60);
+      expect(fov).toBeGreaterThan(prev);
+      expect(fov).toBeLessThanOrEqual(65);
+      prev = fov;
+      t += 1 / 60;
+    }
+    expect(t).toBeGreaterThan(0.3);
+    expect(t).toBeLessThan(0.5);
+    // Coming out: back down to 42 the same way.
+    for (let i = 0; i < 60; i += 1) fov = insideFov(fov, false, 1 / 60);
+    expect(fov).toBe(42);
+    // A stalled frame does not overshoot, nor does a bad dt move it.
+    expect(insideFov(42, true, 10)).toBe(65);
+    expect(insideFov(50, true, Number.NaN)).toBe(50);
+  });
+
+  it("the eyes ease over 0.12 s after a door, then follow exactly", () => {
+    expect(EYE_EASE_S).toBeCloseTo(0.12, 9);
+    const from: [number, number, number] = [0, 10, 0];
+    const v = {
+      pos: [1, 10.5, -0.7] as [number, number, number],
+      yaw: 0,
+      pitch: 0,
+    };
+    const at = (t: number) => {
+      const w = { ...v, pos: [...v.pos] as [number, number, number] };
+      easeEyes(w, from, t);
+      return w.pos;
+    };
+    expect(at(0)).toEqual(from);
+    expect(at(EYE_EASE_S)).toEqual(v.pos);
+    expect(at(1)).toEqual(v.pos);
+    // Monotonic along the way, never past the target.
+    let prev = 0;
+    for (let i = 1; i < 12; i += 1) {
+      const x = at(i * 0.01)[0];
+      expect(x).toBeGreaterThan(prev);
+      expect(x).toBeLessThan(1);
+      prev = x;
+    }
   });
 });

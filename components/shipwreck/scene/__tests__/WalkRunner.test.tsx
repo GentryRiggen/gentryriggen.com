@@ -6,6 +6,7 @@ import type { SimRunner } from "@/lib/shipwreck/sim/run";
 import { resetWalkInput, walkInput } from "@/lib/shipwreck/walk";
 import Hud from "@/components/shipwreck/ui/Hud";
 import { createSceneRuntime } from "../runtime";
+import { sceneHooks } from "../sceneHooks";
 import WalkRunner from "../WalkRunner";
 
 type FrameFn = (state: { clock: { elapsedTime: number } }, dt: number) => void;
@@ -42,7 +43,8 @@ function setup() {
     const fn = mockFrames[mockFrames.length - 1];
     fn({ clock: { elapsedTime: 0 } }, dt);
   };
-  return { store, runtime, frame };
+  const hooks = sceneHooks(store, runtime);
+  return { store, runtime, frame, hooks };
 }
 
 describe("walking in the scene", () => {
@@ -208,5 +210,124 @@ describe("walking in the scene", () => {
     frame();
     expect(runtime.walker).toBeNull();
     expect(runtime.walkInfo).toBeNull();
+  });
+
+  it("walks in through the starboard staircase door and out again", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    expect(runtime.walkInside).toBe(false);
+    expect(hooks.getWalk()).toMatchObject({ area: "boat-deck", inside: false });
+    // On the boat deck just outboard of the door, facing her house (port).
+    hooks.placeWalk("boat-deck", 35.5, -7, Math.PI / 2);
+    frame();
+    expect(runtime.walkInfo).toMatchObject({ area: "boat-deck", x: 35.5 });
+    walkInput.forward = 1;
+    for (let i = 0; i < 60 && !runtime.walkInside; i += 1) frame();
+    walkInput.forward = 0;
+    expect(runtime.walkInside).toBe(true);
+    expect(runtime.walkRoom).toBe("gs-boat");
+    expect(runtime.walkCameInBy).toBe("gs-door-starboard");
+    expect(runtime.walkInfo).toMatchObject({ inside: true, area: "gs-boat" });
+    expect(hooks.getWalk()).toMatchObject({ area: "gs-boat", inside: true });
+
+    // Go outside: the door she came in by, on the deck, facing out.
+    hooks.goOutside();
+    frame();
+    expect(runtime.walkInside).toBe(false);
+    expect(runtime.walkRoom).toBe("boat-deck");
+    expect(runtime.walkInfo).toMatchObject({ area: "boat-deck", x: 35.5 });
+    expect(runtime.walkInfo!.y).toBeCloseTo(-5.45, 3);
+    expect(walkInput.outside).toBeFalsy();
+  });
+
+  it("the door button takes you in from within reach, not from afar", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    // The spawn (x 10) is about 25 m from the nearest door.
+    hooks.enterDoor();
+    frame();
+    expect(runtime.walkInside).toBe(false);
+    expect(walkInput.door).toBeFalsy();
+    hooks.placeWalk("boat-deck", 33, 6.5, 0);
+    frame();
+    hooks.enterDoor();
+    frame();
+    expect(runtime.walkInside).toBe(true);
+    expect(runtime.walkRoom).toBe("gs-boat");
+    expect(runtime.walkCameInBy).toBe("gs-door-port");
+    // A named door from anywhere (the test hook).
+    hooks.goOutside();
+    frame();
+    hooks.enterDoor("third-class-door");
+    frame();
+    expect(runtime.walkRoom).toBe("third-stairs-c");
+    expect(runtime.walkCameInBy).toBe("third-class-door");
+  });
+
+  it("the lift takes you from B deck to E deck and bumps the wipe", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    hooks.placeWalk("lift-b", 41.75, -4.6, 0);
+    frame();
+    expect(runtime.walkRoom).toBe("lift-b");
+    const lift0 = runtime.walkLift;
+    walkInput.forward = 1;
+    for (let i = 0; i < 30 && runtime.walkRoom === "lift-b"; i += 1) frame();
+    walkInput.forward = 0;
+    expect(runtime.walkRoom).toBe("lift-e");
+    expect(runtime.walkLift).toBe(lift0 + 1);
+    expect(runtime.walkInside).toBe(true);
+  });
+
+  it("inside when she breaks: a splash, floating in the sea beside her", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    const broke = track.brokeAtT as number;
+    store.setState({ t: broke - 30 });
+    frame();
+    hooks.placeWalk("gs-boat", 37, -4, 0);
+    frame();
+    expect(runtime.walkInside).toBe(true);
+    const splashes = runtime.walkSplash;
+    store.setState({ t: broke + 1 });
+    frame();
+    expect(store.getState().walk.phase).toBe("water");
+    expect(runtime.walkSplash).toBe(splashes + 1);
+    expect(runtime.walkInside).toBe(false);
+    expect(runtime.walkRoom).toBeNull();
+    expect(runtime.walkInfo?.phase).toBe("water");
+  });
+
+  it("washed out of a flooded room into the sea", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    // 0:50 AM: the third-class cabin is over the waist.
+    store.setState({ t: 70 * 60 });
+    frame();
+    hooks.placeWalk("third-cabin", 74.8, 7.0, 0);
+    const splashes = runtime.walkSplash;
+    frame();
+    expect(store.getState().walk.phase).toBe("water");
+    expect(runtime.walkSplash).toBe(splashes + 1);
+    expect(runtime.walkInside).toBe(false);
+  });
+
+  it("a deck door does not open after the break, nor the button", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    store.setState({ t: (track.brokeAtT as number) + 5 });
+    frame();
+    // Standing by the door on her deck (or already in the sea).
+    hooks.placeWalk("boat-deck", 33, 6.5, 0);
+    frame();
+    hooks.enterDoor("gs-door-port");
+    frame();
+    expect(runtime.walkInside).toBe(false);
+    expect(runtime.walkRoom).not.toBe("gs-boat");
   });
 });

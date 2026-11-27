@@ -139,6 +139,15 @@ export interface ShipwreckSceneHooks {
   turnWalk(yawRad: number): void;
   /** Where the walker is, or null when not walking. */
   getWalk(): WalkHookInfo | null;
+  /**
+   * Stands the walker in walk area `area` (a deck or a room inside) at
+   * ship-frame (x, y), facing `yaw` (rad, 0 the bow, + to port).
+   */
+  placeWalk(area: string, x: number, y: number, yaw: number): void;
+  /** Goes in by a deck door, as the door button (default: the nearest in reach). */
+  enterDoor(id?: string): void;
+  /** Goes outside, as the Go outside button. */
+  goOutside(): void;
   setLookUnder(on: boolean): void;
 }
 
@@ -155,6 +164,10 @@ export interface WalkHookInfo {
   /** Sea over the feet (m; negative when dry); 0 in the water. */
   depthM: number;
   lookUnder: boolean;
+  /** The walk area underfoot (a deck or a room), null in the water. */
+  area: string | null;
+  /** Standing in a room inside her. */
+  inside: boolean;
 }
 
 /** The game's own hooks: start a run, read where it is and how it ended. */
