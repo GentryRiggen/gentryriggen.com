@@ -241,11 +241,11 @@ export default function WalkHud({
         </div>
       )}
 
-      {/* At a deck door: go in (above the lifeboat button's place). */}
+      {/* At a deck door: go in. Beside the lifeboat button's place on a wide
+          screen; stacked above it on a phone, where the Jump button sits in
+          that row. */}
       {deck && !feel.inside && feel.door >= 0 && (
-        <div
-          className={`absolute right-[calc(max(1rem,env(safe-area-inset-right))+5.5rem)] ${OVER_MARKS}`}
-        >
+        <div className="absolute bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+20rem)] right-[max(1rem,env(safe-area-inset-right))] sm:bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+11rem)] sm:right-[calc(max(1rem,env(safe-area-inset-right))+5.5rem)]">
           <button
             type="button"
             aria-label="Go inside"
