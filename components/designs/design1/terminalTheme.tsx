@@ -9,31 +9,14 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useTheme, type Theme } from "@/components/ThemeProvider";
-import { TERM_THEME_KEY } from "@/lib/theme/themeScript";
+import { useTheme } from "@/components/ThemeProvider";
+import {
+  TERMINAL_THEMES,
+  TERM_THEME_KEY,
+  type TerminalTheme,
+} from "@/lib/theme/terminalThemes";
 
-export interface TerminalTheme {
-  /** Matches a `[data-term-theme]` block in app/globals.css. */
-  id: string;
-  name: string;
-  /** The site's light/dark mode this theme pairs with. */
-  mode: Theme;
-}
-
-/**
- * Light and Dark are the site's own modes (no saved terminal theme); the rest
- * paint the homepage terminal and set the site mode to match.
- */
-export const TERMINAL_THEMES: readonly TerminalTheme[] = [
-  { id: "light", name: "Light", mode: "light" },
-  { id: "dark", name: "Dark", mode: "dark" },
-  { id: "ayu-mirage", name: "Ayu Mirage", mode: "dark" },
-  { id: "dracula", name: "Dracula", mode: "dark" },
-  { id: "nord", name: "Nord", mode: "dark" },
-  { id: "gruvbox", name: "Gruvbox", mode: "dark" },
-  { id: "catppuccin", name: "Catppuccin Mocha", mode: "dark" },
-  { id: "solarized-light", name: "Solarized Light", mode: "light" },
-];
+export { TERMINAL_THEMES, type TerminalTheme };
 
 function isSiteMode(id: string): boolean {
   return id === "light" || id === "dark";
@@ -75,6 +58,12 @@ function applyToDocument(id: string) {
   }
   if (named) root.setAttribute("data-term-theme", id);
   else root.removeAttribute("data-term-theme");
+  // iOS tints its browser chrome with theme-color. ThemeProvider sets it too
+  // when the mode flips; this covers switches that keep the mode.
+  const theme = TERMINAL_THEMES.find((t) => t.id === id);
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", theme?.page ?? "#030712");
 }
 
 interface TerminalThemeProviderProps {

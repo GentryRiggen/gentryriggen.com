@@ -37,7 +37,6 @@ export default function ThemeMenu() {
         onClick={() => setIsOpen((open) => !open)}
         aria-label="Choose theme"
         aria-expanded={isOpen}
-        aria-haspopup="true"
         className="p-3 rounded-full bg-term-bar/80 hover:bg-term-bar border border-term-border backdrop-blur-sm shadow-sm text-term-accent cursor-pointer"
       >
         {/* Palette icon */}

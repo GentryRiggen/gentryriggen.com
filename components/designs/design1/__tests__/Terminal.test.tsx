@@ -100,4 +100,46 @@ describe("Terminal boot sequence", () => {
     );
     expect(history.textContent).toContain("ls ~/side-projects/");
   });
+
+  it("seeds the input with the printable key that skipped the boot", () => {
+    render(<Terminal />);
+    fireEvent.keyDown(window, { key: "h" });
+    expect(queryPrompt()).toHaveValue("h");
+    expect(queryPrompt()).toHaveFocus();
+  });
+
+  it.each(["Escape", "Tab"])("does not skip on %s", (key) => {
+    render(<Terminal />);
+    fireEvent.keyDown(window, { key });
+    expect(queryPrompt()).not.toBeInTheDocument();
+  });
+
+  it("does not skip on keys aimed at a button", () => {
+    render(
+      <>
+        <button type="button">menu</button>
+        <Terminal />
+      </>
+    );
+    fireEvent.keyDown(screen.getByRole("button", { name: "menu" }), {
+      key: "Enter",
+    });
+    expect(queryPrompt()).not.toBeInTheDocument();
+  });
+
+  it("a tap during boot skips without focusing the input", () => {
+    render(<Terminal />);
+    fireEvent.click(screen.getByText("who is gentry riggen?"));
+    expect(queryPrompt()).toBeInTheDocument();
+    expect(queryPrompt()).not.toHaveFocus();
+  });
+
+  it("a chip keeps half-typed input", () => {
+    render(<Terminal />);
+    fireEvent.keyDown(window, { key: "Enter" });
+    const input = screen.getByLabelText("Terminal command input");
+    fireEvent.change(input, { target: { value: "theme dra" } });
+    fireEvent.click(screen.getByRole("button", { name: "skills" }));
+    expect(input).toHaveValue("theme dra");
+  });
 });

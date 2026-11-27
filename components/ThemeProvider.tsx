@@ -8,6 +8,7 @@ import {
   useCallback,
 } from "react";
 import { fixedThemeColor } from "@/lib/theme/themeScript";
+import { terminalThemeColor } from "@/lib/theme/terminalThemes";
 
 export type Theme = "light" | "dark";
 
@@ -71,6 +72,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       themeColorMeta.setAttribute(
         "content",
         fixedThemeColor(window.location.pathname) ??
+          terminalThemeColor(window.location.pathname) ??
           (theme === "dark" ? "#030712" : "#ffffff")
       );
     }

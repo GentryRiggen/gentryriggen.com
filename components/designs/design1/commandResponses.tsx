@@ -9,7 +9,11 @@
 import { type ReactNode } from "react";
 import About from "./About";
 import SideProjects from "./SideProjects";
-import { Bio, HireMe, Links, Skills, Whoami } from "./Sections";
+import Bio from "./Bio";
+import HireMe from "./HireMe";
+import Links from "./Links";
+import Skills from "./Skills";
+import Whoami from "./Whoami";
 import { GAMES, gameForCommand, type Game } from "./games";
 import { LINK_CLASS } from "./styles";
 import ThemePicker from "./ThemePicker";

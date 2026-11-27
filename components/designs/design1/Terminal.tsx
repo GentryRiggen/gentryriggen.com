@@ -10,7 +10,10 @@ import {
 import usePrefersReducedMotion from "@/components/game-kit/usePrefersReducedMotion";
 import About from "./About";
 import InteractivePrompt from "./InteractivePrompt";
-import { Bio, Links, Skills, Whoami } from "./Sections";
+import Bio from "./Bio";
+import Links from "./Links";
+import Skills from "./Skills";
+import Whoami from "./Whoami";
 import SideProjects from "./SideProjects";
 import { SPINNER_VERBS } from "./Spinner";
 import Spinner from "./Spinner";
@@ -57,8 +60,10 @@ export default function Terminal({
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isCleared, setIsCleared] = useState(false);
   const startedAtRef = useRef(0);
-  /** A tap skipped the boot: focus the input once it exists. */
+  /** A key skipped the boot: focus the input once it exists. */
   const focusWhenReadyRef = useRef(false);
+  /** The printable key that skipped the boot, so it isn't lost. */
+  const [seedInput, setSeedInput] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -90,10 +95,29 @@ export default function Terminal({
   useEffect(() => {
     if (isBootComplete) return;
     const skip = (e: KeyboardEvent) => {
-      // Keyboard navigation and shortcuts shouldn't skip.
-      if (e.key === "Tab" || e.key === "Shift" || e.metaKey || e.ctrlKey) {
+      // Navigation, shortcuts and keys meant for a control (the theme menu,
+      // a link) shouldn't skip.
+      if (
+        e.key === "Tab" ||
+        e.key === "Shift" ||
+        e.key === "Escape" ||
+        e.metaKey ||
+        e.ctrlKey ||
+        e.altKey
+      ) {
         return;
       }
+      if (
+        e.target instanceof Element &&
+        e.target.closest("button, a, input, select, textarea")
+      ) {
+        return;
+      }
+      if (e.key.length === 1 && e.key !== " ") {
+        e.preventDefault();
+        setSeedInput(e.key);
+      }
+      focusWhenReadyRef.current = true;
       setIsSkipped(true);
     };
     window.addEventListener("keydown", skip);
@@ -116,10 +140,11 @@ export default function Terminal({
     scrollToBottom();
   }, [visibleSteps, scrollToBottom]);
 
+  // A tap during boot only skips: focusing would pop the phone keyboard
+  // over what it just revealed. Once the prompt is up, a tap focuses it.
   const handleWindowClick = useCallback(() => {
     setIsSkipped(true);
-    if (inputRef.current) inputRef.current.focus();
-    else focusWhenReadyRef.current = true;
+    inputRef.current?.focus();
   }, []);
 
   /** Called by InteractivePrompt when the user runs `clear` */
@@ -184,6 +209,7 @@ export default function Terminal({
             onClear={handleClear}
             inputRef={inputRef}
             onContentChange={scrollToBottom}
+            initialInput={seedInput}
           />
         </div>
       )}
