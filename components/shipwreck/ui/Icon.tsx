@@ -27,6 +27,8 @@ export type IconName =
   | "walk"
   | "fly"
   | "on-deck"
+  | "door-in"
+  | "door-out"
   | "jump"
   | "look-under"
   | "drag-look"
@@ -104,6 +106,10 @@ const PATHS: Record<IconName, string> = {
   jump: "M12 2.5l3 3M12 2.5l-3 3M12 2.5V8M13 10.5a1.5 1.5 0 1 0 0 .1M8 21l3-5-1-3 2-1 3 2 2 1M11 16l3 1 1 4M2 21h5M17 21h5",
   // A ship with an up arrow over her: back on her deck.
   "on-deck": "M3 15h18l-3 5H6zM7 15v-2.5h4V15M12 11V2.5M8.5 6L12 2.5 15.5 6",
+  // A door with an arrow going in through it.
+  "door-in": "M14 3h6v18h-6M3 12h10M9 8l4 4-4 4",
+  // A door with an arrow coming out of it.
+  "door-out": "M10 3H4v18h6M21 12H11M17 8l4 4-4 4",
   // An eye over a wave line, an arrow going down under it.
   "look-under":
     "M3 7c2.2-3 5.4-4.5 9-4.5S18.8 4 21 7c-2.2 3-5.4 4.5-9 4.5S5.2 10 3 7zM12 5.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6zM2 15c2 1.4 4 1.4 6 0s4-1.4 6 0 4 1.4 6 0M12 17.5v4.5M9.5 19.5L12 22l2.5-2.5",

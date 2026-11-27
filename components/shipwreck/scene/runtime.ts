@@ -81,6 +81,11 @@ export interface SceneRuntime {
   walkCameInBy: string | null;
   walkLift: number;
   /**
+   * On her deck: the index (in the map's stairs) of the deck door within
+   * reach to go in by, or −1. WalkRunner writes it a few times a second.
+   */
+  walkDoor: number;
+  /**
    * A test hook's request to stand the walker somewhere (ship frame, on
    * her whole piece or the piece under x); WalkRunner takes it next frame.
    */
@@ -217,6 +222,7 @@ export function createSceneRuntime(): SceneRuntime {
     walkRoom: null,
     walkCameInBy: null,
     walkLift: 0,
+    walkDoor: -1,
     walkPlace: null,
     interiorLevels: null,
     ride: { yaw: 0, pitch: 0, aimed: false },

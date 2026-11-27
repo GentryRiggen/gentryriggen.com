@@ -121,6 +121,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     },
     /** Seconds since a door was walked through (null: no easing). */
     easeT: null as number | null,
+    /** Seconds until the door in reach is looked up again. */
+    doorT: 0,
     /** The eyes just before that door (three.js). */
     eyeFrom: [0, 0, 0] as V3,
   });
@@ -441,6 +443,19 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       // The area underfoot, looked up once (again only if a door moves them).
       let inRoom = areaById(map, w.area)?.interior === true;
 
+      // The deck door within reach, a few times a second (the HUD's button).
+      s.doorT -= dt;
+      if (s.doorT <= 0) {
+        s.doorT = DOOR_LOOK_S;
+        const near =
+          !inRoom && !broken && w.part === "whole"
+            ? doorToEnter(map, w.area, [w.x, w.y], depthAt)
+            : null;
+        runtime.walkDoor = near
+          ? map.stairs.findIndex((st) => st.id === near.id)
+          : -1;
+      }
+
       // The door button and Go outside (read once, then cleared).
       const doorAsk = walkInput.door;
       const outAsk = walkInput.outside;
@@ -719,8 +734,12 @@ function useWalkKeys(
   }, [walking, runtime, store]);
 }
 
+/** How often the door in reach is looked up (s). */
+const DOOR_LOOK_S = 0.25;
+
 /** Not in a room (in the sea, a boat or not walking). */
 function notInside(runtime: SceneRuntime): void {
+  runtime.walkDoor = -1;
   runtime.walkInside = false;
   runtime.walkRoom = null;
 }

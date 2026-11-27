@@ -65,6 +65,15 @@ describe("the walk line", () => {
       );
   });
 
+  it("mentions doors in plain words, Titanic only", () => {
+    expect(helpFor("controls", null, titanic).lines.join(" ")).toMatch(
+      /door button/
+    );
+    expect(helpFor("controls", null, lusitania).lines.join(" ")).not.toMatch(
+      /door button/
+    );
+  });
+
   it("is left out for a ship you cannot walk on", () => {
     const noWalk = { ...titanic, id: "nope" as typeof titanic.id };
     expect(helpFor("controls", null, noWalk).lines.join(" ")).not.toMatch(

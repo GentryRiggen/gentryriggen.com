@@ -10,7 +10,10 @@ import { walkMapFor } from "./walk";
 function walkLines(ship: ShipSpec): string[] {
   return walkMapFor(ship.id)
     ? [
-        "The walking button puts you on her deck: the stick walks, drag to look. If she sinks under you, you float; the eye button looks under the water, and the bird button goes back to flying.",
+        "The walking button puts you on her deck: the stick walks, drag to look. If she sinks under you, you float; the eye button looks under the water, and the bird button goes back to flying." +
+          (ship.id === "titanic"
+            ? " Beside a door, the door button takes you inside; inside, the other door button takes you back outside."
+            : ""),
       ]
     : [];
 }

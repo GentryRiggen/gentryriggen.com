@@ -432,3 +432,44 @@ describe("jumping", () => {
     expect(store.getState().playing).toBe(false);
   });
 });
+
+describe("doors, outside and the lift", () => {
+  it("shows the door button only with a door in reach, and asks to go in", () => {
+    const { store, runtime, tick } = setup();
+    act(() => store.getState().startWalk());
+    tick();
+    expect(screen.queryByTestId("shipwreck-go-inside")).toBeNull();
+    runtime.walkDoor = 2;
+    tick();
+    const btn = screen.getByTestId("shipwreck-go-inside");
+    expect(btn).toHaveAttribute("aria-label", "Go inside");
+    fireEvent.click(btn);
+    expect(walkInput.door).toBe(true);
+  });
+
+  it("inside: Go outside replaces jump and asks to go out", () => {
+    const { store, runtime, tick } = setup();
+    act(() => store.getState().startWalk());
+    runtime.walkInside = true;
+    runtime.walkDoor = 2;
+    tick();
+    expect(screen.queryByTestId("shipwreck-walk-jump")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-go-inside")).toBeNull();
+    fireEvent.click(screen.getByTestId("shipwreck-go-outside"));
+    expect(walkInput.outside).toBe(true);
+  });
+
+  it("wipes dark once on a lift ride, not with reduced motion", () => {
+    const { store, runtime, tick } = setup();
+    act(() => store.getState().startWalk());
+    tick();
+    expect(screen.queryByTestId("shipwreck-walk-lift")).toBeNull();
+    runtime.walkLift += 1;
+    tick();
+    expect(screen.getByTestId("shipwreck-walk-lift").className).toMatch(
+      /motion-reduce:hidden/
+    );
+    act(() => jest.advanceTimersByTime(1000));
+    expect(screen.queryByTestId("shipwreck-walk-lift")).toBeNull();
+  });
+});
