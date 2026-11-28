@@ -299,6 +299,7 @@ export default function Effects({
     x: 0,
     y: 0,
     slopeDeg: 0,
+    heelDeg: 0,
     depthM: 0,
     inside: false,
   });

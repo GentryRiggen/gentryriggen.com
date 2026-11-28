@@ -170,6 +170,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         x: 0,
         y: 0,
         slopeDeg: 0,
+        heelDeg: 0,
         depthM: 0,
         inside: false,
       } as WalkInfo,
@@ -642,6 +643,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         info.x = r.state.x;
         info.y = r.state.y;
         info.slopeDeg = r.slopeDeg;
+        info.heelDeg = Math.abs(frame.listDeg);
         info.depthM = r.depthM;
         info.inside = inside;
         runtime.walkInfo = info;
@@ -714,6 +716,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     info.x = next.x;
     info.y = next.y;
     info.slopeDeg = 0;
+    info.heelDeg = Math.abs(frame.listDeg);
     info.depthM = 0;
     info.inside = false;
     runtime.walkInfo = info;

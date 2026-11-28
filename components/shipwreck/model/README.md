@@ -1285,7 +1285,9 @@ Photographs on Wikimedia Commons, "Category:Costa Concordia (ship,
 - **Lifeboats**: 26, 13 a side ([MIT §4.5]; [P1] counts 13 starboard),
   x −84 to +84 about 14 m apart ([M]), 10.8 by 3.9 m (150-person
   boats: an assumption from their size against the deck in [P6]), in the
-  recess on deck 4 (set in 4.8 m) under deck 6, each in a pair of
+  recess on deck 4 (set in 7.4 m since 1.17, was 4.8 m, so a
+  promenade about 3 m wide runs inboard of the boats; `CONCORDIA_RECESS_INSET`)
+  under deck 6, each in a pair of
   davits, their recess wall in shade; white lower hull, orange above
   under a rounded orange canopy (`paint.boat.cover`) ([P6]). Liferaft canisters in
   racks at both ends of the rows ([P7]).

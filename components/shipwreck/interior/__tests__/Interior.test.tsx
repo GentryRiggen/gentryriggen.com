@@ -255,6 +255,7 @@ describe("Interior", () => {
         x,
         y: 4.3,
         slopeDeg: 0,
+        heelDeg: 0,
         depthM: -1,
         area: "scotland-road",
         inside: true,

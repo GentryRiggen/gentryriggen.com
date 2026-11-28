@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.17.0",
+    date: "2026-11-27",
+    title: "Walk the Costa Concordia",
+    highlights: [
+      "Press Walk on the Costa Concordia and step out on her top decks: around the pools, past the yellow water slide and up on the sports deck",
+      "Start in the pool hall under the big glass roof, right beside the pool",
+      "Walk the boat deck, stand beside a lifeboat and climb in before it swings down to the sea",
+      "Feel her lean: walking uphill gets slower and slower, and the deck slides you downhill, so hold on to the rail and keep going",
+      "Listen to her creak and groan as she tips further and further over",
+      "When she leans too far to stand, the deck lets go and you slide into the sea, so get to a boat first",
+      "Take the stairs and glass doors between the pool decks, the boat decks and the sports deck",
+    ],
+  },
+  {
     version: "1.16.0",
     date: "2026-11-27",
     title: "Finding the way inside",

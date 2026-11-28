@@ -1,4 +1,5 @@
 import { bowDownText, helpFor, leanText, powerText, waterText } from "../help";
+import { concordia } from "../ships/concordia";
 import { lusitania } from "../ships/lusitania";
 import { poseidon } from "../ships/poseidon";
 import { titanic } from "../ships/titanic";
@@ -77,6 +78,15 @@ describe("the walk line", () => {
   it("says the door button takes you back out on deck", () => {
     expect(helpFor("controls", null, titanic).lines.join(" ")).toMatch(
       /inside, the door button takes you back out on deck/
+    );
+  });
+
+  it("tells of her lean and the lifeboats on the Concordia only", () => {
+    expect(helpFor("controls", null, concordia).lines.join(" ")).toMatch(
+      /slide downhill.*lifeboat/
+    );
+    expect(helpFor("controls", null, titanic).lines.join(" ")).not.toMatch(
+      /slide downhill/
     );
   });
 

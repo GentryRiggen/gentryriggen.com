@@ -13,7 +13,7 @@ export const PARENT_LINES: Record<ShipId, string> = {
   britannic:
     "This is the Britannic in 1916, a hospital ship in the First World War. A mine sank her in 55 minutes, and 30 people died. This game shows only the ship.",
   concordia:
-    "This is the Costa Concordia, a cruise ship, in January 2012. At night she sailed too close to the island of Giglio, struck rocks and rolled onto her side beside the harbour. Most of the 4,229 people aboard were rescued, but 32 people died. This game shows only the ship.",
+    "This is the Costa Concordia, a cruise ship, in January 2012. At night she sailed too close to the island of Giglio, struck rocks and rolled onto her side beside the harbour. Most of the 4,229 people aboard were rescued, but 32 people died. This game shows only the ship. You can walk her top decks and board a lifeboat.",
   poseidon:
     "The Poseidon is not a real ship. She is a made-up cruise ship from a 2006 film, rolled over by a giant wave on New Year's Eve. Real ships have met waves nearly this big. This game shows what physics says could happen to a ship turned upside down, and it shows only the ship.",
 };
