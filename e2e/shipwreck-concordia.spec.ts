@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { concordiaRecipe } from "@/components/shipwreck/model/concordiaRecipe";
 import { boatSpot } from "@/lib/shipwreck/boatRide";
+import { CONCORDIA_INTERIOR } from "@/lib/shipwreck/interior/concordia";
 import { CONCORDIA_POOL_GLASS } from "@/lib/shipwreck/ships/concordiaLayout";
 import { getShip } from "@/lib/shipwreck/ships";
 import { CONCORDIA_WALK } from "@/lib/shipwreck/walk/concordiaDecks";
@@ -8,8 +9,10 @@ import { insideBlocker, pointInPolygon } from "@/lib/shipwreck/walk/types";
 
 /**
  * Walking the Costa Concordia (1.17): the pool hall, a lifeboat, her lean
- * and the slide into the sea. Chromium only; times key on her heel, never
- * the clock (except 22:00 and the boat's lowering, found from the events).
+ * and the slide into the sea; going inside her (1.18): the boat deck's
+ * door, the glass lift, the low lobby flooding, the 30° close and the
+ * balcony. Chromium only; times key on her heel, never the clock (except
+ * 22:00 and the boat's lowering, found from the events).
  */
 
 /** 22:00 on the real night: 14 min 53 s after the strike (21:45:07). */
@@ -51,6 +54,54 @@ async function place(
 async function seekTo(page: Page, t: number) {
   await page.evaluate((s) => window.__shipwreck!.seek!(s), t);
   await page.waitForTimeout(500);
+}
+
+/** The game itself (its HUD: the picker, the lift's buttons), at 22:00. */
+async function startGame(page: Page) {
+  await page.goto("/shipwreck");
+  await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
+  await page.evaluate(() => window.__shipwreck!.setShip!("concordia"));
+  await page.getByTestId("shipwreck-real-night").click();
+  await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+  await page.evaluate(() => window.__shipwreck!.pause!());
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const h = window.__shipwreck!;
+          h.pump!(200);
+          return h.getState!().computedT;
+        }),
+      { timeout: 120_000 }
+    )
+    .toBeGreaterThan(T_2200 + 10);
+  await seekTo(page, T_2200);
+}
+
+/** Taps the camera picker's room button `label` and waits to be inside. */
+async function pickRoom(page: Page, label: string) {
+  await expect(page.getByTestId("shipwreck-walk")).toBeEnabled({
+    timeout: 60_000,
+  });
+  await page.getByTestId("shipwreck-cameras-button").click();
+  const button = page.getByRole("button", { name: `Walk inside: ${label}` });
+  await expect(button).toBeVisible();
+  await button.click();
+  await page.waitForFunction(
+    () => window.__shipwreck!.getWalk!()?.inside === true,
+    null,
+    { timeout: 20_000 }
+  );
+}
+
+/** Seeks in steps of 15 s from `t` until her heel reaches `heel`; the time. */
+async function seekToHeel(page: Page, t: number, heel: number) {
+  for (;;) {
+    await seekTo(page, t);
+    if ((await walk(page)).heelDeg >= heel) return t;
+    t += 15;
+    expect(t).toBeLessThan(5200);
+  }
 }
 
 test.describe("Shipwreck: walking the Costa Concordia", () => {
@@ -235,5 +286,156 @@ test.describe("Shipwreck: walking the Costa Concordia", () => {
       { timeout: 10_000 }
     );
     await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 0));
+  });
+});
+
+test.describe("Shipwreck: inside the Costa Concordia", () => {
+  test.setTimeout(240_000);
+  const link = (id: string) =>
+    CONCORDIA_INTERIOR.links.find((l) => l.id === id)!;
+  /** lobby-1's low (starboard) side, where the sea comes in first. */
+  const LOBBY_STBD: [number, number] = [59, -13.4];
+
+  test("goes in by the starboard boat deck's door", async ({ page }) => {
+    await startNight(page);
+    await seekTo(page, T_2200);
+    await page.evaluate(() => window.__shipwreck!.startWalk!());
+    await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+    const door = link("entry-s");
+    // On the promenade at the door, facing it (inboard: to port).
+    await place(
+      page,
+      "boat-deck-s",
+      door.from.at[0],
+      door.from.at[1],
+      Math.PI / 2
+    );
+    await page.evaluate(() => window.__shipwreck!.enterDoor!("entry-s"));
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.area === "entry-s",
+      null,
+      { timeout: 10_000 }
+    );
+    expect(await walk(page)).toMatchObject({ inside: true, area: "entry-s" });
+  });
+
+  test("the picker's Atrium, then the glass lift down to the low lobby and up to deck 7", async ({
+    page,
+  }) => {
+    await startGame(page);
+    await pickRoom(page, "Atrium");
+    expect(await walk(page)).toMatchObject({
+      inside: true,
+      area: "atrium-well",
+    });
+    // Into lift-a's car at deck 3 (its door onto the atrium).
+    await place(page, "lift-a@3", 63.1, 2.6, 0);
+    const ride = async (dir: "up" | "down", to: string) => {
+      await page.evaluate((d) => window.__shipwreck!.rideLift!(d), dir);
+      await page.waitForFunction(
+        () => window.__shipwreck!.getWalk!()?.ride === "lift-a"
+      );
+      await page.waitForFunction(
+        (a) => {
+          const w = window.__shipwreck!.getWalk!();
+          return w?.area === a && w.ride === null;
+        },
+        to,
+        { timeout: 60_000 }
+      );
+    };
+    await ride("down", "lift-a@0");
+    for (const deck of ["3", "4", "5", "7"]) await ride("up", `lift-a@${deck}`);
+    expect(await walk(page)).toMatchObject({ area: "lift-a@7", ride: null });
+  });
+
+  test("the low lobby floods slowly on its starboard side, never over 0.8 m, before 29 degrees", async ({
+    page,
+  }) => {
+    await startNight(page);
+    // 22:55 on the real night: the first boat goes down.
+    const lowered = await page.evaluate(
+      () =>
+        window.__shipwreck!.getEvents!().find(
+          (e) => e.kind === "boat-lowered" && e.index === 0
+        )!.t
+    );
+    let t = lowered;
+    await seekTo(page, t);
+    await page.evaluate(() => window.__shipwreck!.startWalk!());
+    await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+    let deepest = -Infinity;
+    for (;;) {
+      await place(page, "lobby-1", ...LOBBY_STBD, Math.PI);
+      await page.waitForTimeout(300);
+      const w = await walk(page);
+      if (w.heelDeg >= 29) break;
+      expect(w.inside).toBe(true);
+      expect(w.depthM, `t ${t}`).toBeLessThanOrEqual(0.8);
+      deepest = Math.max(deepest, w.depthM);
+      // Her clock runs 6× once she is aground: 10 s is a real minute.
+      t += 10;
+      expect(t).toBeLessThan(5200);
+      await seekTo(page, t);
+    }
+    expect(deepest).toBeGreaterThan(0);
+  });
+
+  test("at 30 degrees her rooms close and you are back out on deck", async ({
+    page,
+  }) => {
+    await startNight(page);
+    await seekTo(page, T_2200);
+    await page.evaluate(() => window.__shipwreck!.startWalk!());
+    await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+    const t = await seekToHeel(page, 3400, 28);
+    await place(page, "lobby-1", 59, 0, Math.PI);
+    expect((await walk(page)).inside).toBe(true);
+    await seekToHeel(page, t, 30);
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.inside === false,
+      null,
+      { timeout: 20_000 }
+    );
+    const w = await walk(page);
+    expect(w.inside).toBe(false);
+    expect(w.phase).toBe("deck");
+  });
+
+  test("the picker's Stateroom, then out onto its balcony", async ({
+    page,
+  }) => {
+    await startGame(page);
+    await pickRoom(page, "Stateroom");
+    expect((await walk(page)).area).toBe("stateroom");
+    // Facing the balcony's glass door, the bed's foot in the way: walk past
+    // the foot of the bed, then turn for the door and out.
+    const entry = CONCORDIA_INTERIOR.entries!.find(
+      (e) => e.id === "stateroom"
+    )!;
+    let yaw = entry.yaw;
+    const walkTo = async (x: number, y: number, until: string) => {
+      const w = await walk(page);
+      const heading = Math.atan2(y - w.y, x - w.x);
+      await page.evaluate(
+        (a) => window.__shipwreck!.turnWalk!(a),
+        heading - yaw
+      );
+      yaw = heading;
+      await page.evaluate(() => window.__shipwreck!.setWalkInput!(1, 0));
+      await page.waitForFunction(until, null, { timeout: 20_000 });
+      await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 0));
+    };
+    await walkTo(50.0, -13.9, "window.__shipwreck.getWalk().y < -13.8");
+    const door = CONCORDIA_INTERIOR.seams.find(
+      (m) => [m.a, m.b].sort().join() === "balcony,stateroom"
+    )!;
+    const doorX = (door.at[0][0] + door.at[1][0]) / 2;
+    await walkTo(
+      doorX,
+      door.at[0][1] - 1,
+      "window.__shipwreck.getWalk().area === 'balcony'"
+    );
+    expect(await walk(page)).toMatchObject({ inside: true, area: "balcony" });
   });
 });

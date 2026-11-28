@@ -1,8 +1,10 @@
 # Inside her: the scene side
 
 Draws the rooms of `lib/shipwreck/interior/` (the data, water and light
-rules: see its README). 1.15: the Titanic only. The design:
-`docs/superpowers/specs/2026-11-27-shipwreck-titanic-interiors-design.md`.
+rules: see its README). 1.15: the Titanic. 1.18: the Concordia too (her
+modern finishes, emergency lights, pool hall and glass lifts below). The
+designs: `docs/superpowers/specs/2026-11-27-shipwreck-titanic-interiors-design.md`
+and `docs/superpowers/specs/2026-11-27-shipwreck-concordia-walk-design.md`.
 
 ## Files
 

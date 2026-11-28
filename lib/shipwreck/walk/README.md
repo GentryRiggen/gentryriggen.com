@@ -140,6 +140,11 @@ exactly as before.
   `walkerFloorZ(map, w, spec)` is the floor under them (the car's as it
   rides), for the eyes and the water over the feet. The runner starts a
   ride from `WalkInput.lift`; anything that re-places the walker ends it.
+- **Her rooms (the Concordia, 1.18)** walk by the same rules: her map is
+  `withInterior(CONCORDIA_WALK, CONCORDIA_INTERIOR)` from `registry.ts`
+  (her pool hall a deck room, `deckRoomWalk`), with `lifts` for the glass
+  lifts. The rules never close a room themselves: the runner puts the
+  walker back on deck when her rooms close at `closeAtHeelDeg` (30°).
 - **Water** (`StepContext.waterZ?(area, x, y)`): the earth level of the
   water over a ship-frame point, so a room can hold its own level. Without
   it, the depth is the sea (`seaZ`) at the feet, as on deck.

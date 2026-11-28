@@ -1,12 +1,13 @@
 # Inside her: the room kit
 
 Pure TypeScript (no React, no three.js) for the rooms you can walk into
-(1.15: the Titanic only). The rooms are walk areas, so the walker in
+(1.15: the Titanic; 1.18: the Costa Concordia, `concordia.ts`). The rooms are walk areas, so the walker in
 `lib/shipwreck/walk/` walks them with its usual rules plus the "Inside"
 rules in its README. This folder is the data and the rules for water and
 light; the scene draws it (`components/shipwreck/interior/`).
 
-The design: `docs/superpowers/specs/2026-11-27-shipwreck-titanic-interiors-design.md`.
+The designs: `docs/superpowers/specs/2026-11-27-shipwreck-titanic-interiors-design.md`
+and (hers) `docs/superpowers/specs/2026-11-27-shipwreck-concordia-walk-design.md`.
 
 ## The data (`types.ts`)
 

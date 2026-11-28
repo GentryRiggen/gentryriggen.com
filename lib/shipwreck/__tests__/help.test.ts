@@ -85,6 +85,9 @@ describe("the walk line", () => {
     expect(helpFor("controls", null, concordia).lines.join(" ")).toMatch(
       /slide downhill.*lifeboat/
     );
+    expect(helpFor("controls", null, concordia).lines.join(" ")).toMatch(
+      /go inside some of her rooms.*glass lift/
+    );
     expect(helpFor("controls", null, titanic).lines.join(" ")).not.toMatch(
       /slide downhill/
     );

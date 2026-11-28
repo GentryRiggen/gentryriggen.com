@@ -17,6 +17,20 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.18.0",
+    date: "2026-11-28",
+    title: "Go inside the Costa Concordia",
+    highlights: [
+      "Ride her glass lifts up and down and watch the floors go by. From the big three-floor hall you can watch the lit-up lifts glide up and down behind the glass",
+      "Watch the sea creep into the low cabins on deck 1, a little at a time, and spread across the floor as she leans",
+      "When the lights go out, the green emergency lights flicker and your torch comes on by itself",
+      "Walk through a glowing door from her boat deck into the big hall, or open the cameras and tap a picture next to Walk the deck to start in a room",
+      "Visit a cabin with its own balcony and step out to look down at the sea, and the kids' club with a pirate ship",
+      "Sit in the theatre and walk up on the stage",
+      "When she leans too far her rooms close and you are back out on deck, so make for a lifeboat",
+    ],
+  },
+  {
     version: "1.17.1",
     date: "2026-11-27",
     title: "No more door arrow",

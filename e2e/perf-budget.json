@@ -150,5 +150,13 @@
   "shipwreck-walk-concordia-pool": {
     "calls": 54,
     "triangles": 383127
+  },
+  "shipwreck-walk-concordia-atrium": {
+    "calls": 53,
+    "triangles": 212829
+  },
+  "shipwreck-walk-concordia-cabin": {
+    "calls": 51,
+    "triangles": 206424
   }
 }
