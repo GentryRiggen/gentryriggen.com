@@ -135,7 +135,18 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   const scratch = useMemo(
     () => ({
       hull: [] as HullPiece[],
-      pieces: [0, 1, 2].map(() => ({ pose: null!, spec }) as HullPiece),
+      // Her superstructure too, on a map that keeps the swimmer off it
+      // (the Concordia, lying over).
+      pieces: [0, 1, 2].map(
+        () =>
+          ({
+            pose: null!,
+            spec,
+            ...(map?.swimAroundSuperstructure
+              ? { superstructure: spec.superstructure }
+              : {}),
+          }) as HullPiece
+      ),
       eye: [0, 0, 0] as V3,
       centre: [0, 0, 0] as V3,
       c: [0, 0, 0] as V3,
@@ -281,14 +292,15 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
 
   /**
    * Off her and into the sea beside her with a splash (washed out of a
-   * room, inside at the break, or no dry way out): the same "went in" as
-   * from the deck.
+   * room, inside at the break, no dry way out, or her walk's end heel):
+   * the same "went in" as from the deck. `side` (+1 port, −1 starboard)
+   * picks the side; missing, the side they were nearer.
    */
-  function goInSea(w: WalkerState, pose: BodyPose): void {
+  function goInSea(w: WalkerState, pose: BodyPose, side?: 1 | -1): void {
     const s = st.current;
     s.walker = null;
     s.easeT = null;
-    s.swimmer = swimmerFrom(w, pose, spec, map!);
+    s.swimmer = swimmerFrom(w, pose, spec, map!, side);
     notInside(runtime);
     runtime.walkSplash += 1;
     store.getState().wentInWater();
@@ -438,6 +450,17 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       }
     }
 
+    // Her walk ends at this list (the Concordia, 40°): too far over to
+    // stand, they slide off her low side into the sea, and Back on deck
+    // (placeWalker) cannot put them back until a seek to before it.
+    const endsAt = map.walkEndsAtHeelDeg;
+    if (s.walker && endsAt !== undefined && Math.abs(frame.listDeg) >= endsAt)
+      goInSea(
+        s.walker,
+        poseOf(frame, s.walker.part) ?? frame.bodies[0],
+        frame.listDeg > 0 ? -1 : 1
+      );
+
     if (s.walker) {
       let w = s.walker;
       let pose = poseOf(frame, w.part);
@@ -531,6 +554,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         scratch.held.lookDx = walkInput.lookDx;
         input = scratch.held;
       }
+      // Her lean's drift holds still under the end card and the lift's wipe.
+      ctx.driftOff = runtime.walkInputOff || s.liftHold > 0;
       const r = stepWalker(w, input, ctx, dt);
       walkInput.lookDx = 0;
       walkInput.jump = false;

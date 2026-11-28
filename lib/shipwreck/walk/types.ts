@@ -81,6 +81,29 @@ export interface WalkMap {
   /** Open edges between areas (interiors). */
   seams?: readonly Seam[];
   spawn: { area: string; at: V2; yaw: number };
+  /**
+   * The eyes on her open decks stand along her own up axis, as inside, not
+   * true up: a heavy list never pushes them through an uphill wall (the
+   * Concordia; README "Her lean").
+   */
+  eyesShipUp?: true;
+  /**
+   * The heel feel (README "Her lean"): from HEEL_FEEL_FROM_DEG of slope
+   * the stick's uphill part is slower and a drift carries the walker
+   * downhill. Missing: the slope never pushes (every other ship).
+   */
+  heelFeel?: true;
+  /**
+   * A swimmer is also kept off her superstructure's boxes (lying over,
+   * they are in or over the sea), not just her hull's footprint.
+   */
+  swimAroundSuperstructure?: true;
+  /**
+   * At this list (|frame.listDeg|, degrees) or more, walking on her ends:
+   * a walker slides off into the sea on her low side and Back on deck
+   * cannot put them back.
+   */
+  walkEndsAtHeelDeg?: number;
 }
 
 // --- Tuning (see README.md) -------------------------------------------------
@@ -148,6 +171,17 @@ export const DOOR_PASS_MISS_M = 0.3;
 export const DOOR_ASSIST_FADE_M = 0.4;
 /** A move into water deeper than this, and deeper than here, is refused (m). */
 export const WALK_WADE_STOP_M = 0.8;
+
+// --- Her lean (maps with `heelFeel` only; README "Her lean") ------------
+
+/** The heel feel starts at this deck slope (degrees)... */
+export const HEEL_FEEL_FROM_DEG = 8;
+/** ...and is full at this one (degrees). */
+export const HEEL_FEEL_FULL_DEG = 30;
+/** At full feel the stick's uphill part loses this share (lean into it). */
+export const HEEL_UPHILL_LOSS = 0.45;
+/** At full feel the walker drifts downhill this fast, standing or walking (m/s). */
+export const HEEL_DRIFT_MS = 0.8;
 
 // --- Plan geometry ----------------------------------------------------------
 

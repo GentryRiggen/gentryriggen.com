@@ -66,8 +66,10 @@ const feetAt: [number, number, number] = [0, 0, 0];
 /**
  * The eyes of a walker on her deck: the feet on the area's floor through
  * the pose, then 1.6 m straight up (true up, so a list never tilts the
- * view). Heading is her heading plus the walker's (exact on a level deck,
- * close on a tilted one).
+ * view). Inside her rooms, and on the decks of a map with `eyesShipUp`
+ * (the Concordia, who lies right over), 1.6 m along her own up instead.
+ * Either way the view itself never rolls. Heading is her heading plus the
+ * walker's (exact on a level deck, close on a tilted one).
  */
 export function deckEyes(
   w: WalkerState,
@@ -80,9 +82,10 @@ export function deckEyes(
   feetAt[0] = w.x;
   feetAt[1] = w.y;
   feetAt[2] = floorZ(map, w.area, w.x, spec, w.y);
-  if (areaById(map, w.area)?.interior) {
-    // Inside her rooms the eyes stand along the ship's own up axis, so a
-    // trim or list never slides them sideways through a one-sided wall.
+  if (map.eyesShipUp || areaById(map, w.area)?.interior) {
+    // Inside her rooms (and on her decks with `eyesShipUp`) the eyes stand
+    // along the ship's own up axis, so a trim or list never slides them
+    // sideways through a one-sided wall or a house side uphill.
     feetAt[2] += WALK_EYE_M + jumpHeight(w.jumpS);
     shipToThreeInto(pose, feetAt, feet);
     out.pos[0] = feet[0];

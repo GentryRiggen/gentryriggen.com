@@ -62,6 +62,9 @@ import type { Blocker, Stair, V2, WalkArea, WalkMap } from "./types";
  *   strip beside the block below), so they are walls, not sea railings: a
  *   jump never goes over them. Only the boat deck's and terrace's sides
  *   are over the sea.
+ * - Her lean: from 8° walking uphill is slower (to 55% at 30°) and a
+ *   drift up to 0.8 m/s carries you downhill, never through a door or
+ *   stair, over a rail or into deep water; deck walking ends at 40°.
  */
 
 const STERN_X = concordia.stations[0].x;
@@ -372,4 +375,11 @@ export const CONCORDIA_WALK: WalkMap = {
   // The pool hall, starboard of the pool, facing forward (1.18 puts the
   // Squok club's door in the forward glass wall).
   spawn: { area: "pool-hall", at: [12, -7], yaw: 0 },
+  // Her lean (README "Her lean"; spec "Walking as she leans"): eyes along
+  // her own up, the heel feel, the swimmer kept off her superstructure as
+  // she lies over, and walking ends at 40° (00:00), into the sea.
+  eyesShipUp: true,
+  heelFeel: true,
+  swimAroundSuperstructure: true,
+  walkEndsAtHeelDeg: 40,
 };

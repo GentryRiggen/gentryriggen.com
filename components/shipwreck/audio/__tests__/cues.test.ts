@@ -13,6 +13,9 @@ import {
   eventCuesFor,
   createCueScheduler,
   frameNear,
+  LIST_CREAK_FROM_DEG,
+  LIST_CREAK_FULL_DEG,
+  LIST_CREAK_SHIPS,
   type Cue,
   type CueInput,
 } from "../cues";
@@ -224,6 +227,49 @@ describe("hull groans", () => {
     expect(s.bed.power).toBe(1);
     run({ t: 60, now: 101 });
     expect(s.bed.power).toBe(0);
+  });
+});
+
+describe("her list creaks (the Concordia)", () => {
+  const listed = (listDeg: number): SimFrame =>
+    ({ t: 0, trimDeg: 0, listDeg, power: 1 }) as SimFrame;
+
+  it("strains with her list, not just her trim", () => {
+    expect(LIST_CREAK_SHIPS).toEqual(["concordia"]);
+    expect(LIST_CREAK_FROM_DEG).toBe(5);
+    expect(LIST_CREAK_FULL_DEG).toBe(40);
+    const { s, played, run } = setup([], [listed(30)]);
+    run({ t: 0, ship: "concordia" });
+    expect(s.bed.strain).toBeGreaterThan(0.5);
+    expect(s.bed.strain).toBeCloseTo((30 - 5) / (40 - 5), 9);
+    expect(played).toEqual(["creak"]);
+    // Upright, silent; over 40°, full.
+    const level = setup([], [listed(3)]);
+    level.run({ t: 0, ship: "concordia" });
+    expect(level.s.bed.strain).toBe(0);
+    const over = setup([], [listed(-65)]);
+    over.run({ t: 0, ship: "concordia" });
+    expect(over.s.bed.strain).toBe(1);
+  });
+
+  it("keeps the larger of her trim and list strain", () => {
+    const f = { t: 0, trimDeg: 25, listDeg: 6, power: 1 } as SimFrame;
+    const { s, run } = setup([], [f]);
+    run({ t: 0, ship: "concordia" });
+    expect(s.bed.strain).toBe(1);
+  });
+
+  it("leaves the Titanic's strain on her trim alone", () => {
+    const { s, played, run } = setup([], [listed(30)]);
+    run({ t: 0, ship: "titanic" });
+    expect(s.bed.strain).toBe(0);
+    expect(played).toEqual([]);
+    const t = setup(
+      [],
+      [{ t: 0, trimDeg: 10, listDeg: 30, power: 1 } as SimFrame]
+    );
+    t.run({ t: 0 });
+    expect(t.s.bed.strain).toBeCloseTo((10 - 2) / (25 - 2), 9);
   });
 });
 

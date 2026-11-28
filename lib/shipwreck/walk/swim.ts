@@ -38,6 +38,20 @@ export interface HullPiece {
   /** Her extent in ship x for a broken piece (default: the whole hull). */
   fromX?: number;
   toX?: number;
+  /**
+   * Her superstructure's boxes (`spec.superstructure`), kept clear of too
+   * (a map with `swimAroundSuperstructure`: lying over, they are in the
+   * sea). Each from its `baseZ` (else her deck edge) to its `topZ`, its
+   * `halfBreadthM` (else her footprint) either side. Missing: the hull
+   * alone, as every other ship.
+   */
+  superstructure?: readonly {
+    fromX: number;
+    toX: number;
+    topZ: number;
+    halfBreadthM?: number;
+    baseZ?: number;
+  }[];
 }
 
 /**
@@ -58,19 +72,38 @@ function footprintHalfBreadth(spec: ShipSpec, x: number): number {
 const tmp: V3 = [0, 0, 0];
 
 /**
- * How far an earth point on the sea is outside one piece's footprint, in
- * its ship frame's y (m; negative inside); Infinity where none of her is
- * at the surface (beyond her ends, or the piece held clear above or sunk
- * below the sea there).
+ * Her half-breadth at a ship-frame point (x, z) of one piece: her hull's
+ * footprint below her deck edge, else the widest superstructure box there
+ * (when the piece has them); -1 where none of her is at that x and height
+ * (beyond her ends, below her keel, above her).
  */
-function pieceClearance(x: number, y: number, h: HullPiece): number {
-  const s = earthToShip(h.pose, [x, y, 0], tmp);
+function pieceHalfBreadth(h: HullPiece, x: number, z: number): number {
   const st = h.spec.stations;
   const lo = Math.max(st[0].x, h.fromX ?? -Infinity);
   const hi = Math.min(st[st.length - 1].x, h.toX ?? Infinity);
-  if (s[0] < lo || s[0] > hi) return Infinity;
-  if (s[2] < 0 || s[2] > h.spec.sheerZ(s[0])) return Infinity;
-  return Math.abs(s[1]) - footprintHalfBreadth(h.spec, s[0]);
+  if (x < lo || x > hi || z < 0) return -1;
+  const sheer = h.spec.sheerZ(x);
+  if (z <= sheer) return footprintHalfBreadth(h.spec, x);
+  let best = -1;
+  for (const b of h.superstructure ?? []) {
+    if (x < b.fromX || x > b.toX || z < (b.baseZ ?? sheer) || z > b.topZ)
+      continue;
+    best = Math.max(best, b.halfBreadthM ?? footprintHalfBreadth(h.spec, x));
+  }
+  return best;
+}
+
+/**
+ * How far an earth point on the sea is outside one piece's footprint, in
+ * its ship frame's y (m; negative inside); Infinity where none of her is
+ * at the surface (beyond her ends, or the piece held clear above or sunk
+ * below the sea there). With `superstructure`, its boxes count too.
+ */
+function pieceClearance(x: number, y: number, h: HullPiece): number {
+  const s = earthToShip(h.pose, [x, y, 0], tmp);
+  const hb = pieceHalfBreadth(h, s[0], s[2]);
+  if (hb < 0) return Infinity;
+  return Math.abs(s[1]) - hb;
 }
 
 /** The least clearance from any piece (m; negative inside one). */
@@ -130,8 +163,7 @@ export function stepSwimmer(
       if (pieceClearance(x, y, piece) >= HULL_MARGIN_M) continue;
       const p = earthToShip(piece.pose, [x, y, 0], tmp);
       const side = p[1] >= 0 ? 1 : -1;
-      const py =
-        side * (footprintHalfBreadth(piece.spec, p[0]) + HULL_MARGIN_M);
+      const py = side * (pieceHalfBreadth(piece, p[0], p[2]) + HULL_MARGIN_M);
       [x, y] = onSea(piece.pose, p[0], py, p[2]);
       moved = true;
     }
@@ -142,16 +174,17 @@ export function stepSwimmer(
 
 /**
  * Where a walker who has just gone in floats: off the side they were
- * nearer (starboard on the centreline), level with where they went in,
- * 3 m clear of her footprint, facing the way they faced.
+ * nearer (starboard on the centreline), or `side` when given (+1 port,
+ * −1 starboard: her low side when walking her ends), level with where
+ * they went in, 3 m clear of her footprint, facing the way they faced.
  */
 export function swimmerFrom(
   w: WalkerState,
   pose: BodyPose,
   spec: ShipSpec,
-  map: WalkMap
+  map: WalkMap,
+  side: 1 | -1 = w.y > 0 ? 1 : -1
 ): SwimmerState {
-  const side = w.y > 0 ? 1 : -1;
   const py = side * (footprintHalfBreadth(spec, w.x) + CLEAR_M);
   const [x, y] = onSea(pose, w.x, py, floorZ(map, w.area, w.x, spec, w.y));
   return { x, y, yaw: pose.yaw + w.yaw };
@@ -165,6 +198,8 @@ const FLAT_SEA = () => 0;
  * on, or null when that piece is gone or the deck at the spawn is not dry
  * by a knee's depth (the sea, `seaZ` as stepWalker's, within
  * WALK_KNEE_DEPTH_M of the feet): never placed straight into wading water.
+ * Null too, on a map with `walkEndsAtHeelDeg`, once she lists that far
+ * either way.
  */
 export function placeWalker(
   map: WalkMap,
@@ -173,6 +208,11 @@ export function placeWalker(
   breakX: number | null,
   seaZ: (x: number, y: number) => number = FLAT_SEA
 ): WalkerState | null {
+  if (
+    map.walkEndsAtHeelDeg !== undefined &&
+    Math.abs(frame.listDeg) >= map.walkEndsAtHeelDeg
+  )
+    return null;
   const broken = frame.bodies.some((b) => b.part !== "whole");
   const [x, y] = map.spawn.at;
   const part = partFor(x, breakX, broken);

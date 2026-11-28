@@ -14,6 +14,10 @@ import {
   floorZ,
   HALL_FADE_DEG,
   HALL_SNAP_DEG,
+  HEEL_DRIFT_MS,
+  HEEL_FEEL_FROM_DEG,
+  HEEL_FEEL_FULL_DEG,
+  HEEL_UPHILL_LOSS,
   JUMP_S,
   seamEdges,
   SLIDE_KEEP,
@@ -97,6 +101,11 @@ export interface StepContext {
   waterZ?(areaId: string, x: number, y: number): number;
   /** Whether deck doors lead inside (false after the break); default true. */
   interiorsOpen?: boolean;
+  /**
+   * No heel drift this step (a map with `heelFeel`): the HUD has the input
+   * off (the end card) or a lift is carrying them.
+   */
+  driftOff?: boolean;
 }
 
 export type StepResult = {
@@ -432,6 +441,25 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
+/** The heel feel's strength (0..1) on a deck sloping `deg` degrees. */
+function heelK(deg: number): number {
+  return clamp(
+    (deg - HEEL_FEEL_FROM_DEG) / (HEEL_FEEL_FULL_DEG - HEEL_FEEL_FROM_DEG),
+    0,
+    1
+  );
+}
+
+/**
+ * Her lean under a pose (maps with `heelFeel`; README "Her lean"): `k`,
+ * 0 up to HEEL_FEEL_FROM_DEG of deck slope and 1 from HEEL_FEEL_FULL_DEG,
+ * linear between, and the unit downhill direction in the ship frame.
+ */
+export function heelDrift(pose: BodyPose): { k: number; downhill: V2 } {
+  const { deg, downhill } = deckSlope(pose);
+  return { k: heelK(deg), downhill };
+}
+
 /**
  * One substep's move: inside the outline (sliding, through seams), the
  * body pushed clear, and undone when it would end outside the outline or
@@ -593,6 +621,42 @@ function tooDeep(ctx: StepContext, sub: Sub, from: number): boolean {
 }
 
 /**
+ * One substep's heel drift (mx, my): a move like any other (the outline
+ * slides it along walls and rails, blockers push back, the break holds),
+ * except that it never wades the walker into water deeper than
+ * WALK_WADE_STOP_M and deeper than here (undone, then tried along x, then
+ * y). It never takes a link: the caller checks those for the stick's move
+ * alone.
+ */
+function driftMove(
+  ctx: StepContext,
+  part: WalkerState["part"],
+  area: WalkArea,
+  sub: Sub,
+  mx: number,
+  my: number
+): void {
+  const x0 = sub.x;
+  const y0 = sub.y;
+  const a0 = sub.area;
+  const from = depthAt(ctx, a0, x0, y0);
+  if (tryMove(ctx, part, area, sub, mx, my) && !tooDeep(ctx, sub, from)) return;
+  for (let axis = 0; axis < 2; axis += 1) {
+    sub.x = x0;
+    sub.y = y0;
+    sub.area = a0;
+    if (
+      tryMove(ctx, part, area, sub, axis === 0 ? mx : 0, axis === 0 ? 0 : my) &&
+      !tooDeep(ctx, sub, from)
+    )
+      return;
+  }
+  sub.x = x0;
+  sub.y = y0;
+  sub.area = a0;
+}
+
+/**
  * One substep's move inside: the move, then a wall slide topped back up to
  * the share `slideKeep` allows, then deep water as a wall (the move undone
  * and retried along x, then y, so the walker slides along the edge).
@@ -702,6 +766,11 @@ export function stepWalker(
     jumpS = 0;
     jumpFrom = [s.x, s.y];
   }
+  // Her lean (maps with `heelFeel` only): its strength and the way down.
+  const slope = deckSlope(ctx.pose);
+  const lean = ctx.map.heelFeel && !ctx.driftOff ? heelK(slope.deg) : 0;
+  const downX = slope.downhill[0];
+  const downY = slope.downhill[1];
   let depth = depthAt(ctx, sub.area, sub.x, sub.y);
   for (let k = 0; k < n; k += 1) {
     const area = areaById(ctx.map, sub.area);
@@ -723,6 +792,15 @@ export function stepWalker(
         const k2 = speed * push * share;
         baseX = k2 * dir.x;
         baseY = k2 * dir.y;
+      }
+    }
+    if (lean > 0) {
+      // Uphill is hard work: the stick's uphill part loses a share.
+      const up = -(baseX * downX + baseY * downY);
+      if (up > 0) {
+        const cut = HEEL_UPHILL_LOSS * lean * up;
+        baseX += cut * downX;
+        baseY += cut * downY;
       }
     }
     if (jumpS !== null) {
@@ -754,8 +832,15 @@ export function stepWalker(
     } else {
       insideMove(ctx, s.part, area, sub, mx, my, depth);
     }
+    // Links fire from the stick's own move only, never from the drift.
     const taken = takeStairs(ctx, sub, px, py);
     if (taken) via = { kind: taken.kind ?? "stair", id: taken.id };
+    if (lean > 0) {
+      // The slide downhill, standing or walking (slowed by water too).
+      const now = sub.area === area.id ? area : areaById(ctx.map, sub.area);
+      const d = HEEL_DRIFT_MS * lean * wade * h;
+      if (now) driftMove(ctx, s.part, now, sub, downX * d, downY * d);
+    }
     depth = depthAt(ctx, sub.area, sub.x, sub.y);
     inWater = inWaterFromDepth(depth);
     if (inWater) break;
@@ -777,6 +862,6 @@ export function stepWalker(
     ...(overboard ? { overboard } : {}),
     ...(via ? { via } : {}),
     depthM: depth,
-    slopeDeg: deckSlope(ctx.pose).deg,
+    slopeDeg: slope.deg,
   };
 }

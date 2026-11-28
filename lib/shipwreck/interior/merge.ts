@@ -31,6 +31,8 @@ export function withInterior(deckMap: WalkMap, interior: InteriorMap): WalkMap {
     if (b) blockers.push(b);
   }
   return {
+    // The deck map's own flags (her lean) carry over.
+    ...deckMap,
     ship: deckMap.ship,
     areas: [...deckMap.areas, ...interior.rooms.map(roomArea)],
     blockers,
