@@ -1,7 +1,8 @@
 import { ShapeUtils, Vector2, type BufferGeometry } from "three";
 import {
+  furnitureFootprint,
+  liftCars,
   lightSegments,
-  pieceFootprint,
   roomFloorZ,
   segmentAt,
   type Furniture,
@@ -52,6 +53,7 @@ import {
   MODERN_COLOR,
   MODERN_PIECES,
   POOL_DEPTH_M,
+  theatreSeatRow,
 } from "./modernPieces";
 import { MODERN_TILE } from "./modernTextures";
 
@@ -115,6 +117,12 @@ const WALL: Record<Room["look"]["finish"], RGB> = {
   steel: lin(0.8, 0.76, 0.6),
   // A glass room's solid walls: cream wallcovering.
   glass: MODERN_COLOR.cream,
+  // Her rooms (1.18), flat blockout colours until their look (Task 9).
+  "cabin-veneer": MODERN_COLOR.veneer,
+  cream: MODERN_COLOR.cream,
+  marble: MODERN_COLOR.marble,
+  kids: lin(0.96, 0.82, 0.42),
+  theatre: MODERN_COLOR.theatre,
 };
 const WALL_TILE: Record<Room["look"]["finish"], number> = {
   oak: TILE.oak,
@@ -122,6 +130,11 @@ const WALL_TILE: Record<Room["look"]["finish"], number> = {
   enamel: TILE.none,
   steel: TILE.none,
   glass: MODERN_TILE.cream,
+  "cabin-veneer": TILE.none,
+  cream: TILE.none,
+  marble: TILE.none,
+  kids: TILE.none,
+  theatre: TILE.none,
 };
 const FLOOR: Record<Room["look"]["floor"], RGB> = {
   lino: lin(0.84, 0.78, 0.66),
@@ -131,6 +144,11 @@ const FLOOR: Record<Room["look"]["floor"], RGB> = {
   // A pale sea-glass mosaic round the pool; pine-gold teak planks.
   tile: lin(0.82, 0.9, 0.9),
   teak: MODERN_COLOR.teak,
+  // Her rooms (1.18), flat blockout colours until their look (Task 9).
+  "cabin-carpet": MODERN_COLOR.navy,
+  marble: MODERN_COLOR.marble,
+  soft: lin(0.3, 0.62, 0.86),
+  "stage-wood": MODERN_COLOR.stageWood,
 };
 const FLOOR_TILE: Record<Room["look"]["floor"], number> = {
   lino: TILE.lino,
@@ -139,6 +157,10 @@ const FLOOR_TILE: Record<Room["look"]["floor"], number> = {
   steel: TILE.none,
   tile: MODERN_TILE.poolTile,
   teak: MODERN_TILE.teak,
+  "cabin-carpet": TILE.none,
+  marble: TILE.none,
+  soft: TILE.none,
+  "stage-wood": TILE.none,
 };
 const CEILING_WHITE: RGB = lin(0.9, 0.88, 0.82);
 const CEILING_STEEL: RGB = lin(0.82, 0.8, 0.7);
@@ -164,6 +186,19 @@ const SHADE = {
 
 /** Rooms whose seams are open stair parts (no lintel over them). */
 const STAIR_KINDS: ReadonlySet<string> = new Set(["flight", "landing"]);
+/**
+ * Her open-plan rooms (1.18): a seam between two of them is open, with no
+ * lintel and no step between their ceilings (the atrium's floor and its
+ * well, its galleries' arms, the stalls either side of the balcony's
+ * edge): the galleries' rails and their slab edges close what is above.
+ */
+const OPEN_KINDS: ReadonlySet<string> = new Set([
+  "atrium",
+  "gallery",
+  "theatre",
+]);
+const openPair = (a: Room, b: Room) =>
+  OPEN_KINDS.has(a.kind) && OPEN_KINDS.has(b.kind);
 /** How near two points count as the same (m), as the walker's seams. */
 const TOL = 1e-3;
 /** An edge this short is a chamfer's (the kit's 0.15 m cut, √2 long). */
@@ -333,7 +368,10 @@ export function edgeKinds(
         if (!((same(a, p) && same(b, q)) || (same(a, q) && same(b, p))))
           continue;
         const other = byId.get(s.a === room.id ? s.b : s.a)!;
-        const stair = STAIR_KINDS.has(room.kind) || STAIR_KINDS.has(other.kind);
+        const stair =
+          STAIR_KINDS.has(room.kind) ||
+          STAIR_KINDS.has(other.kind) ||
+          openPair(room, other);
         return stair
           ? { kind: "seam", other }
           : { kind: "seam", lintel: { other }, other };
@@ -416,6 +454,18 @@ export function edgeKinds(
       )
         infos[i] = { kind: "rail" };
     });
+    // A balcony's outboard side (facing away from her centre line) is its
+    // rail, open above to the sea (hers, 1.18).
+    if (room.kind === "balcony")
+      poly.forEach((a, i) => {
+        const b = poly[(i + 1) % poly.length];
+        if (infos[i].kind !== "wall") return;
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        // Outward: the right of a counter-clockwise edge.
+        const ny = -(b[0] - a[0]) / len;
+        if (Math.abs(ny) > 0.9 && Math.sign(ny) === Math.sign(a[1] + b[1]))
+          infos[i] = { kind: "rail" };
+      });
     out.set(room.id, infos);
   }
   return out;
@@ -589,7 +639,10 @@ export interface InteriorBuild {
   roomZone: Map<string, string>;
   /** The zones drawn with each zone (`zonesSeen`). */
   seen: Map<string, ReadonlySet<string>>;
-  /** Each room's slot (its index in the map: `aRoom`, the water's). */
+  /**
+   * Each room's slot (its index in the map: `aRoom`, the water's); a lift
+   * car's is its landing's.
+   */
   slot: Map<string, number>;
   /**
    * Slots in the power and level uniforms: the rooms', then the parts',
@@ -634,7 +687,22 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
   );
   const interior: InteriorMap = { ...given, rooms };
   const slot = new Map(rooms.map((r, k) => [r.id, k]));
-  const kinds = edgeKinds(interior, spec);
+  // Her lifts' cars (one a stop, `liftCars`): plain boxes drawn with their
+  // landing (its zone, slot, water and lamps) until the glass car rides
+  // (Task 8); their doors open the landings' walls.
+  const lifted = liftCars(given);
+  const cars = lifted.rooms;
+  const carLanding = new Map(lifted.seams.map((m) => [m.a, m.b]));
+  const kinds = edgeKinds(
+    cars.length > 0
+      ? {
+          ...interior,
+          rooms: [...rooms, ...cars],
+          seams: [...interior.seams, ...lifted.seams],
+        }
+      : interior,
+    spec
+  );
   const zoneLayers = new Map<string, ModernLayers>();
   const layersOf = (zone: string) => {
     let L = zoneLayers.get(zone);
@@ -685,6 +753,11 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
     } else addRoom(L, room, rooms, kinds.get(room.id)!, spec, open);
     skyLit(L, false);
   });
+  for (const car of cars) {
+    const L = layersOf(car.zone);
+    L.room(slot.get(carLanding.get(car.id)!)!);
+    addRoom(L, car, rooms, kinds.get(car.id)!, spec, open);
+  }
   // The furniture, and its lamps.
   const byId = new Map(rooms.map((r) => [r.id, r]));
   for (const f of interior.furniture) {
@@ -822,11 +895,15 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
 
   const t1 =
     typeof performance !== "undefined" ? performance.now() : Date.now();
+  // A car is its landing's: its zone, and its slot for the torch.
+  const slotOut = new Map(slot);
+  for (const car of cars)
+    slotOut.set(car.id, slot.get(carLanding.get(car.id)!)!);
   return {
     zones,
-    roomZone: new Map(rooms.map((r) => [r.id, r.zone])),
+    roomZone: new Map([...rooms, ...cars].map((r) => [r.id, r.zone])),
     seen: zonesSeen(interior),
-    slot,
+    slot: slotOut,
     slots,
     segments,
     basins,
@@ -996,6 +1073,9 @@ export function addPiece(
       if (isModern(f.piece)) {
         if (!(L instanceof ModernLayers))
           throw new Error(`modern piece ${f.piece} needs ModernLayers`);
+        // A seat row of its own length (the theatre's six-seat side rows).
+        if (f.piece === "theatre-seat-row" && f.seats !== undefined)
+          return theatreSeatRow(L, floor, f.yaw, f.seats);
         return MODERN_PIECES[f.piece](L, floor, f.yaw);
       }
       // Beds, bunks, wardrobes, washstands, sofas, tables, chairs.
@@ -1047,7 +1127,7 @@ interface Rect {
 
 /** A blocking piece's plan box (its footprint, square to the ship). */
 function pieceRect(f: Furniture): Rect {
-  const fp = pieceFootprint(f.piece);
+  const fp = furnitureFootprint(f);
   if (!fp) throw new Error(`piece ${f.piece} has no footprint`);
   const turned = Math.abs(Math.round(f.yaw / (Math.PI / 2))) % 2 === 1;
   const hx = (turned ? fp.ly : fp.lx) / 2;
@@ -1693,6 +1773,7 @@ function addRoom(
       info.other &&
       !info.lintel &&
       !info.other.noWalk &&
+      !openPair(room, info.other) &&
       !open.has(room.id) &&
       !open.has(info.other.id)
     ) {
@@ -1755,6 +1836,11 @@ const DOOR_STYLE: Record<Room["look"]["finish"], DoorStyle> = {
   enamel: "white",
   steel: "steel",
   glass: "white",
+  "cabin-veneer": "white",
+  cream: "white",
+  marble: "white",
+  kids: "white",
+  theatre: "white",
 };
 
 /**

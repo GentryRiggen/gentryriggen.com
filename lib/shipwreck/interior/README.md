@@ -40,11 +40,62 @@ One `InteriorMap` per ship, in the ship frame (metres, keel at midships,
   map takes it with `deckRoomWalk(interior)`; `withInterior` replaces an
   area of its id, so it merges once.
 
+- **lifts** (hers, 1.18): `LiftShaft`s, a car's plan and its stops
+  (deck, landing room, the door: an edge of both the landing's outline
+  and the car's plan). `liftCars(interior)` makes a `lift-car` room per
+  stop (`lift-a@3`), in its landing's zone, seamed to the landing; until
+  the visible ride (Task 8) it also gives each pair of consecutive stops a
+  `lift` link (step on a car's up spot or down spot).
+- **seep** (`Room.seep`), **closeAtHeelDeg** and **emergencyFlicker**
+  (hers): data for the slow flooding, the 30° close and the flicker (the
+  rules are Task 7's).
+
 `withInterior(deckMap, interior)` (`merge.ts`) merges it into the ship's
 `WalkMap`: rooms become `interior` areas, blocking furniture becomes
 blockers, links join `stairs`, seams join `seams`. `walkMapFor("titanic")`
 returns the merged map (built once); `TITANIC_WALK` stays the open decks.
 `interiorFor(ship)` returns the data, null for a ship without rooms.
+
+## The modern vocabulary (hers, 1.18)
+
+Additive: the Titanic's data and output do not change.
+
+- `RoomKind`: `atrium` (her atrium's floor and well), `gallery` (its
+  galleries), `stateroom`, `balcony` (the scene draws its outboard side
+  as a rail, open above), `lobby`, `theatre` (the stalls and balcony),
+  `stage`, `club`, `lift-car`, `pool-hall`. A seam between two of
+  `atrium`, `gallery`, `theatre` is open plan: no lintel over it.
+- `WallFinish`: `cabin-veneer`, `cream`, `marble`, `glass`, `kids`,
+  `theatre`. `FloorFinish`: `cabin-carpet`, `marble`, `tile`, `teak`,
+  `soft`, `stage-wood`. `LampStyle`: `downlight`, `strip`, `chandelier`.
+  Until their look (Task 9) the new finishes are flat colours.
+- `PieceId` is the Edwardian pieces plus `ModernPieceId`
+  (`modernPieces.ts`'s `MODERN_PIECE_IDS`: one list). A blocking modern
+  piece's footprint is `MODERN_PIECE_FOOTPRINT` (`pieceFootprint`); a
+  `theatre-seat-row` takes `Furniture.seats` (default ten,
+  `furnitureFootprint`).
+
+## Her rooms (`concordia.ts`)
+
+The pool hall (a deck room) first, then the rooms inside her, each inside
+her model's solid blocks (`concordiaMap.test.ts` checks every room's box
+against `concordiaRecipe.ts`'s blocks and her hull, under their roofs):
+
+| Zone         | Rooms (deck)                                                                                                                                        |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `atrium`     | `atrium-3`, `atrium-3-fwd`, `atrium-well` (3); `atrium-4`, `atrium-4-fwd`, `entry-p`, `entry-s` (4); `atrium-5`, `atrium-5-fwd` (5); `atrium-stair` |
+| `low-cabins` | `lobby-1`, `corridor-1`, `cabin-inside`, `cabin-ocean` (1, `seep`)                                                                                  |
+| `stateroom`  | `lobby-7`, `corridor-7`, `stateroom`, `balcony` (7)                                                                                                 |
+| `theatre`    | `theatre-passage`, `theatre-back`, `theatre`, `stage-steps-p`/`-s`, `stage` (3); `theatre-passage-5`, `theatre-balcony` (5)                         |
+| `squok`      | `squok` (12)                                                                                                                                        |
+| `pool-hall`  | `pool-hall` (12, a deck room)                                                                                                                       |
+
+Deck doors: `entry-p`, `entry-s` (from each boat deck's promenade, in the
+recess wall) and `squok` (the pool hall's forward wall). Two glass lifts
+(`lift-a`, `lift-b`) stop at decks 1, 3, 4, 5 and 7. Entries: `atrium`,
+`stateroom`, `low-cabin`, `theatre`, `squok`. Every invention is a ruling
+in the file's header. `walk/__tests__/concordiaHallFeel.test.ts` walks
+them as `hallFeel.test.ts` walks the Titanic's.
 
 ## The kit (`kit.ts`)
 

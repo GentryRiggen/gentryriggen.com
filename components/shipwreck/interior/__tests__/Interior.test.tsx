@@ -339,7 +339,11 @@ describe("Interior", () => {
     const shell = hall.find((m) => m.name === "interior-pool-hall-shell")!;
     const levels = (shell.material as import("three").ShaderMaterial).uniforms
       .uLevel.value as Float32Array;
-    const slot = CONCORDIA_INTERIOR.rooms.length;
+    // The pool's slot: after the rooms' and the long halls' parts.
+    const slot = CONCORDIA_INTERIOR.rooms.reduce(
+      (n, r) => n + lightSegments(r).length,
+      CONCORDIA_INTERIOR.rooms.length
+    );
     const rimY = () => {
       whole.updateMatrixWorld(true);
       let low = Infinity;

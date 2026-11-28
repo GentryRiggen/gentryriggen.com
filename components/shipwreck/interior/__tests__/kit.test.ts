@@ -521,7 +521,8 @@ describe("her pool hall (a deck room)", () => {
   });
 
   it("is one zone within its budget: at most 25k triangles and 6 meshes (with its pool's water)", () => {
-    expect([...hers.zones.keys()]).toEqual(["pool-hall"]);
+    // Its own zone (her rooms inside, 1.18, are theirs).
+    expect([...hers.zones.keys()][0]).toBe("pool-hall");
     let tris = 0;
     let meshes = 0;
     for (const g of Object.values(zone))
@@ -643,5 +644,101 @@ describe("her pool hall (a deck room)", () => {
     // Lamps: the spotlights on the vault light the floor at night.
     const light = zone.shell!.getAttribute("aLight").array;
     expect(Math.max(...light)).toBeGreaterThan(0.6);
+  });
+});
+
+describe("her rooms inside (1.18 blockout)", () => {
+  const hers = buildInterior(CONCORDIA_INTERIOR, concordia);
+  afterAll(() => {
+    for (const z of hers.zones.values())
+      for (const g of Object.values(z)) g?.dispose();
+  });
+
+  it("builds her zones within the spec's budgets (the atrium 50k, the rest 40k, all 140k)", () => {
+    expect([...hers.zones.keys()].sort()).toEqual(
+      [
+        "atrium",
+        "low-cabins",
+        "pool-hall",
+        "squok",
+        "stateroom",
+        "theatre",
+      ].sort()
+    );
+    let total = 0;
+    for (const [zone, layers] of hers.zones) {
+      let tris = 0;
+      let meshes = 0;
+      for (const g of Object.values(layers))
+        if (g) {
+          meshes += 1;
+          tris += triangles(g);
+          const n = g.getAttribute("position").count;
+          for (const [name, size] of ATTRS) {
+            const a = g.getAttribute(name);
+            expect([zone, name, a?.count, a?.itemSize]).toEqual([
+              zone,
+              name,
+              n,
+              size,
+            ]);
+          }
+          expect(
+            Array.from(g.getAttribute("position").array).every(Number.isFinite)
+          ).toBe(true);
+        }
+      total += tris;
+      if (zone === "pool-hall") continue;
+      // Its layers, and the water's surface and body.
+      expect([zone, meshes + 2 <= ZONE_MESH_BUDGET]).toEqual([zone, true]);
+      expect([zone, tris <= (zone === "atrium" ? 50000 : 40000)]).toEqual([
+        zone,
+        true,
+      ]);
+    }
+    expect(total).toBeLessThanOrEqual(140000);
+    expect(hers.slots).toBeLessThanOrEqual(MAX_ROOM_SLOTS);
+  });
+
+  it("draws each lift car with its landing (its zone and slot)", () => {
+    for (const l of CONCORDIA_INTERIOR.lifts ?? [])
+      for (const s of l.stops) {
+        const id = `${l.id}@${s.deck}`;
+        expect(hers.roomZone.get(id)).toBe(hers.roomZone.get(s.landing));
+        expect(hers.slot.get(id)).toBe(hers.slot.get(s.landing));
+      }
+  });
+
+  it("opens her atrium to its well (no lintel) and rails its galleries over it", () => {
+    const kinds = edgeKinds(CONCORDIA_INTERIOR, concordia);
+    const seamTo = (room: string, other: string) =>
+      kinds
+        .get(room)!
+        .filter((e) => e.kind === "seam" && e.other?.id === other);
+    expect(seamTo("atrium-3", "atrium-well").length).toBeGreaterThan(0);
+    for (const e of seamTo("atrium-3", "atrium-well"))
+      expect(e.lintel).toBeUndefined();
+    // A gallery's edges round the well are balustrades.
+    expect(
+      kinds.get("atrium-4")!.filter((e) => e.kind === "rail").length
+    ).toBeGreaterThanOrEqual(3);
+    expect(
+      kinds.get("atrium-5")!.filter((e) => e.kind === "rail").length
+    ).toBeGreaterThanOrEqual(3);
+    // The theatre's balcony front over the stalls, and the balcony's side
+    // over the sea, are rails; a cabin's doorway keeps its lintel.
+    expect(kinds.get("theatre-balcony")!.some((e) => e.kind === "rail")).toBe(
+      true
+    );
+    const balcony = CONCORDIA_INTERIOR.rooms.find((r) => r.id === "balcony")!;
+    const outboard = balcony.outline.findIndex(
+      (p, k) =>
+        Math.abs(p[1]) > 17.5 &&
+        Math.abs(balcony.outline[(k + 1) % balcony.outline.length][1]) > 17.5
+    );
+    expect(kinds.get("balcony")![outboard].kind).toBe("rail");
+    expect(
+      seamTo("corridor-1", "cabin-inside").every((e) => e.lintel !== undefined)
+    ).toBe(true);
   });
 });
