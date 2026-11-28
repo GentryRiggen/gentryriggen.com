@@ -643,7 +643,8 @@ export const MODERN_EMERGENCY_LINE = /* glsl */ `
  * frosted), blended by their alpha (`paneA`, 1 for everything else: her
  * glass material blends); an emergency lamp or exit sign glows on the
  * emergency supply, whatever the room's own lamps (its `aGlow` times
- * `uEmergency`).
+ * `uEmergency`); her sea windows and portholes (tile 6) show the night a
+ * little lighter than the Titanic's, the sea a dim moving teal.
  */
 export const MODERN_GLASS_BRANCH = /* glsl */ `if (vTile > 18.5) {
           // A pane: a faint tint, catching the lamps toward a grazing look.
@@ -665,6 +666,20 @@ export const MODERN_GLASS_BRANCH = /* glsl */ `if (vTile > 18.5) {
           // An emergency lamp or an exit sign: on its own supply (a little
           // softer while the room's lamps are on).
           lit = vColor * (vGlow * uEmergency * (1.0 - 0.45 * clamp(power, 0.0, 1.0)) + 0.04) + vColor * torch * 0.4;
+        } else if (vTile > 5.5 && vTile < 6.5) {
+          // Her sea windows and portholes: the night out there lifted a
+          // little so kids see the water: a blue night sky, the sea a dim
+          // moving teal once it is over the glass, a pale line where the
+          // surface crosses it, a little of the room's light on the glass.
+          vec3 sky = uSky * (0.6 + 0.4 * uDaylight) + vec3(0.02, 0.034, 0.065);
+          float sd = clamp(-vWorld.y * 0.5, 0.0, 1.0);
+          float sway = 0.85 + 0.15 * sin(vWorld.x * 2.3 + vWorld.z * 1.7 + uTime * 0.9);
+          vec3 sea = mix(vec3(0.03, 0.15, 0.16), vec3(0.01, 0.06, 0.07), sd) * sway;
+          float under = 1.0 - smoothstep(-0.03, 0.03, vWorld.y);
+          float line = 1.0 - smoothstep(0.0, 0.06, abs(vWorld.y));
+          lit = mix(sky, sea, under) + vec3(0.1, 0.16, 0.17) * line
+            + vec3(0.03, 0.026, 0.02) * vLight * power
+            + TORCH * torch * 0.15;
         } else `;
 
 /** Her glass's alpha (see `MODERN_GLASS_BRANCH`), declared in main. */

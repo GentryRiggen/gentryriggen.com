@@ -201,8 +201,10 @@ shot framed for landscape still fits the ship.
   **Inside the Concordia** (1.18): the same runner, keyed on her rooms'
   flags (`seep`, `closeAtHeelDeg`, `emergencyFlicker`) and her map's
   `lifts`. Her low rooms fill slowly (`seep`); at 30° her rooms close and
-  the walker is put back out on deck (mid-ride, through the lift's dark
-  wipe); her emergency lights flicker more as she leans
+  the walker is put back out on deck through the lift's dark wipe (riding
+  or not); a landing's door into a glass car stays shut (`seamShut`) until
+  the car Interior draws (`walkLiftCarZ`) is at that stop; her emergency
+  lights flicker more as she leans
   (`runtime.interiorEmergency`); the ▲ ▼ buttons ride her glass lifts
   (`walkRide`, `walkLiftDirs`). Perf: `shipwreck-walk-concordia-atrium`
   (riding up through the atrium) and `shipwreck-walk-concordia-cabin` (the

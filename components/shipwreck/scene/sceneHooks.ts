@@ -131,6 +131,10 @@ export function sceneHooks(
     rideLift: (dir) => {
       if (dir === "up" || dir === "down") walkInput.lift = dir;
     },
+    liftCarZ: (lift) => {
+      const z = runtime?.walkLiftCarZ?.get(lift);
+      return z !== undefined && Number.isFinite(z) ? z : null;
+    },
     setLookUnder: (on) => get().setLookUnder(on),
   };
 }

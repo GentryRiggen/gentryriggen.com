@@ -98,6 +98,12 @@ export interface SceneRuntime {
    */
   walkLiftDirs: number;
   /**
+   * Her glass cars' floors as drawn (Interior writes them each frame, per
+   * lift id, ship-frame z; null while her lifts are not built). WalkRunner
+   * keeps a landing's door into a car shut until its car is at that stop.
+   */
+  walkLiftCarZ: Map<string, number> | null;
+  /**
    * A request to stand the walker somewhere (`requestWalkPlace`: the test
    * hooks and the picker's rooms), ship frame, on her whole piece or the
    * piece under x; WalkRunner takes it next frame.
@@ -123,6 +129,13 @@ export interface SceneRuntime {
    * sound's wash follows it.
    */
   walkWet: number;
+  /**
+   * In one of her sea-view rooms (`Room.seaView`: her balcony, stateroom,
+   * ocean-view cabin), 0..1 eased (Interior writes it): the night sea is
+   * lifted a little by it (her moonlit sea's shader only), so kids see
+   * the water out there. 0 anywhere else, and for every other ship.
+   */
+  walkSeaView: number;
   /**
    * Riding a lifeboat: the player's look, a yaw turned from facing her
    * (radians, + to port) and a pitch (WalkRunner turns both by the drag),
@@ -269,10 +282,12 @@ export function createSceneRuntime(): SceneRuntime {
     walkDoor: -1,
     walkRide: null,
     walkLiftDirs: 0,
+    walkLiftCarZ: null,
     walkPlace: null,
     interiorLevels: null,
     interiorEmergency: 1,
     walkWet: 0,
+    walkSeaView: 0,
     ride: { yaw: 0, pitch: 0, aimed: false },
     rideView: { pos: [0, 0, 0], yaw: 0, pitch: 0 },
     boardable: -1,

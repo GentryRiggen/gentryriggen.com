@@ -222,7 +222,9 @@ ship walks exactly as before. Tests key on her heel, never the clock
   into water deeper than `WALK_WADE_STOP_M` and deeper than here (on deck
   too: the drift alone never puts you in the sea), and stops while
   `StepContext.driftOff` (the end card's input off, the lift's wipe) and
-  through a glass lift ride.
+  through a glass lift ride. `StepContext.seamShut(from, to)` makes a
+  doorway a wall while it says so (her glass lifts' landing doors, until
+  the car has arrived); missing, every seam is open.
   Straight uphill always nets at least 0.6 m/s: on deck at full feel
   4 × 0.55 − 0.8 = 1.4, inside 3 × 0.55 − 0.8 = 0.85.
 - **The swimmer and her superstructure** (`swimAroundSuperstructure`):

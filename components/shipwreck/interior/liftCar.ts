@@ -43,9 +43,14 @@ import { Builder, lin, scale, type P3, type RGB } from "./pieces";
  *   lit car stands out against it.
  *
  * Where each car is drawn (`liftCarTargetZ`): riding it, at the ride's z;
- * standing in it, at that stop (at once: the car is round you); on one of
- * its landings within PARK_NEAR_M of its door there, parked at that stop
- * (it comes to you, doors open); anywhere else, the galleries and the well
+ * standing in it, at that stop (at once: the car is round you, and the
+ * runner keeps a landing's door into the car shut until the car has
+ * arrived there, `walkLiftCarZ`, so that is never a jump); anywhere in a
+ * lobby stop's zone (the low cabins, the deck 7 stateroom: stops off the
+ * loop, behind solid lobby walls), parked at that stop, so it is waiting
+ * by the time anyone walks up; on an atrium landing within PARK_NEAR_M of
+ * its door there, parked at that stop (it glides to you behind the glass,
+ * doors open once it is there); anywhere else, the galleries and the well
  * floor too, on its slow ambient loop between the atrium's stops
  * (`loopStops`, `otherCarZ`, by real seconds, so it glides at lift speed
  * whatever the playback speed; the two cars half a leg apart, one moving
@@ -124,6 +129,13 @@ export interface LiftCars {
   shaft: Mesh;
   /** Per lift id, the zones its shaft passes (the riding zone rule). */
   zones: Map<string, ReadonlySet<string>>;
+  /** Each room's zone (a lobby stop parks for its whole zone). */
+  roomZone: ReadonlyMap<string, string>;
+  /**
+   * Per lift id, its car's floor as drawn (ship-frame z, NaN before the
+   * first frame), written in place each frame (`runtime.walkLiftCarZ`).
+   */
+  carZ: Map<string, number>;
   /** The slot the meshes are lit by (`aRoom`), or −1 before the first. */
   slot: number;
   triangles: number;
@@ -139,9 +151,11 @@ export interface CarTarget {
  * Where a lift's car should be (its floor's ship-frame z), and whether
  * exactly (the walker rides it or stands in it), written into `out`:
  * riding it, the ride's z; the walker in one of its car areas, that stop;
- * on one of its landings within PARK_NEAR_M of that stop's door (`x`, `y`:
- * the walker in ship plan; NaN when unknown, which never parks), that
- * stop; else its ambient loop at `t + offset` (s).
+ * in a stop off the ambient loop (a lobby's) on that landing, or in the
+ * landing's zone (`roomZone`, when given), that stop; on one of its
+ * loop's landings within PARK_NEAR_M of that stop's door (`x`, `y`: the
+ * walker in ship plan; NaN when unknown, which never parks), that stop;
+ * else its ambient loop at `t + offset` (s). No allocation.
  */
 export function liftCarTargetZ(
   interior: Pick<InteriorMap, "lifts">,
@@ -153,7 +167,8 @@ export function liftCarTargetZ(
   y: number,
   t: number,
   offset = 0,
-  out: CarTarget = { z: 0, exact: false }
+  out: CarTarget = { z: 0, exact: false },
+  roomZone?: ReadonlyMap<string, string>
 ): CarTarget {
   out.exact = false;
   if (ride && ride.lift === lift.id) {
@@ -168,19 +183,34 @@ export function liftCarTargetZ(
       out.exact = true;
       return out;
     }
+    const loop = loopStops(lift);
+    // A lobby stop (off the loop): parked for anyone on its landing or in
+    // its zone, so it is there before they reach the door.
+    const zone = roomZone ? roomZone.get(room) : undefined;
+    for (let k = 0; k < lift.stops.length; k += 1) {
+      if (k >= loop[0] && k <= loop[1]) continue;
+      const landing = lift.stops[k].landing;
+      if (
+        landing === room ||
+        (zone !== undefined && roomZone!.get(landing) === zone)
+      ) {
+        out.z = liftStopZ(lift, spec, k);
+        return out;
+      }
+    }
     const i = landingStop(lift, room);
     if (i >= 0) {
-      const [a, b] = lift.stops[i].door;
-      const dx = x - (a[0] + b[0]) / 2;
-      const dy = y - (a[1] + b[1]) / 2;
+      const d = lift.stops[i].door;
+      const dx = x - (d[0][0] + d[1][0]) / 2;
+      const dy = y - (d[0][1] + d[1][1]) / 2;
       if (dx * dx + dy * dy <= PARK_NEAR_M * PARK_NEAR_M) {
         out.z = liftStopZ(lift, spec, i);
         return out;
       }
     }
   }
-  const [lo, hi] = loopStops(lift);
-  out.z = otherCarZ(lift, spec, t + offset, lo, hi);
+  const loop = loopStops(lift);
+  out.z = otherCarZ(lift, spec, t + offset, loop[0], loop[1]);
   return out;
 }
 
@@ -478,6 +508,7 @@ export function buildLiftCars(
   group.matrixAutoUpdate = false;
   const cars: LiftCar[] = [];
   const zones = new Map<string, ReadonlySet<string>>();
+  const carZ = new Map<string, number>();
   let triangles = 0;
   lifts.forEach((lift) => {
     const L = carGeometry(
@@ -501,6 +532,7 @@ export function buildLiftCars(
       if (zone) z.add(zone);
     }
     zones.set(lift.id, z);
+    carZ.set(lift.id, NaN);
     const mid = liftMiddle(lift);
     cars.push({
       lift,
@@ -527,7 +559,16 @@ export function buildLiftCars(
   shaft.name = "interior-lift-shafts";
   triangles += sb.triangles;
   group.add(shaft);
-  return { group, cars, shaft, zones, slot: -1, triangles };
+  return {
+    group,
+    cars,
+    shaft,
+    zones,
+    roomZone,
+    carZ,
+    slot: -1,
+    triangles,
+  };
 }
 
 /** Lights the cars and shafts as room slot `slot` (rewritten only on a change). */
@@ -585,7 +626,8 @@ export function updateLiftCars(
       y,
       t,
       car.offset,
-      target
+      target,
+      c.roomZone
     );
     if (target.exact || !Number.isFinite(car.z) || !show) car.z = target.z;
     else {
@@ -597,6 +639,9 @@ export function updateLiftCars(
     car.body.matrixWorldNeedsUpdate = true;
     car.pane.matrix.copy(car.body.matrix);
     car.pane.matrixWorldNeedsUpdate = true;
+    // Where it is drawn, for the runner's landing doors (no allocation:
+    // the key is there from the build).
+    c.carZ.set(car.lift.id, car.z);
   }
   c.shaft.visible = any;
 }

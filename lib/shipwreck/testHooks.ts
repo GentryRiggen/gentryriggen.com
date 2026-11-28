@@ -152,6 +152,11 @@ export interface ShipwreckSceneHooks {
   goOutside(): void;
   /** Rides her glass lift up or down, as the ▲ ▼ buttons in a car. */
   rideLift(dir: "up" | "down"): void;
+  /**
+   * Her glass car `lift`'s floor as drawn (ship-frame z), or null while
+   * her lifts are not built.
+   */
+  liftCarZ(lift: string): number | null;
   setLookUnder(on: boolean): void;
 }
 

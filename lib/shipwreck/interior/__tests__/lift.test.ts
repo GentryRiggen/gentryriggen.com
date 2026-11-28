@@ -6,6 +6,8 @@ import {
   LIFT_SPEED_MS,
   liftAt,
   liftById,
+  liftCarId,
+  liftCarIds,
   liftLanding,
   liftRideS,
   liftRideZ,
@@ -20,6 +22,16 @@ const liftA = lifts[0];
 const top = liftA.stops.length - 1;
 /** Her stops' decks, bottom to top. */
 const decks = liftA.stops.map((s) => s.deck);
+
+describe("each stop's car area id (kept, for the frame loops)", () => {
+  it("is liftCarId per stop, bottom to top, the same array every call", () => {
+    const ids = liftCarIds(liftA);
+    expect(ids).toEqual(liftA.stops.map((s) => liftCarId(liftA.id, s.deck)));
+    expect(liftCarIds(liftA)).toBe(ids);
+    for (const id of ids)
+      expect(liftAt(CONCORDIA_INTERIOR, id)?.lift).toBe(liftA);
+  });
+});
 
 describe("the glass lift ride", () => {
   it("stops at the low lobby (deck 0 + 0.4 m), 3, 4, 5 and 7", () => {

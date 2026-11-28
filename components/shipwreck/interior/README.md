@@ -133,8 +133,12 @@ its dome and the deck-11 roof cells under the hall: `Block.walkHidden`,
 One car per shaft (its frame, floor, roof and sides in `carMaterial`, its
 glass in the pane material) and one mesh for both shafts, moved by matrix,
 built only for an interior with `lifts`. Where a car is (`liftCarTargetZ`):
-ridden, at the ride's z; the walker in it, at that stop at once; on a
-landing within `PARK_NEAR_M` (3 m) of its door, gliding to that stop;
+ridden, at the ride's z; the walker in it, at that stop at once (never
+seen to jump: WalkRunner keeps a landing's door into a car shut until the
+car as drawn, `runtime.walkLiftCarZ`, is at that stop); anywhere in a
+lobby stop's zone (the low cabins, the deck 7 stateroom), gliding to that
+stop, so it is waiting there; on an atrium landing within `PARK_NEAR_M`
+(3 m) of its door, gliding to that stop (you watch it come);
 anywhere else on its ambient loop between the atrium's stops
 (`loopStops`, `otherCarZ`), the second car half a leg behind, so from the
 well floor and the galleries one is nearly always moving. A car the

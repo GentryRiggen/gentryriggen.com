@@ -349,6 +349,59 @@ test.describe("Shipwreck: inside the Costa Concordia", () => {
     expect(await walk(page)).toMatchObject({ area: "lift-a@7", ride: null });
   });
 
+  test("walking up to a glass lift in the atrium: the car arrives first, never appears round you", async ({
+    page,
+  }) => {
+    await startNight(page);
+    await seekTo(page, T_2200);
+    await page.evaluate(() => window.__shipwreck!.startWalk!());
+    await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+    const lift = CONCORDIA_INTERIOR.lifts![0];
+    const door = lift.stops[1].door;
+    const dx = (door[0][0] + door[1][0]) / 2;
+    const dy = (door[0][1] + door[1][1]) / 2;
+    // Deck 3's car z (the stop): read where the car is drawn once it is
+    // parked round a walker standing in it.
+    await place(page, "lift-a@3", 63.1, dy, 0);
+    await page.waitForTimeout(300);
+    const stopZ = (await page.evaluate(() =>
+      window.__shipwreck!.liftCarZ!("lift-a")
+    ))!;
+    expect(stopZ).not.toBeNull();
+    // Off to the well floor's far side (the car goes back to its loop),
+    // then onto deck 3's landing facing the door, and walk straight in.
+    await place(page, "atrium-3", 74, 0, Math.PI);
+    await page.waitForTimeout(6000);
+    await place(page, "atrium-3", dx + 1.6, dy, Math.PI);
+    const seen = await page.evaluate(
+      async ([z0]) => {
+        const h = window.__shipwreck!;
+        h.setWalkInput!(1, 0);
+        const out: { area: string | null; z: number | null }[] = [];
+        const t0 = performance.now();
+        while (performance.now() - t0 < 12_000) {
+          await new Promise((r) => requestAnimationFrame(r));
+          const w = h.getWalk!();
+          out.push({ area: w?.area ?? null, z: h.liftCarZ!("lift-a") });
+          if (w?.area === "lift-a@3" && performance.now() - t0 > 500) break;
+        }
+        h.setWalkInput!(0, 0);
+        return out.map((o) => ({ ...o, off: o.z === null ? 0 : o.z - z0 }));
+      },
+      [stopZ] as const
+    );
+    expect(seen.some((s) => s.area === "lift-a@3")).toBe(true);
+    // The car was already there when they stepped in: the last frame
+    // before shows it at the stop (within the door's 3 cm and one
+    // frame's glide), not on its way.
+    const first = seen.findIndex((s) => s.area === "lift-a@3");
+    expect(first).toBeGreaterThan(0);
+    expect(Math.abs(seen[first - 1].off)).toBeLessThan(0.06);
+    // And while it was still on its way they stood on the landing.
+    for (const s of seen)
+      if (Math.abs(s.off) > 0.06) expect(s.area).not.toBe("lift-a@3");
+  });
+
   test("the low lobby floods slowly on its starboard side, never over 0.8 m, before 29 degrees", async ({
     page,
   }) => {

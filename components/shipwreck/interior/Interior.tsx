@@ -134,6 +134,8 @@ const DECK_INSIDE_ORDER = {
  * its own shader.
  */
 const GLASS_ORDER = WATER_SURFACE_ORDER + 0.5;
+/** Her sea-view lift eases in and out at this (per second). */
+const SEA_VIEW_EASE_PER_S = 2;
 /** Her emergency supply never goes quite out (its flicker dips to this). */
 const EMERGENCY_MIN = 0.1;
 
@@ -508,13 +510,18 @@ function InteriorScene({
     built.current = b;
     scene.add(b.group);
     runtime.interiorLevels = b.levels;
+    // Her cars as drawn: the runner's landing doors open on arrival.
+    runtime.walkLiftCarZ = b.lifts ? b.lifts.carZ : null;
     return () => {
       showModel(b, null);
       scene.remove(b.group);
       if (runtime.interiorLevels === b.levels) runtime.interiorLevels = null;
+      if (b.lifts && runtime.walkLiftCarZ === b.lifts.carZ)
+        runtime.walkLiftCarZ = null;
       // Nothing reads a stale dip or wash once her rooms are gone.
       runtime.interiorEmergency = 1;
       runtime.walkWet = 0;
+      runtime.walkSeaView = 0;
       if (built.current === b) built.current = null;
       dispose(b);
     };
@@ -540,6 +547,7 @@ function InteriorScene({
       lv.drawn.fill(0);
       runtime.interiorEmergency = 1;
       runtime.walkWet = 0;
+      runtime.walkSeaView = 0;
       return;
     }
     // Her rooms close at her heel limit: only her deck rooms are drawn then.
@@ -781,6 +789,14 @@ function InteriorScene({
         if (now[nb[i]]) wet = Math.max(wet, b.depth[nb[i]]);
     }
     runtime.walkWet = Math.min(1, wet);
+    // In a sea-view room (hers): the night sea out there lifted a little,
+    // eased in and out (Sea, her moonlit sea only).
+    const view = open && rk !== undefined && b.rooms[rk].seaView === true;
+    const vs = SEA_VIEW_EASE_PER_S * Math.min(Math.max(dt, 0), 0.1);
+    runtime.walkSeaView = Math.max(
+      0,
+      Math.min(1, runtime.walkSeaView + (view ? vs : -vs))
+    );
   }, -1.4);
 
   return null;

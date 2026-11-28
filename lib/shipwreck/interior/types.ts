@@ -130,6 +130,13 @@ export interface Room {
    * at most `ROOM_SEEP_M_PER_S` once the sea is over its lowest floor.
    */
   seep?: true;
+  /**
+   * Looks out at the sea (the Concordia's balcony, its stateroom and the
+   * ocean-view cabin): while the walker is in it at night, the sea out
+   * there is lifted a little (Interior, `runtime.walkSeaView`), so it
+   * reads as water, not black.
+   */
+  seaView?: true;
 }
 
 /** A deck door or a lift: the walk map's Stair, tagged. */

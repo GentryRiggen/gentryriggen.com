@@ -253,6 +253,31 @@ describe("seams", () => {
     expect(r.state.area).toBe("roomA");
     expect(r.state.x).toBeCloseTo(9, 3);
   });
+
+  it("a shut seam (seamShut) is a wall until it opens, then crossed as before", () => {
+    const asked: string[] = [];
+    let shut = true;
+    const c = ctx({
+      seamShut: (from, to) => {
+        asked.push(`${from}>${to}`);
+        return shut && to === "roomB";
+      },
+    });
+    const r = run(walker("roomA", 8, 2), FORWARD, c, 1.2);
+    expect(r.state.area).toBe("roomA");
+    expect(r.state.x).toBeCloseTo(10 - WALK_RADIUS_M, 3);
+    expect(asked).toContain("roomA>roomB");
+    // Pushed off it as off a wall, never standing over the line.
+    expect(r.state.x + WALK_RADIUS_M).toBeLessThanOrEqual(10 + 1e-6);
+    // Open: through at full speed.
+    shut = false;
+    const r2 = run(r.state, FORWARD, c, 1);
+    expect(r2.state.area).toBe("roomB");
+    // Only that way is shut: walking back from B crosses.
+    shut = true;
+    const back = run(walker("roomB", 12, 2, Math.PI), FORWARD, c, 1);
+    expect(back.state.area).toBe("roomA");
+  });
 });
 
 describe("ramps", () => {

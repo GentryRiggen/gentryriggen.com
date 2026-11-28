@@ -15,10 +15,11 @@ import {
   interiorFor,
   liftAt,
   liftById,
-  liftCarId,
+  liftCarIds,
   liftLanding,
   liftMiddle,
   liftRideZ,
+  liftStopZ,
   nextStop,
   roomsOpen,
   roomWaterTargets,
@@ -93,8 +94,10 @@ import {
  * (`walkRide`) for Interior and the HUD. The ride lives on the walker
  * (`WalkerState.ride`), so anything that re-places them (a seek, Back on
  * deck, Go outside, the rooms closing at her 30°, `placeWalk`) ends it.
- * The rooms closing mid-ride walk them out through the lift's dark wipe
- * (`walkLift`), the stick held while it clears, not a hard cut.
+ * The rooms closing at her 30° walk them out (riding or not) through the
+ * lift's dark wipe (`walkLift`), the stick held while it clears, not a
+ * hard cut. A landing's door into a car stays shut (`seamShut`) until the
+ * car Interior draws (`walkLiftCarZ`) has arrived at that stop.
  */
 
 /** The sea's surface for the walk rules: the sea quad is flat (y = 0). */
@@ -213,6 +216,23 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         breakX: null as number | null,
         seaZ: FLAT_SEA,
         interiorsOpen: true,
+        // Her glass lifts: a landing's door into a car is shut until the
+        // car as drawn (Interior, `walkLiftCarZ`) stands at that stop; open
+        // when it is not drawn yet (nothing to step into or out of).
+        ...(map?.lifts && map.lifts.length > 0
+          ? {
+              seamShut: (from: string, to: string): boolean => {
+                const car = liftAt(map, to);
+                if (!car || liftAt(map, from)) return false;
+                const z = runtime.walkLiftCarZ?.get(car.lift.id);
+                if (z === undefined || !Number.isFinite(z)) return false;
+                return (
+                  Math.abs(z - liftStopZ(car.lift, spec, car.stop)) >
+                  LIFT_ARRIVED_M
+                );
+              },
+            }
+          : {}),
         // A boat's blocker goes once that boat is lowered (her map only).
         ...(map?.blockers.some((b) => b.kind === "box" && b.boat !== undefined)
           ? {
@@ -280,12 +300,13 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   depthRef.current = depthAt;
   const liftDry = useRef({
     lift: null as LiftShaft | null,
-    dry: (stop: LiftStop): boolean => {
+    dry: (_stop: LiftStop, i: number): boolean => {
       const lift = liftDry.current.lift;
       if (!lift) return false;
-      const [x, y] = liftMiddle(lift);
+      // Index reads and kept ids: no per-frame arrays or strings.
+      const mid = liftMiddle(lift);
       return (
-        depthRef.current(liftCarId(lift.id, stop.deck), x, y) <=
+        depthRef.current(liftCarIds(lift)[i], mid[0], mid[1]) <=
         WALK_LIFT_MAX_DEPTH_M
       );
     },
@@ -633,17 +654,11 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         };
         s.easeT = null;
       }
-      // The rooms closing round a glass lift ride (hers, at 30°): not a hard
-      // cut out of a moving car. The screen goes dark and clears (the lift
-      // wipe) and the stick waits for it, while her hull groans.
-      if (
-        !open &&
-        !broken &&
-        inRoom &&
-        s.walker.ride &&
-        !gone &&
-        w !== s.walker
-      ) {
+      // The rooms closing round them (hers, at 30°), riding a glass lift
+      // or standing in the flooding rooms: not a hard cut. The screen goes
+      // dark and clears (the lift wipe) and the stick waits for it, while
+      // her hull groans.
+      if (!open && !broken && inRoom && !gone && w !== s.walker) {
         runtime.walkLift += 1;
         s.liftHold = LIFT_HOLD_S;
       }
@@ -950,6 +965,9 @@ function useWalkKeys(
 
 /** The stick is ignored this long after the lift (its wipe runs 0.9 s). */
 const LIFT_HOLD_S = 0.9;
+
+/** A car this near its stop (m) has arrived: its landing's door opens. */
+const LIFT_ARRIVED_M = 0.03;
 
 /** How often the door in reach is looked up (s). */
 const DOOR_LOOK_S = 0.25;

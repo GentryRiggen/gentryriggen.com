@@ -376,8 +376,9 @@ export const CAR_ANCHORS = {
  * roof's underside is a warm lit panel and anything marked `aGlow` over
  * 0.5 (its downlights, the lights ringing its cone) glows over 1, so bloom
  * catches it. On at least half strength whatever the room's power (its
- * own supply), the flicker on it. No three.js light. Every division is
- * guarded (`shaderGuards.test.ts`).
+ * own supply), dipping with her emergency lights' flicker (`uEmergency`,
+ * from `withModern`: the car is built on her modern metal). No three.js
+ * light. Every division is guarded (`shaderGuards.test.ts`).
  */
 export function carLightGlsl(ceilingM: number): {
   vertexHead: string;
@@ -398,7 +399,8 @@ export function carLightGlsl(ceilingM: number): {
     const vec3 CAR_LAMP = vec3(1.0, 0.78, 0.5);
     `,
     fragmentEnd: /* glsl */ `// The car's own light (see carLightGlsl).
-      float carPower = max(power, 0.5 * uFlicker);
+      // Its own supply (at least half), dipping with her emergency lights.
+      float carPower = max(power, 0.5 * uFlicker * uEmergency);
       vec3 cn = vCarN / max(length(vCarN), 0.0001);
       vec3 toCarLamp = vec3(0.0, ${h} - 0.2, 0.0) - vCarP;
       float carD = length(toCarLamp);
@@ -429,11 +431,12 @@ export function carShaders(
   const g = carLightGlsl(ceilingM);
   let vertex = insertBefore(metal.vertex, CAR_ANCHORS.vertexHead, g.vertexHead);
   vertex = insertBefore(vertex, CAR_ANCHORS.vertexEnd, g.vertexEnd);
-  let fragment = insertBefore(
-    metal.fragment,
-    CAR_ANCHORS.fragmentHead,
-    g.fragmentHead
-  );
+  // The emergency supply comes with her modern metal; declared here on a
+  // metal without it (held at 1: never dips).
+  const head = metal.fragment.includes("uniform float uEmergency;")
+    ? g.fragmentHead
+    : `uniform float uEmergency;\n    ${g.fragmentHead}`;
+  let fragment = insertBefore(metal.fragment, CAR_ANCHORS.fragmentHead, head);
   fragment = insertBefore(fragment, CAR_ANCHORS.fragmentEnd, g.fragmentEnd);
   return { vertex, fragment };
 }
@@ -455,7 +458,12 @@ export function carMaterial(
   const m = new ShaderMaterial({
     vertexShader: sh.vertex,
     fragmentShader: sh.fragment,
-    uniforms: metal.uniforms,
+    // The metal's very uniforms (its emergency supply added at 1 when it
+    // has none).
+    uniforms:
+      "uEmergency" in metal.uniforms
+        ? metal.uniforms
+        : { ...metal.uniforms, uEmergency: { value: 1 } },
     vertexColors: true,
     fog: false,
     transparent: metal.transparent,

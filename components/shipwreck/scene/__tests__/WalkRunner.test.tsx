@@ -1,5 +1,6 @@
 import { act, fireEvent, render } from "@testing-library/react";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
+import { liftStopZ } from "@/lib/shipwreck/interior";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { sampleTrack, simulate, type SimTrack } from "@/lib/shipwreck/sim";
@@ -809,16 +810,107 @@ describe("walking the Concordia as she leans", () => {
     ).toBeGreaterThan(0.3);
   });
 
-  it("the rooms closing round a walker not riding: no wipe (as before)", () => {
-    const { store, runtime, frame } = setupHer();
-    const hooks = sceneHooks(store, runtime);
-    act(() => store.getState().startWalk());
-    frame(29);
-    inCar(hooks, frame, "3", 29);
-    const wipes = runtime.walkLift;
-    frame(30);
-    expect(runtime.walkInside).toBe(false);
-    expect(runtime.walkLift).toBe(wipes);
+  it.each([
+    ["standing in a parked car", "lift-a@3", 63.1, 2.6],
+    ["in the flooding low lobby", "lobby-1", 59, 0],
+  ] as const)(
+    "the rooms closing round a walker not riding (%s): the wipe too, the stick held",
+    (_what, area, x, y) => {
+      const { store, runtime, frame } = setupHer();
+      const hooks = sceneHooks(store, runtime);
+      act(() => store.getState().startWalk());
+      frame(29);
+      hooks.placeWalk(area, x, y, Math.PI);
+      frame(29);
+      expect(runtime.walkRoom).toBe(area);
+      const wipes = runtime.walkLift;
+      frame(30);
+      expect(runtime.walkInside).toBe(false);
+      // A cue, not a hard cut: the lift's dark wipe, once.
+      expect(runtime.walkLift).toBe(wipes + 1);
+      for (let i = 0; i < 5; i += 1) frame(30);
+      expect(runtime.walkLift).toBe(wipes + 1);
+      // The stick waits for it.
+      const at = { x: runtime.walkInfo!.x, y: runtime.walkInfo!.y };
+      hooks.setWalkInput(1, 0);
+      for (let i = 0; i < 20; i += 1) frame(30);
+      expect(runtime.walkInfo!.x).toBeCloseTo(at.x, 6);
+      expect(runtime.walkInfo!.y).toBeCloseTo(at.y, 6);
+      hooks.setWalkInput(0, 0);
+    }
+  );
+
+  describe("her lift doors: a landing's door into a car opens only once the car is there", () => {
+    const lift = () => (walkMapFor("concordia") as WalkMap).lifts![0];
+    /** Walks forward (+x, onto deck 3's car door) for `n` frames. */
+    function walkIn(
+      hooks: ReturnType<typeof sceneHooks>,
+      frame: (listDeg: number, dt?: number) => void,
+      n: number
+    ) {
+      hooks.setWalkInput(1, 0);
+      for (let i = 0; i < n; i += 1) frame(0);
+      hooks.setWalkInput(0, 0);
+    }
+
+    it("the car away (as drawn): stopped at the door line, never in the car", () => {
+      const { store, runtime, frame } = setupHer();
+      const hooks = sceneHooks(store, runtime);
+      act(() => store.getState().startWalk());
+      frame(0);
+      // The atrium's deck 3 landing, facing the lift wall (aft is −x: the
+      // cars stand aft of the well), a metre and a half off.
+      const door = lift().stops[1].door;
+      const dx = (door[0][0] + door[1][0]) / 2;
+      const dy = (door[0][1] + door[1][1]) / 2;
+      hooks.placeWalk("atrium-3", dx + 1.5, dy, Math.PI);
+      frame(0);
+      expect(runtime.walkRoom).toBe("atrium-3");
+      // Interior draws lift-a two storeys up (deck 5).
+      runtime.walkLiftCarZ = new Map([
+        ["lift-a", liftStopZ(lift(), concordia, 3)],
+        ["lift-b", liftStopZ(lift(), concordia, 3)],
+      ]);
+      walkIn(hooks, frame, 90);
+      expect(runtime.walkRoom).toBe("atrium-3");
+      // Stopped short of the door line (the body's radius off it).
+      expect(runtime.walkInfo!.x).toBeGreaterThan(dx);
+      // The car arrives (as drawn): the door opens and in they go.
+      runtime.walkLiftCarZ.set("lift-a", liftStopZ(lift(), concordia, 1));
+      walkIn(hooks, frame, 60);
+      expect(runtime.walkRoom).toBe("lift-a@3");
+    });
+
+    it("a car not drawn yet (no Interior): the door stays open", () => {
+      const { store, runtime, frame } = setupHer();
+      const hooks = sceneHooks(store, runtime);
+      act(() => store.getState().startWalk());
+      frame(0);
+      const door = lift().stops[1].door;
+      const dx = (door[0][0] + door[1][0]) / 2;
+      const dy = (door[0][1] + door[1][1]) / 2;
+      hooks.placeWalk("atrium-3", dx + 1.5, dy, Math.PI);
+      frame(0);
+      runtime.walkLiftCarZ = null;
+      walkIn(hooks, frame, 90);
+      expect(runtime.walkRoom).toBe("lift-a@3");
+    });
+
+    it("stepping out of a car is never held (it is there: you are in it)", () => {
+      const { store, runtime, frame } = setupHer();
+      const hooks = sceneHooks(store, runtime);
+      act(() => store.getState().startWalk());
+      frame(0);
+      inCar(hooks, frame, "3");
+      runtime.walkLiftCarZ = new Map([
+        ["lift-a", liftStopZ(lift(), concordia, 3)],
+      ]);
+      // Facing aft in the car; turn to face forward (+x), out onto deck 3.
+      hooks.placeWalk("lift-a@3", 63.1, 2.6, 0);
+      frame(0);
+      walkIn(hooks, frame, 90);
+      expect(runtime.walkRoom).not.toBe("lift-a@3");
+    });
   });
 
   it("Back on deck (a re-place) and placeWalk mid-ride end it too", () => {

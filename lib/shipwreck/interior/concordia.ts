@@ -585,6 +585,16 @@ const CARPET = {
   floor: "cabin-carpet",
   lamp: "downlight",
 } as const;
+/**
+ * The low (deck 0) lobby and corridor: pale marble underfoot, so the sea
+ * seeping in reads at a glance (dark water on a light floor, as on the
+ * Titanic's decks), not lost on a navy carpet.
+ */
+const LOW_HALL = {
+  finish: "cream",
+  floor: "marble",
+  lamp: "downlight",
+} as const;
 const CABIN = {
   finish: "cabin-veneer",
   floor: "cabin-carpet",
@@ -643,16 +653,20 @@ const INFO: Record<string, RoomInfo> = {
   "atrium-5-fwd": atrium("gallery", "5", ATRIUM_ROOF_Z - Z("5"), GALLERY),
   "entry-p": atrium("lobby", "4", CEIL, GALLERY),
   "entry-s": atrium("lobby", "4", CEIL, GALLERY),
-  "lobby-1": low("lobby", CARPET),
-  "corridor-1": low("corridor", CARPET),
+  "lobby-1": low("lobby", LOW_HALL),
+  "corridor-1": low("corridor", LOW_HALL),
   "cabin-inside": low("cabin", CABIN),
   // Its big window low over the sea, on her starboard side.
-  "cabin-ocean": low("cabin", { ...CABIN, portholes: "starboard" }),
+  "cabin-ocean": {
+    ...low("cabin", { ...CABIN, portholes: "starboard" }),
+    seaView: true,
+  },
   "lobby-7": seven("lobby", CARPET),
   "corridor-7": seven("corridor", CARPET),
-  stateroom: seven("stateroom", CABIN),
+  stateroom: { ...seven("stateroom", CABIN), seaView: true },
   balcony: {
     kind: "balcony",
+    seaView: true,
     deck: "7",
     // Under the balcony above (the model's 0.3 m balcony floor on deck 8).
     ceilingM: Z("8") - 0.3 - Z("7"),

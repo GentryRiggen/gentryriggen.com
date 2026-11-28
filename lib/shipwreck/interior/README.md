@@ -50,12 +50,16 @@ One `InteriorMap` per ship, in the ship frame (metres, keel at midships,
   1.5 m/s, ease out over 1 s, about 14 s from the low lobby to deck 7;
   `nextStop` rides past a stop whose car would be over the knee;
   `otherCarZ` the car nobody rides, on a loop, over a run of stops: the
-  scene keeps it to the atrium's, and parks it only for a walker within
-  3 m of its door). A car at a stop holds its
+  scene keeps it to the atrium's, parks it at an atrium stop for a walker
+  within 3 m of its door and at a lobby stop for anyone in that lobby's
+  zone; the walker's `StepContext.seamShut` keeps a landing's door into a
+  car shut until the car is there). A car at a stop holds its
   landing's water; riding, the higher of its two ends' (the shaft's rule).
 - **seep** (`Room.seep`), **closeAtHeelDeg** and **emergencyFlicker**
   (hers): the slow flooding (`seep.ts`), the 30° close (`open.ts`) and the
-  flicker (`lights.ts`).
+  flicker (`lights.ts`). **seaView** (`Room.seaView`, hers: the balcony,
+  its stateroom, the ocean-view cabin): the night sea out there is lifted
+  a little while the walker is in one.
 
 `withInterior(deckMap, interior)` (`merge.ts`) merges it into the ship's
 `WalkMap`: rooms become `interior` areas, blocking furniture becomes

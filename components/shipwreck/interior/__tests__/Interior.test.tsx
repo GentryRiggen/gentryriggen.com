@@ -759,6 +759,72 @@ describe("Interior inside her (the Concordia's rooms close, seep and flicker)", 
     expect(car("lift-a").visible).toBe(false);
   });
 
+  it("parks her cars at a lobby stop for anyone on its landing or in its zone, and writes where each is drawn", () => {
+    const { runtime, group, frame } = setupHer([herFrame(0, -13.6)]);
+    const lifts = group.children.find((c) => c.name === "interior-lifts")!;
+    const car = (id: string) =>
+      lifts.children.find((c) => c.name === `interior-lift-car-${id}`) as Mesh;
+    const lift = CONCORDIA_INTERIOR.lifts![0];
+    const stop = (i: number) => liftStopZ(lift, concordia, i);
+    const standAt = (x: number, y: number, area: string) => {
+      runtime.walkRoom = area;
+      runtime.walkInfo = {
+        phase: "deck",
+        part: "whole",
+        x,
+        y,
+        slopeDeg: 0,
+        heelDeg: 0,
+        depthM: -1,
+        area,
+        inside: true,
+      };
+    };
+    // Gliding on their loop from the well floor first (not at deck 0).
+    standAt(74, 0, "atrium-3");
+    for (let i = 0; i < 300; i += 1) frame(herFrame(0, -13.6), i / 60);
+    expect(runtime.walkLiftCarZ).not.toBeNull();
+    expect(runtime.walkLiftCarZ!.get("lift-a")).toBeCloseTo(
+      car("lift-a").matrix.elements[13],
+      9
+    );
+    // The far (starboard) end of the low lobby, 12 m from the lift doors:
+    // both cars come down to deck 0 and wait there.
+    standAt(57, -13, "lobby-1");
+    for (let i = 0; i < 900; i += 1) frame(herFrame(0, -13.6), 10 + i / 60);
+    expect(car("lift-a").matrix.elements[13]).toBeCloseTo(stop(0), 6);
+    expect(car("lift-b").matrix.elements[13]).toBeCloseTo(stop(0), 6);
+    expect(runtime.walkLiftCarZ!.get("lift-a")).toBeCloseTo(stop(0), 6);
+    // Down the corridor or in a cabin (the low cabins' zone): still waiting.
+    standAt(40, -9.9, "corridor-1");
+    for (let i = 0; i < 300; i += 1) frame(herFrame(0, -13.6), 30 + i / 60);
+    expect(car("lift-a").matrix.elements[13]).toBeCloseTo(stop(0), 6);
+    // In the stateroom on deck 7: both go up to deck 7 (gliding, never a jump).
+    standAt(49.4, -12, "stateroom");
+    let prev = car("lift-a").matrix.elements[13];
+    for (let i = 0; i < 900; i += 1) {
+      frame(herFrame(0, -13.6), 40 + i / 60);
+      const z = car("lift-a").matrix.elements[13];
+      expect(Math.abs(z - prev)).toBeLessThanOrEqual(1.5 / 60 + 1e-9);
+      prev = z;
+    }
+    expect(car("lift-a").matrix.elements[13]).toBeCloseTo(stop(4), 6);
+  });
+
+  it("lifts her night sea from her sea-view rooms only, eased (the balcony, not the lobby)", () => {
+    const { runtime, frame } = setupHer([herFrame(0, -13.6)]);
+    runtime.walkRoom = "balcony";
+    for (let i = 0; i < 60; i += 1) frame(herFrame(0, -13.6), i / 60, 1 / 60);
+    expect(runtime.walkSeaView).toBeCloseTo(1, 6);
+    runtime.walkRoom = "lobby-7";
+    frame(herFrame(0, -13.6), 2, 1 / 60);
+    // Eased out, not cut.
+    expect(runtime.walkSeaView).toBeGreaterThan(0.9);
+    for (let i = 0; i < 60; i += 1)
+      frame(herFrame(0, -13.6), 3 + i / 60, 1 / 60);
+    expect(runtime.walkSeaView).toBe(0);
+  });
+
   it("builds nothing of the lifts for the Titanic (her lift is two rooms)", () => {
     const { store } = setup();
     act(() => store.getState().startWalk());

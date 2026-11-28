@@ -130,6 +130,8 @@ describe("the rooms' materials", () => {
       car.fragmentShader.indexOf("gl_FragColor")
     );
     expect(car.vertexShader).toContain("vCarP = position;");
+    // Its own supply dips with her emergency lights' flicker.
+    expect(car.fragmentShader).toContain("0.5 * uFlicker * uEmergency");
     expect(car.fragmentShader).toContain("2.400");
     expect([car.blending, car.depthWrite, car.fog]).toEqual([
       mats.metal.blending,
@@ -141,5 +143,30 @@ describe("the rooms' materials", () => {
     car.dispose();
     mats.dispose();
     tex.dispose();
+  });
+
+  it("a car on a metal without the emergency supply declares it, held at 1 (never dips)", () => {
+    const water = waterMaterials(rooms);
+    const u = water.surface.uniforms;
+    const mats = roomMaterials(
+      rooms,
+      {
+        uRoomPower: u.uRoomPower,
+        uLevel: u.uLevel,
+        uTorchOn: u.uTorchOn,
+        uTorchPos: u.uTorchPos,
+        uTorchDir: u.uTorchDir,
+        uTime: u.uTime,
+      },
+      detailTexture()
+    );
+    const car = carMaterial(mats.metal, 2.4);
+    expect(car.fragmentShader.match(/uniform float uEmergency;/g)).toHaveLength(
+      1
+    );
+    expect(car.uniforms.uEmergency.value).toBe(1);
+    expect(car.uniforms.uRoomPower).toBe(u.uRoomPower);
+    car.dispose();
+    mats.dispose();
   });
 });

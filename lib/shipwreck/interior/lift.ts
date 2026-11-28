@@ -184,6 +184,21 @@ export function liftCarId(lift: string, deck: string): string {
   return `${lift}@${deck}`;
 }
 
+const CAR_IDS = new WeakMap<LiftShaft, readonly string[]>();
+
+/**
+ * Each stop's car area id (`liftCarId`), bottom to top: one array per
+ * shaft, kept, so a frame loop reads them without building strings.
+ */
+export function liftCarIds(lift: LiftShaft): readonly string[] {
+  let ids = CAR_IDS.get(lift);
+  if (!ids) {
+    ids = lift.stops.map((s) => liftCarId(lift.id, s.deck));
+    CAR_IDS.set(lift, ids);
+  }
+  return ids;
+}
+
 /** A car area's shaft and stop. */
 export interface LiftPlace {
   lift: LiftShaft;

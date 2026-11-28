@@ -1,6 +1,6 @@
 import {
   liftById,
-  liftCarId,
+  liftCarIds,
   liftMiddle,
   liftRideS,
   liftRideZ,
@@ -131,6 +131,14 @@ export interface StepContext {
    * off (the end card) or a lift is carrying them.
    */
   driftOff?: boolean;
+  /**
+   * Whether the doorway (a seam) from area `from` into area `to` is shut
+   * this step: a wall until it opens. Missing: every seam is open. Her
+   * glass lifts (the runner fills it): a landing's door into a car stays
+   * shut until that car has arrived at the stop, so nobody steps into an
+   * empty shaft and the car never appears round them.
+   */
+  seamShut?(from: string, to: string): boolean;
 }
 
 export type StepResult = {
@@ -292,7 +300,8 @@ function moveInOutline(
   area: WalkArea,
   s: Sub,
   mx: number,
-  my: number
+  my: number,
+  shut?: StepContext["seamShut"]
 ): void {
   let poly = area.outline;
   let seams = seamEdges(map, s.area);
@@ -329,7 +338,8 @@ function moveInOutline(
     const hit: V2 = [x0 + rx * bestT, y0 + ry * bestT];
     const across = seams ? seams[best] : null;
     const next = across !== null ? areaById(map, across) : undefined;
-    if (next) {
+    // A shut doorway is a wall (her lift doors while the car is away).
+    if (next && !(shut && shut(s.area, next.id))) {
       // Through the doorway: just past the edge, same motion, new outline.
       s.area = next.id;
       poly = next.outline;
@@ -420,10 +430,13 @@ function resolveBody(ctx: StepContext, area: WalkArea, s: Sub): void {
       s.y += ny * push;
       moved = true;
     }
-    // Keep the body off the railings and walls (a seam is no wall).
+    // Keep the body off the railings and walls (a seam is no wall,
+    // unless it is shut).
     const poly = area.outline;
     for (let i = 0; i < poly.length; i += 1) {
-      if (seams && seams[i] !== null) continue;
+      const across = seams ? seams[i] : null;
+      if (across !== null && !(ctx.seamShut && ctx.seamShut(area.id, across)))
+        continue;
       const a = poly[i];
       const b = poly[(i + 1) % poly.length];
       const { q, d } = nearestOnSegment([s.x, s.y], a, b);
@@ -562,7 +575,7 @@ function tryMove(
 ): boolean {
   const px = sub.x;
   const py = sub.y;
-  moveInOutline(ctx.map, area, sub, mx, my);
+  moveInOutline(ctx.map, area, sub, mx, my, ctx.seamShut);
   // A seam may have carried them into the next room.
   const now = sub.area === area.id ? area : areaById(ctx.map, sub.area);
   if (now) resolveBody(ctx, now, sub);
@@ -988,9 +1001,10 @@ function rideStep(
     ride.to >= 0 &&
     ride.to < lift.stops.length;
   let length = valid ? liftRideS(lift, ctx.spec, ride.from, ride.to) : 0;
-  if (valid) {
-    const toCar = liftCarId(lift.id, lift.stops[ride.to].deck);
-    const fromCar = liftCarId(lift.id, lift.stops[ride.from].deck);
+  const cars = valid ? liftCarIds(lift) : null;
+  if (valid && cars) {
+    const toCar = cars[ride.to];
+    const fromCar = cars[ride.from];
     if (
       depthAt(ctx, toCar, s.x, s.y) > WALK_LIFT_MAX_DEPTH_M &&
       depthAt(ctx, fromCar, s.x, s.y) <= WALK_LIFT_MAX_DEPTH_M
@@ -1008,8 +1022,7 @@ function rideStep(
   }
   const at = ride.s + total;
   const done = !valid || at >= length;
-  const area =
-    done && valid ? liftCarId(lift.id, lift.stops[ride.to].deck) : s.area;
+  const area = done && cars ? cars[ride.to] : s.area;
   const state: WalkerState = {
     part: s.part,
     area,
@@ -1024,14 +1037,9 @@ function rideStep(
       : { ride: { lift: ride.lift, from: ride.from, to: ride.to, s: at } }),
   };
   const depth =
-    done || !valid
+    done || !cars
       ? depthAt(ctx, area, s.x, s.y)
-      : rideDepth(
-          ctx,
-          state,
-          liftCarId(lift.id, lift.stops[ride.from].deck),
-          liftCarId(lift.id, lift.stops[ride.to].deck)
-        );
+      : rideDepth(ctx, state, cars[ride.from], cars[ride.to]);
   return {
     state,
     inWater: inWaterFromDepth(depth),
