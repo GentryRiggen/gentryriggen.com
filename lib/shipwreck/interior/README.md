@@ -92,6 +92,28 @@ frame's `water`.
   the door they came in by when it is dry, else the nearest dry deck door,
   else null (the scene then tries the spawn, else the sea). Facing out.
 
+## Start inside (`entries.ts`, 1.16)
+
+`InteriorMap.entries` are the rooms the camera picker can start a walk in:
+an id, a label (only ever an `aria-label`, "Walk inside: …"), an
+`EntryIcon` the HUD draws, the room and a spot and yaw in it (on a level
+floor, clear of the walls and furniture: `__tests__/entries.test.ts`).
+`openEntries(interior, ctx)` is the ones you can stand in now: none
+without a frame or once she has broken, none whose spot is under more than
+wading depth (`WALK_WADE_STOP_M`). A room you cannot stand in is left out,
+never greyed. The HUD starts the walk and stands the walker there with
+`requestWalkPlace` (the test hooks' path), so a room start is the same as
+walking in. A new ship adds entries as data.
+
+## The way in (`doorArrow.ts`, 1.16)
+
+`doorArrow(map, area, at, depthAt, broken)`: the deck door the amber arrow
+stands over. Only doors whose inside end is dry; the nearest on the
+walker's own deck area, else the nearest anywhere (from the forecastle or
+the poop); −1 inside a room, after the break, and on a map without deck
+doors. WalkRunner writes it to `runtime.walkArrow` with `walkDoor`;
+`components/shipwreck/interior/DoorArrow.tsx` draws it.
+
 ## Lights (`lights.ts`)
 
 `roomPower(power, depthM, t)`: the ship's power (the sim's `frame.power`)
@@ -117,7 +139,9 @@ finds the part a point (the walker, for the torch) is in.
 2. Where her plans are thin, invent a plausible layout and write each
    invention as a ruling in the file's header comment, so it can be
    revisited.
-3. Add her to `interiorFor` and merge her map in `walkMapFor`.
+3. Add her to `interiorFor` and merge her map in `walkMapFor`. Give her
+   `entries` (the camera picker's room buttons) if she has rooms worth
+   starting in.
 4. Copy `__tests__/titanicMap.test.ts` for her (or make it table-driven):
    outlines, seams, reachability from a deck door, link ends, ceilings,
    water. Measure her water timeline the way `water.test.ts` does.
