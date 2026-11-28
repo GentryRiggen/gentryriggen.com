@@ -4,6 +4,7 @@ import {
   SAVE_KEY,
   SAVE_SHIP_IDS,
   emptySave,
+  hasWalked,
   liveryOf,
   loadSave,
   loadSaveResult,
@@ -11,6 +12,7 @@ import {
   shipOf,
   whatIfOf,
   withLivery,
+  withWalked,
   withWhatIf,
   writeSave,
   wreckOf,
@@ -575,5 +577,43 @@ describe("the wreck chosen (any ship in any wreck, 1.14)", () => {
     expect(
       wreckOf({ ...emptySave(), ship: "carpathia", wreck: "titanic" })
     ).toBe("titanic");
+  });
+});
+
+describe("having walked (1.16: the Walk button stops pulsing)", () => {
+  it("is false when missing (an older save), nothing else reset", () => {
+    const older = {
+      ...emptySave(),
+      seen: { realNight: true, endings: ["sank" as const] },
+      ship: "lusitania" as const,
+    };
+    const parsed = parseSaveSalvaging(older)!.save;
+    expect(parsed.seen.walked).toBeUndefined();
+    expect(hasWalked(parsed)).toBe(false);
+    expect(parsed).toEqual(older);
+    expect(hasWalked(emptySave())).toBe(false);
+  });
+
+  it("round-trips once walked", () => {
+    const storage = new MemoryStorage();
+    const save = withWalked(emptySave());
+    expect(save.seen).toEqual({ realNight: false, endings: [], walked: true });
+    expect(writeSave(save, storage)).toBe(true);
+    const back = loadSave(NOW, storage);
+    expect(back).toEqual(save);
+    expect(hasWalked(back)).toBe(true);
+  });
+
+  it("keeps the rest of what was seen and drops a junk value", () => {
+    const seen = { realNight: true, endings: ["sank" as const] };
+    expect(withWalked({ ...emptySave(), seen }).seen).toEqual({
+      ...seen,
+      walked: true,
+    });
+    for (const junk of ["yes", 1, null, false])
+      expect(
+        parseSaveSalvaging({ ...emptySave(), seen: { ...seen, walked: junk } })!
+          .save.seen
+      ).toEqual(seen);
   });
 });

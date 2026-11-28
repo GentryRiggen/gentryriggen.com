@@ -15,7 +15,15 @@ import {
 export interface ShipwreckSave {
   v: 1;
   settings: { sound: boolean; speed: Speed; camera: CameraId };
-  seen: { realNight: boolean; endings: OutcomeId[] };
+  seen: {
+    realNight: boolean;
+    endings: OutcomeId[];
+    /**
+     * Walked once (1.16): the Walk button stops pulsing. Missing: not yet
+     * (an older save; nothing is reset).
+     */
+    walked?: boolean;
+  };
   /** Ids of the openings tried in the last Titanic What if? run (1.0). */
   lastWhatIf: string[];
   /** The ship chosen last on the title screen (missing: the Titanic). */
@@ -155,7 +163,11 @@ export function parseSaveSalvaging(raw: unknown): ParsedSave | null {
       speed: oneOf<Speed>(settings.speed, SPEEDS, 30),
       camera: oneOf<CameraId>(settings.camera, CAMERA_IDS, "orbit"),
     },
-    seen: { realNight: seen.realNight === true, endings },
+    seen: {
+      realNight: seen.realNight === true,
+      endings,
+      ...(seen.walked === true ? { walked: true } : {}),
+    },
     lastWhatIf,
   };
   if (isShipId(raw.ship)) save.ship = raw.ship;
@@ -243,6 +255,17 @@ export function withWhatIf(
       [ship]: { ...whatIf, ids: [...whatIf.ids] },
     },
   };
+}
+
+/** Whether the player has walked once (the Walk button's pulse stops). */
+export function hasWalked(save: ShipwreckSave): boolean {
+  return save.seen.walked === true;
+}
+
+/** The save with a walk remembered (the same save when already so). */
+export function withWalked(save: ShipwreckSave): ShipwreckSave {
+  if (hasWalked(save)) return save;
+  return { ...save, seen: { ...save.seen, walked: true } };
 }
 
 /** The livery id the save chose for `ship` (unchecked), or null. */
