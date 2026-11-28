@@ -49,7 +49,8 @@ function walker(p: Partial<WalkerState> = {}): WalkerState {
     area: map.spawn.area,
     x: map.spawn.at[0],
     y: map.spawn.at[1],
-    yaw: map.spawn.yaw,
+    // Facing the bow (the spawn itself faces a deck door, 1.16).
+    yaw: 0,
     ...p,
   };
 }

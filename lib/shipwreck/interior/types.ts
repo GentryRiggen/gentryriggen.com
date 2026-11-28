@@ -94,6 +94,25 @@ export interface Furniture {
   blocks?: boolean;
 }
 
+/** The picture on a room entry's button (the HUD draws it). */
+export type EntryIcon = "staircase" | "bed" | "bunk" | "corridor";
+
+/**
+ * A room you can start a walk in from the camera picker (1.16): its
+ * button's picture and words (aria-label only), the room and where to
+ * stand in it, facing `yaw` (ship frame, rad, 0 the bow, + to port).
+ */
+export interface RoomEntry {
+  id: string;
+  /** "Grand Staircase": the button reads "Walk inside: Grand Staircase". */
+  label: string;
+  icon: EntryIcon;
+  /** The room's id (a walkable room of this interior). */
+  room: string;
+  at: V2;
+  yaw: number;
+}
+
 export interface InteriorMap {
   ship: ShipId;
   rooms: readonly Room[];
@@ -102,4 +121,6 @@ export interface InteriorMap {
   links: readonly InteriorLink[];
   shutDoors: readonly ShutDoor[];
   furniture: readonly Furniture[];
+  /** The rooms the camera picker can start a walk in (none: no buttons). */
+  entries?: readonly RoomEntry[];
 }

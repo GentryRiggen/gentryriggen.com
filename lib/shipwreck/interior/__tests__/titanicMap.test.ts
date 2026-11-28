@@ -717,6 +717,6 @@ describe("the merged walk map", () => {
 
   it("keeps the spawn", () => {
     expect(map.spawn).toEqual(TITANIC_WALK.spawn);
-    expect(map.spawn).toEqual({ area: "boat-deck", at: [10, -10], yaw: 0 });
+    expect(map.spawn).toMatchObject({ area: "boat-deck", at: [10, -10] });
   });
 });
