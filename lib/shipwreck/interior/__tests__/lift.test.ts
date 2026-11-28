@@ -11,6 +11,7 @@ import {
   liftRideZ,
   liftStopZ,
   nextStop,
+  otherCarLoopS,
   otherCarZ,
 } from "../lift";
 
@@ -140,6 +141,32 @@ describe("the glass lift ride", () => {
       );
       prev = z;
     }
+  });
+
+  it("the loop can keep to a run of stops (the atrium's), the same rules", () => {
+    const zs = liftA.stops.map((_, i) => liftStopZ(liftA, concordia, i));
+    const parked = new Set<number>();
+    let prev = otherCarZ(liftA, concordia, 0, 1, 3);
+    for (let t = 0; t < 200; t += 0.05) {
+      const z = otherCarZ(liftA, concordia, t, 1, 3);
+      expect(z).toBeGreaterThanOrEqual(zs[1] - 1e-9);
+      expect(z).toBeLessThanOrEqual(zs[3] + 1e-9);
+      expect(Math.abs(z - prev) / 0.05).toBeLessThanOrEqual(
+        LIFT_SPEED_MS + 1e-6
+      );
+      prev = z;
+      const at = zs.findIndex((s) => Math.abs(s - z) < 1e-9);
+      if (at >= 0) parked.add(at);
+    }
+    expect([...parked].sort()).toEqual([1, 2, 3]);
+    expect(otherCarZ(liftA, concordia, LIFT_DWELL_S / 2, 1, 3)).toBeCloseTo(
+      zs[1],
+      9
+    );
+    // Shorter than the whole shaft's loop.
+    expect(otherCarLoopS(liftA, concordia, 1, 3)).toBeLessThan(
+      otherCarLoopS(liftA, concordia)
+    );
   });
 
   it("finds a car area's shaft, stop and landing; any other area is none", () => {

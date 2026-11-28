@@ -1,6 +1,12 @@
 import { NoBlending, Vector3 } from "three";
 import { TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
-import { MAX_ROOM_SLOTS, roomMaterials, roomShaders } from "../materials";
+import {
+  carMaterial,
+  MAX_ROOM_SLOTS,
+  roomMaterials,
+  roomShaders,
+} from "../materials";
+import { applyModern, modernTextures } from "../modernTextures";
 import { LAYERS } from "../pieces";
 import { detailTexture, DETAIL_PX } from "../textures";
 import { waterMaterials } from "../water";
@@ -91,5 +97,49 @@ describe("the rooms' materials", () => {
       expect([ch, mean > 60 && mean < 220]).toEqual([ch, true]);
     }
     t.dispose();
+  });
+
+  it("her glass cars' material: the metal's shaders and very uniforms, plus its own warm ceiling light (no three.js light)", () => {
+    const water = waterMaterials(rooms);
+    const u = water.surface.uniforms;
+    const mats = roomMaterials(
+      rooms,
+      {
+        uRoomPower: u.uRoomPower,
+        uLevel: u.uLevel,
+        uTorchOn: u.uTorchOn,
+        uTorchPos: u.uTorchPos,
+        uTorchDir: u.uTorchDir,
+        uTime: u.uTime,
+      },
+      detailTexture()
+    );
+    const tex = modernTextures();
+    const mu = applyModern(mats, tex);
+    const car = carMaterial(mats.metal, 2.4);
+    // The same uniform objects: the room power, flicker and emergency
+    // supply move it as they move the rooms.
+    expect(car.uniforms.uRoomPower).toBe(u.uRoomPower);
+    expect(car.uniforms.uFlicker).toBe(mats.flicker);
+    expect(car.uniforms.uEmergency).toBe(mu.uEmergency);
+    // The metal's code, the modern lines too, then the car's own light.
+    expect(car.fragmentShader).toContain("#define METAL");
+    expect(car.fragmentShader).toContain("uModernA");
+    expect(car.fragmentShader).toContain("CAR_LAMP");
+    expect(car.fragmentShader.indexOf("CAR_LAMP * carFace")).toBeLessThan(
+      car.fragmentShader.indexOf("gl_FragColor")
+    );
+    expect(car.vertexShader).toContain("vCarP = position;");
+    expect(car.fragmentShader).toContain("2.400");
+    expect([car.blending, car.depthWrite, car.fog]).toEqual([
+      mats.metal.blending,
+      true,
+      false,
+    ]);
+    // The metal itself is unchanged.
+    expect(mats.metal.fragmentShader).not.toContain("CAR_LAMP");
+    car.dispose();
+    mats.dispose();
+    tex.dispose();
   });
 });

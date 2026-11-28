@@ -134,24 +134,26 @@ export function nextStop(
 
 /**
  * The ambient loop: where a car nobody rides is at time `t` (s), as its
- * floor's ship-frame z. It rides from the bottom stop to the top one, a
- * stop at a time with LIFT_DWELL_S parked at each, and back down, for
- * ever; a pure function of `t` (the caller offsets `t` per car so the two
- * cars never move together).
+ * floor's ship-frame z. It rides from stop `lo` (default the bottom) to
+ * stop `hi` (default the top), a stop at a time with LIFT_DWELL_S parked
+ * at each, and back down, for ever; a pure function of `t` (the caller
+ * offsets `t` per car so the two cars never move together).
  */
 export function otherCarZ(
   lift: LiftShaft,
   spec: Pick<ShipSpec, "decks" | "sheerZ" | "sheerRefDeck">,
-  t: number
+  t: number,
+  lo = 0,
+  hi = lift.stops.length - 1
 ): number {
-  const n = lift.stops.length;
-  if (n < 2) return liftStopZ(lift, spec, 0);
-  // Legs up (0→1 … n−2→n−1) then down; each a dwell, then the ride.
-  const cycle = otherCarLoopS(lift, spec);
+  const n = hi - lo + 1;
+  if (n < 2) return liftStopZ(lift, spec, lo);
+  // Legs up (lo→lo+1 … hi−1→hi) then down; each a dwell, then the ride.
+  const cycle = otherCarLoopS(lift, spec, lo, hi);
   let u = ((t % cycle) + cycle) % cycle;
   for (let leg = 0; leg < 2 * (n - 1); leg += 1) {
     const up = leg < n - 1;
-    const from = up ? leg : 2 * (n - 1) - leg;
+    const from = lo + (up ? leg : 2 * (n - 1) - leg);
     const to = up ? from + 1 : from - 1;
     if (u < LIFT_DWELL_S) return liftStopZ(lift, spec, from);
     u -= LIFT_DWELL_S;
@@ -159,16 +161,18 @@ export function otherCarZ(
     if (u < ride) return liftRideZ(lift, spec, from, to, u);
     u -= ride;
   }
-  return liftStopZ(lift, spec, 0);
+  return liftStopZ(lift, spec, lo);
 }
 
-/** The ambient loop's length (s): up a stop at a time and back down. */
+/** The ambient loop's length (s): from `lo` up a stop at a time to `hi` and back down. */
 export function otherCarLoopS(
   lift: LiftShaft,
-  spec: Pick<ShipSpec, "decks" | "sheerZ" | "sheerRefDeck">
+  spec: Pick<ShipSpec, "decks" | "sheerZ" | "sheerRefDeck">,
+  lo = 0,
+  hi = lift.stops.length - 1
 ): number {
   let cycle = 0;
-  for (let i = 0; i + 1 < lift.stops.length; i += 1)
+  for (let i = lo; i < hi; i += 1)
     cycle += 2 * (LIFT_DWELL_S + liftRideS(lift, spec, i, i + 1));
   return cycle;
 }

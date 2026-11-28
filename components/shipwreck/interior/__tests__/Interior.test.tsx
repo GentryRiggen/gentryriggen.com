@@ -672,7 +672,7 @@ describe("Interior inside her (the Concordia's rooms close, seep and flicker)", 
     expect(top.has("atrium")).toBe(false);
   });
 
-  it("draws her glass cars: the ridden one at the ride's z, the other gliding; both gone off her landings and at 30°", () => {
+  it("draws her glass cars: gliding unless you are by a door or in one, the ridden one at the ride's z; both gone off her landings and at 30°", () => {
     const { runtime, group, frame } = setupHer([herFrame(0, -13.6)]);
     const lifts = group.children.find((c) => c.name === "interior-lifts")!;
     expect(lifts).toBeDefined();
@@ -689,22 +689,58 @@ describe("Interior inside her (the Concordia's rooms close, seep and flicker)", 
     expect((glass.material as Material).transparent).toBe(true);
     const lift = CONCORDIA_INTERIOR.lifts![0];
     const stop = (i: number) => liftStopZ(lift, concordia, i);
-    // On deck 3's floor: both cars come to the landing, doors open.
-    runtime.walkRoom = "atrium-3";
-    for (let i = 0; i < 600; i += 1) frame(herFrame(0, -13.6), i / 60);
+    const standAt = (x: number, y: number, area: string) => {
+      runtime.walkRoom = area;
+      runtime.walkInfo = {
+        phase: "deck",
+        part: "whole",
+        x,
+        y,
+        slopeDeg: 0,
+        heelDeg: 0,
+        depthM: -1,
+        area,
+        inside: true,
+      };
+    };
+    // Out on deck 3's well floor, far from the doors: both keep gliding.
+    standAt(74, 0, "atrium-3");
+    const za: number[] = [];
+    for (let i = 0; i < 1200; i += 1) {
+      frame(herFrame(0, -13.6), i / 60);
+      za.push(car("lift-a").matrix.elements[13]);
+    }
+    expect(Math.max(...za) - Math.min(...za)).toBeGreaterThan(2);
+    // By the doors on deck 3 (within 3 m of each): both come to the
+    // landing, doors open.
+    standAt(65.5, 0, "atrium-3");
+    for (let i = 0; i < 1200; i += 1) frame(herFrame(0, -13.6), 20 + i / 60);
     expect(car("lift-a").visible).toBe(true);
     expect(shafts.visible).toBe(true);
     // Ship z is her part's three-local y.
     expect(car("lift-a").matrix.elements[13]).toBeCloseTo(stop(1), 6);
     expect(car("lift-b").matrix.elements[13]).toBeCloseTo(stop(1), 6);
     expect(glass.matrix.elements[13]).toBeCloseTo(stop(1), 6);
+    // Walking off along the gallery side: they leave the landing again.
+    standAt(74, 7, "atrium-3");
+    for (let i = 0; i < 1200; i += 1) frame(herFrame(0, -13.6), 40 + i / 60);
+    const zs: number[] = [];
+    for (let i = 0; i < 1200; i += 1) {
+      frame(herFrame(0, -13.6), 60 + i / 60);
+      zs.push(car("lift-b").matrix.elements[13]);
+    }
+    expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(2);
+    // Stepping into lift-a's car at deck 4: it is round you at once.
+    standAt(63, 2.6, "lift-a@4");
+    frame(herFrame(0, -13.6), 80);
+    expect(car("lift-a").matrix.elements[13]).toBeCloseTo(stop(2), 6);
     // Riding lift-a: exactly at the ride's z; lift-b glides at lift speed.
     runtime.walkRoom = "lift-a@3";
     runtime.walkRide = { lift: "lift-a", from: 1, to: 4, s: 3, z: stop(1) + 2 };
     const b0 = car("lift-b").matrix.elements[13];
     let prevB = b0;
     for (let i = 0; i < 120; i += 1) {
-      frame(herFrame(0, -13.6), 10 + i / 60);
+      frame(herFrame(0, -13.6), 90 + i / 60);
       expect(car("lift-a").matrix.elements[13]).toBeCloseTo(stop(1) + 2, 9);
       const zb = car("lift-b").matrix.elements[13];
       expect(Math.abs(zb - prevB)).toBeLessThanOrEqual(1.5 / 60 + 1e-9);

@@ -14,6 +14,7 @@ rules: see its README). 1.15: the Titanic only. The design:
 | `materials.ts` | `roomMaterials(count, shared, detail)`: the rooms' one shader family, a layer each. See "The look" below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `textures.ts`  | `detailTexture()`: the oak panel, grain, lino and carpet detail, one repeating tile drawn once.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `water.ts`     | `interiorWater(map, spec)`: per zone one water surface and one body, every vertex tagged with its room's slot (`aRoom`); `waterMaterials(count)`: their shaders, sharing the level and room-power uniforms. See "Water" below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `liftCar.ts`   | Her glass lifts: `buildLiftCars`, `updateLiftCars` (each frame), `carMaterial` in `materials.ts`. See "Her glass lifts" below.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `doorGlow.ts`  | `doorGlowGeometry`: each deck door's warm lit doorway (frame, light, the open leaf's edge) on the house face, one mesh, HDR so bloom catches it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## The kit (`kit.ts`, `pieces.ts`)
@@ -124,6 +125,28 @@ tested), with the walker in it inside-wins after the clear (10–10.6). It
 hides her model's mesh "walk-hidden" meanwhile (her `pool-glass` block,
 its dome and the deck-11 roof cells under the hall: `Block.walkHidden`,
 `walkHiddenRoof`, `Dome.walkHidden`), and restores it off the walk.
+
+## Her glass lifts (`liftCar.ts`, 1.18)
+
+One car per shaft (its frame, floor, roof and sides in `carMaterial`, its
+glass in the pane material) and one mesh for both shafts, moved by matrix,
+built only for an interior with `lifts`. Where a car is (`liftCarTargetZ`):
+ridden, at the ride's z; the walker in it, at that stop at once; on a
+landing within `PARK_NEAR_M` (3 m) of its door, gliding to that stop;
+anywhere else on its ambient loop between the atrium's stops
+(`loopStops`, `otherCarZ`), the second car half a leg behind, so from the
+well floor and the galleries one is nearly always moving. A car the
+walker is not in never jumps (at most `LIFT_SPEED_MS`).
+
+The look: the shafts are lined dark (deep blue graphite), so the atrium's
+glass reads as glass; the car is lit by its own warm ceiling light,
+`carMaterial` (the metal layer's shaders, sharing its uniforms, plus a
+lamp under the roof in the car's own frame: no three.js light), with a lit
+roof panel, glowing downlights and cone lights (`aGlow` 1), lit panelled
+sides and a white back, in a brass frame. The atrium's glass onto the
+shafts and the cars' panes are the lift glass (`MODERN_TILE.liftGlass`,
+`LIFT_GLASS_GLSL`): a pale tint, a grazing sheen and soft reflection bands
+that slide as you move.
 
 ## Water (`water.ts`)
 

@@ -8,6 +8,7 @@ import {
   type Texture,
 } from "three";
 import type { Layer } from "./pieces";
+import { LIFT_GLASS_GLSL } from "./modernTextures";
 
 /**
  * The rooms' one shader family (README.md "The look"): no three.js lights
@@ -281,8 +282,8 @@ export function roomMaterials(
  * Her see-through glass (the `pane` mesh: a glass room's walls and vault,
  * the glass doors, the art lane's panes; every pane has both faces): a
  * faint tint that catches the sky toward a grazing look (a cheap Fresnel),
- * brighter by day (`uDaylight`); frosted panes (`aTile` over 19.5, the
- * doors) nearly opaque, pale. Blended, depth tested, not written, no
+ * brighter by day (`uDaylight`); frosted panes (`aTile` 20, the doors)
+ * nearly opaque, pale; the glass lifts' panes (21) as her lift glass. Blended, depth tested, not written, no
  * lights or fog. Every pow/division is guarded (`shaderGuards.test.ts`).
  */
 export const GLASS_SHADERS = {
@@ -320,7 +321,12 @@ export const GLASS_SHADERS = {
       vec3 lit = mix(body, sky, fres);
       // Faint: from outside, a look through the vault crosses four panes.
       float a = mix(0.07, 0.24, fres);
-      if (vTile > 19.5) {
+      if (vTile > 20.5) {
+        // The glass lifts' own glass (LIFT_GLASS_GLSL, modernTextures.ts).
+        float shine = 0.5 + 0.5 * day;
+        ${LIFT_GLASS_GLSL}
+        a = liftA;
+      } else if (vTile > 19.5) {
         // Frosted: pale, nearly opaque, lit by the day or a little at night.
         lit = vColor * (0.1 + 0.6 * day);
         a = 0.9;
@@ -348,5 +354,116 @@ export function glassMaterial(
     side: FrontSide,
   });
   m.name = "interior-pane";
+  return m;
+}
+
+/** Where the car's own light goes into the rooms' metal shaders (each once). */
+export const CAR_ANCHORS = {
+  vertexHead: "void main() {",
+  vertexEnd: "gl_Position = projectionMatrix * viewMatrix * w;",
+  fragmentHead: "const vec3 LAMP",
+  fragmentEnd: "gl_FragColor = vec4(lit, 1.0);",
+} as const;
+
+/**
+ * The car's own warm ceiling light (her glass lifts, `liftCar.ts`), added
+ * to the metal layer's lit colour (after the lamps, the emergency supply
+ * and the daylight). In the car's own frame (`vCarP`, `vCarN`: its floor's
+ * middle at 0, y up): a lamp just under its roof lights what faces it (the
+ * floor, the sides, the posts' and rims' inner faces) falling off with
+ * distance, in place of most of the room's light there (so it never
+ * washes out in a lit lobby, and glows in the dark shaft); the
+ * roof's underside is a warm lit panel and anything marked `aGlow` over
+ * 0.5 (its downlights, the lights ringing its cone) glows over 1, so bloom
+ * catches it. On at least half strength whatever the room's power (its
+ * own supply), the flicker on it. No three.js light. Every division is
+ * guarded (`shaderGuards.test.ts`).
+ */
+export function carLightGlsl(ceilingM: number): {
+  vertexHead: string;
+  vertexEnd: string;
+  fragmentHead: string;
+  fragmentEnd: string;
+} {
+  const h = ceilingM.toFixed(3);
+  return {
+    vertexHead: /* glsl */ `varying vec3 vCarP;
+    varying vec3 vCarN;
+    `,
+    vertexEnd: /* glsl */ `vCarP = position;
+      vCarN = normal;
+      `,
+    fragmentHead: /* glsl */ `varying vec3 vCarP;
+    varying vec3 vCarN;
+    const vec3 CAR_LAMP = vec3(1.0, 0.78, 0.5);
+    `,
+    fragmentEnd: /* glsl */ `// The car's own light (see carLightGlsl).
+      float carPower = max(power, 0.5 * uFlicker);
+      vec3 cn = vCarN / max(length(vCarN), 0.0001);
+      vec3 toCarLamp = vec3(0.0, ${h} - 0.2, 0.0) - vCarP;
+      float carD = length(toCarLamp);
+      float carFace = clamp(dot(cn, toCarLamp / max(carD, 0.001)), 0.0, 1.0);
+      float inCar = step(-0.01, vCarP.y) * step(vCarP.y, ${h} + 0.01);
+      float carLit = carFace * inCar;
+      lit = lit * (1.0 - 0.6 * carLit)
+        + base * CAR_LAMP * carLit * 1.8 * carPower / max(1.0 + 0.35 * carD * carD, 1.0);
+      if (cn.y < -0.5 && vCarP.y > ${h} - 0.03 && vCarP.y < ${h} + 0.01)
+        lit = base * CAR_LAMP * 0.95 * carPower + base * torch * TORCH * 0.2;
+      if (vGlow > 0.5) lit = vColor * 1.7 * carPower;
+      `,
+  };
+}
+
+function insertBefore(src: string, anchor: string, text: string): string {
+  const i = src.indexOf(anchor);
+  if (i < 0 || src.indexOf(anchor, i + 1) >= 0)
+    throw new Error(`car shader: anchor "${anchor}" not found once`);
+  return src.slice(0, i) + text + src.slice(i);
+}
+
+/** The metal layer's shaders with the car's own light (see `carLightGlsl`). */
+export function carShaders(
+  metal: { vertex: string; fragment: string },
+  ceilingM: number
+): { vertex: string; fragment: string } {
+  const g = carLightGlsl(ceilingM);
+  let vertex = insertBefore(metal.vertex, CAR_ANCHORS.vertexHead, g.vertexHead);
+  vertex = insertBefore(vertex, CAR_ANCHORS.vertexEnd, g.vertexEnd);
+  let fragment = insertBefore(
+    metal.fragment,
+    CAR_ANCHORS.fragmentHead,
+    g.fragmentHead
+  );
+  fragment = insertBefore(fragment, CAR_ANCHORS.fragmentEnd, g.fragmentEnd);
+  return { vertex, fragment };
+}
+
+/**
+ * Her glass cars' own material: the rooms' metal (with whatever it has
+ * been given: her modern finishes, the emergency supply), sharing its
+ * uniforms (the same objects: room power, the flicker, the torch), plus
+ * the car's own warm ceiling light. Call after `applyModern`.
+ */
+export function carMaterial(
+  metal: ShaderMaterial,
+  ceilingM: number
+): ShaderMaterial {
+  const sh = carShaders(
+    { vertex: metal.vertexShader, fragment: metal.fragmentShader },
+    ceilingM
+  );
+  const m = new ShaderMaterial({
+    vertexShader: sh.vertex,
+    fragmentShader: sh.fragment,
+    uniforms: metal.uniforms,
+    vertexColors: true,
+    fog: false,
+    transparent: metal.transparent,
+    blending: metal.blending,
+    depthWrite: true,
+    depthTest: true,
+    side: FrontSide,
+  });
+  m.name = "interior-lift-car";
   return m;
 }

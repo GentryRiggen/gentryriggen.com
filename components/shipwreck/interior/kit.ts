@@ -1866,6 +1866,7 @@ function addRoom(
         if (glassTop > 0 && L instanceof ModernLayers) {
           // Glass onto a lift shaft, the wall over it to the cove.
           const g = (v: V2) => Math.min(fz(v) + glassTop, top(v));
+          L.pane.tileId = MODERN_TILE.liftGlass;
           L.pane.quad(
             P(p, fz(p)),
             P(q, fz(q)),
@@ -1880,6 +1881,7 @@ function addRoom(
             P(q, g(q)),
             MODERN_COLOR.glass
           );
+          L.pane.tileId = MODERN_TILE.pane;
           if (top(p) - g(p) > 0.005 || top(q) - g(q) > 0.005)
             inward(shell, p, q, g(p), g(q), top(p), top(q), wall, wall);
         } else {
@@ -2089,6 +2091,7 @@ function addRoom(
         const ga = g(a);
         const gb = g(b);
         if (ga > loA + 0.01 || gb > loB + 0.01) {
+          L.pane.tileId = MODERN_TILE.liftGlass;
           L.pane.quad(
             P(a, loA),
             P(b, loB),
@@ -2103,6 +2106,7 @@ function addRoom(
             P(b, gb),
             MODERN_COLOR.glass
           );
+          L.pane.tileId = MODERN_TILE.pane;
         }
         const u = (v: V2, z: number): P3 =>
           P([v[0] + nx * 0.03, v[1] + ny * 0.03], z);

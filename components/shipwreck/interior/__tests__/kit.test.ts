@@ -844,7 +844,8 @@ describe("her rooms' look (1.18)", () => {
     const tile = g.getAttribute("aTile").array;
     const out: [number, number, number, number, number][] = [];
     for (let v = 0; v + 2 < tile.length; v += 3) {
-      if (tile[v] !== MODERN_TILE.pane) continue;
+      if (tile[v] !== MODERN_TILE.pane && tile[v] !== MODERN_TILE.liftGlass)
+        continue;
       let flat = true;
       let cy = 0;
       let cz = 0;
@@ -897,6 +898,10 @@ describe("her rooms' look (1.18)", () => {
     expect(glass.some(([, y]) => y < 0)).toBe(true);
     // Between the shafts the wall stays a wall.
     expect(panesOn("atrium", 64.2, 0, 1.4)).toEqual([]);
+    // It is the lift glass (its own look), and the rails stay panes.
+    const tiles = new Set(inRoom("atrium", "glass", "atrium-4", "aTile"));
+    expect(tiles.has(MODERN_TILE.liftGlass)).toBe(true);
+    expect(tiles.has(MODERN_TILE.pane)).toBe(true);
   });
 
   it("leaves the lobbies' lift walls solid but for the doors (the cars carry their own glass)", () => {
@@ -948,6 +953,17 @@ describe("her rooms' look (1.18)", () => {
     }
     expect(ends).toBeGreaterThan(0);
     expect(CAR_END_INSET_M).toBeGreaterThanOrEqual(0.08);
+    // Its panes are the lift glass; its downlights and cone lights glow.
+    expect(
+      Array.from(lifts.cars[0].pane.geometry.getAttribute("aTile").array).every(
+        (t) => t === MODERN_TILE.liftGlass
+      )
+    ).toBe(true);
+    expect(
+      Array.from(lifts.cars[0].body.geometry.getAttribute("aGlow").array).some(
+        (g) => g === 1
+      )
+    ).toBe(true);
     // Nothing of the car (frame, floor, posts) on its plan's end lines,
     // where the landings' walls stand at a stop.
     const body = lifts.cars[0].body.geometry.getAttribute("position").array;

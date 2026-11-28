@@ -25,6 +25,7 @@ import {
   seepTarget,
   segmentAt,
   torchOn,
+  LIFT_CAR_CEILING_M,
   type InteriorMap,
   type Room,
 } from "@/lib/shipwreck/interior";
@@ -43,7 +44,12 @@ import {
   setLiftSlot,
   updateLiftCars,
 } from "./liftCar";
-import { glassMaterial, roomMaterials, type SharedUniforms } from "./materials";
+import {
+  carMaterial,
+  glassMaterial,
+  roomMaterials,
+  type SharedUniforms,
+} from "./materials";
 import { applyModern, modernTextures } from "./modernTextures";
 import { detailTexture } from "./textures";
 import {
@@ -328,7 +334,19 @@ function build(
     });
   }
   // Her glass lifts' cars and shafts (none for a ship without shafts).
-  const lifts = buildLiftCars(interior, spec, b.roomZone, mats.metal, paneMat);
+  // The cars' own lit material (the metal's, after her modern finishes).
+  const carMat =
+    (interior.lifts?.length ?? 0) > 0
+      ? carMaterial(mats.metal, LIFT_CAR_CEILING_M)
+      : null;
+  const lifts = buildLiftCars(
+    interior,
+    spec,
+    b.roomZone,
+    mats.metal,
+    paneMat,
+    carMat ?? mats.metal
+  );
   if (lifts) {
     for (const m of lifts.group.children) (m as Mesh).renderOrder = ROOMS_ORDER;
     group.add(lifts.group);
@@ -384,6 +402,7 @@ function build(
     modern,
     daylight,
     paneMat,
+    carMat,
     deckSlots,
     deckRooms,
     /** Whether the deck zones are drawn inside-wins (scratch). */
@@ -435,6 +454,7 @@ function dispose(b: Built): void {
   b.detail.dispose();
   b.glowMat.dispose();
   b.paneMat.dispose();
+  b.carMat?.dispose();
   // Her modern tiles go with her build (they upload again if used again).
   if (b.modern) modernTextures().dispose();
   b.clear.geometry.dispose();
@@ -700,6 +720,7 @@ function InteriorScene({
     // Held a moment either way, so a flicker's dip does not blink it.
     // In a long hall, the part the walker stands in.
     const rk = room !== null ? b.slot.get(room) : undefined;
+    const info = runtime.walkInfo;
     // Her glass cars: placed, shown with their landings, lit as the room.
     if (b.lifts) {
       if (rk !== undefined) setLiftSlot(b.lifts, rk);
@@ -709,13 +730,14 @@ function InteriorScene({
         spec,
         ride,
         room,
+        info && info.phase === "deck" ? info.x : NaN,
+        info && info.phase === "deck" ? info.y : NaN,
         seen,
         open,
         state.clock.elapsedTime,
         dt
       );
     }
-    const info = runtime.walkInfo;
     const k =
       rk !== undefined && b.firstPart[rk] >= 0 && info
         ? b.firstPart[rk] + segmentAt(b.rooms[rk], info.x, info.y)

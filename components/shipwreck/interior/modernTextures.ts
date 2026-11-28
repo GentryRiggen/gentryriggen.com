@@ -56,9 +56,35 @@ export const MODERN_TILE = {
   mural: 17,
   /** Glass: an emergency lamp or exit sign, lit on the emergency supply. */
   emergency: 18,
-  /** See-through glass (lift cars, rails, balcony doors): the pane builder. */
+  /** See-through glass (rails, balcony doors): the pane builder. */
   pane: 19,
+  /**
+   * The glass lifts' glass (the atrium's wall onto the shafts, the cars'
+   * own panes): clearer tinted, with soft reflections that slide as you
+   * move, so it reads as glass in front of the dark shafts. (20 is the
+   * frosted doors', `FROSTED_TILE`.)
+   */
+  liftGlass: 21,
 } as const;
+
+/**
+ * The lift glass's look (tile 21), shared by her rooms' glass branch and
+ * the see-through pane material: needs `n`, `v` (unit normal and to the
+ * eye) and `shine` (how lit, about 0..1) in scope; sets `lit` and `liftA`. A
+ * pale aqua tint, a grazing sheen, and two soft bands of reflection from
+ * the reflected look (they slide across the pane as you move). No pow,
+ * no division.
+ */
+export const LIFT_GLASS_GLSL = /* glsl */ `
+          vec3 lr = reflect(-v, n);
+          float lg = 1.0 - clamp(abs(dot(n, v)), 0.0, 1.0);
+          float lf = lg * lg * lg;
+          float ls = sin(lr.y * 6.0 + (lr.x + lr.z) * 5.0);
+          float lb = ls * ls;
+          lb *= lb;
+          lit = vec3(0.09, 0.13, 0.14) * (0.4 + shine)
+            + vec3(0.75, 0.86, 0.92) * (0.5 * lf + 0.22 * lb) * (0.35 + shine);
+          float liftA = clamp(0.2 + 0.5 * lf + 0.25 * lb, 0.0, 0.85);`;
 
 /** A small deterministic generator (mulberry32), as textures.ts. */
 function rng(seed: number): () => number {
@@ -626,7 +652,11 @@ export const MODERN_GLASS_BRANCH = /* glsl */ `if (vTile > 18.5) {
           float shine = 0.08 + 0.5 * vLight * power + 0.3 * torch;
           lit = vColor * (0.04 + 0.25 * vLight * power) + vec3(0.62, 0.7, 0.72) * fres * shine;
           paneA = mix(0.1, 0.55, fres);
-          if (vTile > 19.5) {
+          if (vTile > 20.5) {
+            // The glass lifts' glass (LIFT_GLASS_GLSL).
+            ${LIFT_GLASS_GLSL}
+            paneA = liftA;
+          } else if (vTile > 19.5) {
             // Frosted: pale, nearly opaque.
             lit = vColor * (0.06 + 0.5 * vLight * power + 0.2 * torch);
             paneA = 0.9;

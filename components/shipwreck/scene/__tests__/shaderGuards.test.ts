@@ -3,7 +3,12 @@ import { STORM_SEA_GLSL } from "../StormSea";
 import { SEA_FRAGMENT } from "../Sea";
 import { TORPEDO_FRAGMENT } from "../Torpedo";
 import { waterShaders } from "../../interior/water";
-import { GLASS_SHADERS, roomShaders } from "../../interior/materials";
+import {
+  carShaders,
+  GLASS_SHADERS,
+  roomShaders,
+} from "../../interior/materials";
+import { withModern } from "../../interior/modernTextures";
 import { LAYERS } from "../../interior/pieces";
 
 /**
@@ -29,6 +34,18 @@ const SHADERS: Record<string, string> = {
   "interior water body fragment": waterShaders(26).bodyFragment,
   "interior glass vertex": GLASS_SHADERS.vertex,
   "interior glass fragment": GLASS_SHADERS.fragment,
+  // 1.18: her glass cars' own light, on her modern metal.
+  ...(() => {
+    const metal = roomShaders("metal", 26);
+    const car = carShaders(
+      { vertex: metal.vertex, fragment: withModern(metal.fragment, "metal") },
+      2.4
+    );
+    return {
+      "interior lift car vertex": car.vertex,
+      "interior lift car fragment": car.fragment,
+    };
+  })(),
   ...Object.fromEntries(
     LAYERS.flatMap((layer) => [
       [`interior ${layer} vertex`, roomShaders(layer, 26).vertex],
