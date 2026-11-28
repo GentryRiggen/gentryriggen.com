@@ -43,7 +43,7 @@ const BOB_HZ = 0.8;
 /** After the rooms (10), their water (11, 12) and everything outside. */
 const ARROW_ORDER = 20;
 /** Linear colours: warm amber (a touch over 1: a little bloom at night). */
-const AMBER: readonly [number, number, number] = [1.3, 0.72, 0.1];
+const AMBER: readonly [number, number, number] = [1.1, 0.5, 0.02];
 const RIM: readonly [number, number, number] = [0.06, 0.03, 0.01];
 
 /**

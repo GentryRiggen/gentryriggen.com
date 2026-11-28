@@ -332,7 +332,12 @@ export default function Hud({
                       data-testid={`shipwreck-camera-${id}`}
                       disabled={id === "walk" && !hasFrame}
                       onClick={() => pickCamera(id)}
-                      className={`flex min-h-16 w-24 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold disabled:opacity-40 sm:w-28 ${
+                      className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold disabled:opacity-40 ${
+                        // With rooms, Walk the deck heads the walking row.
+                        id === "walk" && rooms.length > 0
+                          ? "col-span-2"
+                          : "w-24 sm:w-28"
+                      } ${
                         camera === id
                           ? "bg-sky-500/85 text-white"
                           : "text-slate-100 hover:bg-white/10"
@@ -343,19 +348,30 @@ export default function Hud({
                     </button>
                   )
                 )}
-                {/* Start inside: beside Walk the deck, pictures only. */}
-                {rooms.map((entry) => (
-                  <button
-                    key={entry.id}
-                    type="button"
-                    aria-label={`Walk inside: ${entry.label}`}
-                    data-testid={`shipwreck-room-${entry.id}`}
-                    onClick={() => pickRoom(entry)}
-                    className={`grid min-h-16 w-24 place-items-center rounded-xl border border-amber-300/40 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25 sm:w-28 ${FOCUS}`}
+                {/* Start inside: one row of pictures under Walk the deck
+                    (one row keeps the picker short on a phone). */}
+                {rooms.length > 0 && (
+                  <div
+                    className="col-span-2 grid grid-cols-4 gap-1.5"
+                    data-testid="shipwreck-rooms"
                   >
-                    <Icon name={ENTRY_ICON[entry.icon]} className="size-9" />
-                  </button>
-                ))}
+                    {rooms.map((entry) => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        aria-label={`Walk inside: ${entry.label}`}
+                        data-testid={`shipwreck-room-${entry.id}`}
+                        onClick={() => pickRoom(entry)}
+                        className={`grid min-h-14 place-items-center rounded-xl border border-amber-300/40 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25 ${FOCUS}`}
+                      >
+                        <Icon
+                          name={ENTRY_ICON[entry.icon]}
+                          className="size-8 sm:size-9"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <div className="flex flex-col items-end gap-3">

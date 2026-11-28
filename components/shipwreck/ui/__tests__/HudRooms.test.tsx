@@ -71,9 +71,11 @@ describe("the camera picker's rooms", () => {
       expect(b.textContent).toBe("");
       expect(b.querySelector("svg")).not.toBeNull();
     }
-    // Right after Walk the deck in the picker.
+    // In one row right under Walk the deck in the picker.
     const walk = screen.getByTestId("shipwreck-camera-walk");
-    expect(walk.nextElementSibling).toBe(buttons[0]);
+    const row = screen.getByTestId("shipwreck-rooms");
+    expect(walk.nextElementSibling).toBe(row);
+    expect(row.firstElementChild).toBe(buttons[0]);
   });
 
   it("tapping the Grand Staircase starts the walk standing in it", () => {
