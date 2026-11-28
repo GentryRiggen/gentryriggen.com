@@ -10,6 +10,11 @@
  * frame). Its davits stop the walker at the boat's ends.
  */
 export const BOARD_REACH_M = 3;
+/**
+ * A boat with a deck height (a recess boat) is reached only by a walker
+ * whose floor is within this of it (m), so not from the decks over it.
+ */
+export const BOARD_DECK_TOL_M = 1;
 
 /** The bit of an event the ride reads (a sim or scripted event). */
 interface BoatEvent {
@@ -25,6 +30,52 @@ export interface BoatSpot {
   y: number;
   /** Half the boat's length along x (0: a point). */
   halfLength?: number;
+  /**
+   * Its deck's height (ship-frame z): only a walker on that deck reaches
+   * it. Missing: any walker in reach in plan (every ship but a recess).
+   */
+  deckZ?: number;
+}
+
+/** The bits of a boat's recipe its spot reads. */
+export interface BoatSpotSource {
+  index: number;
+  side: "port" | "starboard" | "centre";
+  x: number;
+  y: number;
+  length: number;
+  beam: number;
+  /** Outboard y of its davits' feet (the deck edge). */
+  edgeY: number;
+  /** The deck it stands on (ship-frame z). */
+  deckZ: number;
+  /** Stowed in a recess, its deck inboard of it (the Concordia's). */
+  recess?: true;
+}
+
+/**
+ * Where a walker gets into a boat (the scene's `Effects.tsx`): 1 m in from
+ * her deck edge by its davits, along its whole length. A boat in a recess
+ * fills the deck by her edge, so its spot is its inboard side, where the
+ * promenade is, and only a walker on its deck reaches it (her open decks
+ * over it are near its inboard side in plan).
+ */
+export function boatSpot(b: BoatSpotSource): BoatSpot {
+  const sign = b.side === "port" ? 1 : -1;
+  if (b.recess)
+    return {
+      index: b.index,
+      x: b.x,
+      y: sign * (Math.abs(b.y) - b.beam / 2),
+      halfLength: b.length / 2,
+      deckZ: b.deckZ,
+    };
+  return {
+    index: b.index,
+    x: b.x,
+    y: sign * Math.max(0, Math.abs(b.edgeY) - 1),
+    halfLength: b.length / 2,
+  };
 }
 
 /** The ride the store holds: which boat, and the shown time they got in. */
@@ -46,6 +97,24 @@ export function boardableBoats(
     .map((e) => e.index!);
 }
 
+/**
+ * Boats already lowered at `t` (the complement of `boardableBoats`: a
+ * boat is in its davits while `e.t > t`), by index. Fills `into` when given
+ * (cleared first), so a frame loop allocates nothing; a seek back in time
+ * puts a boat back.
+ */
+export function loweredBoats(
+  events: readonly BoatEvent[],
+  t: number,
+  into: Set<number> = new Set()
+): Set<number> {
+  into.clear();
+  for (const e of events)
+    if (e.kind === "boat-lowered" && e.index !== undefined && e.t <= t)
+      into.add(e.index);
+  return into;
+}
+
 /** The next boat due to leave after `t`, or null when every boat has gone. */
 export function nextBoardable(
   events: readonly BoatEvent[],
@@ -63,16 +132,27 @@ export function nextBoardable(
   return best ? best.index! : null;
 }
 
-/** The boat nearest a walker at ship-frame (x, y) within `maxM`, or null. */
+/**
+ * The boat nearest a walker at ship-frame (x, y) within `maxM`, or null.
+ * `floorZ` is the walker's floor (ship-frame z): a spot with a `deckZ`
+ * further than BOARD_DECK_TOL_M from it is out of reach.
+ */
 export function nearestBoardable(
   x: number,
   y: number,
   boats: readonly BoatSpot[],
-  maxM = BOARD_REACH_M
+  maxM = BOARD_REACH_M,
+  floorZ?: number
 ): number | null {
   let best: number | null = null;
   let bestD = maxM;
   for (const b of boats) {
+    if (
+      b.deckZ !== undefined &&
+      floorZ !== undefined &&
+      Math.abs(floorZ - b.deckZ) > BOARD_DECK_TOL_M
+    )
+      continue;
     const along = Math.max(0, Math.abs(b.x - x) - (b.halfLength ?? 0));
     const d = Math.hypot(along, b.y - y);
     if (d <= bestD) {

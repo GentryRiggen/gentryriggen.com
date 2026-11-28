@@ -1,9 +1,13 @@
 import { act, fireEvent, render } from "@testing-library/react";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { sampleTrack, simulate, type SimTrack } from "@/lib/shipwreck/sim";
 import type { SimRunner } from "@/lib/shipwreck/sim/run";
+import type { SimFrame } from "@/lib/shipwreck/sim/track";
 import {
+  earthToShip,
+  hullClearanceM,
   resetWalkInput,
   walkInput,
   walkMapFor,
@@ -443,5 +447,115 @@ describe("walking in the scene", () => {
     frame();
     expect(runtime.walkInside).toBe(false);
     expect(runtime.walkRoom).not.toBe("gs-boat");
+  });
+});
+
+describe("walking the Concordia as she leans", () => {
+  const DEG = Math.PI / 180;
+  /** A frame of her listing `listDeg` (synthetic: keyed on her heel). */
+  function herFrame(listDeg: number, t = 0): SimFrame {
+    return {
+      t,
+      realT: t,
+      bodies: [
+        {
+          part: "whole",
+          x: 0,
+          y: 0,
+          z: -concordia.draught,
+          pitch: 0,
+          roll: listDeg * DEG,
+          yaw: 0,
+        },
+      ],
+      water: concordia.compartments.map(() => 0),
+      waterAboardT: 0,
+      trimDeg: 0,
+      listDeg,
+      power: 1,
+      groundedParts: [],
+    };
+  }
+
+  function setupHer() {
+    const herTrack: SimTrack = {
+      frames: [herFrame(0), herFrame(0, 5000)],
+      events: [],
+      outcome: "aground",
+      sankAtT: null,
+      brokeAtT: null,
+      breakX: null,
+      endT: 5000,
+    };
+    const runner: SimRunner = {
+      advance: () => true,
+      done: true,
+      progress: () => 1,
+      track: () => herTrack,
+    };
+    const store = createPlaybackStore({ createRunner: () => runner });
+    store.getState().start(concordia, concordia.realNight);
+    store.getState().pump();
+    const runtime = createSceneRuntime();
+    render(<WalkRunner store={store} runtime={runtime} spec={concordia} />);
+    const frame = (listDeg: number, dt = 1 / 60) => {
+      runtime.frame = herFrame(listDeg, store.getState().t);
+      const fn = mockFrames[mockFrames.length - 1];
+      fn({ clock: { elapsedTime: 0 } }, dt);
+    };
+    return { store, runtime, frame };
+  }
+
+  it("at 39° she is still walked; past 40° the walker slides off into the sea on her low side", () => {
+    const { store, runtime, frame } = setupHer();
+    act(() => store.getState().startWalk());
+    for (let i = 0; i < 30; i += 1) frame(39);
+    expect(store.getState().walk.phase).toBe("deck");
+    expect(runtime.walkInfo?.phase).toBe("deck");
+    const splashes = runtime.walkSplash;
+    frame(40.1);
+    expect(store.getState().walk.phase).toBe("water");
+    expect(runtime.walkInfo?.phase).toBe("water");
+    expect(runtime.walkSplash).toBe(splashes + 1);
+    // On her low (starboard) side, clear of her hull and superstructure.
+    const pose = herFrame(40.1).bodies[0];
+    const info = runtime.walkInfo!;
+    const ship = earthToShip(pose, [info.x, info.y, 0]);
+    expect(ship[1]).toBeLessThan(0);
+    // Facing out to sea, away from her (starboard: −π/2 off her heading).
+    expect(runtime.walker!.yaw).toBeCloseTo(pose.yaw - Math.PI / 2, 9);
+    expect(
+      hullClearanceM(info.x, info.y, [
+        { pose, spec: concordia, superstructure: concordia.superstructure },
+      ])
+    ).toBeGreaterThan(0);
+    // Back on deck cannot put them back on her.
+    for (let i = 0; i < 30; i += 1) frame(40.1);
+    expect(runtime.walkCanReboard).toBe(false);
+    act(() => store.getState().backOnDeck());
+    frame(40.1);
+    expect(store.getState().walk.phase).toBe("water");
+    // A seek to before 40° stands them on her spawn again.
+    act(() => store.getState().seek(100));
+    frame(39);
+    expect(store.getState().walk.phase).toBe("deck");
+    expect(runtime.walkInfo).toMatchObject({
+      phase: "deck",
+      area: "pool-hall",
+    });
+  });
+
+  it("her lean slides the walker downhill, but not under the end card", () => {
+    const { store, runtime, frame } = setupHer();
+    act(() => store.getState().startWalk());
+    frame(30);
+    const y0 = runtime.walkInfo!.y;
+    runtime.walkInputOff = true;
+    for (let i = 0; i < 60; i += 1) frame(30);
+    expect(runtime.walkInfo!.y).toBe(y0);
+    runtime.walkInputOff = false;
+    for (let i = 0; i < 60; i += 1) frame(30);
+    // About 0.8 m to starboard (downhill) in a second.
+    expect(runtime.walkInfo!.y).toBeLessThan(y0 - 0.5);
   });
 });

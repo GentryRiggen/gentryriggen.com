@@ -4,6 +4,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { useStore } from "zustand";
+import { loweredBoats } from "@/lib/shipwreck/boatRide";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose, SimFrame } from "@/lib/shipwreck/sim/track";
@@ -92,12 +93,22 @@ interface WalkRunnerProps {
 
 export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   const map = useMemo(() => walkMapFor(spec.id), [spec]);
-  /** Her rooms by id (none for a ship you cannot go inside). */
+  /**
+   * Her rooms by id (none for a ship you cannot go inside). A deck room
+   * (her pool hall) is open deck: the sea is its water.
+   */
   const rooms = useMemo(() => {
     const out = new Map<string, Room>();
-    for (const r of interiorFor(spec.id)?.rooms ?? []) out.set(r.id, r);
+    for (const r of interiorFor(spec.id)?.rooms ?? [])
+      if (!r.deckRoom) out.set(r.id, r);
     return out;
   }, [spec]);
+  /**
+   * Her lifeboats already lowered at the shown time (a map with boat
+   * blockers: the Concordia's), refilled each frame from the track's
+   * events (live while the night computes; a seek back un-lowers them).
+   */
+  const lowered = useRef(new Set<number>());
   /** Each room's water target (compartment samples cached). */
   const target = useMemo(() => roomWaterTargets(spec), [spec]);
   const walking = useStore(store, (s) => s.camera === "walk");
@@ -135,7 +146,18 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
   const scratch = useMemo(
     () => ({
       hull: [] as HullPiece[],
-      pieces: [0, 1, 2].map(() => ({ pose: null!, spec }) as HullPiece),
+      // Her superstructure too, on a map that keeps the swimmer off it
+      // (the Concordia, lying over).
+      pieces: [0, 1, 2].map(
+        () =>
+          ({
+            pose: null!,
+            spec,
+            ...(map?.swimAroundSuperstructure
+              ? { superstructure: spec.superstructure }
+              : {}),
+          }) as HullPiece
+      ),
       eye: [0, 0, 0] as V3,
       centre: [0, 0, 0] as V3,
       c: [0, 0, 0] as V3,
@@ -148,6 +170,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         x: 0,
         y: 0,
         slopeDeg: 0,
+        heelDeg: 0,
         depthM: 0,
         inside: false,
       } as WalkInfo,
@@ -158,6 +181,12 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         breakX: null as number | null,
         seaZ: FLAT_SEA,
         interiorsOpen: true,
+        // A boat's blocker goes once that boat is lowered (her map only).
+        ...(map?.blockers.some((b) => b.kind === "box" && b.boat !== undefined)
+          ? {
+              boatLowered: (i: number) => lowered.current.has(i),
+            }
+          : {}),
         // A ship with rooms: each room's water as Interior shows it
         // (eased), else its target (the sea, or its compartment's level
         // from the sim's fill); the sea on her decks.
@@ -281,14 +310,15 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
 
   /**
    * Off her and into the sea beside her with a splash (washed out of a
-   * room, inside at the break, or no dry way out): the same "went in" as
-   * from the deck.
+   * room, inside at the break, no dry way out, or her walk's end heel):
+   * the same "went in" as from the deck. `side` (+1 port, −1 starboard)
+   * picks the side; missing, the side they were nearer.
    */
-  function goInSea(w: WalkerState, pose: BodyPose): void {
+  function goInSea(w: WalkerState, pose: BodyPose, side?: 1 | -1): void {
     const s = st.current;
     s.walker = null;
     s.easeT = null;
-    s.swimmer = swimmerFrom(w, pose, spec, map!);
+    s.swimmer = swimmerFrom(w, pose, spec, map!, side);
     notInside(runtime);
     runtime.walkSplash += 1;
     store.getState().wentInWater();
@@ -438,6 +468,17 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       }
     }
 
+    // Her walk ends at this list (the Concordia, 40°): too far over to
+    // stand, they slide off her low side into the sea, and Back on deck
+    // (placeWalker) cannot put them back until a seek to before it.
+    const endsAt = map.walkEndsAtHeelDeg;
+    if (s.walker && endsAt !== undefined && Math.abs(frame.listDeg) >= endsAt)
+      goInSea(
+        s.walker,
+        poseOf(frame, s.walker.part) ?? frame.bodies[0],
+        frame.listDeg > 0 ? -1 : 1
+      );
+
     if (s.walker) {
       let w = s.walker;
       let pose = poseOf(frame, w.part);
@@ -450,6 +491,11 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       ctx.pose = pose;
       ctx.breakX = breakX;
       ctx.interiorsOpen = !broken;
+      if (ctx.boatLowered) {
+        const events = p.track?.events;
+        if (events) loweredBoats(events, p.t, lowered.current);
+        else lowered.current.clear();
+      }
       // The area underfoot, looked up once (again only if a door moves them).
       let inRoom = areaById(map, w.area)?.interior === true;
 
@@ -531,6 +577,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         scratch.held.lookDx = walkInput.lookDx;
         input = scratch.held;
       }
+      // Her lean's drift holds still under the end card and the lift's wipe.
+      ctx.driftOff = runtime.walkInputOff || s.liftHold > 0;
       const r = stepWalker(w, input, ctx, dt);
       walkInput.lookDx = 0;
       walkInput.jump = false;
@@ -595,6 +643,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         info.x = r.state.x;
         info.y = r.state.y;
         info.slopeDeg = r.slopeDeg;
+        info.heelDeg = Math.abs(frame.listDeg);
         info.depthM = r.depthM;
         info.inside = inside;
         runtime.walkInfo = info;
@@ -667,6 +716,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     info.x = next.x;
     info.y = next.y;
     info.slopeDeg = 0;
+    info.heelDeg = Math.abs(frame.listDeg);
     info.depthM = 0;
     info.inside = false;
     runtime.walkInfo = info;

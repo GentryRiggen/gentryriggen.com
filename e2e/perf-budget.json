@@ -146,5 +146,9 @@
   "shipwreck-walk-scotland-road": {
     "calls": 50,
     "triangles": 158442
+  },
+  "shipwreck-walk-concordia-pool": {
+    "calls": 54,
+    "triangles": 383127
   }
 }

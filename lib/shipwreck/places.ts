@@ -133,17 +133,21 @@ export interface Place {
 
 const DECK = Object.fromEntries(titanic.decks.map((d) => [d.name, d.z]));
 /**
- * A deck's height at x: its midships height plus the sheer there (the
- * sheer measured from the C deck, the top of the hull, as the models do).
+ * A deck's height at x: its midships height plus the sheer there. The sheer
+ * is measured from the ship's reference deck (`sheerRefDeck`; default the C
+ * deck, the top of the hull, as the models do, else `Upper`).
  */
 export function deckZAt(
   deck: string,
   x: number,
-  spec: Pick<ShipSpec, "decks" | "sheerZ"> = titanic
+  spec: Pick<ShipSpec, "decks" | "sheerZ" | "sheerRefDeck"> = titanic
 ): number {
   const z = (name: string) => spec.decks.find((d) => d.name === name)?.z ?? 0;
   // The Carpathia has no C deck: her upper deck is the top of the hull.
-  const top = spec.decks.some((d) => d.name === "C") ? z("C") : z("Upper");
+  const ref =
+    spec.sheerRefDeck ??
+    (spec.decks.some((d) => d.name === "C") ? "C" : "Upper");
+  const top = z(ref);
   return z(deck) + (spec.sheerZ(x) - top);
 }
 
@@ -577,11 +581,6 @@ export const BRITANNIC_PLACES: Record<
  * yellow funnel with the blue "C", and the pool under its glass roof on
  * deck 12.
  */
-const C_DECK_REF = concordia.depth;
-/** A deck's height at x (the model's rule: the sheer over her deck 3). */
-const cDeckZ = (name: string, x: number) =>
-  (concordia.decks.find((d) => d.name === name)?.z ?? 0) +
-  (concordia.sheerZ(x) - C_DECK_REF);
 const cComp = (id: string) =>
   concordia.compartments.find((c) => c.id === id) as {
     id: string;
@@ -608,8 +607,8 @@ export const CONCORDIA_PLACES: Record<
     id: "bridge",
     label: "Bridge",
     fact: "A long room of big windows high at her front, where she was steered from. When the lights went out, her engines and her rudder stopped working.",
-    at: [CC_BRIDGE_X, 0, cDeckZ("8", CC_BRIDGE_X) + 1.6],
-    floorZ: cDeckZ("8", CC_BRIDGE_X),
+    at: [CC_BRIDGE_X, 0, deckZAt("8", CC_BRIDGE_X, concordia) + 1.6],
+    floorZ: deckZAt("8", CC_BRIDGE_X, concordia),
     compartmentId: null,
     interior: true,
     view: [-16, -14, 8],
@@ -648,8 +647,8 @@ export const CONCORDIA_PLACES: Record<
     id: "lifeboat",
     label: "Lifeboat",
     fact: "She carried 26 big lifeboats, each with room for 150. They hung high on her sides, and were lowered down to the water one by one.",
-    at: [C_BOAT.x, -14.4, cDeckZ("4", C_BOAT.x) + 1.4],
-    floorZ: cDeckZ("4", C_BOAT.x),
+    at: [C_BOAT.x, -14.4, deckZAt("4", C_BOAT.x, concordia) + 1.4],
+    floorZ: deckZAt("4", C_BOAT.x, concordia),
     compartmentId: null,
     interior: false,
     view: [-12, -26, 7],
@@ -668,8 +667,8 @@ export const CONCORDIA_PLACES: Record<
     id: "pool",
     label: "Pool",
     fact: "A swimming pool high on her top decks, under a glass roof that could slide open. The deck outside it looked all the way along the ship.",
-    at: [16, 0, cDeckZ("12", 16) + 1.4],
-    floorZ: cDeckZ("12", 16),
+    at: [16, 0, deckZAt("12", 16, concordia) + 1.4],
+    floorZ: deckZAt("12", 16, concordia),
     compartmentId: null,
     interior: true,
     view: [-16, -16, 8],

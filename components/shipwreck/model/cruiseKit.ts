@@ -520,6 +520,7 @@ export function recessBoats(
       hasDavits: true,
       edgeY: s * (e - 0.15),
       deckZ: deck,
+      recess: true,
     } satisfies BoatRecipe;
   });
 }

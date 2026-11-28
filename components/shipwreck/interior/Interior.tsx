@@ -9,6 +9,7 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
+  type Object3D,
   type Texture,
 } from "three";
 import { useStore } from "zustand";
@@ -28,11 +29,12 @@ import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import { walkMapFor, type WalkMap } from "@/lib/shipwreck/walk";
 import type { InteriorLevels, SceneRuntime } from "../scene/runtime";
 import { doorGlowGeometry } from "./doorGlow";
-import { buildInterior } from "./kit";
-import { roomMaterials, type SharedUniforms } from "./materials";
-import { LAYERS } from "./pieces";
+import { buildInterior, ZONE_LAYERS } from "./kit";
+import { glassMaterial, roomMaterials, type SharedUniforms } from "./materials";
+import { applyModern, modernTextures } from "./modernTextures";
 import { detailTexture } from "./textures";
 import {
+  basinWater,
   DRY_LEVEL,
   interiorWater,
   waterMaterials,
@@ -63,11 +65,33 @@ import {
  * every exterior piece in either pass, so nothing outside draws over a
  * room. One clear a frame, only inside, never in the sea's reflection.
  * The water is see-through and draws after the rooms (renderOrder 11, 12).
+ *
+ * A deck room (her pool hall, 1.17) is drawn whenever walking on her: from
+ * outside it is part of her exterior, drawn before the clear and depth
+ * tested against it (`DECK_ORDER`); with the walker in it, inside wins as
+ * in any room (after the clear). Its pool's water stands at the basin's
+ * low rim's height (spilling as she leans), its glass (`pane`) is blended
+ * over everything behind it, and by day (`daylight`) her shader lights it
+ * as under the sky whatever her power. Her model's own block there (the
+ * paint mesh's tail, `Block.walkHidden`) is hidden meanwhile, so her
+ * deck sees in.
  */
 
 /** The rooms draw after everything else; the clear just before. */
 const ROOMS_ORDER = 10;
 const CLEAR_ORDER = ROOMS_ORDER - 1;
+/**
+ * A deck room's meshes: its surfaces, its pool's water, then its glass;
+ * before the clear from outside, after it (inside wins) from within.
+ */
+const DECK_ORDER = { rooms: 6, pool: 7, pane: 8 } as const;
+const DECK_INSIDE_ORDER = {
+  rooms: ROOMS_ORDER,
+  pool: ROOMS_ORDER + 0.3,
+  pane: ROOMS_ORDER + 0.6,
+} as const;
+/** A pool's water stands this far under its low rim (m): over her model's deck under the hall (2 cm under the rim), so her deck sees it. */
+const POOL_FREEBOARD_M = 0.01;
 
 interface InteriorProps {
   store: PlaybackStore;
@@ -75,6 +99,8 @@ interface InteriorProps {
   spec: ShipSpec;
   /** The sky the portholes and the dome show (sRGB hex: the scene's haze). */
   sky?: string;
+  /** Daylight (the scene's time of day): her deck rooms lit by the sky. */
+  daylight?: boolean;
 }
 
 /** The share of a lit neighbour's light a dark room still gets. */
@@ -98,7 +124,13 @@ export function lampFlicker(power: number, seconds: number): number {
   return h < 0.12 ? 0.3 + h : 0.82 + 0.18 * h;
 }
 
-export default function Interior({ store, runtime, spec, sky }: InteriorProps) {
+export default function Interior({
+  store,
+  runtime,
+  spec,
+  sky,
+  daylight,
+}: InteriorProps) {
   const walking = useStore(store, (s) => s.camera === "walk");
   const interior = interiorFor(spec.id);
   // Built from the first walk on her on (kept while she is the ship; a
@@ -118,6 +150,7 @@ export default function Interior({ store, runtime, spec, sky }: InteriorProps) {
       interior={interior}
       map={map}
       sky={sky}
+      daylight={daylight}
     />
   );
 }
@@ -154,22 +187,48 @@ function build(
   };
   const detail: Texture = detailTexture();
   const mats = roomMaterials(b.slots, shared, detail);
+  // Her modern finishes (and the daylight on her deck rooms): only hers.
+  const modern = b.modern ? applyModern(mats, modernTextures()) : null;
+  const daylight = modern ? modern.uDaylight : { value: 0 };
+  const paneMat = glassMaterial(mats.sky, daylight);
   const glowMat = new MeshBasicMaterial({ vertexColors: true });
   const group = new Group();
   group.name = "interior";
   group.matrixAutoUpdate = false;
   group.visible = false;
-  const zones: { zone: string; meshes: Mesh[]; slots: number[] }[] = [];
+  const pools = basinWater(b.basins);
+  const zones: {
+    zone: string;
+    meshes: Mesh[];
+    slots: number[];
+    /** A deck room's zone: drawn whenever walking on her. */
+    deck: boolean;
+    /** Its pool's water and its glass (a deck zone's orders move). */
+    pool: Mesh | null;
+    pane: Mesh | null;
+  }[] = [];
   for (const [zone, layers] of b.zones) {
     const meshes: Mesh[] = [];
-    for (const layer of LAYERS) {
+    let pane: Mesh | null = null;
+    for (const layer of ZONE_LAYERS) {
       const geom = layers[layer];
       if (!geom) continue;
-      const mesh = new Mesh(geom, mats[layer]);
+      const mesh = new Mesh(geom, layer === "pane" ? paneMat : mats[layer]);
       mesh.name = `interior-${zone}-${layer}`;
       mesh.renderOrder = ROOMS_ORDER;
       group.add(mesh);
       meshes.push(mesh);
+      if (layer === "pane") pane = mesh;
+    }
+    let pool: Mesh | null = null;
+    const pg = pools.get(zone);
+    if (pg) {
+      pool = new Mesh(pg, waterMats.surface);
+      pool.name = `interior-pool-${zone}`;
+      // The surface lies at its level in the shader, not its plan.
+      pool.frustumCulled = false;
+      group.add(pool);
+      meshes.push(pool);
     }
     const w = water.zones.get(zone);
     if (w) {
@@ -185,7 +244,14 @@ function build(
       group.add(body, surface);
       meshes.push(body, surface);
     }
-    zones.push({ zone, meshes, slots: water.zoneSlots.get(zone) ?? [] });
+    zones.push({
+      zone,
+      meshes,
+      slots: water.zoneSlots.get(zone) ?? [],
+      deck: b.deckZones.has(zone),
+      pool,
+      pane,
+    });
   }
   const glow = new Mesh(doorGlowGeometry(interior, map, spec), glowMat);
   glow.name = "interior-door-glow";
@@ -223,9 +289,31 @@ function build(
     shown: new Float64Array(water.count).fill(-Infinity),
     drawn: new Uint8Array(water.count),
   };
+  // The deck rooms' slots (their lamps follow her power, no water).
+  const deckSlots: number[] = [];
+  const deckRooms = new Set<string>();
+  for (const r of interior.rooms)
+    if (r.deckRoom) {
+      deckSlots.push(water.slot.get(r.id)!);
+      deckRooms.add(r.id);
+    }
   return {
     ...b,
     mats,
+    modern,
+    daylight,
+    paneMat,
+    deckSlots,
+    deckRooms,
+    /** Whether the deck zones are drawn inside-wins (scratch). */
+    deckInside: null as boolean | null,
+    /**
+     * Her model's paint meshes whose tail (the walk-hidden block the deck
+     * room replaces) is cut off by their draw range while drawn; found
+     * once per part.
+     */
+    hidden: null as Mesh[] | null,
+    hiddenIn: null as Object3D | null,
     detail,
     glowMat,
     group,
@@ -262,10 +350,36 @@ function dispose(b: Built): void {
   b.mats.dispose();
   b.detail.dispose();
   b.glowMat.dispose();
+  b.paneMat.dispose();
+  // Her modern tiles go with her build (they upload again if used again).
+  if (b.modern) modernTextures().dispose();
   b.clear.geometry.dispose();
   b.clearMat.dispose();
   b.waterMats.surface.dispose();
   b.waterMats.body.dispose();
+}
+
+/**
+ * Hides her model's walk-hidden block in `part` (the deck room is drawn
+ * there), or, with null, shows the one hidden again. The block is the
+ * tail of a paint mesh's index (`userData.walkHiddenFrom`): its draw range
+ * stops before it (shadow and depth passes too), so it costs no draw call.
+ */
+function showModel(b: Built, part: Object3D | null): void {
+  if (b.hidden && b.hiddenIn !== part) {
+    for (const m of b.hidden) m.geometry.setDrawRange(0, Infinity);
+    b.hidden = null;
+    b.hiddenIn = null;
+  }
+  if (!part || b.hidden) return;
+  const found: Mesh[] = [];
+  part.traverse((o) => {
+    if (o.userData.walkHiddenFrom !== undefined) found.push(o as Mesh);
+  });
+  b.hidden = found;
+  b.hiddenIn = part;
+  for (const m of found)
+    m.geometry.setDrawRange(0, m.userData.walkHiddenFrom as number);
 }
 
 function InteriorScene({
@@ -275,6 +389,7 @@ function InteriorScene({
   interior,
   map,
   sky,
+  daylight,
 }: SceneProps) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
@@ -288,6 +403,7 @@ function InteriorScene({
     scene.add(b.group);
     runtime.interiorLevels = b.levels;
     return () => {
+      showModel(b, null);
       scene.remove(b.group);
       if (runtime.interiorLevels === b.levels) runtime.interiorLevels = null;
       if (built.current === b) built.current = null;
@@ -297,6 +413,7 @@ function InteriorScene({
   useEffect(() => {
     const b = built.current;
     if (b && sky) b.mats.sky.value.set(sky);
+    if (b) b.daylight.value = daylight ? 1 : 0;
   });
 
   useFrame((state, dt) => {
@@ -310,9 +427,12 @@ function InteriorScene({
     b.group.visible = on;
     const lv = b.levels;
     if (!on || !part || !frame) {
+      showModel(b, null);
       lv.drawn.fill(0);
       return;
     }
+    // Her deck room stands where her model's block was: hide that.
+    if (b.deckSlots.length > 0) showModel(b, part);
     part.updateMatrixWorld();
     b.group.matrix.copy(part.matrixWorld);
     b.group.matrixWorldNeedsUpdate = true;
@@ -327,6 +447,19 @@ function InteriorScene({
     const room = runtime.walkRoom;
     const zone = room !== null ? b.roomZone.get(room) : undefined;
     const seen = zone !== undefined ? b.seen.get(zone) : undefined;
+    // In a deck room, inside wins (after the clear); outside, it is her
+    // exterior's (before it).
+    const deckInside = room !== null && b.deckRooms.has(room);
+    if (b.deckInside !== deckInside) {
+      b.deckInside = deckInside;
+      const o = deckInside ? DECK_INSIDE_ORDER : DECK_ORDER;
+      for (const z of b.zones) {
+        if (!z.deck) continue;
+        for (const m of z.meshes) m.renderOrder = o.rooms;
+        if (z.pool) z.pool.renderOrder = o.pool;
+        if (z.pane) z.pane.renderOrder = o.pane;
+      }
+    }
     // Each drawn room's water: its target, eased (a room just come into
     // view starts at its target: it was not seen climbing).
     const now = b.now;
@@ -334,7 +467,7 @@ function InteriorScene({
     const pose = frame.bodies[0];
     const levels = b.waterMats.levels;
     for (const z of b.zones) {
-      const show = seen?.has(z.zone) ?? false;
+      const show = z.deck || (seen?.has(z.zone) ?? false);
       for (const m of z.meshes) m.visible = show;
       if (!show) continue;
       for (const k of z.slots) {
@@ -393,6 +526,30 @@ function InteriorScene({
       const { room: r, slot: k } = b.segments[i];
       if (now[r]) power[k] = Math.max(own[k], SPILL * b.spill[r]);
     }
+    // A deck room: her power (no water reaches it); by day the sky lights
+    // it whatever her power.
+    const day = b.daylight.value;
+    for (let i = 0; i < b.deckSlots.length; i += 1) {
+      const k = b.deckSlots[i];
+      own[k] = shipPower;
+      power[k] = shipPower;
+    }
+    // Each pool's water: level with the sea's horizon at its low rim
+    // (spilled as she leans), never under its floor; lit as its room.
+    for (let i = 0; i < b.basins.length; i += 1) {
+      const bs = b.basins[i];
+      let rimY = Infinity;
+      let floorY = Infinity;
+      for (let c = 0; c < 4; c += 1) {
+        const p = bs.rim[c];
+        // Ship (x, y, z) is her part's three-local (x, z, −y).
+        const y0 = m[1] * p[0] + m[9] * -p[1] + m[13];
+        rimY = Math.min(rimY, y0 + m[5] * p[2]);
+        floorY = Math.min(floorY, y0 + m[5] * bs.floorZ);
+      }
+      levels[bs.slot] = Math.max(floorY, rimY - POOL_FREEBOARD_M);
+      power[bs.slot] = Math.max(power[bs.room], day);
+    }
     // The torch: on by itself in a dim room, held under the eyes, aimed
     // where they look.
     // Held a moment either way, so a flicker's dip does not blink it.
@@ -403,7 +560,14 @@ function InteriorScene({
       rk !== undefined && b.firstPart[rk] >= 0 && info
         ? b.firstPart[rk] + segmentAt(b.rooms[rk], info.x, info.y)
         : rk;
-    const dim = k !== undefined && torchOn(power[k] * b.mats.flicker.value);
+    const dim =
+      k !== undefined &&
+      torchOn(
+        Math.max(
+          power[k] * b.mats.flicker.value,
+          b.deckSlots.includes(k) ? day : 0
+        )
+      );
     const d = Math.min(dt, 0.1);
     b.dimFor = dim ? b.dimFor + d : 0;
     b.litFor = dim ? 0 : b.litFor + d;

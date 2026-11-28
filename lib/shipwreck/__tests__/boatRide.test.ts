@@ -1,10 +1,25 @@
+import { concordiaRecipe } from "@/components/shipwreck/model/concordiaRecipe";
+import { recipeFor } from "@/components/shipwreck/model/shipModel";
 import {
   BOARD_REACH_M,
   boardableBoats,
+  boatSpot,
+  loweredBoats,
+  type BoatSpot,
   nearestBoardable,
   nextBoardable,
   rideLowered,
 } from "../boatRide";
+import { getShip } from "../ships";
+import {
+  floorZ,
+  insideBlocker,
+  pointInPolygon,
+  railYAt,
+  walkMapFor,
+  WALK_RADIUS_M,
+  type WalkMap,
+} from "../walk";
 
 const events = [
   { t: 50, kind: "rocket" },
@@ -19,6 +34,22 @@ describe("boat ride rules", () => {
     expect(boardableBoats(events, 0)).toEqual([2, 7, 4]);
     expect(boardableBoats(events, 150)).toEqual([7, 4]);
     expect(boardableBoats(events, 200)).toEqual([4]);
+  });
+
+  it("loweredBoats is the complement of boardableBoats, and a seek back puts boats back", () => {
+    const set = new Set<number>();
+    expect([...loweredBoats(events, 0, set)]).toEqual([]);
+    expect([...loweredBoats(events, 150, set)].sort()).toEqual([2]);
+    expect([...loweredBoats(events, 200, set)].sort()).toEqual([2, 7]);
+    // Seeking back refills the same set.
+    expect(loweredBoats(events, 100, set)).toBe(set);
+    expect([...set]).toEqual([2]);
+    for (const t of [0, 99, 100, 150, 200, 300, 400]) {
+      const out = loweredBoats(events, t);
+      const left = boardableBoats(events, t);
+      expect([...out, ...left].sort()).toEqual([2, 4, 7]);
+      for (const i of left) expect(out.has(i)).toBe(false);
+    }
   });
 
   it("nextBoardable is the soonest, or null when every boat has gone", () => {
@@ -58,5 +89,80 @@ describe("boat ride rules", () => {
     expect(lowered.get(2)).toBe(100);
     rideLowered(lowered, null);
     expect(lowered.get(7)).toBe(40);
+  });
+});
+
+describe("boarding the Costa Concordia's boats from her promenade", () => {
+  const spec = getShip("concordia");
+  const map = walkMapFor("concordia") as WalkMap;
+  const recipe = concordiaRecipe(spec);
+  // Every boat in reach (none lowered yet), as Effects.tsx builds them.
+  const spots: BoatSpot[] = recipe.boats.map((b) => boatSpot(b));
+
+  it.each(recipe.boats.map((b) => [b.label, b.index] as const))(
+    "%s: a walker on the promenade's middle beside her gets in",
+    (_label, index) => {
+      const b = recipe.boats[index];
+      const id = b.side === "port" ? "boat-deck-p" : "boat-deck-s";
+      const a = map.areas.find((x) => x.id === id)!;
+      const s = b.side === "port" ? 1 : -1;
+      // The recess wall (the outline's inner side) and the boat's inboard
+      // side: the walker in the middle between them.
+      const wall = Math.abs(
+        railYAt(a.outline, b.x, b.side === "port" ? "starboard" : "port")
+      );
+      const inboard = Math.abs(b.y) - b.beam / 2;
+      const y = (s * (wall + inboard)) / 2;
+      expect(pointInPolygon([b.x, y], a.outline)).toBe(true);
+      expect(insideBlocker(map, id, [b.x, y], WALK_RADIUS_M)).toBe(false);
+      expect(nearestBoardable(b.x, y, spots)).toBe(index);
+    }
+  );
+
+  it("is reached only from her boat deck, never from the decks over it", () => {
+    // The aft lido's starboard walkway is right over boat S7 (x 0) in plan.
+    const lido = floorZ(map, "lido-aft", -8, spec);
+    const deck = floorZ(map, "boat-deck-s", -8, spec);
+    const s7 = recipe.boats.find((b) => b.label === "S7")!;
+    expect(s7.x).toBe(0);
+    expect(nearestBoardable(-6, -14.2, spots, BOARD_REACH_M, lido)).toBeNull();
+    expect(nearestBoardable(-6, -14.2, spots, BOARD_REACH_M, deck)).toBe(
+      s7.index
+    );
+    // Over every boat, from every walked area but her boat deck: none.
+    for (const b of recipe.boats)
+      for (const a of map.areas) {
+        if (a.id.startsWith("boat-deck")) continue;
+        for (const dx of [-5, 0, 5]) {
+          const p: [number, number] = [b.x + dx, b.y];
+          const z = floorZ(map, a.id, p[0], spec);
+          expect([
+            b.label,
+            a.id,
+            nearestBoardable(p[0], p[1], spots, BOARD_REACH_M, z),
+          ]).toEqual([b.label, a.id, null]);
+        }
+      }
+  });
+
+  it("keeps every other ship's spots by her deck edge", () => {
+    for (const id of [
+      "titanic",
+      "britannic",
+      "lusitania",
+      "carpathia",
+    ] as const) {
+      const r = recipeFor(getShip(id));
+      for (const b of r.boats) {
+        if (b.side === "centre") continue;
+        const sign = b.side === "port" ? 1 : -1;
+        expect(boatSpot(b)).toEqual({
+          index: b.index,
+          x: b.x,
+          y: sign * Math.max(0, Math.abs(b.edgeY) - 1),
+          halfLength: b.length / 2,
+        });
+      }
+    }
   });
 });

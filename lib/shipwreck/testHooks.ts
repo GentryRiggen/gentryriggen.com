@@ -163,6 +163,8 @@ export interface WalkHookInfo {
   x: number;
   y: number;
   slopeDeg: number;
+  /** Her heel at the shown time (degrees, absolute). */
+  heelDeg: number;
   /** Sea over the feet (m; negative when dry); 0 in the water. */
   depthM: number;
   lookUnder: boolean;

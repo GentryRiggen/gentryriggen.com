@@ -21,7 +21,7 @@ the sea is `z`).
 
 ## The maps
 
-`titanicDecks.ts`, `lusitaniaDecks.ts`, `britannicDecks.ts` and `carpathiaDecks.ts` (`walkMapFor(ship)`, null for a
+`titanicDecks.ts`, `lusitaniaDecks.ts`, `britannicDecks.ts`, `carpathiaDecks.ts` and `concordiaDecks.ts` (`walkMapFor(ship)` from `registry.ts`, whose `SHIP_WALKS` lists each ship's deck map and interior; null for a
 ship you cannot walk on, such as the Edmund Fitzgerald) mark, per ship:
 
 - **areas**: counter-clockwise outlines on a named deck. Their sides follow
@@ -31,14 +31,16 @@ ship you cannot walk on, such as the Edmund Fitzgerald) mark, per ship:
   house side, or a rail over a lower deck rather than the sea.
 - **blockers**: circles and boxes (funnels, houses, casings, hatches,
   masts, cranes, ventilators, benches, davits), copied from where the
-  model's recipes draw them. Boats are not blockers: they leave.
+  model's recipes draw them. Boats are not blockers: they leave (but the
+  Concordia's, which fill her boat deck by her rail: see below).
 - **stairs**: two-way links between areas of different heights. Walking
   into either end (within half its width, from outside) moves you to the
   other end; arriving inside an end does not send you back. (The
   Lusitania's `aft-gangway` instead joins two decks at one height across
   her mast gap, so getting aft takes one step.) Each end leaves room for
   the walker's body (0.3 m) clear of every blocker.
-- **spawn**: on the boat deck, where Walk and Back on deck put you.
+- **spawn**: on the boat deck (the Concordia: her pool hall), where Walk
+  and Back on deck put you.
 
 Titanic: boat deck, forward well, forecastle, after well, poop. Britannic:
 the same five decks on her 94 ft beam (her own deck edge), with her
@@ -51,8 +53,24 @@ the mainmast's gap, the second class house's deck (`aft-deck`) and the
 stern. Carpathia: forecastle, forward well, the bridge deck forward of the
 boat deck, the boat deck, a covered promenade down each side under it (a
 ladder from the boat deck; closed at both ends) and the open after deck
-(no poop) by the white stern deckhouse. `deckZAt` measures sheer from the
-C deck, or from `Upper` on a ship (the Carpathia) with no C deck.
+(no poop) by the white stern deckhouse. Costa Concordia (1.17; game decks,
+the model's numbering, with Costa's in the file's comments): the pool hall
+under the glass roof (deck 12, where you start, starboard of the pool), the
+aft and forward lidos either side of it (deck 13: the aft pool, its glass
+houses, the funnel; the forward pool and the water slide), the terrace
+under the aft lido (deck 12), the sports deck over the spa (deck 14, round
+the radar mast) and the boat deck's promenade each side (deck 4, between
+the recess wall, deepened to 7.4 m for it, and her 26 boats, which are
+blockers there all night). Stairs join the lidos to the pool hall, the
+terrace and the sports deck, and stair towers join each lido to each side's
+boat deck (doors in the recess wall). The recipe and the map read the same
+numbers, `ships/concordiaLayout.ts`. Boarding: a recess boat's spot is its
+inboard side (`boatSpot` in `boatRide.ts`), so the promenade reaches it,
+and only a walker on its own deck gets it (`nearestBoardable` takes the
+walker's floor), never one on the lidos over it.
+`deckZAt` measures sheer from
+`spec.sheerRefDeck` (the Concordia's deck 3), else the C deck, or `Upper` on a
+ship (the Carpathia) with no C deck.
 
 ## The walker (`step.ts`, `stepWalker`)
 
@@ -164,6 +182,65 @@ exactly as before.
   README): `walkMapFor("titanic")` is `TITANIC_WALK` with her interior
   merged in (`withInterior`, built once on first use).
 
+## Her lean (the Concordia, 1.17)
+
+The walker copes with any heel mechanically (feet on the floor in her
+frame), but lying right over as she does, three things go wrong past about
+20°. Four `WalkMap` flags fix them; only her map sets them, so every other
+ship walks exactly as before. Tests key on her heel, never the clock
+(`heelFeel.test.ts`).
+
+- **Eyes along her up** (`eyesShipUp`): on her decks, as inside, the eyes
+  stand 1.6 m along her own up axis, not true up (which at 40° is a metre
+  toward the high side, through any house wall beside you). The view
+  still never rolls: it stays level with the horizon and the deck tilts
+  under you (`deckEyes`).
+- **The heel feel** (`heelFeel`): `heelDrift(pose)` gives `k`, 0 up to
+  `HEEL_FEEL_FROM_DEG` (8°) of deck slope (`deckSlope`), 1 from
+  `HEEL_FEEL_FULL_DEG` (30°), linear between, and her downhill direction.
+  Each substep the stick's uphill part is scaled by
+  `1 − HEEL_UPHILL_LOSS·k` (0.45: lean into it) and, after the stick's
+  move, a drift of `HEEL_DRIFT_MS·k` (0.8 m/s) downhill moves the walker,
+  standing or walking, both slowed by wading. The drift is a move like any
+  other: rails and walls hold and slide it along them (so you gather
+  against the low wall and can always walk out along it), blockers push
+  back, the break holds. It never takes a stair, door or lift on its own:
+  links are checked once per substep, after the stick's move and the
+  drift, and only when the stick itself moved the walker (so the drift
+  can never carry them over an end's edge unchecked either). It never wades
+  into water deeper than `WALK_WADE_STOP_M` and deeper than here (on deck
+  too: the drift alone never puts you in the sea), and stops while
+  `StepContext.driftOff` (the end card's input off, the lift's wipe).
+  Straight uphill always nets at least 0.6 m/s: on deck at full feel
+  4 × 0.55 − 0.8 = 1.4, inside 3 × 0.55 − 0.8 = 0.85.
+- **The swimmer and her superstructure** (`swimAroundSuperstructure`):
+  lying over, her superstructure is in the sea, so the runner hands each
+  `HullPiece` her `spec.superstructure` and the swimmer keeps off its
+  boxes too (each from its `baseZ`, else her deck edge, to its `topZ`, its
+  `halfBreadthM`, else her footprint, either side).
+- **Where walking ends** (`walkEndsAtHeelDeg`, her 40°, midnight): at
+  that list either way a walker on her slides off into the sea on her low
+  side (the runner's splash, `swimmerFrom` with that side, facing out to
+  sea), and `placeWalker` returns null, so Back on deck and the picker's
+  walk buttons go, as after a break. A seek straight past it floats them
+  where the spawn meets the sea (the "nowhere to stand" rule, pushed clear
+  of her boxes), not on her low side. A seek to before it stands them on
+  the spawn again.
+
+`withInterior` carries the deck map's flags into the merged map.
+
+**Her boats** are blockers tagged with their index (`Blocker.boat`): the
+walker skips one once `StepContext.boatLowered(index)` says that boat is
+lowered (WalkRunner reads the track's `boat-lowered` events), so the gap
+it leaves is walkable out to her rail. No other map tags a boat.
+
+**Her pool hall** is a deck room (`Room.deckRoom`, the room kit's data in
+`interior/concordia.ts`): an open-deck area (deck speed, jumping, every
+edge a wall, never closed: its ways in are stairs, not doors).
+`deckRoomWalk` puts it and its pool and loungers in her deck map, and
+`withInterior` replaces it from the same data, so the merged map has it
+once.
+
 ## The swimmer (`swim.ts`)
 
 `swimmerFrom` floats a walker who has just gone in off the side they were
@@ -190,7 +267,9 @@ All in `types.ts`: `WALK_EYE_M` 1.6, `WALK_IN_WATER_DEPTH_M` 1.0, `WALK_KNEE_DEP
 `SLIDE_KEEP_DEG` 60, `HALL_SNAP_DEG` 10, `HALL_FADE_DEG` 25,
 `DOOR_ASSIST_M` 1.5, `DOOR_ASSIST_DEG` 40, `DOOR_ASSIST_SHARE` 0.5,
 `DOOR_PASS_DEG` 75, `DOOR_PASS_MISS_M` 0.3, `DOOR_ASSIST_FADE_M` 0.4,
-`WALK_WADE_STOP_M` 0.8; `SWIM_SPEED_MS` 2 in
+`WALK_WADE_STOP_M` 0.8; her lean: `HEEL_FEEL_FROM_DEG` 8,
+`HEEL_FEEL_FULL_DEG` 30, `HEEL_UPHILL_LOSS` 0.45, `HEEL_DRIFT_MS` 0.8;
+`SWIM_SPEED_MS` 2 in
 `swim.ts`. They are tuning: change them here and the tests say what moved.
 
 ## Where the rest lives

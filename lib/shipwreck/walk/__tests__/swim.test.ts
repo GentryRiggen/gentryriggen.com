@@ -1,15 +1,19 @@
+import { concordia } from "../../ships/concordia";
 import { titanic } from "../../ships/titanic";
 import { sampleTrack, simulate, type SimTrack } from "../../sim";
-import type { BodyPose } from "../../sim/track";
+import type { BodyPose, SimFrame } from "../../sim/track";
+import { CONCORDIA_WALK } from "../concordiaDecks";
 import { shipToEarth } from "../slope";
 import type { WalkerState, WalkInput } from "../step";
 import {
   canReboard,
   hullClearanceM,
+  type HullPiece,
   placeWalker,
   stepSwimmer,
   SWIM_SPEED_MS,
   swimmerFrom,
+  type SwimmerState,
 } from "../swim";
 import { resetWalkInput, walkInput } from "../walkInput";
 import { floorZ, TITANIC_WALK, type WalkMap } from "..";
@@ -96,6 +100,70 @@ describe("the swimmer", () => {
         expect(Math.hypot(s.x - feet[0], s.y - feet[1])).toBeLessThan(40);
       }
     }
+  });
+});
+
+describe("the swimmer and her superstructure (the Concordia lying over)", () => {
+  // At rest at 65°, her top tier's side lies in the sea to starboard.
+  const lying = pose({ z: -concordia.draught, roll: 65 * DEG });
+  const boxes = concordia.superstructure;
+  /** Paddling straight at her from 110 m off her low side, for 70 s. */
+  function paddle(piece: HullPiece): SwimmerState[] {
+    let s: SwimmerState = { x: 0, y: -110, yaw: Math.PI / 2 };
+    const out: SwimmerState[] = [];
+    for (let i = 0; i < 60 * 70; i += 1) {
+      s = stepSwimmer(s, FORWARD, 1 / 60, [piece]);
+      out.push(s);
+    }
+    return out;
+  }
+
+  it("is held clear of her superstructure's boxes", () => {
+    const withBoxes: HullPiece = {
+      pose: lying,
+      spec: concordia,
+      superstructure: boxes,
+    };
+    const path = paddle(withBoxes);
+    let worst = Infinity;
+    for (const s of path)
+      worst = Math.min(worst, hullClearanceM(s.x, s.y, [withBoxes]));
+    expect(worst).toBeGreaterThanOrEqual(0);
+    // It did reach her: within a metre of her side.
+    expect(worst).toBeLessThan(1);
+  });
+
+  it("without them, paddles as before (into the boxes)", () => {
+    const plain: HullPiece = { pose: lying, spec: concordia };
+    const path = paddle(plain);
+    expect(paddle({ ...plain, superstructure: undefined })).toEqual(path);
+    const withBoxes = [{ ...plain, superstructure: boxes }];
+    // Clear of her hull, but somewhere inside a box.
+    for (const s of path)
+      expect(hullClearanceM(s.x, s.y, [plain])).toBeGreaterThanOrEqual(0);
+    expect(
+      Math.min(...path.map((s) => hullClearanceM(s.x, s.y, withBoxes)))
+    ).toBeLessThan(0);
+  });
+});
+
+describe("where walking her ends (the Concordia at 40°)", () => {
+  const her = CONCORDIA_WALK;
+  const frameAt = (listDeg: number) =>
+    ({
+      bodies: [pose({ z: -concordia.draught, roll: listDeg * DEG })],
+      listDeg,
+    }) as unknown as SimFrame;
+
+  it("places nobody on her from 40° of list either way", () => {
+    expect(her.walkEndsAtHeelDeg).toBe(40);
+    expect(placeWalker(her, concordia, frameAt(39.9), null)).not.toBeNull();
+    expect(placeWalker(her, concordia, frameAt(40), null)).toBeNull();
+    expect(placeWalker(her, concordia, frameAt(-40.1), null)).toBeNull();
+    expect(canReboard(her, concordia, frameAt(40.1), null)).toBe(false);
+    // Without the flag, the spawn's dryness alone decides, as before.
+    const plain = { ...her, walkEndsAtHeelDeg: undefined };
+    expect(placeWalker(plain, concordia, frameAt(40.1), null)).not.toBeNull();
   });
 });
 

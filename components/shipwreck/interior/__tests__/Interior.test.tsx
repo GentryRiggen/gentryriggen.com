@@ -4,6 +4,10 @@ import { lightSegments, TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
 import { floorZ, walkMapFor } from "@/lib/shipwreck/walk";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
+import { CONCORDIA_INTERIOR } from "@/lib/shipwreck/interior/concordia";
+import type { SimFrame } from "@/lib/shipwreck/sim/track";
+import toSea from "@/lib/shipwreck/sim/__tests__/fixtures/concordiaToSea.json";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { sampleTrack, simulate, type SimTrack } from "@/lib/shipwreck/sim";
@@ -61,11 +65,16 @@ function setup() {
   store.getState().start(titanic, titanic.realNight);
   store.getState().pump();
   const runtime = createSceneRuntime();
-  const view = (spec: ShipSpec) => (
-    <Interior store={store} runtime={runtime} spec={spec} />
+  const view = (spec: ShipSpec, daylight?: boolean) => (
+    <Interior store={store} runtime={runtime} spec={spec} daylight={daylight} />
   );
   const r = render(view(titanic));
-  return { store, runtime, rerender: (s: ShipSpec) => r.rerender(view(s)) };
+  return {
+    store,
+    runtime,
+    rerender: (s: ShipSpec, daylight?: boolean) =>
+      r.rerender(view(s, daylight)),
+  };
 }
 
 /**
@@ -246,6 +255,7 @@ describe("Interior", () => {
         x,
         y: 4.3,
         slopeDeg: 0,
+        heelDeg: 0,
         depthM: -1,
         area: "scotland-road",
         inside: true,
@@ -272,5 +282,113 @@ describe("Interior", () => {
     expect(mat.uniforms.uTorchOn.value).toBe(0);
     at(64);
     expect(mat.uniforms.uTorchOn.value).toBeGreaterThan(0.5);
+  });
+
+  it("draws her pool hall whenever walking on her: before the clear from her deck, inside-wins in it, its pool at the low rim", () => {
+    const { store, runtime, rerender } = setup();
+    rerender(concordia);
+    act(() => store.getState().startWalk());
+    runtime.frame = toSea.night.frames[0] as unknown as SimFrame;
+    const whole = new Group();
+    // Her model's paint mesh, the block where the hall is its tail
+    // (`Block.walkHidden`, the draw range stops before it).
+    const block = new Mesh();
+    block.userData.walkHiddenFrom = 30;
+    whole.add(block);
+    runtime.whole = { whole } as unknown as typeof runtime.whole;
+    const group = mockScene.add.mock.calls[
+      mockScene.add.mock.calls.length - 1
+    ][0] as Group;
+    const meshes = group.children.filter((c): c is Mesh => c instanceof Mesh);
+    const hall = meshes.filter((m) => m.name.includes("pool-hall"));
+    expect(hall.map((m) => m.name).sort()).toEqual([
+      "interior-pool-hall-glass",
+      "interior-pool-hall-metal",
+      "interior-pool-hall-pane",
+      "interior-pool-hall-shell",
+      "interior-pool-pool-hall",
+    ]);
+    const clear = meshes.find((m) => m.name === "interior-depth-clear")!;
+    const frame = mockFrames[mockFrames.length - 1];
+    // On her lido: drawn, before the clear (her exterior's), no clear.
+    runtime.walkRoom = "lido-aft";
+    frame({ clock: { elapsedTime: 1 } }, 1 / 60);
+    expect(group.visible).toBe(true);
+    for (const m of hall) {
+      expect([m.name, m.visible]).toEqual([m.name, true]);
+      expect(m.renderOrder).toBeLessThan(9);
+    }
+    expect(clear.visible).toBe(false);
+    // Her model's block there is hidden while the hall is drawn.
+    expect(block.geometry.drawRange.count).toBe(30);
+    // Its glass after its pool, after its surfaces.
+    const order = (n: string) => hall.find((m) => m.name === n)!.renderOrder;
+    expect(order("interior-pool-pool-hall")).toBeGreaterThan(
+      order("interior-pool-hall-shell")
+    );
+    expect(order("interior-pool-hall-pane")).toBeGreaterThan(
+      order("interior-pool-pool-hall")
+    );
+    // In the hall: inside wins (after the clear).
+    runtime.walkRoom = "pool-hall";
+    frame({ clock: { elapsedTime: 2 } }, 1 / 60);
+    for (const m of hall) expect(m.renderOrder).toBeGreaterThanOrEqual(10);
+    expect(clear.visible).toBe(true);
+    // The pool's water: its low rim's height (a little under), level or
+    // leaning (her roll: three x).
+    const shell = hall.find((m) => m.name === "interior-pool-hall-shell")!;
+    const levels = (shell.material as import("three").ShaderMaterial).uniforms
+      .uLevel.value as Float32Array;
+    const slot = CONCORDIA_INTERIOR.rooms.length;
+    const rimY = () => {
+      whole.updateMatrixWorld(true);
+      let low = Infinity;
+      for (const [x, y] of [
+        [11.5, -2.25],
+        [20.5, -2.25],
+        [20.5, 2.25],
+        [11.5, 2.25],
+      ]) {
+        const z = 44.98 + 0.02;
+        low = Math.min(
+          low,
+          new Vector3(x, z, -y).applyMatrix4(whole.matrixWorld).y
+        );
+      }
+      return low;
+    };
+    frame({ clock: { elapsedTime: 3 } }, 1 / 60);
+    expect(levels[slot]).toBeCloseTo(rimY() - 0.01, 4);
+    whole.rotation.x = 0.35;
+    frame({ clock: { elapsedTime: 4 } }, 1 / 60);
+    expect(levels[slot]).toBeCloseTo(rimY() - 0.01, 4);
+    // Its lamps follow her power; the pool's too (or the day's).
+    const power = (shell.material as import("three").ShaderMaterial).uniforms
+      .uRoomPower.value as Float32Array;
+    expect(power[0]).toBe(runtime.frame.power);
+    expect(power[slot]).toBe(runtime.frame.power);
+    // Her blackout (her emergency light): the hall dims with her.
+    runtime.frame = { ...runtime.frame, power: 0.25 };
+    frame({ clock: { elapsedTime: 4.5 } }, 1 / 60);
+    expect(power[0]).toBeCloseTo(0.25, 6);
+    expect(power[slot]).toBeCloseTo(0.25, 6);
+    // By day: her shader and her glass catch the sky.
+    rerender(concordia, true);
+    const day = (shell.material as import("three").ShaderMaterial).uniforms
+      .uDaylight.value;
+    expect(day).toBe(1);
+    const pane = hall.find((m) => m.name === "interior-pool-hall-pane")!;
+    expect(
+      (pane.material as import("three").ShaderMaterial).uniforms.uDaylight.value
+    ).toBe(1);
+    frame({ clock: { elapsedTime: 5 } }, 1 / 60);
+    // The pool's water lit by the day; the hall's lamps still her power.
+    expect(power[slot]).toBe(1);
+    expect(power[0]).toBeCloseTo(0.25, 6);
+    // Off the walk: her model's block shows again.
+    act(() => store.getState().setCamera("orbit"));
+    frame({ clock: { elapsedTime: 6 } }, 1 / 60);
+    expect(group.visible).toBe(false);
+    expect(block.geometry.drawRange.count).toBe(Infinity);
   });
 });

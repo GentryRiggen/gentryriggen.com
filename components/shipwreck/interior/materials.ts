@@ -2,6 +2,7 @@ import {
   Color,
   FrontSide,
   NoBlending,
+  NormalBlending,
   ShaderMaterial,
   type IUniform,
   type Texture,
@@ -274,4 +275,78 @@ export function roomMaterials(
       for (const m of [shell, wood, metal, glass]) m.dispose();
     },
   };
+}
+
+/**
+ * Her see-through glass (the `pane` mesh: a glass room's walls and vault,
+ * the glass doors, the art lane's panes; every pane has both faces): a
+ * faint tint that catches the sky toward a grazing look (a cheap Fresnel),
+ * brighter by day (`uDaylight`); frosted panes (`aTile` over 19.5, the
+ * doors) nearly opaque, pale. Blended, depth tested, not written, no
+ * lights or fog. Every pow/division is guarded (`shaderGuards.test.ts`).
+ */
+export const GLASS_SHADERS = {
+  vertex: /* glsl */ `
+    attribute float aTile;
+    varying vec3 vColor;
+    varying vec3 vWorld;
+    varying vec3 vNormal;
+    varying float vTile;
+    void main() {
+      vColor = color;
+      vTile = aTile;
+      vec4 w = modelMatrix * vec4(position, 1.0);
+      vWorld = w.xyz;
+      vNormal = mat3(modelMatrix) * normal;
+      gl_Position = projectionMatrix * viewMatrix * w;
+    }
+  `,
+  fragment: /* glsl */ `
+    uniform vec3 uSky;
+    uniform float uDaylight;
+    varying vec3 vColor;
+    varying vec3 vWorld;
+    varying vec3 vNormal;
+    varying float vTile;
+    void main() {
+      vec3 n = vNormal / max(length(vNormal), 0.0001);
+      vec3 toEye = cameraPosition - vWorld;
+      vec3 v = toEye / max(length(toEye), 0.001);
+      float cosv = clamp(abs(dot(n, v)), 0.0, 1.0);
+      float fres = pow(clamp(1.0 - cosv, 0.0, 1.0), 5.0);
+      float day = clamp(uDaylight, 0.0, 1.0);
+      vec3 body = vColor * (0.04 + 0.3 * day);
+      vec3 sky = uSky * (0.35 + 0.65 * day) + vec3(0.004, 0.006, 0.01);
+      vec3 lit = mix(body, sky, fres);
+      // Faint: from outside, a look through the vault crosses four panes.
+      float a = mix(0.07, 0.24, fres);
+      if (vTile > 19.5) {
+        // Frosted: pale, nearly opaque, lit by the day or a little at night.
+        lit = vColor * (0.1 + 0.6 * day);
+        a = 0.9;
+      }
+      gl_FragColor = vec4(lit, a);
+    }
+  `,
+};
+
+/** The see-through glass's material, sharing the rooms' sky and daylight. */
+export function glassMaterial(
+  sky: IUniform<Color>,
+  daylight: IUniform<number>
+): ShaderMaterial {
+  const m = new ShaderMaterial({
+    vertexShader: GLASS_SHADERS.vertex,
+    fragmentShader: GLASS_SHADERS.fragment,
+    uniforms: { uSky: sky, uDaylight: daylight },
+    vertexColors: true,
+    fog: false,
+    transparent: true,
+    blending: NormalBlending,
+    depthWrite: false,
+    depthTest: true,
+    side: FrontSide,
+  });
+  m.name = "interior-pane";
+  return m;
 }

@@ -232,6 +232,14 @@ const SHORT: ReadonlySet<Cue> = new Set<Cue>([
 /** Trim (degrees) the hull starts to complain at, and where it is loudest. */
 export const CREAK_FROM_DEG = 2;
 export const CREAK_FULL_DEG = 25;
+/**
+ * Ships whose list creaks too (her roll, not just her trim): the strain is
+ * the larger of the trim's and the list's, which runs from
+ * LIST_CREAK_FROM_DEG to full at LIST_CREAK_FULL_DEG. In every view.
+ */
+export const LIST_CREAK_SHIPS: readonly ShipId[] = ["concordia"];
+export const LIST_CREAK_FROM_DEG = 5;
+export const LIST_CREAK_FULL_DEG = 40;
 /** Seconds between hull creaks at the quietest and loudest trim. */
 export const CREAK_SLOW_S = 7;
 export const CREAK_FAST_S = 1.2;
@@ -284,7 +292,7 @@ export interface BedState {
   steam: boolean;
   /** 0..1 how much power the ship has: the machinery hum. */
   power: number;
-  /** 0..1 the hull's strain, from her trim. */
+  /** 0..1 the hull's strain, from her trim (and her list: LIST_CREAK_SHIPS). */
   strain: number;
   underwater: boolean;
   speed: number;
@@ -483,6 +491,21 @@ export function createCueScheduler(
         1,
         Math.max(0, (trim - CREAK_FROM_DEG) / (CREAK_FULL_DEG - CREAK_FROM_DEG))
       );
+      if (f && LIST_CREAK_SHIPS.includes(ship)) {
+        // Her roll creaks too (the Concordia lies over, barely trimmed).
+        const list = Math.abs(f.listDeg || 0);
+        bed.strain = Math.max(
+          bed.strain,
+          Math.min(
+            1,
+            Math.max(
+              0,
+              (list - LIST_CREAK_FROM_DEG) /
+                (LIST_CREAK_FULL_DEG - LIST_CREAK_FROM_DEG)
+            )
+          )
+        );
+      }
       bed.steam = steamOn && i.playing;
       bed.underwater = i.underwater;
       bed.speed = i.speed;

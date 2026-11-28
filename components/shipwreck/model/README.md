@@ -808,6 +808,19 @@ draws 16 in both paints (the gun's in 1918, her names in 1912; same
 triangles in 1918). The iPad mini 6 is not measured here (expect two to three
 times the build; the swap is a buffer copy).
 
+**Walk-hidden** (1.17): a block flagged `walkHidden`, a dome flagged
+`walkHidden` and a block's painted roof cells inside `walkHiddenRoof`
+are built into their own list (`ShipPartData.walkHidden`), which the
+model appends to the end of its paint mesh's index
+(`userData.walkHiddenFrom`, the index count where it starts). The room
+kit sets that mesh's draw range to stop there while walking on her (and
+back to everything otherwise, shadow and depth passes included), and
+draws its own pool hall instead: the Concordia's `pool-glass` block, its
+glass dome and her deck-11 roof's middle cells. The same geometry, moved
+and with no draw call of its own: her orbit perf scenes stay at 50, 50,
+52 with the same triangles (a first cut with its own mesh cost two
+more).
+
 ### Each ship's liveries (R28, the research)
 
 **The Titanic: one livery.** She sailed only in April 1912, in White
@@ -1272,7 +1285,9 @@ Photographs on Wikimedia Commons, "Category:Costa Concordia (ship,
 - **Lifeboats**: 26, 13 a side ([MIT §4.5]; [P1] counts 13 starboard),
   x −84 to +84 about 14 m apart ([M]), 10.8 by 3.9 m (150-person
   boats: an assumption from their size against the deck in [P6]), in the
-  recess on deck 4 (set in 4.8 m) under deck 6, each in a pair of
+  recess on deck 4 (set in 7.4 m since 1.17, was 4.8 m, so a
+  promenade about 3 m wide runs inboard of the boats; `CONCORDIA_RECESS_INSET`)
+  under deck 6, each in a pair of
   davits, their recess wall in shade; white lower hull, orange above
   under a rounded orange canopy (`paint.boat.cover`) ([P6]). Liferaft canisters in
   racks at both ends of the rows ([P7]).

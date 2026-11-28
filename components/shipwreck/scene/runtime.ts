@@ -171,6 +171,8 @@ export interface WalkInfo {
   x: number;
   y: number;
   slopeDeg: number;
+  /** Her heel at the shown time (degrees, absolute; tests key on it). */
+  heelDeg: number;
   /** Sea over the feet (m; negative when dry); 0 in the water. */
   depthM: number;
   area: string | null;

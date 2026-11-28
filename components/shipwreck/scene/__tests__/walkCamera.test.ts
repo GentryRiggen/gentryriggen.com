@@ -1,4 +1,5 @@
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import {
   floorZ,
@@ -74,6 +75,39 @@ describe("eyes on deck", () => {
     // Straight up from the feet, not along her tilted mast.
     const fz = floorZ(map, walker.area, walker.x, spec);
     const feet = shipToThree(p, [walker.x, walker.y, fz]);
+    expect(v.pos[0]).toBeCloseTo(feet[0], 9);
+    expect(v.pos[1]).toBeCloseTo(feet[1] + 1.6, 9);
+    expect(v.pos[2]).toBeCloseTo(feet[2], 9);
+  });
+});
+
+describe("eyes on her deck along her own up (the Concordia)", () => {
+  const her = walkMapFor("concordia")!;
+  const w: WalkerState = {
+    part: "whole",
+    area: her.spawn.area,
+    x: her.spawn.at[0],
+    y: her.spawn.at[1],
+    yaw: 0,
+  };
+  const p = pose({ z: -concordia.draught, roll: 40 * DEG, yaw: 0.2 });
+
+  it("stands the eyes 1.6 m along her up from the feet at 40°", () => {
+    expect(her.eyesShipUp).toBe(true);
+    const fz = floorZ(her, w.area, w.x, concordia, w.y);
+    const v = deckEyes(w, p, concordia, her, 0.1);
+    const eyes = shipToThree(p, [w.x, w.y, fz + 1.6]);
+    for (let i = 0; i < 3; i += 1) expect(v.pos[i]).toBeCloseTo(eyes[i], 9);
+    // Still level with the horizon: no roll, the look's own pitch.
+    expect(v.pitch).toBe(0.1);
+    expect(v.yaw).toBeCloseTo(0.2, 9);
+  });
+
+  it("without the flag, stands them 1.6 m straight up as before", () => {
+    const plain = { ...her, eyesShipUp: undefined };
+    const fz = floorZ(plain, w.area, w.x, concordia, w.y);
+    const v = deckEyes(w, p, concordia, plain, 0);
+    const feet = shipToThree(p, [w.x, w.y, fz]);
     expect(v.pos[0]).toBeCloseTo(feet[0], 9);
     expect(v.pos[1]).toBeCloseTo(feet[1] + 1.6, 9);
     expect(v.pos[2]).toBeCloseTo(feet[2], 9);

@@ -232,6 +232,7 @@ export default function NightScene({
           runtime={runtime}
           spec={spec}
           sky={settings.fog}
+          daylight={day}
         />
         <DoorArrow
           key={`door-arrow-${spec.id}`}

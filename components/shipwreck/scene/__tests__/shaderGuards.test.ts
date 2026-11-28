@@ -3,7 +3,7 @@ import { STORM_SEA_GLSL } from "../StormSea";
 import { SEA_FRAGMENT } from "../Sea";
 import { TORPEDO_FRAGMENT } from "../Torpedo";
 import { waterShaders } from "../../interior/water";
-import { roomShaders } from "../../interior/materials";
+import { GLASS_SHADERS, roomShaders } from "../../interior/materials";
 import { LAYERS } from "../../interior/pieces";
 
 /**
@@ -15,7 +15,8 @@ import { LAYERS } from "../../interior/pieces";
  * wave function (her rogue wave's sharpening and lip) and the storm sea's
  * own shaders (her lip, rolled-over foam, under-glow and starlit sky).
  * 1.15: the water inside her rooms (`interior/water.ts`) and the rooms'
- * own shaders, every layer (`interior/materials.ts`).
+ * own shaders, every layer (`interior/materials.ts`). 1.17: her
+ * see-through glass (`GLASS_SHADERS`).
  */
 
 const SHADERS: Record<string, string> = {
@@ -26,6 +27,8 @@ const SHADERS: Record<string, string> = {
   "interior water surface fragment": waterShaders(26).surfaceFragment,
   "interior water body vertex": waterShaders(26).bodyVertex,
   "interior water body fragment": waterShaders(26).bodyFragment,
+  "interior glass vertex": GLASS_SHADERS.vertex,
+  "interior glass fragment": GLASS_SHADERS.fragment,
   ...Object.fromEntries(
     LAYERS.flatMap((layer) => [
       [`interior ${layer} vertex`, roomShaders(layer, 26).vertex],

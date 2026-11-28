@@ -1,4 +1,25 @@
 import { CONCORDIA_BOATS } from "@/lib/shipwreck/ships/concordia";
+import {
+  CONCORDIA_AFT_GLASS,
+  CONCORDIA_BOAT,
+  CONCORDIA_CASING,
+  CONCORDIA_DECK11_AFT,
+  CONCORDIA_FUNNEL_OVAL,
+  CONCORDIA_LIDO_AFT,
+  CONCORDIA_LIDO_FWD,
+  CONCORDIA_LIFERAFT_RACKS,
+  CONCORDIA_MAST_X,
+  CONCORDIA_POOL_DOME,
+  CONCORDIA_POOL_GLASS,
+  CONCORDIA_POOLS,
+  CONCORDIA_RADOMES,
+  CONCORDIA_RAILS,
+  CONCORDIA_RECESS,
+  CONCORDIA_RECESS_INSET,
+  CONCORDIA_SLIDE,
+  CONCORDIA_SPA,
+  CONCORDIA_SPORTS_DECK,
+} from "@/lib/shipwreck/ships/concordiaLayout";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import {
   SIDES,
@@ -102,15 +123,16 @@ export const CONCORDIA_PAINT: ShipPaint = {
 
 /** A tier's height (her deck step, `concordia.ts`). */
 const TIER = 2.8;
-/** The boat recess's wall, in from her side. */
-const RECESS_INSET = 4.8;
+/** The boat recess's wall, in from her side (deepened in 1.17 so a
+ *  promenade runs inboard of the boats: `ships/concordiaLayout.ts`). */
+const RECESS_INSET = CONCORDIA_RECESS_INSET;
 /** The balconies' depth (their back wall in from her side). */
 const BALCONY_DEPTH = 1.8;
 /** The balcony zone and the boat recess, fore and aft (README). */
 const BALCONY: [number, number] = [-100, 96];
-const RECESS: [number, number] = [-101, 104];
+const RECESS = CONCORDIA_RECESS;
 /** 150-person lifeboats, about 10.8 by 3.9 m (README). */
-const BOAT = { length: 10.8, beam: 3.9, depth: 2.0 };
+const BOAT = CONCORDIA_BOAT;
 /** Each tier's after end (the stepped terraces) and forward end. */
 const AFT_END: Record<string, number> = {
   "7": -129,
@@ -128,7 +150,7 @@ const FWD_END: Record<string, number> = {
 const BOW_PLATING_X = 128;
 const DECK6_FWD = 138;
 const DECK11_FWD = 120;
-const SPA: [number, number] = [58, 116];
+const SPA = CONCORDIA_SPA;
 
 export function concordiaRecipe(
   spec: ShipSpec,
@@ -209,47 +231,75 @@ export function concordiaRecipe(
     }),
   ];
   blocks.push(
-    flush("deck-11", "11", -115, DECK11_FWD, TIER, {
+    flush("deck-11", "11", CONCORDIA_DECK11_AFT, DECK11_FWD, TIER, {
       roundFwd: 16,
       under: true,
+      // Under the pool hall's floor (its middle cells, a quarter of her
+      // breadth each side of the centre line): hidden while walking on
+      // her, so her deck sees down into the pool's basin.
+      walkHiddenRoof: {
+        x0: CONCORDIA_POOL_GLASS.x0,
+        x1: CONCORDIA_POOL_GLASS.x1,
+        halfWidth: CONCORDIA_POOL_GLASS.halfWidth / 2,
+      },
     }),
     // The top: her pool decks either side of the glass-roofed pool.
-    flush("deck-12-aft", "12", -97, -2, TIER, {
-      halfWidth: 15.5,
-      roof: "pine",
-    }),
+    flush(
+      "deck-12-aft",
+      "12",
+      CONCORDIA_LIDO_AFT.x0,
+      CONCORDIA_LIDO_AFT.x1,
+      TIER,
+      {
+        halfWidth: CONCORDIA_LIDO_AFT.halfWidth,
+        roof: "pine",
+      }
+    ),
     {
       id: "pool-glass",
-      x0: -2,
-      x1: 34,
+      x0: CONCORDIA_POOL_GLASS.x0,
+      x1: CONCORDIA_POOL_GLASS.x1,
       deck: "12",
       h: TIER,
-      halfWidth: 13.5,
+      halfWidth: CONCORDIA_POOL_GLASS.halfWidth,
       wall: "white",
       wallColor: GLASS_DARK,
       roof: "paint",
       roofColor: GLASS_DARK,
+      // While walking on her the room kit draws the pool hall here.
+      walkHidden: true,
     },
-    flush("deck-12-fwd", "12", 34, 58, TIER, { halfWidth: 15.5, roof: "pine" }),
+    flush(
+      "deck-12-fwd",
+      "12",
+      CONCORDIA_LIDO_FWD.x0,
+      CONCORDIA_LIDO_FWD.x1,
+      TIER,
+      { halfWidth: CONCORDIA_LIDO_FWD.halfWidth, roof: "pine" }
+    ),
     // The spa, two decks over the bridge, its front rounded.
     flush("spa", "12", SPA[0], SPA[1], 2 * TIER, { inset: 1.5, roundFwd: 16 }),
-    flush("sports-deck", "14", SPA[0] + 0.5, SPA[1] - 8, 0.35, {
-      inset: 4,
-      roofColor: COURT,
-      roundFwd: 6,
-    }),
+    flush(
+      "sports-deck",
+      "14",
+      CONCORDIA_SPORTS_DECK.x0,
+      CONCORDIA_SPORTS_DECK.x1,
+      CONCORDIA_SPORTS_DECK.h,
+      {
+        inset: CONCORDIA_SPORTS_DECK.inset,
+        roofColor: COURT,
+        roundFwd: 6,
+      }
+    ),
     // The aft pool's glass house, fore and aft of the funnel: low glass
     // walls under a glass vault.
-    ...[
-      [funnelX - 34, funnelX - 9],
-      [funnelX + 9, funnelX + 34],
-    ].map(([x0, x1], i): Block => ({
+    ...CONCORDIA_AFT_GLASS.spans.map(([a, b], i): Block => ({
       id: `aft-pool-glass-${i}`,
-      x0,
-      x1,
+      x0: funnelX + a,
+      x1: funnelX + b,
       deck: "13",
-      h: 2.4,
-      halfWidth: 13,
+      h: CONCORDIA_AFT_GLASS.h,
+      halfWidth: CONCORDIA_AFT_GLASS.halfWidth,
       wall: "white",
       wallColor: GLASS_SIDE,
       // A glass vault catching the sky.
@@ -257,9 +307,14 @@ export function concordiaRecipe(
       roofColor: GLASS_ROOF,
       camber: 1.6,
     })),
-    flush("funnel-casing", "13", funnelX - 10, funnelX + 10, 1.4, {
-      halfWidth: 6,
-    })
+    flush(
+      "funnel-casing",
+      "13",
+      funnelX - CONCORDIA_CASING.halfLength,
+      funnelX + CONCORDIA_CASING.halfLength,
+      CONCORDIA_CASING.h,
+      { halfWidth: CONCORDIA_CASING.halfWidth }
+    )
   );
 
   // -------------------------------------------------------------------------
@@ -267,8 +322,8 @@ export function concordiaRecipe(
   // scale model, the bow-on photographs), Costa yellow with a black top,
   // the blue "C" on both sides (her real paint only).
   const funnels = ovalFunnels(spec, {
-    semiA: 7.5,
-    semiB: 4.6,
+    semiA: CONCORDIA_FUNNEL_OVAL.semiA,
+    semiB: CONCORDIA_FUNNEL_OVAL.semiB,
     // The black top: about 30 % of what shows (the scale model).
     blackTop: 5.8,
     // Midway up the yellow, 2.8 m to the middle of its stroke (the scale
@@ -279,7 +334,7 @@ export function concordiaRecipe(
   // -------------------------------------------------------------------------
   // The radar mast on the sports deck over the spa (the photographs: a
   // white lattice mast with its scanners and yards).
-  const mastX = 80;
+  const mastX = CONCORDIA_MAST_X;
   const masts: MastRecipe[] = [radarMast(mastX, Z("14") + 0.35, 68)];
 
   // -------------------------------------------------------------------------
@@ -289,8 +344,8 @@ export function concordiaRecipe(
   const davits = boatDavits(boats);
   // Liferaft canisters in two racks at each end of the boat rows.
   const canisters = liferaftRacks(frame, {
-    fromX: [91.5, -99],
-    count: 5,
+    fromX: CONCORDIA_LIFERAFT_RACKS.fromX,
+    count: CONCORDIA_LIFERAFT_RACKS.count,
     z: Z("4"),
   });
 
@@ -442,15 +497,19 @@ export function concordiaRecipe(
     }),
   ];
   // The water slide's tower.
-  const slideC: [number, number] = [42, -8];
+  const slideC = CONCORDIA_SLIDE.c;
   boxes.push({
-    c: [slideC[0], slideC[1], Z("13") + 4.2],
-    size: [2.2, 2.2, 8.4],
+    c: [slideC[0], slideC[1], Z("13") + CONCORDIA_SLIDE.h / 2],
+    size: [CONCORDIA_SLIDE.size, CONCORDIA_SLIDE.size, CONCORDIA_SLIDE.h],
     color: WHITE,
   });
   // Pools: the aft one in the open, one forward by the slide.
-  boxes.push({ c: [-86, 0, Z("13") + 0.06], size: [10, 7, 0.12], color: POOL });
-  boxes.push({ c: [50, 5, Z("13") + 0.06], size: [8, 6, 0.12], color: POOL });
+  for (const p of CONCORDIA_POOLS)
+    boxes.push({
+      c: [p.c[0], p.c[1], Z("13") + 0.06],
+      size: [p.size[0], p.size[1], 0.12],
+      color: POOL,
+    });
 
   // -------------------------------------------------------------------------
   // The water slide: yellow, coiling down from its tower (README).
@@ -458,25 +517,33 @@ export function concordiaRecipe(
 
   // White radar domes (the photographs): two forward, two aft, one on the
   // spa.
-  const radomes = [
-    { p: [-75, 6, Z("13") + 2.4] as V3, r: 2.2 },
-    { p: [-22, 0, Z("13") + 2.4] as V3, r: 2.2 },
-    { p: [50, -6, Z("13") + 2.4] as V3, r: 2.0 },
-    { p: [64, 6, Z("14") + 2.2] as V3, r: 2.0 },
-    { p: [72, -5, Z("14") + 0.35 + 2.4] as V3, r: 2.2 },
-  ];
+  const radomes = CONCORDIA_RADOMES.map((d) => ({
+    p: [d.x, d.y, Z(d.deck) + d.dz] as V3,
+    r: d.r,
+  }));
 
   // -------------------------------------------------------------------------
   // Rails: deck 4's promenade under the boats, the open decks on top, the
   // terraces aft.
   const { rails, edgeRun, acrossRun } = railKit();
   edgeRun(RECESS[0] + 0.3, RECESS[1] - 0.3, Z("4"), (x) => edge(x) - 0.1);
-  edgeRun(-96.8, -2, Z("13"), () => 15.4);
-  edgeRun(34, 58, Z("13"), () => 15.4);
-  acrossRun(-96.8, Z("13"), 15.3);
-  edgeRun(-114.8, -97, Z("12"), (x) => edge(x) - 0.1);
-  acrossRun(-114.8, Z("12"), edge(-114.8) - 0.1);
-  edgeRun(SPA[0] + 0.7, SPA[1] - 16, Z("14") + 0.35, (x) => edge(x) - 4.1);
+  const R = CONCORDIA_RAILS;
+  edgeRun(R.lidoAftX, CONCORDIA_LIDO_AFT.x1, Z("13"), () => R.lidoHalfWidth);
+  edgeRun(
+    CONCORDIA_LIDO_FWD.x0,
+    CONCORDIA_LIDO_FWD.x1,
+    Z("13"),
+    () => R.lidoHalfWidth
+  );
+  acrossRun(R.lidoAftX, Z("13"), 15.3);
+  edgeRun(R.terraceAftX, CONCORDIA_LIDO_AFT.x0, Z("12"), (x) => edge(x) - 0.1);
+  acrossRun(R.terraceAftX, Z("12"), edge(R.terraceAftX) - 0.1);
+  edgeRun(
+    R.sportsX[0],
+    R.sportsX[1],
+    Z("14") + CONCORDIA_SPORTS_DECK.h,
+    (x) => edge(x) - R.sportsInset
+  );
   edgeRun(DECK6_FWD - 4, stem - 3, Z("5"), (x) => Math.max(0.3, edge(x) - 0.1));
 
   // -------------------------------------------------------------------------
@@ -542,7 +609,17 @@ export function concordiaRecipe(
     deckZ,
     houses: [],
     // The glass roof over the main pool (a retractable "magrodome" [WPC]).
-    domes: [{ x: 16, z: Z("13"), a: 17.5, b: 13, c: 3.6 }],
+    // While walking on her the room kit draws it (in see-through glass).
+    domes: [
+      {
+        x: CONCORDIA_POOL_DOME.x,
+        z: Z("13"),
+        a: CONCORDIA_POOL_DOME.a,
+        b: CONCORDIA_POOL_DOME.b,
+        c: CONCORDIA_POOL_DOME.c,
+        walkHidden: true,
+      },
+    ],
     funnels,
     masts,
     boats,

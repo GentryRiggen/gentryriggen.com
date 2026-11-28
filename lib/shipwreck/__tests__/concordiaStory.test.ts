@@ -235,7 +235,7 @@ describe("the Costa Concordia's words", () => {
 
   it("has her parent line (the spec's exact copy)", () => {
     expect(PARENT_LINES.concordia).toBe(
-      "This is the Costa Concordia, a cruise ship, in January 2012. At night she sailed too close to the island of Giglio, struck rocks and rolled onto her side beside the harbour. Most of the 4,229 people aboard were rescued, but 32 people died. This game shows only the ship."
+      "This is the Costa Concordia, a cruise ship, in January 2012. At night she sailed too close to the island of Giglio, struck rocks and rolled onto her side beside the harbour. Most of the 4,229 people aboard were rescued, but 32 people died. This game shows only the ship. You can walk her top decks and board a lifeboat."
     );
   });
 

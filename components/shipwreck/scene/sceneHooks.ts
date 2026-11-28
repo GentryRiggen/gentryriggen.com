@@ -111,6 +111,7 @@ export function sceneHooks(
         x: info.x,
         y: info.y,
         slopeDeg: info.slopeDeg,
+        heelDeg: info.heelDeg,
         depthM: info.depthM,
         lookUnder: w.lookUnder,
         area: info.area,

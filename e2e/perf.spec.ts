@@ -165,6 +165,7 @@ const SCENES = [
   "shipwreck-concordia-salute",
   "shipwreck-concordia-drift",
   "shipwreck-concordia-aground",
+  "shipwreck-walk-concordia-pool",
   "shipwreck-poseidon-party",
   "shipwreck-poseidon-wave",
   "shipwreck-poseidon-keelup",
@@ -845,6 +846,30 @@ test.describe("Shipwreck budget: the Britannic", () => {
 
 test.describe("Shipwreck budget: the Costa Concordia", () => {
   test.setTimeout(420_000);
+
+  test("walking her pool hall at the top tier, 22:00", async ({ page }) => {
+    await page.goto("/shipwreck?scene&ship=concordia&quality=high");
+    await page.waitForFunction(
+      () => window.__shipwreck?.getState?.().done === true,
+      null,
+      { timeout: 300_000 }
+    );
+    await page.evaluate(() => {
+      const h = window.__shipwreck!;
+      h.pause!();
+      h.seek!(14 * 60 + 53); // 22:00
+      h.startWalk!(); // spawns in the pool hall, facing forward
+    });
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.area === "pool-hall"
+    );
+    await page.waitForTimeout(2500);
+    const m = await measure(page, "__shipwreckRenderInfo");
+    record("shipwreck-walk-concordia-pool", m);
+    // The walk scene's target: 62 draw calls, 430k triangles.
+    expect(m.calls, "draw calls").toBeLessThanOrEqual(62);
+    expect(m.triangles, "triangles").toBeLessThanOrEqual(430_000);
+  });
 
   test("her night by Giglio at the top tier: lit past the island, the drift, on her side", async ({
     page,

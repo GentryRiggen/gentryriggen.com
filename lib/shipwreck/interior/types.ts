@@ -8,11 +8,24 @@ import type { Seam, Stair, V2 } from "../walk/types";
  */
 
 export type RoomKind =
-  "foyer" | "flight" | "landing" | "corridor" | "cabin" | "passage" | "lift";
+  | "foyer"
+  | "flight"
+  | "landing"
+  | "corridor"
+  | "cabin"
+  | "passage"
+  | "lift"
+  | "pool-hall";
 
-/** Walls: oak panelling, white panelling, white enamel or painted steel. */
-export type WallFinish = "oak" | "white-panel" | "enamel" | "steel";
-export type FloorFinish = "lino" | "carpet" | "mosaic" | "steel";
+/**
+ * Walls: oak panelling, white panelling, white enamel, painted steel, or
+ * glass (tinted, see-through, double-sided: a deck room's glass walls and
+ * the vault over them).
+ */
+export type WallFinish = "oak" | "white-panel" | "enamel" | "steel" | "glass";
+/** Floors; `tile` is pool mosaic, `teak` deck planking. */
+export type FloorFinish =
+  "lino" | "carpet" | "mosaic" | "steel" | "tile" | "teak";
 /** How the room is lit (its lamps are `sconce`/`caged-bulb` furniture). */
 export type LampStyle = "sconce" | "caged-bulb" | "dome" | "ceiling";
 
@@ -22,6 +35,16 @@ export interface RoomLook {
   lamp: LampStyle;
   /** The side with portholes (an outboard wall), if any. */
   portholes?: "port" | "starboard";
+  /**
+   * A glass room's walls drawn solid instead (outline edge indices): the
+   * pool hall's ends, where the lido decks stand a deck higher.
+   */
+  solidEdges?: readonly number[];
+  /**
+   * A glass room's dome over its flat glass roof (at its eaves, `ceilingM`):
+   * its middle, half-length (x), half-width (y) and height (m).
+   */
+  dome?: { at: V2; a: number; b: number; rise: number };
 }
 
 export interface Room {
@@ -46,6 +69,13 @@ export interface Room {
   water?: "sea" | "compartment";
   /** Drawn, not walkable (no seam or link leads into it). */
   noWalk?: boolean;
+  /**
+   * A deck room (the Concordia's pool hall): walked as an open-deck area
+   * (deck speed, jumping, never closed; every edge a wall), drawn by the
+   * kit whenever walking on her. Its own data is its only source: a deck
+   * map that has an area of its id takes it from here (`deckRoomWalk`).
+   */
+  deckRoom?: true;
 }
 
 /** A deck door or a lift: the walk map's Stair, tagged. */
@@ -58,7 +88,8 @@ export interface ShutDoor {
   at: V2;
   /** The way its face looks, into the room (rad, 0 the bow, + to port). */
   facing: number;
-  style: "oak" | "white" | "steel";
+  /** `glass`: a modern pair of glass doors in chrome frames (hers). */
+  style: "oak" | "white" | "steel" | "glass";
 }
 
 export type PieceId =
@@ -82,7 +113,12 @@ export type PieceId =
   | "caged-bulb"
   | "sconce"
   | "porthole"
-  | "rope";
+  | "rope"
+  // Her modern pieces (lib/shipwreck/interior/modernPieces.ts, the same
+  // ids): the rest join with her rooms (1.18).
+  | "pool-edge"
+  | "lounger"
+  | "exit-sign";
 
 export interface Furniture {
   room: string;

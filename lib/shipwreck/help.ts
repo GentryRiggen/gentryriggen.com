@@ -14,6 +14,9 @@ function walkLines(ship: ShipSpec): string[] {
         "The walking button puts you on her deck: the stick walks, drag to look. If she sinks under you, you float; the eye button looks under the water, and the bird button goes back to flying." +
           (interiorFor(ship.id)
             ? " Beside a door, the door button takes you inside; inside, the door button takes you back out on deck."
+            : "") +
+          (ship.id === "concordia"
+            ? " On the Concordia the deck tips as she leans: uphill is slower and you slide downhill. Stand beside a lifeboat and tap the glowing boat button to climb in before it goes."
             : ""),
       ]
     : [];

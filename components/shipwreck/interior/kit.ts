@@ -1,12 +1,18 @@
 import { ShapeUtils, Vector2, type BufferGeometry } from "three";
 import {
   lightSegments,
+  pieceFootprint,
   roomFloorZ,
   segmentAt,
   type Furniture,
   type InteriorMap,
+  type PieceId,
   type Room,
 } from "@/lib/shipwreck/interior";
+import {
+  MODERN_PIECE_IDS,
+  type ModernPieceId,
+} from "@/lib/shipwreck/interior/modernPieces";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { pointInPolygon, type V2 } from "@/lib/shipwreck/walk";
 import {
@@ -38,10 +44,16 @@ import {
   type Builder,
   type DoorStyle,
   type Lamp,
-  type Layer,
   type P3,
   type RGB,
 } from "./pieces";
+import {
+  ModernLayers,
+  MODERN_COLOR,
+  MODERN_PIECES,
+  POOL_DEPTH_M,
+} from "./modernPieces";
+import { MODERN_TILE } from "./modernTextures";
 
 /**
  * The room kit (see README.md): a ship's rooms to merged geometry, one
@@ -55,6 +67,16 @@ import {
  * shut doors. Every face is single-sided, facing into the room it belongs
  * to. The lamps' light is baked into each vertex (`aLight`): falling off
  * with distance, facing, walls between rooms, darker into corners.
+ *
+ * Her modern rooms (the Concordia) add a fifth mesh per zone, `pane`
+ * (see-through glass, both faces: `ModernLayers`), her modern pieces
+ * (`MODERN_PIECES`) and finishes, and the deck room (1.17's pool hall): a
+ * glass room (`glass` finish: glass sides on a low upstand, a flat glass
+ * roof with her glass dome on it, solid cream walls on its
+ * `solidEdges`), its floor 2 cm over the deck under it (the model's roof
+ * there never shows through), its pool's basin cut out of the floor and
+ * its faces tagged with the daylight they catch (`aGlow` on the shell,
+ * wood and metal: her shader's `uDaylight`, modernTextures.ts).
  */
 
 /** A riser's height (m): a flight has round(drop / RISER_M) of them. */
@@ -75,6 +97,13 @@ export const ZONE_TRIANGLE_BUDGET = 40000;
 export const ZONE_MESH_BUDGET = 6;
 /** The whole interior's triangles (every zone). */
 export const INTERIOR_TRIANGLE_BUDGET = 120000;
+/** A deck room's zone (the pool hall): its triangle budget (the spec). */
+export const DECK_ROOM_TRIANGLE_BUDGET = 25000;
+/** A deck room's floor stands this far over the deck under it (m). */
+export const DECK_ROOM_FLOOR_M = 0.02;
+/** The meshes a zone can have: the room layers, then her see-through glass. */
+export const ZONE_LAYERS = [...LAYERS, "pane"] as const;
+export type ZoneLayer = (typeof ZONE_LAYERS)[number];
 
 type Spec = Pick<ShipSpec, "decks" | "sheerZ">;
 
@@ -84,24 +113,32 @@ const WALL: Record<Room["look"]["finish"], RGB> = {
   "white-panel": lin(0.86, 0.83, 0.74),
   enamel: lin(0.88, 0.88, 0.84),
   steel: lin(0.8, 0.76, 0.6),
+  // A glass room's solid walls: cream wallcovering.
+  glass: MODERN_COLOR.cream,
 };
 const WALL_TILE: Record<Room["look"]["finish"], number> = {
   oak: TILE.oak,
   "white-panel": TILE.white,
   enamel: TILE.none,
   steel: TILE.none,
+  glass: MODERN_TILE.cream,
 };
 const FLOOR: Record<Room["look"]["floor"], RGB> = {
   lino: lin(0.84, 0.78, 0.66),
   carpet: lin(0.6, 0.12, 0.1),
   mosaic: lin(0.82, 0.8, 0.72),
   steel: lin(0.45, 0.45, 0.46),
+  // A pale sea-glass mosaic round the pool; pine-gold teak planks.
+  tile: lin(0.82, 0.9, 0.9),
+  teak: MODERN_COLOR.teak,
 };
 const FLOOR_TILE: Record<Room["look"]["floor"], number> = {
   lino: TILE.lino,
   carpet: TILE.carpet,
   mosaic: TILE.none,
   steel: TILE.none,
+  tile: MODERN_TILE.poolTile,
+  teak: MODERN_TILE.teak,
 };
 const CEILING_WHITE: RGB = lin(0.9, 0.88, 0.82);
 const CEILING_STEEL: RGB = lin(0.82, 0.8, 0.7);
@@ -531,17 +568,40 @@ export interface InteriorSegment {
   slot: number;
 }
 
+/**
+ * A pool's basin (a `pool-edge` piece): its water's slot (after the rooms'
+ * and the long halls' parts), its room's slot and zone, its rim's four
+ * corners (ship frame, the rim's z) and its floor's z. Its water stands at
+ * the low rim's height (Interior: it spills as she leans).
+ */
+export interface InteriorBasin {
+  slot: number;
+  room: number;
+  zone: string;
+  rim: readonly P3[];
+  floorZ: number;
+}
+
 export interface InteriorBuild {
   /** Per zone, its non-empty layers' geometry (three.js axes, her part). */
-  zones: Map<string, Partial<Record<Layer, BufferGeometry>>>;
+  zones: Map<string, Partial<Record<ZoneLayer, BufferGeometry>>>;
   /** Each room's zone. */
   roomZone: Map<string, string>;
   /** The zones drawn with each zone (`zonesSeen`). */
   seen: Map<string, ReadonlySet<string>>;
   /** Each room's slot (its index in the map: `aRoom`, the water's). */
   slot: Map<string, number>;
-  /** Slots in the power and level uniforms: the rooms', then the parts'. */
+  /**
+   * Slots in the power and level uniforms: the rooms', then the parts',
+   * then the basins'.
+   */
   slots: number;
+  /** The pools' basins (their slots follow the parts'). */
+  basins: InteriorBasin[];
+  /** The zones holding a deck room: drawn whenever walking on her. */
+  deckZones: ReadonlySet<string>;
+  /** Whether her rooms use the modern finishes (`applyModern`). */
+  modern: boolean;
   /** A long hall's parts (`lightSegments`): their slots follow the rooms'. */
   segments: InteriorSegment[];
   /**
@@ -565,20 +625,21 @@ interface PlacedLamp extends Lamp {
 }
 
 /** Builds the rooms' meshes (see the file comment). */
-export function buildInterior(
-  interior: InteriorMap,
-  spec: Spec
-): InteriorBuild {
+export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
   const t0 =
     typeof performance !== "undefined" ? performance.now() : Date.now();
-  const rooms = interior.rooms;
+  // A deck room's floor stands 2 cm over the deck (and everything in it).
+  const rooms = given.rooms.map((r) =>
+    r.deckRoom ? { ...r, raiseM: (r.raiseM ?? 0) + DECK_ROOM_FLOOR_M } : r
+  );
+  const interior: InteriorMap = { ...given, rooms };
   const slot = new Map(rooms.map((r, k) => [r.id, k]));
   const kinds = edgeKinds(interior, spec);
-  const zoneLayers = new Map<string, Layers>();
+  const zoneLayers = new Map<string, ModernLayers>();
   const layersOf = (zone: string) => {
     let L = zoneLayers.get(zone);
     if (!L) {
-      L = new Layers();
+      L = new ModernLayers();
       zoneLayers.set(zone, L);
     }
     return L;
@@ -595,10 +656,34 @@ export function buildInterior(
       )
       .map((r) => r.id)
   );
+  // The pools' basins (cut out of their room's floor, their water's slot).
+  const holes = new Map<string, Rect[]>();
+  const basinAt: { f: Furniture; room: Room; k: number }[] = [];
+  for (const f of interior.furniture) {
+    if (f.piece !== "pool-edge") continue;
+    const k = slot.get(f.room);
+    if (k === undefined) continue;
+    const r = pieceRect(f);
+    const list = holes.get(f.room);
+    if (list) list.push(r);
+    else holes.set(f.room, [r]);
+    basinAt.push({ f, room: rooms[k], k });
+  }
   rooms.forEach((room, k) => {
     const L = layersOf(room.zone);
     L.room(k);
-    addRoom(L, room, rooms, kinds.get(room.id)!, spec, open);
+    skyLit(L, room.deckRoom === true);
+    if (room.look.finish === "glass") {
+      const got = addGlassRoom(
+        L,
+        room,
+        kinds.get(room.id)!,
+        spec,
+        holes.get(room.id) ?? []
+      );
+      for (const l of got) lamps.push({ ...l, room: k, wide: false });
+    } else addRoom(L, room, rooms, kinds.get(room.id)!, spec, open);
+    skyLit(L, false);
   });
   // The furniture, and its lamps.
   const byId = new Map(rooms.map((r) => [r.id, r]));
@@ -609,7 +694,9 @@ export function buildInterior(
     const L = layersOf(room.zone);
     L.room(k);
     L.pieces(true);
+    skyLit(L, room.deckRoom === true);
     const got = addPiece(L, f, room, spec);
+    skyLit(L, false);
     L.pieces(false);
     for (const l of got)
       lamps.push({ ...l, room: k, wide: f.piece === "dome" });
@@ -620,7 +707,10 @@ export function buildInterior(
     const L = layersOf(room.zone);
     L.room(slot.get(d.room)!);
     const z = roomFloorZ(room, d.at[0], d.at[1], spec);
-    shutDoor(L, [d.at[0], d.at[1], z], d.facing, d.style);
+    skyLit(L, room.deckRoom === true);
+    if (d.style === "glass") glassDoors(L, [d.at[0], d.at[1], z], d.facing);
+    else shutDoor(L, [d.at[0], d.at[1], z], d.facing, d.style);
+    skyLit(L, false);
   }
   // Rooms with no lamp of their own get ceiling lamps (and the foyers
   // more, over the floor).
@@ -653,13 +743,18 @@ export function buildInterior(
       segments.push({ room: k, part: i, slot: rooms.length + segments.length })
     );
   });
-  const zones = new Map<string, Partial<Record<Layer, BufferGeometry>>>();
+  const zones = new Map<string, Partial<Record<ZoneLayer, BufferGeometry>>>();
   const triangles = new Map<string, number>();
   for (const [zone, L] of zoneLayers) {
-    const out: Partial<Record<Layer, BufferGeometry>> = {};
-    LAYERS.forEach((layer, i) => {
+    const out: Partial<Record<ZoneLayer, BufferGeometry>> = {};
+    ZONE_LAYERS.forEach((layer, i) => {
       const b = L.all[i];
       if (b.triangles === 0) return;
+      // See-through glass is lit by its own shader (materials.ts).
+      if (layer === "pane") {
+        out[layer] = b.geometry();
+        return;
+      }
       const lit = light.bake(b, layer === "shell");
       // Baked by room; then a long hall's vertices to their part's slot.
       if (firstPart.size > 0)
@@ -674,8 +769,26 @@ export function buildInterior(
     zones.set(zone, out);
     triangles.set(zone, L.triangles);
   }
+  // The basins' slots, after the parts'.
+  const basins: InteriorBasin[] = basinAt.map(({ f, room, k }, i) => {
+    const r = pieceRect(f);
+    const z = roomFloorZ(room, f.at[0], f.at[1], spec);
+    return {
+      slot: rooms.length + segments.length + i,
+      room: k,
+      zone: room.zone,
+      rim: [
+        [r.x0, r.y0, z],
+        [r.x1, r.y0, z],
+        [r.x1, r.y1, z],
+        [r.x0, r.y1, z],
+      ],
+      floorZ: z - POOL_DEPTH_M,
+    };
+  });
+  const slots = rooms.length + segments.length + basins.length;
   // Each room's lowest floor point, in her part's frame (three axes).
-  const floors = new Float32Array((rooms.length + segments.length) * 3);
+  const floors = new Float32Array(slots * 3);
   rooms.forEach((room, k) => {
     if (room.ramp) {
       // A flight's lamps are at its head: its top step.
@@ -700,6 +813,12 @@ export function buildInterior(
     floors[seg.slot * 3 + 1] = roomFloorZ(room, x, y, spec);
     floors[seg.slot * 3 + 2] = -y;
   }
+  // Each basin's floor middle.
+  for (const b of basins) {
+    floors[b.slot * 3] = (b.rim[0][0] + b.rim[2][0]) / 2;
+    floors[b.slot * 3 + 1] = b.floorZ;
+    floors[b.slot * 3 + 2] = -(b.rim[0][1] + b.rim[2][1]) / 2;
+  }
 
   const t1 =
     typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -708,8 +827,11 @@ export function buildInterior(
     roomZone: new Map(rooms.map((r) => [r.id, r.zone])),
     seen: zonesSeen(interior),
     slot,
-    slots: rooms.length + segments.length,
+    slots,
     segments,
+    basins,
+    deckZones: new Set(rooms.filter((r) => r.deckRoom).map((r) => r.zone)),
+    modern: usesModern(interior),
     floors,
     neighbours: light.open.map((set, k) => [...set].filter((j) => j !== k)),
     triangles,
@@ -869,11 +991,463 @@ export function addPiece(
     case "hose-reel":
       return hoseReel(L, floor, f.yaw);
     default: {
+      // Her modern pieces (the pool, loungers, exit signs...): a zone's
+      // layers are always `ModernLayers` (buildInterior).
+      if (isModern(f.piece)) {
+        if (!(L instanceof ModernLayers))
+          throw new Error(`modern piece ${f.piece} needs ModernLayers`);
+        return MODERN_PIECES[f.piece](L, floor, f.yaw);
+      }
       // Beds, bunks, wardrobes, washstands, sofas, tables, chairs.
       const build = FURNITURE[f.piece];
       return build ? build(L, floor, f.yaw) : [];
     }
   }
+}
+
+const MODERN_IDS: ReadonlySet<string> = new Set(MODERN_PIECE_IDS);
+
+function isModern(piece: PieceId): piece is PieceId & ModernPieceId {
+  return MODERN_IDS.has(piece);
+}
+
+/** Whether an interior uses her modern finishes or pieces. */
+export function usesModern(interior: InteriorMap): boolean {
+  return (
+    interior.rooms.some(
+      (r) =>
+        r.look.finish === "glass" ||
+        r.look.floor === "tile" ||
+        r.look.floor === "teak"
+    ) ||
+    interior.furniture.some((f) => isModern(f.piece)) ||
+    interior.shutDoors.some((d) => d.style === "glass")
+  );
+}
+
+/**
+ * Tags what follows with the daylight it catches (1: a deck room's, under
+ * the sky; 0: inside her): `aGlow` on the shell, wood and metal, which
+ * only her shader reads (`uDaylight`). Glass keeps its own glow.
+ */
+function skyLit(L: Layers, on: boolean): void {
+  const v = on ? 1 : 0;
+  L.shell.glowV = v;
+  L.wood.glowV = v;
+  L.metal.glowV = v;
+}
+
+/** A plan rectangle (ship frame). */
+interface Rect {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** A blocking piece's plan box (its footprint, square to the ship). */
+function pieceRect(f: Furniture): Rect {
+  const fp = pieceFootprint(f.piece);
+  if (!fp) throw new Error(`piece ${f.piece} has no footprint`);
+  const turned = Math.abs(Math.round(f.yaw / (Math.PI / 2))) % 2 === 1;
+  const hx = (turned ? fp.ly : fp.lx) / 2;
+  const hy = (turned ? fp.lx : fp.ly) / 2;
+  return {
+    x0: f.at[0] - hx,
+    y0: f.at[1] - hy,
+    x1: f.at[0] + hx,
+    y1: f.at[1] + hy,
+  };
+}
+
+/**
+ * An outline cut into the light's cells, less the holes (a pool's
+ * basin): each cell clipped round each hole (the parts either side of it,
+ * then above and below it).
+ */
+function cellsMinus(outline: readonly V2[], holes: readonly Rect[]): V2[][] {
+  let out = cells(outline);
+  const BIG = 1e5;
+  for (const h of holes) {
+    const next: V2[][] = [];
+    for (const c of out) {
+      const parts = [
+        clipRect(c, -BIG, -BIG, h.x0, BIG),
+        clipRect(c, h.x1, -BIG, BIG, BIG),
+        clipRect(c, h.x0, -BIG, h.x1, h.y0),
+        clipRect(c, h.x0, h.y1, h.x1, BIG),
+      ];
+      for (const p of parts)
+        if (p.length >= 3 && Math.abs(area(p)) > 1e-5) next.push(p);
+    }
+    out = next;
+  }
+  return out;
+}
+
+/** A glass room's upstand under the glass (m). */
+const UPSTAND_M = 0.3;
+/** A glass room's mullions are about this far apart (m). */
+const MULLION_M = 1.8;
+/** A glass room's dome: panes round it, and rings from its foot up. */
+const DOME_SEGMENTS = 24;
+const DOME_RINGS = 6;
+/** A glass room's walls stand in this far from its outline (m): the model's
+ * own walls there never fight them. */
+const GLASS_INSET_M = 0.04;
+/** Her white-painted steel: mullions, ribs, the eaves. */
+const FRAME_WHITE: RGB = lin(0.9, 0.91, 0.92);
+/** The roof's glass, a little bluer than the walls'. */
+const ROOF_GLASS: RGB = lin(0.6, 0.78, 0.84);
+
+/**
+ * Where a roof beam across at x crosses the glass round a dome: the spans
+ * from ya to yb outside the dome's foot (an ellipse).
+ */
+function roofSpans(
+  x: number,
+  ya: number,
+  yb: number,
+  dome: Room["look"]["dome"]
+): [number, number][] {
+  if (!dome) return [[ya, yb]];
+  const u = (x - dome.at[0]) / dome.a;
+  if (Math.abs(u) >= 1) return [[ya, yb]];
+  const h = dome.b * Math.sqrt(Math.max(0, 1 - u * u));
+  const out: [number, number][] = [];
+  if (dome.at[1] - h > ya + 0.2) out.push([ya, dome.at[1] - h]);
+  if (dome.at[1] + h < yb - 0.2) out.push([dome.at[1] + h, yb]);
+  return out;
+}
+/** Frosted glass (the doors): the pane shader's own tile. */
+export const FROSTED_TILE = MODERN_TILE.pane + 1;
+
+/**
+ * A glass room (her pool hall): the floor less its basins, glass walls on
+ * a white upstand between white mullions (solid cream walls on its
+ * `solidEdges`), a flat glass roof at the eaves (`ceilingM`) over its
+ * plan's box and, given one (`look.dome`), a glass dome on it (her
+ * model's), its white curb, ribs and rings in the shell and metal.
+ * Lamps: spotlights round the dome's lower ring, lighting the floor.
+ */
+function addGlassRoom(
+  L: Layers,
+  room: Room,
+  edges: readonly EdgeInfo[],
+  spec: Spec,
+  holes: readonly Rect[]
+): Lamp[] {
+  if (!(L instanceof ModernLayers))
+    throw new Error(`glass room ${room.id} needs ModernLayers`);
+  const shell = L.shell;
+  const metal = L.metal;
+  const poly = room.outline;
+  const fz = (p: V2) => roomFloorZ(room, p[0], p[1], spec);
+  const ez = (p: V2) => fz(p) + room.ceilingM;
+  const solid = new Set(room.look.solidEdges ?? []);
+  const wall = WALL[room.look.finish];
+  shell.vBase = fz(centroid(poly));
+
+  // The floor, less the basins.
+  shell.tileId = FLOOR_TILE[room.look.floor];
+  const floor = scale(FLOOR[room.look.floor], SHADE.floor);
+  for (const cell of cellsMinus(poly, holes))
+    for (const [a, b, c] of cellTris(cell))
+      shell.tri(
+        P(cell[a], fz(cell[a])),
+        P(cell[b], fz(cell[b])),
+        P(cell[c], fz(cell[c])),
+        floor
+      );
+  shell.tileId = TILE.none;
+
+  // The walls.
+  for (let i = 0; i < poly.length; i += 1) {
+    if (edges[i].kind !== "wall") continue;
+    const a0 = poly[i];
+    const b0 = poly[(i + 1) % poly.length];
+    const dx = b0[0] - a0[0];
+    const dy = b0[1] - a0[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const a: V2 = [a0[0] + nx * GLASS_INSET_M, a0[1] + ny * GLASS_INSET_M];
+    const b: V2 = [b0[0] + nx * GLASS_INSET_M, b0[1] + ny * GLASS_INSET_M];
+    if (solid.has(i)) {
+      // Cream to the eaves, in columns (points for the light).
+      const n = Math.max(1, Math.ceil(len / COLUMN_M));
+      for (let k = 0; k < n; k += 1) {
+        const p: V2 = [a[0] + (dx * k) / n, a[1] + (dy * k) / n];
+        const q: V2 = [a[0] + (dx * (k + 1)) / n, a[1] + (dy * (k + 1)) / n];
+        shell.tileId = TILE.none;
+        inward(
+          shell,
+          p,
+          q,
+          fz(p),
+          fz(q),
+          fz(p) + SKIRTING_M,
+          fz(q) + SKIRTING_M,
+          scale(FRAME_WHITE, 0.8),
+          scale(FRAME_WHITE, 0.8)
+        );
+        shell.tileId = WALL_TILE[room.look.finish];
+        for (const [lo, hi] of [
+          [SKIRTING_M, 1.0],
+          [1.0, 2.0],
+          [2.0, room.ceilingM],
+        ] as const)
+          inward(
+            shell,
+            p,
+            q,
+            fz(p) + lo,
+            fz(q) + lo,
+            fz(p) + hi,
+            fz(q) + hi,
+            wall,
+            wall
+          );
+      }
+      shell.tileId = TILE.none;
+      continue;
+    }
+    // Glass on a white upstand, between mullions, under an eaves beam.
+    const n = Math.max(1, Math.round(len / MULLION_M));
+    for (let k = 0; k < n; k += 1) {
+      const p: V2 = [a[0] + (dx * k) / n, a[1] + (dy * k) / n];
+      const q: V2 = [a[0] + (dx * (k + 1)) / n, a[1] + (dy * (k + 1)) / n];
+      inward(
+        shell,
+        p,
+        q,
+        fz(p),
+        fz(q),
+        fz(p) + UPSTAND_M,
+        fz(q) + UPSTAND_M,
+        scale(FRAME_WHITE, 0.82),
+        FRAME_WHITE
+      );
+      // The upstand's top, a sill.
+      shell.quad(
+        P(p, fz(p) + UPSTAND_M),
+        P(q, fz(q) + UPSTAND_M),
+        P([q[0] + nx * 0.08, q[1] + ny * 0.08], fz(q) + UPSTAND_M),
+        P([p[0] + nx * 0.08, p[1] + ny * 0.08], fz(p) + UPSTAND_M),
+        FRAME_WHITE
+      );
+      L.pane.quad(
+        P(p, fz(p) + UPSTAND_M),
+        P(q, fz(q) + UPSTAND_M),
+        P(q, ez(q)),
+        P(p, ez(p)),
+        MODERN_COLOR.glass
+      );
+      L.pane.quad(
+        P(q, fz(q) + UPSTAND_M),
+        P(p, fz(p) + UPSTAND_M),
+        P(p, ez(p)),
+        P(q, ez(q)),
+        MODERN_COLOR.glass
+      );
+    }
+    for (let k = 0; k <= n; k += 1) {
+      const p: V2 = [a[0] + (dx * k) / n, a[1] + (dy * k) / n];
+      const c: V2 = [p[0] + nx * 0.05, p[1] + ny * 0.05];
+      metal.box(
+        [c[0], c[1], (fz(p) + ez(p)) / 2],
+        0.1,
+        0.1,
+        ez(p) - fz(p),
+        FRAME_WHITE,
+        { bottom: true }
+      );
+    }
+    metal.beam(
+      [a[0] + nx * 0.08, a[1] + ny * 0.08, ez(a) - 0.06],
+      [b[0] + nx * 0.08, b[1] + ny * 0.08, ez(b) - 0.06],
+      0.16,
+      0.12,
+      FRAME_WHITE
+    );
+  }
+
+  // The roof: flat glass at the eaves over the plan's box, round the
+  // dome's foot (a white curb), and the dome, its white ribs and rings.
+  const [x0, y0, x1, y1] = bounds(poly);
+  const xa = x0 + GLASS_INSET_M;
+  const xb = x1 - GLASS_INSET_M;
+  const ya = y0 + GLASS_INSET_M;
+  const yb = y1 - GLASS_INSET_M;
+  const eave = ez(centroid(poly));
+  const dome = room.look.dome;
+  // The dome's points: `i` round (from +x), `r` up (0 its foot).
+  const at = (i: number, r: number): P3 => {
+    const t = (i / DOME_SEGMENTS) * Math.PI * 2;
+    const el = (r / DOME_RINGS) * (Math.PI / 2);
+    return dome
+      ? [
+          dome.at[0] + dome.a * Math.cos(el) * Math.cos(t),
+          dome.at[1] + dome.b * Math.cos(el) * Math.sin(t),
+          eave + dome.rise * Math.sin(el),
+        ]
+      : [0, 0, eave];
+  };
+  const box = [
+    new Vector2(xa, ya),
+    new Vector2(xb, ya),
+    new Vector2(xb, yb),
+    new Vector2(xa, yb),
+  ];
+  const hole: Vector2[] = [];
+  if (dome)
+    for (let i = DOME_SEGMENTS - 1; i >= 0; i -= 1) {
+      const p = at(i, 0);
+      hole.push(new Vector2(p[0], p[1]));
+    }
+  const flat = [...box, ...hole];
+  for (const [i, j, k] of ShapeUtils.triangulateShape(
+    box,
+    dome ? [hole] : []
+  )) {
+    const A: P3 = [flat[i].x, flat[i].y, eave];
+    const B: P3 = [flat[j].x, flat[j].y, eave];
+    const C: P3 = [flat[k].x, flat[k].y, eave];
+    L.pane.tri(A, B, C, ROOF_GLASS);
+    L.pane.tri(A, C, B, ROOF_GLASS);
+  }
+  // Its frame: beams across every MULLION_M·2 along x, over the glass.
+  const nBeams = Math.max(1, Math.round((xb - xa) / (2 * MULLION_M)));
+  for (let i = 1; i < nBeams; i += 1) {
+    const x = xa + ((xb - xa) * i) / nBeams;
+    for (const [lo, hi] of roofSpans(x, ya, yb, dome))
+      metal.beam(
+        [x, lo, eave - 0.07],
+        [x, hi, eave - 0.07],
+        0.08,
+        0.12,
+        FRAME_WHITE
+      );
+  }
+  for (const y of [ya, yb])
+    metal.beam(
+      [xa, y, eave - 0.07],
+      [xb, y, eave - 0.07],
+      0.14,
+      0.14,
+      FRAME_WHITE
+    );
+  if (dome) {
+    for (let r = 0; r < DOME_RINGS; r += 1)
+      for (let i = 0; i < DOME_SEGMENTS; i += 1) {
+        const A = at(i, r);
+        const B = at(i + 1, r);
+        const C = at(i + 1, r + 1);
+        const D = at(i, r + 1);
+        // Outward, then inward (the top ring's two points meet: one
+        // triangle each).
+        L.pane.quad(A, B, C, D, ROOF_GLASS);
+        L.pane.quad(D, C, B, A, ROOF_GLASS);
+      }
+    // The curb at its foot, both faces white, and the ribs and rings.
+    for (let i = 0; i < DOME_SEGMENTS; i += 1) {
+      const p = at(i, 0);
+      const q = at(i + 1, 0);
+      const lo = eave - 0.06;
+      const hi = eave + 0.24;
+      shell.quad(
+        P([p[0], p[1]], lo),
+        P([q[0], q[1]], lo),
+        P([q[0], q[1]], hi),
+        P([p[0], p[1]], hi),
+        FRAME_WHITE
+      );
+      shell.quad(
+        P([q[0], q[1]], lo),
+        P([p[0], p[1]], lo),
+        P([p[0], p[1]], hi),
+        P([q[0], q[1]], hi),
+        scale(FRAME_WHITE, 0.85)
+      );
+    }
+    for (let i = 0; i < DOME_SEGMENTS; i += 2)
+      for (let r = 0; r < DOME_RINGS; r += 1)
+        metal.beam(at(i, r), at(i, r + 1), 0.08, 0.12, FRAME_WHITE, false);
+    for (const r of [2, 4])
+      for (let i = 0; i < DOME_SEGMENTS; i += 1)
+        metal.beam(at(i, r), at(i + 1, r), 0.06, 0.06, FRAME_WHITE, false);
+  }
+
+  // Spotlights on the dome's lower ring (or over the middle without one):
+  // the hall lit evenly at night (the bake reaches the floor below).
+  const lamps: Lamp[] = [];
+  const spots: P3[] = [];
+  if (dome) for (let i = 1; i < DOME_SEGMENTS; i += 2) spots.push(at(i, 2));
+  else {
+    const n = Math.max(1, Math.round((xb - xa) / 4));
+    for (let i = 0; i < n; i += 1)
+      spots.push([xa + ((xb - xa) * (i + 0.5)) / n, (ya + yb) / 2, eave]);
+  }
+  for (const [x, y, z] of spots) {
+    metal.cyl([x, y, z - 0.16], 0.09, 0.07, 0.14, 8, MODERN_COLOR.chrome);
+    // Its lens, facing down, glowing (HDR).
+    const g = L.glass;
+    g.glowV = 2.4;
+    const N = 8;
+    for (let k = 0; k < N; k += 1) {
+      const t0 = (k / N) * Math.PI * 2;
+      const t1 = ((k + 1) / N) * Math.PI * 2;
+      g.tri(
+        [x, y, z - 0.162],
+        [x + 0.07 * Math.cos(t1), y + 0.07 * Math.sin(t1), z - 0.162],
+        [x + 0.07 * Math.cos(t0), y + 0.07 * Math.sin(t0), z - 0.162],
+        COLOR.lamp
+      );
+    }
+    g.glowV = 0;
+    lamps.push({ p: [x, y, z - 0.3], intensity: 0.85, radius: 6 });
+  }
+  return lamps;
+}
+
+/**
+ * A pair of glass doors on a wall (hers: the stair up to a lido), 1.8 m
+ * wide: a chrome frame and mullion, frosted panes, a chrome bar on each
+ * leaf. `at` on the wall at the floor, `facing` into the room.
+ */
+function glassDoors(L: Layers, at: P3, facing: number): void {
+  if (!(L instanceof ModernLayers))
+    throw new Error("glass doors need ModernLayers");
+  const W = 0.9;
+  const H = DOOR_HEAD_M;
+  const X = GLASS_INSET_M + 0.03;
+  L.place(at, facing);
+  const m = L.metal;
+  const chrome = MODERN_COLOR.chrome;
+  for (const y of [-W, 0, W])
+    m.box([X, y, H / 2], 0.06, 0.07, H, chrome, { back: true, bottom: true });
+  m.box([X, 0, H + 0.04], 0.06, 2 * W + 0.07, 0.08, chrome, { back: true });
+  m.box([X, 0, 0.05], 0.06, 2 * W, 0.1, chrome, { back: true, bottom: true });
+  for (const s of [-1, 1])
+    m.box([X + 0.08, s * 0.16, 1.05], 0.03, 0.03, 0.9, chrome, {
+      back: true,
+    });
+  const pane = L.pane;
+  const was = pane.tileId;
+  pane.tileId = FROSTED_TILE;
+  for (const [ya, yb] of [
+    [-W + 0.035, -0.035],
+    [0.035, W - 0.035],
+  ] as const)
+    pane.quad(
+      [X, ya, 0.1],
+      [X, yb, 0.1],
+      [X, yb, H],
+      [X, ya, H],
+      lin(0.86, 0.92, 0.94)
+    );
+  pane.tileId = was;
+  L.place(null);
 }
 
 /** Ship-frame point. */
@@ -1180,6 +1754,7 @@ const DOOR_STYLE: Record<Room["look"]["finish"], DoorStyle> = {
   "white-panel": "white",
   enamel: "white",
   steel: "steel",
+  glass: "white",
 };
 
 /**
