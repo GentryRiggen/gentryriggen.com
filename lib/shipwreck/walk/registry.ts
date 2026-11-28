@@ -4,6 +4,7 @@ import { TITANIC_INTERIOR } from "../interior/titanic";
 import type { ShipId } from "../ships/types";
 import { BRITANNIC_WALK } from "./britannicDecks";
 import { CARPATHIA_WALK } from "./carpathiaDecks";
+import { CONCORDIA_WALK } from "./concordiaDecks";
 import { LUSITANIA_WALK } from "./lusitaniaDecks";
 import { TITANIC_WALK } from "./titanicDecks";
 import type { WalkMap } from "./types";
@@ -22,6 +23,7 @@ export const SHIP_WALKS: Partial<Record<ShipId, ShipWalk>> = {
   lusitania: { deck: LUSITANIA_WALK },
   britannic: { deck: BRITANNIC_WALK },
   carpathia: { deck: CARPATHIA_WALK },
+  concordia: { deck: CONCORDIA_WALK },
 };
 
 const merged = new Map<ShipId, WalkMap>();

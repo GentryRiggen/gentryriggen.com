@@ -4,6 +4,7 @@ export { TITANIC_WALK } from "./titanicDecks";
 export { LUSITANIA_WALK } from "./lusitaniaDecks";
 export { BRITANNIC_WALK } from "./britannicDecks";
 export { CARPATHIA_WALK } from "./carpathiaDecks";
+export { CONCORDIA_WALK } from "./concordiaDecks";
 export { SHIP_WALKS, walkMapFor, type ShipWalk } from "./registry";
 export * from "./slope";
 export * from "./step";

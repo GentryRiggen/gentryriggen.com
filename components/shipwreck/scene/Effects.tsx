@@ -22,6 +22,7 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { buildHull, hullHalfBreadth } from "@/lib/shipwreck/sim/geometry";
 import { sampleTrack, type SimTrack } from "@/lib/shipwreck/sim/track";
+import { areaById, floorZ, walkMapFor } from "@/lib/shipwreck/walk";
 import { shipToThree, shipToThreeInto, type V3 } from "./cameraMath";
 import type { SceneRuntime, WalkInfo } from "./runtime";
 import { isDaylit, type SceneSettings } from "./settings";
@@ -39,7 +40,9 @@ import { poseForemast } from "./mastWreck";
 import { StormEffects, type StormFrame } from "./stormEffects";
 import { alongRoute, boatRoute, rockLodgedT, strikeSpray } from "./giglio";
 import {
+  BOARD_REACH_M,
   boardableBoats,
+  boatSpot,
   nearestBoardable,
   rideLowered,
   type BoatSpot,
@@ -237,6 +240,7 @@ export default function Effects({
     [dayPts]
   );
   const hull = useMemo(() => buildHull(spec), [spec]);
+  const walkMap = useMemo(() => walkMapFor(spec.id), [spec]);
   // The afternoon's smoke, steam, the hit and her hanging boats.
   const afternoon = useMemo(
     () =>
@@ -683,16 +687,17 @@ export default function Effects({
           if (i >= visible.boats.count) continue;
           const b = visible.boats.info(i);
           if (b.side === "centre") continue;
-          const sign = b.side === "port" ? 1 : -1;
-          spots.push({
-            index: i,
-            x: b.x,
-            y: sign * Math.max(0, Math.abs(b.edgeY) - 1),
-            halfLength: b.length / 2,
-          });
+          spots.push(boatSpot(b));
         }
         const w = runtime.walkInfo;
-        runtime.boardable = nearestBoardable(w.x, w.y, spots) ?? -1;
+        // The walker's floor: a recess boat (the Concordia's) is reached
+        // only from its own deck, not the decks over it.
+        const floor =
+          walkMap && w.area && areaById(walkMap, w.area)
+            ? floorZ(walkMap, w.area, w.x, spec, w.y)
+            : undefined;
+        runtime.boardable =
+          nearestBoardable(w.x, w.y, spots, BOARD_REACH_M, floor) ?? -1;
       }
     } else {
       boardIn.current = 0;

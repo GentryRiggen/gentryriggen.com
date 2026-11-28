@@ -1028,7 +1028,7 @@ describe("playback: riding a lifeboat", () => {
   });
 
   it("leaveBoat goes back to the outside view on a ship you cannot walk", () => {
-    const store = started(concordia);
+    const store = started(poseidon);
     store.getState().boardBoat(1);
     expect(store.getState().walk.phase).toBe("boat");
     store.getState().leaveBoat();

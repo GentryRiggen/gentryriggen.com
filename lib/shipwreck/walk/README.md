@@ -21,7 +21,7 @@ the sea is `z`).
 
 ## The maps
 
-`titanicDecks.ts`, `lusitaniaDecks.ts`, `britannicDecks.ts` and `carpathiaDecks.ts` (`walkMapFor(ship)` from `registry.ts`, whose `SHIP_WALKS` lists each ship's deck map and interior; null for a
+`titanicDecks.ts`, `lusitaniaDecks.ts`, `britannicDecks.ts`, `carpathiaDecks.ts` and `concordiaDecks.ts` (`walkMapFor(ship)` from `registry.ts`, whose `SHIP_WALKS` lists each ship's deck map and interior; null for a
 ship you cannot walk on, such as the Edmund Fitzgerald) mark, per ship:
 
 - **areas**: counter-clockwise outlines on a named deck. Their sides follow
@@ -31,14 +31,16 @@ ship you cannot walk on, such as the Edmund Fitzgerald) mark, per ship:
   house side, or a rail over a lower deck rather than the sea.
 - **blockers**: circles and boxes (funnels, houses, casings, hatches,
   masts, cranes, ventilators, benches, davits), copied from where the
-  model's recipes draw them. Boats are not blockers: they leave.
+  model's recipes draw them. Boats are not blockers: they leave (but the
+  Concordia's, which fill her boat deck by her rail: see below).
 - **stairs**: two-way links between areas of different heights. Walking
   into either end (within half its width, from outside) moves you to the
   other end; arriving inside an end does not send you back. (The
   Lusitania's `aft-gangway` instead joins two decks at one height across
   her mast gap, so getting aft takes one step.) Each end leaves room for
   the walker's body (0.3 m) clear of every blocker.
-- **spawn**: on the boat deck, where Walk and Back on deck put you.
+- **spawn**: on the boat deck (the Concordia: her pool hall), where Walk
+  and Back on deck put you.
 
 Titanic: boat deck, forward well, forecastle, after well, poop. Britannic:
 the same five decks on her 94 ft beam (her own deck edge), with her
@@ -51,7 +53,22 @@ the mainmast's gap, the second class house's deck (`aft-deck`) and the
 stern. Carpathia: forecastle, forward well, the bridge deck forward of the
 boat deck, the boat deck, a covered promenade down each side under it (a
 ladder from the boat deck; closed at both ends) and the open after deck
-(no poop) by the white stern deckhouse. `deckZAt` measures sheer from
+(no poop) by the white stern deckhouse. Costa Concordia (1.17; game decks,
+the model's numbering, with Costa's in the file's comments): the pool hall
+under the glass roof (deck 12, where you start, starboard of the pool), the
+aft and forward lidos either side of it (deck 13: the aft pool, its glass
+houses, the funnel; the forward pool and the water slide), the terrace
+under the aft lido (deck 12), the sports deck over the spa (deck 14, round
+the radar mast) and the boat deck's promenade each side (deck 4, between
+the recess wall, deepened to 7.4 m for it, and her 26 boats, which are
+blockers there all night). Stairs join the lidos to the pool hall, the
+terrace and the sports deck, and stair towers join each lido to each side's
+boat deck (doors in the recess wall). The recipe and the map read the same
+numbers, `ships/concordiaLayout.ts`. Boarding: a recess boat's spot is its
+inboard side (`boatSpot` in `boatRide.ts`), so the promenade reaches it,
+and only a walker on its own deck gets it (`nearestBoardable` takes the
+walker's floor), never one on the lidos over it.
+`deckZAt` measures sheer from
 `spec.sheerRefDeck` (the Concordia's deck 3), else the C deck, or `Upper` on a
 ship (the Carpathia) with no C deck.
 

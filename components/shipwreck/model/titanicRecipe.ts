@@ -182,6 +182,11 @@ export interface BoatRecipe {
   wreckedAtT?: number;
   /** Stowed in this gantry set (`ShipRecipe.gantries` index), not davits. */
   gantry?: number;
+  /**
+   * Stowed in a recess in her side (the cruise kit's `recessBoats`), its
+   * deck inboard of it: a walker gets in from its inboard side.
+   */
+  recess?: true;
 }
 
 /**

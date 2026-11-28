@@ -972,7 +972,7 @@ test("the Costa Concordia's real night reaches her rest by the harbour at ×100,
   expect(await page.evaluate(() => window.__shipwreck!.getState!().ship)).toBe(
     "concordia"
   );
-  // Giglio's coast and harbour lights, no iceberg; no deck to walk (yet).
+  // Giglio's coast and harbour lights, no iceberg; her decks walkable (1.17).
   // (The island is built a little each frame, so no frame is blocked: in
   // software WebGL's few frames a second that takes a while.)
   await expect
@@ -986,7 +986,7 @@ test("the Costa Concordia's real night reaches her rest by the harbour at ×100,
   expect(
     await page.evaluate(() => window.__shipwreck!.isShown!("iceberg"))
   ).toBe(false);
-  await expect(page.getByTestId("shipwreck-walk")).toHaveCount(0);
+  await expect(page.getByTestId("shipwreck-walk")).toBeVisible();
 
   // The last ten minutes of her run at ×100.
   await computeAll(page);
