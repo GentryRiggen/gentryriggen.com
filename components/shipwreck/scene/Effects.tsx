@@ -691,11 +691,15 @@ export default function Effects({
         }
         const w = runtime.walkInfo;
         // The walker's floor: a recess boat (the Concordia's) is reached
-        // only from its own deck, not the decks over it.
+        // only from its own deck, not the decks over it; a walker on her
+        // map with no area under them reaches none of those (−∞ is no
+        // deck's height), the other boats as before.
         const floor =
           walkMap && w.area && areaById(walkMap, w.area)
             ? floorZ(walkMap, w.area, w.x, spec, w.y)
-            : undefined;
+            : walkMap
+              ? -Infinity
+              : undefined;
         runtime.boardable =
           nearestBoardable(w.x, w.y, spots, BOARD_REACH_M, floor) ?? -1;
       }

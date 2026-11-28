@@ -9,6 +9,7 @@ import {
   CONCORDIA_LIDO_FWD,
   CONCORDIA_LIFERAFT_RACKS,
   CONCORDIA_MAST_X,
+  CONCORDIA_POOL_DOME,
   CONCORDIA_POOL_GLASS,
   CONCORDIA_POOLS,
   CONCORDIA_RADOMES,
@@ -233,6 +234,14 @@ export function concordiaRecipe(
     flush("deck-11", "11", CONCORDIA_DECK11_AFT, DECK11_FWD, TIER, {
       roundFwd: 16,
       under: true,
+      // Under the pool hall's floor (its middle cells, a quarter of her
+      // breadth each side of the centre line): hidden while walking on
+      // her, so her deck sees down into the pool's basin.
+      walkHiddenRoof: {
+        x0: CONCORDIA_POOL_GLASS.x0,
+        x1: CONCORDIA_POOL_GLASS.x1,
+        halfWidth: CONCORDIA_POOL_GLASS.halfWidth / 2,
+      },
     }),
     // The top: her pool decks either side of the glass-roofed pool.
     flush(
@@ -257,6 +266,8 @@ export function concordiaRecipe(
       wallColor: GLASS_DARK,
       roof: "paint",
       roofColor: GLASS_DARK,
+      // While walking on her the room kit draws the pool hall here.
+      walkHidden: true,
     },
     flush(
       "deck-12-fwd",
@@ -598,7 +609,17 @@ export function concordiaRecipe(
     deckZ,
     houses: [],
     // The glass roof over the main pool (a retractable "magrodome" [WPC]).
-    domes: [{ x: 16, z: Z("13"), a: 17.5, b: 13, c: 3.6 }],
+    // While walking on her the room kit draws it (in see-through glass).
+    domes: [
+      {
+        x: CONCORDIA_POOL_DOME.x,
+        z: Z("13"),
+        a: CONCORDIA_POOL_DOME.a,
+        b: CONCORDIA_POOL_DOME.b,
+        c: CONCORDIA_POOL_DOME.c,
+        walkHidden: true,
+      },
+    ],
     funnels,
     masts,
     boats,

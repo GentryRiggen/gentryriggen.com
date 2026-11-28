@@ -103,6 +103,29 @@ surface goes murky green, so a drowned room seen from above reads as
 under water. The room power, levels, torch and time uniforms are the
 water's own objects (one source of truth).
 
+## Her pool hall (a deck room, 1.17)
+
+`kit.ts` builds a `glass` room (`addGlassRoom`): the floor 2 cm over the
+deck (`DECK_ROOM_FLOOR_M`) less each `pool-edge` basin, glass sides on a
+white upstand between mullions, solid cream walls on `look.solidEdges`
+with `glass` shut doors (frosted pairs under exit signs), a flat glass
+roof at the eaves and `look.dome` over it, spotlights round the dome's
+lower ring. Glass goes in a fifth mesh per zone, `pane` (`ModernLayers`,
+`glassMaterial`: a faint tint catching the sky at a grazing look, blended,
+not depth-written). Her faces carry the daylight they catch in `aGlow`
+(shell, wood, metal), which her shader (`withModern`'s `uDaylight`)
+turns into even sky light by day, whatever her power. Each basin gets its
+own slot after the rooms' and parts' (`InteriorBuild.basins`); its water
+is the surface shader over the basin's plan (`basinWater`, `aClear` 1:
+clear blue), at its low rim's height less 1 cm (spilling as she leans).
+
+`Interior.tsx` draws a deck room's zone whenever walking on her: from her
+decks before the depth clear (order 6–8, part of her exterior, depth
+tested), with the walker in it inside-wins after the clear (10–10.6). It
+hides her model's mesh "walk-hidden" meanwhile (her `pool-glass` block,
+its dome and the deck-11 roof cells under the hall: `Block.walkHidden`,
+`walkHiddenRoof`, `Dome.walkHidden`), and restores it off the walk.
+
 ## Water (`water.ts`)
 
 Per drawn room, X-ray's approach: a level **surface** and a **body**, see-through,

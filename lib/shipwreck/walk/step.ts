@@ -102,6 +102,11 @@ export interface StepContext {
   /** Whether deck doors lead inside (false after the break); default true. */
   interiorsOpen?: boolean;
   /**
+   * Whether a lifeboat (its index) has been lowered: its blocker
+   * (`Blocker.boat`) no longer holds the walker. Missing: every boat stays.
+   */
+  boatLowered?(index: number): boolean;
+  /**
    * No heel drift this step (a map with `heelFeel`): the HUD has the input
    * off (the end card) or a lift is carrying them.
    */
@@ -291,6 +296,12 @@ function resolveBody(ctx: StepContext, area: WalkArea, s: Sub): void {
       let nx = 0;
       let ny = 0;
       let push = 0;
+      if (
+        b.kind === "box" &&
+        b.boat !== undefined &&
+        ctx.boatLowered?.(b.boat) === true
+      )
+        continue;
       if (b.kind === "circle") {
         const dx = s.x - b.at[0];
         const dy = s.y - b.at[1];

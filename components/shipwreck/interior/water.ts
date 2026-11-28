@@ -20,6 +20,7 @@ import {
   refine,
   RISER_M,
   triangulate,
+  type InteriorBasin,
 } from "./kit";
 
 /**
@@ -40,6 +41,13 @@ import {
  * - **Body**: each wall's and balustrade's face (a seam is open), inset
  *   2 cm, from the floor's lowest line up, drawn only under the level:
  *   the walls go dark under the water, with a wet line at the surface.
+ *
+ * - **A pool's water** (`basinWater`, her pool hall's): the same surface
+ *   shader over the basin's plan, its slot's level the low rim's (Interior
+ *   sets it), clear and blue (`aClear` 1; every room's water is 0).
+ *
+ * A deck room (her pool hall) has no water of its own: the sea is far
+ * below it and the walker's water there is the sea's.
  *
  * Lit by `uRoomPower[]` (the room's lamps, 0..1) and the torch
  * (`uTorchOn` eased 0..1, `uTorchPos`, `uTorchDir`, world), shared with
@@ -78,6 +86,25 @@ interface Arrays {
   bodyRoom: number[];
 }
 
+function surfaceGeometry(
+  pos: number[],
+  room: number[],
+  floor: number[],
+  top: number[],
+  clear: number
+): BufferGeometry {
+  const g = new BufferGeometry();
+  g.setAttribute("position", new Float32BufferAttribute(pos, 3));
+  g.setAttribute("aRoom", new Float32BufferAttribute(room, 1));
+  g.setAttribute("aFloor", new Float32BufferAttribute(floor, 1));
+  g.setAttribute("aTop", new Float32BufferAttribute(top, 1));
+  g.setAttribute(
+    "aClear",
+    new Float32BufferAttribute(new Float32Array(room.length).fill(clear), 1)
+  );
+  return g;
+}
+
 /** The rooms' water geometry, one surface and one body per zone. */
 export function interiorWater(
   interior: InteriorMap,
@@ -89,6 +116,8 @@ export function interiorWater(
   const arrays = new Map<string, Arrays>();
   interior.rooms.forEach((room, k) => {
     slot.set(room.id, k);
+    // A deck room: no water of its own (its slot kept for the lamps).
+    if (room.deckRoom) return;
     let list = zoneSlots.get(room.zone);
     if (!list) {
       list = [];
@@ -114,17 +143,72 @@ export function interiorWater(
     { surface: BufferGeometry; body: BufferGeometry }
   >();
   for (const [zone, a] of arrays) {
-    const surface = new BufferGeometry();
-    surface.setAttribute("position", new Float32BufferAttribute(a.surface, 3));
-    surface.setAttribute("aRoom", new Float32BufferAttribute(a.surfaceRoom, 1));
-    surface.setAttribute("aFloor", new Float32BufferAttribute(a.floor, 1));
-    surface.setAttribute("aTop", new Float32BufferAttribute(a.top, 1));
+    const surface = surfaceGeometry(
+      a.surface,
+      a.surfaceRoom,
+      a.floor,
+      a.top,
+      0
+    );
     const body = new BufferGeometry();
     body.setAttribute("position", new Float32BufferAttribute(a.body, 3));
     body.setAttribute("aRoom", new Float32BufferAttribute(a.bodyRoom, 1));
     zones.set(zone, { surface, body });
   }
   return { zones, slot, zoneSlots, count: interior.rooms.length };
+}
+
+/**
+ * The pools' water, per zone: each basin's plan in 1.5 m cells (two
+ * triangles each), tagged with its own slot, floored at its bottom and
+ * topped at its rim, clear (`aClear` 1). The surface shader lays it in the
+ * level plane and keeps only what is inside the basin.
+ */
+export function basinWater(
+  basins: readonly InteriorBasin[]
+): Map<string, BufferGeometry> {
+  const per = new Map<
+    string,
+    { pos: number[]; room: number[]; floor: number[]; top: number[] }
+  >();
+  for (const b of basins) {
+    let a = per.get(b.zone);
+    if (!a) {
+      a = { pos: [], room: [], floor: [], top: [] };
+      per.set(b.zone, a);
+    }
+    const [p0, , p2] = b.rim;
+    const x0 = Math.min(p0[0], p2[0]);
+    const x1 = Math.max(p0[0], p2[0]);
+    const y0 = Math.min(p0[1], p2[1]);
+    const y1 = Math.max(p0[1], p2[1]);
+    const rim = p0[2];
+    const nx = Math.max(1, Math.ceil((x1 - x0) / 1.5));
+    const ny = Math.max(1, Math.ceil((y1 - y0) / 1.5));
+    const put = (x: number, y: number) => {
+      a.pos.push(x, 0, -y);
+      a.room.push(b.slot);
+      a.floor.push(b.floorZ);
+      a.top.push(rim);
+    };
+    for (let i = 0; i < nx; i += 1)
+      for (let j = 0; j < ny; j += 1) {
+        const xa = x0 + ((x1 - x0) * i) / nx;
+        const xb = x0 + ((x1 - x0) * (i + 1)) / nx;
+        const ya = y0 + ((y1 - y0) * j) / ny;
+        const yb = y0 + ((y1 - y0) * (j + 1)) / ny;
+        put(xa, ya);
+        put(xb, ya);
+        put(xb, yb);
+        put(xa, ya);
+        put(xb, yb);
+        put(xa, yb);
+      }
+  }
+  const out = new Map<string, BufferGeometry>();
+  for (const [zone, a] of per)
+    out.set(zone, surfaceGeometry(a.pos, a.room, a.floor, a.top, 1));
+  return out;
 }
 
 function addRoom(
@@ -227,15 +311,18 @@ export function waterShaders(count: number) {
     attribute float aRoom;
     attribute float aFloor;
     attribute float aTop;
+    attribute float aClear;
     uniform float uLevel[${n}];
     varying vec3 vWorld;
     varying float vH;
     varying float vFloor;
     varying float vTop;
     varying float vRoom;
+    varying float vClear;
     void main() {
       float level = uLevel[int(aRoom + 0.5)];
       vRoom = aRoom;
+      vClear = aClear;
       vFloor = aFloor;
       vTop = aTop;
       // Climb her up axis from the plan point to the level: the polygon
@@ -257,6 +344,7 @@ export function waterShaders(count: number) {
     varying float vFloor;
     varying float vTop;
     varying float vRoom;
+    varying float vClear;
     ${lighting}
     void main() {
       // Water over the floor here (her frame); only inside the room's box.
@@ -282,6 +370,14 @@ export function waterShaders(count: number) {
       vec3 sheen = vec3(0.16, 0.14, 0.10) * graze * (0.75 + 0.25 * s1 * s2 + 0.15 * s3);
       vec3 lit = waterLight(c, sheen, vRoom, vWorld);
       float a = mix(0.52, 0.94, max(murk, graze)) * smoothstep(0.0, 0.04, d);
+      // A pool: clear blue over its tiles, the sky's sheen on a grazing look.
+      if (vClear > 0.5) {
+        float clearMurk = 1.0 - exp(-0.35 * d / max(cosv, 0.12));
+        vec3 pool = mix(vec3(0.16, 0.5, 0.62), vec3(0.03, 0.2, 0.36), clearMurk) * ripple;
+        vec3 glint = vec3(0.3, 0.36, 0.4) * graze * (0.8 + 0.2 * s1 * s2);
+        lit = waterLight(pool, glint, vRoom, vWorld);
+        a = mix(0.3, 0.8, max(clearMurk, graze)) * smoothstep(0.0, 0.02, d);
+      }
       gl_FragColor = vec4(lit, a);
     }
   `;

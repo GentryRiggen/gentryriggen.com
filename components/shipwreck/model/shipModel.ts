@@ -354,6 +354,7 @@ const MERGED = [
   "decal",
   "dazzle",
   "variant",
+  "walkHidden",
 ] as const;
 type MergedKey = (typeof MERGED)[number];
 /** Their meshes' names. */
@@ -365,6 +366,7 @@ const MERGED_NAME: Record<MergedKey, string> = {
   decal: "names",
   dazzle: "dazzle",
   variant: "livery-parts",
+  walkHidden: "walk-hidden",
 };
 
 function sameNumbers(a: ArrayLike<number>, b: ArrayLike<number>): boolean {
@@ -670,7 +672,7 @@ function buildModel(
 
   /** A merged list's material (the variant parts are painted). */
   function materialOf(key: MergedKey): Material | undefined {
-    return key === "variant" ? mats.paint : mats[key];
+    return key === "variant" || key === "walkHidden" ? mats.paint : mats[key];
   }
 
   partData.forEach(({ d, group }, pi) => {
@@ -681,10 +683,11 @@ function buildModel(
     for (const key of MERGED) {
       const material = materialOf(key);
       // The dazzle list only for a ship with a dazzle livery; the variant
-      // parts only for a ship with some.
+      // parts and the walk-hidden blocks only for a ship with some.
       if (
         !material ||
-        ((key === "dazzle" || key === "variant") && d[key].vertexCount === 0)
+        ((key === "dazzle" || key === "variant" || key === "walkHidden") &&
+          d[key].vertexCount === 0)
       )
         continue;
       put(key, addMesh(group, d[key].toGeometry(), material, MERGED_NAME[key]));

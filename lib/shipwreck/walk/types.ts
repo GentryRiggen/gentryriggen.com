@@ -58,8 +58,12 @@ export interface Seam {
 export type Blocker =
   /** Funnel bases, masts, ventilators. */
   | { kind: "circle"; area: string; at: V2; r: number }
-  /** Deckhouses, skylights, hatches, davits. */
-  | { kind: "box"; area: string; min: V2; max: V2 };
+  /**
+   * Deckhouses, skylights, hatches, davits. `boat`: a lifeboat in its
+   * davits (its index in the ship's boats), gone from the walk once that
+   * boat is lowered (`StepContext.boatLowered`).
+   */
+  | { kind: "box"; area: string; min: V2; max: V2; boat?: number };
 
 export interface Stair {
   id: string;

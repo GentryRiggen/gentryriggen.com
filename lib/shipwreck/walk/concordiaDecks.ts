@@ -4,7 +4,6 @@ import {
   CONCORDIA_BOAT,
   CONCORDIA_CASING,
   CONCORDIA_FUNNEL_OVAL,
-  CONCORDIA_HALL_POOL,
   CONCORDIA_LIDO_AFT,
   CONCORDIA_LIDO_FWD,
   CONCORDIA_LIFERAFT_RACKS,
@@ -19,6 +18,8 @@ import {
   CONCORDIA_SPA,
   CONCORDIA_SPORTS_DECK,
 } from "../ships/concordiaLayout";
+import { CONCORDIA_INTERIOR } from "../interior/concordia";
+import { deckRoomWalk } from "../interior/merge";
 import { deckEdgeOf, sidedOutline } from "./deckEdge";
 import type { Blocker, Stair, V2, WalkArea, WalkMap } from "./types";
 
@@ -35,7 +36,9 @@ import type { Blocker, Stair, V2, WalkArea, WalkMap } from "./types";
  *   roof, with the aft pool, its two glass houses round the funnel and
  *   the funnel's casing.
  * - `pool-hall` (deck 12; Costa's Lido, 9): under the glass roof, round
- *   the midships pool (its basin a blocker, its edge walkable). Where you
+ *   the midships pool (its basin a blocker, its edge walkable). A deck
+ *   room: its outline, pool and loungers come from her interior
+ *   (`interior/concordia.ts`), the one place they are written. Where you
  *   start, starboard of the pool, facing forward.
  * - `lido-fwd` (deck 13): forward of the glass roof, the forward pool and
  *   the yellow water slide's tower, to the spa's after wall.
@@ -55,9 +58,9 @@ import type { Blocker, Stair, V2, WalkArea, WalkMap } from "./types";
  * Rulings (spec "Rulings Gentry may revisit"):
  * - The recess is 7.4 m deep (was 4.8 m) so a promenade about 3 m wide
  *   runs inboard of the boats.
- * - Her boats (and their davits) are blockers on the boat deck all night:
- *   the map has no way to drop one when it is lowered, and the gap they
- *   leave is only out to her rail.
+ * - Her boats (and their davits) are blockers on the boat deck until each
+ *   is lowered (`Blocker.boat`: the walker skips one whose boat is gone);
+ *   the gap it leaves is only out to her rail.
  * - The lidos' and sports deck's side rails stand over a lower deck (the
  *   strip beside the block below), so they are walls, not sea railings: a
  *   jump never goes over them. Only the boat deck's and terrace's sides
@@ -139,6 +142,8 @@ function boatDeck(id: string, s: 1 | -1): WalkArea {
 }
 
 const LIDO_HW = () => R.lidoHalfWidth;
+/** The pool hall (and its pool and loungers), from her interior's data. */
+const hall = deckRoomWalk(CONCORDIA_INTERIOR);
 const ALL_WALLS = { sides: "wall", fwd: "wall", aft: "wall" } as const;
 
 const areas: WalkArea[] = [
@@ -150,14 +155,8 @@ const areas: WalkArea[] = [
     LIDO_HW,
     ALL_WALLS
   ),
-  sided(
-    "pool-hall",
-    "12",
-    CONCORDIA_POOL_GLASS.x0,
-    CONCORDIA_POOL_GLASS.x1,
-    () => CONCORDIA_POOL_GLASS.halfWidth,
-    ALL_WALLS
-  ),
+  // The pool hall: a deck room, from her interior.
+  ...hall.areas,
   sided(
     "lido-fwd",
     "13",
@@ -231,7 +230,10 @@ function radomeBlockers(): Blocker[] {
   return out;
 }
 
-/** The boats in their davits, out to her rail (one box a boat). */
+/**
+ * The boats in their davits, out to her rail (one box a boat, tagged with
+ * its index: the walker skips it once the boat is lowered).
+ */
 function boatBlockers(): Blocker[] {
   const { length, beam } = CONCORDIA_BOAT;
   return CONCORDIA_BOATS.map((b) => {
@@ -241,13 +243,16 @@ function boatBlockers(): Blocker[] {
     const inboard = e - 0.35 - beam;
     const out = e - RAIL_INSET;
     const [y0, y1] = s > 0 ? [inboard, out] : [-out, -inboard];
-    return box(
-      s > 0 ? "boat-deck-p" : "boat-deck-s",
-      b.x - length / 2,
-      b.x + length / 2,
-      y0,
-      y1
-    );
+    return {
+      ...box(
+        s > 0 ? "boat-deck-p" : "boat-deck-s",
+        b.x - length / 2,
+        b.x + length / 2,
+        y0,
+        y1
+      ),
+      boat: b.index,
+    };
   });
 }
 
@@ -294,8 +299,9 @@ const blockers: Blocker[] = [
   ),
   circle("lido-aft", FUNNEL_X, 0, CONCORDIA_FUNNEL_OVAL.semiB),
   poolBox("lido-aft", CONCORDIA_POOLS[0]),
-  // The pool hall: the pool's basin (walk round its edge).
-  poolBox("pool-hall", CONCORDIA_HALL_POOL),
+  // The pool hall: the pool's basin (walk round its edge) and the
+  // loungers, from her interior.
+  ...hall.blockers,
   // The forward lido: the forward pool, the slide's tower with its coil
   // and its run-out aft at knee height, the spa's after wall.
   poolBox("lido-fwd", CONCORDIA_POOLS[1]),

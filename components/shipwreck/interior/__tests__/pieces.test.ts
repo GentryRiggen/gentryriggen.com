@@ -20,8 +20,12 @@ import {
   hoseReel,
   type Lamp,
 } from "../pieces";
-import { PIECE_FOOTPRINT } from "@/lib/shipwreck/interior/kit";
-import type { PieceId } from "@/lib/shipwreck/interior";
+import { PIECE_FOOTPRINT, pieceFootprint } from "@/lib/shipwreck/interior/kit";
+import { roomFloorZ, type PieceId, type Room } from "@/lib/shipwreck/interior";
+import { CONCORDIA_INTERIOR } from "@/lib/shipwreck/interior/concordia";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
+import { addPiece } from "../kit";
+import { ModernLayers } from "../modernPieces";
 
 /**
  * The kit's pieces: each builds finite, non-degenerate geometry within a
@@ -195,5 +199,84 @@ describe("the kit's pieces", () => {
     expect(Math.max(...L.wood.pos.filter((_, i) => i % 3 === 2))).toBeLessThan(
       0
     );
+  });
+});
+
+// --- 1.17: her pool hall's pieces (the art lane's builders, by id) ---------------
+
+describe("her pool hall's pieces, placed by the kit", () => {
+  const HALL: Room = CONCORDIA_INTERIOR.rooms[0];
+  const PIECES_1_17: [PieceId, number][] = [
+    ["pool-edge", 400],
+    ["lounger", 220],
+    ["exit-sign", 60],
+  ];
+  for (const [piece, maxTris] of PIECES_1_17)
+    it(`${piece}: finite, unit normals, at most ${maxTris} triangles, on her floor`, () => {
+      const L = new ModernLayers();
+      L.room(2);
+      const at: [number, number] = [12, -6];
+      addPiece(L, { room: HALL.id, piece, at, yaw: 0 }, HALL, concordia);
+      expect(L.triangles).toBeGreaterThan(0);
+      expect(L.triangles).toBeLessThanOrEqual(maxTris);
+      if (process.env.SHIPWRECK_PRINT_TRIANGLES)
+        console.log(`${piece}: ${L.triangles} triangles`);
+      const deck = roomFloorZ(HALL, at[0], at[1], concordia);
+      for (const b of L.all) {
+        const n = b.pos.length / 3;
+        expect(b.room.every((r) => r === 2)).toBe(true);
+        expect(
+          [...b.pos, ...b.nrm, ...b.col, ...b.uv].every(Number.isFinite)
+        ).toBe(true);
+        for (let i = 0; i < n; i += 1) {
+          const l = Math.hypot(
+            b.nrm[i * 3],
+            b.nrm[i * 3 + 1],
+            b.nrm[i * 3 + 2]
+          );
+          expect(Math.abs(l - 1)).toBeLessThan(1e-6);
+          // Near where it was put (the pool's basin goes 1.4 m down).
+          expect(Math.abs(b.pos[i * 3] - at[0])).toBeLessThan(6);
+          expect(b.pos[i * 3 + 1]).toBeGreaterThan(deck - 1.5);
+          expect(b.pos[i * 3 + 1]).toBeLessThan(deck + 2.5);
+        }
+      }
+    });
+
+  it("a lounger stays inside its footprint; the pool's basin (not its coping) is its footprint", () => {
+    const extent = (piece: PieceId) => {
+      const L = new ModernLayers();
+      addPiece(
+        L,
+        { room: HALL.id, piece, at: [0, 0], yaw: 0 },
+        HALL,
+        concordia
+      );
+      const deck = roomFloorZ(HALL, 0, 0, concordia);
+      let x = 0;
+      let y = 0;
+      let below = 0;
+      for (const b of L.all)
+        for (let i = 0; i < b.pos.length; i += 3) {
+          // Under the floor: the basin's walls and floor.
+          if (b.pos[i + 1] < deck - 0.1) {
+            below = Math.max(below, Math.abs(b.pos[i]), Math.abs(b.pos[i + 2]));
+            continue;
+          }
+          x = Math.max(x, Math.abs(b.pos[i]));
+          y = Math.max(y, Math.abs(b.pos[i + 2]));
+        }
+      return { x, y, below };
+    };
+    const fl = pieceFootprint("lounger")!;
+    const l = extent("lounger");
+    expect(l.x).toBeLessThanOrEqual(fl.lx / 2 + 0.03);
+    expect(l.y).toBeLessThanOrEqual(fl.ly / 2 + 0.03);
+    const fp = pieceFootprint("pool-edge")!;
+    const p = extent("pool-edge");
+    // Under the floor: within the basin's footprint (the walker's blocker).
+    expect(p.below).toBeLessThanOrEqual(fp.lx / 2 + 1e-6);
+    // Over it: the coping, walkable, round the basin.
+    expect(p.x).toBeGreaterThan(fp.lx / 2);
   });
 });

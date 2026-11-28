@@ -225,6 +225,18 @@ ship walks exactly as before. Tests key on her heel, never the clock
 
 `withInterior` carries the deck map's flags into the merged map.
 
+**Her boats** are blockers tagged with their index (`Blocker.boat`): the
+walker skips one once `StepContext.boatLowered(index)` says that boat is
+lowered (WalkRunner reads the track's `boat-lowered` events), so the gap
+it leaves is walkable out to her rail. No other map tags a boat.
+
+**Her pool hall** is a deck room (`Room.deckRoom`, the room kit's data in
+`interior/concordia.ts`): an open-deck area (deck speed, jumping, every
+edge a wall, never closed: its ways in are stairs, not doors).
+`deckRoomWalk` puts it and its pool and loungers in her deck map, and
+`withInterior` replaces it from the same data, so the merged map has it
+once.
+
 ## The swimmer (`swim.ts`)
 
 `swimmerFrom` floats a walker who has just gone in off the side they were

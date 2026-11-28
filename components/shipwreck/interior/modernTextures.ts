@@ -540,6 +540,9 @@ export const MODERN_FRAGMENT_HEAD = /* glsl */ `
     uniform sampler2D uModernC;
     // The emergency lamps' and exit signs' supply (0..1, its own flicker).
     uniform float uEmergency;
+    // The day's light on a deck room (0 at night, 1 by day), times the
+    // share a face catches (its aGlow on the shell, wood and metal).
+    uniform float uDaylight;
     vec3 modernBase(vec3 base, float tile, vec2 uv) {
       vec4 a = texture2D(uModernA, uv);
       vec4 b = texture2D(uModernB, uv);
@@ -582,6 +585,18 @@ export const MODERN_DETAIL_LINE = /* glsl */ `
         base = modernBase(base, vTile, vUv);`;
 
 /**
+ * After the lamps' light (shell, wood, metal): a deck room under the sky
+ * by day, lit evenly by it whatever the ship's power (her lamps a little
+ * on top, and the torch).
+ */
+export const MODERN_DAY_LINE = /* glsl */ `
+      float dayShare = clamp(vGlow * uDaylight, 0.0, 1.0);
+      // The sky from above (floors brighter than walls), a little of the
+      // baked corners' shade, her lamps faint by day.
+      float skyK = (0.4 + 0.28 * clamp(n.y, 0.0, 1.0)) * (0.72 + 0.28 * clamp(vLight, 0.0, 1.0));
+      lit = mix(lit, base * (vec3(0.97, 1.0, 1.05) * skyK + vLight * power * LAMP * 0.1 + torch * TORCH * 0.2), dayShare);`;
+
+/**
  * Glass: an emergency lamp or exit sign glows on the emergency supply,
  * whatever the room's own lamps (its `aGlow` times `uEmergency`).
  */
@@ -595,6 +610,7 @@ export const MODERN_ANCHORS = {
   head: "const vec3 LAMP",
   detail: "base *= f;",
   glass: "if (vTile > 6.5) {",
+  lit: "+ vec3(0.0015, 0.002, 0.0035);",
 } as const;
 
 function insertOnce(src: string, anchor: string, before: string, after = "") {
@@ -609,12 +625,15 @@ function insertOnce(src: string, anchor: string, before: string, after = "") {
 /**
  * A layer's room fragment shader with the modern finishes: the head before
  * the constants, the finish after the Edwardian detail (shell and wood),
- * the emergency glow ahead of the dome's branch (glass).
+ * the daylight after the lamps' light (shell, wood and metal), the
+ * emergency glow ahead of the dome's branch (glass).
  */
 export function withModern(fragment: string, layer: Layer): string {
   let out = insertOnce(fragment, MODERN_ANCHORS.head, MODERN_FRAGMENT_HEAD);
   if (layer === "shell" || layer === "wood")
     out = insertOnce(out, MODERN_ANCHORS.detail, "", MODERN_DETAIL_LINE);
+  if (layer !== "glass")
+    out = insertOnce(out, MODERN_ANCHORS.lit, "", MODERN_DAY_LINE);
   if (layer === "glass")
     out = insertOnce(out, MODERN_ANCHORS.glass, MODERN_GLASS_BRANCH);
   return out;
@@ -626,6 +645,8 @@ export interface ModernUniforms {
   uModernC: IUniform<Texture>;
   /** The emergency supply (0..1): 1, dipped by her flicker. */
   uEmergency: IUniform<number>;
+  /** The daylight on her deck rooms (0..1: 1 by day). */
+  uDaylight: IUniform<number>;
 }
 
 /**
@@ -646,6 +667,7 @@ export function applyModern(
     uModernB: had.uModernB ?? { value: tex.b },
     uModernC: had.uModernC ?? { value: tex.c },
     uEmergency: had.uEmergency ?? { value: 1 },
+    uDaylight: had.uDaylight ?? { value: 0 },
   };
   u.uModernA.value = tex.a;
   u.uModernB.value = tex.b;

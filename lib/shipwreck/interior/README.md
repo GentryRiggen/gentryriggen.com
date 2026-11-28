@@ -29,8 +29,16 @@ One `InteriorMap` per ship, in the ship frame (metres, keel at midships,
   inside) and lifts (`kind: "lift"`), shaped as the walk map's `Stair`.
 - **shutDoors**: painted closed doors on walls (position and facing only).
 - **furniture**: kit pieces (`PieceId`) with a position and yaw; `blocks`
-  makes a box blocker from `PIECE_FOOTPRINT` (a blocking piece is square
+  makes a box blocker from `PIECE_FOOTPRINT`, or for her modern pieces
+  `MODERN_PIECE_FOOTPRINT` (`pieceFootprint`; a blocking piece is square
   to the ship).
+- **deck rooms** (`deckRoom: true`, 1.17: the Concordia's pool hall):
+  walked as an open deck (no `interior` flag: deck speed, jumping, every
+  edge a wall, never closed) but drawn by the kit whenever walking on
+  her. Its `glass` finish is glass sides (`look.solidEdges` solid), a flat
+  glass roof at `ceilingM` and `look.dome`, her model's glass dome. A deck
+  map takes it with `deckRoomWalk(interior)`; `withInterior` replaces an
+  area of its id, so it merges once.
 
 `withInterior(deckMap, interior)` (`merge.ts`) merges it into the ship's
 `WalkMap`: rooms become `interior` areas, blocking furniture becomes

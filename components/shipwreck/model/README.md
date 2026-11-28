@@ -808,6 +808,15 @@ draws 16 in both paints (the gun's in 1918, her names in 1912; same
 triangles in 1918). The iPad mini 6 is not measured here (expect two to three
 times the build; the swap is a buffer copy).
 
+**Walk-hidden** (1.17): a block flagged `walkHidden`, a dome flagged
+`walkHidden` and a block's painted roof cells inside `walkHiddenRoof`
+go to their own list, the mesh "walk-hidden" (none for a ship without
+them), which the room kit hides while walking on her and draws its own
+there instead: the Concordia's `pool-glass` block, its glass dome and
+her deck-11 roof's middle cells under the pool hall. The same geometry,
+moved: her orbit perf scenes draw two more calls (52, 52, 54 against
+budgets of 50, 50, 52, inside their 5%), the same triangles.
+
 ### Each ship's liveries (R28, the research)
 
 **The Titanic: one livery.** She sailed only in April 1912, in White

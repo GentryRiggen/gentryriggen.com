@@ -1,4 +1,5 @@
 import type { InteriorMap } from "../interior/types";
+import { CONCORDIA_INTERIOR } from "../interior/concordia";
 import { withInterior } from "../interior/merge";
 import { TITANIC_INTERIOR } from "../interior/titanic";
 import type { ShipId } from "../ships/types";
@@ -23,7 +24,7 @@ export const SHIP_WALKS: Partial<Record<ShipId, ShipWalk>> = {
   lusitania: { deck: LUSITANIA_WALK },
   britannic: { deck: BRITANNIC_WALK },
   carpathia: { deck: CARPATHIA_WALK },
-  concordia: { deck: CONCORDIA_WALK },
+  concordia: { deck: CONCORDIA_WALK, interior: CONCORDIA_INTERIOR },
 };
 
 const merged = new Map<ShipId, WalkMap>();

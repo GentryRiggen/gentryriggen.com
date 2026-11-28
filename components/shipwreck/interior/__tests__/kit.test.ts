@@ -1,5 +1,8 @@
 import { titanic } from "@/lib/shipwreck/ships/titanic";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
+import { CONCORDIA_INTERIOR } from "@/lib/shipwreck/interior/concordia";
+import { CONCORDIA_POOL_DOME } from "@/lib/shipwreck/ships/concordiaLayout";
 import { floorZ, walkMapFor, type WalkMap } from "@/lib/shipwreck/walk";
 import { doorGlowGeometry } from "../doorGlow";
 import {
@@ -13,7 +16,11 @@ import {
   zonesSeen,
   ZONE_MESH_BUDGET,
   ZONE_TRIANGLE_BUDGET,
+  DECK_ROOM_FLOOR_M,
+  DECK_ROOM_TRIANGLE_BUDGET,
+  FROSTED_TILE,
 } from "../kit";
+import { MODERN_TILE } from "../modernTextures";
 import { Layers, TILE } from "../pieces";
 import { MAX_ROOM_SLOTS } from "../materials";
 import { lightSegments, segmentAt } from "@/lib/shipwreck/interior";
@@ -469,5 +476,172 @@ describe("the room kit", () => {
     expect(kindsSuite.filter((k) => k.kind === "rail")).toHaveLength(0);
     expect(kindsSuite.filter((k) => k.kind === "seam")).toHaveLength(1);
     expect(suite.outline.length).toBe(kindsSuite.length);
+  });
+});
+
+// --- 1.17: deck rooms (her pool hall) -------------------------------------------
+
+describe("the room kit, unchanged for the Titanic", () => {
+  it("builds her zones to the same triangles and meshes as before deck rooms", () => {
+    // Recorded at the Concordia's walking (1.17, before Task 4).
+    const before: Record<string, [number, number]> = {
+      gs: [14983, 4],
+      "b-deck": [5872, 4],
+      "e-deck": [12494, 4],
+      "third-stairs": [1185, 3],
+    };
+    const now: Record<string, [number, number]> = {};
+    for (const [zone, layers] of built.zones) {
+      let tris = 0;
+      let meshes = 0;
+      for (const g of Object.values(layers))
+        if (g) {
+          meshes += 1;
+          tris += triangles(g);
+        }
+      now[zone] = [tris, meshes];
+    }
+    expect(now).toEqual(before);
+    expect(built.basins).toEqual([]);
+    expect(built.deckZones.size).toBe(0);
+    expect(built.modern).toBe(false);
+    expect(built.slots).toBe(interior.rooms.length + built.segments.length);
+  });
+});
+
+describe("her pool hall (a deck room)", () => {
+  const hers = buildInterior(CONCORDIA_INTERIOR, concordia);
+  const hall = CONCORDIA_INTERIOR.rooms[0];
+  const herMap = walkMapFor("concordia") as WalkMap;
+  const zone = hers.zones.get("pool-hall")!;
+  const deck = floorZ(herMap, "pool-hall", 16, concordia, 0);
+  afterAll(() => {
+    for (const z of hers.zones.values())
+      for (const g of Object.values(z)) g?.dispose();
+  });
+
+  it("is one zone within its budget: at most 25k triangles and 6 meshes (with its pool's water)", () => {
+    expect([...hers.zones.keys()]).toEqual(["pool-hall"]);
+    let tris = 0;
+    let meshes = 0;
+    for (const g of Object.values(zone))
+      if (g) {
+        meshes += 1;
+        tris += triangles(g);
+      }
+    expect(hers.triangles.get("pool-hall")).toBe(tris);
+    // Its layers and the pool's water (it has no room water: open deck).
+    expect(hers.basins).toHaveLength(1);
+    expect(meshes + hers.basins.length).toBeLessThanOrEqual(ZONE_MESH_BUDGET);
+    expect(tris).toBeLessThanOrEqual(DECK_ROOM_TRIANGLE_BUDGET);
+    expect(DECK_ROOM_TRIANGLE_BUDGET).toBe(25000);
+    expect(hers.deckZones).toEqual(new Set(["pool-hall"]));
+    expect(hers.modern).toBe(true);
+    if (process.env.SHIPWRECK_PRINT_TRIANGLES)
+      console.log(
+        `pool hall: ${tris} triangles, ${meshes} meshes, build ${hers.ms.toFixed(1)} ms`
+      );
+  });
+
+  it("builds every layer finite and tagged, its glass in the pane mesh", () => {
+    for (const [layer, g] of Object.entries(zone)) {
+      if (!g) continue;
+      const n = g.getAttribute("position").count;
+      for (const [name, size] of ATTRS) {
+        const a = g.getAttribute(name);
+        expect([layer, name, a?.count, a?.itemSize]).toEqual([
+          layer,
+          name,
+          n,
+          size,
+        ]);
+        expect(Array.from(a.array).every(Number.isFinite)).toBe(true);
+      }
+      expect(Math.max(...g.getAttribute("color").array)).toBeLessThan(1);
+    }
+    expect(zone.shell).toBeDefined();
+    expect(zone.metal).toBeDefined();
+    expect(zone.glass).toBeDefined();
+    const pane = zone.pane!;
+    const tile = pane.getAttribute("aTile").array;
+    // Clear glass (walls, vault) and the doors' frosted panes (two doors
+    // of two leaves, two triangles each: 24 vertices).
+    expect(
+      Array.from(tile).filter((t) => t === MODERN_TILE.pane).length
+    ).toBeGreaterThan(500);
+    expect(Array.from(tile).filter((t) => t === FROSTED_TILE).length).toBe(24);
+  });
+
+  it("stands its floor 2 cm over the deck, cut round the pool's basin", () => {
+    const g = zone.shell!;
+    const pos = g.getAttribute("position").array;
+    const nrm = g.getAttribute("normal").array;
+    const tile = g.getAttribute("aTile").array;
+    let floor = 0;
+    const [cx, cy] = [16, 0];
+    for (let v = 0; v < pos.length / 3; v += 1) {
+      if (tile[v] !== MODERN_TILE.poolTile || nrm[v * 3 + 1] < 0.99) continue;
+      const z = pos[v * 3 + 1];
+      if (Math.abs(z - deck - DECK_ROOM_FLOOR_M) > 1e-4) continue;
+      floor += 1;
+      // No floor over the basin (9 × 4.5 m round the pool's middle).
+      const x = pos[v * 3];
+      const y = -pos[v * 3 + 2];
+      expect(
+        Math.abs(x - cx) < 4.5 - 1e-3 && Math.abs(y - cy) < 2.25 - 1e-3
+      ).toBe(false);
+    }
+    expect(floor).toBeGreaterThan(1000);
+    // The pool's basin goes down from there.
+    const b = hers.basins[0];
+    expect(
+      b.rim.every((p) => Math.abs(p[2] - deck - DECK_ROOM_FLOOR_M) < 1e-6)
+    ).toBe(true);
+    expect(b.floorZ).toBeLessThan(deck - 1);
+    expect(b.slot).toBe(CONCORDIA_INTERIOR.rooms.length + hers.segments.length);
+    expect(hers.slots).toBe(b.slot + 1);
+    expect(b.room).toBe(hers.slot.get("pool-hall"));
+  });
+
+  it("roofs it in glass at the eaves, as high as the lidos, her dome on it, and tags what the day lights", () => {
+    const pane = zone.pane!;
+    pane.computeBoundingBox();
+    const box = pane.boundingBox!;
+    const eaves = deck + DECK_ROOM_FLOOR_M + hall.ceilingM;
+    const dome = hall.look.dome!;
+    // Her model's dome (the same shape, see-through).
+    expect(dome).toEqual({
+      at: [CONCORDIA_POOL_DOME.x, 0],
+      a: CONCORDIA_POOL_DOME.a,
+      b: CONCORDIA_POOL_DOME.b,
+      rise: CONCORDIA_POOL_DOME.c,
+    });
+    expect(box.max.y).toBeCloseTo(eaves + dome.rise, 2);
+    expect(box.min.x).toBeGreaterThanOrEqual(-2);
+    expect(box.max.x).toBeLessThanOrEqual(34);
+    expect(box.max.z).toBeLessThanOrEqual(13.5);
+    // The flat glass at the eaves reaches the hall's corners.
+    const pos = pane.getAttribute("position").array;
+    let corner = 0;
+    for (let v = 0; v < pos.length / 3; v += 1)
+      if (
+        Math.abs(pos[v * 3 + 1] - eaves) < 1e-4 &&
+        pos[v * 3] < -1.9 &&
+        -pos[v * 3 + 2] < -13.4
+      )
+        corner += 1;
+    expect(corner).toBeGreaterThan(0);
+    // The shell, wood and metal catch the day (aGlow 1 on a deck room).
+    for (const layer of ["shell", "metal"] as const) {
+      const glow = zone[layer]!.getAttribute("aGlow").array;
+      expect([layer, Math.min(...glow), Math.max(...glow)]).toEqual([
+        layer,
+        1,
+        1,
+      ]);
+    }
+    // Lamps: the spotlights on the vault light the floor at night.
+    const light = zone.shell!.getAttribute("aLight").array;
+    expect(Math.max(...light)).toBeGreaterThan(0.6);
   });
 });

@@ -97,14 +97,24 @@ export const CONCORDIA_POOLS: readonly {
   { c: [50, 5], size: [8, 6] },
 ];
 /**
- * The pool in the glass-roofed pool hall (deck 12): its basin. The model
- * draws the hall solid; the walk (1.17) keeps you out of the basin and the
- * room kit draws it (spec: "The pool hall").
+ * The pool in the glass-roofed pool hall (deck 12): its basin, the room
+ * kit's `pool-edge` (9 × 4.5 m, its walkable coping round it: the
+ * interior's `POOL_BASIN_LX`, `_LY`). The model draws the hall solid; the
+ * room kit draws the hall and the pool (lib/shipwreck/interior/concordia.ts,
+ * spec "The pool hall"), whose basin the walk blocks.
  */
 export const CONCORDIA_HALL_POOL = {
   c: [16, 0] as const,
-  size: [16, 7] as const,
+  size: [9, 4.5] as const,
 };
+
+/**
+ * The glass dome over the pool hall (a retractable "magrodome" [WPC]):
+ * its middle's x, half-length, half-width and height, standing on the
+ * hall's roof (deck 13). The model draws it; while walking on her the room
+ * kit draws it in glass instead.
+ */
+export const CONCORDIA_POOL_DOME = { x: 16, a: 17.5, b: 13, c: 3.6 };
 
 /** The radar mast on the sports deck. */
 export const CONCORDIA_MAST_X = 80;

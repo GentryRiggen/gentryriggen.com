@@ -1,4 +1,5 @@
 import { interiorFor } from "../../interior";
+import { CONCORDIA_INTERIOR } from "../../interior/concordia";
 import { withInterior } from "../../interior/merge";
 import { TITANIC_INTERIOR } from "../../interior/titanic";
 import type { ShipId } from "../../ships/types";
@@ -23,13 +24,13 @@ describe("walk registry", () => {
     expect(walkMapFor("carpathia")).toBe(CARPATHIA_WALK);
   });
 
-  it("has interiors for the Titanic only", () => {
+  it("has interiors for the Titanic and the Concordia (her pool hall) only", () => {
     expect(interiorFor("titanic")).toBe(TITANIC_INTERIOR);
+    expect(interiorFor("concordia")).toBe(CONCORDIA_INTERIOR);
     for (const id of [
       "lusitania",
       "britannic",
       "carpathia",
-      "concordia",
       "edmund-fitzgerald",
       "poseidon",
     ] as ShipId[])

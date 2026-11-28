@@ -73,6 +73,8 @@ export interface Dome {
   a: number;
   b: number;
   c: number;
+  /** Hidden while walking on her (as `Block.walkHidden`). */
+  walkHidden?: true;
 }
 
 export interface FunnelRecipe {
@@ -419,6 +421,18 @@ export interface Block {
   under?: boolean;
   /** Close the ends (default true). */
   ends?: boolean;
+  /**
+   * Hidden while walking on her (its own mesh, "walk-hidden"): the room
+   * kit draws what is there instead (the Concordia's pool hall). A deck
+   * roof ("pine", "pitch") stays in the decks list.
+   */
+  walkHidden?: true;
+  /**
+   * A painted roof's cells whose middle lies in this box (x0..x1, |y| under
+   * halfWidth) hidden while walking on her (in "walk-hidden"): the room
+   * kit's floor is over them, and its pool's basin goes down through them.
+   */
+  walkHiddenRoof?: { x0: number; x1: number; halfWidth: number };
 }
 
 /** A painted box: stanchions, the bridge wings, a breakwater, derricks. */

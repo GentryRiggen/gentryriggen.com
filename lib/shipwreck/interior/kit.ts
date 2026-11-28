@@ -1,4 +1,5 @@
 import type { Blocker, Seam, V2 } from "../walk/types";
+import { MODERN_PIECE_FOOTPRINT, type ModernPieceId } from "./modernPieces";
 import type { Furniture, PieceId } from "./types";
 
 /**
@@ -246,10 +247,27 @@ export const PIECE_FOOTPRINT: Partial<
   table: { lx: 1.0, ly: 1.0 },
 };
 
+/**
+ * A piece's footprint: the Edwardian table's, else the modern one's
+ * (`MODERN_PIECE_FOOTPRINT`: the pool's basin, a lounger), or undefined.
+ */
+export function pieceFootprint(
+  piece: PieceId
+): { lx: number; ly: number } | undefined {
+  return (
+    PIECE_FOOTPRINT[piece] ??
+    (
+      MODERN_PIECE_FOOTPRINT as Partial<
+        Record<string, { lx: number; ly: number }>
+      >
+    )[piece as ModernPieceId]
+  );
+}
+
 /** A blocking piece's blocker (a box in its room), or null. */
 export function pieceBlocker(f: Furniture): Blocker | null {
   if (!f.blocks) return null;
-  const fp = PIECE_FOOTPRINT[f.piece];
+  const fp = pieceFootprint(f.piece);
   if (!fp) throw new Error(`piece ${f.piece} has no footprint to block with`);
   const quarter = Math.round(f.yaw / (Math.PI / 2));
   const turned = Math.abs(quarter) % 2 === 1;

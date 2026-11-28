@@ -141,6 +141,12 @@ export interface ShipPartData {
    * Carpathia's 1918 stern gun; empty for the others).
    */
   variant: GeoBuffer;
+  /**
+   * Blocks hidden while walking on her (`Block.walkHidden`: the
+   * Concordia's pool-glass block, where the room kit draws her pool hall;
+   * empty for the others): the mesh "walk-hidden".
+   */
+  walkHidden: GeoBuffer;
   portholes: LightSpot[];
   windows: LightSpot[];
   vents: Placement[];
@@ -280,7 +286,9 @@ function grid(
   buf: GeoBuffer,
   x0: number,
   x1: number,
-  column: (x: number) => Column
+  column: (x: number) => Column,
+  /** Cells whose middle passes `test` go to `buf` instead (their own vertices). */
+  route?: { test: (c: V3) => boolean; buf: GeoBuffer }
 ): GridResult | null {
   const cols = columns(ctx, x0, x1);
   if (!cols) return null;
@@ -295,6 +303,32 @@ function grid(
   );
   for (let j = 0; j < data.length - 1; j += 1)
     for (let i = 0; i < rows - 1; i += 1) {
+      if (route) {
+        const q: [number, number][] = [
+          [j, i],
+          [j + 1, i],
+          [j + 1, i + 1],
+          [j, i + 1],
+        ];
+        const mid: V3 = [0, 0, 0];
+        for (const [cj, ci] of q)
+          for (let k = 0; k < 3; k += 1) mid[k] += data[cj].p[ci][k] / 4;
+        if (route.test(mid)) {
+          const [ra, rb, rc, rd] = q.map(([cj, ci]) => {
+            const col = data[cj];
+            return route.buf.vertex(
+              col.p[ci],
+              col.color?.[ci],
+              col.uv?.[ci],
+              col.uv1?.[ci],
+              col.extra?.[ci]
+            );
+          });
+          route.buf.tri(ra, rd, rc);
+          route.buf.tri(ra, rc, rb);
+          continue;
+        }
+      }
       const a = ids[j][i];
       const b = ids[j + 1][i];
       const c = ids[j + 1][i + 1];
@@ -424,11 +458,15 @@ interface BandSpec {
   camber?: number;
   /** The walls (sides and ends) go here (default the paint list). */
   wallBuf?: GeoBuffer;
+  /** Everything (walls, painted roof, underside) goes here instead. */
+  buf?: GeoBuffer;
+  /** A painted roof's cells whose middle passes `test` go to `buf`. */
+  roofRoute?: { test: (c: V3) => boolean; buf: GeoBuffer };
 }
 
 function band(ctx: Ctx, o: BandSpec): void {
-  const paint = ctx.d.paint;
-  const walls = o.wallBuf ?? paint;
+  const paint = o.buf ?? ctx.d.paint;
+  const walls = o.buf ?? o.wallBuf ?? paint;
   const rowsWall = [0, 0.5, 1];
   const port = grid(ctx, walls, o.x0, o.x1, (x) => ({
     p: rowsWall.map((k): V3 => [x, o.yr(x)[1], o.zb(x) + o.h * k]),
@@ -471,10 +509,17 @@ function band(ctx: Ctx, o: BandSpec): void {
       };
     });
   } else if (o.roof === "paint") {
-    roof = grid(ctx, paint, o.x0, o.x1, (x) => {
-      const p = roofRow(x);
-      return { p, color: repeat(o.roofColor ?? rgb(COLORS.roof), p.length) };
-    });
+    roof = grid(
+      ctx,
+      paint,
+      o.x0,
+      o.x1,
+      (x) => {
+        const p = roofRow(x);
+        return { p, color: repeat(o.roofColor ?? rgb(COLORS.roof), p.length) };
+      },
+      o.roofRoute
+    );
   } else if (o.roof === "skylight") {
     roof = grid(ctx, paint, o.x0, o.x1, (x) => {
       const [lo, hi] = o.yr(x);
@@ -672,9 +717,10 @@ function buildSuperstructure(ctx: Ctx): void {
   for (const d of r.domes) {
     const c: V3 = [d.x, 0, d.z];
     if (!inPart(ctx, c)) continue;
-    dome(ctx.d.paint, c, d.a, d.b, d.c, 20, 6, rgb(COLORS.glass));
+    const buf = d.walkHidden ? ctx.d.walkHidden : ctx.d.paint;
+    dome(buf, c, d.a, d.b, d.c, 20, 6, rgb(COLORS.glass));
     cylinder(
-      ctx.d.paint,
+      buf,
       [d.x, 0, d.z - 0.25],
       [d.x, 0, d.z + 0.05],
       1,
@@ -784,6 +830,10 @@ function buildBlocks(ctx: Ctx, blocks: Block[]): void {
       under: b.under,
       camber: b.camber,
       ...(b.dazzle ? { wallBuf: ctx.d.dazzle } : {}),
+      ...(b.walkHidden ? { buf: ctx.d.walkHidden } : {}),
+      ...(b.walkHiddenRoof
+        ? { roofRoute: hiddenRoof(b.walkHiddenRoof, ctx) }
+        : {}),
     };
     const strip = b.strip;
     if (strip) {
@@ -797,9 +847,10 @@ function buildBlocks(ctx: Ctx, blocks: Block[]): void {
   for (const d of r.domes) {
     const c: V3 = [d.x, 0, d.z];
     if (!inPart(ctx, c)) continue;
-    dome(ctx.d.paint, c, d.a, d.b, d.c, 20, 6, rgb(COLORS.glass));
+    const buf = d.walkHidden ? ctx.d.walkHidden : ctx.d.paint;
+    dome(buf, c, d.a, d.b, d.c, 20, 6, rgb(COLORS.glass));
     cylinder(
-      ctx.d.paint,
+      buf,
       [d.x, 0, d.z - 0.25],
       [d.x, 0, d.z + 0.05],
       1,
@@ -810,6 +861,18 @@ function buildBlocks(ctx: Ctx, blocks: Block[]): void {
       [d.a + 0.15, d.b + 0.15]
     );
   }
+}
+
+/** A block's walk-hidden roof cells: middles in its box go to "walk-hidden". */
+function hiddenRoof(
+  box: NonNullable<Block["walkHiddenRoof"]>,
+  ctx: Ctx
+): { test: (c: V3) => boolean; buf: GeoBuffer } {
+  return {
+    test: (c) =>
+      c[0] > box.x0 && c[0] < box.x1 && Math.abs(c[1]) < box.halfWidth,
+    buf: ctx.d.walkHidden,
+  };
 }
 
 /**
@@ -2009,6 +2072,7 @@ export function buildShipPart(
     decal: new GeoBuffer({ uv: true }),
     dazzle: new GeoBuffer({ color: true }),
     variant: new GeoBuffer({ color: true }),
+    walkHidden: new GeoBuffer({ color: true }),
     portholes: [],
     windows: [],
     vents: [],
@@ -2105,6 +2169,7 @@ export function splitAtHinge(
       decal: splitBuffer(d.decal, x, fwd),
       dazzle: splitBuffer(d.dazzle, x, fwd),
       variant: splitBuffer(d.variant, x, fwd),
+      walkHidden: splitBuffer(d.walkHidden, x, fwd),
       portholes: d.portholes.filter((l) => keep(l.p)),
       windows: d.windows.filter((l) => keep(l.p)),
       vents: d.vents.filter((v) => keep(v.p)),
