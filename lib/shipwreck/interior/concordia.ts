@@ -29,7 +29,8 @@ import type {
 /**
  * The Costa Concordia's rooms. 1.17: the pool hall, a deck room (her open
  * decks are `walk/concordiaDecks.ts`, which takes the hall from here).
- * 1.18: the rooms inside her, as blockout (their look is Task 9's).
+ * 1.18: the rooms inside her, with their look (the scene kit's finishes,
+ * lamp styles and pieces: `components/shipwreck/interior/kit.ts`).
  * Positions are her game decks (the model's numbering, `spec.decks`),
  * Costa's noted alongside; every room stands inside her model's solid
  * blocks (`concordiaRecipe.ts`: deck 3 full width, decks 4–5 inside the
@@ -141,9 +142,9 @@ import type {
  *     the middle ones ten.
  *   - The Squok club starts at x 34.2 against the pool hall's forward
  *     wall (the spec's x 36), so its door is a short step.
- * - The picker's room buttons (`entries`) use the 1.16 pictures for now
- *   (the stair, a bed, the corridor, the bunks twice): her own pictures
- *   are Task 9's.
+ * - The picker's room buttons (`entries`) have her own pictures: the
+ *   atrium's glass lift, a bed by the balcony door, the low cabin with the
+ *   sea at its window, the stage, a pirate ship for the kids' club.
  */
 
 /** The hall's plan: the model's `pool-glass` block. */
@@ -645,7 +646,8 @@ const INFO: Record<string, RoomInfo> = {
   "lobby-1": low("lobby", CARPET),
   "corridor-1": low("corridor", CARPET),
   "cabin-inside": low("cabin", CABIN),
-  "cabin-ocean": low("cabin", CABIN),
+  // Its big window low over the sea, on her starboard side.
+  "cabin-ocean": low("cabin", { ...CABIN, portholes: "starboard" }),
   "lobby-7": seven("lobby", CARPET),
   "corridor-7": seven("corridor", CARPET),
   stateroom: seven("stateroom", CABIN),
@@ -876,10 +878,22 @@ const herFurniture: Furniture[] = [
     at: [x, 7.45],
     yaw: Q,
   })),
-  // Exit signs over the deck doors (inside) and the club's door.
+  // Exit signs over the deck doors (inside), the way to them from the
+  // galleries, the club's door, the lobbies' and corridors' ways out (the
+  // corridors' far ends: a stair beyond), and the theatre's doors.
   { room: "entry-p", piece: "exit-sign", at: [ENTRY_X, ENTRY_OUT], yaw: -Q },
   { room: "entry-s", piece: "exit-sign", at: [ENTRY_X, -ENTRY_OUT], yaw: Q },
+  { room: "atrium-4", piece: "exit-sign", at: [ENTRY_X, AT_HW], yaw: -Q },
+  { room: "atrium-4", piece: "exit-sign", at: [ENTRY_X, -AT_HW], yaw: Q },
   { room: "squok", piece: "exit-sign", at: [SQ_X0 + 0.05, SQ_DOOR_Y], yaw: 0 },
+  { room: "lobby-1", piece: "exit-sign", at: [56, C1_Y], yaw: 0 },
+  { room: "corridor-1", piece: "exit-sign", at: [56, C1_Y], yaw: Math.PI },
+  { room: "corridor-1", piece: "exit-sign", at: [30, C1_Y], yaw: 0 },
+  { room: "lobby-7", piece: "exit-sign", at: [56, C7_Y], yaw: 0 },
+  { room: "corridor-7", piece: "exit-sign", at: [56, C7_Y], yaw: Math.PI },
+  { room: "corridor-7", piece: "exit-sign", at: [44, C7_Y], yaw: 0 },
+  { room: "theatre-back", piece: "exit-sign", at: [TH_BACK, 0], yaw: 0 },
+  { room: "theatre-balcony", piece: "exit-sign", at: [TH_BACK, 0], yaw: 0 },
   // The inside cabin: twin beds heads to the inboard wall, a desk, a TV.
   {
     room: "cabin-inside",
@@ -957,6 +971,13 @@ const herFurniture: Furniture[] = [
     blocks: true,
   },
   { room: "stateroom", piece: "tv", at: [ST_X1 - 0.05, -12.9], yaw: Math.PI },
+  // The glass door out, slid open (its frame round the doorway).
+  {
+    room: "stateroom",
+    piece: "balcony-door",
+    at: [ST_MID, -BAL_BACK],
+    yaw: Q,
+  },
   // Its balcony: two chairs looking out to sea.
   {
     room: "balcony",
@@ -1005,21 +1026,47 @@ const herFurniture: Furniture[] = [
     yaw: Math.PI,
     blocks: true,
   },
+  // More to play on: a second tower, soft blocks, a reading corner of
+  // beanbags, shelves along both sides, another table.
+  { room: "squok", piece: "castle-tower", at: [39, 2], yaw: 0, blocks: true },
+  { room: "squok", piece: "soft-play", at: [50, -11.5], yaw: 0, blocks: true },
+  { room: "squok", piece: "soft-play", at: [53, 2], yaw: 0, blocks: true },
+  ...[49.5, 51, 52.5].map((x, i): Furniture => ({
+    room: "squok",
+    piece: "beanbag",
+    at: [x, i === 1 ? 11.6 : 10.8],
+    yaw: 0,
+    blocks: true,
+  })),
+  ...[40, 46].map((x): Furniture => ({
+    room: "squok",
+    piece: "toy-shelf",
+    at: [x, 12.75],
+    yaw: -Q,
+    blocks: true,
+  })),
+  {
+    room: "squok",
+    piece: "toy-shelf",
+    at: [44, -12.75],
+    yaw: Q,
+    blocks: true,
+  },
+  { room: "squok", piece: "kids-table", at: [49, 6.5], yaw: 0, blocks: true },
 ];
 
 // --- Start inside (1.16) ------------------------------------------------------------
 
 /**
  * The camera picker's rooms, in the order the buttons show, each facing
- * what is worth seeing. The pictures are the 1.16 ones until Task 9 draws
- * hers.
+ * what is worth seeing, each with her own picture.
  */
 const entries: RoomEntry[] = [
   // The well's floor, looking aft at the glass lifts (and up).
   {
     id: "atrium",
     label: "Atrium",
-    icon: "staircase",
+    icon: "atrium",
     room: "atrium-well",
     at: [75, 1],
     yaw: Math.PI,
@@ -1028,7 +1075,7 @@ const entries: RoomEntry[] = [
   {
     id: "stateroom",
     label: "Stateroom",
-    icon: "bed",
+    icon: "stateroom",
     room: "stateroom",
     at: [ST_MID + 0.2, -10.6],
     yaw: -Q,
@@ -1037,7 +1084,7 @@ const entries: RoomEntry[] = [
   {
     id: "low-cabin",
     label: "Low cabin",
-    icon: "corridor",
+    icon: "low-cabin",
     room: "lobby-1",
     at: [59.5, C1_Y],
     yaw: Math.PI,
@@ -1046,7 +1093,7 @@ const entries: RoomEntry[] = [
   {
     id: "theatre",
     label: "Theatre",
-    icon: "bunk",
+    icon: "theatre",
     room: "theatre",
     at: [95.0, 3.5],
     yaw: 0,
@@ -1055,7 +1102,7 @@ const entries: RoomEntry[] = [
   {
     id: "squok",
     label: "Kids' club",
-    icon: "bunk",
+    icon: "kids-club",
     room: "squok",
     at: [37, -4],
     yaw: Math.atan2(8, 9),

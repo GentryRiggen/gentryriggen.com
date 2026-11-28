@@ -458,6 +458,27 @@ export class Builder {
     }
   }
 
+  /**
+   * Moves every triangle of `other` onto the end of this one (its tags as
+   * they were) and empties it: her see-through panes drawn last in a
+   * zone's glass mesh (kit.ts).
+   */
+  append(other: Builder): void {
+    for (const [to, from] of [
+      [this.pos, other.pos],
+      [this.nrm, other.nrm],
+      [this.col, other.col],
+      [this.uv, other.uv],
+      [this.tile, other.tile],
+      [this.room, other.room],
+      [this.glow, other.glow],
+      [this.piece, other.piece],
+    ] as const) {
+      for (let i = 0; i < from.length; i += 1) to.push(from[i]);
+      from.length = 0;
+    }
+  }
+
   geometry(light?: Float32Array): BufferGeometry {
     const g = new BufferGeometry();
     g.setAttribute("position", new Float32BufferAttribute(this.pos, 3));

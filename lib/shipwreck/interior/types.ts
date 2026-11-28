@@ -190,8 +190,22 @@ export interface Furniture {
   seats?: number;
 }
 
-/** The picture on a room entry's button (the HUD draws it). */
-export type EntryIcon = "staircase" | "bed" | "bunk" | "corridor";
+/**
+ * The picture on a room entry's button (the HUD draws it): the Titanic's
+ * (1.16) and the Concordia's (1.18: her atrium's glass lift, the balcony
+ * stateroom, the low cabin with the sea at its window, the theatre's
+ * stage, the kids' club's pirate ship).
+ */
+export type EntryIcon =
+  | "staircase"
+  | "bed"
+  | "bunk"
+  | "corridor"
+  | "atrium"
+  | "stateroom"
+  | "low-cabin"
+  | "theatre"
+  | "kids-club";
 
 /**
  * A room you can start a walk in from the camera picker (1.16): its

@@ -1,4 +1,11 @@
-import { NoColorSpace, RepeatWrapping, Vector3, type DataTexture } from "three";
+import {
+  NoBlending,
+  NoColorSpace,
+  NormalBlending,
+  RepeatWrapping,
+  Vector3,
+  type DataTexture,
+} from "three";
 import { TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
 import { roomMaterials, roomShaders } from "../materials";
 import { LAYERS } from "../pieces";
@@ -8,6 +15,7 @@ import {
   applyModern,
   MODERN_ANCHORS,
   MODERN_DETAIL_LINE,
+  MODERN_EMERGENCY_LINE,
   MODERN_FRAGMENT_HEAD,
   MODERN_GLASS_BRANCH,
   MODERN_PX,
@@ -259,5 +267,62 @@ describe("the shader's modern finishes", () => {
     expect(LAYERS.map((l) => roomShaders(l, rooms).fragment)).toEqual(before);
     mats.dispose();
     plain.dispose();
+  });
+});
+
+describe("her panes and her emergency light in the shader (1.18 look)", () => {
+  it("her glass blends her panes by their alpha (1 elsewhere); her shell, wood and metal take her emergency light", () => {
+    for (const layer of LAYERS) {
+      const out = withModern(roomShaders(layer, 8).fragment, layer);
+      const count = (s: string) => out.split(s).length - 1;
+      if (layer === "glass") {
+        expect(count("float paneA = 1.0;")).toBe(1);
+        expect(count("gl_FragColor = vec4(lit, paneA);")).toBe(1);
+        expect(count("gl_FragColor = vec4(lit, 1.0);")).toBe(0);
+        // The panes' branch comes before the dome's (tile 19 is over 6.5).
+        expect(out.indexOf("vTile > 18.5")).toBeLessThan(
+          out.indexOf("if (vTile > 6.5)")
+        );
+        // Declared before it is used.
+        expect(out.indexOf("float paneA")).toBeLessThan(
+          out.indexOf("paneA = mix")
+        );
+      } else {
+        expect(count(MODERN_EMERGENCY_LINE)).toBe(1);
+        expect(count("paneA")).toBe(0);
+      }
+    }
+  });
+
+  it("has no unguarded pow, sqrt, log or division in the new lines", () => {
+    const code = [MODERN_EMERGENCY_LINE, MODERN_GLASS_BRANCH]
+      .join("\n")
+      .replace(/\/\/[^\n]*/g, " ");
+    expect(code).not.toMatch(/\b(pow|sqrt|log|log2|inversesqrt)\s*\(/);
+    expect(code).not.toMatch(/\//);
+  });
+
+  it("applyModern makes her glass blend; another ship's glass stays opaque", () => {
+    const rooms = 8;
+    const water = waterMaterials(rooms);
+    const u = water.surface.uniforms;
+    const shared = {
+      uRoomPower: u.uRoomPower,
+      uLevel: u.uLevel,
+      uTorchOn: u.uTorchOn,
+      uTorchPos: u.uTorchPos,
+      uTorchDir: u.uTorchDir,
+      uTime: u.uTime,
+    };
+    const detail = detailTexture();
+    const mats = roomMaterials(rooms, shared, detail);
+    const plain = roomMaterials(rooms, shared, detail);
+    applyModern(mats, tex);
+    expect(mats.glass.blending).toBe(NormalBlending);
+    expect(mats.shell.blending).toBe(NoBlending);
+    expect(plain.glass.blending).toBe(NoBlending);
+    mats.dispose();
+    plain.dispose();
+    detail.dispose();
   });
 });

@@ -72,7 +72,23 @@ Additive: the Titanic's data and output do not change.
 - `WallFinish`: `cabin-veneer`, `cream`, `marble`, `glass`, `kids`,
   `theatre`. `FloorFinish`: `cabin-carpet`, `marble`, `tile`, `teak`,
   `soft`, `stage-wood`. `LampStyle`: `downlight`, `strip`, `chandelier`.
-  Until their look (Task 9) the new finishes are flat colours.
+  The scene kit draws them with her tiles (`modernTextures.ts`) and her
+  look: glass rails over her well and stair (a velvet parapet in the
+  theatre, a teak-capped glass rail on a balcony), her cabins' veneer
+  doors for her shut doors, a lit glass roof over a well 6 m or more
+  high, a big window on a `portholes` side, downlights about 3.5 m apart
+  (along a corridor's axis; a tall room's reach its floor), cove strips
+  for `strip`, the chandelier over a well. Emergency path lights run
+  along the walls of her corridors, lobbies, atrium, theatre and club
+  (and short white lamps high in corridors and lobbies), with exit
+  signs from the data; their light is baked into `aGlow` (under 0) and
+  shows as her lamps run low on the emergency supply (`uEmergency`, fed
+  from `runtime.interiorEmergency`). Inside her, a zone's see-through
+  panes draw last in its glass mesh (blended); a deck room keeps a pane
+  mesh. Each lift car's side on its door's line is glass, drawn by its
+  landing.
+- `EntryIcon` adds her pictures: `atrium`, `stateroom`, `low-cabin`,
+  `theatre`, `kids-club`.
 - `PieceId` is the Edwardian pieces plus `ModernPieceId`
   (`modernPieces.ts`'s `MODERN_PIECE_IDS`: one list). A blocking modern
   piece's footprint is `MODERN_PIECE_FOOTPRINT` (`pieceFootprint`); a

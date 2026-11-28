@@ -742,3 +742,158 @@ describe("her rooms inside (1.18 blockout)", () => {
     ).toBe(true);
   });
 });
+
+describe("her rooms' look (1.18)", () => {
+  const hers = buildInterior(CONCORDIA_INTERIOR, concordia);
+  afterAll(() => {
+    for (const z of hers.zones.values())
+      for (const g of Object.values(z)) g?.dispose();
+  });
+  const slotOf = (room: string) => hers.slot.get(room)!;
+  /** A layer's vertices in a room: their attribute values. */
+  function inRoom(
+    zone: string,
+    layer: ZoneLayerName,
+    room: string,
+    attr: string
+  ) {
+    const g = hers.zones.get(zone)![layer];
+    if (!g) return [] as number[];
+    const r = g.getAttribute("aRoom").array;
+    const a = g.getAttribute(attr).array;
+    const k = slotOf(room);
+    const parts = new Set(
+      hers.segments.filter((s) => s.room === k).map((s) => s.slot)
+    );
+    const out: number[] = [];
+    for (let v = 0; v < r.length; v += 1)
+      if (r[v] === k || parts.has(r[v])) out.push(a[v]);
+    return out;
+  }
+  type ZoneLayerName = "shell" | "wood" | "metal" | "glass" | "pane";
+
+  it("keeps her budgets: the atrium 50k and 7 meshes, every other zone inside her 40k and 6 (with its water), all 140k", () => {
+    let total = 0;
+    for (const [zone, layers] of hers.zones) {
+      let tris = 0;
+      let meshes = 0;
+      for (const g of Object.values(layers))
+        if (g) {
+          meshes += 1;
+          tris += triangles(g);
+        }
+      total += tris;
+      if (zone === "pool-hall") continue;
+      const atrium = zone === "atrium";
+      expect([zone, meshes + 2 <= (atrium ? 7 : 6)]).toEqual([zone, true]);
+      expect([zone, tris <= (atrium ? 50000 : 40000)]).toEqual([zone, true]);
+      if (process.env.SHIPWRECK_PRINT_TRIANGLES)
+        console.log(`${zone}: ${tris} triangles, ${meshes} meshes`);
+    }
+    expect(total).toBeLessThanOrEqual(140000);
+  });
+
+  it("finishes her rooms in her tiles: veneer, cream, marble, the mural, velvet; carpet, marble, soft play, stage boards", () => {
+    const has = (zone: string, room: string, tile: number) =>
+      inRoom(zone, "shell", room, "aTile").includes(tile);
+    expect(has("stateroom", "stateroom", MODERN_TILE.veneer)).toBe(true);
+    expect(has("stateroom", "stateroom", MODERN_TILE.cabinCarpet)).toBe(true);
+    expect(has("low-cabins", "corridor-1", MODERN_TILE.cream)).toBe(true);
+    expect(has("atrium", "atrium-3", MODERN_TILE.marble)).toBe(true);
+    expect(has("squok", "squok", MODERN_TILE.mural)).toBe(true);
+    expect(has("squok", "squok", MODERN_TILE.softPlay)).toBe(true);
+    expect(has("theatre", "theatre", MODERN_TILE.theatre)).toBe(true);
+    expect(has("theatre", "stage", MODERN_TILE.stageWood)).toBe(true);
+  });
+
+  it("draws her panes last in each inside zone's glass mesh (only the pool hall keeps a pane mesh)", () => {
+    for (const [zone, layers] of hers.zones) {
+      expect([zone, layers.pane !== undefined]).toEqual([
+        zone,
+        zone === "pool-hall",
+      ]);
+      if (zone === "pool-hall") continue;
+      const tile = Array.from(layers.glass!.getAttribute("aTile").array);
+      const first = tile.findIndex((t) => t === MODERN_TILE.pane);
+      if (first < 0) continue;
+      expect(tile.slice(first).every((t) => t >= MODERN_TILE.pane)).toBe(true);
+    }
+    // Her galleries' glass rails, the stair's, the lifts' fronts.
+    expect(inRoom("atrium", "glass", "atrium-4", "aTile")).toContain(
+      MODERN_TILE.pane
+    );
+    // The balcony's glass rail over the sea.
+    expect(inRoom("stateroom", "glass", "balcony", "aTile")).toContain(
+      MODERN_TILE.pane
+    );
+  });
+
+  it("fronts each lift car with glass on its landing, its door open between", () => {
+    const g = hers.zones.get("atrium")!.glass!;
+    const pos = g.getAttribute("position").array;
+    const tile = g.getAttribute("aTile").array;
+    let front = 0;
+    for (let v = 0; v < tile.length; v += 1) {
+      if (tile[v] !== MODERN_TILE.pane) continue;
+      const x = pos[v * 3];
+      const y = -pos[v * 3 + 2];
+      if (
+        Math.abs(x - 64.2) < 1e-3 &&
+        Math.abs(y) > 1.5 - 1e-3 &&
+        Math.abs(y) < 3.7 + 1e-3
+      ) {
+        front += 1;
+        // Never across a door (y 2.0..3.2 either side).
+        expect(Math.abs(y) > 2.0 + 1e-3 && Math.abs(y) < 3.2 - 1e-3).toBe(
+          false
+        );
+      }
+    }
+    expect(front).toBeGreaterThan(0);
+  });
+
+  it("lights her rooms by their lamp style: downlights down a corridor, the chandelier over the well, the theatre's strips and house lights", () => {
+    for (const [zone, room] of [
+      ["low-cabins", "corridor-1"],
+      ["atrium", "atrium-well"],
+      ["theatre", "theatre"],
+      ["squok", "squok"],
+      ["stateroom", "stateroom"],
+    ] as const) {
+      const light = inRoom(zone, "shell", room, "aLight");
+      const mean = light.reduce((s, l) => s + l, 0) / light.length;
+      expect([room, mean > 0.3]).toEqual([room, true]);
+    }
+  });
+
+  it("puts her emergency strips and exit signs on the emergency supply, their light in aGlow under 0 (a deck room's stays its daylight)", () => {
+    const glassTiles = (zone: string, room: string) =>
+      inRoom(zone, "glass", room, "aTile");
+    for (const [zone, room] of [
+      ["low-cabins", "corridor-1"],
+      ["low-cabins", "lobby-1"],
+      ["atrium", "atrium-3"],
+      ["theatre", "theatre"],
+      ["squok", "squok"],
+    ] as const) {
+      expect([
+        room,
+        glassTiles(zone, room).includes(MODERN_TILE.emergency),
+      ]).toEqual([room, true]);
+      const glow = inRoom(zone, "shell", room, "aGlow");
+      expect([room, Math.max(...glow) <= 0, Math.min(...glow) < -0.05]).toEqual(
+        [room, true, true]
+      );
+    }
+    const hall = hers.zones
+      .get("pool-hall")!
+      .shell!.getAttribute("aGlow").array;
+    expect(Math.min(...hall)).toBe(1);
+  });
+
+  it("closes her cabins with her doors (veneer), not the Titanic's", () => {
+    expect(inRoom("low-cabins", "wood", "corridor-1", "aTile")).toContain(
+      MODERN_TILE.veneer
+    );
+  });
+});

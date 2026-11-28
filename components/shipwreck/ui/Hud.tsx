@@ -63,6 +63,11 @@ const ENTRY_ICON: Record<EntryIcon, IconName> = {
   bed: "bed",
   bunk: "bunk",
   corridor: "corridor",
+  atrium: "atrium-lift",
+  stateroom: "stateroom",
+  "low-cabin": "low-cabin",
+  theatre: "theatre",
+  "kids-club": "kids-club",
 };
 
 interface HudProps {

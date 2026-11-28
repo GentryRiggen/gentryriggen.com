@@ -1084,7 +1084,17 @@ describe("her room entries (the camera picker's buttons)", () => {
     ]);
     for (const e of entries) {
       expect(e.label.length).toBeGreaterThan(2);
-      expect(["staircase", "bed", "bunk", "corridor"]).toContain(e.icon);
+      expect(e.icon).toBe(
+        (
+          {
+            atrium: "atrium",
+            stateroom: "stateroom",
+            "low-cabin": "low-cabin",
+            theatre: "theatre",
+            squok: "kids-club",
+          } as Record<string, string>
+        )[e.id]
+      );
     }
   });
 
@@ -1160,5 +1170,119 @@ describe("the Titanic's interior is unchanged", () => {
     expect(hash(walkMapFor("titanic"))).toBe(
       "1c3b8d1b22b3ffba52bf09391e497257a843f5301ad165d35658c1a19a4ad01c"
     );
+  });
+});
+
+describe("her furniture leaves the way through (1.18 look)", () => {
+  /** Whether a seam is this edge of a room. */
+  const isSeamEdge = (room: string, a: V2, b: V2) =>
+    allSeams.some(
+      (s) =>
+        (s.a === room || s.b === room) &&
+        ((near(s.at[0], a) && near(s.at[1], b)) ||
+          (near(s.at[0], b) && near(s.at[1], a)))
+    );
+
+  it("keeps every doorway, aisle and lift door of a room reachable from each other, for the walker's body", () => {
+    const R = WALK_RADIUS_M;
+    const STEP = 0.1;
+    for (const room of inside) {
+      if (room.noWalk) continue;
+      const walls = edges(room.outline).filter(
+        ([a, b]) => !isSeamEdge(room.id, a, b)
+      );
+      const free = (p: V2) =>
+        pointInPolygon(p, room.outline) &&
+        walls.every(([a, b]) => segDist(p, a, b) >= R - 1e-6) &&
+        !insideBlocker(map, room.id, p, R);
+      let x0 = Infinity;
+      let y0 = Infinity;
+      let x1 = -Infinity;
+      let y1 = -Infinity;
+      for (const [x, y] of room.outline) {
+        x0 = Math.min(x0, x);
+        y0 = Math.min(y0, y);
+        x1 = Math.max(x1, x);
+        y1 = Math.max(y1, y);
+      }
+      const nx = Math.ceil((x1 - x0) / STEP) + 1;
+      const ny = Math.ceil((y1 - y0) / STEP) + 1;
+      const cell = (p: V2) =>
+        Math.round((p[0] - x0) / STEP) * ny + Math.round((p[1] - y0) / STEP);
+      const ok = new Uint8Array(nx * ny);
+      for (let i = 0; i < nx; i += 1)
+        for (let j = 0; j < ny; j += 1)
+          ok[i * ny + j] = free([x0 + i * STEP, y0 + j * STEP]) ? 1 : 0;
+      // Each doorway's way in: the free cells just inside it.
+      const doors = allSeams
+        .filter((s) => s.a === room.id || s.b === room.id)
+        .map((s) => {
+          const [p, q] = s.at;
+          const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+          const out: number[] = [];
+          for (let t = 0; t <= len; t += STEP / 2)
+            for (const sg of [1, -1]) {
+              const ux = (q[0] - p[0]) / len;
+              const uy = (q[1] - p[1]) / len;
+              const c: V2 = [
+                p[0] + ux * t - uy * sg * (R + 0.05),
+                p[1] + uy * t + ux * sg * (R + 0.05),
+              ];
+              const k = cell(c);
+              if (pointInPolygon(c, room.outline) && ok[k]) out.push(k);
+            }
+          return { id: `${s.a}↔${s.b}`, cells: out };
+        });
+      // And each deck door's or lift's end in it (the free cells round it).
+      for (const l of allLinks)
+        for (const end of [l.from, l.to]) {
+          if (end.area !== room.id) continue;
+          const out: number[] = [];
+          for (let dx = -0.2; dx <= 0.2 + 1e-9; dx += STEP)
+            for (let dy = -0.2; dy <= 0.2 + 1e-9; dy += STEP) {
+              const c: V2 = [end.at[0] + dx, end.at[1] + dy];
+              const k = cell(c);
+              if (pointInPolygon(c, room.outline) && ok[k]) out.push(k);
+            }
+          doors.push({ id: l.id, cells: out });
+        }
+      if (doors.length < 2) continue;
+      for (const d of doors)
+        expect([room.id, d.id, d.cells.length > 0]).toEqual([
+          room.id,
+          d.id,
+          true,
+        ]);
+      // Flood from the first doorway; every other one is reached.
+      const seen = new Uint8Array(nx * ny);
+      const queue = [...doors[0].cells];
+      for (const k of queue) seen[k] = 1;
+      while (queue.length) {
+        const k = queue.pop()!;
+        const i = Math.floor(k / ny);
+        const j = k % ny;
+        for (const [di, dj] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ]) {
+          const a = i + di;
+          const b = j + dj;
+          if (a < 0 || b < 0 || a >= nx || b >= ny) continue;
+          const n = a * ny + b;
+          if (ok[n] && !seen[n]) {
+            seen[n] = 1;
+            queue.push(n);
+          }
+        }
+      }
+      for (const d of doors)
+        expect([room.id, d.id, d.cells.some((k) => seen[k] === 1)]).toEqual([
+          room.id,
+          d.id,
+          true,
+        ]);
+    }
   });
 });

@@ -280,3 +280,91 @@ describe("her pool hall's pieces, placed by the kit", () => {
     expect(p.x).toBeGreaterThan(fp.lx / 2);
   });
 });
+
+// --- 1.18: her pieces placed where their mount says --------------------------------
+
+describe("her pieces, placed by their mount (1.18)", () => {
+  const room = (id: string) =>
+    CONCORDIA_INTERIOR.rooms.find((r) => r.id === id)!;
+  /** The placed piece's height range over its floor (ship z), and its y extent. */
+  function place(
+    piece: PieceId,
+    roomId: string,
+    at: [number, number],
+    yaw = 0
+  ) {
+    const r = room(roomId);
+    const L = new ModernLayers();
+    const lamps = addPiece(L, { room: r.id, piece, at, yaw }, r, concordia);
+    const floor = roomFloorZ(r, at[0], at[1], concordia);
+    let lo = Infinity;
+    let hi = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (const b of L.all)
+      for (let i = 0; i < b.pos.length; i += 3) {
+        lo = Math.min(lo, b.pos[i + 1] - floor);
+        hi = Math.max(hi, b.pos[i + 1] - floor);
+        y0 = Math.min(y0, -b.pos[i + 2]);
+        y1 = Math.max(y1, -b.pos[i + 2]);
+      }
+    return { L, lamps, lo, hi, y0, y1, r };
+  }
+
+  it("hangs the stage lights from the stage's ceiling, lighting the stage", () => {
+    const { lo, hi, lamps, r } = place(
+      "stage-lights",
+      "stage",
+      [103.5, 0],
+      Math.PI
+    );
+    expect(hi).toBeCloseTo(r.ceilingM, 1);
+    expect(lo).toBeGreaterThan(r.ceilingM - 2);
+    expect(lamps.length).toBeGreaterThan(0);
+  });
+
+  it("spans the curtain across the stage, inside its side walls and under its ceiling", () => {
+    const { y0, y1, hi, r } = place(
+      "stage-curtain",
+      "stage",
+      [107, 0],
+      Math.PI
+    );
+    const ys = r.outline.map((p) => p[1]);
+    expect(y0).toBeGreaterThanOrEqual(Math.min(...ys) - 1e-6);
+    expect(y1).toBeLessThanOrEqual(Math.max(...ys) + 1e-6);
+    expect(y1 - y0).toBeGreaterThan(12);
+    expect(hi).toBeLessThan(r.ceilingM);
+  });
+
+  it("keeps an exit sign under a low ceiling and draws no glass lift car (the lift's)", () => {
+    const { hi, r } = place("exit-sign", "corridor-1", [30, -9.9]);
+    expect(hi).toBeLessThan(r.ceilingM - 0.14);
+    const car = place("glass-lift-car", "atrium-3", [65, 0]);
+    expect(car.L.triangles).toBe(0);
+  });
+
+  it("sizes a seat row by its seats", () => {
+    const six = place("theatre-seat-row", "theatre", [95, 5.85]);
+    const r = room("theatre");
+    const L = new ModernLayers();
+    addPiece(
+      L,
+      {
+        room: r.id,
+        piece: "theatre-seat-row",
+        at: [95, 5.85],
+        yaw: 0,
+        seats: 6,
+      },
+      r,
+      concordia
+    );
+    let w = 0;
+    for (const b of L.all)
+      for (let i = 0; i < b.pos.length; i += 3)
+        w = Math.max(w, Math.abs(-b.pos[i + 2] - 5.85));
+    expect(w).toBeLessThanOrEqual(3 * 0.55 + 0.02);
+    expect(six.y1 - six.y0).toBeGreaterThan(5);
+  });
+});

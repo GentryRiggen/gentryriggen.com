@@ -388,8 +388,8 @@ export interface RailStyle {
   bay: number;
 }
 
-const GLASS_RAIL: RailStyle = { height: 1.05, top: "chrome", bay: 1.5 };
-const BALCONY_RAIL: RailStyle = { height: 1.1, top: "teak", bay: 1.2 };
+export const GLASS_RAIL: RailStyle = { height: 1.05, top: "chrome", bay: 1.5 };
+export const BALCONY_RAIL: RailStyle = { height: 1.1, top: "teak", bay: 1.2 };
 
 /**
  * A glass balustrade from a to b (local or ship points on the floor line,

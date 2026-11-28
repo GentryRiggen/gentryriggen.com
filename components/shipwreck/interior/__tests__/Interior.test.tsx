@@ -556,6 +556,32 @@ describe("Interior inside her (the Concordia's rooms close, seep and flicker)", 
     expect(dips / 30).toBeLessThan(1.2);
   });
 
+  it("feeds the same dips to her emergency strips' shader (uEmergency), and draws her glass after her rooms' surfaces", () => {
+    const { runtime, group, frame } = setupHer([herFrame(0, -13.6)]);
+    runtime.walkRoom = "lobby-7";
+    const glass = meshesOf(group, "stateroom").find((m) =>
+      m.name.endsWith("-glass")
+    )!;
+    const shell = meshesOf(group, "stateroom").find((m) =>
+      m.name.endsWith("-shell")
+    )!;
+    const u = (glass.material as import("three").ShaderMaterial).uniforms;
+    let seen = 1;
+    for (let i = 0; i < 1500; i += 1) {
+      frame(herFrame(0, -13.6, 30, 0.25), i / 100);
+      expect(u.uEmergency.value).toBe(Math.max(0.1, runtime.interiorEmergency));
+      seen = Math.min(seen, u.uEmergency.value);
+    }
+    expect(seen).toBeLessThan(0.95);
+    expect(seen).toBeGreaterThanOrEqual(0.1);
+    // Her panes in it blend over the surfaces, before the water.
+    expect(glass.renderOrder).toBeGreaterThan(shell.renderOrder);
+    expect(glass.renderOrder).toBeLessThan(11);
+    expect(
+      meshesOf(group, "stateroom").some((m) => m.name.endsWith("-pane"))
+    ).toBe(false);
+  });
+
   it("softens the dips for reduced motion", () => {
     const original = window.matchMedia;
     window.matchMedia = ((q: string) => ({

@@ -122,6 +122,23 @@ const DECK_INSIDE_ORDER = {
   pool: ROOMS_ORDER + 0.3,
   pane: ROOMS_ORDER + 0.6,
 } as const;
+/**
+ * Her rooms' glass (inside her: her panes merged into it, blended) draws
+ * after their surfaces, before the water.
+ */
+const GLASS_ORDER = ROOMS_ORDER + 0.5;
+/** Her emergency supply never goes quite out (its flicker dips to this). */
+const EMERGENCY_MIN = 0.1;
+
+/**
+ * Her emergency strips' supply this frame: `runtime.interiorEmergency`
+ * (1, dipped by her flicker), never under EMERGENCY_MIN.
+ */
+export function emergencySupply(runtime: SceneRuntime): number {
+  const e = runtime.interiorEmergency;
+  return Number.isFinite(e) ? Math.max(EMERGENCY_MIN, Math.min(1, e)) : 1;
+}
+
 /** A pool's water stands this far under its low rim (m): over her model's deck under the hall (2 cm under the rim), so her deck sees it. */
 const POOL_FREEBOARD_M = 0.01;
 
@@ -268,7 +285,10 @@ function build(
       if (!geom) continue;
       const mesh = new Mesh(geom, layer === "pane" ? paneMat : mats[layer]);
       mesh.name = `interior-${zone}-${layer}`;
-      mesh.renderOrder = ROOMS_ORDER;
+      mesh.renderOrder =
+        modern && layer === "glass" && !b.deckZones.has(zone)
+          ? GLASS_ORDER
+          : ROOMS_ORDER;
       group.add(mesh);
       meshes.push(mesh);
       if (layer === "pane") pane = mesh;
@@ -607,6 +627,8 @@ function InteriorScene({
         dipTo = reduced.current ? 1 - (1 - e) * REDUCED_DIP : e;
     }
     runtime.interiorEmergency = dipTo;
+    // Her emergency strips and exit signs: the same dips.
+    if (b.modern) b.modern.uEmergency.value = emergencySupply(runtime);
     const m = b.group.matrix.elements;
     const power = b.waterMats.power;
     const f = b.floors;
