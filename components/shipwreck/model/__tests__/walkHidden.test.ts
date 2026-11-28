@@ -8,13 +8,32 @@ import {
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { buildShipPart } from "../buildShip";
-import { recipeFor } from "../shipModel";
+import { createTitanicModel, recipeFor } from "../shipModel";
+import type { Mesh } from "three";
+
+// The canvases the textures draw need a browser: stand-ins here.
+jest.mock("../textures", () => {
+  const tex = () => new (jest.requireActual("three").Texture)();
+  return {
+    acquireShipTextures: () => ({
+      plateNormal: tex(),
+      weathering: tex(),
+      planks: tex(),
+      names: tex(),
+      dispose() {},
+    }),
+    releaseShipTextures() {},
+    acquireDazzleTexture: () => tex(),
+    releaseDazzleTexture() {},
+  };
+});
 
 /**
  * The walk-hidden list (1.17): her model's pool-glass block, its glass
  * dome and her deck-11 roof's middle cells under the hall, all of it in
- * the mesh "walk-hidden", which the room kit's pool hall replaces while
- * walking on her. Every other ship's list is empty (no mesh), and her
+ * the tail of her paint mesh (no mesh of its own, so no draw call; the
+ * scene stops the draw range before it), which the room kit's pool hall
+ * replaces while walking on her. Every other ship's list is empty (no mesh), and her
  * geometry is the same, only moved.
  */
 
@@ -75,5 +94,42 @@ describe("the walk-hidden list", () => {
         buildShipPart(recipeFor(spec), "whole", null, "high").walkHidden
           .triangleCount,
       ]).toEqual([spec.id, 0]);
+  });
+});
+
+describe("the walk-hidden tail", () => {
+  it("is her paint mesh's last triangles, with no mesh of its own", () => {
+    const d = buildShipPart(recipeFor(concordia), "whole", null, "low");
+    const m = createTitanicModel(concordia, { quality: "low", breakX: null });
+    try {
+      const meshes: Mesh[] = [];
+      m.handles.whole.traverse((o) => {
+        if (o.name === "walk-hidden") throw new Error("a walk-hidden mesh");
+        if (o.userData.walkHiddenFrom !== undefined) meshes.push(o as Mesh);
+      });
+      expect(meshes).toHaveLength(1);
+      const paint = meshes[0];
+      expect(paint.name).toBe("paint");
+      const idx = paint.geometry.index!;
+      expect(idx.count).toBe(
+        (d.paint.triangleCount + d.walkHidden.triangleCount) * 3
+      );
+      expect(paint.userData.walkHiddenFrom).toBe(d.paint.triangleCount * 3);
+    } finally {
+      m.dispose();
+    }
+  });
+
+  it("has none on a ship without a walk-hidden block", () => {
+    const m = createTitanicModel(titanic, { quality: "low", breakX: null });
+    try {
+      let n = 0;
+      m.handles.whole.traverse((o) => {
+        if (o.userData.walkHiddenFrom !== undefined) n += 1;
+      });
+      expect(n).toBe(0);
+    } finally {
+      m.dispose();
+    }
   });
 });

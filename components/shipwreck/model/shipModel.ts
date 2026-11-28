@@ -30,7 +30,7 @@ import {
   type ModelQuality,
   type ShipPartData,
 } from "./buildShip";
-import type { GeoBuffer } from "./geoBuffer";
+import { GeoBuffer } from "./geoBuffer";
 import {
   createShipMaterials,
   TITANIC_HULL_PAINT,
@@ -354,7 +354,6 @@ const MERGED = [
   "decal",
   "dazzle",
   "variant",
-  "walkHidden",
 ] as const;
 type MergedKey = (typeof MERGED)[number];
 /** Their meshes' names. */
@@ -366,8 +365,33 @@ const MERGED_NAME: Record<MergedKey, string> = {
   decal: "names",
   dazzle: "dazzle",
   variant: "livery-parts",
-  walkHidden: "walk-hidden",
 };
+
+/**
+ * A part's walk-hidden triangles (`ShipPartData.walkHidden`) appended to
+ * the end of its paint list, so they cost no draw call of their own: the
+ * scene draws the paint mesh to `from` (index count) while walking on her
+ * and in full otherwise. Another list for a part with none.
+ */
+function foldWalkHidden(d: ShipPartData): {
+  d: ShipPartData;
+  from: number | null;
+} {
+  const h = d.walkHidden;
+  if (h.vertexCount === 0) return { d, from: null };
+  const paint = new GeoBuffer(d.paint.opts);
+  for (const src of [d.paint, h]) {
+    const base = paint.vertexCount;
+    // Loops, not spreads: a big list overflows the stack as arguments.
+    for (const v of src.pos) paint.pos.push(v);
+    for (const v of src.col) paint.col.push(v);
+    for (const i of src.idx) paint.idx.push(base + i);
+  }
+  return {
+    d: { ...d, paint, walkHidden: new GeoBuffer(h.opts) },
+    from: d.paint.idx.length,
+  };
+}
 
 function sameNumbers(a: ArrayLike<number>, b: ArrayLike<number>): boolean {
   if (a.length !== b.length) return false;
@@ -672,8 +696,15 @@ function buildModel(
 
   /** A merged list's material (the variant parts are painted). */
   function materialOf(key: MergedKey): Material | undefined {
-    return key === "variant" || key === "walkHidden" ? mats.paint : mats[key];
+    return key === "variant" ? mats.paint : mats[key];
   }
+
+  // Each part's walk-hidden triangles ride at the end of its paint list.
+  const walkFrom: (number | null)[] = partData.map((e) => {
+    const f = foldWalkHidden(e.d);
+    e.d = f.d;
+    return f.from;
+  });
 
   partData.forEach(({ d, group }, pi) => {
     const meshes: Partial<Record<MergedKey, Mesh>> = {};
@@ -683,15 +714,17 @@ function buildModel(
     for (const key of MERGED) {
       const material = materialOf(key);
       // The dazzle list only for a ship with a dazzle livery; the variant
-      // parts and the walk-hidden blocks only for a ship with some.
+      // parts only for a ship with some.
       if (
         !material ||
-        ((key === "dazzle" || key === "variant" || key === "walkHidden") &&
-          d[key].vertexCount === 0)
+        ((key === "dazzle" || key === "variant") && d[key].vertexCount === 0)
       )
         continue;
       put(key, addMesh(group, d[key].toGeometry(), material, MERGED_NAME[key]));
     }
+    const from = walkFrom[pi];
+    if (from !== null && meshes.paint)
+      meshes.paint.userData.walkHiddenFrom = from;
     partMeshes[pi] = meshes;
     const portholes = paneMesh(shared.porthole, mats.pane, d.portholes);
     const windows = paneMesh(shared.window, mats.pane, d.windows);
@@ -861,7 +894,7 @@ function buildModel(
     }
     parts.forEach((part, pi) => {
       const { d, group } = partData[pi];
-      const ad = buildShipPart(a.r, part, breakX, quality);
+      const ad = foldWalkHidden(buildShipPart(a.r, part, breakX, quality)).d;
       for (const list of [
         "portholes",
         "windows",

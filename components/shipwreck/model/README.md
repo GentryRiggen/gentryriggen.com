@@ -810,12 +810,16 @@ times the build; the swap is a buffer copy).
 
 **Walk-hidden** (1.17): a block flagged `walkHidden`, a dome flagged
 `walkHidden` and a block's painted roof cells inside `walkHiddenRoof`
-go to their own list, the mesh "walk-hidden" (none for a ship without
-them), which the room kit hides while walking on her and draws its own
-there instead: the Concordia's `pool-glass` block, its glass dome and
-her deck-11 roof's middle cells under the pool hall. The same geometry,
-moved: her orbit perf scenes draw two more calls (52, 52, 54 against
-budgets of 50, 50, 52, inside their 5%), the same triangles.
+are built into their own list (`ShipPartData.walkHidden`), which the
+model appends to the end of its paint mesh's index
+(`userData.walkHiddenFrom`, the index count where it starts). The room
+kit sets that mesh's draw range to stop there while walking on her (and
+back to everything otherwise, shadow and depth passes included), and
+draws its own pool hall instead: the Concordia's `pool-glass` block, its
+glass dome and her deck-11 roof's middle cells. The same geometry, moved
+and with no draw call of its own: her orbit perf scenes stay at 50, 50,
+52 with the same triangles (a first cut with its own mesh cost two
+more).
 
 ### Each ship's liveries (R28, the research)
 

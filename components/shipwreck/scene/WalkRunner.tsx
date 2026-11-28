@@ -4,6 +4,7 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { useStore } from "zustand";
+import { loweredBoats } from "@/lib/shipwreck/boatRide";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose, SimFrame } from "@/lib/shipwreck/sim/track";
@@ -103,16 +104,11 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     return out;
   }, [spec]);
   /**
-   * Her lifeboats' lowering times by index (a map with boat blockers: the
-   * Concordia's), from the track's events, rebuilt when the track changes
-   * or its events grow (they are live while the night computes).
+   * Her lifeboats already lowered at the shown time (a map with boat
+   * blockers: the Concordia's), refilled each frame from the track's
+   * events (live while the night computes; a seek back un-lowers them).
    */
-  const lowered = useRef({
-    track: null as unknown,
-    events: -1,
-    at: new Map<number, number>(),
-    t: 0,
-  });
+  const lowered = useRef(new Set<number>());
   /** Each room's water target (compartment samples cached). */
   const target = useMemo(() => roomWaterTargets(spec), [spec]);
   const walking = useStore(store, (s) => s.camera === "walk");
@@ -187,10 +183,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         // A boat's blocker goes once that boat is lowered (her map only).
         ...(map?.blockers.some((b) => b.kind === "box" && b.boat !== undefined)
           ? {
-              boatLowered: (i: number) => {
-                const at = lowered.current.at.get(i);
-                return at !== undefined && at <= lowered.current.t;
-              },
+              boatLowered: (i: number) => lowered.current.has(i),
             }
           : {}),
         // A ship with rooms: each room's water as Interior shows it
@@ -498,18 +491,9 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       ctx.breakX = breakX;
       ctx.interiorsOpen = !broken;
       if (ctx.boatLowered) {
-        const lw = lowered.current;
         const events = p.track?.events;
-        if (lw.track !== p.track || lw.events !== (events?.length ?? 0)) {
-          lw.track = p.track;
-          lw.events = events?.length ?? 0;
-          lw.at.clear();
-          if (events)
-            for (const e of events)
-              if (e.kind === "boat-lowered" && e.index !== undefined)
-                lw.at.set(e.index, e.t);
-        }
-        lw.t = p.t;
+        if (events) loweredBoats(events, p.t, lowered.current);
+        else lowered.current.clear();
       }
       // The area underfoot, looked up once (again only if a door moves them).
       let inRoom = areaById(map, w.area)?.interior === true;

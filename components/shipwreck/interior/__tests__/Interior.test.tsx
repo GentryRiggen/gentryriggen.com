@@ -289,9 +289,10 @@ describe("Interior", () => {
     act(() => store.getState().startWalk());
     runtime.frame = toSea.night.frames[0] as unknown as SimFrame;
     const whole = new Group();
-    // Her model's block where the hall is (`Block.walkHidden`).
+    // Her model's paint mesh, the block where the hall is its tail
+    // (`Block.walkHidden`, the draw range stops before it).
     const block = new Mesh();
-    block.name = "walk-hidden";
+    block.userData.walkHiddenFrom = 30;
     whole.add(block);
     runtime.whole = { whole } as unknown as typeof runtime.whole;
     const group = mockScene.add.mock.calls[
@@ -318,7 +319,7 @@ describe("Interior", () => {
     }
     expect(clear.visible).toBe(false);
     // Her model's block there is hidden while the hall is drawn.
-    expect(block.visible).toBe(false);
+    expect(block.geometry.drawRange.count).toBe(30);
     // Its glass after its pool, after its surfaces.
     const order = (n: string) => hall.find((m) => m.name === n)!.renderOrder;
     expect(order("interior-pool-pool-hall")).toBeGreaterThan(
@@ -387,6 +388,6 @@ describe("Interior", () => {
     act(() => store.getState().setCamera("orbit"));
     frame({ clock: { elapsedTime: 6 } }, 1 / 60);
     expect(group.visible).toBe(false);
-    expect(block.visible).toBe(true);
+    expect(block.geometry.drawRange.count).toBe(Infinity);
   });
 });

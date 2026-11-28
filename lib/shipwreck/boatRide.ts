@@ -97,6 +97,24 @@ export function boardableBoats(
     .map((e) => e.index!);
 }
 
+/**
+ * Boats already lowered at `t` (the complement of `boardableBoats`: a
+ * boat is in its davits while `e.t > t`), by index. Fills `into` when given
+ * (cleared first), so a frame loop allocates nothing; a seek back in time
+ * puts a boat back.
+ */
+export function loweredBoats(
+  events: readonly BoatEvent[],
+  t: number,
+  into: Set<number> = new Set()
+): Set<number> {
+  into.clear();
+  for (const e of events)
+    if (e.kind === "boat-lowered" && e.index !== undefined && e.t <= t)
+      into.add(e.index);
+  return into;
+}
+
 /** The next boat due to leave after `t`, or null when every boat has gone. */
 export function nextBoardable(
   events: readonly BoatEvent[],

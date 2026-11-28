@@ -73,7 +73,7 @@ import {
  * low rim's height (spilling as she leans), its glass (`pane`) is blended
  * over everything behind it, and by day (`daylight`) her shader lights it
  * as under the sky whatever her power. Her model's own block there (the
- * mesh "walk-hidden", `Block.walkHidden`) is hidden meanwhile, so her
+ * paint mesh's tail, `Block.walkHidden`) is hidden meanwhile, so her
  * deck sees in.
  */
 
@@ -307,8 +307,13 @@ function build(
     deckRooms,
     /** Whether the deck zones are drawn inside-wins (scratch). */
     deckInside: null as boolean | null,
-    /** Her model's block the deck room replaces, hidden while drawn. */
-    hidden: null as Object3D | null,
+    /**
+     * Her model's paint meshes whose tail (the walk-hidden block the deck
+     * room replaces) is cut off by their draw range while drawn; found
+     * once per part.
+     */
+    hidden: null as Mesh[] | null,
+    hiddenIn: null as Object3D | null,
     detail,
     glowMat,
     group,
@@ -356,18 +361,25 @@ function dispose(b: Built): void {
 
 /**
  * Hides her model's walk-hidden block in `part` (the deck room is drawn
- * there), or, with null, shows the one hidden again.
+ * there), or, with null, shows the one hidden again. The block is the
+ * tail of a paint mesh's index (`userData.walkHiddenFrom`): its draw range
+ * stops before it (shadow and depth passes too), so it costs no draw call.
  */
 function showModel(b: Built, part: Object3D | null): void {
-  if (b.hidden && b.hidden.parent !== part) {
-    b.hidden.visible = true;
+  if (b.hidden && b.hiddenIn !== part) {
+    for (const m of b.hidden) m.geometry.setDrawRange(0, Infinity);
     b.hidden = null;
+    b.hiddenIn = null;
   }
   if (!part || b.hidden) return;
-  const m = part.getObjectByName("walk-hidden");
-  if (!m) return;
-  m.visible = false;
-  b.hidden = m;
+  const found: Mesh[] = [];
+  part.traverse((o) => {
+    if (o.userData.walkHiddenFrom !== undefined) found.push(o as Mesh);
+  });
+  b.hidden = found;
+  b.hiddenIn = part;
+  for (const m of found)
+    m.geometry.setDrawRange(0, m.userData.walkHiddenFrom as number);
 }
 
 function InteriorScene({

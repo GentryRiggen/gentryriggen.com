@@ -4,6 +4,7 @@ import {
   BOARD_REACH_M,
   boardableBoats,
   boatSpot,
+  loweredBoats,
   type BoatSpot,
   nearestBoardable,
   nextBoardable,
@@ -33,6 +34,22 @@ describe("boat ride rules", () => {
     expect(boardableBoats(events, 0)).toEqual([2, 7, 4]);
     expect(boardableBoats(events, 150)).toEqual([7, 4]);
     expect(boardableBoats(events, 200)).toEqual([4]);
+  });
+
+  it("loweredBoats is the complement of boardableBoats, and a seek back puts boats back", () => {
+    const set = new Set<number>();
+    expect([...loweredBoats(events, 0, set)]).toEqual([]);
+    expect([...loweredBoats(events, 150, set)].sort()).toEqual([2]);
+    expect([...loweredBoats(events, 200, set)].sort()).toEqual([2, 7]);
+    // Seeking back refills the same set.
+    expect(loweredBoats(events, 100, set)).toBe(set);
+    expect([...set]).toEqual([2]);
+    for (const t of [0, 99, 100, 150, 200, 300, 400]) {
+      const out = loweredBoats(events, t);
+      const left = boardableBoats(events, t);
+      expect([...out, ...left].sort()).toEqual([2, 4, 7]);
+      for (const i of left) expect(out.has(i)).toBe(false);
+    }
   });
 
   it("nextBoardable is the soonest, or null when every boat has gone", () => {
