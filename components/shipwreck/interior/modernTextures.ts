@@ -613,10 +613,11 @@ export const MODERN_EMERGENCY_LINE = /* glsl */ `
 
 /**
  * Glass: her see-through panes merged into a room's glass mesh (tile 19:
- * glass rails, the lift fronts, balcony doors; 20 frosted), blended by
- * their alpha (`paneA`, 1 for everything else: her glass material
- * blends); an emergency lamp or exit sign glows on the emergency supply,
- * whatever the room's own lamps (its `aGlow` times `uEmergency`).
+ * glass rails, the atrium's glass onto the lift shafts, balcony doors; 20
+ * frosted), blended by their alpha (`paneA`, 1 for everything else: her
+ * glass material blends); an emergency lamp or exit sign glows on the
+ * emergency supply, whatever the room's own lamps (its `aGlow` times
+ * `uEmergency`).
  */
 export const MODERN_GLASS_BRANCH = /* glsl */ `if (vTile > 18.5) {
           // A pane: a faint tint, catching the lamps toward a grazing look.

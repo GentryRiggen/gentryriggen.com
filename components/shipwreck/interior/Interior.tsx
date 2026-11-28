@@ -123,8 +123,9 @@ const DECK_INSIDE_ORDER = {
 /**
  * Her rooms' glass (inside her: her panes merged into it, blended, writing
  * depth) draws after their surfaces and after the rooms' water (which
- * writes none), so flood water behind a glass rail or a lift's front still
- * shows through it; glass under the water takes its murk in its own shader.
+ * writes none), so flood water behind a glass rail or the lift shafts'
+ * glass still shows through it; glass under the water takes its murk in
+ * its own shader.
  */
 const GLASS_ORDER = WATER_SURFACE_ORDER + 0.5;
 /** Her emergency supply never goes quite out (its flicker dips to this). */

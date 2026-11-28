@@ -93,6 +93,8 @@ import {
  * (`walkRide`) for Interior and the HUD. The ride lives on the walker
  * (`WalkerState.ride`), so anything that re-places them (a seek, Back on
  * deck, Go outside, the rooms closing at her 30°, `placeWalk`) ends it.
+ * The rooms closing mid-ride walk them out through the lift's dark wipe
+ * (`walkLift`), the stick held while it clears, not a hard cut.
  */
 
 /** The sea's surface for the walk rules: the sea quad is flat (y = 0). */
@@ -630,6 +632,20 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
           yaw: moved.yaw,
         };
         s.easeT = null;
+      }
+      // The rooms closing round a glass lift ride (hers, at 30°): not a hard
+      // cut out of a moving car. The screen goes dark and clears (the lift
+      // wipe) and the stick waits for it, while her hull groans.
+      if (
+        !open &&
+        !broken &&
+        inRoom &&
+        s.walker.ride &&
+        !gone &&
+        w !== s.walker
+      ) {
+        runtime.walkLift += 1;
+        s.liftHold = LIFT_HOLD_S;
       }
       if (w.area !== s.walker.area)
         inRoom = areaById(map, w.area)?.interior === true;

@@ -47,8 +47,8 @@ import { Builder, scale, type P3, type RGB } from "./pieces";
  * zones is, or while riding; lit as the walker's room (`setSlot`).
  */
 
-/** The shaft's wall a little outside the car's plan (m). */
-const SHAFT_GAP_M = 0.06;
+/** The shaft's side walls a little outside the car's plan (m). */
+export const SHAFT_GAP_M = 0.06;
 /** The pit under the bottom stop and the head over the top car (m). */
 const PIT_M = 0.6;
 const HEAD_M = 0.6;
@@ -62,6 +62,19 @@ const SLAB_UP_M = 0.02;
 /** The car's door opening (m) and its head (m over the floor). */
 const DOOR_HALF_M = 0.6;
 const DOOR_HEAD_M = 2.15;
+/**
+ * The car's glass ends (its doors, the glass beside and over them) stand
+ * this far in from its ends (m), so at a stop they never lie on the
+ * atrium's glass wall onto the shaft (`liftGlassWalls`, on the car's end
+ * line): two panes a hand apart, never one doubled or fighting.
+ */
+export const CAR_END_INSET_M = 0.1;
+/**
+ * The car's ends stand this far inside its plan (m): at a stop its
+ * frame never lies on the landing's wall (a lobby's is solid beside the
+ * door), the sill's slim gap.
+ */
+const CAR_END_GAP_M = 0.02;
 
 /** One car and where it is drawn. */
 export interface LiftCar {
@@ -175,7 +188,7 @@ function carGeometry(lx: number, ly: number): ModernLayers {
   const z0 = 0.1;
   const z1 = H - 0.09;
   for (const sx of [-1, 1]) {
-    const xf = sx * (X - 0.03);
+    const xf = sx * (X - CAR_END_INSET_M);
     for (const sy of [-1, 1])
       m.box(
         [xf, sy * (DOOR_HALF_M + 0.025), H / 2],
@@ -271,8 +284,10 @@ function shaftGeometry(
   spec: Pick<ShipSpec, "decks" | "sheerZ" | "sheerRefDeck">
 ): void {
   const top = lift.stops.length - 1;
-  const x0 = lift.car.min[0] - SHAFT_GAP_M;
-  const x1 = lift.car.max[0] + SHAFT_GAP_M;
+  // Its ends on the landings' wall lines (never poking through a lobby's
+  // wall or the atrium's glass), its sides a little outside the car.
+  const x0 = lift.car.min[0];
+  const x1 = lift.car.max[0];
   const y0 = lift.car.min[1] - SHAFT_GAP_M;
   const y1 = lift.car.max[1] + SHAFT_GAP_M;
   const zLo = liftStopZ(lift, spec, 0) - PIT_M;
@@ -369,7 +384,7 @@ export function buildLiftCars(
   let triangles = 0;
   lifts.forEach((lift) => {
     const L = carGeometry(
-      lift.car.max[0] - lift.car.min[0],
+      lift.car.max[0] - lift.car.min[0] - 2 * CAR_END_GAP_M,
       lift.car.max[1] - lift.car.min[1]
     );
     const bodyMesh = new Mesh(L.metal.geometry(), body);

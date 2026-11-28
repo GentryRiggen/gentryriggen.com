@@ -19,7 +19,12 @@ import {
   DECK_ROOM_FLOOR_M,
   DECK_ROOM_TRIANGLE_BUDGET,
   FROSTED_TILE,
+  DOOR_HEAD_M,
+  liftGlassWalls,
 } from "../kit";
+import { buildLiftCars, CAR_END_INSET_M, disposeLiftCars } from "../liftCar";
+import { MeshBasicMaterial } from "three";
+import { deckZAt } from "@/lib/shipwreck/places";
 import { MODERN_TILE } from "../modernTextures";
 import { Layers, TILE } from "../pieces";
 import { MAX_ROOM_SLOTS } from "../materials";
@@ -828,28 +833,133 @@ describe("her rooms' look (1.18)", () => {
     );
   });
 
-  it("fronts each lift car with glass on its landing, its door open between", () => {
-    const g = hers.zones.get("atrium")!.glass!;
+  /**
+   * Her glass pane triangles lying on the wall line at x with |y| in
+   * [y0, y1]: their centroids (ship x, y, z) and their lowest and highest
+   * z. Non-indexed geometry.
+   */
+  function panesOn(zone: string, x: number, y0: number, y1: number) {
+    const g = hers.zones.get(zone)!.glass!;
     const pos = g.getAttribute("position").array;
     const tile = g.getAttribute("aTile").array;
-    let front = 0;
-    for (let v = 0; v < tile.length; v += 1) {
+    const out: [number, number, number, number, number][] = [];
+    for (let v = 0; v + 2 < tile.length; v += 3) {
       if (tile[v] !== MODERN_TILE.pane) continue;
-      const x = pos[v * 3];
-      const y = -pos[v * 3 + 2];
-      if (
-        Math.abs(x - 64.2) < 1e-3 &&
-        Math.abs(y) > 1.5 - 1e-3 &&
-        Math.abs(y) < 3.7 + 1e-3
-      ) {
-        front += 1;
-        // Never across a door (y 2.0..3.2 either side).
-        expect(Math.abs(y) > 2.0 + 1e-3 && Math.abs(y) < 3.2 - 1e-3).toBe(
-          false
-        );
+      let flat = true;
+      let cy = 0;
+      let cz = 0;
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (let k = 0; k < 3; k += 1) {
+        const i = (v + k) * 3;
+        if (Math.abs(pos[i] - x) > 1e-3) flat = false;
+        cy += -pos[i + 2] / 3;
+        cz += pos[i + 1] / 3;
+        lo = Math.min(lo, pos[i + 1]);
+        hi = Math.max(hi, pos[i + 1]);
+      }
+      if (flat && Math.abs(cy) > y0 && Math.abs(cy) < y1)
+        out.push([x, cy, cz, lo, hi]);
+    }
+    return out;
+  }
+
+  it("glasses her atrium's after wall across both lift shafts, to the cove and over the doors (never in a doorway)", () => {
+    const floors = ["3", "4", "5"].map((d) => deckZAt(d, 0, concordia));
+    const storey = (z: number) => floors.filter((f) => f <= z + 1e-3).pop()!;
+    const glass = panesOn("atrium", 64.2, 1.44, 3.76);
+    expect(glass.length).toBeGreaterThan(0);
+    for (const f of floors) {
+      const mine = glass.filter(([, , z]) => storey(z) === f);
+      // Every storey: glass beside each door from the floor towards the cove.
+      const beside = mine.filter(
+        ([, y]) => Math.abs(y) < 2.0 || Math.abs(y) > 3.2
+      );
+      expect(beside.length).toBeGreaterThan(0);
+      expect(Math.min(...beside.map((t) => t[3])) - f).toBeCloseTo(0, 3);
+      const room = CONCORDIA_INTERIOR.rooms.find(
+        (r) => r.id === `atrium-${floors.indexOf(f) + 3}`
+      )!;
+      // To the cove (0.14 m under the ceiling).
+      expect(Math.max(...beside.map((t) => t[4])) - f).toBeCloseTo(
+        room.ceilingM - 0.14,
+        3
+      );
+      // Over the door's head too (|y| 2.0..3.2), never in the doorway.
+      const door = mine.filter(
+        ([, y]) => Math.abs(y) > 2.0 && Math.abs(y) < 3.2
+      );
+      expect(door.length).toBeGreaterThan(0);
+      for (const [, , z] of door) expect(z - f).toBeGreaterThan(DOOR_HEAD_M);
+    }
+    // Both shafts, port and starboard.
+    expect(glass.some(([, y]) => y > 0)).toBe(true);
+    expect(glass.some(([, y]) => y < 0)).toBe(true);
+    // Between the shafts the wall stays a wall.
+    expect(panesOn("atrium", 64.2, 0, 1.4)).toEqual([]);
+  });
+
+  it("leaves the lobbies' lift walls solid but for the doors (the cars carry their own glass)", () => {
+    expect(panesOn("low-cabins", 62, 1.4, 3.8)).toEqual([]);
+    expect(panesOn("stateroom", 62, 1.4, 3.8)).toEqual([]);
+  });
+
+  it("puts the shaft glass only on landings the shaft opens onto (the atrium), up to each one's cove", () => {
+    const walls = liftGlassWalls(
+      CONCORDIA_INTERIOR.rooms,
+      CONCORDIA_INTERIOR.lifts!
+    );
+    expect([...walls.keys()].sort()).toEqual([
+      "atrium-3",
+      "atrium-4",
+      "atrium-5",
+    ]);
+    for (const [id, list] of walls) {
+      const room = CONCORDIA_INTERIOR.rooms.find((r) => r.id === id)!;
+      expect(list).toHaveLength(2);
+      for (const f of list) {
+        expect(f.top).toBeCloseTo(room.ceilingM - 0.14, 6);
+        expect(Math.abs(f.b[1] - f.a[1])).toBeCloseTo(2.2 + 0.12, 6);
       }
     }
-    expect(front).toBeGreaterThan(0);
+    expect(liftGlassWalls(TITANIC_INTERIOR.rooms, []).size).toBe(0);
+  });
+
+  it("stands the moving car's glass ends a hand inside its ends and its frame and shaft off the landings' walls: nothing doubled at a stop", () => {
+    const lifts = buildLiftCars(
+      CONCORDIA_INTERIOR,
+      concordia,
+      new Map(CONCORDIA_INTERIOR.rooms.map((r) => [r.id, r.zone])),
+      new MeshBasicMaterial(),
+      new MeshBasicMaterial()
+    )!;
+    const lift = CONCORDIA_INTERIOR.lifts![0];
+    const halfX = (lift.car.max[0] - lift.car.min[0]) / 2;
+    const pos = lifts.cars[0].pane.geometry.getAttribute("position").array;
+    let ends = 0;
+    for (let v = 0; v < pos.length / 3; v += 1) {
+      // Local three (x, z, −y): x along her, from the car's middle.
+      const x = Math.abs(pos[v * 3]);
+      // Off the side glass (which runs the car's length at its sides).
+      const y = Math.abs(pos[v * 3 + 2]);
+      if (y > (lift.car.max[1] - lift.car.min[1]) / 2 - 0.05) continue;
+      ends += 1;
+      expect(halfX - x).toBeGreaterThanOrEqual(CAR_END_INSET_M - 1e-6);
+    }
+    expect(ends).toBeGreaterThan(0);
+    expect(CAR_END_INSET_M).toBeGreaterThanOrEqual(0.08);
+    // Nothing of the car (frame, floor, posts) on its plan's end lines,
+    // where the landings' walls stand at a stop.
+    const body = lifts.cars[0].body.geometry.getAttribute("position").array;
+    for (let v = 0; v < body.length / 3; v += 1)
+      expect(halfX - Math.abs(body[v * 3])).toBeGreaterThan(0.01);
+    // The shafts never poke through a lobby's wall or the atrium's glass.
+    const shaft = lifts.shaft.geometry.getAttribute("position").array;
+    for (let v = 0; v < shaft.length / 3; v += 1) {
+      expect(shaft[v * 3]).toBeGreaterThanOrEqual(lift.car.min[0] - 1e-6);
+      expect(shaft[v * 3]).toBeLessThanOrEqual(lift.car.max[0] + 1e-6);
+    }
+    disposeLiftCars(lifts);
   });
 
   it("lights her rooms by their lamp style: downlights down a corridor, the chandelier over the well, the theatre's strips and house lights", () => {

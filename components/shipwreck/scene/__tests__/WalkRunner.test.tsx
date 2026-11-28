@@ -764,10 +764,15 @@ describe("walking the Concordia as she leans", () => {
     hooks.rideLift("up");
     for (let i = 0; i < 60; i += 1) frame(29);
     expect(runtime.walkRide).not.toBeNull();
+    const wipes = runtime.walkLift;
     frame(30);
     expect(runtime.walkRide).toBeNull();
     expect(runtime.walkInside).toBe(false);
     expect(runtime.walkLiftDirs).toBe(0);
+    // Not a hard cut out of the moving car: the lift wipe, once.
+    expect(runtime.walkLift).toBe(wipes + 1);
+    for (let i = 0; i < 5; i += 1) frame(30);
+    expect(runtime.walkLift).toBe(wipes + 1);
     const info = runtime.walkInfo!;
     expect(info.ride).toBeNull();
     expect(onDoorOutside(info)).toBeDefined();
@@ -781,6 +786,39 @@ describe("walking the Concordia as she leans", () => {
     ]);
     for (let i = 0; i < 3; i += 1)
       expect(runtime.walker!.pos[i]).toBeCloseTo(eyes[i], 6);
+  });
+
+  it("the rooms closing mid-ride: the stick waits out the wipe, then walks", () => {
+    const { store, runtime, frame } = setupHer();
+    const hooks = sceneHooks(store, runtime);
+    act(() => store.getState().startWalk());
+    frame(29);
+    inCar(hooks, frame, "3", 29);
+    hooks.rideLift("up");
+    for (let i = 0; i < 30; i += 1) frame(29);
+    frame(30);
+    const { x, y } = runtime.walkInfo!;
+    hooks.setWalkInput(1, 0);
+    // The wipe runs 0.9 s (frames are 1/60 s): still for its first half.
+    for (let i = 0; i < 30; i += 1) frame(30);
+    expect([runtime.walkInfo!.x, runtime.walkInfo!.y]).toEqual([x, y]);
+    for (let i = 0; i < 60; i += 1) frame(30);
+    hooks.setWalkInput(0, 0);
+    expect(
+      Math.hypot(runtime.walkInfo!.x - x, runtime.walkInfo!.y - y)
+    ).toBeGreaterThan(0.3);
+  });
+
+  it("the rooms closing round a walker not riding: no wipe (as before)", () => {
+    const { store, runtime, frame } = setupHer();
+    const hooks = sceneHooks(store, runtime);
+    act(() => store.getState().startWalk());
+    frame(29);
+    inCar(hooks, frame, "3", 29);
+    const wipes = runtime.walkLift;
+    frame(30);
+    expect(runtime.walkInside).toBe(false);
+    expect(runtime.walkLift).toBe(wipes);
   });
 
   it("Back on deck (a re-place) and placeWalk mid-ride end it too", () => {

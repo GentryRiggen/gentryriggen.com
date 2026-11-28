@@ -85,8 +85,10 @@ Additive: the Titanic's data and output do not change.
   shows as her lamps run low on the emergency supply (`uEmergency`, fed
   from `runtime.interiorEmergency`). Inside her, a zone's see-through
   panes draw last in its glass mesh (blended); a deck room keeps a pane
-  mesh. Each lift car's side on its door's line is glass, drawn by its
-  landing.
+  mesh. The atrium's after wall is glass across both lift shafts, to the
+  cove and over the doors (`liftGlassWalls`), so the cars are seen
+  gliding; the moving cars carry their own glass (`liftCar.ts`), their
+  ends a hand inside the wall so the two never lie on one another.
 - `EntryIcon` adds her pictures: `atrium`, `stateroom`, `low-cabin`,
   `theatre`, `kids-club`.
 - `PieceId` is the Edwardian pieces plus `ModernPieceId`

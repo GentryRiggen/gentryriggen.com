@@ -1,14 +1,13 @@
 import { ShapeUtils, Vector2, type BufferGeometry } from "three";
 import {
   furnitureFootprint,
-  LIFT_CAR_CEILING_M,
-  liftCarId,
   liftCars,
   lightSegments,
   roomFloorZ,
   segmentAt,
   type Furniture,
   type InteriorMap,
+  type LiftShaft,
   type PieceId,
   type Room,
   type ShutDoor,
@@ -72,6 +71,7 @@ import {
   theatreSeatRow,
 } from "./modernPieces";
 import { MODERN_TILE } from "./modernTextures";
+import { SHAFT_GAP_M } from "./liftCar";
 import {
   DOOR_FACE_OFFSET_M,
   DOOR_GLOW_HEIGHT_M,
@@ -770,8 +770,8 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
   // Her emergency strips' and exit signs' light (a second bake: aGlow).
   const emergency: PlacedLamp[] = [];
   const domes = interior.furniture.filter((f) => f.piece === "dome");
-  // Her lifts' glass fronts (none without lifts).
-  const fronts = liftFronts(given);
+  // Her atrium's glass wall onto the lift shafts (none without lifts).
+  const shaftGlass = liftGlassWalls(rooms, given.lifts ?? []);
 
   // Rooms with no ceiling of their own drawn (a stair through it, the dome).
   const open = new Set(
@@ -810,7 +810,7 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
       for (const l of got) lamps.push({ ...l, room: k, wide: false });
     } else
       addRoom(L, room, rooms, kinds.get(room.id)!, spec, open, {
-        fronts: fronts.landing.get(room.id),
+        fronts: shaftGlass.get(room.id),
       });
     skyLit(L, false);
   });
@@ -881,14 +881,6 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
       emergency.push({ ...l, room: k, wide: false });
     L.pieces(false);
   });
-  for (const car of cars) {
-    const L = layersOf(car.zone);
-    if (!(L instanceof ModernLayers)) continue;
-    const k = slot.get(carLanding.get(car.id)!)!;
-    L.room(k);
-    for (const l of styleLamps(L, car, kinds.get(car.id)!, spec))
-      lamps.push({ ...l, room: k });
-  }
   // A deck room's own deck doors (the club's, in her pool hall's wall):
   // their lit doorways in its glass (no draw of their own), tagged with the
   // room beyond, whose power Interior keeps on while the rooms are open.
@@ -1721,12 +1713,10 @@ function glassDoors(L: Layers, at: P3, facing: number): void {
 /** Ship-frame point. */
 const P = (p: V2, z: number): P3 => [p[0], p[1], z];
 
-/** Her lift fronts and car sides for one room (`liftFronts`). */
+/** Her atrium's glass onto the lift shafts, for one room (`liftGlassWalls`). */
 interface RoomOptions {
-  /** A landing's glass fronts (its lifts' cars behind them). */
+  /** A landing's glass over its lifts' shafts (the cars glide behind). */
   fronts?: readonly LiftFront[];
-  /** A car's side on its door's line: its landing draws it (glass). */
-  carFront?: readonly [V2, V2];
 }
 
 function addRoom(
@@ -1867,8 +1857,6 @@ function addRoom(
     const nx = -dy / len;
     const ny = dx / len;
     if (info.kind === "wall") {
-      // A car's side on its door's line: its landing draws it, in glass.
-      if (opts.carFront && within(a, b, opts.carFront)) continue;
       shell.tileId = wallTile;
       const n = Math.max(1, Math.ceil(len / COLUMN_M));
       const spans = frontSpans(a, b, opts.fronts);
@@ -1876,7 +1864,7 @@ function addRoom(
       for (const [p, q, glassTop] of cols) {
         const top = (v: V2) => cz(v) - COVE_M;
         if (glassTop > 0 && L instanceof ModernLayers) {
-          // A lift's glass front, the wall over it to the cove.
+          // Glass onto a lift shaft, the wall over it to the cove.
           const g = (v: V2) => Math.min(fz(v) + glassTop, top(v));
           L.pane.quad(
             P(p, fz(p)),
@@ -1945,7 +1933,8 @@ function addRoom(
           oak ? COLOR.oakDark : scale(wall, 0.9)
         );
       shell.tileId = TILE.none;
-      // The lift fronts' chrome: posts, a sill and a head.
+      // The shaft glass's chrome: posts at its own ends (not where a door
+      // frame stands), a sill and a head.
       for (const sp of spans) {
         const u = (t: number, z: number): P3 => {
           const v: V2 = [
@@ -1955,8 +1944,22 @@ function addRoom(
           return P(v, fz(v) + z);
         };
         const m = L.metal;
-        for (const t of [sp.t0, sp.t1])
-          m.beam(u(t, 0), u(t, sp.top), 0.06, 0.06, MODERN_COLOR.chrome);
+        if (sp.post0)
+          m.beam(
+            u(sp.t0, 0),
+            u(sp.t0, sp.top),
+            0.06,
+            0.06,
+            MODERN_COLOR.chrome
+          );
+        if (sp.post1)
+          m.beam(
+            u(sp.t1, 0),
+            u(sp.t1, sp.top),
+            0.06,
+            0.06,
+            MODERN_COLOR.chrome
+          );
         m.beam(u(sp.t0, 0.04), u(sp.t1, 0.04), 0.05, 0.08, MODERN_COLOR.chrome);
         m.beam(
           u(sp.t0, sp.top),
@@ -2076,7 +2079,41 @@ function addRoom(
       const hiB = Math.max(cz(b), ceilingZ(other, b[0], b[1], spec));
       const loA = fz(a) + DOOR_HEAD_M;
       const loB = fz(b) + DOOR_HEAD_M;
-      if (hiA > loA + 0.01 || hiB > loB + 0.01) {
+      // A lift's door in her atrium's shaft glass: glass over it too, the
+      // wall over that to the cove, a chrome transom on the door's head.
+      const over =
+        L instanceof ModernLayers ? frontSpans(a, b, opts.fronts) : [];
+      if (over.length > 0 && L instanceof ModernLayers) {
+        const sp = over[0];
+        const g = (v: V2) => Math.min(fz(v) + sp.top, cz(v) - COVE_M);
+        const ga = g(a);
+        const gb = g(b);
+        if (ga > loA + 0.01 || gb > loB + 0.01) {
+          L.pane.quad(
+            P(a, loA),
+            P(b, loB),
+            P(b, gb),
+            P(a, ga),
+            MODERN_COLOR.glass
+          );
+          L.pane.quad(
+            P(b, loB),
+            P(a, loA),
+            P(a, ga),
+            P(b, gb),
+            MODERN_COLOR.glass
+          );
+        }
+        const u = (v: V2, z: number): P3 =>
+          P([v[0] + nx * 0.03, v[1] + ny * 0.03], z);
+        L.metal.beam(u(a, loA), u(b, loB), 0.06, 0.08, MODERN_COLOR.chrome);
+        L.metal.beam(u(a, ga), u(b, gb), 0.06, 0.1, MODERN_COLOR.chrome);
+        if (hiA > ga + 0.01 || hiB > gb + 0.01) {
+          shell.tileId = wallTile;
+          inward(shell, a, b, ga, gb, hiA, hiB, wall, wall);
+          shell.tileId = TILE.none;
+        }
+      } else if (hiA > loA + 0.01 || hiB > loB + 0.01) {
         shell.tileId = wallTile;
         inward(
           shell,
@@ -2105,63 +2142,54 @@ function addRoom(
   }
 }
 
-// --- Her rooms (1.18): lift fronts, rails, the roof, lamps, emergency ----------
+// --- Her rooms (1.18): shaft glass, rails, the roof, lamps, emergency --------
 
-/** A landing's glass front on a lift car (`liftFronts`). */
+/** A run of her atrium's glass wall onto a lift shaft (`liftGlassWalls`). */
 interface LiftFront {
   a: V2;
   b: V2;
-  /** The glass's height over the landing's floor (the car's ceiling). */
+  /** The glass's height over the landing's floor (to its cove). */
   top: number;
 }
 
 /**
- * Her lifts' glass fronts: at each stop, the car's side on its door's line
- * less the door, which its landing draws as glass in chrome (you see into
- * the car), and that side of the car, which the car does not draw.
+ * Her atrium's glass wall onto the lift shafts: on every landing where the
+ * shaft is open towards it (the car's door at the shaft's forward end, the
+ * side `liftCar.ts` leaves open), the landing's wall across the shaft's
+ * whole width is glass to the cove, over the door as well, so the cars
+ * glide by in full view. The cars carry their own glass (`liftCar.ts`); a
+ * lobby's wall (aft, the shaft open only a storey) stays solid but for the
+ * door. Keyed by landing; none without lifts.
  */
-export function liftFronts(interior: InteriorMap): {
-  landing: Map<string, LiftFront[]>;
-  car: Map<string, readonly [V2, V2]>;
-} {
-  const landing = new Map<string, LiftFront[]>();
-  const car = new Map<string, readonly [V2, V2]>();
-  for (const lift of interior.lifts ?? [])
+export function liftGlassWalls(
+  rooms: readonly Room[],
+  lifts: readonly LiftShaft[]
+): Map<string, LiftFront[]> {
+  const out = new Map<string, LiftFront[]>();
+  if (lifts.length === 0) return out;
+  const byId = new Map(rooms.map((r) => [r.id, r]));
+  for (const lift of lifts) {
+    const { min, max } = lift.car;
+    const mid = (min[0] + max[0]) / 2;
     for (const stop of lift.stops) {
       const [p, q] = stop.door;
-      const { min, max } = lift.car;
+      const room = byId.get(stop.landing);
+      if (!room) continue;
       // The door's line: across x (a wall at x) or along it.
       const atX = Math.abs(p[0] - q[0]) < TOL;
-      const i = atX ? 1 : 0;
-      const at = (u: number): V2 => (atX ? [p[0], u] : [u, p[1]]);
-      const d0 = Math.min(p[i], q[i]);
-      const d1 = Math.max(p[i], q[i]);
-      car.set(liftCarId(lift.id, stop.deck), [at(min[i]), at(max[i])]);
-      const list = landing.get(stop.landing) ?? [];
-      for (const [u0, u1] of [
-        [min[i], d0],
-        [d1, max[i]],
-      ] as const)
-        if (u1 - u0 > 0.05)
-          list.push({ a: at(u0), b: at(u1), top: LIFT_CAR_CEILING_M });
-      landing.set(stop.landing, list);
+      if (!atX || p[0] < mid) continue;
+      const y0 = min[1] - SHAFT_GAP_M;
+      const y1 = max[1] + SHAFT_GAP_M;
+      const list = out.get(stop.landing) ?? [];
+      list.push({
+        a: [p[0], y0],
+        b: [p[0], y1],
+        top: room.ceilingM - COVE_M,
+      });
+      out.set(stop.landing, list);
     }
-  return { landing, car };
-}
-
-/** Whether segment a–b lies on the line of s and within it. */
-function within(a: V2, b: V2, s: readonly [V2, V2]): boolean {
-  const [p, q] = s;
-  const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
-  if (len < TOL) return false;
-  for (const v of [a, b]) {
-    const cross = (v[0] - p[0]) * (q[1] - p[1]) - (v[1] - p[1]) * (q[0] - p[0]);
-    if (Math.abs(cross) / len > TOL) return false;
-    const u =
-      ((v[0] - p[0]) * (q[0] - p[0]) + (v[1] - p[1]) * (q[1] - p[1])) / len;
-    if (u < -TOL || u > len + TOL) return false;
   }
-  return true;
+  return out;
 }
 
 /** A front's span along edge a→b (m from a), and its glass's height. */
@@ -2169,6 +2197,9 @@ interface FrontSpan {
   t0: number;
   t1: number;
   top: number;
+  /** Whether the front ends at t0 (t1) here, not cut by the edge's end. */
+  post0: boolean;
+  post1: boolean;
 }
 
 /** The fronts on wall edge a→b, as spans along it (none: an empty list). */
@@ -2188,16 +2219,25 @@ function frontSpans(
     if (off(f.a) > TOL || off(f.b) > TOL) continue;
     const ta = (f.a[0] - a[0]) * ux + (f.a[1] - a[1]) * uy;
     const tb = (f.b[0] - a[0]) * ux + (f.b[1] - a[1]) * uy;
-    const t0 = Math.max(0, Math.min(ta, tb));
-    const t1 = Math.min(len, Math.max(ta, tb));
-    if (t1 - t0 > 0.05) out.push({ t0, t1, top: f.top });
+    const lo = Math.min(ta, tb);
+    const hi = Math.max(ta, tb);
+    const t0 = Math.max(0, lo);
+    const t1 = Math.min(len, hi);
+    if (t1 - t0 > 0.05)
+      out.push({
+        t0,
+        t1,
+        top: f.top,
+        post0: lo > TOL,
+        post1: hi < len - TOL,
+      });
   }
   return out.sort((x, y) => x.t0 - y.t0);
 }
 
 /**
  * A wall edge's columns (points for the light): n even columns, or with
- * lift fronts on it, cut at each front's ends, each column a front's glass
+ * shaft glass on it, cut at each run's ends, each column a run's glass
  * (its height) or wall (0).
  */
 function wallColumns(
