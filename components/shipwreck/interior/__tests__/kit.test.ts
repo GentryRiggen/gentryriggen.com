@@ -891,6 +891,41 @@ describe("her rooms' look (1.18)", () => {
     expect(Math.min(...hall)).toBe(1);
   });
 
+  it("lights her club's door in the pool hall's own glass (tagged with the club), not in the deck doors' glow mesh", () => {
+    const squok = slotOf("squok");
+    expect(hers.deckDoorSlots).toEqual([squok]);
+    const g = hers.zones.get("pool-hall")!.glass!;
+    const room = g.getAttribute("aRoom").array;
+    const glow = g.getAttribute("aGlow").array;
+    const col = g.getAttribute("color").array;
+    const pos = g.getAttribute("position").array;
+    const door = CONCORDIA_INTERIOR.links.find((l) => l.id === "squok")!;
+    let hdr = 0;
+    for (let v = 0; v < room.length; v += 1) {
+      if (room[v] !== squok) continue;
+      // On the hall's forward wall, round the door's outside end.
+      expect(Math.abs(pos[v * 3] - door.from.at[0])).toBeLessThan(0.5);
+      expect(Math.abs(-pos[v * 3 + 2] - door.from.at[1])).toBeLessThan(0.7);
+      if (glow[v] * col[v * 3] > 1) hdr += 1;
+    }
+    expect(hdr).toBeGreaterThan(0);
+    // The deck doors' glow mesh draws only the doors on her open decks.
+    const herMap = walkMapFor("concordia") as WalkMap;
+    const dg = doorGlowGeometry(CONCORDIA_INTERIOR, herMap, concordia);
+    const dp = dg.getAttribute("position");
+    for (let i = 0; i < dp.count; i += 1)
+      expect(
+        Math.hypot(
+          dp.getX(i) - door.from.at[0],
+          -dp.getZ(i) - door.from.at[1]
+        ) > 1.5
+      ).toBe(true);
+    expect(dp.count).toBe(18 * 2);
+    dg.dispose();
+    // The Titanic has no deck rooms: nothing of the kind.
+    expect(built.deckDoorSlots).toEqual([]);
+  });
+
   it("closes her cabins with her doors (veneer), not the Titanic's", () => {
     expect(inRoom("low-cabins", "wood", "corridor-1", "aTile")).toContain(
       MODERN_TILE.veneer

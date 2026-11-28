@@ -4,7 +4,8 @@ import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import { floorZ, type WalkMap } from "@/lib/shipwreck/walk";
 
 /**
- * The deck doors' warm lit doorways (see README.md): for each `door` link,
+ * The deck doors' warm lit doorways (see README.md): for each `door` link
+ * (but a deck room's own: they glow in its glass, kit.ts `deckDoorGlow`),
  * a doorway on the house face between its two ends, a frame round it and
  * the edge of the door swung in, all one merged mesh (one draw) facing out
  * onto the deck. Not see-through: the house wall stays. HDR colours, so
@@ -55,8 +56,12 @@ export function doorGlowGeometry(
       col.push(...c);
     }
   };
+  // A deck room's own doors glow in its glass instead (kit.ts).
+  const deckRooms = new Set(
+    interior.rooms.filter((r) => r.deckRoom).map((r) => r.id)
+  );
   for (const link of interior.links) {
-    if (link.kind !== "door") continue;
+    if (link.kind !== "door" || deckRooms.has(link.from.area)) continue;
     const [ox, oy] = link.from.at;
     const [ix, iy] = link.to.at;
     const len = Math.hypot(ix - ox, iy - oy);

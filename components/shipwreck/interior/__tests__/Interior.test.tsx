@@ -489,21 +489,30 @@ describe("Interior inside her (the Concordia's rooms close, seep and flicker)", 
     expect(glow.visible).toBe(false);
   });
 
-  it("shows the deck doors' glow from her pool hall too (the club's door), after the clear", () => {
+  it("lights the club's door from her pool hall in the hall's own glass (no draw of its own), dark once the rooms close", () => {
     const { runtime, group, frame } = setupHer([herFrame(0, -13.6)]);
     const glow = group.children.find(
       (c) => c.name === "interior-door-glow"
     ) as Mesh;
+    const hallGlass = meshesOf(group, "pool-hall").find((m) =>
+      m.name.endsWith("-glass")
+    )!;
+    const power = (hallGlass.material as import("three").ShaderMaterial)
+      .uniforms.uRoomPower.value as Float32Array;
+    const squok = runtime.interiorLevels!.slot.get("squok")!;
     runtime.walkRoom = "lido-aft";
     frame(herFrame(0, -13.6, 5));
     expect(glow.visible).toBe(true);
-    expect(glow.renderOrder).toBe(0);
+    // In the hall: the separate glow mesh stays off; the door's glow
+    // (tagged with the club's slot) is lit, at night too.
     runtime.walkRoom = "pool-hall";
-    frame(herFrame(0, -13.6, 5));
-    expect(glow.visible).toBe(true);
-    expect(glow.renderOrder).toBeGreaterThan(8);
-    expect(glow.renderOrder).toBeLessThan(10);
-    expect((glow.material as Material).transparent).toBe(true);
+    frame(herFrame(0, -13.6, 5, 0.25));
+    expect(glow.visible).toBe(false);
+    expect(hallGlass.visible).toBe(true);
+    expect(power[squok]).toBe(1);
+    // Closed at 30°: dark.
+    frame(herFrame(0, -13.6, 30, 0.25));
+    expect(power[squok]).toBe(0);
     runtime.walkRoom = "lobby-1";
     frame(herFrame(0, -13.6, 5));
     expect(glow.visible).toBe(false);
@@ -574,9 +583,10 @@ describe("Interior inside her (the Concordia's rooms close, seep and flicker)", 
     }
     expect(seen).toBeLessThan(0.95);
     expect(seen).toBeGreaterThanOrEqual(0.1);
-    // Her panes in it blend over the surfaces, before the water.
+    // Her panes in it blend over the surfaces and the water behind them.
     expect(glass.renderOrder).toBeGreaterThan(shell.renderOrder);
-    expect(glass.renderOrder).toBeLessThan(11);
+    expect(glass.renderOrder).toBeGreaterThan(12);
+    expect(glass.renderOrder).toBeLessThan(20);
     expect(
       meshesOf(group, "stateroom").some((m) => m.name.endsWith("-pane"))
     ).toBe(false);

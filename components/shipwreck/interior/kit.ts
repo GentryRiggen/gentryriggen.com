@@ -72,6 +72,11 @@ import {
   theatreSeatRow,
 } from "./modernPieces";
 import { MODERN_TILE } from "./modernTextures";
+import {
+  DOOR_FACE_OFFSET_M,
+  DOOR_GLOW_HEIGHT_M,
+  DOOR_GLOW_WIDTH_M,
+} from "./doorGlow";
 
 /**
  * The room kit (see README.md): a ship's rooms to merged geometry, one
@@ -697,6 +702,11 @@ export interface InteriorBuild {
   basins: InteriorBasin[];
   /** The zones holding a deck room: drawn whenever walking on her. */
   deckZones: ReadonlySet<string>;
+  /**
+   * The slots a deck room's own deck doors' glow is tagged with (the rooms
+   * beyond them): lit while the rooms are open.
+   */
+  deckDoorSlots: number[];
   /** Whether her rooms use the modern finishes (`applyModern`). */
   modern: boolean;
   /** A long hall's parts (`lightSegments`): their slots follow the rooms'. */
@@ -879,6 +889,20 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
     for (const l of styleLamps(L, car, kinds.get(car.id)!, spec))
       lamps.push({ ...l, room: k });
   }
+  // A deck room's own deck doors (the club's, in her pool hall's wall):
+  // their lit doorways in its glass (no draw of their own), tagged with the
+  // room beyond, whose power Interior keeps on while the rooms are open.
+  const deckDoorSlots: number[] = [];
+  for (const link of interior.links) {
+    if (link.kind !== "door") continue;
+    const room = byId.get(link.from.area);
+    const k = slot.get(link.to.area);
+    if (!room?.deckRoom || k === undefined) continue;
+    const L = layersOf(room.zone);
+    L.room(k);
+    deckDoorGlow(L, room, link.from.at, link.to.at, spec);
+    if (!deckDoorSlots.includes(k)) deckDoorSlots.push(k);
+  }
   // Rooms with no lamp of their own get ceiling lamps (and the foyers
   // more, over the floor).
   rooms.forEach((room, k) => {
@@ -1020,6 +1044,7 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
     segments,
     basins,
     deckZones: new Set(rooms.filter((r) => r.deckRoom).map((r) => r.zone)),
+    deckDoorSlots,
     modern: usesModern(interior),
     floors,
     neighbours: light.open.map((set, k) => [...set].filter((j) => j !== k)),
@@ -2495,6 +2520,8 @@ function emergencyStrips(
   const poly = room.outline;
   const fz = (p: V2) => roomFloorZ(room, p[0], p[1], spec);
   const doors = shutDoors.filter((d) => d.room === room.id);
+  // Narrow halls catch their strips' light from both walls: softer there.
+  const k = room.kind === "corridor" || room.kind === "lobby" ? 0.7 : 1;
   for (let i = 0; i < poly.length; i += 1) {
     if (edges[i].kind !== "wall") continue;
     const a = poly[i];
@@ -2549,7 +2576,7 @@ function emergencyStrips(
           const p = at(u0 + (span * (k + 0.5)) / m);
           out.push({
             p: [p[0] + nx * 0.15, p[1] + ny * 0.15, fz(p) + 0.15],
-            intensity: 0.5,
+            intensity: 0.5 * k,
             radius: 0.6,
           });
         }
@@ -2564,7 +2591,7 @@ function emergencyStrips(
           emergencyLamp(L, P(mid, fz(mid)), yaw, HIGH_LAMP_M, z);
           out.push({
             p: [mid[0] + nx * 0.3, mid[1] + ny * 0.3, fz(mid) + z - 0.2],
-            intensity: 0.45,
+            intensity: 0.45 * k,
             radius: 1.4,
           });
         }
@@ -2572,6 +2599,53 @@ function emergencyStrips(
     }
   }
   return out;
+}
+
+/** A deck door's lit doorway in a deck room (as doorGlow.ts's), its glow. */
+const DECK_DOOR_GLOW = 1.75;
+
+/**
+ * A deck door's warm lit doorway on a deck room's wall (her pool hall's
+ * door to the club), as `doorGlowGeometry` draws one on a house face: a
+ * dark frame, the light (HDR, so bloom catches it), the open leaf's edge.
+ * `out` is the door's end in the room, `inside` its end beyond the wall.
+ */
+function deckDoorGlow(
+  L: Layers,
+  room: Room,
+  out: V2,
+  inside: V2,
+  spec: Spec
+): void {
+  const len = Math.hypot(out[0] - inside[0], out[1] - inside[1]) || 1;
+  const nx = (out[0] - inside[0]) / len;
+  const ny = (out[1] - inside[1]) / len;
+  // Proud of the deck room's wall (its glass room's walls stand in).
+  const off = DOOR_FACE_OFFSET_M - GLASS_INSET_M - 0.03;
+  const o: P3 = [
+    out[0] - nx * off,
+    out[1] - ny * off,
+    roomFloorZ(room, out[0], out[1], spec),
+  ];
+  const w = DOOR_GLOW_WIDTH_M / 2;
+  const h = DOOR_GLOW_HEIGHT_M;
+  const f = 0.09;
+  const g = L.glass;
+  const was = g.glowV;
+  const tile = g.tileId;
+  g.tileId = TILE.none;
+  L.place(o, Math.atan2(ny, nx));
+  const face = (x: number, y0: number, y1: number, z1: number, c: RGB) =>
+    g.quad([x, y0, 0], [x, y1, 0], [x, y1, z1], [x, y0, z1], c);
+  g.glowV = 0;
+  face(0, -w - f, w + f, h + f, lin(0.12, 0.065, 0.03));
+  g.glowV = DECK_DOOR_GLOW;
+  face(0.005, -w, w, h, [0.98, 0.55, 0.21]);
+  g.glowV = 1;
+  face(0.01, w - 0.22, w, h, [0.9, 0.5, 0.22]);
+  L.place(null);
+  g.glowV = was;
+  g.tileId = tile;
 }
 
 /** A doorway's frame by the room's finish. */

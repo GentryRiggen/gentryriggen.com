@@ -115,18 +115,18 @@ const CLEAR_ORDER = ROOMS_ORDER - 1;
  * before the clear from outside, after it (inside wins) from within.
  */
 const DECK_ORDER = { rooms: 6, pool: 7, pane: 8 } as const;
-/** The deck doors' glow, with the walker in a deck room: after the clear. */
-const GLOW_INSIDE_ORDER = CLEAR_ORDER + 0.5;
 const DECK_INSIDE_ORDER = {
   rooms: ROOMS_ORDER,
   pool: ROOMS_ORDER + 0.3,
   pane: ROOMS_ORDER + 0.6,
 } as const;
 /**
- * Her rooms' glass (inside her: her panes merged into it, blended) draws
- * after their surfaces, before the water.
+ * Her rooms' glass (inside her: her panes merged into it, blended, writing
+ * depth) draws after their surfaces and after the rooms' water (which
+ * writes none), so flood water behind a glass rail or a lift's front still
+ * shows through it; glass under the water takes its murk in its own shader.
  */
-const GLASS_ORDER = ROOMS_ORDER + 0.5;
+const GLASS_ORDER = WATER_SURFACE_ORDER + 0.5;
 /** Her emergency supply never goes quite out (its flicker dips to this). */
 const EMERGENCY_MIN = 0.1;
 
@@ -556,11 +556,6 @@ function InteriorScene({
         if (z.pool) z.pool.renderOrder = o.pool;
         if (z.pane) z.pane.renderOrder = o.pane;
       }
-      // The deck doors' glow (the club's door in the hall's wall) is drawn
-      // inside wins too: in the transparent pass after the clear, before
-      // the rooms, so the hall's wall shows the doorway, not a plain wall.
-      b.glow.renderOrder = deckInside ? GLOW_INSIDE_ORDER : 0;
-      b.glowMat.transparent = deckInside;
     }
     // Each drawn room's water: its target, eased (a room just come into
     // view starts at its target: it was not seen climbing).
@@ -674,6 +669,15 @@ function InteriorScene({
       own[k] = shipPower;
       power[k] = shipPower;
     }
+    // A deck room's own deck doors (the club's in her pool hall) glow in
+    // its glass, tagged with the room beyond (kit `deckDoorSlots`): lit
+    // while the rooms are open, dark once they close.
+    for (let i = 0; i < b.deckDoorSlots.length; i += 1) {
+      const k = b.deckDoorSlots[i];
+      if (now[k]) continue;
+      power[k] = open ? 1 : 0;
+      levels[k] = DRY_LEVEL;
+    }
     // Each pool's water: level with the sea's horizon at its low rim
     // (spilled as she leans), never under its floor; lit as its room.
     for (let i = 0; i < b.basins.length; i += 1) {
@@ -740,10 +744,10 @@ function InteriorScene({
     u.uTorchPos.value.y -= TORCH_DROP_M;
     camera.getWorldDirection(u.uTorchDir.value);
     b.clear.visible = seen !== undefined;
-    // On deck (or in a deck room: its glow draws after the clear): inside,
-    // the glow would be drawn over by the rooms; the doors are shut while
+    // On deck only: inside, the glow would be drawn over by the rooms (a
+    // deck room's own doors glow in its glass); the doors are shut while
     // the rooms are closed.
-    b.glow.visible = open && (seen === undefined || deckInside);
+    b.glow.visible = open && seen === undefined;
     // The water around the walker (0..1 at a metre): their room's and the
     // rooms open to it (the sound's wash).
     let wet = 0;
