@@ -843,15 +843,20 @@ export function stepWalker(
     } else {
       insideMove(ctx, s.part, area, sub, mx, my, depth);
     }
-    // Links fire from the stick's own move only, never from the drift.
-    const taken = takeStairs(ctx, sub, px, py);
-    if (taken) via = { kind: taken.kind ?? "stair", id: taken.id };
+    // Whether the stick itself moved them this substep (her lean only).
+    const stickMoved =
+      lean === 0 || sub.x !== px || sub.y !== py || sub.area !== area.id;
     if (lean > 0) {
       // The slide downhill, standing or walking (slowed by water too).
       const now = sub.area === area.id ? area : areaById(ctx.map, sub.area);
       const d = HEEL_DRIFT_MS * lean * wade * h;
       if (now) driftMove(ctx, s.part, now, sub, downX * d, downY * d);
     }
+    // Links: after the whole substep's move (stick and drift), so the drift
+    // never carries them over an end's edge unchecked; and only when the
+    // stick moved them, so the drift alone never takes one.
+    const taken = stickMoved ? takeStairs(ctx, sub, px, py) : null;
+    if (taken) via = { kind: taken.kind ?? "stair", id: taken.id };
     depth = depthAt(ctx, sub.area, sub.x, sub.y);
     inWater = inWaterFromDepth(depth);
     if (inWater) break;

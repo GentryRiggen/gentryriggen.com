@@ -70,6 +70,8 @@ function footprintHalfBreadth(spec: ShipSpec, x: number): number {
 }
 
 const tmp: V3 = [0, 0, 0];
+/** No superstructure boxes (shared, so the check never allocates). */
+const NO_BOXES: NonNullable<HullPiece["superstructure"]> = [];
 
 /**
  * Her half-breadth at a ship-frame point (x, z) of one piece: her hull's
@@ -85,7 +87,7 @@ function pieceHalfBreadth(h: HullPiece, x: number, z: number): number {
   const sheer = h.spec.sheerZ(x);
   if (z <= sheer) return footprintHalfBreadth(h.spec, x);
   let best = -1;
-  for (const b of h.superstructure ?? []) {
+  for (const b of h.superstructure ?? NO_BOXES) {
     if (x < b.fromX || x > b.toX || z < (b.baseZ ?? sheer) || z > b.topZ)
       continue;
     best = Math.max(best, b.halfBreadthM ?? footprintHalfBreadth(h.spec, x));
@@ -176,18 +178,23 @@ export function stepSwimmer(
  * Where a walker who has just gone in floats: off the side they were
  * nearer (starboard on the centreline), or `side` when given (+1 port,
  * −1 starboard: her low side when walking her ends), level with where
- * they went in, 3 m clear of her footprint, facing the way they faced.
+ * they went in, 3 m clear of her footprint, facing the way they faced
+ * (with `side`, facing out to sea, away from her).
  */
 export function swimmerFrom(
   w: WalkerState,
   pose: BodyPose,
   spec: ShipSpec,
   map: WalkMap,
-  side: 1 | -1 = w.y > 0 ? 1 : -1
+  side?: 1 | -1
 ): SwimmerState {
-  const py = side * (footprintHalfBreadth(spec, w.x) + CLEAR_M);
+  const s = side ?? (w.y > 0 ? 1 : -1);
+  const py = s * (footprintHalfBreadth(spec, w.x) + CLEAR_M);
   const [x, y] = onSea(pose, w.x, py, floorZ(map, w.area, w.x, spec, w.y));
-  return { x, y, yaw: pose.yaw + w.yaw };
+  // Slid off a given side: facing out to sea, away from her.
+  const yaw =
+    side !== undefined ? pose.yaw + (side * Math.PI) / 2 : pose.yaw + w.yaw;
+  return { x, y, yaw };
 }
 
 /** The flat sea (earth z = 0), the default surface. */

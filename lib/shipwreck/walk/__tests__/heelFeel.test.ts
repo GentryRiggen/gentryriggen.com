@@ -321,6 +321,39 @@ describe("walking as she leans", () => {
 });
 
 describe("the drift is always safe", () => {
+  it("walking downhill into every link end fires it, however the drift lands", () => {
+    // From 0.20 to 0.25 m outside each end's circle in 5 mm steps, so the
+    // drift sometimes carries the walker over the edge within a substep.
+    let tried = 0;
+    const missed: string[] = [];
+    for (const st of MAP.stairs)
+      for (const end of [st.from, st.to])
+        for (const list of [30, -30, 40, -40]) {
+          const [dx, dy] = deckSlope(pose(list)).downhill;
+          const r = st.widthM / 2;
+          for (let k = 0; k <= 10; k += 1) {
+            const off = r + 0.2 + k * 0.005;
+            const start: V2 = [end.at[0] - dx * off, end.at[1] - dy * off];
+            if (!canStand(MAP, end.area, start)) continue;
+            tried += 1;
+            let via: StepResult["via"];
+            run(
+              at(end.area, start[0], start[1], Math.atan2(dy, dx)),
+              { ...STILL, forward: 1 },
+              ctxFor(pose(list)),
+              0.5,
+              (res) => {
+                via ??= res.via;
+              }
+            );
+            if (via?.id !== st.id)
+              missed.push(`${st.id} ${end.area} ${list}° +${off.toFixed(3)}`);
+          }
+        }
+    expect(missed).toEqual([]);
+    expect(tried).toBeGreaterThanOrEqual(MAP.stairs.length * 2 * 11);
+  });
+
   it("never takes a stair or door on its own, but the stick still does", () => {
     let entered = 0;
     let tried = 0;
@@ -489,34 +522,40 @@ describe("a minute of wandering on every deck at 35°", () => {
     return false;
   }
 
-  it("never leaves an outline, never enters a blocker, never stuck", () => {
-    const c = ctxFor(pose(35));
-    let bad: string | null = null;
-    for (const [n, area] of MAP.areas.entries()) {
-      const rnd = lcg(1000 + n);
-      const [x, y] = standingSpot(MAP, area.id);
-      let s = at(area.id, x, y, rnd() * 2 * Math.PI);
-      let input: WalkInput = STILL;
-      let nextChange = 0;
-      for (let i = 0; i < 60 * 60; i += 1) {
-        if (i >= nextChange) {
-          const stand = rnd() < 0.2;
-          input = {
-            forward: stand ? 0 : rnd() * 2 - 1,
-            strafe: stand ? 0 : rnd() * 2 - 1,
-            lookDx: (rnd() - 0.5) * 200,
-            lookDy: 0,
-          };
-          nextChange = i + 30 + Math.floor(rnd() * 60);
-        } else if (input.lookDx !== 0) input = { ...input, lookDx: 0 };
-        const r = stepWalker(s, input, c, DT);
-        s = r.state;
-        bad ??= fault(r);
-        // Every 3 s: some way out still moves them (never pinned).
-        if (i % 180 === 179 && !canMove(s, c))
-          bad ??= `stuck in ${s.area} at ${s.x} ${s.y}`;
+  it.each([
+    [35, 1000],
+    [-35, 2000],
+  ])(
+    "at %d°: never leaves an outline, never enters a blocker, never stuck",
+    (list, seed) => {
+      const c = ctxFor(pose(list));
+      let bad: string | null = null;
+      for (const [n, area] of MAP.areas.entries()) {
+        const rnd = lcg(seed + n);
+        const [x, y] = standingSpot(MAP, area.id);
+        let s = at(area.id, x, y, rnd() * 2 * Math.PI);
+        let input: WalkInput = STILL;
+        let nextChange = 0;
+        for (let i = 0; i < 60 * 60; i += 1) {
+          if (i >= nextChange) {
+            const stand = rnd() < 0.2;
+            input = {
+              forward: stand ? 0 : rnd() * 2 - 1,
+              strafe: stand ? 0 : rnd() * 2 - 1,
+              lookDx: (rnd() - 0.5) * 200,
+              lookDy: 0,
+            };
+            nextChange = i + 30 + Math.floor(rnd() * 60);
+          } else if (input.lookDx !== 0) input = { ...input, lookDx: 0 };
+          const r = stepWalker(s, input, c, DT);
+          s = r.state;
+          bad ??= fault(r);
+          // Every 3 s: some way out still moves them (never pinned).
+          if (i % 180 === 179 && !canMove(s, c))
+            bad ??= `stuck in ${s.area} at ${s.x} ${s.y}`;
+        }
       }
+      expect(bad).toBeNull();
     }
-    expect(bad).toBeNull();
-  });
+  );
 });

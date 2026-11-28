@@ -204,8 +204,10 @@ ship walks exactly as before. Tests key on her heel, never the clock
   standing or walking, both slowed by wading. The drift is a move like any
   other: rails and walls hold and slide it along them (so you gather
   against the low wall and can always walk out along it), blockers push
-  back, the break holds. It never takes a stair, door or lift (links are
-  checked for the stick's own move only, before the drift), never wades
+  back, the break holds. It never takes a stair, door or lift on its own:
+  links are checked once per substep, after the stick's move and the
+  drift, and only when the stick itself moved the walker (so the drift
+  can never carry them over an end's edge unchecked either). It never wades
   into water deeper than `WALK_WADE_STOP_M` and deeper than here (on deck
   too: the drift alone never puts you in the sea), and stops while
   `StepContext.driftOff` (the end card's input off, the lift's wipe).
@@ -218,10 +220,12 @@ ship walks exactly as before. Tests key on her heel, never the clock
   `halfBreadthM`, else her footprint, either side).
 - **Where walking ends** (`walkEndsAtHeelDeg`, her 40°, midnight): at
   that list either way a walker on her slides off into the sea on her low
-  side (the runner's splash, `swimmerFrom` with that side), and
-  `placeWalker` returns null, so Back on deck and the picker's walk
-  buttons go, as after a break. A seek to before it stands them on the
-  spawn again.
+  side (the runner's splash, `swimmerFrom` with that side, facing out to
+  sea), and `placeWalker` returns null, so Back on deck and the picker's
+  walk buttons go, as after a break. A seek straight past it floats them
+  where the spawn meets the sea (the "nowhere to stand" rule, pushed clear
+  of her boxes), not on her low side. A seek to before it stands them on
+  the spawn again.
 
 `withInterior` carries the deck map's flags into the merged map.
 

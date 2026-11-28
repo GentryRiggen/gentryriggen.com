@@ -522,6 +522,8 @@ describe("walking the Concordia as she leans", () => {
     const info = runtime.walkInfo!;
     const ship = earthToShip(pose, [info.x, info.y, 0]);
     expect(ship[1]).toBeLessThan(0);
+    // Facing out to sea, away from her (starboard: −π/2 off her heading).
+    expect(runtime.walker!.yaw).toBeCloseTo(pose.yaw - Math.PI / 2, 9);
     expect(
       hullClearanceM(info.x, info.y, [
         { pose, spec: concordia, superstructure: concordia.superstructure },
