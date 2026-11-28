@@ -17,6 +17,18 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.16.0",
+    date: "2026-11-27",
+    title: "Finding the way inside",
+    highlights: [
+      "Open the cameras and tap a picture next to Walk the deck to start inside the Titanic: the Grand Staircase, a first class suite, a third class cabin or Scotland Road",
+      "Rooms that are already too full of water, or closed after she breaks, are not shown",
+      "On deck a big orange arrow bobs over the nearest door in, so you can always see where to go",
+      "When you start walking on the Titanic you now face the Grand Staircase door",
+      "The Walk button keeps glowing until you have gone for a walk once",
+    ],
+  },
+  {
     version: "1.15.0",
     date: "2026-11-27",
     title: "Go inside the Titanic",
