@@ -18,10 +18,12 @@ import UpdatePill from "@/components/update/UpdatePill";
 import { trackEnd, trackStart, type RunMode } from "@/lib/shipwreck/analytics";
 import { playback, stageStory, startSpeed } from "@/lib/shipwreck/playback";
 import {
+  hasWalked,
   liveryOf,
   shipOf,
   whatIfOf,
   withLivery,
+  withWalked,
   withWhatIf,
   wreckOf,
 } from "@/lib/shipwreck/save";
@@ -545,6 +547,13 @@ export default function Shipwreck() {
     update((v) => ({ ...v, settings: { ...v.settings, sound: !soundOn } }));
     persist();
   }, [update, persist, soundOn]);
+  // Walked once (1.16): the Walk button stops pulsing for good.
+  const walked = hasWalked(save);
+  const onWalked = useCallback(() => {
+    if (hasWalked(currentShipwreckSave())) return;
+    update(withWalked);
+    persist();
+  }, [update, persist]);
 
   const sound = useMemo(
     () => ({ isOn: soundOn, onToggle: toggleSound }),
@@ -631,6 +640,9 @@ export default function Shipwreck() {
           hidden={showEnd}
           onLivery={saveLivery}
           savedLivery={savedLivery}
+          runtime={runtime}
+          walked={walked}
+          onWalked={onWalked}
         />
       )}
       {words && (

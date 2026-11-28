@@ -10,6 +10,8 @@ export * from "./merge";
 export * from "./water";
 export * from "./easeLevel";
 export * from "./doorExit";
+export * from "./doorArrow";
+export * from "./entries";
 export { TITANIC_INTERIOR } from "./titanic";
 
 /** A ship's interior, or null for a ship you cannot go inside. */

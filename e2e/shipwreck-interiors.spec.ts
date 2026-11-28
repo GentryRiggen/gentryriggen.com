@@ -185,6 +185,38 @@ test.describe("Shipwreck interiors", () => {
     expect((await walk(page)).inside).toBe(false);
   });
 
+  test("the camera picker's Grand Staircase starts the walk inside it", async ({
+    page,
+  }) => {
+    await page.goto("/shipwreck");
+    await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
+    await page.evaluate(() => window.__shipwreck!.setShip!("titanic"));
+    await page.getByTestId("shipwreck-real-night").click();
+    await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+    await expect(page.getByTestId("shipwreck-walk")).toBeEnabled({
+      timeout: 60_000,
+    });
+    await page.evaluate(() => window.__shipwreck!.pause!());
+    await page.getByTestId("shipwreck-cameras-button").click();
+    const gs = page.getByRole("button", {
+      name: "Walk inside: Grand Staircase",
+    });
+    await expect(gs).toBeVisible();
+    await gs.click();
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.inside === true,
+      null,
+      { timeout: 20_000 }
+    );
+    expect(await walk(page)).toMatchObject({ inside: true, area: "gs-boat" });
+    // The eyes widen inside, as walking in.
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.__shipwreck!.getRenderInfo!()?.fov ?? 0)
+      )
+      .toBeCloseTo(65, 0);
+  });
+
   test("Go outside from a suite puts you on the boat deck", async ({
     page,
   }) => {

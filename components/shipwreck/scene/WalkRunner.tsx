@@ -8,6 +8,7 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose, SimFrame } from "@/lib/shipwreck/sim/track";
 import {
+  doorArrow,
   doorExit,
   doorToEnter,
   interiorFor,
@@ -33,6 +34,7 @@ import {
   type SwimmerState,
   type StepContext,
   type WalkerState,
+  type WalkInput,
 } from "@/lib/shipwreck/walk";
 import { shipToThreeInto, type V3 } from "./cameraMath";
 import type { SceneRuntime, WalkInfo } from "./runtime";
@@ -60,7 +62,8 @@ import {
  * Inside her (1.15, a ship with rooms): the rooms' water is passed to the
  * walker (the level Interior shows, eased, or the room's target while it
  * is not drawn), deck doors open while she is whole, and the runner writes
- * `walkInside`, `walkRoom`, `walkCameInBy` and `walkLift`. The door and Go
+ * `walkInside`, `walkRoom`, `walkCameInBy` and `walkLift` (and, on deck,
+ * `walkDoor` and the way-in arrow's `walkArrow`). The door and Go
  * outside buttons (`walkInput.door`, `.outside`) and the test hooks'
  * `walkPlace` are taken here. Inside when she breaks, or washed out by
  * the water, is the same splash into the sea as going in from the deck.
@@ -125,6 +128,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     doorT: 0,
     /** The eyes just before that door (three.js). */
     eyeFrom: [0, 0, 0] as V3,
+    /** Seconds the stick is still ignored after the lift (its dark wipe). */
+    liftHold: 0,
   });
   // Written in place every frame (no per-frame allocations).
   const scratch = useMemo(
@@ -175,6 +180,9 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
           : {}),
       } as StepContext,
       feet: [0, 0, 0] as V3,
+      at: [0, 0] as [number, number],
+      /** The input while the lift's wipe holds the stick: the look only. */
+      held: { forward: 0, strafe: 0, lookDx: 0, lookDy: 0 } as WalkInput,
     }),
     [spec, map, rooms, runtime, target]
   );
@@ -339,6 +347,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       s.pitch = 0;
       s.fall = null;
       s.easeT = null;
+      s.liftHold = 0;
       runtime.walkCameInBy = null;
       const w = placeWalker(map, spec, frame, breakX, FLAT_SEA);
       if (w) {
@@ -422,6 +431,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       };
       s.swimmer = null;
       s.easeT = null;
+      s.liftHold = 0;
       if (store.getState().walk.phase === "water") {
         store.getState().backOnDeck();
         s.seq = store.getState().walk.seq;
@@ -454,6 +464,12 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         runtime.walkDoor = near
           ? map.stairs.findIndex((st) => st.id === near.id)
           : -1;
+        // The arrow over the nearest open deck door (1.16).
+        const at = scratch.at;
+        at[0] = w.x;
+        at[1] = w.y;
+        runtime.walkArrow =
+          w.part === "whole" ? doorArrow(map, w.area, at, depthAt, broken) : -1;
       }
 
       // The door button and Go outside (read once, then cleared).
@@ -507,7 +523,15 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       const ctx = scratch.ctx;
       const before = s.eyeFrom;
       const lastEyes = runtime.walker;
-      const r = stepWalker(w, walkInput, ctx, dt);
+      // Through the lift's dark wipe the stick does nothing (the look
+      // still turns): nobody walks off blind.
+      let input: WalkInput = walkInput;
+      if (s.liftHold > 0) {
+        s.liftHold = Math.max(0, s.liftHold - dt);
+        scratch.held.lookDx = walkInput.lookDx;
+        input = scratch.held;
+      }
+      const r = stepWalker(w, input, ctx, dt);
       walkInput.lookDx = 0;
       walkInput.jump = false;
       // The area after the step, looked up once.
@@ -524,6 +548,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       } else if (r.via?.kind === "lift") {
         runtime.walkLift += 1;
         s.easeT = null;
+        s.liftHold = LIFT_HOLD_S;
       }
       if (r.inWater && r.overboard) {
         // Over the rail: fall from where the eyes are to the sea.
@@ -734,12 +759,16 @@ function useWalkKeys(
   }, [walking, runtime, store]);
 }
 
+/** The stick is ignored this long after the lift (its wipe runs 0.9 s). */
+const LIFT_HOLD_S = 0.9;
+
 /** How often the door in reach is looked up (s). */
 const DOOR_LOOK_S = 0.25;
 
 /** Not in a room (in the sea, a boat or not walking). */
 function notInside(runtime: SceneRuntime): void {
   runtime.walkDoor = -1;
+  runtime.walkArrow = -1;
   runtime.walkInside = false;
   runtime.walkRoom = null;
 }

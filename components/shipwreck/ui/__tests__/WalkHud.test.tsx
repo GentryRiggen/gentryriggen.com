@@ -104,7 +104,8 @@ describe("the Walk button", () => {
     expect(trackGame).toHaveBeenCalledWith("shipwreck_camera", {
       camera: "walk",
     });
-    expect(window.localStorage.getItem("shipwreck:walk-seen")).toBe("1");
+    // 1.16: the save remembers it (seen.walked), never this old key.
+    expect(window.localStorage.getItem("shipwreck:walk-seen")).toBeNull();
     act(() => store.getState().leaveWalk());
     expect(screen.queryByTestId("shipwreck-walk-glow")).toBeNull();
   });
@@ -131,7 +132,8 @@ describe("the camera picker's Walk the deck", () => {
     expect(trackGame).toHaveBeenCalledWith("shipwreck_camera", {
       camera: "walk",
     });
-    expect(window.localStorage.getItem("shipwreck:walk-seen")).toBe("1");
+    // 1.16: the save remembers it (seen.walked), never this old key.
+    expect(window.localStorage.getItem("shipwreck:walk-seen")).toBeNull();
     expect(screen.queryByTestId("shipwreck-cameras")).toBeNull();
   });
 
@@ -166,11 +168,10 @@ describe("the camera picker's Walk the deck", () => {
 });
 
 describe("the Walk glow", () => {
-  it("is a still ring, not a pulse, with reduced motion", () => {
+  it("shows nothing with reduced motion", () => {
     setup();
     const glow = screen.getByTestId("shipwreck-walk-glow");
-    expect(glow.className).toContain("motion-reduce:animate-none");
-    expect(glow.className).toContain("motion-reduce:ring-4");
+    expect(glow.className).toContain("motion-reduce:hidden");
     expect(glow.className).not.toContain("animate-pulse");
   });
 });

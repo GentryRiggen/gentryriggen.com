@@ -8,29 +8,11 @@ import { walkMapFor } from "@/lib/shipwreck/walk";
 import Icon from "./Icon";
 import { FOCUS } from "./styles";
 
-/** Remembers that the Walk button has been tapped (it stops glowing). */
-export const WALK_SEEN_KEY = "shipwreck:walk-seen";
-
-function readSeen(): boolean {
-  try {
-    return window.localStorage.getItem(WALK_SEEN_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeSeen() {
-  try {
-    window.localStorage.setItem(WALK_SEEN_KEY, "1");
-  } catch {
-    /* private mode: it glows again next time */
-  }
-}
-
 /**
  * Starts a walk, as the Walk button and the camera picker's "Walk the deck"
- * both do: leaves a place and X-ray, then walks. Counted (and the button
- * stops glowing) only when the walk really started; returns whether it did.
+ * both do: leaves a place and X-ray, then walks. Counted only when the
+ * walk really started; returns whether it did (the caller tells the save,
+ * which stops the button's pulse: `seen.walked`).
  */
 export function beginWalk(store: PlaybackStore): boolean {
   const s = store.getState();
@@ -39,20 +21,28 @@ export function beginWalk(store: PlaybackStore): boolean {
   store.getState().startWalk();
   if (store.getState().camera !== "walk") return false;
   trackCamera("walk");
-  writeSeen();
   return true;
 }
 
 interface WalkButtonProps {
   store: PlaybackStore;
+  /** The save says they have walked (it does not pulse). */
+  walked?: boolean;
+  /** A walk started from here (the save remembers it). */
+  onWalked?: () => void;
 }
 
 /**
  * The big round Walk button at the top of the right rail: one tap puts you
- * on her boat deck. It glows until the first tap, and is only there for a
- * ship you can walk on, and not while walking (Fly takes you back).
+ * on her boat deck. It pulses until the player has walked once (here, from
+ * the camera picker or into a room), and is only there for a ship you can
+ * walk on, and not while walking (Fly takes you back).
  */
-export default function WalkButton({ store }: WalkButtonProps) {
+export default function WalkButton({
+  store,
+  walked = false,
+  onWalked,
+}: WalkButtonProps) {
   const ship = useStore(store, (s) => s.ship);
   const walking = useStore(store, (s) => s.camera === "walk");
   // Disabled until the night has a frame to stand on.
@@ -60,11 +50,15 @@ export default function WalkButton({ store }: WalkButtonProps) {
     store,
     (s) => s.track !== null && s.track.frames.length > 0
   );
-  const [seen, setSeen] = useState(readSeen);
+  // Tapped this run (before the save's flag comes back round).
+  const [tapped, setTapped] = useState(false);
+  const seen = walked || tapped;
   if (!walkMapFor(ship) || walking) return null;
 
   const onWalk = () => {
-    if (beginWalk(store) && !seen) setSeen(true);
+    if (!beginWalk(store)) return;
+    setTapped(true);
+    onWalked?.();
   };
 
   return (
@@ -73,7 +67,7 @@ export default function WalkButton({ store }: WalkButtonProps) {
         <span
           aria-hidden="true"
           data-testid="shipwreck-walk-glow"
-          className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-amber-300/50 motion-reduce:-inset-1.5 motion-reduce:animate-none motion-reduce:bg-transparent motion-reduce:ring-4 motion-reduce:ring-amber-300/80"
+          className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-amber-300/50 motion-reduce:hidden"
         />
       )}
       <button

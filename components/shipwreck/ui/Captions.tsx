@@ -21,6 +21,11 @@ export const CAPTION_RECENT_S = 90;
 
 interface CaptionsProps {
   store: PlaybackStore;
+  /**
+   * Out of sight (a picker is open over it); its line keeps its own time
+   * and shows again if it is still up when the picker closes.
+   */
+  hidden?: boolean;
 }
 
 /**
@@ -43,7 +48,7 @@ export function runInCount(
  * run (never a stale one later in the night), or with the torpedo's run-in
  * when the run starts before the hit; hides itself after a few seconds.
  */
-export default function Captions({ store }: CaptionsProps) {
+export default function Captions({ store, hidden = false }: CaptionsProps) {
   const [text, setText] = useState<string | null>(() => {
     const s = store.getState();
     const ship = stageSpec(s);
@@ -109,7 +114,10 @@ export default function Captions({ store }: CaptionsProps) {
   }, [text]);
 
   return (
-    <div className="pointer-events-none relative z-10 h-0" aria-live="polite">
+    <div
+      className={`pointer-events-none relative z-10 h-0 ${hidden ? "invisible" : ""}`}
+      aria-live="polite"
+    >
       {text && (
         <p
           data-testid="shipwreck-caption"

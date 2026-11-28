@@ -1,12 +1,20 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useStore } from "zustand";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
 import { trackCamera } from "@/lib/shipwreck/analytics";
 import { helpFor } from "@/lib/shipwreck/help";
+import {
+  interiorFor,
+  openEntries,
+  roomWaterTargets,
+  type EntryIcon,
+  type RoomEntry,
+} from "@/lib/shipwreck/interior";
 import { PLACES_BY_SHIP, type PlaceId } from "@/lib/shipwreck/places";
 import { stageSpec, type PlaybackStore } from "@/lib/shipwreck/playback";
+import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import { clockText, firstHitS, sinceText } from "@/lib/shipwreck/story";
 import { walkMapFor } from "@/lib/shipwreck/walk";
 import {
@@ -15,6 +23,10 @@ import {
   type CameraId,
   type Speed,
 } from "@/lib/shipwreck/types";
+import {
+  requestWalkPlace,
+  type SceneRuntime,
+} from "@/components/shipwreck/scene/runtime";
 import Captions from "./Captions";
 import HelpCard from "./HelpCard";
 import Icon, { type IconName } from "./Icon";
@@ -45,6 +57,14 @@ const CAMERA_ICON: Record<CameraId, IconName> = {
   walk: "walk",
 };
 
+/** A room entry's picture (the data names it; the HUD draws it). */
+const ENTRY_ICON: Record<EntryIcon, IconName> = {
+  staircase: "staircase",
+  bed: "bed",
+  bunk: "bunk",
+  corridor: "corridor",
+};
+
 interface HudProps {
   store: PlaybackStore;
   onBack: () => void;
@@ -66,6 +86,15 @@ interface HudProps {
    * the store has it (never the default's swatch for a ship wearing another).
    */
   savedLivery?: string | null;
+  /**
+   * The scene's runtime: with it, a ship with rooms gets room buttons in
+   * the camera picker that start the walk standing inside (1.16).
+   */
+  runtime?: SceneRuntime;
+  /** The save says the player has walked (the Walk button stops pulsing). */
+  walked?: boolean;
+  /** A walk started (any way): the save remembers it. */
+  onWalked?: () => void;
 }
 
 /** The night's controls, all on the edges of the screen. */
@@ -80,6 +109,9 @@ export default function Hud({
   hidden = false,
   onLivery,
   savedLivery = null,
+  runtime,
+  walked = false,
+  onWalked,
 }: HudProps) {
   const ship = stageSpec({
     ship: useStore(store, (s) => s.ship),
@@ -106,6 +138,29 @@ export default function Hud({
     (s) => s.track !== null && s.track.frames.length > 0
   );
   const [panel, setPanel] = useState<"places" | "cameras" | null>(null);
+  // Start inside: the rooms you can stand in right now, worked out only
+  // while the picker is open (it re-renders each minute of the night).
+  const interior = runtime ? interiorFor(ship.id) : null;
+  const waterTarget = useMemo(
+    () => (interior ? roomWaterTargets(ship) : null),
+    [interior, ship]
+  );
+  const rooms: RoomEntry[] =
+    panel === "cameras" && canWalk && interior && waterTarget && !walking
+      ? roomsNow()
+      : [];
+  function roomsNow(): RoomEntry[] {
+    const s = store.getState();
+    const map = walkMapFor(ship.id);
+    if (!interior || !waterTarget || !map || !s.track) return [];
+    if (s.track.frames.length === 0) return [];
+    return openEntries(interior, {
+      map,
+      spec: ship,
+      frame: sampleTrack(s.track, s.t),
+      target: waterTarget,
+    });
+  }
   const [help, setHelp] = useState(false);
 
   // Desktop nicety: Space plays/pauses, 1–4 pick a speed, ←/→ seek a minute.
@@ -139,10 +194,16 @@ export default function Hud({
     return () => window.removeEventListener("keydown", onKey);
   }, [store, onSpeed, hidden]);
 
+  /** Starts a walk (the button, the picker, a room); true if it did. */
+  const walkNow = (): boolean => {
+    const ok = beginWalk(store);
+    if (ok) onWalked?.();
+    return ok;
+  };
   const pickCamera = (id: CameraId) => {
     if (id === "walk") {
       // The Walk button's path: counted only once the walk started.
-      beginWalk(store);
+      walkNow();
       setPanel(null);
       return;
     }
@@ -150,6 +211,15 @@ export default function Hud({
     store.getState().setCamera(id);
     trackCamera(id);
     setPanel(null);
+  };
+  const pickRoom = (entry: RoomEntry) => {
+    setPanel(null);
+    // Still open now (the night may have moved on since the picker drew)?
+    if (!runtime || !roomsNow().some((e) => e.id === entry.id)) return;
+    if (!walkNow()) return;
+    // The test hooks' path: inside, eyes, water, lights and torch as if
+    // walked in.
+    requestWalkPlace(runtime, entry.room, entry.at[0], entry.at[1], entry.yaw);
   };
   const pickPlace = (id: PlaceId) => {
     store.getState().flyToPlace(place === id ? null : id);
@@ -215,7 +285,8 @@ export default function Hud({
         </div>
       </div>
 
-      <Captions key={runId} store={store} />
+      {/* Under an open picker the caption would cover its top row. */}
+      <Captions key={runId} store={store} hidden={panel !== null && !walking} />
 
       {/* Middle: the right rail with X-ray, places and cameras. */}
       <div className={`relative flex min-h-0 flex-1 justify-end ${SAFE_SIDES}`}>
@@ -262,7 +333,12 @@ export default function Hud({
                       data-testid={`shipwreck-camera-${id}`}
                       disabled={id === "walk" && !hasFrame}
                       onClick={() => pickCamera(id)}
-                      className={`flex min-h-16 w-24 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold disabled:opacity-40 sm:w-28 ${
+                      className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold disabled:opacity-40 ${
+                        // With rooms, Walk the deck heads the walking row.
+                        id === "walk" && rooms.length > 0
+                          ? "col-span-2"
+                          : "w-24 sm:w-28"
+                      } ${
                         camera === id
                           ? "bg-sky-500/85 text-white"
                           : "text-slate-100 hover:bg-white/10"
@@ -273,10 +349,36 @@ export default function Hud({
                     </button>
                   )
                 )}
+                {/* Start inside: one row of pictures under Walk the deck
+                    (one row keeps the picker short on a phone). */}
+                {rooms.length > 0 && (
+                  <div
+                    className="col-span-2 grid grid-cols-4 gap-1.5"
+                    data-testid="shipwreck-rooms"
+                  >
+                    {rooms.map((entry) => (
+                      <button
+                        key={entry.id}
+                        type="button"
+                        aria-label={`Walk inside: ${entry.label}`}
+                        data-testid={`shipwreck-room-${entry.id}`}
+                        onClick={() => pickRoom(entry)}
+                        className={`grid min-h-14 place-items-center rounded-xl border border-amber-300/40 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25 ${FOCUS}`}
+                      >
+                        <Icon
+                          name={ENTRY_ICON[entry.icon]}
+                          className="size-8 sm:size-9"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             <div className="flex flex-col items-end gap-3">
-              {!hidden && <WalkButton store={store} />}
+              {!hidden && (
+                <WalkButton store={store} walked={walked} onWalked={onWalked} />
+              )}
               {sound && (
                 <button
                   type="button"

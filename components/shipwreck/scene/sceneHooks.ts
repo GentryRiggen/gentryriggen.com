@@ -9,7 +9,7 @@ import { sampleTrack } from "@/lib/shipwreck/sim/track";
 import type { ShipwreckSceneHooks } from "@/lib/shipwreck/testHooks";
 import { CAMERA_IDS, type CameraId } from "@/lib/shipwreck/types";
 import { WALK_TURN_PER_PX, walkInput } from "@/lib/shipwreck/walk";
-import type { SceneRuntime } from "./runtime";
+import { requestWalkPlace, type SceneRuntime } from "./runtime";
 
 const clampUnit = (v: number) =>
   Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0;
@@ -118,8 +118,7 @@ export function sceneHooks(
       };
     },
     placeWalk: (area, x, y, yaw) => {
-      if (!runtime || ![x, y, yaw].every(Number.isFinite)) return;
-      runtime.walkPlace = { area, x, y, yaw };
+      if (runtime) requestWalkPlace(runtime, area, x, y, yaw);
     },
     enterDoor: (id) => {
       walkInput.door = id ?? true;

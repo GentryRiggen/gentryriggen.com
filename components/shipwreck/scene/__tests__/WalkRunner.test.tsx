@@ -3,7 +3,12 @@ import { createPlaybackStore } from "@/lib/shipwreck/playback";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { sampleTrack, simulate, type SimTrack } from "@/lib/shipwreck/sim";
 import type { SimRunner } from "@/lib/shipwreck/sim/run";
-import { resetWalkInput, walkInput } from "@/lib/shipwreck/walk";
+import {
+  resetWalkInput,
+  walkInput,
+  walkMapFor,
+  type WalkMap,
+} from "@/lib/shipwreck/walk";
 import Hud from "@/components/shipwreck/ui/Hud";
 import { createSceneRuntime } from "../runtime";
 import { sceneHooks } from "../sceneHooks";
@@ -17,6 +22,7 @@ jest.mock("@react-three/fiber", () => ({
   },
 }));
 
+const TITANIC_MAP = walkMapFor("titanic") as WalkMap;
 let track: SimTrack;
 beforeAll(() => {
   track = simulate(titanic, titanic.realNight);
@@ -245,7 +251,7 @@ describe("walking in the scene", () => {
     const { store, runtime, frame, hooks } = setup();
     act(() => store.getState().startWalk());
     frame();
-    // The spawn (x 10) is about 25 m from the nearest door.
+    // The spawn is about 10 m from the nearest door.
     hooks.enterDoor();
     frame();
     expect(runtime.walkInside).toBe(false);
@@ -289,6 +295,42 @@ describe("walking in the scene", () => {
     expect(runtime.walkDoor).toBe(-1);
   });
 
+  it("walkArrow points at the nearest open deck door, and is -1 inside, after the break or not walking", () => {
+    const { store, runtime, frame, hooks } = setup();
+    const idOf = () =>
+      runtime.walkArrow < 0 ? null : TITANIC_MAP.stairs[runtime.walkArrow].id;
+    act(() => store.getState().startWalk());
+    frame(0.3);
+    // From the spawn, far off: still the starboard staircase door.
+    expect(idOf()).toBe("gs-door-starboard");
+    hooks.placeWalk("forecastle", 110, 0, 0);
+    frame(0.3);
+    frame(0.3);
+    expect(idOf()).toBe("third-class-door");
+    hooks.placeWalk("gs-boat", 34, 0, 0);
+    frame(0.3);
+    frame(0.3);
+    expect(runtime.walkInside).toBe(true);
+    expect(idOf()).toBeNull();
+    hooks.goOutside();
+    frame(0.3);
+    frame(0.3);
+    expect(idOf()).toMatch(/^gs-door-/);
+    act(() => store.getState().leaveWalk());
+    frame(0.3);
+    expect(runtime.walkArrow).toBe(-1);
+    // Past the break: on her stern's deck, no arrow.
+    act(() => store.getState().startWalk());
+    act(() =>
+      store
+        .getState()
+        .seek(track.events.find((e) => e.kind === "breakup")!.t + 5)
+    );
+    frame(0.3);
+    frame(0.3);
+    expect(runtime.walkArrow).toBe(-1);
+  });
+
   it("the lift takes you from B deck to E deck and bumps the wipe", () => {
     const { store, runtime, frame, hooks } = setup();
     act(() => store.getState().startWalk());
@@ -303,6 +345,28 @@ describe("walking in the scene", () => {
     expect(runtime.walkRoom).toBe("lift-e");
     expect(runtime.walkLift).toBe(lift0 + 1);
     expect(runtime.walkInside).toBe(true);
+  });
+
+  it("ignores the stick through the lift's dark wipe, then walks again", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    hooks.placeWalk("lift-b", 41.75, -4.6, 0);
+    frame();
+    walkInput.forward = 1;
+    for (let i = 0; i < 30 && runtime.walkRoom === "lift-b"; i += 1) frame();
+    expect(runtime.walkRoom).toBe("lift-e");
+    // Still held forward: for most of a second nobody moves.
+    const at = () => [runtime.walkInfo!.x, runtime.walkInfo!.y];
+    const p0 = at();
+    for (let i = 0; i < 40; i += 1) frame();
+    expect(at()).toEqual(p0);
+    // After the wipe the stick walks again (out of the car, into E deck).
+    walkInput.forward = 0;
+    walkInput.strafe = 1;
+    for (let i = 0; i < 60; i += 1) frame();
+    walkInput.strafe = 0;
+    expect(at()).not.toEqual(p0);
   });
 
   it("inside when she breaks: a splash, floating in the sea beside her", () => {

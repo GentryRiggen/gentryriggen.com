@@ -59,7 +59,11 @@ export type IconName =
   | "windows"
   | "vents"
   | "dome"
-  | "double-door";
+  | "double-door"
+  | "staircase"
+  | "bed"
+  | "bunk"
+  | "corridor";
 
 const PATHS: Record<IconName, string> = {
   back: "M15 5l-7 7 7 7",
@@ -163,6 +167,14 @@ const PATHS: Record<IconName, string> = {
   vents: "M4 5h16v14H4zM7 9h10M7 12h10M7 15h10",
   dome: "M2 19h20M4.5 19a7.5 7.5 0 0 1 15 0M12 11.5V19M8 13.5l1 5.5M16 13.5l-1 5.5M12 4v2",
   "double-door": "M4 21V4h16v17M12 4v17M9.5 11v2.5M14.5 11v2.5M2 21h20",
+  // Start inside (1.16): a grand staircase (steps up to the right under a
+  // banister on its newel post), a bed with its pillow, two bunks one over
+  // the other, a long corridor running away.
+  staircase: "M3 21h4v-4h4v-4h4V9h4V5h2M3 21v-9l15-9M7 17V9.5M11 13V7",
+  bed: "M3 6v14M21 12v8M3 16h18M3 12h18M6 12v-1.5A1.5 1.5 0 0 1 7.5 9h3A1.5 1.5 0 0 1 12 10.5V12",
+  bunk: "M4 3v18M20 3v18M4 10h16M4 19h16M7 10V8h4v2M7 19v-2h4v2",
+  corridor:
+    "M3 3h18v18H3zM3 3l6.5 6.5M21 3l-6.5 6.5M3 21l6.5-6.5M21 21l-6.5-6.5M9.5 9.5h5v5h-5z",
 };
 
 const FILLED: ReadonlySet<IconName> = new Set(["play"]);

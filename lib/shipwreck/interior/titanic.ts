@@ -14,6 +14,7 @@ import type {
   InteriorLink,
   InteriorMap,
   Room,
+  RoomEntry,
   ShutDoor,
 } from "./types";
 
@@ -783,6 +784,53 @@ const furniture: Furniture[] = [
   })),
 ];
 
+// --- Start inside (1.16) ------------------------------------------------------
+
+/**
+ * The camera picker's rooms, in the order the buttons show: each spot is
+ * on a level floor, clear of the furniture, facing what is worth seeing.
+ */
+const entries: RoomEntry[] = [
+  // The Boat deck entrance under the dome, at the head of the broad
+  // flight, looking down it.
+  {
+    id: "grand-staircase",
+    label: "Grand Staircase",
+    icon: "staircase",
+    room: "gs-boat",
+    at: [GS_AFT - 1, 0],
+    yaw: 0,
+  },
+  // Suite 1, just inside its door, the brass bed and the portholes ahead.
+  {
+    id: "suite",
+    label: "Suite",
+    icon: "bed",
+    room: "suite-1",
+    at: [27.6, -6.9],
+    yaw: -0.9,
+  },
+  // The four-berth cabin, just inside its door, facing the bunks.
+  {
+    id: "third-class-cabin",
+    label: "Third class cabin",
+    icon: "bunk",
+    room: "third-cabin",
+    at: [75.0, 6.3],
+    yaw: 2.6,
+  },
+  // Scotland Road's forward end (dry at the start of the night), looking
+  // aft down its length.
+  {
+    id: "scotland-road",
+    label: "Scotland Road",
+    icon: "corridor",
+    room: "scotland-road",
+    at: [SR_FWD - 4, (SR_Y0 + SR_Y1) / 2],
+    yaw: Math.PI,
+  },
+];
+
 export const TITANIC_INTERIOR: InteriorMap = {
   ship: "titanic",
   rooms,
@@ -790,4 +838,5 @@ export const TITANIC_INTERIOR: InteriorMap = {
   links,
   shutDoors,
   furniture,
+  entries,
 };

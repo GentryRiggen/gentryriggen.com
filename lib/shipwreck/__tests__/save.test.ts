@@ -1,9 +1,11 @@
 import {
   BACKUPS_KEPT,
   CORRUPT_PREFIX,
+  LEGACY_WALK_SEEN_KEY,
   SAVE_KEY,
   SAVE_SHIP_IDS,
   emptySave,
+  hasWalked,
   liveryOf,
   loadSave,
   loadSaveResult,
@@ -11,6 +13,7 @@ import {
   shipOf,
   whatIfOf,
   withLivery,
+  withWalked,
   withWhatIf,
   writeSave,
   wreckOf,
@@ -575,5 +578,85 @@ describe("the wreck chosen (any ship in any wreck, 1.14)", () => {
     expect(
       wreckOf({ ...emptySave(), ship: "carpathia", wreck: "titanic" })
     ).toBe("titanic");
+  });
+});
+
+describe("having walked (1.16: the Walk button stops pulsing)", () => {
+  it("is false when missing (an older save), nothing else reset", () => {
+    const older = {
+      ...emptySave(),
+      seen: { realNight: true, endings: ["sank" as const] },
+      ship: "lusitania" as const,
+    };
+    const parsed = parseSaveSalvaging(older)!.save;
+    expect(parsed.seen.walked).toBeUndefined();
+    expect(hasWalked(parsed)).toBe(false);
+    expect(parsed).toEqual(older);
+    expect(hasWalked(emptySave())).toBe(false);
+  });
+
+  it("round-trips once walked", () => {
+    const storage = new MemoryStorage();
+    const save = withWalked(emptySave());
+    expect(save.seen).toEqual({ realNight: false, endings: [], walked: true });
+    expect(writeSave(save, storage)).toBe(true);
+    const back = loadSave(NOW, storage);
+    expect(back).toEqual(save);
+    expect(hasWalked(back)).toBe(true);
+  });
+
+  it("keeps the rest of what was seen and drops a junk value", () => {
+    const seen = { realNight: true, endings: ["sank" as const] };
+    expect(withWalked({ ...emptySave(), seen }).seen).toEqual({
+      ...seen,
+      walked: true,
+    });
+    for (const junk of ["yes", 1, null, false])
+      expect(
+        parseSaveSalvaging({ ...emptySave(), seen: { ...seen, walked: junk } })!
+          .save.seen
+      ).toEqual(seen);
+  });
+});
+
+describe("1.15's walk-seen key (read once into the save)", () => {
+  it("folds a walked 1.15 player into seen.walked, with or without a save", () => {
+    const fresh = new MemoryStorage();
+    fresh.setItem(LEGACY_WALK_SEEN_KEY, "1");
+    expect(hasWalked(loadSave(NOW, fresh))).toBe(true);
+
+    const saved = new MemoryStorage();
+    saved.setItem(SAVE_KEY, JSON.stringify(emptySave()));
+    saved.setItem(LEGACY_WALK_SEEN_KEY, "1");
+    const back = loadSave(NOW, saved);
+    expect(hasWalked(back)).toBe(true);
+    expect(back.seen.endings).toEqual([]);
+  });
+
+  it("ignores anything but 1 and a storage that throws", () => {
+    const other = new MemoryStorage();
+    other.setItem(LEGACY_WALK_SEEN_KEY, "yes");
+    expect(hasWalked(loadSave(NOW, other))).toBe(false);
+    const throws = {
+      getItem: (k: string) => {
+        if (k === LEGACY_WALK_SEEN_KEY) throw new Error("denied");
+        return null;
+      },
+      setItem: () => {},
+    };
+    expect(hasWalked(loadSave(NOW, throws))).toBe(false);
+  });
+
+  it("is removed once the save holding the flag is written, and never written", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(LEGACY_WALK_SEEN_KEY, "1");
+    const save = loadSave(NOW, storage);
+    expect(writeSave(save, storage)).toBe(true);
+    expect(storage.getItem(LEGACY_WALK_SEEN_KEY)).toBeNull();
+    expect(hasWalked(loadSave(NOW, storage))).toBe(true);
+    // A save that has not walked leaves no key behind either.
+    const plain = new MemoryStorage();
+    writeSave(emptySave(), plain);
+    expect(plain.getItem(LEGACY_WALK_SEEN_KEY)).toBeNull();
   });
 });
