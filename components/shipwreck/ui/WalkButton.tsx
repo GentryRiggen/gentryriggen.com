@@ -8,7 +8,11 @@ import { walkMapFor } from "@/lib/shipwreck/walk";
 import Icon from "./Icon";
 import { FOCUS } from "./styles";
 
-/** Remembers that the Walk button has been tapped (it stops glowing). */
+/**
+ * Remembers that the Walk button has been tapped (it stops glowing): 1.15's
+ * own key, still read so a player who walked then is not asked again, and
+ * still written alongside the save's `seen.walked` (1.16), which owns it.
+ */
 export const WALK_SEEN_KEY = "shipwreck:walk-seen";
 
 function readSeen(): boolean {
@@ -45,14 +49,23 @@ export function beginWalk(store: PlaybackStore): boolean {
 
 interface WalkButtonProps {
   store: PlaybackStore;
+  /** The save says they have walked (it does not pulse). */
+  walked?: boolean;
+  /** A walk started from here (the save remembers it). */
+  onWalked?: () => void;
 }
 
 /**
  * The big round Walk button at the top of the right rail: one tap puts you
- * on her boat deck. It glows until the first tap, and is only there for a
- * ship you can walk on, and not while walking (Fly takes you back).
+ * on her boat deck. It pulses until the player has walked once (here, from
+ * the camera picker or into a room), and is only there for a ship you can
+ * walk on, and not while walking (Fly takes you back).
  */
-export default function WalkButton({ store }: WalkButtonProps) {
+export default function WalkButton({
+  store,
+  walked = false,
+  onWalked,
+}: WalkButtonProps) {
   const ship = useStore(store, (s) => s.ship);
   const walking = useStore(store, (s) => s.camera === "walk");
   // Disabled until the night has a frame to stand on.
@@ -60,11 +73,14 @@ export default function WalkButton({ store }: WalkButtonProps) {
     store,
     (s) => s.track !== null && s.track.frames.length > 0
   );
-  const [seen, setSeen] = useState(readSeen);
+  const [tapped, setTapped] = useState(readSeen);
+  const seen = walked || tapped;
   if (!walkMapFor(ship) || walking) return null;
 
   const onWalk = () => {
-    if (beginWalk(store) && !seen) setSeen(true);
+    if (!beginWalk(store)) return;
+    setTapped(true);
+    onWalked?.();
   };
 
   return (
