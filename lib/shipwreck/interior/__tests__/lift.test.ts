@@ -82,11 +82,18 @@ describe("the glass lift ride", () => {
     }
   });
 
-  it("takes 11–14 s from the bottom to the top (the fun), the same back", () => {
+  it("one straight ride bottom to top takes 11–14 s (the formula: taps go a stop at a time, four legs about 17 s)", () => {
     const up = liftRideS(liftA, concordia, 0, top);
     expect(up).toBeGreaterThanOrEqual(11);
     expect(up).toBeLessThanOrEqual(14);
     expect(liftRideS(liftA, concordia, top, 0)).toBeCloseTo(up, 9);
+    // What a kid rides: four legs, each easing in and out.
+    let legs = 0;
+    for (let i = 0; i < top; i += 1)
+      legs += liftRideS(liftA, concordia, i, i + 1);
+    expect(legs).toBeGreaterThan(up);
+    expect(legs).toBeGreaterThan(16);
+    expect(legs).toBeLessThan(18);
     // One deck takes a few seconds (eases in and out).
     const one = liftRideS(liftA, concordia, 1, 2);
     expect(one).toBeGreaterThan(2);

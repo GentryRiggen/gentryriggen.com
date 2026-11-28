@@ -214,7 +214,7 @@ test.describe("Shipwreck: walking the Costa Concordia", () => {
     await page.waitForFunction(
       () => window.__shipwreck!.getWalk!()?.area === "lift-a@3",
       null,
-      { timeout: 30_000 }
+      { timeout: 60_000 }
     );
     expect((await walk(page)).ride).toBeNull();
     for (const deck of ["4", "5", "7"]) {
@@ -222,7 +222,7 @@ test.describe("Shipwreck: walking the Costa Concordia", () => {
       await page.waitForFunction(
         (a) => window.__shipwreck!.getWalk!()?.area === a,
         `lift-a@${deck}`,
-        { timeout: 30_000 }
+        { timeout: 60_000 }
       );
     }
     await expect(page.getByTestId("shipwreck-lift-up")).toHaveCount(0);

@@ -964,6 +964,12 @@ export function stepWalker(
  * walker (no stick, no drift, no jump, no link); the ride runs on, and at
  * its end the walker stands where they were in the car at the arrival stop
  * (its door, a seam, open onto that landing) and the ride is over.
+ *
+ * A stop that floods during the ride (its car over the knee,
+ * WALK_LIFT_MAX_DEPTH_M) is never arrived at: while the stop it left is
+ * still dry, the car turns back to it from where it is (the same ride run
+ * backward, so the floor never jumps). With both ends wet it carries on,
+ * as the water only rises (no turning back and forth).
  */
 function rideStep(
   s: WalkerState,
@@ -971,9 +977,9 @@ function rideStep(
   ctx: StepContext,
   total: number
 ): StepResult {
-  const ride = s.ride!;
   const yaw = s.yaw - input.lookDx * WALK_TURN_PER_PX;
   const slope = deckSlope(ctx.pose);
+  let ride = s.ride!;
   const lift = liftById(ctx.map, ride.lift);
   const valid =
     lift !== undefined &&
@@ -981,7 +987,25 @@ function rideStep(
     ride.from < lift.stops.length &&
     ride.to >= 0 &&
     ride.to < lift.stops.length;
-  const length = valid ? liftRideS(lift, ctx.spec, ride.from, ride.to) : 0;
+  let length = valid ? liftRideS(lift, ctx.spec, ride.from, ride.to) : 0;
+  if (valid) {
+    const toCar = liftCarId(lift.id, lift.stops[ride.to].deck);
+    const fromCar = liftCarId(lift.id, lift.stops[ride.from].deck);
+    if (
+      depthAt(ctx, toCar, s.x, s.y) > WALK_LIFT_MAX_DEPTH_M &&
+      depthAt(ctx, fromCar, s.x, s.y) <= WALK_LIFT_MAX_DEPTH_M
+    ) {
+      // Back the way it came: the profile is symmetric, so the ride from
+      // `to` to `from` at (length − s) stands at the same height.
+      ride = {
+        lift: ride.lift,
+        from: ride.to,
+        to: ride.from,
+        s: Math.max(0, length - ride.s),
+      };
+      length = liftRideS(lift, ctx.spec, ride.from, ride.to);
+    }
+  }
   const at = ride.s + total;
   const done = !valid || at >= length;
   const area =
@@ -1005,7 +1029,7 @@ function rideStep(
       : rideDepth(
           ctx,
           state,
-          s.area,
+          liftCarId(lift.id, lift.stops[ride.from].deck),
           liftCarId(lift.id, lift.stops[ride.to].deck)
         );
   return {

@@ -75,6 +75,11 @@ export interface LiftCar {
   offset: number;
   /** The zones of its landings (drawn while riding it). */
   zones: ReadonlySet<string>;
+  /** The same as a plain list (the frame loop walks it without an iterator). */
+  zoneList: readonly string[];
+  /** Its middle in plan (ship x, y). */
+  x: number;
+  y: number;
 }
 
 export interface LiftCars {
@@ -384,6 +389,7 @@ export function buildLiftCars(
       if (zone) z.add(zone);
     }
     zones.set(lift.id, z);
+    const mid = liftMiddle(lift);
     cars.push({
       lift,
       body: bodyMesh,
@@ -391,6 +397,9 @@ export function buildLiftCars(
       z: NaN,
       offset: 0,
       zones: z,
+      zoneList: [...z],
+      x: mid[0],
+      y: mid[1],
     });
   });
   // The cars' loops half a loop apart (by the first car's loop length).
@@ -436,11 +445,12 @@ export function updateLiftCars(
   dt: number
 ): void {
   let any = false;
-  for (const car of c.cars) {
+  for (let i = 0; i < c.cars.length; i += 1) {
+    const car = c.cars[i];
     let show = open && ride !== null && ride.lift === car.lift.id;
     if (open && !show && seen)
-      for (const z of car.zones)
-        if (seen.has(z)) {
+      for (let k = 0; k < car.zoneList.length; k += 1)
+        if (seen.has(car.zoneList[k])) {
           show = true;
           break;
         }
@@ -453,9 +463,8 @@ export function updateLiftCars(
       const step = LIFT_SPEED_MS * Math.min(Math.max(dt, 0), 0.1);
       car.z += Math.max(-step, Math.min(step, target.z - car.z));
     }
-    const [x, y] = liftMiddle(car.lift);
     // Ship (x, y, z) is her part's three-local (x, z, −y).
-    car.body.matrix.makeTranslation(x, car.z, -y);
+    car.body.matrix.makeTranslation(car.x, car.z, -car.y);
     car.body.matrixWorldNeedsUpdate = true;
     car.pane.matrix.copy(car.body.matrix);
     car.pane.matrixWorldNeedsUpdate = true;

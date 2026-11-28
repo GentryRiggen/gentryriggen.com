@@ -83,7 +83,9 @@ import {
  * is not drawn), deck doors open while she is whole, and the runner writes
  * `walkInside`, `walkRoom`, `walkCameInBy` and `walkLift` (and, on deck,
  * `walkDoor`). The door and Go outside buttons (`walkInput.door`,
- * `.outside`) and the test hooks' `walkPlace` are taken here.
+ * `.outside`) and the test hooks' `walkPlace` are taken here. Inside when
+ * she breaks, or washed out by the water, is the same splash into the sea
+ * as going in from the deck.
  *
  * Her glass lifts (1.18): in a car the ▲ ▼ buttons (`walkInput.lift`)
  * start a ride to the next dry stop that way (`nextStop`); the runner
@@ -91,9 +93,6 @@ import {
  * (`walkRide`) for Interior and the HUD. The ride lives on the walker
  * (`WalkerState.ride`), so anything that re-places them (a seek, Back on
  * deck, Go outside, the rooms closing at her 30°, `placeWalk`) ends it.
- *
- * Inside when she breaks, or washed out by the water, is the same splash
- * into the sea as going in from the deck.
  */
 
 /** The sea's surface for the walk rules: the sea quad is flat (y = 0). */

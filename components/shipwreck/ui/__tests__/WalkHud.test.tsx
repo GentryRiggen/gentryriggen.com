@@ -482,6 +482,12 @@ describe("doors, outside and the lift", () => {
     expect(screen.queryByTestId("shipwreck-lift-down")).toBeNull();
     fireEvent.click(up);
     expect(walkInput.lift).toBe("up");
+    // Laid out to fit a short screen: ▲ ▼ side by side, in one row with Go
+    // outside from sm up (a column would clip on a landscape phone).
+    const column = screen.getByTestId("shipwreck-inside-controls");
+    expect(column.className).toMatch(/\bsm:flex-row\b/);
+    expect(column.className).toMatch(/safe-area-inset-right/);
+    expect(up.parentElement!.className).toMatch(/^flex gap-3$/);
     // Both ways.
     runtime.walkLiftDirs = LIFT_UP | LIFT_DOWN;
     tick();

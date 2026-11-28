@@ -546,6 +546,69 @@ describe("her glass lifts (the ride)", () => {
     expect(down.depthM).toBeLessThanOrEqual(0.3 + 1e-6);
   });
 
+  it("a stop that floods mid-ride is never arrived at: the car turns back to the dry stop it left", () => {
+    const flat: BodyPose = { ...leaning, roll: 0 };
+    const floorEarth = (area: string) =>
+      shipToEarth(flat, [
+        63.1,
+        2.6,
+        floorZ(her, area, 63.1, concordia, 2.6),
+      ])[2];
+    let lowWet = false;
+    const waterZ = (area: string) =>
+      area === "lift-a@0" && lowWet ? floorEarth("lift-a@0") + 0.8 : -1000;
+    const c = herCtx({ pose: flat, waterZ });
+    let r: StepResult = {
+      state: riding(top, 0),
+      inWater: null,
+      depthM: 0,
+      slopeDeg: 0,
+    };
+    for (let i = 0; i < 300; i += 1) r = stepWalker(r.state, STILL, c, 1 / 60);
+    expect(r.state.ride).toMatchObject({ from: top, to: 0 });
+    const zBefore = walkerFloorZ(her, r.state, concordia);
+    // The low lobby (and its car) floods to 0.8 m: over the knee.
+    lowWet = true;
+    r = stepWalker(r.state, STILL, c, 1 / 60);
+    expect(r.state.ride).toMatchObject({ from: 0, to: top });
+    // Turned where it was: the floor moves less than a step's worth.
+    expect(
+      Math.abs(walkerFloorZ(her, r.state, concordia) - zBefore)
+    ).toBeLessThanOrEqual(1.5 / 60 + 1e-9);
+    let steps = 0;
+    while (r.state.ride && steps < 2000) {
+      r = stepWalker(r.state, STILL, c, 1 / 60);
+      expect(r.inWater).toBeNull();
+      steps += 1;
+    }
+    // Back at the top, dry, the ride over.
+    expect(r.state.area).toBe("lift-a@7");
+    expect(r.state.ride).toBeUndefined();
+    expect(r.depthM).toBeLessThan(0);
+  });
+
+  it("with both ends flooded it does not turn back (no turning back and forth)", () => {
+    const flat: BodyPose = { ...leaning, roll: 0 };
+    const floorEarth = (area: string) =>
+      shipToEarth(flat, [
+        63.1,
+        2.6,
+        floorZ(her, area, 63.1, concordia, 2.6),
+      ])[2];
+    // Both stop cars of a 3 → 4 ride over the knee.
+    const waterZ = (area: string) =>
+      area === "lift-a@3" || area === "lift-a@4"
+        ? floorEarth(area) + 0.6
+        : -1000;
+    const r = stepWalker(
+      riding(1, 2, 1),
+      STILL,
+      herCtx({ pose: flat, waterZ }),
+      1 / 60
+    );
+    expect(r.state.ride).toMatchObject({ from: 1, to: 2 });
+  });
+
   it("the Titanic's lift link still teleports, with via.kind lift", () => {
     const tmap = walkMapFor("titanic")!;
     const link = tmap.stairs.find((s) => s.kind === "lift")!;

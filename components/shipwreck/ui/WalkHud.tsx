@@ -231,39 +231,47 @@ export default function WalkHud({
       )}
 
       {/* Inside her: back out by the door (the way they came in if dry).
-          In her glass car, the lift's up and down over it (each only when
-          a dry stop is that way; no wipe: the ride is seen). */}
+          In her glass car, the lift's up and down beside it (each only
+          when a dry stop is that way; no wipe: the ride is seen): side by
+          side over Go outside on a phone held upright, in one row with it
+          from sm up, so a short landscape screen never clips them; on a
+          screen that short the row steps left of the sound button. */}
       {deck && feel.inside && (
         <div
-          className={`absolute right-[max(1rem,env(safe-area-inset-right))] flex flex-col items-end gap-3 ${OVER_MARKS}`}
+          data-testid="shipwreck-inside-controls"
+          className={`absolute right-[max(1rem,env(safe-area-inset-right))] flex flex-col items-end gap-3 sm:flex-row sm:[@media(max-height:460px)]:right-[calc(max(1rem,env(safe-area-inset-right))+5.5rem)] ${OVER_MARKS}`}
         >
-          {(feel.liftDirs & LIFT_UP) !== 0 && (
-            <button
-              type="button"
-              aria-label="Lift up"
-              data-testid="shipwreck-lift-up"
-              data-walk-control
-              onClick={() => {
-                walkInput.lift = "up";
-              }}
-              className={BOARD}
-            >
-              <Icon name="lift-up" className="size-11" />
-            </button>
-          )}
-          {(feel.liftDirs & LIFT_DOWN) !== 0 && (
-            <button
-              type="button"
-              aria-label="Lift down"
-              data-testid="shipwreck-lift-down"
-              data-walk-control
-              onClick={() => {
-                walkInput.lift = "down";
-              }}
-              className={BOARD}
-            >
-              <Icon name="lift-down" className="size-11" />
-            </button>
+          {feel.liftDirs !== 0 && (
+            <div className="flex gap-3">
+              {(feel.liftDirs & LIFT_UP) !== 0 && (
+                <button
+                  type="button"
+                  aria-label="Lift up"
+                  data-testid="shipwreck-lift-up"
+                  data-walk-control
+                  onClick={() => {
+                    walkInput.lift = "up";
+                  }}
+                  className={BOARD}
+                >
+                  <Icon name="lift-up" className="size-11" />
+                </button>
+              )}
+              {(feel.liftDirs & LIFT_DOWN) !== 0 && (
+                <button
+                  type="button"
+                  aria-label="Lift down"
+                  data-testid="shipwreck-lift-down"
+                  data-walk-control
+                  onClick={() => {
+                    walkInput.lift = "down";
+                  }}
+                  className={BOARD}
+                >
+                  <Icon name="lift-down" className="size-11" />
+                </button>
+              )}
+            </div>
           )}
           <button
             type="button"
