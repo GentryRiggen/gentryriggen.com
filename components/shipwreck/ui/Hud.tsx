@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useStore } from "zustand";
 import { SAFE_BOTTOM, SAFE_SIDES, SAFE_TOP } from "@/lib/game-kit/safeArea";
 import { trackCamera } from "@/lib/shipwreck/analytics";
@@ -69,6 +76,53 @@ const ENTRY_ICON: Record<EntryIcon, IconName> = {
   theatre: "theatre",
   "kids-club": "kids-club",
 };
+
+/**
+ * The right rail's buttons: the Walk button (80 px) and the round ones
+ * (64 px), 12 px apart, under 12 px of top padding.
+ */
+const RAIL_PAD_PX = 12;
+const RAIL_GAP_PX = 12;
+const RAIL_BUTTON_PX = 64;
+const RAIL_WALK_PX = 80;
+
+/**
+ * How many of the rail's `n` buttons fit in one column in `height` px (the
+ * middle band between the top and bottom bars), the Walk button first when
+ * shown; at least one. Fewer than `n`: the rail goes into columns, so it
+ * never runs under the speed buttons (a phone, home-screen insets).
+ */
+export function railRows(height: number, n: number, walkFirst: boolean) {
+  const room = height - RAIL_PAD_PX + RAIL_GAP_PX;
+  const first = (walkFirst ? RAIL_WALK_PX : RAIL_BUTTON_PX) + RAIL_GAP_PX;
+  if (room < first) return 1;
+  const rows = 1 + Math.floor((room - first) / (RAIL_BUTTON_PX + RAIL_GAP_PX));
+  return Math.max(1, Math.min(n, rows));
+}
+
+/** The rail's grid rows by count, each its button's height (literal classes, for Tailwind). */
+const RAIL_ROWS = [
+  "grid-rows-[auto]",
+  "grid-rows-[auto]",
+  "grid-rows-[repeat(2,auto)]",
+  "grid-rows-[repeat(3,auto)]",
+  "grid-rows-[repeat(4,auto)]",
+  "grid-rows-[repeat(5,auto)]",
+] as const;
+
+/** A box's height as it changes (null before the first measure, or with no layout). */
+function useHeight(ref: RefObject<HTMLElement | null>): number | null {
+  const [h, setH] = useState<number | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    // It reports once on observing, then on every change.
+    const ro = new ResizeObserver(() => setH(el.clientHeight || null));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return h;
+}
 
 interface HudProps {
   store: PlaybackStore;
@@ -167,6 +221,18 @@ export default function Hud({
     });
   }
   const [help, setHelp] = useState(false);
+  // The rail: one column where it fits, else columns (a phone).
+  const middle = useRef<HTMLDivElement>(null);
+  const middleH = useHeight(middle);
+  const railN = (hidden ? 0 : 1) + (sound ? 1 : 0) + (walking ? 0 : 4);
+  const rows = middleH === null ? railN : railRows(middleH, railN, !hidden);
+  const railClass =
+    rows < railN
+      ? // Columns, the first at the edge (right to left; each button ltr).
+        `grid grid-flow-col ${RAIL_ROWS[rows]} items-start justify-items-center gap-3 [direction:rtl] *:[direction:ltr]`
+      : "flex flex-col items-end gap-3";
+  // Her five rooms: a wider picker (one row of rooms) where width allows.
+  const wide = rooms.length > 4;
 
   // Desktop nicety: Space plays/pauses, 1–4 pick a speed, ←/→ seek a minute.
   useEffect(() => {
@@ -294,12 +360,15 @@ export default function Hud({
       <Captions key={runId} store={store} hidden={panel !== null && !walking} />
 
       {/* Middle: the right rail with X-ray, places and cameras. */}
-      <div className={`relative flex min-h-0 flex-1 justify-end ${SAFE_SIDES}`}>
-        <div className="flex flex-col items-end gap-3 pt-3">
-          <div className="flex items-start gap-3">
+      <div
+        ref={middle}
+        className={`relative flex min-h-0 flex-1 justify-end ${SAFE_SIDES}`}
+      >
+        <div className="flex min-h-0 flex-col items-end gap-3 pt-3">
+          <div className="flex min-h-0 items-start gap-3">
             {panel === "places" && !walking && (
               <div
-                className={`${PANEL} pointer-events-auto flex flex-col gap-1.5 p-2`}
+                className={`${PANEL} pointer-events-auto relative z-10 flex max-h-full flex-col gap-1.5 overflow-y-auto overscroll-contain p-2`}
                 data-testid="shipwreck-places"
               >
                 {PLACES_BY_SHIP[ship.id].map(({ id, label }) => (
@@ -324,7 +393,9 @@ export default function Hud({
             )}
             {panel === "cameras" && !walking && (
               <div
-                className={`${PANEL} pointer-events-auto grid grid-cols-2 gap-1.5 p-2`}
+                className={`${PANEL} pointer-events-auto relative z-10 grid max-h-full grid-cols-2 gap-1.5 overflow-y-auto overscroll-contain p-2 max-sm:gap-1 short:sm:grid-cols-6 ${
+                  wide ? "sm:grid-cols-3" : ""
+                }`}
                 data-testid="shipwreck-cameras"
               >
                 {/* Walking: only on a ship with a walk map. */}
@@ -338,27 +409,37 @@ export default function Hud({
                       data-testid={`shipwreck-camera-${id}`}
                       disabled={id === "walk" && !hasFrame}
                       onClick={() => pickCamera(id)}
-                      className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold disabled:opacity-40 ${
-                        // With rooms, Walk the deck heads the walking row.
+                      className={`flex min-h-16 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-sm font-semibold disabled:opacity-40 max-sm:min-h-14 short:sm:min-h-14 short:sm:text-xs ${
+                        // With rooms, Walk the deck heads the walking row
+                        // (on a short screen, the rooms' row).
                         id === "walk" && rooms.length > 0
-                          ? "col-span-2"
-                          : "w-24 sm:w-28"
+                          ? wide
+                            ? "col-span-2 sm:col-span-3 short:sm:col-span-1"
+                            : "col-span-2 short:sm:col-span-1"
+                          : "w-[5.5rem] sm:w-28 short:sm:w-[4.75rem]"
                       } ${
                         camera === id
                           ? "bg-sky-500/85 text-white"
                           : "text-slate-100 hover:bg-white/10"
                       } ${FOCUS}`}
                     >
-                      <Icon name={CAMERA_ICON[id]} className="size-7" />
+                      <Icon
+                        name={CAMERA_ICON[id]}
+                        className="size-7 short:sm:size-6"
+                      />
                       {CAMERA_LABEL[id]}
                     </button>
                   )
                 )}
-                {/* Start inside: one row of pictures under Walk the deck
-                    (one row keeps the picker short on a phone). */}
+                {/* Start inside: pictures under Walk the deck, one row where
+                    the picker is wide enough (her five: from sm, in three
+                    columns, or six on a short screen beside Walk the
+                    deck), four to a row on a phone. */}
                 {rooms.length > 0 && (
                   <div
-                    className="col-span-2 grid grid-cols-4 gap-1.5"
+                    className={`col-span-full grid gap-1.5 max-sm:gap-1 short:sm:col-span-5 ${
+                      wide ? "grid-cols-4 sm:grid-cols-5" : "grid-cols-4"
+                    }`}
                     data-testid="shipwreck-rooms"
                   >
                     {rooms.map((entry) => (
@@ -368,7 +449,7 @@ export default function Hud({
                         aria-label={`Walk inside: ${entry.label}`}
                         data-testid={`shipwreck-room-${entry.id}`}
                         onClick={() => pickRoom(entry)}
-                        className={`grid min-h-14 place-items-center rounded-xl border border-amber-300/40 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25 ${FOCUS}`}
+                        className={`grid min-h-14 place-items-center rounded-xl border border-amber-300/40 bg-amber-400/15 text-amber-200 hover:bg-amber-400/25 max-sm:min-h-12 short:sm:min-h-14 ${FOCUS}`}
                       >
                         <Icon
                           name={ENTRY_ICON[entry.icon]}
@@ -380,7 +461,7 @@ export default function Hud({
                 )}
               </div>
             )}
-            <div className="flex flex-col items-end gap-3">
+            <div className={railClass} data-testid="shipwreck-rail">
               {!hidden && (
                 <WalkButton store={store} walked={walked} onWalked={onWalked} />
               )}
