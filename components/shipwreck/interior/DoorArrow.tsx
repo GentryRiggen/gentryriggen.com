@@ -21,7 +21,8 @@ import type { SceneRuntime } from "../scene/runtime";
 /**
  * The way in (1.16): a big amber arrow bobbing over the nearest open deck
  * door while walking her open decks (`runtime.walkArrow`, WalkRunner's
- * pick). Unlit, one draw (the arrow and its dark rim in one mesh), turned
+ * pick). Unlit, one draw (the arrow and its dark rim in one mesh), drawn
+ * over everything (no depth test: a waypoint through the houses), turned
  * to face the eyes about the vertical and grown with distance so it reads
  * from anywhere on the deck. Not built at all until walking on a ship with
  * rooms; hidden inside, after the break and off her deck. Still (no bob)
@@ -29,7 +30,7 @@ import type { SceneRuntime } from "../scene/runtime";
  */
 
 /** The arrow's tip stands this far over the deck at the door (m). */
-export const ARROW_TIP_M = 2.6;
+export const ARROW_TIP_M = 3;
 /** Its height at its smallest (m); the shape is 2 units tall. */
 const ARROW_SIZE_M = 1.6;
 /** Full size out to this distance, then grown with it (m). */
@@ -39,6 +40,8 @@ const ARROW_MAX_SCALE = 4;
 /** The bob: how far (in arrow sizes) and how often (Hz). */
 const BOB = 0.18;
 const BOB_HZ = 0.8;
+/** After the rooms (10), their water (11, 12) and everything outside. */
+const ARROW_ORDER = 20;
 /** Linear colours: warm amber (a touch over 1: a little bloom at night). */
 const AMBER: readonly [number, number, number] = [1.3, 0.72, 0.1];
 const RIM: readonly [number, number, number] = [0.06, 0.03, 0.01];
@@ -93,9 +96,15 @@ function buildArrow(): Built {
     side: DoubleSide,
     fog: false,
     toneMapped: false,
+    // A waypoint: seen through her houses and funnels (the staircase house
+    // hides its door from most of the deck), drawn after everything.
+    depthTest: false,
+    depthWrite: false,
+    transparent: true,
   });
   const mesh = new Mesh(doorArrowGeometry(), material);
   mesh.name = "walk-door-arrow";
+  mesh.renderOrder = ARROW_ORDER;
   mesh.visible = false;
   return { mesh, material, at: new Vector3(), eye: new Vector3() };
 }

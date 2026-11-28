@@ -174,7 +174,7 @@ const PATHS: Record<IconName, string> = {
   bed: "M3 6v14M21 12v8M3 16h18M3 12h18M6 12v-1.5A1.5 1.5 0 0 1 7.5 9h3A1.5 1.5 0 0 1 12 10.5V12",
   bunk: "M4 3v18M20 3v18M4 10h16M4 19h16M7 10V8h4v2M7 19v-2h4v2",
   corridor:
-    "M3 3l6 6M21 3l-6 6M3 21l6-6M21 21l-6-6M9 9h6v6H9zM3 3v18M21 3v18M5 7.5v9M19 7.5v9",
+    "M3 3h18v18H3zM3 3l6.5 6.5M21 3l-6.5 6.5M3 21l6.5-6.5M21 21l-6.5-6.5M9.5 9.5h5v5h-5z",
 };
 
 const FILLED: ReadonlySet<IconName> = new Set(["play"]);
