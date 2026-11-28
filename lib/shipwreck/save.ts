@@ -97,6 +97,11 @@ export const SAVE_SHIP_IDS: readonly ShipId[] = [
 ];
 
 export const SAVE_KEY = "shipwreck:v1";
+/**
+ * 1.15 remembered a first walk here, outside the save. 1.16 reads it once
+ * into `seen.walked` and removes it once the save holds the flag.
+ */
+export const LEGACY_WALK_SEEN_KEY = "shipwreck:walk-seen";
 /** Prefix of the backups of saves that could not be read in full. */
 export const CORRUPT_PREFIX = "shipwreck:v1:corrupt";
 const BACKUP_INDEX_KEY = `${CORRUPT_PREFIX}:index`;
@@ -355,7 +360,12 @@ export function loadSaveResult(
   } catch {
     return { save: emptySave(), writable: false, newer: false };
   }
-  if (text === null) return { save: emptySave(), writable: true, newer: false };
+  if (text === null)
+    return {
+      save: withLegacyWalk(emptySave(), storage),
+      writable: true,
+      newer: false,
+    };
   let parsed: ParsedSave | null = null;
   try {
     parsed = parseSaveSalvaging(JSON.parse(text));
@@ -364,13 +374,32 @@ export function loadSaveResult(
   }
   if (parsed) {
     // A newer build's save is played in memory and never overwritten.
-    return { save: parsed.save, writable: !parsed.newer, newer: parsed.newer };
+    return {
+      save: withLegacyWalk(parsed.save, storage),
+      writable: !parsed.newer,
+      newer: parsed.newer,
+    };
   }
   return {
-    save: emptySave(),
+    save: withLegacyWalk(emptySave(), storage),
     writable: backUp(text, storage, nowMs),
     newer: false,
   };
+}
+
+/** The save with 1.15's walked key folded in (the key is left for now). */
+function withLegacyWalk(
+  save: ShipwreckSave,
+  storage: StorageLike
+): ShipwreckSave {
+  if (hasWalked(save)) return save;
+  try {
+    return storage.getItem(LEGACY_WALK_SEEN_KEY) === "1"
+      ? withWalked(save)
+      : save;
+  } catch {
+    return save;
+  }
 }
 
 /** Like {@link loadSaveResult}, for callers that only need the save. */
@@ -389,8 +418,16 @@ export function writeSave(
   if (!storage) return false;
   try {
     storage.setItem(SAVE_KEY, JSON.stringify(save));
-    return true;
   } catch {
     return false;
   }
+  // The save now holds 1.15's walked flag: its own key can go.
+  if (hasWalked(save)) {
+    try {
+      storage.removeItem?.(LEGACY_WALK_SEEN_KEY);
+    } catch {
+      /* left behind: read again next time, harmlessly */
+    }
+  }
+  return true;
 }

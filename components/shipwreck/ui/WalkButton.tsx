@@ -9,32 +9,10 @@ import Icon from "./Icon";
 import { FOCUS } from "./styles";
 
 /**
- * Remembers that the Walk button has been tapped (it stops glowing): 1.15's
- * own key, still read so a player who walked then is not asked again, and
- * still written alongside the save's `seen.walked` (1.16), which owns it.
- */
-export const WALK_SEEN_KEY = "shipwreck:walk-seen";
-
-function readSeen(): boolean {
-  try {
-    return window.localStorage.getItem(WALK_SEEN_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeSeen() {
-  try {
-    window.localStorage.setItem(WALK_SEEN_KEY, "1");
-  } catch {
-    /* private mode: it glows again next time */
-  }
-}
-
-/**
  * Starts a walk, as the Walk button and the camera picker's "Walk the deck"
- * both do: leaves a place and X-ray, then walks. Counted (and the button
- * stops glowing) only when the walk really started; returns whether it did.
+ * both do: leaves a place and X-ray, then walks. Counted only when the
+ * walk really started; returns whether it did (the caller tells the save,
+ * which stops the button's pulse: `seen.walked`).
  */
 export function beginWalk(store: PlaybackStore): boolean {
   const s = store.getState();
@@ -43,7 +21,6 @@ export function beginWalk(store: PlaybackStore): boolean {
   store.getState().startWalk();
   if (store.getState().camera !== "walk") return false;
   trackCamera("walk");
-  writeSeen();
   return true;
 }
 
@@ -73,7 +50,8 @@ export default function WalkButton({
     store,
     (s) => s.track !== null && s.track.frames.length > 0
   );
-  const [tapped, setTapped] = useState(readSeen);
+  // Tapped this run (before the save's flag comes back round).
+  const [tapped, setTapped] = useState(false);
   const seen = walked || tapped;
   if (!walkMapFor(ship) || walking) return null;
 
@@ -89,7 +67,7 @@ export default function WalkButton({
         <span
           aria-hidden="true"
           data-testid="shipwreck-walk-glow"
-          className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-amber-300/50 motion-reduce:-inset-1.5 motion-reduce:animate-none motion-reduce:bg-transparent motion-reduce:ring-4 motion-reduce:ring-amber-300/80"
+          className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-amber-300/50 motion-reduce:hidden"
         />
       )}
       <button

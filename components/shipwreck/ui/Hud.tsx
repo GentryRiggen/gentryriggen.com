@@ -285,7 +285,8 @@ export default function Hud({
         </div>
       </div>
 
-      <Captions key={runId} store={store} />
+      {/* Under an open picker the caption would cover its top row. */}
+      <Captions key={runId} store={store} hidden={panel !== null && !walking} />
 
       {/* Middle: the right rail with X-ray, places and cameras. */}
       <div className={`relative flex min-h-0 flex-1 justify-end ${SAFE_SIDES}`}>

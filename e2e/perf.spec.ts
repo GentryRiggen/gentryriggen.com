@@ -553,7 +553,8 @@ test.describe("Shipwreck budget", () => {
         const h = window.__shipwreck!;
         h.seek!(2 * 3600 - 10 * 60); // 1:30 AM (1 h 50 min after 11:40 PM)
         h.startWalk!();
-        h.turnWalk!(Math.PI); // look aft
+        // Abreast the funnels, looking aft (the spawn faces a door, 1.16).
+        h.placeWalk!("boat-deck", 10, -10, Math.PI);
       })
     );
     // Inside (1.15): the Grand Staircase's top foyer under its dome, and

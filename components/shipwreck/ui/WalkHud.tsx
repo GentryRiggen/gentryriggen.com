@@ -180,13 +180,16 @@ export default function WalkHud({
         />
       )}
 
-      {/* Fly: back to the free camera (next to the help button). */}
+      {/* Fly: back to the free camera. Next to the help button from sm
+          up; on a phone the clock card reaches there, so under the help
+          and sound buttons in the right column instead. */}
       <button
         type="button"
         aria-label="Fly"
         data-walk-control
+        data-testid="shipwreck-walk-fly"
         onClick={() => store.getState().leaveWalk()}
-        className={`absolute right-[calc(max(1rem,env(safe-area-inset-right))+4.75rem)] top-[max(0.75rem,env(safe-area-inset-top))] ${BIG_OFF}`}
+        className={`absolute right-[max(1rem,env(safe-area-inset-right))] top-[calc(max(0.75rem,env(safe-area-inset-top))+10.5rem)] sm:right-[calc(max(1rem,env(safe-area-inset-right))+4.75rem)] sm:top-[max(0.75rem,env(safe-area-inset-top))] ${BIG_OFF}`}
       >
         <Icon name="fly" className="size-11" />
       </button>

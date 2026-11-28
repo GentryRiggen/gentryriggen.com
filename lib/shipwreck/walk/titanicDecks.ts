@@ -235,12 +235,15 @@ export const TITANIC_WALK: WalkMap = {
   areas,
   blockers,
   stairs,
-  // The starboard boat deck between the second and third funnels, facing
-  // forward to the Grand Staircase's starboard door (x 35.5, y −5.45, in
-  // interior/titanic.ts), so the way in is ahead from the first step.
+  // The starboard boat deck by the first funnel, between two lifeboats'
+  // davits (out of reach of either boat), facing aft and inboard at the
+  // Grand Staircase's starboard door (x 35.5, y −5.45, in
+  // interior/titanic.ts) about 10 m off: a clear straight walk in. The
+  // door is in a bay between the gymnasium and the officers' quarters, so
+  // it cannot be walked to straight from further aft.
   spawn: {
     area: "boat-deck",
-    at: [10, -10],
-    yaw: Math.atan2(-5.45 - -10, 35.5 - 10),
+    at: [44.5, -9.6],
+    yaw: Math.atan2(-5.45 - -9.6, 35.5 - 44.5),
   },
 };

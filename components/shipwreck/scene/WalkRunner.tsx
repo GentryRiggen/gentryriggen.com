@@ -34,6 +34,7 @@ import {
   type SwimmerState,
   type StepContext,
   type WalkerState,
+  type WalkInput,
 } from "@/lib/shipwreck/walk";
 import { shipToThreeInto, type V3 } from "./cameraMath";
 import type { SceneRuntime, WalkInfo } from "./runtime";
@@ -127,6 +128,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     doorT: 0,
     /** The eyes just before that door (three.js). */
     eyeFrom: [0, 0, 0] as V3,
+    /** Seconds the stick is still ignored after the lift (its dark wipe). */
+    liftHold: 0,
   });
   // Written in place every frame (no per-frame allocations).
   const scratch = useMemo(
@@ -178,6 +181,8 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       } as StepContext,
       feet: [0, 0, 0] as V3,
       at: [0, 0] as [number, number],
+      /** The input while the lift's wipe holds the stick: the look only. */
+      held: { forward: 0, strafe: 0, lookDx: 0, lookDy: 0 } as WalkInput,
     }),
     [spec, map, rooms, runtime, target]
   );
@@ -342,6 +347,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       s.pitch = 0;
       s.fall = null;
       s.easeT = null;
+      s.liftHold = 0;
       runtime.walkCameInBy = null;
       const w = placeWalker(map, spec, frame, breakX, FLAT_SEA);
       if (w) {
@@ -425,6 +431,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       };
       s.swimmer = null;
       s.easeT = null;
+      s.liftHold = 0;
       if (store.getState().walk.phase === "water") {
         store.getState().backOnDeck();
         s.seq = store.getState().walk.seq;
@@ -516,7 +523,15 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       const ctx = scratch.ctx;
       const before = s.eyeFrom;
       const lastEyes = runtime.walker;
-      const r = stepWalker(w, walkInput, ctx, dt);
+      // Through the lift's dark wipe the stick does nothing (the look
+      // still turns): nobody walks off blind.
+      let input: WalkInput = walkInput;
+      if (s.liftHold > 0) {
+        s.liftHold = Math.max(0, s.liftHold - dt);
+        scratch.held.lookDx = walkInput.lookDx;
+        input = scratch.held;
+      }
+      const r = stepWalker(w, input, ctx, dt);
       walkInput.lookDx = 0;
       walkInput.jump = false;
       // The area after the step, looked up once.
@@ -533,6 +548,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       } else if (r.via?.kind === "lift") {
         runtime.walkLift += 1;
         s.easeT = null;
+        s.liftHold = LIFT_HOLD_S;
       }
       if (r.inWater && r.overboard) {
         // Over the rail: fall from where the eyes are to the sea.
@@ -742,6 +758,9 @@ function useWalkKeys(
     };
   }, [walking, runtime, store]);
 }
+
+/** The stick is ignored this long after the lift (its wipe runs 0.9 s). */
+const LIFT_HOLD_S = 0.9;
 
 /** How often the door in reach is looked up (s). */
 const DOOR_LOOK_S = 0.25;

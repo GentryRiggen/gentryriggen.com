@@ -327,6 +327,13 @@ test("ride a Titanic lifeboat: it lowers at once and rows away", async ({
   // Walk to the starboard rail, then aft: beside boat 9's davit the
   // get-in button shows, and boards that boat.
   await page.evaluate(() => window.__shipwreck!.seek!(600));
+  // Abreast the funnels, facing the bow (the spawn faces a door, 1.16).
+  await page.evaluate(() =>
+    window.__shipwreck!.placeWalk!("boat-deck", 10, -10, 0)
+  );
+  await page.waitForFunction(
+    () => Math.abs((window.__shipwreck!.getWalk!()?.x ?? 0) - 10) < 0.01
+  );
   await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 1));
   await page.waitForFunction(
     () => (window.__shipwreck!.getWalk!()?.y ?? 0) < -13,
@@ -358,6 +365,13 @@ test("jump on the Titanic's deck, then a running jump over the rail into the sea
   await page.evaluate(() => window.__shipwreck!.pause!());
   await walk.click();
   await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+  // Abreast the funnels, facing the bow (the spawn faces a door, 1.16).
+  await page.evaluate(() =>
+    window.__shipwreck!.placeWalk!("boat-deck", 10, -10, 0)
+  );
+  await page.waitForFunction(
+    () => Math.abs((window.__shipwreck!.getWalk!()?.x ?? 0) - 10) < 0.01
+  );
 
   // A hop: the eyes rise and come back down.
   const y0 = await page.evaluate(

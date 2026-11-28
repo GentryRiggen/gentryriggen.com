@@ -251,7 +251,7 @@ describe("walking in the scene", () => {
     const { store, runtime, frame, hooks } = setup();
     act(() => store.getState().startWalk());
     frame();
-    // The spawn (x 10) is about 25 m from the nearest door.
+    // The spawn is about 10 m from the nearest door.
     hooks.enterDoor();
     frame();
     expect(runtime.walkInside).toBe(false);
@@ -345,6 +345,28 @@ describe("walking in the scene", () => {
     expect(runtime.walkRoom).toBe("lift-e");
     expect(runtime.walkLift).toBe(lift0 + 1);
     expect(runtime.walkInside).toBe(true);
+  });
+
+  it("ignores the stick through the lift's dark wipe, then walks again", () => {
+    const { store, runtime, frame, hooks } = setup();
+    act(() => store.getState().startWalk());
+    frame();
+    hooks.placeWalk("lift-b", 41.75, -4.6, 0);
+    frame();
+    walkInput.forward = 1;
+    for (let i = 0; i < 30 && runtime.walkRoom === "lift-b"; i += 1) frame();
+    expect(runtime.walkRoom).toBe("lift-e");
+    // Still held forward: for most of a second nobody moves.
+    const at = () => [runtime.walkInfo!.x, runtime.walkInfo!.y];
+    const p0 = at();
+    for (let i = 0; i < 40; i += 1) frame();
+    expect(at()).toEqual(p0);
+    // After the wipe the stick walks again (out of the car, into E deck).
+    walkInput.forward = 0;
+    walkInput.strafe = 1;
+    for (let i = 0; i < 60; i += 1) frame();
+    walkInput.strafe = 0;
+    expect(at()).not.toEqual(p0);
   });
 
   it("inside when she breaks: a splash, floating in the sea beside her", () => {

@@ -141,6 +141,19 @@ describe("the camera picker's rooms", () => {
   });
 });
 
+describe("the caption under the picker", () => {
+  it("is out of sight while the picker is open, and back after", () => {
+    const { openCameras } = setup();
+    const caption = screen.getByTestId("shipwreck-caption");
+    const box = caption.parentElement!;
+    expect(box.className).not.toContain("invisible");
+    openCameras();
+    expect(box.className).toContain("invisible");
+    openCameras();
+    expect(box.className).not.toContain("invisible");
+  });
+});
+
 describe("the Walk button's pulse", () => {
   it("pulses until the save says they have walked", () => {
     setup({ walked: true });

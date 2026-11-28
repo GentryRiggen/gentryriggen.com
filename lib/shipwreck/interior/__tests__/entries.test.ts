@@ -185,3 +185,31 @@ describe("the Titanic's walk spawn", () => {
     expect(TITANIC_WALK.spawn.yaw).toBeCloseTo(want, 2);
   });
 });
+
+describe("the way from the Titanic's spawn to the door it faces", () => {
+  const spawn = TITANIC_WALK.spawn;
+  const door = interior.links.find((l) => l.id === "gs-door-starboard")!;
+  const deck = map.areas.find((a) => a.id === "boat-deck")!;
+
+  it("is a straight walk crossing no blocker or wall", () => {
+    const [x0, y0] = spawn.at;
+    const [x1, y1] = door.from.at;
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    // Clear of the door button's reach at the start, so it is a walk.
+    expect(len).toBeGreaterThan(4);
+    for (let d = 0; d <= len; d += 0.05) {
+      const p: V2 = [
+        x0 + Math.cos(spawn.yaw) * d,
+        y0 + Math.sin(spawn.yaw) * d,
+      ];
+      expect([d, pointInPolygon(p, deck.outline)]).toEqual([d, true]);
+      expect([d, insideBlocker(map, "boat-deck", p, WALK_RADIUS_M)]).toEqual([
+        d,
+        false,
+      ]);
+    }
+    // Along the yaw, the far end is the door's outside end.
+    expect(x0 + Math.cos(spawn.yaw) * len).toBeCloseTo(x1, 6);
+    expect(y0 + Math.sin(spawn.yaw) * len).toBeCloseTo(y1, 6);
+  });
+});
