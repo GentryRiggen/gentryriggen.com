@@ -80,9 +80,10 @@ export default function Terminal({
   const isBootComplete = visibleSteps >= BOOT_STEPS.length;
 
   const scrollToBottom = useCallback(() => {
-    if (typeof bottomRef.current?.scrollIntoView === "function") {
-      bottomRef.current.scrollIntoView({ behavior: "smooth" });
-    }
+    // Scroll only the terminal's own body: scrollIntoView would also scroll
+    // the page, pushing the title bar off screen.
+    const scroller = bottomRef.current?.closest("[data-terminal-scroll]");
+    if (scroller) scroller.scrollTop = scroller.scrollHeight;
   }, []);
 
   // Reveal one tool call at a time, with the spinner thinking in between.

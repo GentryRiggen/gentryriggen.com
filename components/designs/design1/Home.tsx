@@ -53,7 +53,7 @@ function HomeContent() {
   const isHidden = terminalState === "minimized" || terminalState === "killed";
 
   return (
-    <div className="min-h-screen bg-term-page text-term-fg transition-colors font-mono">
+    <div className="h-[100dvh] overflow-hidden bg-term-page text-term-fg transition-colors font-mono">
       {/* Subtle scanline overlay for CRT effect in dark mode */}
       <div
         className="home-scanlines fixed inset-0 pointer-events-none z-10 opacity-0 dark:opacity-[0.03]"
@@ -146,7 +146,7 @@ function HomeContent() {
           className={
             terminalState === "fullscreen"
               ? "fixed inset-0 z-50 bg-term-page flex flex-col"
-              : `relative z-10 min-h-[100dvh] sm:min-h-0 max-w-3xl mx-auto px-0 sm:px-6 py-0 sm:py-16 flex flex-col ${terminalState === "minimized" ? "hidden" : ""}`
+              : `relative z-10 h-full max-w-3xl mx-auto px-0 sm:px-6 py-0 sm:pt-10 flex flex-col ${terminalState === "minimized" ? "hidden" : ""}`
           }
         >
           <Terminal
@@ -159,7 +159,7 @@ function HomeContent() {
           />
 
           {terminalState === "normal" && (
-            <footer className="py-4 sm:mt-8 text-center text-xs text-term-faint font-mono">
+            <footer className="shrink-0 py-3 sm:py-4 text-center text-xs text-term-faint font-mono">
               <p>&copy; {new Date().getFullYear()} Gentry Riggen</p>
               <p className="mt-1 px-4 text-[10px]">
                 Protected by reCAPTCHA: Google&apos;s{" "}
