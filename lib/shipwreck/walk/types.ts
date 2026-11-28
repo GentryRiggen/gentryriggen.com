@@ -1,3 +1,4 @@
+import type { LiftShaft } from "../interior/types";
 import { deckZAt } from "../places";
 import type { ShipId, ShipSpec } from "../ships/types";
 
@@ -108,6 +109,12 @@ export interface WalkMap {
    * cannot put them back.
    */
   walkEndsAtHeelDeg?: number;
+  /**
+   * Lift shafts whose cars ride (the Concordia's glass lifts, merged in by
+   * `withInterior`): a car area per stop, no links between them; the
+   * walker rides (`WalkerState.ride`, interior/lift.ts).
+   */
+  lifts?: readonly LiftShaft[];
 }
 
 // --- Tuning (see README.md) -------------------------------------------------

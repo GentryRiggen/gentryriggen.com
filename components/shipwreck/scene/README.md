@@ -198,6 +198,17 @@ shot framed for landscape still fits the ship.
   rooms are drawn by `components/shipwreck/interior/` (see its README).
   The sea skips its planar reflection pass while `walkInside` (it is only a
   porthole glimpse): the two interior perf scenes are about half the cost.
+  **Inside the Concordia** (1.18): the same runner, keyed on her rooms'
+  flags (`seep`, `closeAtHeelDeg`, `emergencyFlicker`) and her map's
+  `lifts`. Her low rooms fill slowly (`seep`); at 30° her rooms close and
+  the walker is put back out on deck through the lift's dark wipe (riding
+  or not); a landing's door into a glass car stays shut (`seamShut`) until
+  the car Interior draws (`walkLiftCarZ`) is at that stop; her emergency
+  lights flicker more as she leans
+  (`runtime.interiorEmergency`); the ▲ ▼ buttons ride her glass lifts
+  (`walkRide`, `walkLiftDirs`). Perf: `shipwreck-walk-concordia-atrium`
+  (riding up through the atrium) and `shipwreck-walk-concordia-cabin` (the
+  low lobby flooding at 23:05).
 - **Bounds per ship**: `hullBoxesFor(ship)`; `keepClear` pushes the free
   camera out of the boxes through a face that leaves it above the floor (a
   wreck on her side has a face on the floor).

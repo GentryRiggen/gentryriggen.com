@@ -22,6 +22,9 @@ export const STEAM_DUCKED = 0.35;
 /** The Carpathia's steady breeze on the open sea (0..1 of the wind bed). */
 export const BREEZE = 0.3;
 
+/** How much louder than the storm's deck wash the water inside her is at a metre (1 = the same). */
+export const WET_WASH = 1.5;
+
 /** Target level of each bed for a state (pure, so it is testable). */
 export function bedTargets(s: BedState, on: boolean) {
   if (!on)
@@ -63,7 +66,11 @@ export function bedTargets(s: BedState, on: boolean) {
       : 0,
     // The wind howls with the sea; the deck washes as she lays over.
     wind: BED_LEVEL.wind * above * breeze,
-    wash: BED_LEVEL.wash * above * wind * (0.4 + 0.6 * s.strain),
+    // (Inside her, the water nearby too: `wet`.)
+    wash:
+      BED_LEVEL.wash *
+      above *
+      (wind * (0.4 + 0.6 * s.strain) + WET_WASH * (s.wet ?? 0)),
     steam:
       BED_LEVEL.steam *
       (s.steam ? 1 : 0) *

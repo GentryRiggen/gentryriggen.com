@@ -104,6 +104,8 @@ export const SEA_FRAGMENT = /* glsl */ `
   #ifdef MOON
   uniform vec3 uMoonDir;
   uniform float uMoonUp;
+  // Seen from one of her sea-view rooms (runtime.walkSeaView, 0..1).
+  uniform float uSeaView;
   #endif
 
   // Value noise and its gradient, for the ripples.
@@ -279,6 +281,10 @@ export const SEA_FRAGMENT = /* glsl */ `
     // from the island).
     float md = max(dot(r, uMoonDir), 0.0);
     c += vec3(0.85, 0.9, 1.0) * uMoonUp * (pow(md, 500.0) * 10.0 + pow(md, 40.0) * 0.05);
+    // From her balcony and sea windows the night sea is lifted a little
+    // (a dim blue-green, the sky's sheen and its ripples), so kids see the
+    // water down there, not black.
+    c += uSeaView * (vec3(0.011, 0.028, 0.038) * (0.8 + 0.4 * fine) + sky * 0.35);
     #endif
     gl_FragColor = vec4(c, uOpacity);
     #endif
@@ -394,6 +400,7 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
             uPathN: { value: 0 },
             uMoonDir: { value: new Vector3(0, -1, 0) },
             uMoonUp: { value: 0 },
+            uSeaView: { value: 0 },
           },
         ]),
       }),
@@ -502,6 +509,7 @@ export default function Sea({ runtime, quality, xray, settings }: SeaProps) {
       const m = moonAt(moon, moon.utcMs + (f ? f.realT : 0) * 1000);
       sunDirectionInto(m, heading, moonArr);
       (u.uMoonDir.value as Vector3).set(moonArr[0], moonArr[1], moonArr[2]);
+      u.uSeaView.value = runtime.walkSeaView;
       u.uMoonUp.value =
         Math.min(1, Math.max(0, (m.elevationDeg + 0.5) / 3.5)) * m.lit;
     }

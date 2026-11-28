@@ -45,6 +45,10 @@ import {
  * - **A pool's water** (`basinWater`, her pool hall's): the same surface
  *   shader over the basin's plan, its slot's level the low rim's (Interior
  *   sets it), clear and blue (`aClear` 1; every room's water is 0).
+ * - **A seeping room's water** (hers, `Room.seep`: `aClear` −1): brighter
+ *   and bluer, with moving glints and a pale leading edge, so the sea
+ *   creeping across her low floors reads at a glance, on the emergency
+ *   light too. No other ship has a seeping room: their water is unchanged.
  *
  * A deck room (her pool hall) has no water of its own: the sea is far
  * below it and the walker's water there is the sea's.
@@ -80,6 +84,8 @@ export interface InteriorWater {
 interface Arrays {
   surface: number[];
   surfaceRoom: number[];
+  /** Each surface vertex's `aClear` (−1 a seeping room's, else 0). */
+  surfaceClear: number[];
   floor: number[];
   top: number[];
   body: number[];
@@ -91,7 +97,7 @@ function surfaceGeometry(
   room: number[],
   floor: number[],
   top: number[],
-  clear: number
+  clear: number | readonly number[]
 ): BufferGeometry {
   const g = new BufferGeometry();
   g.setAttribute("position", new Float32BufferAttribute(pos, 3));
@@ -100,7 +106,12 @@ function surfaceGeometry(
   g.setAttribute("aTop", new Float32BufferAttribute(top, 1));
   g.setAttribute(
     "aClear",
-    new Float32BufferAttribute(new Float32Array(room.length).fill(clear), 1)
+    new Float32BufferAttribute(
+      typeof clear === "number"
+        ? new Float32Array(room.length).fill(clear)
+        : Float32Array.from(clear),
+      1
+    )
   );
   return g;
 }
@@ -129,6 +140,7 @@ export function interiorWater(
       a = {
         surface: [],
         surfaceRoom: [],
+        surfaceClear: [],
         floor: [],
         top: [],
         body: [],
@@ -137,6 +149,9 @@ export function interiorWater(
       arrays.set(room.zone, a);
     }
     addRoom(a, room, k, kinds.get(room.id)!, spec);
+    const clear = room.seep ? -1 : 0;
+    while (a.surfaceClear.length < a.surfaceRoom.length)
+      a.surfaceClear.push(clear);
   });
   const zones = new Map<
     string,
@@ -148,7 +163,7 @@ export function interiorWater(
       a.surfaceRoom,
       a.floor,
       a.top,
-      0
+      a.surfaceClear
     );
     const body = new BufferGeometry();
     body.setAttribute("position", new Float32BufferAttribute(a.body, 3));
@@ -370,6 +385,17 @@ export function waterShaders(count: number) {
       vec3 sheen = vec3(0.16, 0.14, 0.10) * graze * (0.75 + 0.25 * s1 * s2 + 0.15 * s3);
       vec3 lit = waterLight(c, sheen, vRoom, vWorld);
       float a = mix(0.52, 0.94, max(murk, graze)) * smoothstep(0.0, 0.04, d);
+      // A seeping room (hers, aClear -1): brighter, bluer water, moving
+      // glints and a pale leading edge, so the sea creeping over her low
+      // floors reads at a glance, a little of it on the emergency light.
+      if (vClear < -0.5) {
+        vec3 seep = mix(vec3(0.07, 0.25, 0.3), vec3(0.02, 0.1, 0.13), murk) * ripple;
+        seep += vec3(0.22, 0.32, 0.32) * edge;
+        float glint = smoothstep(0.55, 1.0, s1 * s2) * 0.6 + 0.6 * graze;
+        vec3 shine = vec3(0.3, 0.4, 0.45) * glint * (0.85 + 0.15 * s3);
+        lit = waterLight(seep, shine, vRoom, vWorld) + (seep * 0.35 + shine * 0.25);
+        a = mix(0.72, 0.95, max(murk, graze)) * smoothstep(0.0, 0.03, d);
+      }
       // A pool: clear blue over its tiles, the sky's sheen on a grazing look.
       if (vClear > 0.5) {
         float clearMurk = 1.0 - exp(-0.35 * d / max(cosv, 0.12));

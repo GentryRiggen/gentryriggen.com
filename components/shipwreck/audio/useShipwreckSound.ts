@@ -156,6 +156,8 @@ export function useShipwreckSound(
     function walkNow(phase: WalkCueInput["phase"]): WalkCueInput {
       walk.phase = phase;
       walk.splash = runtime!.walkSplash;
+      walk.inside = runtime!.walkInside;
+      walk.wet = runtime!.walkWet;
       return walk;
     }
     // Walking runs in real time, so a paused night still hears it: tick

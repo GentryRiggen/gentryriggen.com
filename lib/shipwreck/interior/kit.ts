@@ -1,5 +1,9 @@
 import type { Blocker, Seam, V2 } from "../walk/types";
-import { MODERN_PIECE_FOOTPRINT, type ModernPieceId } from "./modernPieces";
+import {
+  MODERN_PIECE_FOOTPRINT,
+  seatRowFootprint,
+  type ModernPieceId,
+} from "./modernPieces";
 import type { Furniture, PieceId } from "./types";
 
 /**
@@ -264,10 +268,22 @@ export function pieceFootprint(
   );
 }
 
+/**
+ * A placed piece's footprint: its piece's, except a theatre seat row of
+ * `seats` seats (`seatRowFootprint`), or undefined.
+ */
+export function furnitureFootprint(
+  f: Pick<Furniture, "piece" | "seats">
+): { lx: number; ly: number } | undefined {
+  if (f.piece === "theatre-seat-row" && f.seats !== undefined)
+    return seatRowFootprint(f.seats);
+  return pieceFootprint(f.piece);
+}
+
 /** A blocking piece's blocker (a box in its room), or null. */
 export function pieceBlocker(f: Furniture): Blocker | null {
   if (!f.blocks) return null;
-  const fp = pieceFootprint(f.piece);
+  const fp = furnitureFootprint(f);
   if (!fp) throw new Error(`piece ${f.piece} has no footprint to block with`);
   const quarter = Math.round(f.yaw / (Math.PI / 2));
   const turned = Math.abs(quarter) % 2 === 1;

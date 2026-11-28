@@ -584,8 +584,13 @@ First lever if over: skip the sea's planar reflection while inside, as
 5. **The glass lifts run all night** (on emergency power, fun over
    realism), stop at decks 1, 3, 4, 5 and 7, skip flooded stops, and take
    about 12 s from bottom to top.
-6. **The low cabins are on deck 1** (deck 0 if the track needs it), forward
-   of midships at the lift, and fill by seep at 0.3 m a shown minute.
+6. **The low cabins are on deck 0 plus 0.4 m** (Task 7: deck 1 could not
+   pass the water test: from the touch her lobby's starboard edge sits
+   2.8 m over the sea and her heel shortens a lowered floor by cos(heel)),
+   forward of midships at the lift, the lobby reaching y −13.5, and fill by
+   seep at 0.3 m a shown minute. The seep is the depth over each room's
+   lowest floor point (see `seep.ts`), not an earth-fixed plane that starts
+   at the sea's level.
 7. **The boat recess is deepened** in her model from 4.8 m to 7.4 m so a
    promenade runs inboard of the boats.
 8. **Game deck numbers** (the model's) are used everywhere, with Costa's

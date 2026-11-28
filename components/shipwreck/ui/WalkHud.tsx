@@ -5,6 +5,8 @@ import { useStore } from "zustand";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import { resetWalkInput, walkInput, walkMapFor } from "@/lib/shipwreck/walk";
 import {
+  LIFT_DOWN,
+  LIFT_UP,
   setWalkInputOff,
   type SceneRuntime,
 } from "@/components/shipwreck/scene/runtime";
@@ -43,6 +45,8 @@ interface Feel {
   inside: boolean;
   /** The lift wipe being shown (its count), or 0: none. */
   lift: number;
+  /** In her glass car: which ways a ride can go (`walkLiftDirs`). */
+  liftDirs: number;
 }
 
 /** How long the ripple wipe shows (ms; its keyframes run 600 ms). */
@@ -58,6 +62,7 @@ function readFeel(rt: SceneRuntime, ripple = 0, lift = 0): Feel {
     door: rt.walkDoor,
     inside: rt.walkInside,
     lift,
+    liftDirs: rt.walkLiftDirs,
   };
 }
 
@@ -96,7 +101,8 @@ function useFeel(runtime: SceneRuntime, on: boolean): Feel {
         f.ripple === next.ripple &&
         f.door === next.door &&
         f.inside === next.inside &&
-        f.lift === next.lift
+        f.lift === next.lift &&
+        f.liftDirs === next.liftDirs
           ? f
           : next
       );
@@ -224,11 +230,49 @@ export default function WalkHud({
         </div>
       )}
 
-      {/* Inside her: back out by the door (the way they came in if dry). */}
+      {/* Inside her: back out by the door (the way they came in if dry).
+          In her glass car, the lift's up and down beside it (each only
+          when a dry stop is that way; no wipe: the ride is seen): side by
+          side over Go outside on a phone held upright, in one row with it
+          from sm up, so a short landscape screen never clips them; on a
+          screen that short the row steps left of the sound button. */}
       {deck && feel.inside && (
         <div
-          className={`absolute right-[max(1rem,env(safe-area-inset-right))] ${OVER_MARKS}`}
+          data-testid="shipwreck-inside-controls"
+          className={`absolute right-[max(1rem,env(safe-area-inset-right))] flex flex-col items-end gap-3 sm:flex-row sm:[@media(max-height:460px)]:right-[calc(max(1rem,env(safe-area-inset-right))+5.5rem)] ${OVER_MARKS}`}
         >
+          {feel.liftDirs !== 0 && (
+            <div className="flex gap-3">
+              {(feel.liftDirs & LIFT_UP) !== 0 && (
+                <button
+                  type="button"
+                  aria-label="Lift up"
+                  data-testid="shipwreck-lift-up"
+                  data-walk-control
+                  onClick={() => {
+                    walkInput.lift = "up";
+                  }}
+                  className={BOARD}
+                >
+                  <Icon name="lift-up" className="size-11" />
+                </button>
+              )}
+              {(feel.liftDirs & LIFT_DOWN) !== 0 && (
+                <button
+                  type="button"
+                  aria-label="Lift down"
+                  data-testid="shipwreck-lift-down"
+                  data-walk-control
+                  onClick={() => {
+                    walkInput.lift = "down";
+                  }}
+                  className={BOARD}
+                >
+                  <Icon name="lift-down" className="size-11" />
+                </button>
+              )}
+            </div>
+          )}
           <button
             type="button"
             aria-label="Go outside"

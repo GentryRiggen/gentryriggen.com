@@ -1,5 +1,7 @@
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { roomFloorZ, TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
+import { CONCORDIA_INTERIOR } from "@/lib/shipwreck/interior/concordia";
 import { pointInPolygon } from "@/lib/shipwreck/walk";
 import {
   interiorWater,
@@ -106,6 +108,39 @@ describe("the water inside (geometry)", () => {
           true,
         ]);
       }
+    }
+  });
+
+  it("marks a seeping room's surface (hers: aClear -1) for its brighter water; every Titanic room's stays 0", () => {
+    const clearOf = (w: ReturnType<typeof interiorWater>) => {
+      const bySlot = new Map<number, Set<number>>();
+      for (const z of w.zones.values()) {
+        const room = z.surface.getAttribute("aRoom");
+        const clear = z.surface.getAttribute("aClear");
+        expect(clear.count).toBe(room.count);
+        for (let i = 0; i < room.count; i += 1) {
+          const k = room.getX(i);
+          if (!bySlot.has(k)) bySlot.set(k, new Set());
+          bySlot.get(k)!.add(clear.getX(i));
+        }
+      }
+      return bySlot;
+    };
+    for (const values of clearOf(water).values())
+      expect([...values]).toEqual([0]);
+    const hers = interiorWater(CONCORDIA_INTERIOR, concordia);
+    const by = clearOf(hers);
+    for (const room of CONCORDIA_INTERIOR.rooms) {
+      const values = by.get(hers.slot.get(room.id)!);
+      if (!values) continue;
+      expect([...values]).toEqual([room.seep ? -1 : 0]);
+    }
+    expect([...by.get(hers.slot.get("lobby-1")!)!].every((v) => v === -1)).toBe(
+      true
+    );
+    for (const z of hers.zones.values()) {
+      z.surface.dispose();
+      z.body.dispose();
     }
   });
 

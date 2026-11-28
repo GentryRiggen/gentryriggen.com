@@ -2,8 +2,8 @@ import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
 import {
   areaById,
-  floorZ,
   jumpHeight,
+  walkerFloorZ,
   WALK_EYE_M,
   type SwimmerState,
   type WalkerState,
@@ -81,7 +81,8 @@ export function deckEyes(
 ): WalkerView {
   feetAt[0] = w.x;
   feetAt[1] = w.y;
-  feetAt[2] = floorZ(map, w.area, w.x, spec, w.y);
+  // Riding a glass lift: the car's floor as it moves (`walkerFloorZ`).
+  feetAt[2] = walkerFloorZ(map, w, spec);
   if (map.eyesShipUp || areaById(map, w.area)?.interior) {
     // Inside her rooms (and on her decks with `eyesShipUp`) the eyes stand
     // along the ship's own up axis, so a trim or list never slides them

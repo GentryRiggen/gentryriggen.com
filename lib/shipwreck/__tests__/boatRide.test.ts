@@ -129,10 +129,11 @@ describe("boarding the Costa Concordia's boats from her promenade", () => {
     expect(nearestBoardable(-6, -14.2, spots, BOARD_REACH_M, deck)).toBe(
       s7.index
     );
-    // Over every boat, from every walked area but her boat deck: none.
+    // Over every boat, from every walked open deck but her boat deck:
+    // none (her rooms inside: the next case).
     for (const b of recipe.boats)
       for (const a of map.areas) {
-        if (a.id.startsWith("boat-deck")) continue;
+        if (a.id.startsWith("boat-deck") || a.interior) continue;
         for (const dx of [-5, 0, 5]) {
           const p: [number, number] = [b.x + dx, b.y];
           const z = floorZ(map, a.id, p[0], spec);
@@ -143,6 +144,25 @@ describe("boarding the Costa Concordia's boats from her promenade", () => {
           ]).toEqual([b.label, a.id, null]);
         }
       }
+  });
+
+  it("is never reached from a room inside her, even on the boat deck's own deck", () => {
+    let probed = 0;
+    for (const a of map.areas) {
+      if (!a.interior) continue;
+      const xs = a.outline.map((p) => p[0]);
+      const ys = a.outline.map((p) => p[1]);
+      for (let x = Math.min(...xs) + 0.15; x < Math.max(...xs); x += 0.5)
+        for (let y = Math.min(...ys) + 0.15; y < Math.max(...ys); y += 0.5) {
+          if (!pointInPolygon([x, y], a.outline)) continue;
+          probed += 1;
+          const z = floorZ(map, a.id, x, spec, y);
+          const got = nearestBoardable(x, y, spots, BOARD_REACH_M, z);
+          if (got !== null)
+            throw new Error(`${a.id} at ${x}, ${y}: boat ${got}`);
+        }
+    }
+    expect(probed).toBeGreaterThan(1000);
   });
 
   it("keeps every other ship's spots by her deck edge", () => {

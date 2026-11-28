@@ -5,7 +5,11 @@ import { titanic } from "@/lib/shipwreck/ships/titanic";
 import { simulate, type SimTrack } from "@/lib/shipwreck/sim";
 import type { SimRunner } from "@/lib/shipwreck/sim/run";
 import { resetWalkInput, walkInput, walkMapFor } from "@/lib/shipwreck/walk";
-import { createSceneRuntime } from "@/components/shipwreck/scene/runtime";
+import {
+  createSceneRuntime,
+  LIFT_DOWN,
+  LIFT_UP,
+} from "@/components/shipwreck/scene/runtime";
 import Hud from "../Hud";
 import WalkHud from "../WalkHud";
 
@@ -458,6 +462,52 @@ describe("doors, outside and the lift", () => {
     expect(screen.queryByTestId("shipwreck-go-inside")).toBeNull();
     fireEvent.click(screen.getByTestId("shipwreck-go-outside"));
     expect(walkInput.outside).toBe(true);
+  });
+
+  it("in her glass car: ▲ ▼ only toward a dry stop, tapping asks the ride", () => {
+    const { store, runtime, tick } = setup();
+    act(() => store.getState().startWalk());
+    tick();
+    // Not in a car (no ways to go): no lift buttons.
+    expect(screen.queryByTestId("shipwreck-lift-up")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-lift-down")).toBeNull();
+    // In a car with only a dry stop above.
+    runtime.walkInside = true;
+    runtime.walkLiftDirs = LIFT_UP;
+    tick();
+    const up = screen.getByTestId("shipwreck-lift-up");
+    expect(up).toHaveAttribute("aria-label", "Lift up");
+    expect(up.textContent).toBe("");
+    expect(up.className).toMatch(/size-20/);
+    expect(screen.queryByTestId("shipwreck-lift-down")).toBeNull();
+    fireEvent.click(up);
+    expect(walkInput.lift).toBe("up");
+    // Laid out to fit a short screen: ▲ ▼ side by side, in one row with Go
+    // outside from sm up (a column would clip on a landscape phone).
+    const column = screen.getByTestId("shipwreck-inside-controls");
+    expect(column.className).toMatch(/\bsm:flex-row\b/);
+    expect(column.className).toMatch(/safe-area-inset-right/);
+    expect(up.parentElement!.className).toMatch(/^flex gap-3$/);
+    // Both ways.
+    runtime.walkLiftDirs = LIFT_UP | LIFT_DOWN;
+    tick();
+    fireEvent.click(screen.getByTestId("shipwreck-lift-down"));
+    expect(walkInput.lift).toBe("down");
+    expect(screen.getByTestId("shipwreck-lift-down")).toHaveAttribute(
+      "aria-label",
+      "Lift down"
+    );
+    // Riding (or no dry stop either way): none, and no dark wipe on her.
+    runtime.walkLiftDirs = 0;
+    tick();
+    expect(screen.queryByTestId("shipwreck-lift-up")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-lift-down")).toBeNull();
+    expect(screen.queryByTestId("shipwreck-walk-lift")).toBeNull();
+    // Out on deck: never.
+    runtime.walkInside = false;
+    runtime.walkLiftDirs = LIFT_UP;
+    tick();
+    expect(screen.queryByTestId("shipwreck-lift-up")).toBeNull();
   });
 
   it("wipes dark once on a lift ride, not with reduced motion", () => {

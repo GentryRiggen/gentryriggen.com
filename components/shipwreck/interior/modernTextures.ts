@@ -3,6 +3,7 @@ import {
   LinearFilter,
   LinearMipmapLinearFilter,
   NoColorSpace,
+  NormalBlending,
   RepeatWrapping,
   RGBAFormat,
   UnsignedByteType,
@@ -55,9 +56,35 @@ export const MODERN_TILE = {
   mural: 17,
   /** Glass: an emergency lamp or exit sign, lit on the emergency supply. */
   emergency: 18,
-  /** See-through glass (lift cars, rails, balcony doors): the pane builder. */
+  /** See-through glass (rails, balcony doors): the pane builder. */
   pane: 19,
+  /**
+   * The glass lifts' glass (the atrium's wall onto the shafts, the cars'
+   * own panes): clearer tinted, with soft reflections that slide as you
+   * move, so it reads as glass in front of the dark shafts. (20 is the
+   * frosted doors', `FROSTED_TILE`.)
+   */
+  liftGlass: 21,
 } as const;
+
+/**
+ * The lift glass's look (tile 21), shared by her rooms' glass branch and
+ * the see-through pane material: needs `n`, `v` (unit normal and to the
+ * eye) and `shine` (how lit, about 0..1) in scope; sets `lit` and `liftA`. A
+ * pale aqua tint, a grazing sheen, and two soft bands of reflection from
+ * the reflected look (they slide across the pane as you move). No pow,
+ * no division.
+ */
+export const LIFT_GLASS_GLSL = /* glsl */ `
+          vec3 lr = reflect(-v, n);
+          float lg = 1.0 - clamp(abs(dot(n, v)), 0.0, 1.0);
+          float lf = lg * lg * lg;
+          float ls = sin(lr.y * 6.0 + (lr.x + lr.z) * 5.0);
+          float lb = ls * ls;
+          lb *= lb;
+          lit = vec3(0.09, 0.13, 0.14) * (0.4 + shine)
+            + vec3(0.75, 0.86, 0.92) * (0.5 * lf + 0.22 * lb) * (0.35 + shine);
+          float liftA = clamp(0.2 + 0.5 * lf + 0.25 * lb, 0.0, 0.85);`;
 
 /** A small deterministic generator (mulberry32), as textures.ts. */
 function rng(seed: number): () => number {
@@ -597,13 +624,67 @@ export const MODERN_DAY_LINE = /* glsl */ `
       lit = mix(lit, base * (vec3(0.97, 1.0, 1.05) * skyK + vLight * power * LAMP * 0.1 + torch * TORCH * 0.2), dayShare);`;
 
 /**
- * Glass: an emergency lamp or exit sign glows on the emergency supply,
- * whatever the room's own lamps (its `aGlow` times `uEmergency`).
+ * Inside her rooms (`aGlow` 0 or under): on the emergency supply her own
+ * lamps run low (at a quarter power about a tenth of their light), and
+ * the light her emergency strips and exit signs throw (baked, kit.ts, as
+ * `aGlow` under 0) shows: a soft green, the supply's flicker on it. A
+ * deck room's `aGlow` is its daylight share (0..1): untouched.
  */
-export const MODERN_GLASS_BRANCH = /* glsl */ `if (vTile > 17.5 && vTile < 18.5) {
-          // An emergency lamp or an exit sign: on its own supply.
-          lit = vColor * (vGlow * uEmergency + 0.04) + vColor * torch * 0.4;
+export const MODERN_EMERGENCY_LINE = /* glsl */ `
+      float insideHer = 1.0 - step(0.001, vGlow);
+      float lampsLow = 1.0 - mix(0.12, 1.0, smoothstep(0.3, 0.9, power));
+      lit -= base * vLight * power * LAMP * lampsLow * insideHer;
+      float emergLight = clamp(-vGlow, 0.0, 2.0);
+      lit += base * vec3(0.22, 0.6, 0.3) * emergLight * uEmergency * (1.0 - 0.85 * clamp(power, 0.0, 1.0));`;
+
+/**
+ * Glass: her see-through panes merged into a room's glass mesh (tile 19:
+ * glass rails, the atrium's glass onto the lift shafts, balcony doors; 20
+ * frosted), blended by their alpha (`paneA`, 1 for everything else: her
+ * glass material blends); an emergency lamp or exit sign glows on the
+ * emergency supply, whatever the room's own lamps (its `aGlow` times
+ * `uEmergency`); her sea windows and portholes (tile 6) show the night a
+ * little lighter than the Titanic's, the sea a dim moving teal.
+ */
+export const MODERN_GLASS_BRANCH = /* glsl */ `if (vTile > 18.5) {
+          // A pane: a faint tint, catching the lamps toward a grazing look.
+          float graze = 1.0 - clamp(abs(dot(n, v)), 0.0, 1.0);
+          float fres = graze * graze * graze;
+          float shine = 0.08 + 0.5 * vLight * power + 0.3 * torch;
+          lit = vColor * (0.04 + 0.25 * vLight * power) + vec3(0.62, 0.7, 0.72) * fres * shine;
+          paneA = mix(0.1, 0.55, fres);
+          if (vTile > 20.5) {
+            // The glass lifts' glass (LIFT_GLASS_GLSL).
+            ${LIFT_GLASS_GLSL}
+            paneA = liftA;
+          } else if (vTile > 19.5) {
+            // Frosted: pale, nearly opaque.
+            lit = vColor * (0.06 + 0.5 * vLight * power + 0.2 * torch);
+            paneA = 0.9;
+          }
+        } else if (vTile > 17.5 && vTile < 18.5) {
+          // An emergency lamp or an exit sign: on its own supply (a little
+          // softer while the room's lamps are on).
+          lit = vColor * (vGlow * uEmergency * (1.0 - 0.45 * clamp(power, 0.0, 1.0)) + 0.04) + vColor * torch * 0.4;
+        } else if (vTile > 5.5 && vTile < 6.5) {
+          // Her sea windows and portholes: the night out there lifted a
+          // little so kids see the water: a blue night sky, the sea a dim
+          // moving teal once it is over the glass, a pale line where the
+          // surface crosses it, a little of the room's light on the glass.
+          vec3 sky = uSky * (0.6 + 0.4 * uDaylight) + vec3(0.02, 0.034, 0.065);
+          float sd = clamp(-vWorld.y * 0.5, 0.0, 1.0);
+          float sway = 0.85 + 0.15 * sin(vWorld.x * 2.3 + vWorld.z * 1.7 + uTime * 0.9);
+          vec3 sea = mix(vec3(0.03, 0.15, 0.16), vec3(0.01, 0.06, 0.07), sd) * sway;
+          float under = 1.0 - smoothstep(-0.03, 0.03, vWorld.y);
+          float line = 1.0 - smoothstep(0.0, 0.06, abs(vWorld.y));
+          lit = mix(sky, sea, under) + vec3(0.1, 0.16, 0.17) * line
+            + vec3(0.03, 0.026, 0.02) * vLight * power
+            + TORCH * torch * 0.15;
         } else `;
+
+/** Her glass's alpha (see `MODERN_GLASS_BRANCH`), declared in main. */
+export const MODERN_PANE_ALPHA = /* glsl */ `float paneA = 1.0;
+      `;
 
 /** Where the modern code goes in `roomShaders`' fragment (each once). */
 export const MODERN_ANCHORS = {
@@ -611,6 +692,9 @@ export const MODERN_ANCHORS = {
   detail: "base *= f;",
   glass: "if (vTile > 6.5) {",
   lit: "+ vec3(0.0015, 0.002, 0.0035);",
+  /** The glass layer's first line in main (its alpha declared before). */
+  main: "vec3 n = vNormal / max(length(vNormal), 0.0001);",
+  alpha: "gl_FragColor = vec4(lit, 1.0);",
 } as const;
 
 function insertOnce(src: string, anchor: string, before: string, after = "") {
@@ -625,18 +709,38 @@ function insertOnce(src: string, anchor: string, before: string, after = "") {
 /**
  * A layer's room fragment shader with the modern finishes: the head before
  * the constants, the finish after the Edwardian detail (shell and wood),
- * the daylight after the lamps' light (shell, wood and metal), the
- * emergency glow ahead of the dome's branch (glass).
+ * the emergency strips' light and the daylight after the lamps' light
+ * (shell, wood and metal); on glass, the panes and the emergency glow
+ * ahead of the dome's branch and the panes' alpha in the output.
  */
 export function withModern(fragment: string, layer: Layer): string {
   let out = insertOnce(fragment, MODERN_ANCHORS.head, MODERN_FRAGMENT_HEAD);
   if (layer === "shell" || layer === "wood")
     out = insertOnce(out, MODERN_ANCHORS.detail, "", MODERN_DETAIL_LINE);
   if (layer !== "glass")
-    out = insertOnce(out, MODERN_ANCHORS.lit, "", MODERN_DAY_LINE);
-  if (layer === "glass")
+    out = insertOnce(
+      out,
+      MODERN_ANCHORS.lit,
+      "",
+      MODERN_EMERGENCY_LINE + MODERN_DAY_LINE
+    );
+  if (layer === "glass") {
+    out = insertOnce(out, MODERN_ANCHORS.main, MODERN_PANE_ALPHA);
     out = insertOnce(out, MODERN_ANCHORS.glass, MODERN_GLASS_BRANCH);
+    out = replaceOnce(
+      out,
+      MODERN_ANCHORS.alpha,
+      "gl_FragColor = vec4(lit, paneA);"
+    );
+  }
   return out;
+}
+
+function replaceOnce(src: string, anchor: string, by: string): string {
+  const i = src.indexOf(anchor);
+  if (i < 0 || src.indexOf(anchor, i + 1) >= 0)
+    throw new Error(`modern shader: anchor "${anchor}" not found once`);
+  return src.slice(0, i) + by + src.slice(i + anchor.length);
 }
 
 export interface ModernUniforms {
@@ -680,5 +784,8 @@ export function applyModern(
     }
     Object.assign(m.uniforms, u);
   }
+  // Her panes blend (everything else in her glass writes alpha 1: the
+  // same picture as no blending).
+  mats.glass.blending = NormalBlending;
   return u;
 }

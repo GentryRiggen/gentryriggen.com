@@ -166,6 +166,8 @@ const SCENES = [
   "shipwreck-concordia-drift",
   "shipwreck-concordia-aground",
   "shipwreck-walk-concordia-pool",
+  "shipwreck-walk-concordia-atrium",
+  "shipwreck-walk-concordia-cabin",
   "shipwreck-poseidon-party",
   "shipwreck-poseidon-wave",
   "shipwreck-poseidon-keelup",
@@ -602,6 +604,7 @@ test.describe("Shipwreck budget", () => {
         !s.startsWith("shipwreck-carpathia") &&
         !s.startsWith("shipwreck-britannic") &&
         !s.startsWith("shipwreck-concordia") &&
+        !s.startsWith("shipwreck-walk-concordia") &&
         !s.startsWith("shipwreck-poseidon")
     )) {
       const m = JSON.parse(
@@ -869,6 +872,85 @@ test.describe("Shipwreck budget: the Costa Concordia", () => {
     // The walk scene's target: 62 draw calls, 430k triangles.
     expect(m.calls, "draw calls").toBeLessThanOrEqual(62);
     expect(m.triangles, "triangles").toBeLessThanOrEqual(430_000);
+  });
+
+  test("inside her at the top tier: riding the glass lift through the atrium (22:00), the low lobby flooding (23:05)", async ({
+    page,
+  }) => {
+    await page.goto("/shipwreck?scene&ship=concordia&quality=high");
+    await page.waitForFunction(
+      () => window.__shipwreck?.getState?.().done === true,
+      null,
+      { timeout: 300_000 }
+    );
+    await page.evaluate(() => {
+      const h = window.__shipwreck!;
+      h.pause!();
+      h.seek!(14 * 60 + 53); // 22:00
+      h.startWalk!();
+      // In lift-a's car at deck 3, facing the atrium.
+      h.placeWalk!("lift-a@3", 63.1, 2.6, 0);
+    });
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.area === "lift-a@3"
+    );
+    await page.waitForTimeout(2500);
+    // Up to deck 4: counted while the car rides up through the atrium (the
+    // ride is over before the frame-time sample is, so the counts are the
+    // frame a moment into it).
+    await page.evaluate(() => window.__shipwreck!.rideLift!("up"));
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.ride === "lift-a"
+    );
+    const mid = await page.evaluate(async () => {
+      for (let i = 0; i < 3; i += 1)
+        await new Promise((r) => requestAnimationFrame(r));
+      const info = (window as unknown as RenderInfoWindow)
+        .__shipwreckRenderInfo!;
+      return {
+        calls: info.calls,
+        triangles: info.triangles,
+        ride: window.__shipwreck!.getWalk!()?.ride ?? null,
+      };
+    });
+    expect(mid.ride, "counted mid-ride").toBe("lift-a");
+    const atrium = {
+      ...(await measure(page, "__shipwreckRenderInfo")),
+      calls: mid.calls,
+      triangles: mid.triangles,
+    };
+    record("shipwreck-walk-concordia-atrium", atrium);
+    // The spec's target: 70 draw calls, 470k triangles.
+    expect(atrium.calls, "atrium: draw calls").toBeLessThanOrEqual(70);
+    expect(atrium.triangles, "atrium: triangles").toBeLessThanOrEqual(470_000);
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.ride === null,
+      null,
+      { timeout: 60_000 }
+    );
+
+    // 23:05 on the real night: ten real minutes after the first boat goes
+    // down (22:55), her clock running fast once she is aground.
+    await page.evaluate(() => {
+      const h = window.__shipwreck!;
+      const boats = h.getEvents!().filter((x) => x.kind === "boat-lowered");
+      const [a, b] = boats;
+      const fast = (b.realT - a.realT) / (b.t - a.t);
+      h.seek!(a.t + (10 * 60) / fast);
+      // The deck 1 lift lobby (the Low cabin picture), facing aft.
+      h.placeWalk!("lobby-1", 59.5, -9.9, Math.PI);
+    });
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.area === "lobby-1"
+    );
+    await page.waitForTimeout(2500);
+    const w = await page.evaluate(() => window.__shipwreck!.getWalk!()!);
+    expect(w.inside, "still inside before the 30° close").toBe(true);
+    const cabin = await measure(page, "__shipwreckRenderInfo");
+    record("shipwreck-walk-concordia-cabin", cabin);
+    // The spec's target: 66 draw calls, 440k triangles.
+    expect(cabin.calls, "cabin: draw calls").toBeLessThanOrEqual(66);
+    expect(cabin.triangles, "cabin: triangles").toBeLessThanOrEqual(440_000);
   });
 
   test("her night by Giglio at the top tier: lit past the island, the drift, on her side", async ({

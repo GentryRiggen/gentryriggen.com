@@ -1,5 +1,6 @@
 import type { ShipId } from "../ships/types";
 import type { Seam, Stair, V2 } from "../walk/types";
+import type { ModernPieceId } from "./modernPieces";
 
 /**
  * The room kit's data (see README.md): a ship's rooms inside her, as walk
@@ -15,19 +16,66 @@ export type RoomKind =
   | "cabin"
   | "passage"
   | "lift"
+  // Her modern rooms (the Concordia): a three-storey hall's floor and its
+  // galleries, a balcony cabin and its balcony, a lift lobby, the theatre
+  // and its stage, the kids' club, a glass lift's car at one stop, and the
+  // glass-roofed pool hall (a deck room).
+  | "atrium"
+  | "gallery"
+  | "stateroom"
+  | "balcony"
+  | "lobby"
+  | "theatre"
+  | "stage"
+  | "club"
+  | "lift-car"
   | "pool-hall";
 
 /**
  * Walls: oak panelling, white panelling, white enamel, painted steel, or
  * glass (tinted, see-through, double-sided: a deck room's glass walls and
- * the vault over them).
+ * the vault over them). Hers (1.18): cabin wood veneer, cream
+ * wallcovering, marble, the kids' club's bright murals, the theatre's dark
+ * red.
  */
-export type WallFinish = "oak" | "white-panel" | "enamel" | "steel" | "glass";
-/** Floors; `tile` is pool mosaic, `teak` deck planking. */
+export type WallFinish =
+  | "oak"
+  | "white-panel"
+  | "enamel"
+  | "steel"
+  | "glass"
+  | "cabin-veneer"
+  | "cream"
+  | "marble"
+  | "kids"
+  | "theatre";
+/**
+ * Floors; `tile` is pool mosaic, `teak` deck planking. Hers (1.18): cabin
+ * carpet, marble, `soft` (the kids' play mat), the stage's boards.
+ */
 export type FloorFinish =
-  "lino" | "carpet" | "mosaic" | "steel" | "tile" | "teak";
-/** How the room is lit (its lamps are `sconce`/`caged-bulb` furniture). */
-export type LampStyle = "sconce" | "caged-bulb" | "dome" | "ceiling";
+  | "lino"
+  | "carpet"
+  | "mosaic"
+  | "steel"
+  | "tile"
+  | "teak"
+  | "cabin-carpet"
+  | "marble"
+  | "soft"
+  | "stage-wood";
+/**
+ * How the room is lit (its lamps are `sconce`/`caged-bulb` furniture);
+ * hers: recessed downlights, strip lights, a chandelier over the well.
+ */
+export type LampStyle =
+  | "sconce"
+  | "caged-bulb"
+  | "dome"
+  | "ceiling"
+  | "downlight"
+  | "strip"
+  | "chandelier";
 
 export interface RoomLook {
   finish: WallFinish;
@@ -76,6 +124,19 @@ export interface Room {
    * map that has an area of its id takes it from here (`deckRoomWalk`).
    */
   deckRoom?: true;
+  /**
+   * Takes the sea slowly, through her doors and vents (the Concordia's
+   * deck 1 rooms; spec "Slow flooding"): its level rises toward the sea's
+   * at most `ROOM_SEEP_M_PER_S` once the sea is over its lowest floor.
+   */
+  seep?: true;
+  /**
+   * Looks out at the sea (the Concordia's balcony, its stateroom and the
+   * ocean-view cabin): while the walker is in it at night, the sea out
+   * there is lifted a little (Interior, `runtime.walkSeaView`), so it
+   * reads as water, not black.
+   */
+  seaView?: true;
 }
 
 /** A deck door or a lift: the walk map's Stair, tagged. */
@@ -92,7 +153,8 @@ export interface ShutDoor {
   style: "oak" | "white" | "steel" | "glass";
 }
 
-export type PieceId =
+/** The Titanic's (Edwardian) pieces. */
+export type EdwardianPieceId =
   | "bed"
   | "single-bed"
   | "bunk"
@@ -113,12 +175,15 @@ export type PieceId =
   | "caged-bulb"
   | "sconce"
   | "porthole"
-  | "rope"
-  // Her modern pieces (lib/shipwreck/interior/modernPieces.ts, the same
-  // ids): the rest join with her rooms (1.18).
-  | "pool-edge"
-  | "lounger"
-  | "exit-sign";
+  | "rope";
+
+/**
+ * Every piece: the Edwardian ones and her modern ones (one list,
+ * `MODERN_PIECE_IDS` in modernPieces.ts: the lift car, shafts, rails, seat
+ * rows, the stage, the pool, cabins' beds and sofas, the bar, the kids'
+ * club's toys, exit signs, emergency lamps).
+ */
+export type PieceId = EdwardianPieceId | ModernPieceId;
 
 export interface Furniture {
   room: string;
@@ -128,10 +193,26 @@ export interface Furniture {
   yaw: number;
   /** Stops the walker (a box from `PIECE_FOOTPRINT`, kit.ts). */
   blocks?: boolean;
+  /** A `theatre-seat-row`'s seats (default ten): its width and footprint. */
+  seats?: number;
 }
 
-/** The picture on a room entry's button (the HUD draws it). */
-export type EntryIcon = "staircase" | "bed" | "bunk" | "corridor";
+/**
+ * The picture on a room entry's button (the HUD draws it): the Titanic's
+ * (1.16) and the Concordia's (1.18: her atrium's glass lift, the balcony
+ * stateroom, the low cabin with the sea at its window, the theatre's
+ * stage, the kids' club's pirate ship).
+ */
+export type EntryIcon =
+  | "staircase"
+  | "bed"
+  | "bunk"
+  | "corridor"
+  | "atrium"
+  | "stateroom"
+  | "low-cabin"
+  | "theatre"
+  | "kids-club";
 
 /**
  * A room you can start a walk in from the camera picker (1.16): its
@@ -149,6 +230,30 @@ export interface RoomEntry {
   yaw: number;
 }
 
+/** One stop of a lift: the deck, the room it opens onto and its door. */
+export interface LiftStop {
+  /** A name in spec.decks: the car's floor at this stop. */
+  deck: string;
+  /** The landing's floor stands this far over `deck` (m): the car's too. */
+  raiseM?: number;
+  /** The room the car's door opens onto (a walkable room). */
+  landing: string;
+  /** The door: an edge of the landing's outline and of the car's plan. */
+  door: readonly [V2, V2];
+}
+
+/**
+ * A lift shaft (the Concordia's glass lifts): one car's plan, stopping at
+ * each of `stops` (bottom to top). `withInterior` makes a `lift-car` area
+ * per stop (`<id>@<deck>`), seamed to its landing by the door (merge.ts
+ * `liftCars`).
+ */
+export interface LiftShaft {
+  id: string;
+  car: { min: V2; max: V2 };
+  stops: readonly LiftStop[];
+}
+
 export interface InteriorMap {
   ship: ShipId;
   rooms: readonly Room[];
@@ -159,4 +264,13 @@ export interface InteriorMap {
   furniture: readonly Furniture[];
   /** The rooms the camera picker can start a walk in (none: no buttons). */
   entries?: readonly RoomEntry[];
+  /** Lift shafts with a car per stop (hers). */
+  lifts?: readonly LiftShaft[];
+  /**
+   * The rooms close at this heel (|frame.listDeg|, degrees) as well as when
+   * she breaks (hers: 30). Missing: only the break closes them.
+   */
+  closeAtHeelDeg?: number;
+  /** On emergency power her lamps flicker more as she leans (hers). */
+  emergencyFlicker?: true;
 }

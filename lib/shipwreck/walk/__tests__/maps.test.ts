@@ -17,6 +17,7 @@ import toSea from "../../sim/__tests__/fixtures/concordiaToSea.json";
 import { stepWalker, type StepContext, type WalkerState } from "../step";
 import { placeWalker } from "../swim";
 import {
+  CONCORDIA_WALK,
   floorZ,
   insideBlocker,
   pointInPolygon,
@@ -440,7 +441,9 @@ describe("the Carpathia's walk", () => {
 
 describe("the Costa Concordia's walk", () => {
   const spec = getShip("concordia");
-  const map = walkMapFor("concordia") as WalkMap;
+  // Her open decks: 1.18 merges her rooms into `walkMapFor` (checked in
+  // interior/__tests__/concordiaMap.test.ts).
+  const map: WalkMap = CONCORDIA_WALK;
   const recipe = concordiaRecipe(spec);
   const edge = (x: number) => recipe.hull.topHalfBreadth(x);
   const Z = (deck: string) => recipe.deckZ(deck, 0);
@@ -486,6 +489,17 @@ describe("the Costa Concordia's walk", () => {
         pointInPolygon([x, y], a.outline)
     );
   }
+
+  it("merges her open decks into walkMapFor unchanged, her rooms added", () => {
+    const merged = walkMapFor("concordia") as WalkMap;
+    for (const a of map.areas) expect(merged.areas).toContainEqual(a);
+    for (const s of map.stairs) expect(merged.stairs).toContainEqual(s);
+    for (const b of map.blockers) expect(merged.blockers).toContainEqual(b);
+    expect(merged.areas.filter((a) => !a.interior)).toHaveLength(
+      map.areas.length
+    );
+    expect(merged.spawn).toEqual(map.spawn);
+  });
 
   it("is hers, with her open decks", () => {
     expect(map.ship).toBe("concordia");

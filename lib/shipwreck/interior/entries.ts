@@ -2,6 +2,7 @@ import type { ShipSpec } from "../ships/types";
 import type { BodyPose } from "../sim/track";
 import { shipToEarth, type V3 } from "../walk/slope";
 import { floorZ, WALK_WADE_STOP_M, type WalkMap } from "../walk/types";
+import { roomsOpen } from "./open";
 import type { InteriorMap, Room, RoomEntry } from "./types";
 
 /**
@@ -17,7 +18,12 @@ export interface EntryContext {
   map: WalkMap;
   spec: ShipSpec;
   /** The sampled frame now (null before the night has one). */
-  frame: { bodies: readonly BodyPose[]; water: readonly number[] } | null;
+  frame: {
+    bodies: readonly BodyPose[];
+    water: readonly number[];
+    /** Her list (deg); with `closeAtHeelDeg` the rooms close at it. */
+    listDeg?: number;
+  } | null;
   /** Each room's water (earth z, −Infinity dry): `roomWaterTargets(spec)`. */
   target: (room: Room, pose: BodyPose, fill: readonly number[]) => number;
 }
@@ -45,7 +51,8 @@ export function entryDepthM(
 
 /**
  * The entries you can start in now, in their order: none before the
- * night has a frame or once she has broken (the rooms close), and none
+ * night has a frame or once the rooms have closed (she broke, or leans to
+ * her `closeAtHeelDeg`: `roomsOpen`), and none
  * whose spot is under more than wading depth (`WALK_WADE_STOP_M`).
  */
 export function openEntries(
@@ -55,7 +62,8 @@ export function openEntries(
   const entries = interior.entries ?? [];
   const frame = ctx.frame;
   if (entries.length === 0 || !frame) return [];
-  if (frame.bodies.some((b) => b.part !== "whole")) return [];
+  const broken = frame.bodies.some((b) => b.part !== "whole");
+  if (!roomsOpen(interior, { listDeg: frame.listDeg ?? 0 }, broken)) return [];
   const pose = frame.bodies.find((b) => b.part === "whole");
   if (!pose) return [];
   const sub = { ...ctx, fill: frame.water };

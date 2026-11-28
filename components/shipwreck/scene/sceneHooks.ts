@@ -116,6 +116,7 @@ export function sceneHooks(
         lookUnder: w.lookUnder,
         area: info.area,
         inside: info.inside,
+        ride: info.ride ?? null,
       };
     },
     placeWalk: (area, x, y, yaw) => {
@@ -126,6 +127,13 @@ export function sceneHooks(
     },
     goOutside: () => {
       walkInput.outside = true;
+    },
+    rideLift: (dir) => {
+      if (dir === "up" || dir === "down") walkInput.lift = dir;
+    },
+    liftCarZ: (lift) => {
+      const z = runtime?.walkLiftCarZ?.get(lift);
+      return z !== undefined && Number.isFinite(z) ? z : null;
     },
     setLookUnder: (on) => get().setLookUnder(on),
   };

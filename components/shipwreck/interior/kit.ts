@@ -1,16 +1,20 @@
 import { ShapeUtils, Vector2, type BufferGeometry } from "three";
 import {
+  furnitureFootprint,
+  liftCars,
   lightSegments,
-  pieceFootprint,
   roomFloorZ,
   segmentAt,
   type Furniture,
   type InteriorMap,
+  type LiftShaft,
   type PieceId,
   type Room,
+  type ShutDoor,
 } from "@/lib/shipwreck/interior";
 import {
   MODERN_PIECE_IDS,
+  MODERN_PIECE_MOUNT,
   type ModernPieceId,
 } from "@/lib/shipwreck/interior/modernPieces";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
@@ -48,12 +52,31 @@ import {
   type RGB,
 } from "./pieces";
 import {
+  BALCONY_RAIL,
+  balconyDoor,
+  cabinDoor,
+  chandelier,
+  downlight,
+  emergencyLamp,
+  EMERGENCY_LOW_Z,
+  EXIT_SIGN_Z,
+  exitSign,
+  glassRailRun,
   ModernLayers,
   MODERN_COLOR,
   MODERN_PIECES,
   POOL_DEPTH_M,
+  stageCurtain,
+  stripLight,
+  theatreSeatRow,
 } from "./modernPieces";
 import { MODERN_TILE } from "./modernTextures";
+import { SHAFT_GAP_M } from "./liftCar";
+import {
+  DOOR_FACE_OFFSET_M,
+  DOOR_GLOW_HEIGHT_M,
+  DOOR_GLOW_WIDTH_M,
+} from "./doorGlow";
 
 /**
  * The room kit (see README.md): a ship's rooms to merged geometry, one
@@ -115,6 +138,14 @@ const WALL: Record<Room["look"]["finish"], RGB> = {
   steel: lin(0.8, 0.76, 0.6),
   // A glass room's solid walls: cream wallcovering.
   glass: MODERN_COLOR.cream,
+  // Her rooms (1.18): their tiles carry the detail (the kids' mural its
+  // own colours).
+  "cabin-veneer": MODERN_COLOR.veneer,
+  cream: MODERN_COLOR.cream,
+  marble: MODERN_COLOR.marble,
+  kids: MODERN_COLOR.white,
+  // Deeper than the curtain's red, so the stage stands out.
+  theatre: lin(0.4, 0.05, 0.08),
 };
 const WALL_TILE: Record<Room["look"]["finish"], number> = {
   oak: TILE.oak,
@@ -122,6 +153,11 @@ const WALL_TILE: Record<Room["look"]["finish"], number> = {
   enamel: TILE.none,
   steel: TILE.none,
   glass: MODERN_TILE.cream,
+  "cabin-veneer": MODERN_TILE.veneer,
+  cream: MODERN_TILE.cream,
+  marble: MODERN_TILE.marble,
+  kids: MODERN_TILE.mural,
+  theatre: MODERN_TILE.theatre,
 };
 const FLOOR: Record<Room["look"]["floor"], RGB> = {
   lino: lin(0.84, 0.78, 0.66),
@@ -131,6 +167,11 @@ const FLOOR: Record<Room["look"]["floor"], RGB> = {
   // A pale sea-glass mosaic round the pool; pine-gold teak planks.
   tile: lin(0.82, 0.9, 0.9),
   teak: MODERN_COLOR.teak,
+  // Her rooms (1.18); the soft play mats take their colours in the shader.
+  "cabin-carpet": MODERN_COLOR.navy,
+  marble: MODERN_COLOR.marble,
+  soft: MODERN_COLOR.white,
+  "stage-wood": MODERN_COLOR.stageWood,
 };
 const FLOOR_TILE: Record<Room["look"]["floor"], number> = {
   lino: TILE.lino,
@@ -139,7 +180,37 @@ const FLOOR_TILE: Record<Room["look"]["floor"], number> = {
   steel: TILE.none,
   tile: MODERN_TILE.poolTile,
   teak: MODERN_TILE.teak,
+  "cabin-carpet": MODERN_TILE.cabinCarpet,
+  marble: MODERN_TILE.marble,
+  soft: MODERN_TILE.softPlay,
+  "stage-wood": MODERN_TILE.stageWood,
 };
+/** Her finishes (1.18): drawn with her look (rails, skirting, lamps). */
+const MODERN_FINISHES: ReadonlySet<string> = new Set([
+  "cabin-veneer",
+  "cream",
+  "marble",
+  "kids",
+  "theatre",
+]);
+const isHers = (room: Room) => MODERN_FINISHES.has(room.look.finish);
+/** Her skirting by finish (the Titanic's is dark oak). */
+const MODERN_SKIRTING: Partial<Record<Room["look"]["finish"], RGB>> = {
+  "cabin-veneer": MODERN_COLOR.veneerDark,
+  cream: lin(0.55, 0.5, 0.44),
+  marble: MODERN_COLOR.granite,
+  kids: MODERN_COLOR.blue,
+  theatre: MODERN_COLOR.theatreDark,
+};
+/** A room's floor colour: the theatre's carpet is a deep red. */
+function floorColor(room: Room): RGB {
+  if (room.look.floor === "cabin-carpet" && room.look.finish === "theatre")
+    return lin(0.45, 0.1, 0.12);
+  return FLOOR[room.look.floor];
+}
+/** A lift car's look (hers): brushed steel walls, a granite floor. */
+const CAR_WALL: RGB = lin(0.72, 0.73, 0.74);
+const CAR_FLOOR: RGB = MODERN_COLOR.granite;
 const CEILING_WHITE: RGB = lin(0.9, 0.88, 0.82);
 const CEILING_STEEL: RGB = lin(0.82, 0.8, 0.7);
 const RAIL_STEEL: RGB = lin(0.3, 0.3, 0.31);
@@ -164,6 +235,19 @@ const SHADE = {
 
 /** Rooms whose seams are open stair parts (no lintel over them). */
 const STAIR_KINDS: ReadonlySet<string> = new Set(["flight", "landing"]);
+/**
+ * Her open-plan rooms (1.18): a seam between two of them is open, with no
+ * lintel and no step between their ceilings (the atrium's floor and its
+ * well, its galleries' arms, the stalls either side of the balcony's
+ * edge): the galleries' rails and their slab edges close what is above.
+ */
+const OPEN_KINDS: ReadonlySet<string> = new Set([
+  "atrium",
+  "gallery",
+  "theatre",
+]);
+const openPair = (a: Room, b: Room) =>
+  OPEN_KINDS.has(a.kind) && OPEN_KINDS.has(b.kind);
 /** How near two points count as the same (m), as the walker's seams. */
 const TOL = 1e-3;
 /** An edge this short is a chamfer's (the kit's 0.15 m cut, √2 long). */
@@ -333,7 +417,10 @@ export function edgeKinds(
         if (!((same(a, p) && same(b, q)) || (same(a, q) && same(b, p))))
           continue;
         const other = byId.get(s.a === room.id ? s.b : s.a)!;
-        const stair = STAIR_KINDS.has(room.kind) || STAIR_KINDS.has(other.kind);
+        const stair =
+          STAIR_KINDS.has(room.kind) ||
+          STAIR_KINDS.has(other.kind) ||
+          openPair(room, other);
         return stair
           ? { kind: "seam", other }
           : { kind: "seam", lintel: { other }, other };
@@ -416,6 +503,18 @@ export function edgeKinds(
       )
         infos[i] = { kind: "rail" };
     });
+    // A balcony's outboard side (facing away from her centre line) is its
+    // rail, open above to the sea (hers, 1.18).
+    if (room.kind === "balcony")
+      poly.forEach((a, i) => {
+        const b = poly[(i + 1) % poly.length];
+        if (infos[i].kind !== "wall") return;
+        const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        // Outward: the right of a counter-clockwise edge.
+        const ny = -(b[0] - a[0]) / len;
+        if (Math.abs(ny) > 0.9 && Math.sign(ny) === Math.sign(a[1] + b[1]))
+          infos[i] = { kind: "rail" };
+      });
     out.set(room.id, infos);
   }
   return out;
@@ -589,7 +688,10 @@ export interface InteriorBuild {
   roomZone: Map<string, string>;
   /** The zones drawn with each zone (`zonesSeen`). */
   seen: Map<string, ReadonlySet<string>>;
-  /** Each room's slot (its index in the map: `aRoom`, the water's). */
+  /**
+   * Each room's slot (its index in the map: `aRoom`, the water's); a lift
+   * car's is its landing's.
+   */
   slot: Map<string, number>;
   /**
    * Slots in the power and level uniforms: the rooms', then the parts',
@@ -600,6 +702,11 @@ export interface InteriorBuild {
   basins: InteriorBasin[];
   /** The zones holding a deck room: drawn whenever walking on her. */
   deckZones: ReadonlySet<string>;
+  /**
+   * The slots a deck room's own deck doors' glow is tagged with (the rooms
+   * beyond them): lit while the rooms are open.
+   */
+  deckDoorSlots: number[];
   /** Whether her rooms use the modern finishes (`applyModern`). */
   modern: boolean;
   /** A long hall's parts (`lightSegments`): their slots follow the rooms'. */
@@ -634,7 +741,22 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
   );
   const interior: InteriorMap = { ...given, rooms };
   const slot = new Map(rooms.map((r, k) => [r.id, k]));
-  const kinds = edgeKinds(interior, spec);
+  // Her lifts' cars (one a stop, `liftCars`): their doors open the
+  // landings' walls and each takes its landing's zone and slot, but none
+  // is drawn here: the glass car rides its shaft (liftCar.ts).
+  const lifted = liftCars(given);
+  const cars = lifted.rooms;
+  const carLanding = new Map(lifted.seams.map((m) => [m.a, m.b]));
+  const kinds = edgeKinds(
+    cars.length > 0
+      ? {
+          ...interior,
+          rooms: [...rooms, ...cars],
+          seams: [...interior.seams, ...lifted.seams],
+        }
+      : interior,
+    spec
+  );
   const zoneLayers = new Map<string, ModernLayers>();
   const layersOf = (zone: string) => {
     let L = zoneLayers.get(zone);
@@ -645,7 +767,11 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
     return L;
   };
   const lamps: PlacedLamp[] = [];
+  // Her emergency strips' and exit signs' light (a second bake: aGlow).
+  const emergency: PlacedLamp[] = [];
   const domes = interior.furniture.filter((f) => f.piece === "dome");
+  // Her atrium's glass wall onto the lift shafts (none without lifts).
+  const shaftGlass = liftGlassWalls(rooms, given.lifts ?? []);
 
   // Rooms with no ceiling of their own drawn (a stair through it, the dome).
   const open = new Set(
@@ -682,7 +808,10 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
         holes.get(room.id) ?? []
       );
       for (const l of got) lamps.push({ ...l, room: k, wide: false });
-    } else addRoom(L, room, rooms, kinds.get(room.id)!, spec, open);
+    } else
+      addRoom(L, room, rooms, kinds.get(room.id)!, spec, open, {
+        fronts: shaftGlass.get(room.id),
+      });
     skyLit(L, false);
   });
   // The furniture, and its lamps.
@@ -700,6 +829,19 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
     L.pieces(false);
     for (const l of got)
       lamps.push({ ...l, room: k, wide: f.piece === "dome" });
+    // An exit sign lights the wall round it on the emergency supply.
+    if (f.piece === "exit-sign") {
+      const c = Math.cos(f.yaw);
+      const s = Math.sin(f.yaw);
+      const z = roomFloorZ(room, f.at[0], f.at[1], spec);
+      emergency.push({
+        p: [f.at[0] + c * 0.25, f.at[1] + s * 0.25, z + signZ(room)],
+        intensity: 0.7,
+        radius: 1.1,
+        room: k,
+        wide: false,
+      });
+    }
   }
   for (const d of interior.shutDoors) {
     const room = byId.get(d.room);
@@ -709,13 +851,54 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
     const z = roomFloorZ(room, d.at[0], d.at[1], spec);
     skyLit(L, room.deckRoom === true);
     if (d.style === "glass") glassDoors(L, [d.at[0], d.at[1], z], d.facing);
+    else if (isHers(room) && L instanceof ModernLayers)
+      // Her cabins' doors: veneer in a cream frame, a card lock.
+      cabinDoor(L, [d.at[0], d.at[1], z], d.facing);
     else shutDoor(L, [d.at[0], d.at[1], z], d.facing, d.style);
     skyLit(L, false);
+  }
+  // Her rooms: their lamp style's lamps (downlights, strips, the
+  // chandelier), whatever lamps their pieces have, and the emergency
+  // strips along their walls.
+  rooms.forEach((room, k) => {
+    if (!isHers(room)) return;
+    const L = layersOf(room.zone);
+    if (!(L instanceof ModernLayers)) return;
+    L.room(k);
+    if (!STAIR_KINDS.has(room.kind) && !open.has(room.id))
+      for (const l of styleLamps(L, room, kinds.get(room.id)!, spec))
+        lamps.push({ ...l, room: k });
+    if (room.look.portholes)
+      seaWindows(L, room, kinds.get(room.id)!, spec, room.look.portholes);
+    L.pieces(true);
+    for (const l of emergencyStrips(
+      L,
+      room,
+      kinds.get(room.id)!,
+      spec,
+      interior.shutDoors
+    ))
+      emergency.push({ ...l, room: k, wide: false });
+    L.pieces(false);
+  });
+  // A deck room's own deck doors (the club's, in her pool hall's wall):
+  // their lit doorways in its glass (no draw of their own), tagged with the
+  // room beyond, whose power Interior keeps on while the rooms are open.
+  const deckDoorSlots: number[] = [];
+  for (const link of interior.links) {
+    if (link.kind !== "door") continue;
+    const room = byId.get(link.from.area);
+    const k = slot.get(link.to.area);
+    if (!room?.deckRoom || k === undefined) continue;
+    const L = layersOf(room.zone);
+    L.room(k);
+    deckDoorGlow(L, room, link.from.at, link.to.at, spec);
+    if (!deckDoorSlots.includes(k)) deckDoorSlots.push(k);
   }
   // Rooms with no lamp of their own get ceiling lamps (and the foyers
   // more, over the floor).
   rooms.forEach((room, k) => {
-    if (STAIR_KINDS.has(room.kind)) return;
+    if (STAIR_KINDS.has(room.kind) || isHers(room)) return;
     const own = lamps.some((l) => l.room === k);
     if (own && room.kind !== "foyer") return;
     const L = layersOf(room.zone);
@@ -731,6 +914,10 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
   // Bake the light, then the meshes.
 
   const light = new LightBake(interior, kinds, lamps, spec);
+  const dark =
+    emergency.length > 0
+      ? new LightBake(interior, kinds, emergency, spec)
+      : null;
   // A long hall's lamps in parts (lightSegments): each part its own slot
   // after the rooms', so its lamps go out by the water at its middle.
   const segments: InteriorSegment[] = [];
@@ -745,8 +932,15 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
   });
   const zones = new Map<string, Partial<Record<ZoneLayer, BufferGeometry>>>();
   const triangles = new Map<string, number>();
+  const deckZoneIds = new Set(
+    rooms.filter((r) => r.deckRoom).map((r) => r.zone)
+  );
   for (const [zone, L] of zoneLayers) {
     const out: Partial<Record<ZoneLayer, BufferGeometry>> = {};
+    // Inside her, a zone's panes are drawn last in its glass mesh (one
+    // mesh fewer); a deck room keeps its own (seen from her deck).
+    if (L instanceof ModernLayers && !deckZoneIds.has(zone))
+      L.glass.append(L.pane);
     ZONE_LAYERS.forEach((layer, i) => {
       const b = L.all[i];
       if (b.triangles === 0) return;
@@ -756,6 +950,13 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
         return;
       }
       const lit = light.bake(b, layer === "shell");
+      // Her emergency light, as aGlow under 0 where it is 0 (inside her;
+      // a deck room's is its daylight share, glass its glow).
+      if (dark && layer !== "glass") {
+        const e = dark.bake(b, layer === "shell", 0);
+        for (let v = 0; v < e.length; v += 1)
+          if (b.glow[v] === 0 && e[v] > 0.004) b.glow[v] = -e[v];
+      }
       // Baked by room; then a long hall's vertices to their part's slot.
       if (firstPart.size > 0)
         for (let v = 0; v < b.room.length; v += 1) {
@@ -822,15 +1023,20 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
 
   const t1 =
     typeof performance !== "undefined" ? performance.now() : Date.now();
+  // A car is its landing's: its zone, and its slot for the torch.
+  const slotOut = new Map(slot);
+  for (const car of cars)
+    slotOut.set(car.id, slot.get(carLanding.get(car.id)!)!);
   return {
     zones,
-    roomZone: new Map(rooms.map((r) => [r.id, r.zone])),
+    roomZone: new Map([...rooms, ...cars].map((r) => [r.id, r.zone])),
     seen: zonesSeen(interior),
-    slot,
+    slot: slotOut,
     slots,
     segments,
     basins,
     deckZones: new Set(rooms.filter((r) => r.deckRoom).map((r) => r.zone)),
+    deckDoorSlots,
     modern: usesModern(interior),
     floors,
     neighbours: light.open.map((set, k) => [...set].filter((j) => j !== k)),
@@ -996,12 +1202,65 @@ export function addPiece(
       if (isModern(f.piece)) {
         if (!(L instanceof ModernLayers))
           throw new Error(`modern piece ${f.piece} needs ModernLayers`);
-        return MODERN_PIECES[f.piece](L, floor, f.yaw);
+        return addModernPiece(L, f.piece, f, room, floor, ceil);
       }
       // Beds, bunks, wardrobes, washstands, sofas, tables, chairs.
       const build = FURNITURE[f.piece];
       return build ? build(L, floor, f.yaw) : [];
     }
+  }
+}
+
+/**
+ * A modern piece where its mount says (`MODERN_PIECE_MOUNT`): on the
+ * floor or a wall's foot at its spot, at the ceiling over it; sized to its
+ * room where it has a size (a seat row's seats, the stage's curtain across
+ * the stage, an exit sign under a low ceiling). The glass lift's car is
+ * the lift's to draw, not placed.
+ */
+function addModernPiece(
+  L: ModernLayers,
+  piece: ModernPieceId,
+  f: Furniture,
+  room: Room,
+  floor: P3,
+  ceil: P3
+): Lamp[] {
+  switch (MODERN_PIECE_MOUNT[piece]) {
+    case "lift":
+      return [];
+    case "ceiling":
+      return MODERN_PIECES[piece](L, ceil, f.yaw);
+    default:
+      break;
+  }
+  switch (piece) {
+    case "theatre-seat-row":
+      // A seat row of its own length (the theatre's six-seat side rows).
+      return theatreSeatRow(L, floor, f.yaw, f.seats ?? 10);
+    case "stage-curtain": {
+      // Across the stage (its extent square to the curtain's facing),
+      // clear of the side walls and under the ceiling.
+      const c = Math.cos(f.yaw);
+      const s = Math.sin(f.yaw);
+      let lo = Infinity;
+      let hi = -Infinity;
+      for (const [x, y] of room.outline) {
+        const u = -(x - f.at[0]) * s + (y - f.at[1]) * c;
+        lo = Math.min(lo, u);
+        hi = Math.max(hi, u);
+      }
+      const width = Math.min(14, 2 * Math.min(-lo, hi) - 1.6);
+      const height = Math.min(6, ceil[2] - floor[2] - 1.0);
+      return stageCurtain(L, floor, f.yaw, width, height);
+    }
+    case "exit-sign":
+      return exitSign(L, floor, f.yaw, signZ(room));
+    case "balcony-door":
+      // Under the doorway's lintel.
+      return balconyDoor(L, floor, f.yaw, 1.8, DOOR_HEAD_M - 0.04);
+    default:
+      return MODERN_PIECES[piece](L, floor, f.yaw);
   }
 }
 
@@ -1018,7 +1277,8 @@ export function usesModern(interior: InteriorMap): boolean {
       (r) =>
         r.look.finish === "glass" ||
         r.look.floor === "tile" ||
-        r.look.floor === "teak"
+        r.look.floor === "teak" ||
+        isHers(r)
     ) ||
     interior.furniture.some((f) => isModern(f.piece)) ||
     interior.shutDoors.some((d) => d.style === "glass")
@@ -1047,7 +1307,7 @@ interface Rect {
 
 /** A blocking piece's plan box (its footprint, square to the ship). */
 function pieceRect(f: Furniture): Rect {
-  const fp = pieceFootprint(f.piece);
+  const fp = furnitureFootprint(f);
   if (!fp) throw new Error(`piece ${f.piece} has no footprint`);
   const turned = Math.abs(Math.round(f.yaw / (Math.PI / 2))) % 2 === 1;
   const hx = (turned ? fp.ly : fp.lx) / 2;
@@ -1453,20 +1713,34 @@ function glassDoors(L: Layers, at: P3, facing: number): void {
 /** Ship-frame point. */
 const P = (p: V2, z: number): P3 => [p[0], p[1], z];
 
+/** Her atrium's glass onto the lift shafts, for one room (`liftGlassWalls`). */
+interface RoomOptions {
+  /** A landing's glass over its lifts' shafts (the cars glide behind). */
+  fronts?: readonly LiftFront[];
+}
+
 function addRoom(
   L: Layers,
   room: Room,
   rooms: readonly Room[],
   edges: readonly EdgeInfo[],
   spec: Spec,
-  open: ReadonlySet<string>
+  open: ReadonlySet<string>,
+  opts: RoomOptions = {}
 ): void {
   const shell = L.shell;
   const poly = room.outline;
   const steel = room.look.finish === "steel" || room.look.finish === "enamel";
   const oak = room.look.finish === "oak";
-  const wall = WALL[room.look.finish];
-  const floor = FLOOR[room.look.floor];
+  // Her rooms (1.18) and her lift cars (brushed steel, a granite floor).
+  const car = room.kind === "lift-car";
+  const hers = isHers(room) && L instanceof ModernLayers;
+  const wall = car ? CAR_WALL : WALL[room.look.finish];
+  const wallTile = car ? TILE.none : WALL_TILE[room.look.finish];
+  const skirting = car
+    ? MODERN_COLOR.black
+    : (MODERN_SKIRTING[room.look.finish] ?? SKIRTING);
+  const floor = car ? CAR_FLOOR : floorColor(room);
   const ceiling = steel ? CEILING_STEEL : CEILING_WHITE;
   const fz = (p: V2) => roomFloorZ(room, p[0], p[1], spec);
   const cz = (p: V2) => ceilingZ(room, p[0], p[1], spec);
@@ -1551,8 +1825,15 @@ function addRoom(
   }
 
   // The ceiling, unless a stair or a floor comes down through it, or the
-  // dome stands over it.
-  if (!open.has(room.id)) {
+  // dome stands over it; her atrium's well is roofed in lit glass.
+  if (
+    !open.has(room.id) &&
+    hers &&
+    room.kind === "atrium" &&
+    room.ceilingM >= 6
+  )
+    laylight(L as ModernLayers, room, spec);
+  else if (!open.has(room.id)) {
     const c = scale(ceiling, SHADE.ceiling);
     for (const cell of cells(poly))
       for (const [a, b, d] of cellTris(cell))
@@ -1576,36 +1857,59 @@ function addRoom(
     const nx = -dy / len;
     const ny = dx / len;
     if (info.kind === "wall") {
-      shell.tileId = WALL_TILE[room.look.finish];
+      shell.tileId = wallTile;
       const n = Math.max(1, Math.ceil(len / COLUMN_M));
-      for (let k = 0; k < n; k += 1) {
-        const p: V2 = [a[0] + (dx * k) / n, a[1] + (dy * k) / n];
-        const q: V2 = [a[0] + (dx * (k + 1)) / n, a[1] + (dy * (k + 1)) / n];
-        const t = shell.tileId;
-        shell.tileId = TILE.none;
-        inward(
-          shell,
-          p,
-          q,
-          low(p),
-          low(q),
-          fz(p) + SKIRTING_M,
-          fz(q) + SKIRTING_M,
-          steel ? scale(wall, 0.55) : SKIRTING,
-          steel ? scale(wall, 0.55) : SKIRTING
-        );
-        shell.tileId = t;
-        // Rows: dado, the panels, up to the cove.
-        const rows = [SKIRTING_M, 1.0, 2.0];
+      const spans = frontSpans(a, b, opts.fronts);
+      const cols = wallColumns(a, b, n, spans);
+      for (const [p, q, glassTop] of cols) {
         const top = (v: V2) => cz(v) - COVE_M;
-        for (let r = 0; r < rows.length; r += 1) {
-          const lo = (v: V2) => Math.min(fz(v) + rows[r], top(v));
-          const hi = (v: V2) =>
-            r + 1 < rows.length
-              ? Math.min(fz(v) + rows[r + 1], top(v))
-              : top(v);
-          if (hi(p) - lo(p) < 0.005 && hi(q) - lo(q) < 0.005) continue;
-          inward(shell, p, q, lo(p), lo(q), hi(p), hi(q), wall, wall);
+        if (glassTop > 0 && L instanceof ModernLayers) {
+          // Glass onto a lift shaft, the wall over it to the cove.
+          const g = (v: V2) => Math.min(fz(v) + glassTop, top(v));
+          L.pane.tileId = MODERN_TILE.liftGlass;
+          L.pane.quad(
+            P(p, fz(p)),
+            P(q, fz(q)),
+            P(q, g(q)),
+            P(p, g(p)),
+            MODERN_COLOR.glass
+          );
+          L.pane.quad(
+            P(q, fz(q)),
+            P(p, fz(p)),
+            P(p, g(p)),
+            P(q, g(q)),
+            MODERN_COLOR.glass
+          );
+          L.pane.tileId = MODERN_TILE.pane;
+          if (top(p) - g(p) > 0.005 || top(q) - g(q) > 0.005)
+            inward(shell, p, q, g(p), g(q), top(p), top(q), wall, wall);
+        } else {
+          const t = shell.tileId;
+          shell.tileId = TILE.none;
+          inward(
+            shell,
+            p,
+            q,
+            low(p),
+            low(q),
+            fz(p) + SKIRTING_M,
+            fz(q) + SKIRTING_M,
+            steel ? scale(wall, 0.55) : skirting,
+            steel ? scale(wall, 0.55) : skirting
+          );
+          shell.tileId = t;
+          // Rows: dado, the panels, up to the cove.
+          const rows = [SKIRTING_M, 1.0, 2.0];
+          for (let r = 0; r < rows.length; r += 1) {
+            const lo = (v: V2) => Math.min(fz(v) + rows[r], top(v));
+            const hi = (v: V2) =>
+              r + 1 < rows.length
+                ? Math.min(fz(v) + rows[r + 1], top(v))
+                : top(v);
+            if (hi(p) - lo(p) < 0.005 && hi(q) - lo(q) < 0.005) continue;
+            inward(shell, p, q, lo(p), lo(q), hi(p), hi(q), wall, wall);
+          }
         }
         // The cove: from the wall to the ceiling, facing down and in.
         const t2 = shell.tileId;
@@ -1622,19 +1926,66 @@ function addRoom(
         shell.tileId = t2;
       }
       // A proud top to the skirting: a lip that catches the light.
-      shell.quad(
-        P(a, fz(a) + SKIRTING_M),
-        P(b, fz(b) + SKIRTING_M),
-        P([b[0] + nx * 0.02, b[1] + ny * 0.02], fz(b) + SKIRTING_M),
-        P([a[0] + nx * 0.02, a[1] + ny * 0.02], fz(a) + SKIRTING_M),
-        oak ? COLOR.oakDark : scale(wall, 0.9)
-      );
+      if (spans.length === 0)
+        shell.quad(
+          P(a, fz(a) + SKIRTING_M),
+          P(b, fz(b) + SKIRTING_M),
+          P([b[0] + nx * 0.02, b[1] + ny * 0.02], fz(b) + SKIRTING_M),
+          P([a[0] + nx * 0.02, a[1] + ny * 0.02], fz(a) + SKIRTING_M),
+          oak ? COLOR.oakDark : scale(wall, 0.9)
+        );
       shell.tileId = TILE.none;
+      // The shaft glass's chrome: posts at its own ends (not where a door
+      // frame stands), a sill and a head.
+      for (const sp of spans) {
+        const u = (t: number, z: number): P3 => {
+          const v: V2 = [
+            a[0] + (dx / len) * t + nx * 0.03,
+            a[1] + (dy / len) * t + ny * 0.03,
+          ];
+          return P(v, fz(v) + z);
+        };
+        const m = L.metal;
+        if (sp.post0)
+          m.beam(
+            u(sp.t0, 0),
+            u(sp.t0, sp.top),
+            0.06,
+            0.06,
+            MODERN_COLOR.chrome
+          );
+        if (sp.post1)
+          m.beam(
+            u(sp.t1, 0),
+            u(sp.t1, sp.top),
+            0.06,
+            0.06,
+            MODERN_COLOR.chrome
+          );
+        m.beam(u(sp.t0, 0.04), u(sp.t1, 0.04), 0.05, 0.08, MODERN_COLOR.chrome);
+        m.beam(
+          u(sp.t0, sp.top),
+          u(sp.t1, sp.top),
+          0.06,
+          0.1,
+          MODERN_COLOR.chrome
+        );
+      }
     } else if (info.kind === "rail") {
       if (oak) {
         // An oak balustrade with iron balusters, open between them.
         balustrade(L, P(a, fz(a)), P(b, fz(b)), RAIL_THICK_M);
         L.room(L.shell.slot);
+      } else if (hers && room.kind === "balcony") {
+        // A balcony's glass rail under a teak cap (over the sea).
+        glassRailRun(L as ModernLayers, P(a, fz(a)), P(b, fz(b)), BALCONY_RAIL);
+      } else if (hers && room.look.finish === "theatre") {
+        // The theatre's balcony front: a velvet parapet; the stage's front
+        // is its fascia only.
+        if (room.kind !== "stage") parapet(shell, a, b, nx, ny, fz, low, wall);
+      } else if (hers) {
+        // Her galleries and stair: glass between chrome posts.
+        glassRailRun(L as ModernLayers, P(a, fz(a)), P(b, fz(b)));
       } else {
         // Steel plate, both faces.
         const r = RAIL_STEEL;
@@ -1672,7 +2023,13 @@ function addRoom(
       }
       // The slab's edge under it (the fascia), seen from the room beside,
       // and over a void the stair's cheek down to the floor beside.
-      const fascia = oak ? COLOR.oakDark : scale(RAIL_STEEL, 0.8);
+      const fascia = oak
+        ? COLOR.oakDark
+        : hers && room.look.finish === "theatre"
+          ? scale(MODERN_COLOR.theatreDark, 0.8)
+          : hers
+            ? scale(MODERN_COLOR.white, 0.86)
+            : scale(RAIL_STEEL, 0.8);
       const loA = Math.min(
         fz(a) - SLAB_M - rise,
         info.cheek ? info.cheek[0] : Infinity
@@ -1681,7 +2038,11 @@ function addRoom(
         fz(b) - SLAB_M - rise,
         info.cheek ? info.cheek[1] : Infinity
       );
-      shell.tileId = oak ? TILE.oak : TILE.none;
+      shell.tileId = oak
+        ? TILE.oak
+        : hers && room.look.finish === "theatre"
+          ? MODERN_TILE.theatre
+          : TILE.none;
       outward(shell, a, b, loA, loB, fz(a), fz(b), fascia, fascia);
       shell.tileId = TILE.none;
     }
@@ -1693,6 +2054,7 @@ function addRoom(
       info.other &&
       !info.lintel &&
       !info.other.noWalk &&
+      !openPair(room, info.other) &&
       !open.has(room.id) &&
       !open.has(info.other.id)
     ) {
@@ -1719,8 +2081,44 @@ function addRoom(
       const hiB = Math.max(cz(b), ceilingZ(other, b[0], b[1], spec));
       const loA = fz(a) + DOOR_HEAD_M;
       const loB = fz(b) + DOOR_HEAD_M;
-      if (hiA > loA + 0.01 || hiB > loB + 0.01) {
-        shell.tileId = WALL_TILE[room.look.finish];
+      // A lift's door in her atrium's shaft glass: glass over it too, the
+      // wall over that to the cove, a chrome transom on the door's head.
+      const over =
+        L instanceof ModernLayers ? frontSpans(a, b, opts.fronts) : [];
+      if (over.length > 0 && L instanceof ModernLayers) {
+        const sp = over[0];
+        const g = (v: V2) => Math.min(fz(v) + sp.top, cz(v) - COVE_M);
+        const ga = g(a);
+        const gb = g(b);
+        if (ga > loA + 0.01 || gb > loB + 0.01) {
+          L.pane.tileId = MODERN_TILE.liftGlass;
+          L.pane.quad(
+            P(a, loA),
+            P(b, loB),
+            P(b, gb),
+            P(a, ga),
+            MODERN_COLOR.glass
+          );
+          L.pane.quad(
+            P(b, loB),
+            P(a, loA),
+            P(a, ga),
+            P(b, gb),
+            MODERN_COLOR.glass
+          );
+          L.pane.tileId = MODERN_TILE.pane;
+        }
+        const u = (v: V2, z: number): P3 =>
+          P([v[0] + nx * 0.03, v[1] + ny * 0.03], z);
+        L.metal.beam(u(a, loA), u(b, loB), 0.06, 0.08, MODERN_COLOR.chrome);
+        L.metal.beam(u(a, ga), u(b, gb), 0.06, 0.1, MODERN_COLOR.chrome);
+        if (hiA > ga + 0.01 || hiB > gb + 0.01) {
+          shell.tileId = wallTile;
+          inward(shell, a, b, ga, gb, hiA, hiB, wall, wall);
+          shell.tileId = TILE.none;
+        }
+      } else if (hiA > loA + 0.01 || hiB > loB + 0.01) {
+        shell.tileId = wallTile;
         inward(
           shell,
           a,
@@ -1748,6 +2146,552 @@ function addRoom(
   }
 }
 
+// --- Her rooms (1.18): shaft glass, rails, the roof, lamps, emergency --------
+
+/** A run of her atrium's glass wall onto a lift shaft (`liftGlassWalls`). */
+interface LiftFront {
+  a: V2;
+  b: V2;
+  /** The glass's height over the landing's floor (to its cove). */
+  top: number;
+}
+
+/**
+ * Her atrium's glass wall onto the lift shafts: on every landing where the
+ * shaft is open towards it (the car's door at the shaft's forward end, the
+ * side `liftCar.ts` leaves open), the landing's wall across the shaft's
+ * whole width is glass to the cove, over the door as well, so the cars
+ * glide by in full view. The cars carry their own glass (`liftCar.ts`); a
+ * lobby's wall (aft, the shaft open only a storey) stays solid but for the
+ * door. Keyed by landing; none without lifts.
+ */
+export function liftGlassWalls(
+  rooms: readonly Room[],
+  lifts: readonly LiftShaft[]
+): Map<string, LiftFront[]> {
+  const out = new Map<string, LiftFront[]>();
+  if (lifts.length === 0) return out;
+  const byId = new Map(rooms.map((r) => [r.id, r]));
+  for (const lift of lifts) {
+    const { min, max } = lift.car;
+    const mid = (min[0] + max[0]) / 2;
+    for (const stop of lift.stops) {
+      const [p, q] = stop.door;
+      const room = byId.get(stop.landing);
+      if (!room) continue;
+      // The door's line: across x (a wall at x) or along it.
+      const atX = Math.abs(p[0] - q[0]) < TOL;
+      if (!atX || p[0] < mid) continue;
+      const y0 = min[1] - SHAFT_GAP_M;
+      const y1 = max[1] + SHAFT_GAP_M;
+      const list = out.get(stop.landing) ?? [];
+      list.push({
+        a: [p[0], y0],
+        b: [p[0], y1],
+        top: room.ceilingM - COVE_M,
+      });
+      out.set(stop.landing, list);
+    }
+  }
+  return out;
+}
+
+/** A front's span along edge a→b (m from a), and its glass's height. */
+interface FrontSpan {
+  t0: number;
+  t1: number;
+  top: number;
+  /** Whether the front ends at t0 (t1) here, not cut by the edge's end. */
+  post0: boolean;
+  post1: boolean;
+}
+
+/** The fronts on wall edge a→b, as spans along it (none: an empty list). */
+function frontSpans(
+  a: V2,
+  b: V2,
+  fronts: readonly LiftFront[] | undefined
+): FrontSpan[] {
+  if (!fronts || fronts.length === 0) return [];
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < TOL) return [];
+  const ux = (b[0] - a[0]) / len;
+  const uy = (b[1] - a[1]) / len;
+  const out: FrontSpan[] = [];
+  for (const f of fronts) {
+    const off = (v: V2) => Math.abs((v[0] - a[0]) * uy - (v[1] - a[1]) * ux);
+    if (off(f.a) > TOL || off(f.b) > TOL) continue;
+    const ta = (f.a[0] - a[0]) * ux + (f.a[1] - a[1]) * uy;
+    const tb = (f.b[0] - a[0]) * ux + (f.b[1] - a[1]) * uy;
+    const lo = Math.min(ta, tb);
+    const hi = Math.max(ta, tb);
+    const t0 = Math.max(0, lo);
+    const t1 = Math.min(len, hi);
+    if (t1 - t0 > 0.05)
+      out.push({
+        t0,
+        t1,
+        top: f.top,
+        post0: lo > TOL,
+        post1: hi < len - TOL,
+      });
+  }
+  return out.sort((x, y) => x.t0 - y.t0);
+}
+
+/**
+ * A wall edge's columns (points for the light): n even columns, or with
+ * shaft glass on it, cut at each run's ends, each column a run's glass
+ * (its height) or wall (0).
+ */
+function wallColumns(
+  a: V2,
+  b: V2,
+  n: number,
+  spans: readonly FrontSpan[]
+): [V2, V2, number][] {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const out: [V2, V2, number][] = [];
+  if (spans.length === 0) {
+    for (let k = 0; k < n; k += 1)
+      out.push([
+        [a[0] + (dx * k) / n, a[1] + (dy * k) / n],
+        [a[0] + (dx * (k + 1)) / n, a[1] + (dy * (k + 1)) / n],
+        0,
+      ]);
+    return out;
+  }
+  const len = Math.hypot(dx, dy);
+  const cuts = [0, len];
+  for (let k = 1; k < n; k += 1) cuts.push((len * k) / n);
+  for (const sp of spans) cuts.push(sp.t0, sp.t1);
+  cuts.sort((x, y) => x - y);
+  const ts: number[] = [];
+  for (const t of cuts)
+    if (ts.length === 0 || t - ts[ts.length - 1] > 0.02) ts.push(t);
+    else if (
+      spans.some(
+        (sp) => Math.abs(sp.t0 - t) < 1e-9 || Math.abs(sp.t1 - t) < 1e-9
+      )
+    )
+      ts[ts.length - 1] = t;
+  if (ts[ts.length - 1] < len) ts[ts.length - 1] = len;
+  const at = (t: number): V2 => [a[0] + (dx * t) / len, a[1] + (dy * t) / len];
+  for (let k = 0; k + 1 < ts.length; k += 1) {
+    const mid = (ts[k] + ts[k + 1]) / 2;
+    const sp = spans.find((x) => mid > x.t0 && mid < x.t1);
+    out.push([at(ts[k]), at(ts[k + 1]), sp ? sp.top : 0]);
+  }
+  return out;
+}
+
+/** A solid parapet along a→b (her theatre's balcony front), both faces. */
+function parapet(
+  shell: Builder,
+  a: V2,
+  b: V2,
+  nx: number,
+  ny: number,
+  fz: (p: V2) => number,
+  low: (p: V2) => number,
+  wall: RGB
+): void {
+  const H = 0.85;
+  const T = 0.16;
+  const ai: V2 = [a[0] + nx * T, a[1] + ny * T];
+  const bi: V2 = [b[0] + nx * T, b[1] + ny * T];
+  const t = shell.tileId;
+  shell.tileId = MODERN_TILE.theatre;
+  inward(
+    shell,
+    ai,
+    bi,
+    low(a),
+    low(b),
+    fz(a) + H,
+    fz(b) + H,
+    scale(wall, 0.7),
+    wall
+  );
+  outward(
+    shell,
+    a,
+    b,
+    fz(a),
+    fz(b),
+    fz(a) + H,
+    fz(b) + H,
+    scale(wall, 0.7),
+    wall
+  );
+  shell.tileId = TILE.none;
+  // A dark wooden cap.
+  shell.quad(
+    P(a, fz(a) + H),
+    P(b, fz(b) + H),
+    P(bi, fz(b) + H),
+    P(ai, fz(a) + H),
+    MODERN_COLOR.seatWood
+  );
+  shell.tileId = t;
+}
+
+/** Her atrium's glass roof: a grid of panes this far apart (m). */
+const LAYLIGHT_M = 1.5;
+/** Its panes' colour (a pale sky; glowing with her lamps). */
+const LAYLIGHT: RGB = lin(0.82, 0.9, 0.97);
+
+/**
+ * A well's roof in lit glass (a laylight): panes glowing with the room's
+ * power in white steel ribs on a grid, facing down.
+ */
+function laylight(L: ModernLayers, room: Room, spec: Spec): void {
+  const poly = room.outline;
+  const cz = (p: V2) => ceilingZ(room, p[0], p[1], spec);
+  const g = L.glass;
+  const was = g.glowV;
+  g.glowV = 1.0;
+  for (const cell of cells(poly))
+    for (const [a, b, d] of cellTris(cell))
+      g.tri(
+        P(cell[a], cz(cell[a])),
+        P(cell[d], cz(cell[d])),
+        P(cell[b], cz(cell[b])),
+        LAYLIGHT
+      );
+  g.glowV = was;
+  // The ribs: along x and across, inside the outline only.
+  const [x0, y0, x1, y1] = bounds(poly);
+  const z = cz(centroid(poly)) - 0.06;
+  const runs = (from: V2, to: V2) => {
+    const len = Math.hypot(to[0] - from[0], to[1] - from[1]);
+    const steps = Math.max(1, Math.round(len / 0.25));
+    let start: V2 | null = null;
+    for (let i = 0; i <= steps; i += 1) {
+      const t = i / steps;
+      const p: V2 = [
+        from[0] + (to[0] - from[0]) * t,
+        from[1] + (to[1] - from[1]) * t,
+      ];
+      const inside = pointInPolygon(p, poly) && distToEdges(p, poly) > 0.05;
+      if (inside && !start) start = p;
+      if ((!inside || i === steps) && start) {
+        L.metal.beam(P(start, z), P(p, z), 0.08, 0.12, FRAME_WHITE);
+        start = null;
+      }
+    }
+  };
+  for (let x = x0 + LAYLIGHT_M; x < x1 - 0.1; x += LAYLIGHT_M)
+    runs([x, y0], [x, y1]);
+  for (let y = y0 + LAYLIGHT_M; y < y1 - 0.1; y += LAYLIGHT_M)
+    runs([x0, y], [x1, y]);
+}
+
+/** Her cabin's sea window: its sill and head over the floor (m), its width. */
+const WINDOW_SILL_M = 0.7;
+const WINDOW_HEAD_M = 1.9;
+const WINDOW_W_M = 2.0;
+
+/**
+ * Her ocean-view cabin's big window, low over the sea, on each outboard
+ * wall (its side: the walls facing away from her centre line that way):
+ * glass showing the sky, or the sea once it is over it (the porthole's
+ * glass), in a white frame with a sill.
+ */
+function seaWindows(
+  L: ModernLayers,
+  room: Room,
+  edges: readonly EdgeInfo[],
+  spec: Spec,
+  side: "port" | "starboard"
+): void {
+  const poly = room.outline;
+  const sgn = side === "port" ? 1 : -1;
+  const fz = (p: V2) => roomFloorZ(room, p[0], p[1], spec);
+  for (let i = 0; i < poly.length; i += 1) {
+    if (edges[i].kind !== "wall") continue;
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    // Outward (the right of a counter-clockwise edge) toward her side.
+    const oy = -(b[0] - a[0]) / len;
+    if (oy * sgn < 0.9 || len < 1.6) continue;
+    const mid: V2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    const yaw = Math.atan2(b[0] - a[0], -(b[1] - a[1]));
+    const W = Math.min(WINDOW_W_M, len - 0.8) / 2;
+    L.place(P(mid, fz(mid)), yaw);
+    const g = L.glass;
+    const t = g.tileId;
+    g.tileId = TILE.porthole;
+    g.quad(
+      [0.006, -W, WINDOW_SILL_M],
+      [0.006, W, WINDOW_SILL_M],
+      [0.006, W, WINDOW_HEAD_M],
+      [0.006, -W, WINDOW_HEAD_M],
+      COLOR.white
+    );
+    g.tileId = t;
+    const m = L.metal;
+    const white = MODERN_COLOR.white;
+    for (const y of [-W - 0.04, W + 0.04])
+      m.box(
+        [0.03, y, (WINDOW_SILL_M + WINDOW_HEAD_M) / 2],
+        0.06,
+        0.08,
+        WINDOW_HEAD_M - WINDOW_SILL_M + 0.16,
+        white,
+        { back: true }
+      );
+    m.box([0.03, 0, WINDOW_HEAD_M + 0.04], 0.06, 2 * W + 0.16, 0.08, white, {
+      back: true,
+    });
+    m.box([0.03, 0, 1.3], 0.04, 2 * W, 0.04, white, { back: true });
+    m.box([0.1, 0, WINDOW_SILL_M - 0.03], 0.2, 2 * W + 0.2, 0.06, white, {
+      back: true,
+    });
+    L.place(null);
+  }
+}
+
+/** Her downlights are about this far apart (m; nearer reads dim in emergency light). */
+export const DOWNLIGHT_M = 3.5;
+/** A room this tall (m) has downlights as well as its strips. */
+const TALL_M = 4;
+
+/** An exit sign's height over its room's floor (under a low ceiling). */
+function signZ(room: Room): number {
+  return Math.min(EXIT_SIGN_Z, room.ceilingM - COVE_M - 0.12);
+}
+
+/**
+ * Her lamp styles' lamps for one room: downlights on a grid (along a
+ * corridor's axis), cove strips along the walls (a tall room downlights
+ * too, reaching its floor), the chandelier over a well (its light wide:
+ * the whole zone).
+ */
+function styleLamps(
+  L: ModernLayers,
+  room: Room,
+  edges: readonly EdgeInfo[],
+  spec: Spec
+): (Lamp & { wide: boolean })[] {
+  const out: (Lamp & { wide: boolean })[] = [];
+  const style = room.look.lamp;
+  const h = room.ceilingM;
+  const cz = (p: V2) => ceilingZ(room, p[0], p[1], spec);
+  if (style === "chandelier" && h >= 6) {
+    const [x0, y0, x1, y1] = bounds(room.outline);
+    const c: V2 = [(x0 + x1) / 2, (y0 + y1) / 2];
+    for (const l of chandelier(L, P(c, cz(c)))) out.push({ ...l, wide: true });
+    return out;
+  }
+  if (style === "strip") {
+    const poly = room.outline;
+    for (let i = 0; i < poly.length; i += 1) {
+      if (edges[i].kind !== "wall") continue;
+      const a = poly[i];
+      const b = poly[(i + 1) % poly.length];
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 1.5) continue;
+      const mid: V2 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const yaw = Math.atan2(b[0] - a[0], -(b[1] - a[1]));
+      for (const l of stripLight(L, P(mid, cz(mid)), yaw, len - 0.3))
+        out.push({ ...l, wide: false });
+    }
+    if (h <= TALL_M) return out;
+  }
+  const step = h > TALL_M ? DOWNLIGHT_M * 1.3 : DOWNLIGHT_M;
+  const spots: V2[] = [];
+  if (room.axis) {
+    const [p, q] = room.axis;
+    const n = Math.max(
+      1,
+      Math.round(Math.hypot(q[0] - p[0], q[1] - p[1]) / step)
+    );
+    for (let i = 0; i < n; i += 1) {
+      const t = (i + 0.5) / n;
+      spots.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]);
+    }
+  } else spots.push(...lampSpots(room, step));
+  // A tall room's downlights reach its floor.
+  const radius = Math.max(2.3, 0.8 * h);
+  for (const s of spots)
+    for (const l of downlight(L, P(s, cz(s))))
+      out.push({ ...l, radius, wide: false });
+  return out;
+}
+
+/** Her emergency path lights run in these rooms (low, along the walls). */
+const PATH_KINDS: ReadonlySet<string> = new Set([
+  "corridor",
+  "lobby",
+  "atrium",
+  "gallery",
+  "theatre",
+  "passage",
+  "club",
+]);
+/** And white lamps under the ceiling in these (pools of light between dark). */
+const HIGH_KINDS: ReadonlySet<string> = new Set(["corridor", "lobby"]);
+/** A high emergency lamp's length (m), and at most one per this much wall. */
+const HIGH_LAMP_M = 0.7;
+const HIGH_EVERY_M = 4.5;
+/** A strip keeps this far from a shut door's middle (m). */
+const STRIP_DOOR_GAP_M = 0.65;
+/** Its light for the emergency bake: a point every this far (m). */
+const STRIP_LIGHT_M = 1.2;
+
+/**
+ * Her emergency strips along a room's walls: dashed green path lights at
+ * the floor (gapped round shut doors; a raked floor's in short level
+ * pieces) and, in corridors and lobbies, short white lamps under the
+ * ceiling on the walls facing +x or +y (one side), every few metres,
+ * glowing on the emergency supply. Returns the light they throw (for the
+ * emergency bake).
+ */
+function emergencyStrips(
+  L: ModernLayers,
+  room: Room,
+  edges: readonly EdgeInfo[],
+  spec: Spec,
+  shutDoors: readonly ShutDoor[]
+): Lamp[] {
+  const out: Lamp[] = [];
+  const lowOn = PATH_KINDS.has(room.kind);
+  const highOn = HIGH_KINDS.has(room.kind);
+  if (!lowOn && !highOn) return out;
+  const poly = room.outline;
+  const fz = (p: V2) => roomFloorZ(room, p[0], p[1], spec);
+  const doors = shutDoors.filter((d) => d.room === room.id);
+  // Narrow halls catch their strips' light from both walls: softer there.
+  const k = room.kind === "corridor" || room.kind === "lobby" ? 0.7 : 1;
+  for (let i = 0; i < poly.length; i += 1) {
+    if (edges[i].kind !== "wall") continue;
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len < 0.9) continue;
+    const ux = (b[0] - a[0]) / len;
+    const uy = (b[1] - a[1]) / len;
+    const nx = -uy;
+    const ny = ux;
+    const yaw = Math.atan2(ny, nx);
+    // The free stretches: the edge less its ends and the shut doors.
+    let free: [number, number][] = [[0.2, len - 0.2]];
+    for (const d of doors) {
+      const off = Math.abs((d.at[0] - a[0]) * uy - (d.at[1] - a[1]) * ux);
+      if (off > 0.05) continue;
+      const t = (d.at[0] - a[0]) * ux + (d.at[1] - a[1]) * uy;
+      free = free.flatMap(
+        ([u0, u1]): [number, number][] =>
+          [
+            [u0, Math.min(u1, t - STRIP_DOOR_GAP_M)],
+            [Math.max(u0, t + STRIP_DOOR_GAP_M), u1],
+          ].filter(([x, y]) => y - x > 0.5) as [number, number][]
+      );
+    }
+    const at = (t: number): V2 => [a[0] + ux * t, a[1] + uy * t];
+    // The high lamps: on one side, spread along the free stretches.
+    const highSide = highOn && (ny > 0.5 || nx > 0.5);
+    let sinceHigh = HIGH_EVERY_M / 2;
+    for (const [u0, u1] of free) {
+      const span = u1 - u0;
+      if (lowOn) {
+        // A raked floor's strip in short level pieces.
+        const n = room.ramp ? Math.max(1, Math.round(span / 1.2)) : 1;
+        for (let k = 0; k < n; k += 1) {
+          const t0 = u0 + (span * k) / n;
+          const t1 = u0 + (span * (k + 1)) / n;
+          const mid = at((t0 + t1) / 2);
+          emergencyLamp(
+            L,
+            P(mid, fz(mid)),
+            yaw,
+            t1 - t0 - 0.02,
+            EMERGENCY_LOW_Z
+          );
+        }
+      }
+      // Their light, every STRIP_LIGHT_M along.
+      if (lowOn) {
+        const m = Math.max(1, Math.round(span / STRIP_LIGHT_M));
+        for (let k = 0; k < m; k += 1) {
+          const p = at(u0 + (span * (k + 0.5)) / m);
+          out.push({
+            p: [p[0] + nx * 0.15, p[1] + ny * 0.15, fz(p) + 0.15],
+            intensity: 0.5 * k,
+            radius: 0.6,
+          });
+        }
+      }
+      if (highSide && span > HIGH_LAMP_M + 0.2) {
+        sinceHigh += span;
+        if (sinceHigh >= HIGH_EVERY_M) {
+          sinceHigh = 0;
+          const mid = at((u0 + u1) / 2);
+          const h = ceilingZ(room, mid[0], mid[1], spec) - fz(mid);
+          const z = h - COVE_M - 0.06;
+          emergencyLamp(L, P(mid, fz(mid)), yaw, HIGH_LAMP_M, z);
+          out.push({
+            p: [mid[0] + nx * 0.3, mid[1] + ny * 0.3, fz(mid) + z - 0.2],
+            intensity: 0.45 * k,
+            radius: 1.4,
+          });
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** A deck door's lit doorway in a deck room (as doorGlow.ts's), its glow. */
+const DECK_DOOR_GLOW = 1.75;
+
+/**
+ * A deck door's warm lit doorway on a deck room's wall (her pool hall's
+ * door to the club), as `doorGlowGeometry` draws one on a house face: a
+ * dark frame, the light (HDR, so bloom catches it), the open leaf's edge.
+ * `out` is the door's end in the room, `inside` its end beyond the wall.
+ */
+function deckDoorGlow(
+  L: Layers,
+  room: Room,
+  out: V2,
+  inside: V2,
+  spec: Spec
+): void {
+  const len = Math.hypot(out[0] - inside[0], out[1] - inside[1]) || 1;
+  const nx = (out[0] - inside[0]) / len;
+  const ny = (out[1] - inside[1]) / len;
+  // Proud of the deck room's wall (its glass room's walls stand in).
+  const off = DOOR_FACE_OFFSET_M - GLASS_INSET_M - 0.03;
+  const o: P3 = [
+    out[0] - nx * off,
+    out[1] - ny * off,
+    roomFloorZ(room, out[0], out[1], spec),
+  ];
+  const w = DOOR_GLOW_WIDTH_M / 2;
+  const h = DOOR_GLOW_HEIGHT_M;
+  const f = 0.09;
+  const g = L.glass;
+  const was = g.glowV;
+  const tile = g.tileId;
+  g.tileId = TILE.none;
+  L.place(o, Math.atan2(ny, nx));
+  const face = (x: number, y0: number, y1: number, z1: number, c: RGB) =>
+    g.quad([x, y0, 0], [x, y1, 0], [x, y1, z1], [x, y0, z1], c);
+  g.glowV = 0;
+  face(0, -w - f, w + f, h + f, lin(0.12, 0.065, 0.03));
+  g.glowV = DECK_DOOR_GLOW;
+  face(0.005, -w, w, h, [0.98, 0.55, 0.21]);
+  g.glowV = 1;
+  face(0.01, w - 0.22, w, h, [0.9, 0.5, 0.22]);
+  L.place(null);
+  g.glowV = was;
+  g.tileId = tile;
+}
+
 /** A doorway's frame by the room's finish. */
 const DOOR_STYLE: Record<Room["look"]["finish"], DoorStyle> = {
   oak: "oak",
@@ -1755,6 +2699,11 @@ const DOOR_STYLE: Record<Room["look"]["finish"], DoorStyle> = {
   enamel: "white",
   steel: "steel",
   glass: "white",
+  "cabin-veneer": "white",
+  cream: "white",
+  marble: "white",
+  kids: "white",
+  theatre: "white",
 };
 
 /**
@@ -1991,8 +2940,11 @@ class LightBake {
     });
   }
 
-  /** Each vertex's light (`aLight`) for one layer's builder. */
-  bake(b: Builder, shell: boolean): Float32Array {
+  /**
+   * Each vertex's light (`aLight`) for one layer's builder, from `ambient`
+   * up (her emergency light starts from nothing).
+   */
+  bake(b: Builder, shell: boolean, ambient = AMBIENT): Float32Array {
     const count = b.pos.length / 3;
     const out = new Float32Array(count);
     const spec = this.spec;
@@ -2032,7 +2984,7 @@ class LightBake {
       const nz = room ? b.nrm[v * 3 + 1] : 0;
       const ny = room ? -b.nrm[v * 3 + 2] : 0;
       const r = this.rooms[k];
-      let light = AMBIENT;
+      let light = ambient;
       const list = this.lit[k];
       for (let li = 0; li < list.length; li += 1) {
         const l = list[li].lamp;

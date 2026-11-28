@@ -100,6 +100,82 @@ for (const [width, height] of [
   });
 }
 
+// A pinned iPhone (home-screen insets): the right rail goes into columns
+// rather than under the speed buttons, and the picker fits in the band.
+for (const [width, height, insets] of [
+  [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }],
+  [844, 390, { top: 0, bottom: 21, left: 47, right: 47 }],
+] as const) {
+  test(`the night's HUD at ${width}x${height} with a phone's insets: nothing overlaps, the cameras open and fit`, async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(browserName !== "chromium", "safe-area insets need CDP");
+    await page.setViewportSize({ width, height });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets });
+    await page.goto("/shipwreck");
+    await page.getByTestId("shipwreck-real-night").click();
+    await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+    await page.waitForTimeout(500);
+    const clash = () =>
+      page.evaluate((ins) => {
+        const els = [
+          ...document.querySelectorAll<HTMLElement>(
+            '[data-testid="shipwreck-hud"] button, [data-testid="shipwreck-timeline"]'
+          ),
+        ].filter((el) => {
+          const r = el.getBoundingClientRect();
+          return (
+            r.width > 0 &&
+            r.height > 0 &&
+            !el.closest('[data-testid="shipwreck-cameras"]')
+          );
+        });
+        const out: string[] = [];
+        const rs = els.map((el) => ({
+          id: el.dataset.testid ?? el.getAttribute("aria-label") ?? "?",
+          r: el.getBoundingClientRect(),
+        }));
+        for (let i = 0; i < rs.length; i += 1)
+          for (let j = i + 1; j < rs.length; j += 1) {
+            const a = rs[i].r;
+            const b = rs[j].r;
+            const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+            const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+            if (w > 1 && h > 1) out.push(`${rs[i].id} x ${rs[j].id}`);
+          }
+        for (const { id, r } of rs)
+          if (
+            r.top < ins.top - 0.5 ||
+            r.bottom > innerHeight - ins.bottom + 0.5 ||
+            r.left < ins.left - 0.5 ||
+            r.right > innerWidth - ins.right + 0.5
+          )
+            out.push(`${id} under an inset`);
+        return out;
+      }, insets);
+    expect(await clash()).toEqual([]);
+    // A real tap (not covered by the speed buttons) opens the picker.
+    await page.getByTestId("shipwreck-cameras-button").click({ timeout: 5000 });
+    const panel = page.getByTestId("shipwreck-cameras");
+    await expect(panel).toBeVisible();
+    await expect(page.getByTestId("shipwreck-camera-orbit")).toBeInViewport();
+    const fit = await panel.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return {
+        top: r.top,
+        bottom: r.bottom,
+        scroll: el.scrollHeight - el.clientHeight,
+      };
+    });
+    expect(fit.top).toBeGreaterThanOrEqual(insets.top);
+    expect(fit.bottom).toBeLessThanOrEqual(height - insets.bottom);
+    expect(fit.scroll).toBeLessThanOrEqual(1);
+    expect(await clash()).toEqual([]);
+  });
+}
+
 test("the real night plays to the end card", async ({ page }) => {
   test.setTimeout(300_000);
   const errors: string[] = [];

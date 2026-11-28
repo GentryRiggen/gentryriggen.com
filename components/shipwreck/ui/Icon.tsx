@@ -63,7 +63,14 @@ export type IconName =
   | "staircase"
   | "bed"
   | "bunk"
-  | "corridor";
+  | "corridor"
+  | "lift-up"
+  | "lift-down"
+  | "atrium-lift"
+  | "stateroom"
+  | "low-cabin"
+  | "theatre"
+  | "kids-club";
 
 const PATHS: Record<IconName, string> = {
   back: "M15 5l-7 7 7 7",
@@ -175,6 +182,22 @@ const PATHS: Record<IconName, string> = {
   bunk: "M4 3v18M20 3v18M4 10h16M4 19h16M7 10V8h4v2M7 19v-2h4v2",
   corridor:
     "M3 3h18v18H3zM3 3l6.5 6.5M21 3l-6.5 6.5M3 21l6.5-6.5M21 21l-6.5-6.5M9.5 9.5h5v5h-5z",
+  // Her glass lift: the car on its cable, a big arrow up or down in it.
+  "lift-up": "M5 6h14v15H5zM12 2v4M12 18V9.5M8 13l4-4 4 4",
+  "lift-down": "M5 6h14v15H5zM12 2v4M12 9.5V18M8 14l4 4 4-4",
+  // The Concordia's rooms (1.18): a glass lift car with its up and down
+  // arrows beside a hall's three floors, a bed by a balcony's glass door,
+  // a low cabin with the sea at its window, a stage between its
+  // curtains, a little pirate ship with its flag.
+  "atrium-lift":
+    "M2 3h20M2 21h20M2 9h7M2 15h7M13 5h7v16h-7zM16.5 8l-2 2.5h4zM16.5 18l-2-2.5h4z",
+  stateroom:
+    "M2 20v-8M2 16.5h10V20M2 13h10v3.5M4 13v-1a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 9 12v1M15 20V4h7v16M18.5 4v16M15 14h7",
+  "low-cabin":
+    "M3 3h18v18H3zM8 7h8v5H8zM3 17c2 1.3 3.3 1.3 5 0s3.3-1.3 5 0 3.3 1.3 5 0 2-.8 3 0",
+  theatre:
+    "M2 3h20M4 3v17M20 3v17M4 3c1.5 4 3 6.5 5 7.5M20 3c-1.5 4-3 6.5-5 7.5M2 20h20M8 16h8",
+  "kids-club": "M3 15h18l-3 5H6zM12 15V3M12 3.5l6 3-6 3M7 15l2-4h3",
 };
 
 const FILLED: ReadonlySet<IconName> = new Set(["play"]);

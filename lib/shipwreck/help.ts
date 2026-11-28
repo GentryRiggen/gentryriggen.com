@@ -16,7 +16,7 @@ function walkLines(ship: ShipSpec): string[] {
             ? " Beside a door, the door button takes you inside; inside, the door button takes you back out on deck."
             : "") +
           (ship.id === "concordia"
-            ? " On the Concordia the deck tips as she leans: uphill is slower and you slide downhill. Stand beside a lifeboat and tap the glowing boat button to climb in before it goes."
+            ? " On the Concordia the deck tips as she leans: uphill is slower and you slide downhill. Stand beside a lifeboat and tap the glowing boat button to climb in before it goes. You can walk her top decks and go inside some of her rooms: in a glass lift, the up and down buttons take you to the next floor."
             : ""),
       ]
     : [];

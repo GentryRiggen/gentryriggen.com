@@ -9,11 +9,24 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose, SimFrame } from "@/lib/shipwreck/sim/track";
 import {
+  alongDeck,
   doorExit,
   doorToEnter,
   interiorFor,
+  liftAt,
+  liftById,
+  liftCarIds,
+  liftLanding,
+  liftMiddle,
+  liftRideZ,
+  liftStopZ,
+  nextStop,
+  roomsOpen,
   roomWaterTargets,
+  seepTarget,
   type DoorPlace,
+  type LiftShaft,
+  type LiftStop,
   type Room,
 } from "@/lib/shipwreck/interior";
 import {
@@ -29,6 +42,7 @@ import {
   swimmerFrom,
   walkInput,
   walkMapFor,
+  WALK_LIFT_MAX_DEPTH_M,
   WALK_TURN_PER_PX,
   type HullPiece,
   type SwimmerState,
@@ -37,7 +51,13 @@ import {
   type WalkInput,
 } from "@/lib/shipwreck/walk";
 import { shipToThreeInto, type V3 } from "./cameraMath";
-import type { SceneRuntime, WalkInfo } from "./runtime";
+import {
+  LIFT_DOWN,
+  LIFT_UP,
+  type SceneRuntime,
+  type WalkInfo,
+  type WalkRide,
+} from "./runtime";
 import {
   deckEyes,
   easeEyes,
@@ -63,16 +83,28 @@ import {
  * walker (the level Interior shows, eased, or the room's target while it
  * is not drawn), deck doors open while she is whole, and the runner writes
  * `walkInside`, `walkRoom`, `walkCameInBy` and `walkLift` (and, on deck,
- * `walkDoor`). The door and Go
- * outside buttons (`walkInput.door`, `.outside`) and the test hooks'
- * `walkPlace` are taken here. Inside when she breaks, or washed out by
- * the water, is the same splash into the sea as going in from the deck.
+ * `walkDoor`). The door and Go outside buttons (`walkInput.door`,
+ * `.outside`) and the test hooks' `walkPlace` are taken here. Inside when
+ * she breaks, or washed out by the water, is the same splash into the sea
+ * as going in from the deck.
+ *
+ * Her glass lifts (1.18): in a car the ▲ ▼ buttons (`walkInput.lift`)
+ * start a ride to the next dry stop that way (`nextStop`); the runner
+ * writes which ways can go (`walkLiftDirs`) and, while riding, the ride
+ * (`walkRide`) for Interior and the HUD. The ride lives on the walker
+ * (`WalkerState.ride`), so anything that re-places them (a seek, Back on
+ * deck, Go outside, the rooms closing at her 30°, `placeWalk`) ends it.
+ * The rooms closing at her 30° walk them out (riding or not) through the
+ * lift's dark wipe (`walkLift`), the stick held while it clears, not a
+ * hard cut. A landing's door into a car stays shut (`seamShut`) until the
+ * car Interior draws (`walkLiftCarZ`) has arrived at that stop.
  */
 
 /** The sea's surface for the walk rules: the sea quad is flat (y = 0). */
 const FLAT_SEA = () => 0;
 /** No sim frame yet: every compartment dry. */
 const NO_FILL: readonly number[] = [];
+const NO_FRAMES: readonly SimFrame[] = [];
 /** Look under follows her down while she is nearer than this (m). */
 const LOOK_UNDER_SIGHT_M = 600;
 /** How quickly Look under's tilt follows her (1/s). */
@@ -108,6 +140,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
    * events (live while the night computes; a seek back un-lowers them).
    */
   const lowered = useRef(new Set<number>());
+  const interior = useMemo(() => interiorFor(spec.id), [spec]);
   /** Each room's water target (compartment samples cached). */
   const target = useMemo(() => roomWaterTargets(spec), [spec]);
   const walking = useStore(store, (s) => s.camera === "walk");
@@ -172,7 +205,10 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         heelDeg: 0,
         depthM: 0,
         inside: false,
+        ride: null,
       } as WalkInfo,
+      /** The ride as the scene sees it (`runtime.walkRide`), in place. */
+      ride: { lift: "", from: 0, to: 0, s: 0, z: 0 } as WalkRide,
       ctx: {
         map: map!,
         spec,
@@ -180,6 +216,23 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         breakX: null as number | null,
         seaZ: FLAT_SEA,
         interiorsOpen: true,
+        // Her glass lifts: a landing's door into a car is shut until the
+        // car as drawn (Interior, `walkLiftCarZ`) stands at that stop; open
+        // when it is not drawn yet (nothing to step into or out of).
+        ...(map?.lifts && map.lifts.length > 0
+          ? {
+              seamShut: (from: string, to: string): boolean => {
+                const car = liftAt(map, to);
+                if (!car || liftAt(map, from)) return false;
+                const z = runtime.walkLiftCarZ?.get(car.lift.id);
+                if (z === undefined || !Number.isFinite(z)) return false;
+                return (
+                  Math.abs(z - liftStopZ(car.lift, spec, car.stop)) >
+                  LIFT_ARRIVED_M
+                );
+              },
+            }
+          : {}),
         // A boat's blocker goes once that boat is lowered (her map only).
         ...(map?.blockers.some((b) => b.kind === "box" && b.boat !== undefined)
           ? {
@@ -191,13 +244,30 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         // from the sim's fill); the sea on her decks.
         ...(rooms.size > 0
           ? {
-              waterZ: (area: string) => {
+              waterZ: (at: string) => {
+                // A glass car at a stop holds its landing's water (hers).
+                const area =
+                  rooms.has(at) || !interior
+                    ? at
+                    : (liftLanding(interior, at) ?? at);
                 const room = rooms.get(area);
                 if (!room) return 0;
                 const lv = runtime.interiorLevels;
                 const k = lv?.slot.get(area);
                 if (lv && k !== undefined && lv.drawn[k] === 1)
                   return lv.shown[k];
+                // A seeping room (hers) takes the sea slowly, as the table.
+                if (room.seep && interior) {
+                  const ps = store.getState();
+                  const sv = seepTarget(
+                    interior,
+                    ps.track?.frames ?? NO_FRAMES,
+                    spec,
+                    area,
+                    ps.t
+                  );
+                  if (!Number.isNaN(sv)) return sv;
+                }
                 return target(
                   room,
                   scratch.ctx.pose,
@@ -211,7 +281,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       /** The input while the lift's wipe holds the stick: the look only. */
       held: { forward: 0, strafe: 0, lookDx: 0, lookDy: 0 } as WalkInput,
     }),
-    [spec, map, rooms, runtime, target]
+    [spec, map, rooms, runtime, target, interior, store]
   );
   /** Water over the floor at a point (m), on the walker's piece. */
   const depthAt = (area: string, x: number, y: number): number => {
@@ -223,6 +293,33 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     shipToEarth(ctx.pose, scratch.p, feet);
     const water = ctx.waterZ ? ctx.waterZ(area, x, y) : FLAT_SEA();
     return water - feet[2];
+  };
+  // Whether a lift stop is dry enough to ride to (its car no deeper than
+  // the knee); one function for the frame loop (no per-frame closures).
+  const depthRef = useRef(depthAt);
+  depthRef.current = depthAt;
+  const liftDry = useRef({
+    lift: null as LiftShaft | null,
+    dry: (_stop: LiftStop, i: number): boolean => {
+      const lift = liftDry.current.lift;
+      if (!lift) return false;
+      // Index reads and kept ids: no per-frame arrays or strings.
+      const mid = liftMiddle(lift);
+      return (
+        depthRef.current(liftCarIds(lift)[i], mid[0], mid[1]) <=
+        WALK_LIFT_MAX_DEPTH_M
+      );
+    },
+  });
+  /** Which ways a ride can go from stop `at` of `lift` (LIFT_UP | LIFT_DOWN). */
+  const liftDirs = (lift: LiftShaft, at: number): number => {
+    const d = liftDry.current;
+    d.lift = lift;
+    const dirs =
+      (nextStop(lift, at, 1, d.dry) !== null ? LIFT_UP : 0) |
+      (nextStop(lift, at, -1, d.dry) !== null ? LIFT_DOWN : 0);
+    d.lift = null;
+    return dirs;
   };
   const stemX = spec.stations[spec.stations.length - 1].x;
   const sternX = spec.stations[0].x;
@@ -339,6 +436,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       walkInput.jump = false;
       walkInput.door = undefined;
       walkInput.outside = undefined;
+      walkInput.lift = undefined;
       runtime.walkPlace = null;
       notInside(runtime);
       const r = runtime.ride;
@@ -428,6 +526,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       walkInput.jump = false;
       walkInput.door = undefined;
       walkInput.outside = undefined;
+      walkInput.lift = undefined;
       walkInput.lookDx = 0;
       fall.t += Math.min(dt, 0.1);
       const u = Math.min(1, fall.t / fall.dur);
@@ -488,7 +587,9 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       const ctx = scratch.ctx;
       ctx.pose = pose;
       ctx.breakX = breakX;
-      ctx.interiorsOpen = !broken;
+      // Her rooms are open until she breaks, or (hers) leans to the close.
+      const open = interior ? roomsOpen(interior, frame, broken) : !broken;
+      ctx.interiorsOpen = open;
       if (ctx.boatLowered) {
         const events = p.track?.events;
         if (events) loweredBoats(events, p.t, lowered.current);
@@ -502,7 +603,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       if (s.doorT <= 0) {
         s.doorT = DOOR_LOOK_S;
         const near =
-          !inRoom && !broken && w.part === "whole"
+          !inRoom && open && w.part === "whole"
             ? doorToEnter(map, w.area, [w.x, w.y], depthAt)
             : null;
         runtime.walkDoor = near
@@ -513,11 +614,13 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       // The door button and Go outside (read once, then cleared).
       const doorAsk = walkInput.door;
       const outAsk = walkInput.outside;
+      const liftAsk = walkInput.lift;
       walkInput.door = undefined;
       walkInput.outside = undefined;
+      walkInput.lift = undefined;
       let moved: DoorPlace | null = null;
       let gone = false;
-      if (doorAsk && !inRoom && !broken && w.part === "whole") {
+      if (doorAsk && !inRoom && open && w.part === "whole") {
         moved = doorToEnter(
           map,
           w.area,
@@ -526,8 +629,14 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
           typeof doorAsk === "string" ? doorAsk : undefined
         );
         if (moved) runtime.walkCameInBy = moved.id;
-      } else if (outAsk && inRoom && !broken) {
+      } else if (inRoom && !broken && (outAsk || !open)) {
+        // Go outside, or the rooms closed round them (her 30° heel):
+        // walked out onto the nearest dry door's outside, not into the sea.
         moved = doorExit(map, runtime.walkCameInBy, depthAt, [w.x, w.y]);
+        // Hers: a lifeboat stands just outside her recess doors, so face
+        // along her deck, not square into its hull.
+        if (moved && interior?.closeAtHeelDeg !== undefined)
+          moved = { ...moved, yaw: alongDeck(moved.yaw) };
         if (!moved) {
           // No dry door: the spawn, else the sea (as Back on deck).
           const spawn = placeWalker(map, spec, frame, breakX, FLAT_SEA);
@@ -545,8 +654,37 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         };
         s.easeT = null;
       }
+      // The rooms closing round them (hers, at 30°), riding a glass lift
+      // or standing in the flooding rooms: not a hard cut. The screen goes
+      // dark and clears (the lift wipe) and the stick waits for it, while
+      // her hull groans.
+      if (!open && !broken && inRoom && !gone && w !== s.walker) {
+        runtime.walkLift += 1;
+        s.liftHold = LIFT_HOLD_S;
+      }
       if (w.area !== s.walker.area)
         inRoom = areaById(map, w.area)?.interior === true;
+      // The ▲ ▼ in a glass car (hers): ride to the next dry stop that way.
+      if (liftAsk && !moved && !gone && open && !broken && !w.ride) {
+        const at = liftAt(map, w.area);
+        if (at && (w.jumpS ?? null) === null) {
+          const d = liftDry.current;
+          d.lift = at.lift;
+          const to = nextStop(
+            at.lift,
+            at.stop,
+            liftAsk === "up" ? 1 : -1,
+            d.dry
+          );
+          d.lift = null;
+          if (to !== null)
+            w = {
+              ...w,
+              moveShare: 0,
+              ride: { lift: at.lift.id, from: at.stop, to, s: 0 },
+            };
+        }
+      }
 
       // Inside when she breaks: interiors close, into the sea beside her.
       if (broken && inRoom) gone = true;
@@ -569,8 +707,9 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         scratch.held.lookDx = walkInput.lookDx;
         input = scratch.held;
       }
-      // Her lean's drift holds still under the end card and the lift's wipe.
-      ctx.driftOff = runtime.walkInputOff || s.liftHold > 0;
+      // Her lean's drift holds still under the end card, the lift's wipe
+      // and a glass lift ride.
+      ctx.driftOff = runtime.walkInputOff || s.liftHold > 0 || !!w.ride;
       const r = stepWalker(w, input, ctx, dt);
       walkInput.lookDx = 0;
       walkInput.jump = false;
@@ -626,6 +765,26 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         runtime.walker = view;
         runtime.walkInside = inside;
         runtime.walkRoom = r.state.area;
+        // Her glass lifts: the ride for the scene, else which ways can go.
+        const ride = r.state.ride;
+        const rideLift = ride ? liftById(map, ride.lift) : undefined;
+        if (ride && rideLift) {
+          const out = scratch.ride;
+          out.lift = ride.lift;
+          out.from = ride.from;
+          out.to = ride.to;
+          out.s = ride.s;
+          out.z = liftRideZ(rideLift, spec, ride.from, ride.to, ride.s);
+          runtime.walkRide = out;
+          runtime.walkLiftDirs = 0;
+        } else {
+          runtime.walkRide = null;
+          const car = map.lifts ? liftAt(map, r.state.area) : null;
+          runtime.walkLiftDirs =
+            car && ctx.interiorsOpen !== false && !broken
+              ? liftDirs(car.lift, car.stop)
+              : 0;
+        }
         runtime.walkLookUnder = false;
         runtime.walkCanReboard = false;
         const info = scratch.info;
@@ -638,6 +797,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         info.heelDeg = Math.abs(frame.listDeg);
         info.depthM = r.depthM;
         info.inside = inside;
+        info.ride = ride ? ride.lift : null;
         runtime.walkInfo = info;
         return;
       }
@@ -650,6 +810,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     walkInput.jump = false;
     walkInput.door = undefined;
     walkInput.outside = undefined;
+    walkInput.lift = undefined;
     const lookUnder = store.getState().walk.lookUnder;
     if (
       lookUnder &&
@@ -711,6 +872,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
     info.heelDeg = Math.abs(frame.listDeg);
     info.depthM = 0;
     info.inside = false;
+    info.ride = null;
     runtime.walkInfo = info;
   }, -1.5);
 
@@ -804,11 +966,16 @@ function useWalkKeys(
 /** The stick is ignored this long after the lift (its wipe runs 0.9 s). */
 const LIFT_HOLD_S = 0.9;
 
+/** A car this near its stop (m) has arrived: its landing's door opens. */
+const LIFT_ARRIVED_M = 0.03;
+
 /** How often the door in reach is looked up (s). */
 const DOOR_LOOK_S = 0.25;
 
 /** Not in a room (in the sea, a boat or not walking). */
 function notInside(runtime: SceneRuntime): void {
+  runtime.walkRide = null;
+  runtime.walkLiftDirs = 0;
   runtime.walkDoor = -1;
   runtime.walkInside = false;
   runtime.walkRoom = null;
