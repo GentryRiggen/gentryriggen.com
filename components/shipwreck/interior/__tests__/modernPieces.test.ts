@@ -2,6 +2,8 @@ import {
   MODERN_PIECE_FOOTPRINT,
   MODERN_PIECE_IDS,
   MODERN_PIECE_MOUNT,
+  POOL_COPING_M,
+  seatRowFootprint,
   type ModernPieceId,
 } from "@/lib/shipwreck/interior/modernPieces";
 import { PIECE_FOOTPRINT } from "@/lib/shipwreck/interior/kit";
@@ -228,7 +230,9 @@ describe("the modern pieces", () => {
       const L = new ModernLayers();
       MODERN_PIECES[id](L, [0, 0, 0], 0);
       const { x0, x1, y0, y1, top } = extent(L);
-      const slack = 0.03;
+      // The pool blocks its basin; its coping (and the ladder's top on
+      // it) is walkable, outside the footprint.
+      const slack = id === "pool-edge" ? 0.03 + POOL_COPING_M : 0.03;
       expect([id, x0 >= -fp.lx / 2 - slack, x1 <= fp.lx / 2 + slack]).toEqual([
         id,
         true,
@@ -250,16 +254,47 @@ describe("the modern pieces", () => {
     }
   });
 
-  it("the theatre's seat rows are as wide as their seats; the curtain spans the stage", () => {
-    const L = new ModernLayers();
-    theatreSeatRow(L, [0, 0, 0], 0, 6);
-    const e = extent(L);
-    expect(e.y1 - e.y0).toBeCloseTo(6 * 0.55, 1);
+  it("the theatre's seat rows fit seatRowFootprint(n) for any n; the curtain spans the stage", () => {
+    expect(MODERN_PIECE_FOOTPRINT["theatre-seat-row"]).toEqual(
+      seatRowFootprint(10)
+    );
+    expect(() => seatRowFootprint(0)).toThrow();
+    expect(() => seatRowFootprint(2.5)).toThrow();
+    for (const n of [1, 4, 6, 10, 13]) {
+      const L = new ModernLayers();
+      theatreSeatRow(L, [0, 0, 0], 0, n);
+      const e = extent(L);
+      const fp = seatRowFootprint(n);
+      expect(e.y0).toBeGreaterThanOrEqual(-fp.ly / 2 - 0.01);
+      expect(e.y1).toBeLessThanOrEqual(fp.ly / 2 + 0.01);
+      expect(e.y1 - e.y0).toBeGreaterThan(fp.ly - 0.05);
+      expect(e.x0).toBeGreaterThanOrEqual(-fp.lx / 2 - 0.03);
+      expect(e.x1).toBeLessThanOrEqual(fp.lx / 2 + 0.03);
+    }
     const C = new ModernLayers();
     stageCurtain(C, [0, 0, 0], 0, 16, 7);
     const c = extent(C);
     expect(c.y1 - c.y0).toBeGreaterThan(16);
     expect(c.top).toBeGreaterThan(7);
+  });
+
+  it("the pool's footprint is its basin: the walls on its edge, the coping outside", () => {
+    const fp = MODERN_PIECE_FOOTPRINT["pool-edge"]!;
+    const L = new ModernLayers();
+    MODERN_PIECES["pool-edge"](L, [0, 0, 0], 0);
+    // The basin's walls (under the deck) are on the footprint's edge.
+    let wx = 0;
+    let wy = 0;
+    const s = L.shell;
+    for (let i = 0; i < s.pos.length; i += 3)
+      if (s.pos[i + 1] < -0.5) {
+        wx = Math.max(wx, Math.abs(s.pos[i]));
+        wy = Math.max(wy, Math.abs(s.pos[i + 2]));
+      }
+    expect(wx).toBeCloseTo(fp.lx / 2, 3);
+    expect(wy).toBeCloseTo(fp.ly / 2, 3);
+    const e = extent(L);
+    expect(e.x1).toBeCloseTo(fp.lx / 2 + POOL_COPING_M, 2);
   });
 
   it("a stair's rails stand either side of the flight, on its floor line", () => {

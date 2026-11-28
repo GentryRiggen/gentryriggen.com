@@ -12,7 +12,11 @@ import {
   MODERN_GLASS_BRANCH,
   MODERN_PX,
   MURAL_PX,
+  modernAAt,
+  modernBAt,
+  modernNoise,
   modernTextures,
+  muralAt,
   withModern,
 } from "../modernTextures";
 
@@ -77,33 +81,65 @@ describe("the modern tiles", () => {
         let lo = 255;
         let hi = 0;
         let sum = 0;
-        for (let i = ch; i < im.data.length; i += 4) {
+        // Every third pixel is plenty for a spread.
+        for (let i = ch; i < im.data.length; i += 12) {
           lo = Math.min(lo, im.data[i]);
           hi = Math.max(hi, im.data[i]);
           sum += im.data[i];
         }
         expect(hi - lo).toBeGreaterThan(60);
-        const mean = sum / (im.data.length / 4);
+        const mean = sum / (im.data.length / 12);
         expect(mean).toBeGreaterThan(15);
         expect(mean).toBeLessThan(240);
       }
     }
   });
 
-  it("repeats without a seam: the wrap is no worse than a step inside", () => {
+  it("repeats without a seam: the wrap is no bigger a step than most inside", () => {
     for (const t of [tex.a, tex.b, tex.c]) {
       const im = img(t);
       const N = im.width;
       for (let ch = 0; ch < 4; ch += 1)
         for (const rows of [false, true]) {
-          let inside = 0;
-          for (let k = 1; k < N; k += 1)
-            inside += lineDiff(im, ch, k - 1, k, rows);
-          inside /= N - 1;
+          const steps: number[] = [];
+          for (let k = 1; k < N; k += 3)
+            steps.push(lineDiff(im, ch, k - 1, k, rows));
+          steps.sort((a, b) => a - b);
+          const p95 = steps[Math.floor(steps.length * 0.95)];
           const wrap = lineDiff(im, ch, N - 1, 0, rows);
-          expect(wrap).toBeLessThanOrEqual(inside * 3 + 6);
+          expect(wrap).toBeLessThanOrEqual(p95 + 1);
         }
     }
+  });
+
+  it("every channel repeats exactly a tile on (not only where a line hides the wrap)", () => {
+    const n = modernNoise();
+    let seed = 12345;
+    const rnd = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    const near = (a: readonly number[], b: readonly number[]) =>
+      a.every((x, i) => Math.abs(x - b[i]) < 1e-6);
+    for (let k = 0; k < 300; k += 1) {
+      const u = rnd();
+      const v = rnd();
+      for (const f of [modernAAt, modernBAt]) {
+        const at = f(u, v, n);
+        expect(near(at, f(u + 1, v, n))).toBe(true);
+        expect(near(at, f(u, v + 1, n))).toBe(true);
+        expect(near(at, f(u - 2, v - 3, n))).toBe(true);
+      }
+      // The mural runs on along a wall (it has a top and a foot).
+      expect(near(muralAt(u, v, n), muralAt(u + 1, v, n))).toBe(true);
+    }
+  });
+
+  it("is made once and kept: later calls (and a dispose) keep the same tiles", () => {
+    expect(modernTextures()).toBe(tex);
+    tex.dispose();
+    expect(modernTextures()).toBe(tex);
+    expect(img(tex.a).data.length).toBe(MODERN_PX * MODERN_PX * 4);
   });
 
   it("the mural is in colour: blue sky over a blue sea, sand at the foot", () => {
@@ -145,7 +181,10 @@ describe("the shader's modern finishes", () => {
       expect(out.includes(MODERN_DETAIL_LINE)).toBe(
         layer === "shell" || layer === "wood"
       );
-      expect(out.includes("vTile > 17.5")).toBe(layer === "glass");
+      // The emergency branch takes tile 18 only (not the panes' 19).
+      expect(out.includes("vTile > 17.5 && vTile < 18.5")).toBe(
+        layer === "glass"
+      );
       // The head comes before main (and its varyings before it).
       expect(out.indexOf("modernBase(vec3")).toBeLessThan(
         out.indexOf("void main()")
@@ -168,6 +207,7 @@ describe("the shader's modern finishes", () => {
     const rooms = TITANIC_INTERIOR.rooms.length;
     const before = LAYERS.map((l) => roomShaders(l, rooms).fragment);
     const water = waterMaterials(rooms);
+    const detail = detailTexture();
     const u = water.surface.uniforms;
     const mats = roomMaterials(
       rooms,
@@ -179,7 +219,7 @@ describe("the shader's modern finishes", () => {
         uTorchDir: u.uTorchDir,
         uTime: u.uTime,
       },
-      detailTexture()
+      detail
     );
     const plain = roomMaterials(
       rooms,
@@ -191,7 +231,7 @@ describe("the shader's modern finishes", () => {
         uTorchDir: { value: new Vector3() },
         uTime: u.uTime,
       },
-      detailTexture()
+      detail
     );
     const mu = applyModern(mats, tex);
     for (const layer of LAYERS) {
@@ -205,6 +245,17 @@ describe("the shader's modern finishes", () => {
       expect(plain[layer].uniforms.uModernA).toBeUndefined();
     }
     expect(mu.uEmergency.value).toBe(1);
+    // Again (a rebuild, an effect run twice): nothing inserted twice, the
+    // same uniforms back.
+    const once = LAYERS.map((l) => mats[l].fragmentShader);
+    const again = applyModern(mats, tex);
+    expect(LAYERS.map((l) => mats[l].fragmentShader)).toEqual(once);
+    expect(again.uEmergency).toBe(mu.uEmergency);
+    expect(again.uModernA).toBe(mu.uModernA);
+    for (const l of LAYERS)
+      expect(
+        mats[l].fragmentShader.split("uniform sampler2D uModernA;")
+      ).toHaveLength(2);
     expect(LAYERS.map((l) => roomShaders(l, rooms).fragment)).toEqual(before);
     mats.dispose();
     plain.dispose();

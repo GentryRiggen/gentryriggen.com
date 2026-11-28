@@ -1,4 +1,10 @@
-import type { ModernPieceId } from "@/lib/shipwreck/interior/modernPieces";
+import {
+  POOL_BASIN_LX,
+  POOL_BASIN_LY,
+  POOL_COPING_M,
+  THEATRE_SEAT_W,
+  type ModernPieceId,
+} from "@/lib/shipwreck/interior/modernPieces";
 import {
   Builder,
   COLOR,
@@ -503,8 +509,8 @@ export function atriumStair(
 
 // --- The theatre --------------------------------------------------------------------
 
-/** A theatre seat's width (m). */
-export const SEAT_W = 0.55;
+/** A theatre seat's width (m), lib's (its footprint: `seatRowFootprint`). */
+export const SEAT_W = THEATRE_SEAT_W;
 
 /**
  * A row of theatre seats (default ten, 5.5 m) facing +x: red velvet seats
@@ -727,11 +733,11 @@ export function stageLights(
 // --- The pool ---------------------------------------------------------------------
 
 /** The pool's basin (m): its water's plan and depth. */
-export const POOL_LX = 9;
-export const POOL_LY = 4.5;
+export const POOL_LX = POOL_BASIN_LX;
+export const POOL_LY = POOL_BASIN_LY;
 export const POOL_DEPTH_M = 1.4;
-/** The coping round the basin (m). */
-const COPING_M = 0.4;
+/** The coping round the basin (m): walkable, outside its footprint. */
+const COPING_M = POOL_COPING_M;
 
 /**
  * The pool: a basin tiled in pool blue (a deep blue band at the waterline,

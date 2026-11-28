@@ -85,18 +85,41 @@ export const MODERN_PIECE_MOUNT: Record<ModernPieceId, PieceMount> = {
   "emergency-lamp": "wall",
 };
 
+/** A theatre seat's width (m): a row of n seats is n × this wide. */
+export const THEATRE_SEAT_W = 0.55;
+/** A theatre seat row's depth front to back (m). */
+export const THEATRE_ROW_DEPTH_M = 0.8;
+
+/**
+ * A row of `seats` theatre seats' footprint: use it for a row of any other
+ * length than the default ten (`MODERN_PIECE_FOOTPRINT` holds ten).
+ */
+export function seatRowFootprint(seats: number): { lx: number; ly: number } {
+  if (!(Number.isInteger(seats) && seats >= 1))
+    throw new Error(`seat row: ${seats} seats`);
+  return { lx: THEATRE_ROW_DEPTH_M, ly: seats * THEATRE_SEAT_W };
+}
+
+/** The pool's basin (m): its water's plan; the coping round it is walkable. */
+export const POOL_BASIN_LX = 9;
+export const POOL_BASIN_LY = 4.5;
+/** The stone coping round the basin (m), outside its footprint. */
+export const POOL_COPING_M = 0.4;
+
 /**
  * The floor footprint of each modern piece that can block the walker (m),
  * as `PIECE_FOOTPRINT`. A seat row is ten 0.55 m seats (the theatre's
- * sections are about 5.9 m between the aisles' 1.1 m clear); the pool is
- * its 9 × 4.5 m basin and coping; a cabin bed is a twin (two pushed
- * together make the stateroom's queen, as on the real ship).
+ * sections are about 5.9 m between the aisles' 1.1 m clear; another
+ * length's is `seatRowFootprint(n)`); the pool blocks its 9 × 4.5 m basin
+ * only, its coping walkable (the spec: "its edge walkable"); a cabin bed
+ * is a twin (two pushed together make the stateroom's queen, as on the
+ * real ship).
  */
 export const MODERN_PIECE_FOOTPRINT: Partial<
   Record<ModernPieceId, { lx: number; ly: number }>
 > = {
-  "theatre-seat-row": { lx: 0.8, ly: 5.5 },
-  "pool-edge": { lx: 9.8, ly: 5.3 },
+  "theatre-seat-row": seatRowFootprint(10),
+  "pool-edge": { lx: POOL_BASIN_LX, ly: POOL_BASIN_LY },
   lounger: { lx: 1.95, ly: 0.7 },
   "cabin-bed": { lx: 2.0, ly: 0.9 },
   "cabin-sofa": { lx: 0.85, ly: 1.8 },
