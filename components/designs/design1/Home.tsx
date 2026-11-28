@@ -68,16 +68,18 @@ function HomeContent() {
 
       {/* SEO: Hidden content for search engines and screen readers */}
       <div className="sr-only">
-        <h1>Gentry Riggen — Software Leader & Developer</h1>
+        <h1>Gentry Riggen, engineering leader building with AI agents</h1>
         <p>
-          I build products and lead teams using React, Next.js, Node.js,
-          TypeScript, Tailwind CSS, Postgres, Prisma, GraphQL, Docker,
-          Terraform, GitHub Actions, and more. Focused on leading projects and
-          empowering teams to ship exceptional work while still getting hands
-          dirty with code.
+          I turn ideas into things you can click. 15 years across defense,
+          fitness, CRM, edtech, payments and sports apps; today I lead software
+          engineering at JBREC. Most of my building now happens with AI agents:
+          they write the code, I set the direction, review the work and own what
+          ships. My team builds AI-driven products on top of our data.
         </p>
         <h2>Side projects</h2>
-        <p>Games I build for (and get QA&apos;d by) my two boys:</p>
+        <p>
+          Games I build with AI agents for my two boys, who are also my QA team:
+        </p>
         <ul>
           {GAMES.map((game) => (
             <li key={game.id}>
@@ -91,8 +93,9 @@ function HomeContent() {
           <li>Frontend: React, Next.js, Tailwind CSS, React Native</li>
           <li>Backend: Node.js, GraphQL, Prisma, Postgres</li>
           <li>DevOps: Docker, Terraform, GitHub Actions, CI/CD</li>
+          <li>AI: Claude Code, agentic coding, LLM-powered apps, MCP</li>
           <li>
-            Leadership: Team Building, Architecture, Code Review, Mentorship
+            Leadership: Hiring, Coaching, Architecture, Getting projects shipped
           </li>
         </ul>
         <h2>Connect</h2>

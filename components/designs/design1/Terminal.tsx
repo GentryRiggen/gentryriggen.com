@@ -19,10 +19,8 @@ import { SPINNER_VERBS } from "./Spinner";
 import Spinner from "./Spinner";
 import TerminalWindow from "./TerminalWindow";
 import Shipped from "./Shipped";
-import { useShipped } from "./ShippedContext";
 import ToolCall from "./ToolCall";
 import WelcomeBox from "./WelcomeBox";
-import { GAMES } from "./games";
 
 /** How long the spinner thinks before the first and each later tool call */
 const FIRST_STEP_DELAY = 900;
@@ -67,12 +65,9 @@ export default function Terminal({
   isActive = true,
 }: TerminalProps) {
   const reducedMotion = usePrefersReducedMotion();
-  const shipped = useShipped();
   const [stepsShown, setStepsShown] = useState(0);
   const [isSkipped, setIsSkipped] = useState(false);
-  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [isCleared, setIsCleared] = useState(false);
-  const startedAtRef = useRef(0);
   /** A key skipped the boot: focus the input once it exists. */
   const focusWhenReadyRef = useRef(false);
   /** The printable key that skipped the boot, so it isn't lost. */
@@ -88,10 +83,6 @@ export default function Terminal({
     if (typeof bottomRef.current?.scrollIntoView === "function") {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, []);
-
-  useEffect(() => {
-    startedAtRef.current = Date.now();
   }, []);
 
   // Reveal one tool call at a time, with the spinner thinking in between.
@@ -145,9 +136,6 @@ export default function Terminal({
       focusWhenReadyRef.current = false;
       inputRef.current?.focus();
     }
-    setElapsedSeconds(
-      Math.max(1, Math.round((Date.now() - startedAtRef.current) / 1000))
-    );
   }, [isBootComplete]);
 
   // Auto-scroll as boot content appears
@@ -195,26 +183,6 @@ export default function Terminal({
             <Spinner
               verb={SPINNER_VERBS[visibleSteps % SPINNER_VERBS.length]}
             />
-          )}
-
-          {isBootComplete && (
-            <div className="animate-fadeIn">
-              <div className="mb-2 flex gap-2">
-                <span className="text-term-fg select-none" aria-hidden="true">
-                  ⏺
-                </span>
-                <p className="text-term-fg">
-                  A software leader who still ships: {GAMES.length} games
-                  {shipped.total > 0 && ` and ${shipped.total} releases`} deep
-                  for two very demanding QA testers. Want to work together? Type{" "}
-                  <span className="text-term-accent">hire me</span>.
-                </p>
-              </div>
-              <p className="mb-5 text-term-muted">
-                <span className="text-term-accent">✻</span> Brewed for{" "}
-                {elapsedSeconds}s
-              </p>
-            </div>
           )}
         </>
       )}

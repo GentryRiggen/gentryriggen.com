@@ -15,7 +15,9 @@ export default function Whoami() {
       </div>
       <div>
         <p className="text-term-fg font-bold text-lg">Gentry Riggen</p>
-        <p className="text-term-accent">Software Leader &amp; Developer</p>
+        <p className="text-term-accent">
+          Engineering leader building with AI agents
+        </p>
       </div>
     </div>
   );

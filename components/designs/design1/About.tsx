@@ -2,8 +2,8 @@
 export default function About() {
   return (
     <p className="leading-relaxed">
-      Off the clock I&apos;m with my beautiful wife and our two boys 👨‍👩‍👦‍👦, at the
-      CrossFit box 🏋️, or out on the golf course ⛳.
+      Off the clock I&apos;m with my wife and our two boys, at CrossFit most
+      weekday mornings, or on a golf course hoping nobody&apos;s keeping score.
     </p>
   );
 }

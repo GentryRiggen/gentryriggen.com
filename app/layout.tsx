@@ -24,11 +24,15 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://gentryriggen.com"),
   title: "Gentry Riggen",
   description:
-    "Gentry Riggen — Software Leader & Developer specializing in React, Next.js, TypeScript, and Node.js. Building products and leading teams to ship exceptional work.",
+    "Gentry Riggen: Engineering leader building with AI agents. I lead software engineering at JBREC, build AI-driven products, and ship games for my two boys along the way.",
   keywords: [
     "Gentry Riggen",
     "software engineer",
     "software leader",
+    "engineering leadership",
+    "AI agents",
+    "agentic coding",
+    "Claude Code",
     "React",
     "Next.js",
     "TypeScript",
@@ -42,11 +46,12 @@ export const metadata: Metadata = {
   ],
   alternates: {
     canonical: "https://gentryriggen.com",
+    types: { "text/markdown": "https://gentryriggen.com/llms.txt" },
   },
   openGraph: {
     title: "Gentry Riggen",
     description:
-      "Software Leader & Developer specializing in React, Next.js, TypeScript, and Node.js. Building products and leading teams to ship exceptional work.",
+      "Engineering leader building with AI agents. I lead software engineering at JBREC, build AI-driven products, and ship games for my two boys along the way.",
     url: "https://gentryriggen.com",
     siteName: "Gentry Riggen",
     type: "website",
@@ -56,7 +61,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Gentry Riggen",
     description:
-      "Software Leader & Developer specializing in React, Next.js, TypeScript, and Node.js. Building products and leading teams to ship exceptional work.",
+      "Engineering leader building with AI agents. I lead software engineering at JBREC, build AI-driven products, and ship games for my two boys along the way.",
   },
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
@@ -91,10 +96,14 @@ export default function RootLayout({
                 "@type": "Person",
                 name: "Gentry Riggen",
                 url: "https://gentryriggen.com",
-                jobTitle: "Software Leader & Developer",
+                jobTitle: "Director of Software Engineering",
                 description:
-                  "Software leader and developer specializing in React, Next.js, TypeScript, and Node.js. Building products and leading teams to ship exceptional work.",
+                  "Engineering leader building with AI agents. I lead software engineering at JBREC, build AI-driven products, and ship games for my two boys along the way.",
                 knowsAbout: [
+                  "Engineering leadership",
+                  "AI agents",
+                  "Agentic coding",
+                  "LLM applications",
                   "TypeScript",
                   "JavaScript",
                   "React",

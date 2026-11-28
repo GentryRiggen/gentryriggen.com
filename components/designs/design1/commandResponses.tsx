@@ -85,8 +85,8 @@ const UNKNOWN_RESPONSES: readonly string[] = [
   "Error: ENOENT - No such command or file. But 'help' works!",
   "Unknown command. But I appreciate your curiosity! Type 'help'.",
   "Segmentation fault (just kidding). Try 'help'.",
-  "$> command not found. Try 'hire me' instead.",
-  "I asked ChatGPT and even it doesn't know that command.",
+  "$> command not found. Try 'contact' instead.",
+  "I asked Claude and even it doesn't know that command.",
   "That command requires a firmware update. Try 'help' in the meantime.",
   "Permission denied. Just kidding - I just don't know that one.",
   "Kernel panic! Not really. But I don't know that command.",
@@ -112,9 +112,9 @@ const UNKNOWN_RESPONSES: readonly string[] = [
 
 const SUDO_RESPONSES: readonly string[] = [
   "sudo? I don't even know you!",
-  "Access denied. Root privileges require a job offer first.",
+  "Access denied. Not even my AI agents get root.",
   "Nice try! sudo access is reserved for production servers.",
-  "Permission denied. Try 'sudo hire me' instead.",
+  "Permission denied. Try 'sudo make me a sandwich' instead.",
   "You're not in the sudoers file. This incident will be reported.",
   "Root access? In this economy?",
 ];
@@ -171,7 +171,7 @@ ${[
   ["shipped", "What shipped lately"],
   ["skills", "Show skills"],
   ["links", "Show social links"],
-  ["hire me", "Get in touch"],
+  ["contact", "Get in touch"],
   ...GAMES.map((game) => [game.command, game.help]),
   ["ls", "List directory contents"],
   ["pwd", "Print working directory"],
@@ -242,11 +242,11 @@ function cowsay(message: string): string {
 }
 
 const COWSAY_MESSAGES: readonly string[] = [
-  "Moo! Hire this guy!",
+  "Moo! This terminal was built with Claude Code.",
   "I'm a cow in a terminal. Life is good.",
   "TypeScript is udderly amazing.",
   "This portfolio is legen-dairy.",
-  "Got milk? Got code? Got hired?",
+  "Got milk? Got code? Got agents?",
 ];
 
 // ---------------------------------------------------------------------------
@@ -422,7 +422,7 @@ export function getCommandResponse(
   if (lower === "ultrathink" || lower === "think harder") {
     return {
       output:
-        "✻ Thinking very hard...\n\nConclusion: you should probably hire me.",
+        "✻ Thinking very hard...\n\nConclusion: you should probably play Shipwreck.",
       shouldClear: false,
     };
   }
@@ -442,6 +442,7 @@ drwxr-xr-x  3 gentry staff   96 ${new Date().toLocaleDateString()}  ..
 -rw-r--r--  1 gentry staff  420 ${new Date().toLocaleDateString()}  about.txt
 -rw-r--r--  1 gentry staff  512 ${new Date().toLocaleDateString()}  bio.txt
 -rw-r--r--  1 gentry staff  256 ${new Date().toLocaleDateString()}  links.txt
+-rw-r--r--  1 gentry staff 2048 ${new Date().toLocaleDateString()}  llms.txt
 -rw-r--r--  1 gentry staff 1337 ${new Date().toLocaleDateString()}  resume.pdf
 drwxr-xr-x  ${GAMES.length + 2} gentry staff  192 ${new Date().toLocaleDateString()}  side-projects/
 -rw-r--r--  1 gentry staff  128 ${new Date().toLocaleDateString()}  skills.md`,
@@ -495,6 +496,22 @@ drwxr-xr-x  ${GAMES.length + 2} gentry staff  192 ${new Date().toLocaleDateStrin
     return { output: currentDateString(), shouldClear: false };
   }
 
+  // --- cat llms.txt ---
+  if (lower === "cat llms.txt" || lower === "llms.txt") {
+    return {
+      output: (
+        <>
+          That one&apos;s for the robots: this whole page as plain text, for AI
+          agents. Curious what they see?{" "}
+          <a href="/llms.txt" className={LINK_CLASS}>
+            gentryriggen.com/llms.txt
+          </a>
+        </>
+      ),
+      shouldClear: false,
+    };
+  }
+
   // --- cat resume.pdf ---
   if (
     lower === "cat resume.pdf" ||
@@ -514,7 +531,7 @@ drwxr-xr-x  ${GAMES.length + 2} gentry staff  192 ${new Date().toLocaleDateStrin
     if (file === "about.md") {
       return {
         output:
-          "# About Gentry Riggen\n\nSoftware leader and developer passionate about building great\nproducts with great teams. Based in the real world, deployed\nto the cloud.",
+          "# About Gentry Riggen\n\nEngineering leader building with AI agents. I turn ideas into\nthings you can click, and lead teams that do the same.",
         shouldClear: false,
       };
     }
