@@ -17,6 +17,14 @@ export interface Release {
 
 export const CHANGELOG: readonly Release[] = [
   {
+    version: "1.17.1",
+    date: "2026-11-27",
+    title: "No more door arrow",
+    highlights: [
+      "No more big yellow arrow while you walk. The doors still glow, and the room buttons still take you straight inside",
+    ],
+  },
+  {
     version: "1.17.0",
     date: "2026-11-27",
     title: "Walk the Costa Concordia",

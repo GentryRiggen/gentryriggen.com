@@ -10,8 +10,6 @@ import {
   hullClearanceM,
   resetWalkInput,
   walkInput,
-  walkMapFor,
-  type WalkMap,
 } from "@/lib/shipwreck/walk";
 import Hud from "@/components/shipwreck/ui/Hud";
 import { createSceneRuntime } from "../runtime";
@@ -26,7 +24,6 @@ jest.mock("@react-three/fiber", () => ({
   },
 }));
 
-const TITANIC_MAP = walkMapFor("titanic") as WalkMap;
 let track: SimTrack;
 beforeAll(() => {
   track = simulate(titanic, titanic.realNight);
@@ -297,42 +294,6 @@ describe("walking in the scene", () => {
     act(() => store.getState().leaveWalk());
     frame(0.3);
     expect(runtime.walkDoor).toBe(-1);
-  });
-
-  it("walkArrow points at the nearest open deck door, and is -1 inside, after the break or not walking", () => {
-    const { store, runtime, frame, hooks } = setup();
-    const idOf = () =>
-      runtime.walkArrow < 0 ? null : TITANIC_MAP.stairs[runtime.walkArrow].id;
-    act(() => store.getState().startWalk());
-    frame(0.3);
-    // From the spawn, far off: still the starboard staircase door.
-    expect(idOf()).toBe("gs-door-starboard");
-    hooks.placeWalk("forecastle", 110, 0, 0);
-    frame(0.3);
-    frame(0.3);
-    expect(idOf()).toBe("third-class-door");
-    hooks.placeWalk("gs-boat", 34, 0, 0);
-    frame(0.3);
-    frame(0.3);
-    expect(runtime.walkInside).toBe(true);
-    expect(idOf()).toBeNull();
-    hooks.goOutside();
-    frame(0.3);
-    frame(0.3);
-    expect(idOf()).toMatch(/^gs-door-/);
-    act(() => store.getState().leaveWalk());
-    frame(0.3);
-    expect(runtime.walkArrow).toBe(-1);
-    // Past the break: on her stern's deck, no arrow.
-    act(() => store.getState().startWalk());
-    act(() =>
-      store
-        .getState()
-        .seek(track.events.find((e) => e.kind === "breakup")!.t + 5)
-    );
-    frame(0.3);
-    frame(0.3);
-    expect(runtime.walkArrow).toBe(-1);
   });
 
   it("the lift takes you from B deck to E deck and bumps the wipe", () => {
