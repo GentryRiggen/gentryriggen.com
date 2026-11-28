@@ -6,7 +6,6 @@ export * from "./merge";
 export * from "./water";
 export * from "./easeLevel";
 export * from "./doorExit";
-export * from "./doorArrow";
 export * from "./entries";
 export { TITANIC_INTERIOR } from "./titanic";
 export { interiorFor } from "../walk/registry";

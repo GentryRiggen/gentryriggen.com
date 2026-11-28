@@ -113,15 +113,6 @@ never greyed. The HUD starts the walk and stands the walker there with
 `requestWalkPlace` (the test hooks' path), so a room start is the same as
 walking in. A new ship adds entries as data.
 
-## The way in (`doorArrow.ts`, 1.16)
-
-`doorArrow(map, area, at, depthAt, broken)`: the deck door the amber arrow
-stands over. Only doors whose inside end is dry; the nearest on the
-walker's own deck area, else the nearest anywhere (from the forecastle or
-the poop); −1 inside a room, after the break, and on a map without deck
-doors. WalkRunner writes it to `runtime.walkArrow` with `walkDoor`;
-`components/shipwreck/interior/DoorArrow.tsx` draws it.
-
 ## Lights (`lights.ts`)
 
 `roomPower(power, depthM, t)`: the ship's power (the sim's `frame.power`)

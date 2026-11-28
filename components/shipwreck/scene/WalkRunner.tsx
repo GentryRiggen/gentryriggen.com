@@ -9,7 +9,6 @@ import type { PlaybackStore } from "@/lib/shipwreck/playback";
 import type { ShipSpec } from "@/lib/shipwreck/ships/types";
 import type { BodyPose, SimFrame } from "@/lib/shipwreck/sim/track";
 import {
-  doorArrow,
   doorExit,
   doorToEnter,
   interiorFor,
@@ -64,7 +63,7 @@ import {
  * walker (the level Interior shows, eased, or the room's target while it
  * is not drawn), deck doors open while she is whole, and the runner writes
  * `walkInside`, `walkRoom`, `walkCameInBy` and `walkLift` (and, on deck,
- * `walkDoor` and the way-in arrow's `walkArrow`). The door and Go
+ * `walkDoor`). The door and Go
  * outside buttons (`walkInput.door`, `.outside`) and the test hooks'
  * `walkPlace` are taken here. Inside when she breaks, or washed out by
  * the water, is the same splash into the sea as going in from the deck.
@@ -209,7 +208,6 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
           : {}),
       } as StepContext,
       feet: [0, 0, 0] as V3,
-      at: [0, 0] as [number, number],
       /** The input while the lift's wipe holds the stick: the look only. */
       held: { forward: 0, strafe: 0, lookDx: 0, lookDy: 0 } as WalkInput,
     }),
@@ -510,12 +508,6 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
         runtime.walkDoor = near
           ? map.stairs.findIndex((st) => st.id === near.id)
           : -1;
-        // The arrow over the nearest open deck door (1.16).
-        const at = scratch.at;
-        at[0] = w.x;
-        at[1] = w.y;
-        runtime.walkArrow =
-          w.part === "whole" ? doorArrow(map, w.area, at, depthAt, broken) : -1;
       }
 
       // The door button and Go outside (read once, then cleared).
@@ -818,7 +810,6 @@ const DOOR_LOOK_S = 0.25;
 /** Not in a room (in the sea, a boat or not walking). */
 function notInside(runtime: SceneRuntime): void {
   runtime.walkDoor = -1;
-  runtime.walkArrow = -1;
   runtime.walkInside = false;
   runtime.walkRoom = null;
 }
