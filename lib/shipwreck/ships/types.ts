@@ -421,6 +421,12 @@ export interface ShipSpec {
   stations: readonly HullStation[]; // ≥ 41 stations, aft to fwd, the full hull to the top of the shelter deck
   sheerZ: (x: number) => number; // height of the uppermost continuous deck edge at x
   /**
+   * The deck whose height `sheerZ` follows: `deckZAt` measures every deck's
+   * sheer from it (deck z + sheerZ(x) - that deck's z). Missing: "C" if the
+   * ship has one, else "Upper" (every ship before the Concordia).
+   */
+  sheerRefDeck?: string;
+  /**
    * Buoyant volume above the hull once sealed decks submerge (coarse
    * boxes, from the deck edge, or their own `baseZ`, up to `topZ`). `halfBreadthM`: a deckhouse
    * inboard of an open deck, no wider than this either side of the centre

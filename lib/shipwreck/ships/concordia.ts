@@ -734,6 +734,7 @@ export const concordia: ShipSpec = {
   lcg: -5.8,
   stations: STATIONS,
   sheerZ: concordiaSheerZ,
+  sheerRefDeck: "3",
   superstructure: [
     // Aft terraces (decks 4–9), the main block (to deck 11) and the top
     // tier with the pool decks, sports deck and spa (to deck 14).
