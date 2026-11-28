@@ -17,6 +17,8 @@ import {
   easeLevel,
   emergencyFlicker,
   interiorFor,
+  ROOM_DARK_AT_M,
+  ROOM_FLICKER_FROM_M,
   roomPower,
   roomsOpen,
   roomWaterTargets,
@@ -35,6 +37,12 @@ import { walkMapFor, type WalkMap } from "@/lib/shipwreck/walk";
 import type { InteriorLevels, SceneRuntime } from "../scene/runtime";
 import { doorGlowGeometry } from "./doorGlow";
 import { buildInterior, ZONE_LAYERS } from "./kit";
+import {
+  buildLiftCars,
+  disposeLiftCars,
+  setLiftSlot,
+  updateLiftCars,
+} from "./liftCar";
 import { glassMaterial, roomMaterials, type SharedUniforms } from "./materials";
 import { applyModern, modernTextures } from "./modernTextures";
 import { detailTexture } from "./textures";
@@ -89,7 +97,14 @@ import {
  * emergency level `emergencyFlicker` dips her lamps (never black; softened
  * for reduced motion) and is written to `runtime.interiorEmergency` for
  * her emergency lamps' shader. `runtime.walkWet` is the water around the
- * walker (the sound's wash).
+ * walker (the sound's wash). Reduced motion softens her lamps' dips, the
+ * emergency's and the water's.
+ *
+ * Her glass lifts (Task 8, liftCar.ts): the cars and shafts are built
+ * with her rooms and placed each frame; while riding (`runtime.walkRide`)
+ * every zone the shaft passes is drawn instead of the walker's room's
+ * (the deck 0 lobby, the atrium, the deck 7 lobby), so the decks slide by
+ * through the glass.
  */
 
 /** The rooms draw after everything else; the clear just before. */
@@ -142,6 +157,24 @@ export function lampFlicker(power: number, seconds: number): number {
   const k = Math.floor(seconds * 14);
   const h = (((k * 2654435761) >>> 0) % 1000) / 1000;
   return h < 0.12 ? 0.3 + h : 0.82 + 0.18 * h;
+}
+
+/**
+ * A room's lamps (`roomPower`); hers under reduced motion keep only a share
+ * of the water's flicker dip (REDUCED_DIP, as the emergency dip), never
+ * the going out. The Titanic's are `roomPower` as ever.
+ */
+function lampPower(
+  power: number,
+  depthM: number,
+  t: number,
+  hers: boolean,
+  reduced: boolean
+): number {
+  const lit = roomPower(power, depthM, t, hers);
+  if (!hers || !reduced) return lit;
+  if (!(depthM >= ROOM_FLICKER_FROM_M) || depthM >= ROOM_DARK_AT_M) return lit;
+  return power - (power - lit) * REDUCED_DIP;
 }
 
 export default function Interior({
@@ -273,6 +306,12 @@ function build(
       pane,
     });
   }
+  // Her glass lifts' cars and shafts (none for a ship without shafts).
+  const lifts = buildLiftCars(interior, spec, b.roomZone, mats.metal, paneMat);
+  if (lifts) {
+    for (const m of lifts.group.children) (m as Mesh).renderOrder = ROOMS_ORDER;
+    group.add(lifts.group);
+  }
   const glow = new Mesh(doorGlowGeometry(interior, map, spec), glowMat);
   glow.name = "interior-door-glow";
   group.add(glow);
@@ -319,6 +358,7 @@ function build(
     }
   return {
     ...b,
+    lifts,
     mats,
     modern,
     daylight,
@@ -366,6 +406,7 @@ function build(
 }
 
 function dispose(b: Built): void {
+  if (b.lifts) disposeLiftCars(b.lifts);
   for (const { meshes } of b.zones)
     for (const m of meshes) m.geometry.dispose();
   b.glow.geometry.dispose();
@@ -430,6 +471,9 @@ function InteriorScene({
       showModel(b, null);
       scene.remove(b.group);
       if (runtime.interiorLevels === b.levels) runtime.interiorLevels = null;
+      // Nothing reads a stale dip or wash once her rooms are gone.
+      runtime.interiorEmergency = 1;
+      runtime.walkWet = 0;
       if (built.current === b) built.current = null;
       dispose(b);
     };
@@ -472,9 +516,14 @@ function InteriorScene({
       gl.compile(scene, camera);
     }
     // The walker's room's zone and the zones it opens onto; none on deck.
+    // Riding her glass lift: every zone its shaft passes instead.
     const room = runtime.walkRoom;
     const zone = room !== null ? b.roomZone.get(room) : undefined;
-    const seen = zone !== undefined ? b.seen.get(zone) : undefined;
+    const ride = runtime.walkRide;
+    const rideZones =
+      ride && b.lifts ? b.lifts.zones.get(ride.lift) : undefined;
+    const seen =
+      rideZones ?? (zone !== undefined ? b.seen.get(zone) : undefined);
     // In a deck room, inside wins (after the clear); outside, it is her
     // exterior's (before it).
     const deckInside = room !== null && b.deckRooms.has(room);
@@ -567,7 +616,8 @@ function InteriorScene({
       const floorY =
         m[1] * f[k * 3] + m[5] * f[k * 3 + 1] + m[9] * f[k * 3 + 2] + m[13];
       b.depth[k] = lv.shown[k] - floorY;
-      own[k] = roomPower(shipPower, b.depth[k], p.t, hers) * dipTo;
+      own[k] =
+        lampPower(shipPower, b.depth[k], p.t, hers, reduced.current) * dipTo;
     }
     // A long hall's parts: each by the water over its own middle.
     for (let i = 0; i < b.segments.length; i += 1) {
@@ -575,7 +625,9 @@ function InteriorScene({
       if (!now[r]) continue;
       const floorY =
         m[1] * f[k * 3] + m[5] * f[k * 3 + 1] + m[9] * f[k * 3 + 2] + m[13];
-      own[k] = roomPower(shipPower, lv.shown[r] - floorY, p.t, hers) * dipTo;
+      own[k] =
+        lampPower(shipPower, lv.shown[r] - floorY, p.t, hers, reduced.current) *
+        dipTo;
     }
     // A dark room still catches a little of a lit room open to it (down
     // a stair, through a doorway): never pitch black beside the light.
@@ -621,6 +673,21 @@ function InteriorScene({
     // Held a moment either way, so a flicker's dip does not blink it.
     // In a long hall, the part the walker stands in.
     const rk = room !== null ? b.slot.get(room) : undefined;
+    // Her glass cars: placed, shown with their landings, lit as the room.
+    if (b.lifts) {
+      if (rk !== undefined) setLiftSlot(b.lifts, rk);
+      updateLiftCars(
+        b.lifts,
+        interior,
+        spec,
+        ride,
+        room,
+        seen,
+        open,
+        state.clock.elapsedTime,
+        dt
+      );
+    }
     const info = runtime.walkInfo;
     const k =
       rk !== undefined && b.firstPart[rk] >= 0 && info

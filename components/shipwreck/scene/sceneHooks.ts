@@ -116,6 +116,7 @@ export function sceneHooks(
         lookUnder: w.lookUnder,
         area: info.area,
         inside: info.inside,
+        ride: info.ride ?? null,
       };
     },
     placeWalk: (area, x, y, yaw) => {
@@ -126,6 +127,9 @@ export function sceneHooks(
     },
     goOutside: () => {
       walkInput.outside = true;
+    },
+    rideLift: (dir) => {
+      if (dir === "up" || dir === "down") walkInput.lift = dir;
     },
     setLookUnder: (on) => get().setLookUnder(on),
   };

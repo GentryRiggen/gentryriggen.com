@@ -330,7 +330,7 @@ describe("her boats' blockers", () => {
 const lifted = liftCars(interior);
 const allRooms: readonly Room[] = [...interior.rooms, ...lifted.rooms];
 const allSeams = [...interior.seams, ...lifted.seams];
-const allLinks = [...interior.links, ...lifted.links];
+const allLinks = [...interior.links];
 const byId = new Map(allRooms.map((r) => [r.id, r]));
 const walkable = allRooms.filter((r) => !r.noWalk);
 /** Her rooms inside (not the pool hall, a deck room). */
@@ -488,7 +488,7 @@ describe("her rooms (1.18)", () => {
     expect(lifts[1].car.max[1]).toBeLessThan(0);
   });
 
-  it("merges one lift-car area per stop, seamed to its landing, with stopgap lift links between stops", () => {
+  it("merges one lift-car area per stop, seamed to its landing, and no lift links (the cars ride)", () => {
     for (const l of interior.lifts ?? []) {
       for (const s of l.stops) {
         const id = `${l.id}@${s.deck}`;
@@ -510,24 +510,12 @@ describe("her rooms (1.18)", () => {
         ).toBe(true);
         expect(byId.get(id)!.ceilingM).toBe(LIFT_CAR_CEILING_M);
       }
-      // A lift link between each pair of consecutive stops (Task 8 rides).
-      for (let i = 0; i + 1 < l.stops.length; i += 1) {
-        const a = `${l.id}@${l.stops[i].deck}`;
-        const b = `${l.id}@${l.stops[i + 1].deck}`;
-        const link = map.stairs.find(
-          (st) => st.kind === "lift" && st.from.area === a && st.to.area === b
-        );
-        expect([a, b, !!link]).toEqual([a, b, true]);
-      }
     }
-    expect(lifted.links).toHaveLength(2 * 4);
-    for (const l of lifted.links) expect(map.stairs).toContainEqual(l);
+    // No links between a shaft's cars: the ride (lift.ts) takes the walker.
+    expect(map.stairs.filter((st) => st.kind === "lift")).toEqual([]);
+    expect(map.lifts).toBe(interior.lifts);
     // The Titanic has no shafts: nothing added.
-    expect(liftCars(TITANIC_INTERIOR)).toEqual({
-      rooms: [],
-      seams: [],
-      links: [],
-    });
+    expect(liftCars(TITANIC_INTERIOR)).toEqual({ rooms: [], seams: [] });
   });
 
   it("lays every room on one of her decks, counter-clockwise and simple", () => {
@@ -718,6 +706,10 @@ describe("her rooms (1.18)", () => {
       };
       for (const s of allSeams) join(s.a, s.b);
       for (const l of allLinks) join(l.from.area, l.to.area);
+      // A shaft's cars: the ride joins every stop to every other.
+      for (const l of interior.lifts ?? [])
+        for (let i = 0; i + 1 < l.stops.length; i += 1)
+          join(`${l.id}@${l.stops[i].deck}`, `${l.id}@${l.stops[i + 1].deck}`);
     }
     expect([...seen].sort()).toEqual(
       inside
@@ -751,20 +743,6 @@ describe("her rooms (1.18)", () => {
               segDist(end.at, a, b) >= WALK_RADIUS_M,
             ]).toEqual([l.id, end.area, true]);
       }
-    // A lift's two link ends in one car are apart (one up, one down).
-    for (const r of lifted.rooms) {
-      const ends = lifted.links.flatMap((l) =>
-        [l.from, l.to].filter((e) => e.area === r.id)
-      );
-      for (let i = 0; i < ends.length; i += 1)
-        for (let j = i + 1; j < ends.length; j += 1)
-          expect(
-            Math.hypot(
-              ends[i].at[0] - ends[j].at[0],
-              ends[i].at[1] - ends[j].at[1]
-            )
-          ).toBeGreaterThan(0.8);
-    }
   });
 
   it("stands each deck door's outside end on her deck, within 0.5 m of the wall it is in", () => {

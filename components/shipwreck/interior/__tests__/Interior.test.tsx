@@ -1,4 +1,4 @@
-import { act, render } from "@testing-library/react";
+import { act, cleanup, render } from "@testing-library/react";
 import { Vector3, Group, Mesh, NoBlending, type Material } from "three";
 import { lightSegments, TITANIC_INTERIOR } from "@/lib/shipwreck/interior";
 import { floorZ, walkMapFor } from "@/lib/shipwreck/walk";
@@ -6,6 +6,7 @@ import { createPlaybackStore } from "@/lib/shipwreck/playback";
 import { britannic } from "@/lib/shipwreck/ships/britannic";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { CONCORDIA_INTERIOR } from "@/lib/shipwreck/interior/concordia";
+import { liftStopZ } from "@/lib/shipwreck/interior/lift";
 import type { SimFrame } from "@/lib/shipwreck/sim/track";
 import toSea from "@/lib/shipwreck/sim/__tests__/fixtures/concordiaToSea.json";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -596,5 +597,156 @@ describe("Interior inside her (the Concordia's rooms close, seep and flicker)", 
     runtime.walkRoom = "lobby-7";
     frame(frames[1], 3, 1);
     expect(runtime.walkWet).toBeLessThan(1);
+  });
+
+  it("riding her glass lift draws every zone its shaft passes; parked, the car's zone and its seamed zones", () => {
+    const { runtime, group, frame } = setupHer([herFrame(0, -13.6)]);
+    const zonesShown = () =>
+      new Set(
+        group.children
+          .filter(
+            (c): c is Mesh =>
+              c instanceof Mesh &&
+              c.visible &&
+              /^interior-.+-(shell|wood|metal|glass|pane)$/.test(c.name)
+          )
+          .map((c) => c.name.replace(/^interior-/, "").replace(/-[a-z]+$/, ""))
+      );
+    // Parked in lift-a's car at deck 3: the atrium and what opens off it.
+    runtime.walkRoom = "lift-a@3";
+    frame(herFrame(0, -13.6));
+    const parked = zonesShown();
+    expect(parked.has("atrium")).toBe(true);
+    expect(parked.has("low-cabins")).toBe(false);
+    expect(parked.has("stateroom")).toBe(false);
+    // Riding up from the low lobby: the low lobby's, the atrium's and the
+    // deck 7 lobby's zones, only (at most three).
+    runtime.walkRoom = "lift-a@0";
+    runtime.walkRide = { lift: "lift-a", from: 0, to: 4, s: 5, z: 18 };
+    frame(herFrame(0, -13.6));
+    expect([...zonesShown()].sort()).toEqual(
+      ["atrium", "low-cabins", "pool-hall", "stateroom"].sort()
+    );
+    // The ride over, in the deck 7 car: its lobby's zone and its seamed ones.
+    runtime.walkRide = null;
+    runtime.walkRoom = "lift-a@7";
+    frame(herFrame(0, -13.6));
+    const top = zonesShown();
+    expect(top.has("stateroom")).toBe(true);
+    expect(top.has("atrium")).toBe(false);
+  });
+
+  it("draws her glass cars: the ridden one at the ride's z, the other gliding; both gone off her landings and at 30°", () => {
+    const { runtime, group, frame } = setupHer([herFrame(0, -13.6)]);
+    const lifts = group.children.find((c) => c.name === "interior-lifts")!;
+    expect(lifts).toBeDefined();
+    const car = (id: string) =>
+      lifts.children.find((c) => c.name === `interior-lift-car-${id}`) as Mesh;
+    const glass = lifts.children.find(
+      (c) => c.name === "interior-lift-glass-lift-a"
+    ) as Mesh;
+    const shafts = lifts.children.find(
+      (c) => c.name === "interior-lift-shafts"
+    ) as Mesh;
+    // Lit as the rooms (after the clear), see-through glass blended.
+    expect(car("lift-a").renderOrder).toBe(10);
+    expect((glass.material as Material).transparent).toBe(true);
+    const lift = CONCORDIA_INTERIOR.lifts![0];
+    const stop = (i: number) => liftStopZ(lift, concordia, i);
+    // On deck 3's floor: both cars come to the landing, doors open.
+    runtime.walkRoom = "atrium-3";
+    for (let i = 0; i < 600; i += 1) frame(herFrame(0, -13.6), i / 60);
+    expect(car("lift-a").visible).toBe(true);
+    expect(shafts.visible).toBe(true);
+    // Ship z is her part's three-local y.
+    expect(car("lift-a").matrix.elements[13]).toBeCloseTo(stop(1), 6);
+    expect(car("lift-b").matrix.elements[13]).toBeCloseTo(stop(1), 6);
+    expect(glass.matrix.elements[13]).toBeCloseTo(stop(1), 6);
+    // Riding lift-a: exactly at the ride's z; lift-b glides at lift speed.
+    runtime.walkRoom = "lift-a@3";
+    runtime.walkRide = { lift: "lift-a", from: 1, to: 4, s: 3, z: stop(1) + 2 };
+    const b0 = car("lift-b").matrix.elements[13];
+    let prevB = b0;
+    for (let i = 0; i < 120; i += 1) {
+      frame(herFrame(0, -13.6), 10 + i / 60);
+      expect(car("lift-a").matrix.elements[13]).toBeCloseTo(stop(1) + 2, 9);
+      const zb = car("lift-b").matrix.elements[13];
+      expect(Math.abs(zb - prevB)).toBeLessThanOrEqual(1.5 / 60 + 1e-9);
+      prevB = zb;
+    }
+    expect(car("lift-a").visible).toBe(true);
+    // Out on her deck: no cars or shafts drawn.
+    runtime.walkRide = null;
+    runtime.walkRoom = "pool-hall";
+    frame(herFrame(0, -13.6));
+    expect(car("lift-a").visible).toBe(false);
+    expect(shafts.visible).toBe(false);
+    // Her rooms closed at 30°: none even on a landing.
+    runtime.walkRoom = "atrium-3";
+    frame(herFrame(0, -13.6, 30));
+    expect(car("lift-a").visible).toBe(false);
+  });
+
+  it("builds nothing of the lifts for the Titanic (her lift is two rooms)", () => {
+    const { store } = setup();
+    act(() => store.getState().startWalk());
+    const group = mockScene.add.mock.calls[
+      mockScene.add.mock.calls.length - 1
+    ][0] as Group;
+    expect(group.children.some((c) => c.name === "interior-lifts")).toBe(false);
+  });
+
+  it("softens her rooms' water flicker for reduced motion too (never the going out)", () => {
+    // The lobby filling by the seep through the flicker band (0.3–0.6 m).
+    const frames = [herFrame(0, -13.6), herFrame(100, -13.6)];
+    const leastPower = (reducedMotion: boolean) => {
+      const original = window.matchMedia;
+      if (reducedMotion)
+        window.matchMedia = ((q: string) => ({
+          matches: q.includes("reduce"),
+          media: q,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+        })) as unknown as typeof window.matchMedia;
+      try {
+        const { store, runtime, group, frame } = setupHer(frames);
+        runtime.walkRoom = "lobby-1";
+        const lv = runtime.interiorLevels!;
+        const k = lv.slot.get("lobby-1")!;
+        const shell = group.children.find(
+          (c) => c.name === "interior-low-cabins-shell"
+        ) as Mesh;
+        const power = (
+          shell.material as unknown as {
+            uniforms: { uRoomPower: { value: Float32Array } };
+          }
+        ).uniforms.uRoomPower.value;
+        let least = 1;
+        // Shown time 72–108 s: 0.36–0.54 m of water, the flicker band.
+        for (let i = 0; i < 360; i += 1) {
+          store.setState({ t: 72 + i / 10 });
+          frame(frames[1], i / 20, 0);
+          least = Math.min(least, power[k]);
+        }
+        return least;
+      } finally {
+        window.matchMedia = original;
+      }
+    };
+    expect(leastPower(false)).toBeLessThan(0.5);
+    expect(leastPower(true)).toBeGreaterThanOrEqual(1 - 0.85 * 0.35 - 1e-6);
+  });
+
+  it("resets her emergency dip and the wash when her rooms unmount", () => {
+    const { runtime, frame } = setupHer([herFrame(0, -13.6)]);
+    runtime.walkRoom = "lobby-7";
+    frame(herFrame(0, -13.6, 30, 0.25), 0.1);
+    runtime.interiorEmergency = 0.3;
+    runtime.walkWet = 0.7;
+    cleanup();
+    expect(runtime.interiorEmergency).toBe(1);
+    expect(runtime.walkWet).toBe(0);
   });
 });

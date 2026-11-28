@@ -687,9 +687,9 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
   );
   const interior: InteriorMap = { ...given, rooms };
   const slot = new Map(rooms.map((r, k) => [r.id, k]));
-  // Her lifts' cars (one a stop, `liftCars`): plain boxes drawn with their
-  // landing (its zone, slot, water and lamps) until the glass car rides
-  // (Task 8); their doors open the landings' walls.
+  // Her lifts' cars (one a stop, `liftCars`): their doors open the
+  // landings' walls and each takes its landing's zone and slot, but none
+  // is drawn here: the glass car rides its shaft (liftCar.ts).
   const lifted = liftCars(given);
   const cars = lifted.rooms;
   const carLanding = new Map(lifted.seams.map((m) => [m.a, m.b]));
@@ -753,11 +753,6 @@ export function buildInterior(given: InteriorMap, spec: Spec): InteriorBuild {
     } else addRoom(L, room, rooms, kinds.get(room.id)!, spec, open);
     skyLit(L, false);
   });
-  for (const car of cars) {
-    const L = layersOf(car.zone);
-    L.room(slot.get(carLanding.get(car.id)!)!);
-    addRoom(L, car, rooms, kinds.get(car.id)!, spec, open);
-  }
   // The furniture, and its lamps.
   const byId = new Map(rooms.map((r) => [r.id, r]));
   for (const f of interior.furniture) {

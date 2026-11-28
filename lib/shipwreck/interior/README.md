@@ -43,9 +43,13 @@ One `InteriorMap` per ship, in the ship frame (metres, keel at midships,
 - **lifts** (hers, 1.18): `LiftShaft`s, a car's plan and its stops
   (deck, landing room, the door: an edge of both the landing's outline
   and the car's plan). `liftCars(interior)` makes a `lift-car` room per
-  stop (`lift-a@3`), in its landing's zone, seamed to the landing; until
-  the visible ride (Task 8) it also gives each pair of consecutive stops a
-  `lift` link (step on a car's up spot or down spot).
+  stop (`lift-a@3`), in its landing's zone, seamed to the landing, and no
+  links: `withInterior` puts the shafts on the walk map (`WalkMap.lifts`)
+  and the cars ride (`lift.ts`: `liftRideS`/`liftRideZ` ease in over 1 s,
+  1.5 m/s, ease out over 1 s, about 14 s from the low lobby to deck 7;
+  `nextStop` rides past a stop whose car would be over the knee;
+  `otherCarZ` the car nobody rides, on a loop). A car at a stop holds its
+  landing's water; riding, the higher of its two ends' (the shaft's rule).
 - **seep** (`Room.seep`), **closeAtHeelDeg** and **emergencyFlicker**
   (hers): the slow flooding (`seep.ts`), the 30° close (`open.ts`) and the
   flicker (`lights.ts`).
@@ -92,7 +96,7 @@ against `concordiaRecipe.ts`'s blocks and her hull, under their roofs):
 
 Deck doors: `entry-p`, `entry-s` (from each boat deck's promenade, in the
 recess wall) and `squok` (the pool hall's forward wall). Two glass lifts
-(`lift-a`, `lift-b`) stop at decks 1, 3, 4, 5 and 7. Entries: `atrium`,
+(`lift-a`, `lift-b`) stop at deck 0 (the low lobby, + 0.4 m), 3, 4, 5 and 7. Entries: `atrium`,
 `stateroom`, `low-cabin`, `theatre`, `squok`. Every invention is a ruling
 in the file's header. `walk/__tests__/concordiaHallFeel.test.ts` walks
 them as `hallFeel.test.ts` walks the Titanic's.

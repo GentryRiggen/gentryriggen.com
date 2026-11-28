@@ -56,10 +56,10 @@ import type {
  *   the stair (`atrium-stair`) down the well's starboard side from the
  *   deck 4 gallery's forward strip to the floor.
  * - **The glass lifts** (`lifts`): two cars on the atrium's after wall
- *   (x 62..64.2, y +1.5..+3.7 and −3.7..−1.5), stopping at decks 1, 3, 4,
- *   5 and 7. `withInterior` makes a car area per stop; until the visible
- *   ride (Task 8) each car has a spot to step on to go up and one to go
- *   down (`merge.ts` `liftCars`).
+ *   (x 62..64.2, y +1.5..+3.7 and −3.7..−1.5), stopping at the low lobby
+ *   (deck 0 + 0.4 m: `STOPS`), 3, 4, 5 and 7. `withInterior`
+ *   makes a car area per stop (`merge.ts` `liftCars`); the cars ride
+ *   between them (`lift.ts`).
  * - **The boat-deck entrances** (`entry-p`, `entry-s`, deck 4, x 70..73):
  *   doors in the recess wall from each boat deck's promenade, a step into
  *   the gallery.

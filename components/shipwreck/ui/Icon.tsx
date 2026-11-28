@@ -63,7 +63,9 @@ export type IconName =
   | "staircase"
   | "bed"
   | "bunk"
-  | "corridor";
+  | "corridor"
+  | "lift-up"
+  | "lift-down";
 
 const PATHS: Record<IconName, string> = {
   back: "M15 5l-7 7 7 7",
@@ -175,6 +177,9 @@ const PATHS: Record<IconName, string> = {
   bunk: "M4 3v18M20 3v18M4 10h16M4 19h16M7 10V8h4v2M7 19v-2h4v2",
   corridor:
     "M3 3h18v18H3zM3 3l6.5 6.5M21 3l-6.5 6.5M3 21l6.5-6.5M21 21l-6.5-6.5M9.5 9.5h5v5h-5z",
+  // Her glass lift: the car on its cable, a big arrow up or down in it.
+  "lift-up": "M5 6h14v15H5zM12 2v4M12 18V9.5M8 13l4-4 4 4",
+  "lift-down": "M5 6h14v15H5zM12 2v4M12 9.5V18M8 14l4 4 4-4",
 };
 
 const FILLED: ReadonlySet<IconName> = new Set(["play"]);

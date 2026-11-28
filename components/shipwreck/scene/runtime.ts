@@ -86,6 +86,18 @@ export interface SceneRuntime {
    */
   walkDoor: number;
   /**
+   * Riding her glass lift (WalkRunner writes it each frame; null when not
+   * riding): the shaft, the stops from and to (indices, bottom to top),
+   * seconds in and the car floor's ship-frame z now. Interior draws the
+   * car there and every zone the shaft passes. One object, written in place.
+   */
+  walkRide: WalkRide | null;
+  /**
+   * In a glass car, not riding: which ways a ride can go (bit 1 up, bit 2
+   * down: a dry stop that way); 0 anywhere else. The HUD's ▲ ▼.
+   */
+  walkLiftDirs: number;
+  /**
    * A request to stand the walker somewhere (`requestWalkPlace`: the test
    * hooks and the picker's rooms), ship frame, on her whole piece or the
    * piece under x; WalkRunner takes it next frame.
@@ -170,6 +182,20 @@ export interface SceneRuntime {
   underGlow: number;
 }
 
+/** A glass lift ride as the scene sees it (`SceneRuntime.walkRide`). */
+export interface WalkRide {
+  lift: string;
+  from: number;
+  to: number;
+  s: number;
+  z: number;
+}
+
+/** `walkLiftDirs`: a ride up is possible. */
+export const LIFT_UP = 1;
+/** `walkLiftDirs`: a ride down is possible. */
+export const LIFT_DOWN = 2;
+
 /** The walker for the test hooks. */
 export interface WalkInfo {
   phase: "deck" | "water" | "boat";
@@ -185,6 +211,8 @@ export interface WalkInfo {
   area: string | null;
   /** Standing in a room inside her. */
   inside: boolean;
+  /** Riding a glass lift: its id, else null (missing: not riding). */
+  ride?: string | null;
 }
 
 /** The rooms' eased water levels (`SceneRuntime.interiorLevels`). */
@@ -239,6 +267,8 @@ export function createSceneRuntime(): SceneRuntime {
     walkCameInBy: null,
     walkLift: 0,
     walkDoor: -1,
+    walkRide: null,
+    walkLiftDirs: 0,
     walkPlace: null,
     interiorLevels: null,
     interiorEmergency: 1,

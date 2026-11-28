@@ -171,4 +171,69 @@ test.describe("Shipwreck: walking the Costa Concordia", () => {
       page.getByRole("button", { name: "Back on deck" })
     ).toHaveCount(0);
   });
+
+  test("rides the glass lift from the low lobby up to deck 7 and back out", async ({
+    page,
+  }) => {
+    // The game itself (its HUD has the lift's buttons), computed to 22:00.
+    await page.goto("/shipwreck");
+    await page.waitForFunction(() => Boolean(window.__shipwreck?.setShip));
+    await page.evaluate(() => window.__shipwreck!.setShip!("concordia"));
+    await page.getByTestId("shipwreck-real-night").click();
+    await expect(page.getByTestId("shipwreck-hud")).toBeVisible();
+    await page.evaluate(() => window.__shipwreck!.pause!());
+    await expect
+      .poll(
+        () =>
+          page.evaluate(() => {
+            const h = window.__shipwreck!;
+            h.pump!(200);
+            return h.getState!().computedT;
+          }),
+        { timeout: 120_000 }
+      )
+      .toBeGreaterThan(T_2200 + 10);
+    await seekTo(page, T_2200);
+    await page.evaluate(() => window.__shipwreck!.startWalk!());
+    await page.waitForFunction(() => window.__shipwreck!.getWalk!() !== null);
+    // In lift-a's car at the low lobby, facing aft (its door).
+    await place(page, "lift-a@0", 63.1, 2.6, Math.PI);
+    // Only up from the bottom: the picture button, words in its label.
+    const up = page.getByTestId("shipwreck-lift-up");
+    await expect(up).toBeVisible();
+    await expect(up).toHaveAttribute("aria-label", "Lift up");
+    await expect(page.getByTestId("shipwreck-lift-down")).toHaveCount(0);
+    await up.click();
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.ride === "lift-a"
+    );
+    // The buttons hide while riding; no dark wipe on her.
+    await expect(up).toHaveCount(0);
+    await expect(page.getByTestId("shipwreck-walk-lift")).toHaveCount(0);
+    // A ride to the next stop up (deck 3), then on to deck 7.
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.area === "lift-a@3",
+      null,
+      { timeout: 30_000 }
+    );
+    expect((await walk(page)).ride).toBeNull();
+    for (const deck of ["4", "5", "7"]) {
+      await page.evaluate(() => window.__shipwreck!.rideLift!("up"));
+      await page.waitForFunction(
+        (a) => window.__shipwreck!.getWalk!()?.area === a,
+        `lift-a@${deck}`,
+        { timeout: 30_000 }
+      );
+    }
+    await expect(page.getByTestId("shipwreck-lift-up")).toHaveCount(0);
+    await expect(page.getByTestId("shipwreck-lift-down")).toBeVisible();
+    // Out through the car's aft door into the deck 7 lobby.
+    await page.evaluate(() => window.__shipwreck!.setWalkInput!(1, 0));
+    await page.waitForFunction(
+      () => window.__shipwreck!.getWalk!()?.area === "lobby-7",
+      null,
+      { timeout: 10_000 }
+    );
+    await page.evaluate(() => window.__shipwreck!.setWalkInput!(0, 0));
+  });
 });

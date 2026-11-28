@@ -1,4 +1,5 @@
 import type { BodyPose } from "@/lib/shipwreck/sim/track";
+import { liftById, liftRideZ } from "@/lib/shipwreck/interior/lift";
 import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
 import {
@@ -111,6 +112,48 @@ describe("eyes on her deck along her own up (the Concordia)", () => {
     expect(v.pos[0]).toBeCloseTo(feet[0], 9);
     expect(v.pos[1]).toBeCloseTo(feet[1] + 1.6, 9);
     expect(v.pos[2]).toBeCloseTo(feet[2], 9);
+  });
+});
+
+describe("eyes riding her glass lift", () => {
+  const her = walkMapFor("concordia")!;
+  const lift = liftById(her, "lift-a")!;
+  const top = lift.stops.length - 1;
+  // Keyed on heel: 12° over and trimmed a little.
+  const p = pose({ z: -concordia.draught, roll: 12 * DEG, pitch: 1 * DEG });
+
+  it("stands the eyes 1.6 m along her up over liftRideZ mid-ride", () => {
+    for (const s of [0.5, 4, 9.25]) {
+      const w: WalkerState = {
+        part: "whole",
+        area: "lift-a@0",
+        x: 63.1,
+        y: 2.6,
+        yaw: 0.3,
+        ride: { lift: "lift-a", from: 0, to: top, s },
+      };
+      const v = deckEyes(w, p, concordia, her, 0);
+      const z = liftRideZ(lift, concordia, 0, top, s);
+      const eyes = shipToThree(p, [63.1, 2.6, z + 1.6]);
+      for (let i = 0; i < 3; i += 1) expect(v.pos[i]).toBeCloseTo(eyes[i], 9);
+      // Well above the car's own area's floor once under way.
+      if (s > 2)
+        expect(z).toBeGreaterThan(floorZ(her, "lift-a@0", 63.1, concordia) + 1);
+    }
+  });
+
+  it("with the ride over, stands them over the car's own floor", () => {
+    const w: WalkerState = {
+      part: "whole",
+      area: "lift-a@7",
+      x: 63.1,
+      y: 2.6,
+      yaw: 0,
+    };
+    const v = deckEyes(w, p, concordia, her, 0);
+    const fz = floorZ(her, "lift-a@7", 63.1, concordia, 2.6);
+    const eyes = shipToThree(p, [63.1, 2.6, fz + 1.6]);
+    for (let i = 0; i < 3; i += 1) expect(v.pos[i]).toBeCloseTo(eyes[i], 9);
   });
 });
 

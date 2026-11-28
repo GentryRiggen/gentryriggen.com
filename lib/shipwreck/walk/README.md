@@ -134,6 +134,12 @@ exactly as before.
   (after the break); a `"lift"` stays put while the water at its arrival
   is deeper than `WALK_LIFT_MAX_DEPTH_M` (the knee, 0.5 m).
   `StepResult.via` (`{ kind, id }`) reports a link taken that step.
+- **Riding a glass lift** (`WalkerState.ride`, a map with `lifts`): the
+  look turns and nothing else moves the walker (no stick, drift, jump or
+  link); at the ride's end their area is the car at the arrival stop.
+  `walkerFloorZ(map, w, spec)` is the floor under them (the car's as it
+  rides), for the eyes and the water over the feet. The runner starts a
+  ride from `WalkInput.lift`; anything that re-places the walker ends it.
 - **Water** (`StepContext.waterZ?(area, x, y)`): the earth level of the
   water over a ship-frame point, so a room can hold its own level. Without
   it, the depth is the sea (`seaZ`) at the feet, as on deck.
@@ -210,7 +216,8 @@ ship walks exactly as before. Tests key on her heel, never the clock
   can never carry them over an end's edge unchecked either). It never wades
   into water deeper than `WALK_WADE_STOP_M` and deeper than here (on deck
   too: the drift alone never puts you in the sea), and stops while
-  `StepContext.driftOff` (the end card's input off, the lift's wipe).
+  `StepContext.driftOff` (the end card's input off, the lift's wipe) and
+  through a glass lift ride.
   Straight uphill always nets at least 0.6 m/s: on deck at full feel
   4 × 0.55 − 0.8 = 1.4, inside 3 × 0.55 − 0.8 = 0.85.
 - **The swimmer and her superstructure** (`swimAroundSuperstructure`):

@@ -1,9 +1,13 @@
+import { liftRideS, liftRideZ } from "../../interior/lift";
 import { deckZAt } from "../../places";
+import { concordia } from "../../ships/concordia";
 import { titanic } from "../../ships/titanic";
 import type { BodyPose } from "../../sim/track";
 import { shipToEarth } from "../slope";
+import { walkMapFor } from "../registry";
 import {
   stepWalker,
+  walkerFloorZ,
   type StepContext,
   type StepResult,
   type WalkerState,
@@ -17,6 +21,7 @@ import {
   WALK_KNEE_DEPTH_M,
   WALK_RADIUS_M,
   WALK_SPEED_MS,
+  WALK_TURN_PER_PX,
   type WalkMap,
 } from "..";
 
@@ -399,5 +404,171 @@ describe("blockers by area", () => {
     expect(insideBlocker(MAP, "roomB", [15, 2], 0)).toBe(false);
     expect(insideBlocker(MAP, "roomA", [15, 2], 0)).toBe(true);
     expect(insideBlocker(MAP, "roomA", [5, 2], 0)).toBe(true);
+  });
+});
+
+describe("her glass lifts (the ride)", () => {
+  const DEG = Math.PI / 180;
+  const her = walkMapFor("concordia")!;
+  const liftA = her.lifts!.find((l) => l.id === "lift-a")!;
+  const top = liftA.stops.length - 1;
+  /** Keyed on heel: leaning 20° to starboard, where her drift is on. */
+  const leaning: BodyPose = {
+    part: "whole",
+    x: 0,
+    y: 0,
+    z: -concordia.draught,
+    pitch: 0,
+    roll: 20 * DEG,
+    yaw: 0,
+  };
+  const herCtx = (p: Partial<StepContext> = {}): StepContext => ({
+    map: her,
+    spec: concordia,
+    pose: leaning,
+    breakX: null,
+    seaZ: () => -1000,
+    waterZ: () => -1000,
+    ...p,
+  });
+  const riding = (from: number, to: number, s = 0): WalkerState => ({
+    part: "whole",
+    area: `lift-a@${liftA.stops[from].deck}`,
+    x: 63.1,
+    y: 2.6,
+    yaw: 0,
+    ride: { lift: "lift-a", from, to, s },
+  });
+
+  it("merges no lift links for her shafts: the cars ride", () => {
+    expect(her.stairs.some((s) => s.kind === "lift")).toBe(false);
+    expect(her.lifts?.map((l) => l.id)).toEqual(["lift-a", "lift-b"]);
+  });
+
+  it("ignores the stick and her drift while riding, and still turns", () => {
+    const c = herCtx();
+    // Her lean drifts a standing walker (so the ride's stillness is real).
+    const parked = run(
+      { part: "whole", area: "lift-a@3", x: 63.1, y: 2.6, yaw: 0 },
+      STILL,
+      c,
+      1
+    );
+    expect(
+      Math.hypot(parked.state.x - 63.1, parked.state.y - 2.6)
+    ).toBeGreaterThan(0.05);
+    let s = riding(0, top);
+    const turn: WalkInput = {
+      forward: 1,
+      strafe: 1,
+      lookDx: -20,
+      lookDy: 0,
+      jump: true,
+    };
+    for (let i = 0; i < 120; i += 1) {
+      const r = stepWalker(s, turn, c, 1 / 60);
+      expect([r.state.x, r.state.y]).toEqual([63.1, 2.6]);
+      expect(r.via).toBeUndefined();
+      expect(r.state.jumpS ?? null).toBeNull();
+      s = r.state;
+    }
+    expect(s.ride?.s).toBeCloseTo(2, 6);
+    expect(s.area).toBe("lift-a@0");
+    expect(s.yaw).toBeCloseTo(120 * 20 * WALK_TURN_PER_PX, 6);
+  });
+
+  it("ends in the arrival car, ride over, and the walker walks out through its seam", () => {
+    const length = liftRideS(liftA, concordia, 0, top);
+    let r: StepResult = {
+      state: riding(0, top),
+      inWater: null,
+      depthM: 0,
+      slopeDeg: 0,
+    };
+    let steps = 0;
+    while (r.state.ride && steps < 2000) {
+      r = stepWalker(r.state, STILL, herCtx(), 1 / 60);
+      steps += 1;
+    }
+    expect(steps / 60).toBeCloseTo(length, 1);
+    expect(r.state.area).toBe("lift-a@7");
+    expect(r.state.ride).toBeUndefined();
+    // The floor meets the arrival car's: no jump in the eyes.
+    expect(walkerFloorZ(her, r.state, concordia)).toBeCloseTo(
+      floorZ(her, "lift-a@7", 63.1, concordia, 2.6),
+      9
+    );
+    // Out of the car aft through its door into the deck 7 lobby (level, so
+    // only the stick moves them).
+    const out = run(
+      { ...r.state, yaw: Math.PI },
+      FORWARD,
+      herCtx({ pose: { ...leaning, roll: 0 } }),
+      1
+    );
+    expect(out.state.area).toBe("lobby-7");
+  });
+
+  it("the floor under a rider follows liftRideZ, plus her sheer at the feet", () => {
+    for (const s of [0, 1, 3.3, 7, 12]) {
+      const w = riding(0, top, s);
+      const z = walkerFloorZ(her, w, concordia);
+      expect(z).toBeCloseTo(liftRideZ(liftA, concordia, 0, top, s), 1);
+      // At the car's middle exactly liftRideZ.
+      expect(walkerFloorZ(her, { ...w, x: 63.1 }, concordia)).toBeCloseTo(
+        liftRideZ(liftA, concordia, 0, top, s),
+        9
+      );
+    }
+    // Not riding: the area's floor.
+    const parked = { ...riding(1, 2), ride: undefined };
+    expect(walkerFloorZ(her, parked, concordia)).toBe(
+      floorZ(her, "lift-a@3", 63.1, concordia, 2.6)
+    );
+  });
+
+  it("the depth while riding runs by the shaft's rule: the higher end's level", () => {
+    // The low lobby's water 0.3 m over its floor; the rest dry.
+    const lowFloor = shipToEarth(leaning, [
+      63.1,
+      2.6,
+      floorZ(her, "lift-a@0", 63.1, concordia, 2.6),
+    ])[2];
+    const waterZ = (area: string) =>
+      area === "lift-a@0" ? lowFloor + 0.3 : -1000;
+    const c = herCtx({ waterZ });
+    const start = stepWalker(riding(0, top), STILL, c, 1 / 60);
+    expect(start.depthM).toBeCloseTo(0.3, 1);
+    const later = stepWalker(riding(0, top, 5), STILL, c, 1 / 60);
+    expect(later.depthM).toBeLessThan(0);
+    // Riding down to it: deeper toward the end, never deeper than there.
+    const down = stepWalker(riding(top, 0, 13.8), STILL, c, 1 / 60);
+    expect(down.depthM).toBeLessThanOrEqual(0.3 + 1e-6);
+  });
+
+  it("the Titanic's lift link still teleports, with via.kind lift", () => {
+    const tmap = walkMapFor("titanic")!;
+    const link = tmap.stairs.find((s) => s.kind === "lift")!;
+    expect(tmap.lifts).toBeUndefined();
+    const tctx: StepContext = {
+      map: tmap,
+      spec: titanic,
+      pose: POSE,
+      breakX: null,
+      seaZ: DRY,
+      waterZ: () => -1000,
+    };
+    let via: StepResult["via"];
+    const r = run(
+      walker(link.from.area, link.from.at[0] - 0.8, link.from.at[1], 0),
+      FORWARD,
+      tctx,
+      1,
+      (res) => {
+        via = via ?? res.via;
+      }
+    );
+    expect(r.state.area).toBe(link.to.area);
+    expect(via).toEqual({ kind: "lift", id: link.id });
   });
 });

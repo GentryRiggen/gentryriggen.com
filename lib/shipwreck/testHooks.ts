@@ -150,6 +150,8 @@ export interface ShipwreckSceneHooks {
   enterDoor(id?: string): void;
   /** Goes outside, as the Go outside button. */
   goOutside(): void;
+  /** Rides her glass lift up or down, as the ▲ ▼ buttons in a car. */
+  rideLift(dir: "up" | "down"): void;
   setLookUnder(on: boolean): void;
 }
 
@@ -172,6 +174,8 @@ export interface WalkHookInfo {
   area: string | null;
   /** Standing in a room inside her. */
   inside: boolean;
+  /** Riding a glass lift: its id ("lift-a"), else null. */
+  ride: string | null;
 }
 
 /** The game's own hooks: start a run, read where it is and how it ended. */

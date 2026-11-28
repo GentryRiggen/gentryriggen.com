@@ -25,4 +25,5 @@ export function resetWalkInput(): void {
   // The door buttons' flags: cleared, not set false (unset when idle).
   walkInput.door = undefined;
   walkInput.outside = undefined;
+  walkInput.lift = undefined;
 }

@@ -112,3 +112,13 @@ export function doorExit(
   }
   return best ? outside(best) : null;
 }
+
+/**
+ * A walk-out's heading turned to face along her deck (hers: a lifeboat
+ * stands 0.45 m outside her recess doors, so facing square out of the door
+ * looks into its hull): a heading mostly across the ship faces aft, toward
+ * her midships; one mostly along her is kept.
+ */
+export function alongDeck(yaw: number): number {
+  return Math.abs(Math.sin(yaw)) > Math.SQRT1_2 ? Math.PI : yaw;
+}

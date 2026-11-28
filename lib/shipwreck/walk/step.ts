@@ -1,3 +1,11 @@
+import {
+  liftById,
+  liftCarId,
+  liftMiddle,
+  liftRideS,
+  liftRideZ,
+} from "../interior/lift";
+import { deckZAt } from "../places";
 import type { ShipSpec } from "../ships/types";
 import type { BodyPose } from "../sim/track";
 import { deckSlope, shipToEarth, type V3 } from "./slope";
@@ -65,6 +73,13 @@ export interface WalkerState {
    * carry it).
    */
   moveShare?: number;
+  /**
+   * Riding a glass lift (a map with `lifts`; interior/lift.ts): its shaft,
+   * the stops it goes from and to (indices, bottom to top) and seconds in.
+   * The area stays the car at `from` until the ride ends in the car at
+   * `to`. Missing: not riding.
+   */
+  ride?: { lift: string; from: number; to: number; s: number };
 }
 
 /** Stick −1..1 (forward, strafe right), look in px since last read. */
@@ -83,6 +98,11 @@ export interface WalkInput {
   door?: boolean | string;
   /** Go outside (the button; the runner reads and clears it). */
   outside?: boolean;
+  /**
+   * Ride the lift up or down (the ▲ ▼ buttons in a glass car; the runner
+   * reads and clears it). The walker itself ignores it.
+   */
+  lift?: "up" | "down";
 }
 
 export interface StepContext {
@@ -157,14 +177,70 @@ export function partFor(
 }
 
 const feet: V3 = [0, 0, 0];
+const feetAt: [number, number, number] = [0, 0, 0];
 
 /** Water over the walker's feet at (x, y) on an area (m). */
 function depthAt(ctx: StepContext, areaId: string, x: number, y: number) {
-  shipToEarth(ctx.pose, [x, y, floorZ(ctx.map, areaId, x, ctx.spec, y)], feet);
+  return depthOver(ctx, areaId, x, y, floorZ(ctx.map, areaId, x, ctx.spec, y));
+}
+
+/** Water over feet at ship-frame (x, y, z) in an area (m). */
+function depthOver(
+  ctx: StepContext,
+  areaId: string,
+  x: number,
+  y: number,
+  z: number
+): number {
+  feetAt[0] = x;
+  feetAt[1] = y;
+  feetAt[2] = z;
+  shipToEarth(ctx.pose, feetAt, feet);
   const water = ctx.waterZ
     ? ctx.waterZ(areaId, x, y)
     : ctx.seaZ(feet[0], feet[1]);
   return water - feet[2];
+}
+
+/**
+ * The floor under a walker (ship-frame z): their area's (`floorZ`), or,
+ * riding a lift, the car's floor `liftRideZ` plus her sheer between the
+ * car's middle and the feet (so it meets the car area's floor at both
+ * ends). The eyes, the water over the feet and the HUD use it.
+ */
+export function walkerFloorZ(
+  map: WalkMap,
+  w: Pick<WalkerState, "area" | "x" | "y" | "ride">,
+  spec: ShipSpec
+): number {
+  const ride = w.ride;
+  const lift = ride ? liftById(map, ride.lift) : undefined;
+  if (!ride || !lift) return floorZ(map, w.area, w.x, spec, w.y);
+  const deck = lift.stops[ride.from].deck;
+  const mx = liftMiddle(lift)[0];
+  return (
+    liftRideZ(lift, spec, ride.from, ride.to, ride.s) +
+    deckZAt(deck, w.x, spec) -
+    deckZAt(deck, mx, spec)
+  );
+}
+
+/**
+ * The water over a riding walker's feet (m), by the shaft's rule: the
+ * higher of the two end cars' levels (each its landing's), so the depth
+ * runs smoothly from the start's to the arrival's and never deeper.
+ */
+function rideDepth(
+  ctx: StepContext,
+  w: WalkerState,
+  fromArea: string,
+  toArea: string
+): number {
+  const z = walkerFloorZ(ctx.map, w, ctx.spec);
+  return Math.max(
+    depthOver(ctx, fromArea, w.x, w.y, z),
+    depthOver(ctx, toArea, w.x, w.y, z)
+  );
 }
 
 /** The decision that ends a walk (the "go down with the ship" switch). */
@@ -739,6 +815,7 @@ export function stepWalker(
   dt: number
 ): StepResult {
   const total = clamp(Number.isFinite(dt) ? dt : 0, 0, MAX_DT);
+  if (s.ride) return rideStep(s, input, ctx, total);
   const n = total > 0 ? Math.ceil(total / WALK_DT - 1e-9) : 0;
   const h = n > 0 ? total / n : 0;
   const yaw = s.yaw - input.lookDx * WALK_TURN_PER_PX;
@@ -877,6 +954,63 @@ export function stepWalker(
     inWater,
     ...(overboard ? { overboard } : {}),
     ...(via ? { via } : {}),
+    depthM: depth,
+    slopeDeg: slope.deg,
+  };
+}
+
+/**
+ * A step while riding a lift: the look turns, nothing else moves the
+ * walker (no stick, no drift, no jump, no link); the ride runs on, and at
+ * its end the walker stands where they were in the car at the arrival stop
+ * (its door, a seam, open onto that landing) and the ride is over.
+ */
+function rideStep(
+  s: WalkerState,
+  input: WalkInput,
+  ctx: StepContext,
+  total: number
+): StepResult {
+  const ride = s.ride!;
+  const yaw = s.yaw - input.lookDx * WALK_TURN_PER_PX;
+  const slope = deckSlope(ctx.pose);
+  const lift = liftById(ctx.map, ride.lift);
+  const valid =
+    lift !== undefined &&
+    ride.from >= 0 &&
+    ride.from < lift.stops.length &&
+    ride.to >= 0 &&
+    ride.to < lift.stops.length;
+  const length = valid ? liftRideS(lift, ctx.spec, ride.from, ride.to) : 0;
+  const at = ride.s + total;
+  const done = !valid || at >= length;
+  const area =
+    done && valid ? liftCarId(lift.id, lift.stops[ride.to].deck) : s.area;
+  const state: WalkerState = {
+    part: s.part,
+    area,
+    x: s.x,
+    y: s.y,
+    yaw,
+    jumpS: null,
+    jumpFrom: null,
+    moveShare: 0,
+    ...(done
+      ? {}
+      : { ride: { lift: ride.lift, from: ride.from, to: ride.to, s: at } }),
+  };
+  const depth =
+    done || !valid
+      ? depthAt(ctx, area, s.x, s.y)
+      : rideDepth(
+          ctx,
+          state,
+          s.area,
+          liftCarId(lift.id, lift.stops[ride.to].deck)
+        );
+  return {
+    state,
+    inWater: inWaterFromDepth(depth),
     depthM: depth,
     slopeDeg: slope.deg,
   };
