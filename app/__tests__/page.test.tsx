@@ -110,6 +110,6 @@ describe("Home recently shipped", () => {
     expect(
       screen.getByRole("link", { name: /^Shipwreck \d+\.\d+\.0$/ })
     ).toHaveAttribute("href", "/shipwreck/versions");
-    expect(screen.getByText(/releases deep/)).toBeInTheDocument();
+    expect(screen.getByText(/releases shipped so far/)).toBeInTheDocument();
   });
 });

@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import Shipped from "../Shipped";
 import { ShippedProvider } from "../ShippedContext";
 import { summarizeReleases } from "../releases";
+import { agentProfile } from "../agentProfile";
+import { SKILLS, SOCIAL_LINKS } from "../constants";
 
 const CHANGELOGS = {
   shipwreck: [
@@ -74,4 +76,19 @@ it("renders the releases as done todos linking to each changelog", () => {
   expect(screen.getByText(": Any ship in any wreck")).toBeInTheDocument();
   expect(screen.getByText(/6 releases shipped/)).toBeInTheDocument();
   expect(screen.getAllByText("done:")).toHaveLength(3);
+});
+
+describe("agentProfile", () => {
+  it("lists every game, skill group and link", () => {
+    const text = agentProfile(
+      summarizeReleases({
+        shipwreck: [{ version: "1.0.0", date: "2026-11-01", title: "Hello" }],
+      })
+    );
+    for (const game of GAMES) expect(text).toContain(game.name);
+    for (const group of SKILLS) expect(text).toContain(`- ${group.category}:`);
+    for (const link of SOCIAL_LINKS) expect(text).toContain(link.url);
+    expect(text).toContain("1 releases so far");
+    expect(text).not.toContain("—");
+  });
 });

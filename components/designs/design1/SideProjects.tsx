@@ -6,7 +6,7 @@ export default function SideProjects() {
   return (
     <div>
       <p className="mb-2 text-term-muted">
-        Games I build for (and get QA&apos;d by) my two boys:
+        Games I build with AI agents for my two boys, who are also my QA team:
       </p>
       <ul className="space-y-1.5 sm:space-y-1">
         {GAMES.map((game) => (

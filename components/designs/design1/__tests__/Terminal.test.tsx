@@ -83,8 +83,8 @@ describe("Terminal boot sequence", () => {
   it("runs a suggestion when tapped", () => {
     render(<Terminal />);
     fireEvent.keyDown(window, { key: "Enter" });
-    fireEvent.click(screen.getByRole("button", { name: "hire me" }));
-    expect(screen.getByText(/Let's connect/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "contact" }));
+    expect(screen.getByText(/fastest way to reach me/)).toBeInTheDocument();
   });
 
   it("lists the boot steps in the command history", () => {

@@ -46,7 +46,7 @@ interface InteractivePromptProps {
 
 const HINT_COMMANDS = [
   "games",
-  "hire me",
+  "contact",
   "/help",
   "claude",
   "/theme",
@@ -63,7 +63,7 @@ const HINT_COMMANDS = [
 ];
 
 /** Tappable suggestions under the input, for visitors who won't type. */
-const SUGGESTIONS = ["games", "skills", "hire me", "/theme", "/help"];
+const SUGGESTIONS = ["games", "skills", "contact", "/theme", "/help"];
 
 // ---------------------------------------------------------------------------
 // Component

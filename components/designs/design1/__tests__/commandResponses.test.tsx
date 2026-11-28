@@ -184,8 +184,8 @@ describe("homepage commands", () => {
     }
   );
 
-  it("hire me links to LinkedIn", () => {
-    render(<>{getCommandResponse("hire me", []).output}</>);
+  it.each(["contact", "hire me"])("%s links to LinkedIn", (cmd) => {
+    render(<>{getCommandResponse(cmd, []).output}</>);
     expect(
       screen.getByRole("link", { name: /linkedin\.com\/in\/gentryriggen/ })
     ).toBeInTheDocument();
@@ -204,4 +204,12 @@ describe("homepage commands", () => {
     const unknown = getCommandResponse("zzzz-not-a-command", []).output;
     expect(getCommandResponse(input, []).output).not.toEqual(unknown);
   });
+});
+
+it("cat llms.txt links to the agent profile", () => {
+  render(<>{getCommandResponse("cat llms.txt", []).output}</>);
+  expect(screen.getByRole("link", { name: /llms\.txt/ })).toHaveAttribute(
+    "href",
+    "/llms.txt"
+  );
 });

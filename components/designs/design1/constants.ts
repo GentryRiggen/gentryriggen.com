@@ -15,8 +15,12 @@ export const SKILLS = [
     items: ["Docker", "Terraform", "GitHub Actions", "CI/CD"],
   },
   {
+    category: "AI",
+    items: ["Claude Code", "Agentic coding", "LLM-powered apps", "MCP"],
+  },
+  {
     category: "Leadership",
-    items: ["Team Building", "Architecture", "Code Review", "Mentorship"],
+    items: ["Hiring", "Coaching", "Architecture", "Getting projects shipped"],
   },
 ];
 
