@@ -35,6 +35,7 @@ import Torpedo, { hasTorpedoTrack } from "./Torpedo";
 import WalkRunner from "./WalkRunner";
 import Wreckage from "./Wreckage";
 import XRay from "./XRay";
+import DoorArrow from "../interior/DoorArrow";
 import Interior from "../interior/Interior";
 import { stepQuality } from "./quality";
 import { createSceneRuntime, type SceneRuntime } from "./runtime";
@@ -231,6 +232,12 @@ export default function NightScene({
           runtime={runtime}
           spec={spec}
           sky={settings.fog}
+        />
+        <DoorArrow
+          key={`door-arrow-${spec.id}`}
+          store={store}
+          runtime={runtime}
+          spec={spec}
         />
         <SeaFromStore store={store} runtime={runtime} settings={settings} />
         <WalkRunner key={spec.id} store={store} runtime={runtime} spec={spec} />

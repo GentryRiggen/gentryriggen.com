@@ -86,8 +86,15 @@ export interface SceneRuntime {
    */
   walkDoor: number;
   /**
-   * A test hook's request to stand the walker somewhere (ship frame, on
-   * her whole piece or the piece under x); WalkRunner takes it next frame.
+   * On her open deck with the rooms open (1.16): the index (in the map's
+   * stairs) of the deck door the arrow stands over, or −1 (hidden).
+   * WalkRunner writes it with `walkDoor`.
+   */
+  walkArrow: number;
+  /**
+   * A request to stand the walker somewhere (`requestWalkPlace`: the test
+   * hooks and the picker's rooms), ship frame, on her whole piece or the
+   * piece under x; WalkRunner takes it next frame.
    */
   walkPlace: { area: string; x: number; y: number; yaw: number } | null;
   /**
@@ -223,6 +230,7 @@ export function createSceneRuntime(): SceneRuntime {
     walkCameInBy: null,
     walkLift: 0,
     walkDoor: -1,
+    walkArrow: -1,
     walkPlace: null,
     interiorLevels: null,
     ride: { yaw: 0, pitch: 0, aimed: false },
@@ -244,6 +252,23 @@ export function createSceneRuntime(): SceneRuntime {
     underGlow: 0,
   };
   return rt;
+}
+
+/**
+ * Stands the walker in an area at (x, y) facing `yaw` (ship frame) on the
+ * next frame: the test hooks' `placeWalk` and the picker's rooms (1.16)
+ * both come this way, so a room start gets the same inside, eyes, water,
+ * lights and torch as walking in. Ignored unless every number is finite.
+ */
+export function requestWalkPlace(
+  runtime: SceneRuntime,
+  area: string,
+  x: number,
+  y: number,
+  yaw: number
+): void {
+  if (![x, y, yaw].every(Number.isFinite)) return;
+  runtime.walkPlace = { area, x, y, yaw };
 }
 
 /** Stops (or lets) the walk input move the walker: the end card's gate. */
