@@ -284,7 +284,20 @@ export interface WalkCueInput {
   phase: "off" | "deck" | "water" | "boat";
   /** Bumped each time they go into the sea. */
   splash: number;
+  /** Standing in a room inside her (not on her open deck). */
+  inside?: boolean;
+  /**
+   * 0..1 the water around them inside her (0 dry, 1 at a metre): the
+   * deepest of their room and the rooms open to it.
+   */
+  wet?: number;
 }
+
+/** Inside her (LIST_CREAK_SHIPS): the hull groans around you over this heel. */
+export const INSIDE_CREAK_FROM_DEG = 15;
+/** ...every INSIDE_CREAK_MIN_S to INSIDE_CREAK_MIN_S + INSIDE_CREAK_SPREAD_S. */
+export const INSIDE_CREAK_MIN_S = 4;
+export const INSIDE_CREAK_SPREAD_S = 4;
 
 /** The held sounds, written by the scheduler and read by the beds. */
 export interface BedState {
@@ -300,6 +313,8 @@ export interface BedState {
   ship?: ShipId;
   /** 0..1 how hard the wind blows (the storm's, rising with its sea). */
   wind?: number;
+  /** 0..1 the water around the walker inside her (left out: none). */
+  wet?: number;
   /** 0..1 of her starting speed (the Britannic's engines follow it). */
   way?: number;
 }
@@ -381,6 +396,8 @@ export function createCueScheduler(
   /** The Britannic has passed her `BRITANNIC_GONE_EVENT`. */
   let gone = false;
   let nextCreakAt = 0;
+  let nextInsideCreakAt = 0;
+  let insideCreaks = 0;
   let nextGullAt = 0;
   let gulls = 0;
   /** The walk's splash count last seen (null before the first update). */
@@ -537,6 +554,26 @@ export function createCueScheduler(
           fire("splash", 1, i);
       }
       if (w) lastSplash = w.splash;
+
+      // Inside her: water sloshing nearby (the wash bed follows how wet it
+      // is around them) and the hull groaning around them over 15°. Only
+      // her; the Titanic's beds and cues are as they were.
+      const insideHer =
+        !!w &&
+        w.phase === "deck" &&
+        !!w.inside &&
+        LIST_CREAK_SHIPS.includes(ship);
+      bed.wet = insideHer ? Math.min(1, Math.max(0, w!.wet ?? 0)) : 0;
+      if (insideHer && f && Math.abs(f.listDeg || 0) > INSIDE_CREAK_FROM_DEG) {
+        if (i.now >= nextInsideCreakAt) {
+          fire("creakFar", 0.7, i);
+          insideCreaks += 1;
+          nextInsideCreakAt =
+            i.now +
+            INSIDE_CREAK_MIN_S +
+            ((insideCreaks * 0.618) % 1) * INSIDE_CREAK_SPREAD_S;
+        }
+      }
 
       // Groans as she tilts: faster and louder with the trim; far-off
       // creaks when the camera is under the sea.

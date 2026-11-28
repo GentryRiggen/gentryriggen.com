@@ -12,7 +12,9 @@ import {
   doorExit,
   doorToEnter,
   interiorFor,
+  roomsOpen,
   roomWaterTargets,
+  seepTarget,
   type DoorPlace,
   type Room,
 } from "@/lib/shipwreck/interior";
@@ -73,6 +75,7 @@ import {
 const FLAT_SEA = () => 0;
 /** No sim frame yet: every compartment dry. */
 const NO_FILL: readonly number[] = [];
+const NO_FRAMES: readonly SimFrame[] = [];
 /** Look under follows her down while she is nearer than this (m). */
 const LOOK_UNDER_SIGHT_M = 600;
 /** How quickly Look under's tilt follows her (1/s). */
@@ -108,6 +111,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
    * events (live while the night computes; a seek back un-lowers them).
    */
   const lowered = useRef(new Set<number>());
+  const interior = useMemo(() => interiorFor(spec.id), [spec]);
   /** Each room's water target (compartment samples cached). */
   const target = useMemo(() => roomWaterTargets(spec), [spec]);
   const walking = useStore(store, (s) => s.camera === "walk");
@@ -198,6 +202,18 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
                 const k = lv?.slot.get(area);
                 if (lv && k !== undefined && lv.drawn[k] === 1)
                   return lv.shown[k];
+                // A seeping room (hers) takes the sea slowly, as the table.
+                if (room.seep && interior) {
+                  const ps = store.getState();
+                  const sv = seepTarget(
+                    interior,
+                    ps.track?.frames ?? NO_FRAMES,
+                    spec,
+                    area,
+                    ps.t
+                  );
+                  if (!Number.isNaN(sv)) return sv;
+                }
                 return target(
                   room,
                   scratch.ctx.pose,
@@ -211,7 +227,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       /** The input while the lift's wipe holds the stick: the look only. */
       held: { forward: 0, strafe: 0, lookDx: 0, lookDy: 0 } as WalkInput,
     }),
-    [spec, map, rooms, runtime, target]
+    [spec, map, rooms, runtime, target, interior, store]
   );
   /** Water over the floor at a point (m), on the walker's piece. */
   const depthAt = (area: string, x: number, y: number): number => {
@@ -488,7 +504,9 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       const ctx = scratch.ctx;
       ctx.pose = pose;
       ctx.breakX = breakX;
-      ctx.interiorsOpen = !broken;
+      // Her rooms are open until she breaks, or (hers) leans to the close.
+      const open = interior ? roomsOpen(interior, frame, broken) : !broken;
+      ctx.interiorsOpen = open;
       if (ctx.boatLowered) {
         const events = p.track?.events;
         if (events) loweredBoats(events, p.t, lowered.current);
@@ -502,7 +520,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       if (s.doorT <= 0) {
         s.doorT = DOOR_LOOK_S;
         const near =
-          !inRoom && !broken && w.part === "whole"
+          !inRoom && open && w.part === "whole"
             ? doorToEnter(map, w.area, [w.x, w.y], depthAt)
             : null;
         runtime.walkDoor = near
@@ -517,7 +535,7 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
       walkInput.outside = undefined;
       let moved: DoorPlace | null = null;
       let gone = false;
-      if (doorAsk && !inRoom && !broken && w.part === "whole") {
+      if (doorAsk && !inRoom && open && w.part === "whole") {
         moved = doorToEnter(
           map,
           w.area,
@@ -526,7 +544,9 @@ export default function WalkRunner({ store, runtime, spec }: WalkRunnerProps) {
           typeof doorAsk === "string" ? doorAsk : undefined
         );
         if (moved) runtime.walkCameInBy = moved.id;
-      } else if (outAsk && inRoom && !broken) {
+      } else if (inRoom && !broken && (outAsk || !open)) {
+        // Go outside, or the rooms closed round them (her 30° heel):
+        // walked out onto the nearest dry door's outside, not into the sea.
         moved = doorExit(map, runtime.walkCameInBy, depthAt, [w.x, w.y]);
         if (!moved) {
           // No dry door: the spawn, else the sea (as Back on deck).

@@ -2,6 +2,7 @@ import { act, render } from "@testing-library/react";
 import { createFakeAudio } from "@/components/game-audio/testing/fakeAudio";
 import type { VoiceEngine } from "@/components/game-audio/primitives";
 import { createPlaybackStore } from "@/lib/shipwreck/playback";
+import { concordia } from "@/lib/shipwreck/ships/concordia";
 import { fitzgerald } from "@/lib/shipwreck/ships/fitzgerald";
 import { lusitania } from "@/lib/shipwreck/ships/lusitania";
 import { titanic } from "@/lib/shipwreck/ships/titanic";
@@ -147,6 +148,35 @@ describe("useShipwreckSound", () => {
       runtime.walkSplash += 1;
       act(() => jest.advanceTimersByTime(5000));
       expect(cues()).not.toContain("splash");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("passes where the walker is and how wet it is: far creaks inside her over 15°", () => {
+    jest.useFakeTimers();
+    try {
+      const mock = playCue as jest.Mock;
+      const store = createPlaybackStore();
+      const runtime = createSceneRuntime();
+      render(<Probe store={store} active enabled runtime={runtime} />);
+      act(() => store.getState().start(concordia, concordia.realNight));
+      act(() => store.getState().pump(100000));
+      act(() => store.getState().pause());
+      // About 25° of heel (her real night, before the rooms close).
+      act(() => store.getState().seek(3500));
+      act(() => store.getState().startWalk());
+      const cues = () => mock.mock.calls.map((c) => c[1]);
+      // On her open deck: no groans from inside.
+      mock.mockClear();
+      runtime.walkInside = false;
+      runtime.walkWet = 1;
+      act(() => jest.advanceTimersByTime(2000));
+      expect(cues()).not.toContain("creakFar");
+      // Inside her: the hull groans around them.
+      runtime.walkInside = true;
+      act(() => jest.advanceTimersByTime(2000));
+      expect(cues()).toContain("creakFar");
     } finally {
       jest.useRealTimers();
     }

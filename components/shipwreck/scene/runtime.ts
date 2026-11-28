@@ -99,6 +99,19 @@ export interface SceneRuntime {
    */
   interiorLevels: InteriorLevels | null;
   /**
+   * Her emergency lights' dip this frame (Interior writes it): 1 is no
+   * dip; while her power is at the emergency level it follows
+   * `emergencyFlicker`, never under 0.1 (softened for reduced motion). Her
+   * emergency lamps' shader multiplies it in (`uEmergency`).
+   */
+  interiorEmergency: number;
+  /**
+   * The water around the walker inside her (Interior writes it): 0 dry to 1
+   * at a metre, the deepest of their room and the rooms open to it. The
+   * sound's wash follows it.
+   */
+  walkWet: number;
+  /**
    * Riding a lifeboat: the player's look, a yaw turned from facing her
    * (radians, + to port) and a pitch (WalkRunner turns both by the drag),
    * and whether a ride's first frame has zeroed it. Effects writes
@@ -228,6 +241,8 @@ export function createSceneRuntime(): SceneRuntime {
     walkDoor: -1,
     walkPlace: null,
     interiorLevels: null,
+    interiorEmergency: 1,
+    walkWet: 0,
     ride: { yaw: 0, pitch: 0, aimed: false },
     rideView: { pos: [0, 0, 0], yaw: 0, pitch: 0 },
     boardable: -1,

@@ -63,8 +63,9 @@ import type {
  * - **The boat-deck entrances** (`entry-p`, `entry-s`, deck 4, x 70..73):
  *   doors in the recess wall from each boat deck's promenade, a step into
  *   the gallery.
- * - **Deck 1** (Costa: inside cabins on decks 1–2): the lift lobby
- *   (`lobby-1`, x 56..62, wide across her so the sea creeps across it),
+ * - **The low rooms** (deck 0 + 0.4 m, `LOW_RAISE_M`: not deck 1, see
+ *   there; Costa: inside cabins on decks 1–2): the lift lobby (`lobby-1`,
+ *   x 56..62, y −13.5..6, wide across her so the sea creeps across it),
  *   the starboard corridor aft (`corridor-1`, x 56 → 30) with shut cabin
  *   doors down both sides, an inside cabin (`cabin-inside`: two beds, a
  *   desk, a TV, no window) inboard and an ocean-view cabin (`cabin-ocean`:
@@ -122,8 +123,8 @@ import type {
  *     (3.8 m), so the roof is one ceiling over the well and the gallery.
  *   - The boat-deck entrances are shallow (about 1 m) vestibules: the
  *     gallery runs almost to the recess wall.
- *   - The deck 1 and deck 7 lobbies open onto the lifts' after side (the
- *     cars have a door at each end: aft on 1 and 7, forward in the
+ *   - The low and deck 7 lobbies open onto the lifts' after side (the
+ *     cars have a door at each end: aft at the low lobby and on 7, forward in the
  *     atrium). The deck 7 lobby runs to y −9.2 to meet its corridor.
  *   - The stateroom is one of the model's 3.6 m balcony bays (x
  *     47.6..51.2, so its partitions and balcony door are the model's),
@@ -252,6 +253,20 @@ const recessY = (x: number) => edge(x) - CONCORDIA_RECESS_INSET;
 export const BALCONY_DEPTH_M = 1.8;
 /** The glass roof over the atrium: a metre over deck 6. */
 const ATRIUM_ROOF_Z = Z("6") + 1;
+
+/**
+ * The low rooms' floor stands this far over deck 0 (m), and the lobby
+ * reaches 13.5 m to starboard (hull 16.3 m there). Task 7 moved them off
+ * deck 1 (14.18 m): the lobby's starboard edge sat 2.8 m over the sea from
+ * the touch on and never got wet. Her real night puts that edge under the
+ * sea about 3.75 shown minutes before the close at 30° (and dry at the
+ * touch), and the outboard cabin knee deep well before it
+ * (`concordiaWater.test.ts`). Her heel shortens a drop of the floor
+ * (cos of the heel), which is why 0.4 m and the wider lobby, not 0.2.
+ */
+const LOW_RAISE_M = 0.4;
+/** The lobby's starboard wall (y). */
+const LOBBY_1_STBD_Y = -13.5;
 
 const shapes = new Map<string, RoomShape>();
 const seams: Seam[] = [];
@@ -410,7 +425,7 @@ door("atrium-4", "entry-s", [ENTRY_X, -AT_HW], ENTRY_X1 - ENTRY_X0);
 // Deck 1: the lift lobby, the corridor aft and two cabins.
 const C1_Y = -9.9;
 add(
-  cabin("lobby-1", [56, -12], [LIFT_X0, 6]),
+  cabin("lobby-1", [56, LOBBY_1_STBD_Y], [LIFT_X0, 6]),
   corridor("corridor-1", [56, C1_Y], [30, C1_Y], 1.4),
   cabin("cabin-inside", [44, -9.2], [47.6, -5]),
   cabin("cabin-ocean", [40, -16], [43.6, -10.6])
@@ -446,7 +461,7 @@ door("stateroom", "balcony", [ST_MID, -BAL_BACK], 1.8);
 
 // The lifts' doors, every stop.
 const STOPS = [
-  ["1", "lobby-1"],
+  ["0", "lobby-1"],
   ["3", "atrium-3"],
   ["4", "atrium-4"],
   ["5", "atrium-5"],
@@ -595,7 +610,8 @@ const atrium = (
 ): RoomInfo => ({ kind, deck, ceilingM, zone: "atrium", look });
 const low = (kind: Room["kind"], look: Room["look"]): RoomInfo => ({
   kind,
-  deck: "1",
+  deck: "0",
+  raiseM: LOW_RAISE_M,
   ceilingM: CEIL,
   zone: "low-cabins",
   look,
@@ -738,6 +754,7 @@ const lifts: LiftShaft[] = (["lift-a", "lift-b"] as const).map((id) => ({
   car: { min: [LIFT_X0, LIFT_Y[id][0]], max: [LIFT_X1, LIFT_Y[id][1]] },
   stops: STOPS.map(([deck, landing]) => ({
     deck,
+    ...(landing === "lobby-1" ? { raiseM: LOW_RAISE_M } : {}),
     landing,
     door: liftDoors.get(`${id}@${deck}`)!,
   })),
@@ -909,24 +926,26 @@ const herFurniture: Furniture[] = [
     blocks: true,
   },
   // The stateroom: a double bed, the sofa by the balcony door, desk, TV.
+  // The beds and the sofa never overlap in y, so the way from the corridor
+  // door to the balcony door is not a pinch between them (Task 6 review).
   {
     room: "stateroom",
     piece: "cabin-bed",
-    at: [ST_X0 + 1.05, -12.6],
+    at: [ST_X0 + 1.05, -12.3],
     yaw: 0,
     blocks: true,
   },
   {
     room: "stateroom",
     piece: "cabin-bed",
-    at: [ST_X0 + 1.05, -13.5],
+    at: [ST_X0 + 1.05, -13.2],
     yaw: 0,
     blocks: true,
   },
   {
     room: "stateroom",
     piece: "cabin-sofa",
-    at: [ST_X1 - 0.45, -14.6],
+    at: [ST_X1 - 0.45, -14.9],
     yaw: Math.PI,
     blocks: true,
   },

@@ -27,6 +27,22 @@ describe("bed targets", () => {
     expect(t.rumble).toBe(0);
   });
 
+  it("lets the wash follow the water around the walker inside her, and changes nothing without it", () => {
+    const dry = bedTargets(base, true);
+    expect(dry.wash).toBe(0);
+    expect(bedTargets({ ...base, wet: 0 }, true)).toEqual(dry);
+    const half = bedTargets({ ...base, ship: "concordia", wet: 0.5 }, true);
+    const full = bedTargets({ ...base, ship: "concordia", wet: 1 }, true);
+    expect(half.wash).toBeGreaterThan(0);
+    expect(full.wash).toBeCloseTo(half.wash * 2, 9);
+    // Under the water of the sea it is muffled; sound off is silent.
+    expect(
+      bedTargets({ ...base, ship: "concordia", wet: 1, underwater: true }, true)
+        .wash
+    ).toBe(0);
+    expect(bedTargets({ ...base, wet: 1 }, false).wash).toBe(0);
+  });
+
   it("stops the hum when the power fails", () => {
     expect(bedTargets({ ...base, power: 0 }, true).hum).toBe(0);
   });

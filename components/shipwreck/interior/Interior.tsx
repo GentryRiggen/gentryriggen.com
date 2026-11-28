@@ -15,16 +15,21 @@ import {
 import { useStore } from "zustand";
 import {
   easeLevel,
+  emergencyFlicker,
   interiorFor,
   roomPower,
+  roomsOpen,
   roomWaterTargets,
+  seepTarget,
   segmentAt,
   torchOn,
   type InteriorMap,
   type Room,
 } from "@/lib/shipwreck/interior";
 import type { PlaybackStore } from "@/lib/shipwreck/playback";
+import type { SimFrame } from "@/lib/shipwreck/sim/track";
 import type { ShipId, ShipSpec } from "@/lib/shipwreck/ships/types";
+import usePrefersReducedMotion from "@/components/game-kit/usePrefersReducedMotion";
 import { TEST_HOOKS_ENABLED } from "@/lib/shipwreck/testHooks";
 import { walkMapFor, type WalkMap } from "@/lib/shipwreck/walk";
 import type { InteriorLevels, SceneRuntime } from "../scene/runtime";
@@ -75,6 +80,16 @@ import {
  * as under the sky whatever her power. Her model's own block there (the
  * paint mesh's tail, `Block.walkHidden`) is hidden meanwhile, so her
  * deck sees in.
+ *
+ * Her rooms (the Concordia's, Task 7): `roomsOpen` instead of the break
+ * alone, so from her 30° heel only the deck rooms are drawn and the
+ * walker is walked out; her low rooms' water is the seep table's (slow,
+ * `seepTarget`), their lamps' water flicker is the soft kind, her lamps
+ * never take the sim's fast shimmer, and while her power is at the
+ * emergency level `emergencyFlicker` dips her lamps (never black; softened
+ * for reduced motion) and is written to `runtime.interiorEmergency` for
+ * her emergency lamps' shader. `runtime.walkWet` is the water around the
+ * walker (the sound's wash).
  */
 
 /** The rooms draw after everything else; the clear just before. */
@@ -85,6 +100,8 @@ const CLEAR_ORDER = ROOMS_ORDER - 1;
  * before the clear from outside, after it (inside wins) from within.
  */
 const DECK_ORDER = { rooms: 6, pool: 7, pane: 8 } as const;
+/** The deck doors' glow, with the walker in a deck room: after the clear. */
+const GLOW_INSIDE_ORDER = CLEAR_ORDER + 0.5;
 const DECK_INSIDE_ORDER = {
   rooms: ROOMS_ORDER,
   pool: ROOMS_ORDER + 0.3,
@@ -105,6 +122,9 @@ interface InteriorProps {
 
 /** The share of a lit neighbour's light a dark room still gets. */
 const SPILL = 0.22;
+/** How much of a dip reduced motion keeps (0..1): shallower dips. */
+const REDUCED_DIP = 0.35;
+const NO_FRAMES: readonly SimFrame[] = [];
 /** How fast the torch comes on and goes off (per second, 0..1). */
 const TORCH_EASE_PER_S = 4;
 /** The room must stay dim (or lit) this long to switch the torch (s). */
@@ -332,6 +352,8 @@ function build(
     compiled: false,
     /** Each slot's own lamps this frame (scratch). */
     own: new Float32Array(b.slots),
+    /** Each room's water over its lowest floor point this frame (m). */
+    depth: new Float32Array(water.count),
     /** Each room's best lit neighbour this frame (scratch). */
     spill: new Float32Array(water.count),
     /** How long the walker's room has been dim, or lit (s). */
@@ -391,6 +413,8 @@ function InteriorScene({
   sky,
   daylight,
 }: SceneProps) {
+  const reduced = useRef(false);
+  reduced.current = usePrefersReducedMotion();
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -429,8 +453,12 @@ function InteriorScene({
     if (!on || !part || !frame) {
       showModel(b, null);
       lv.drawn.fill(0);
+      runtime.interiorEmergency = 1;
+      runtime.walkWet = 0;
       return;
     }
+    // Her rooms close at her heel limit: only her deck rooms are drawn then.
+    const open = roomsOpen(interior, frame, runtime.broken);
     // Her deck room stands where her model's block was: hide that.
     if (b.deckSlots.length > 0) showModel(b, part);
     part.updateMatrixWorld();
@@ -459,6 +487,11 @@ function InteriorScene({
         if (z.pool) z.pool.renderOrder = o.pool;
         if (z.pane) z.pane.renderOrder = o.pane;
       }
+      // The deck doors' glow (the club's door in the hall's wall) is drawn
+      // inside wins too: in the transparent pass after the clear, before
+      // the rooms, so the hall's wall shows the doorway, not a plain wall.
+      b.glow.renderOrder = deckInside ? GLOW_INSIDE_ORDER : 0;
+      b.glowMat.transparent = deckInside;
     }
     // Each drawn room's water: its target, eased (a room just come into
     // view starts at its target: it was not seen climbing).
@@ -467,11 +500,24 @@ function InteriorScene({
     const pose = frame.bodies[0];
     const levels = b.waterMats.levels;
     for (const z of b.zones) {
-      const show = z.deck || (seen?.has(z.zone) ?? false);
+      const show = z.deck || (open && (seen?.has(z.zone) ?? false));
       for (const m of z.meshes) m.visible = show;
       if (!show) continue;
       for (const k of z.slots) {
-        const target = b.target(b.rooms[k], pose, frame.water);
+        const room = b.rooms[k];
+        // A seeping room takes the sea slowly: the seep table's level.
+        const seep = room.seep
+          ? seepTarget(
+              interior,
+              p.track?.frames ?? NO_FRAMES,
+              spec,
+              room.id,
+              p.t
+            )
+          : NaN;
+        const target = Number.isNaN(seep)
+          ? b.target(room, pose, frame.water)
+          : seep;
         const s = lv.drawn[k] ? easeLevel(lv.shown[k], target, dt) : target;
         lv.shown[k] = s;
         now[k] = 1;
@@ -492,7 +538,26 @@ function InteriorScene({
     // over its floor (its lowest point, in her frame); the lamps shimmer
     // while the power dips.
     const shipPower = Number.isFinite(frame.power) ? frame.power : 1;
-    b.mats.flicker.value = lampFlicker(shipPower, state.clock.elapsedTime);
+    // Hers: her power's own slow dips (below), never the sim's fast
+    // shimmer (14 Hz is too near a strobe); the water's flicker is soft too.
+    const hers = interior.emergencyFlicker === true;
+    b.mats.flicker.value = hers
+      ? 1
+      : lampFlicker(shipPower, state.clock.elapsedTime);
+    const emergencyLight = spec.blackout?.emergencyLight;
+    let dipTo = 1;
+    if (hers && emergencyLight !== undefined) {
+      const e = emergencyFlicker(
+        shipPower,
+        emergencyLight,
+        state.clock.elapsedTime,
+        frame.listDeg
+      );
+      // Only at the emergency level; reduced motion softens the dips.
+      if (shipPower <= emergencyLight + 0.01)
+        dipTo = reduced.current ? 1 - (1 - e) * REDUCED_DIP : e;
+    }
+    runtime.interiorEmergency = dipTo;
     const m = b.group.matrix.elements;
     const power = b.waterMats.power;
     const f = b.floors;
@@ -501,7 +566,8 @@ function InteriorScene({
       if (!now[k]) continue;
       const floorY =
         m[1] * f[k * 3] + m[5] * f[k * 3 + 1] + m[9] * f[k * 3 + 2] + m[13];
-      own[k] = roomPower(shipPower, lv.shown[k] - floorY, p.t);
+      b.depth[k] = lv.shown[k] - floorY;
+      own[k] = roomPower(shipPower, b.depth[k], p.t, hers) * dipTo;
     }
     // A long hall's parts: each by the water over its own middle.
     for (let i = 0; i < b.segments.length; i += 1) {
@@ -509,7 +575,7 @@ function InteriorScene({
       if (!now[r]) continue;
       const floorY =
         m[1] * f[k * 3] + m[5] * f[k * 3 + 1] + m[9] * f[k * 3 + 2] + m[13];
-      own[k] = roomPower(shipPower, lv.shown[r] - floorY, p.t);
+      own[k] = roomPower(shipPower, lv.shown[r] - floorY, p.t, hers) * dipTo;
     }
     // A dark room still catches a little of a lit room open to it (down
     // a stair, through a doorway): never pitch black beside the light.
@@ -585,8 +651,20 @@ function InteriorScene({
     u.uTorchPos.value.y -= TORCH_DROP_M;
     camera.getWorldDirection(u.uTorchDir.value);
     b.clear.visible = seen !== undefined;
-    // On deck only: inside, the glow would be drawn over by the rooms.
-    b.glow.visible = seen === undefined;
+    // On deck (or in a deck room: its glow draws after the clear): inside,
+    // the glow would be drawn over by the rooms; the doors are shut while
+    // the rooms are closed.
+    b.glow.visible = open && (seen === undefined || deckInside);
+    // The water around the walker (0..1 at a metre): their room's and the
+    // rooms open to it (the sound's wash).
+    let wet = 0;
+    if (open && rk !== undefined) {
+      wet = Math.max(0, b.depth[rk]);
+      const nb = b.neighbours[rk];
+      for (let i = 0; i < nb.length; i += 1)
+        if (now[nb[i]]) wet = Math.max(wet, b.depth[nb[i]]);
+    }
+    runtime.walkWet = Math.min(1, wet);
   }, -1.4);
 
   return null;

@@ -10,6 +10,8 @@ import {
   hullClearanceM,
   resetWalkInput,
   walkInput,
+  walkMapFor,
+  type WalkMap,
 } from "@/lib/shipwreck/walk";
 import Hud from "@/components/shipwreck/ui/Hud";
 import { createSceneRuntime } from "../runtime";
@@ -354,6 +356,28 @@ describe("walking in the scene", () => {
     expect(runtime.walkInfo?.phase).toBe("water");
   });
 
+  it("inside at a 30° list she stays inside (only her break closes the Titanic's rooms)", () => {
+    const { store, runtime, hooks } = setup();
+    act(() => store.getState().startWalk());
+    store.setState({ t: 100 });
+    const leaning = () => ({
+      ...sampleTrack(track, store.getState().t),
+      listDeg: 30,
+    });
+    const step = () => {
+      runtime.frame = leaning();
+      mockFrames[mockFrames.length - 1]({ clock: { elapsedTime: 0 } }, 1 / 60);
+    };
+    step();
+    hooks.placeWalk("gs-boat", 37, -4, 0);
+    step();
+    expect(runtime.walkInside).toBe(true);
+    for (let i = 0; i < 30; i += 1) step();
+    expect(runtime.walkInside).toBe(true);
+    expect(runtime.walkRoom).toBe("gs-boat");
+    expect(store.getState().walk.phase).toBe("deck");
+  });
+
   it("washed out of a flooded room into the sea", () => {
     const { store, runtime, frame, hooks } = setup();
     act(() => store.getState().startWalk());
@@ -504,6 +528,42 @@ describe("walking the Concordia as she leans", () => {
       phase: "deck",
       area: "pool-hall",
     });
+  });
+
+  it("inside her at 30° the rooms close: walked out onto her deck at a door's outside end, not into the sea", () => {
+    const { store, runtime, frame } = setupHer();
+    const hooks = sceneHooks(store, runtime);
+    act(() => store.getState().startWalk());
+    frame(29.9);
+    hooks.placeWalk("lobby-1", 59.5, -9.9, 0);
+    frame(29.9);
+    expect(runtime.walkInside).toBe(true);
+    expect(runtime.walkRoom).toBe("lobby-1");
+    // Still open at 29.9°: the walker stays put.
+    for (let i = 0; i < 10; i += 1) frame(29.9);
+    expect(runtime.walkRoom).toBe("lobby-1");
+    const splashes = runtime.walkSplash;
+    frame(30);
+    expect(store.getState().walk.phase).toBe("deck");
+    expect(runtime.walkInside).toBe(false);
+    expect(runtime.walkSplash).toBe(splashes);
+    const info = runtime.walkInfo!;
+    expect(info.phase).toBe("deck");
+    const map = walkMapFor("concordia") as WalkMap;
+    const door = map.stairs.find(
+      (st) =>
+        st.kind === "door" &&
+        st.from.area === info.area &&
+        Math.hypot(st.from.at[0] - info.x, st.from.at[1] - info.y) < 0.05
+    );
+    expect(door).toBeDefined();
+    // Her deck carries on: they can walk there, and the door stays shut.
+    for (let i = 0; i < 30; i += 1) frame(30);
+    expect(runtime.walkInside).toBe(false);
+    expect(runtime.walkDoor).toBe(-1);
+    hooks.enterDoor(door!.id);
+    frame(30);
+    expect(runtime.walkInside).toBe(false);
   });
 
   it("her lean slides the walker downhill, but not under the end card", () => {

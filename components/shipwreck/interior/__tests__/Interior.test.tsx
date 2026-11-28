@@ -396,3 +396,205 @@ describe("Interior", () => {
     expect(block.geometry.drawRange.count).toBe(Infinity);
   });
 });
+
+describe("Interior inside her (the Concordia's rooms close, seep and flicker)", () => {
+  /** A frame of her at heel `listDeg` with the origin at `z`, level pitch. */
+  function herFrame(t: number, z: number, listDeg = 0, power = 1): SimFrame {
+    return {
+      t,
+      realT: t,
+      bodies: [
+        {
+          part: "whole",
+          x: 0,
+          y: 0,
+          z,
+          pitch: 0,
+          roll: 0,
+          yaw: 0,
+        },
+      ],
+      water: concordia.compartments.map(() => 0),
+      waterAboardT: 0,
+      trimDeg: 0,
+      listDeg,
+      power,
+      groundedParts: [],
+    } as SimFrame;
+  }
+
+  function setupHer(frames: SimFrame[]) {
+    const herTrack: SimTrack = {
+      frames,
+      events: [],
+      outcome: "aground",
+      sankAtT: null,
+      brokeAtT: null,
+      breakX: null,
+      endT: frames[frames.length - 1].t,
+    };
+    const runner: SimRunner = {
+      advance: () => true,
+      done: true,
+      progress: () => 1,
+      track: () => herTrack,
+    };
+    const store = createPlaybackStore({ createRunner: () => runner });
+    store.getState().start(concordia, concordia.realNight);
+    store.getState().pump();
+    const runtime = createSceneRuntime();
+    render(<Interior store={store} runtime={runtime} spec={concordia} />);
+    act(() => store.getState().startWalk());
+    const whole = new Group();
+    // Her piece posed as the sim has it (three y is earth z).
+    whole.position.y = frames[0].bodies[0].z;
+    runtime.whole = { whole } as unknown as typeof runtime.whole;
+    const group = mockScene.add.mock.calls[
+      mockScene.add.mock.calls.length - 1
+    ][0] as Group;
+    const frame = (f: SimFrame, elapsed = 1, dt = 1 / 60) => {
+      runtime.frame = f;
+      mockFrames[mockFrames.length - 1](
+        { clock: { elapsedTime: elapsed } },
+        dt
+      );
+    };
+    return { store, runtime, group, frame };
+  }
+
+  const meshesOf = (group: Group, zone: string) =>
+    group.children.filter(
+      (c): c is Mesh =>
+        c instanceof Mesh && c.name.startsWith(`interior-${zone}-`)
+    );
+
+  it("draws her low rooms until 30° and only her deck rooms from it, with the doors' glow gone", () => {
+    const { runtime, group, frame } = setupHer([herFrame(0, -13.6)]);
+    runtime.walkRoom = "lobby-1";
+    frame(herFrame(0, -13.6, 29.9));
+    const low = meshesOf(group, "low-cabins");
+    expect(low.length).toBeGreaterThan(0);
+    expect(low.every((m) => m.visible)).toBe(true);
+    const lv = runtime.interiorLevels!;
+    expect(lv.drawn[lv.slot.get("lobby-1")!]).toBe(1);
+    frame(herFrame(0, -13.6, 30));
+    expect(low.every((m) => !m.visible)).toBe(true);
+    expect(lv.drawn[lv.slot.get("lobby-1")!]).toBe(0);
+    expect(runtime.walkWet).toBe(0);
+    // Her pool hall (a deck room) is still drawn, and the group with it.
+    expect(group.visible).toBe(true);
+    expect(meshesOf(group, "pool-hall").every((m) => m.visible)).toBe(true);
+    const glow = group.children.find((c) => c.name === "interior-door-glow")!;
+    expect(glow.visible).toBe(false);
+  });
+
+  it("shows the deck doors' glow from her pool hall too (the club's door), after the clear", () => {
+    const { runtime, group, frame } = setupHer([herFrame(0, -13.6)]);
+    const glow = group.children.find(
+      (c) => c.name === "interior-door-glow"
+    ) as Mesh;
+    runtime.walkRoom = "lido-aft";
+    frame(herFrame(0, -13.6, 5));
+    expect(glow.visible).toBe(true);
+    expect(glow.renderOrder).toBe(0);
+    runtime.walkRoom = "pool-hall";
+    frame(herFrame(0, -13.6, 5));
+    expect(glow.visible).toBe(true);
+    expect(glow.renderOrder).toBeGreaterThan(8);
+    expect(glow.renderOrder).toBeLessThan(10);
+    expect((glow.material as Material).transparent).toBe(true);
+    runtime.walkRoom = "lobby-1";
+    frame(herFrame(0, -13.6, 5));
+    expect(glow.visible).toBe(false);
+  });
+
+  it("fills a seeping room by the seep table, not to the sea at once", () => {
+    // The sea is 2 m over the lobby's floor all night; 100 s on, the seep
+    // has put only half a metre in.
+    const frames = [herFrame(0, -13.6), herFrame(100, -13.6)];
+    const { store, runtime, frame } = setupHer(frames);
+    runtime.walkRoom = "lobby-1";
+    store.setState({ t: 100 });
+    frame(frames[1], 1, 1);
+    const lv = runtime.interiorLevels!;
+    expect(lv.shown[lv.slot.get("lobby-1")!]).toBeCloseTo(-1.5, 6);
+    // A room that does not seep (deck 7's) takes the sea's level.
+    expect(CONCORDIA_INTERIOR.rooms.find((r) => r.id === "lobby-7")!.seep).toBe(
+      undefined
+    );
+  });
+
+  it("never flickers her lamps faster than 3 Hz, never black, and writes the dip for her emergency lamps", () => {
+    const { runtime, frame } = setupHer([herFrame(0, -13.6)]);
+    runtime.walkRoom = "lobby-7";
+    expect(runtime.interiorEmergency).toBe(1);
+    // On full power, or under 10°: no dip.
+    for (let i = 0; i < 100; i += 1) {
+      frame(herFrame(0, -13.6, 30, 1), i / 10);
+      expect(runtime.interiorEmergency).toBe(1);
+    }
+    for (let i = 0; i < 100; i += 1) {
+      frame(herFrame(0, -13.6, 5, 0.25), i / 10);
+      expect(runtime.interiorEmergency).toBe(1);
+    }
+    // At emergency power, leaning 30°: dips, never under 0.1, all fine steps.
+    let least = 1;
+    let dips = 0;
+    let was = false;
+    for (let i = 0; i < 3000; i += 1) {
+      frame(herFrame(0, -13.6, 30, 0.25), i / 100);
+      const v = runtime.interiorEmergency;
+      least = Math.min(least, v);
+      const under = v < 0.95;
+      if (under && !was) dips += 1;
+      was = under;
+    }
+    expect(least).toBeGreaterThanOrEqual(0.1);
+    expect(least).toBeLessThan(0.6);
+    expect(dips / 30).toBeGreaterThan(0.8);
+    expect(dips / 30).toBeLessThan(1.2);
+  });
+
+  it("softens the dips for reduced motion", () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((q: string) => ({
+      matches: q.includes("reduce"),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+    })) as unknown as typeof window.matchMedia;
+    try {
+      const { runtime, frame } = setupHer([herFrame(0, -13.6)]);
+      runtime.walkRoom = "lobby-7";
+      let least = 1;
+      for (let i = 0; i < 2000; i += 1) {
+        frame(herFrame(0, -13.6, 30, 0.25), i / 100);
+        least = Math.min(least, runtime.interiorEmergency);
+      }
+      expect(least).toBeLessThan(0.9);
+      expect(least).toBeGreaterThanOrEqual(1 - 0.9 * 0.35 - 1e-9);
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
+  it("writes how wet it is around the walker, 0 dry to 1 at a metre", () => {
+    const frames = [herFrame(0, -13.6), herFrame(100, -13.6)];
+    const { store, runtime, frame } = setupHer(frames);
+    runtime.walkRoom = "lobby-1";
+    store.setState({ t: 0 });
+    frame(frames[0], 1, 1);
+    // Just wet at the first frame: nothing over the lowest point yet.
+    expect(runtime.walkWet).toBeLessThan(0.05);
+    store.setState({ t: 100 });
+    frame(frames[1], 2, 1);
+    expect(runtime.walkWet).toBeGreaterThan(0.4);
+    expect(runtime.walkWet).toBeLessThanOrEqual(1);
+    // In a dry room, and off the walk: 0.
+    runtime.walkRoom = "lobby-7";
+    frame(frames[1], 3, 1);
+    expect(runtime.walkWet).toBeLessThan(1);
+  });
+});

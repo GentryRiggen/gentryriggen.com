@@ -444,7 +444,7 @@ const SPEC_ROOMS = [
 ];
 
 describe("her rooms (1.18)", () => {
-  it("has the spec's rooms, her close at 30°, the flicker, and seep on deck 1", () => {
+  it("has the spec's rooms, her close at 30°, the flicker, and seep in the low rooms", () => {
     const ids = interior.rooms.map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect([...ids].sort()).toEqual(["pool-hall", ...SPEC_ROOMS].sort());
@@ -457,7 +457,7 @@ describe("her rooms (1.18)", () => {
         .sort()
     ).toEqual(["cabin-inside", "cabin-ocean", "corridor-1", "lobby-1"]);
     for (const r of interior.rooms.filter((x) => x.seep))
-      expect([r.id, r.deck]).toEqual([r.id, "1"]);
+      expect([r.id, r.deck]).toEqual([r.id, "0"]);
     // Every room of hers is inside her except the pool hall.
     for (const id of SPEC_ROOMS)
       expect([id, map.areas.find((a) => a.id === id)?.interior]).toEqual([
@@ -466,11 +466,11 @@ describe("her rooms (1.18)", () => {
       ]);
   });
 
-  it("has two glass lifts on the atrium's after wall, stopping at decks 1, 3, 4, 5 and 7", () => {
+  it("has two glass lifts on the atrium's after wall, stopping at decks 0 (the low lobby), 3, 4, 5 and 7", () => {
     const lifts = interior.lifts ?? [];
     expect(lifts.map((l) => l.id)).toEqual(["lift-a", "lift-b"]);
     for (const l of lifts) {
-      expect(l.stops.map((s) => s.deck)).toEqual(["1", "3", "4", "5", "7"]);
+      expect(l.stops.map((s) => s.deck)).toEqual(["0", "3", "4", "5", "7"]);
       expect(l.stops.map((s) => s.landing)).toEqual([
         "lobby-1",
         "atrium-3",
@@ -1010,6 +1010,75 @@ describe("her rooms (1.18)", () => {
   });
 });
 
+describe("the way through the stateroom to its balcony", () => {
+  const blocks: { min: V2; max: V2 }[] = [];
+  for (const f of interior.furniture) {
+    const b = f.room === "stateroom" ? pieceBlocker(f) : null;
+    if (b && b.kind === "box") blocks.push(b);
+  }
+
+  it("is never a pinch: blocking pieces that share a y band stand 0.9 m apart or more", () => {
+    for (let i = 0; i < blocks.length; i += 1)
+      for (let j = i + 1; j < blocks.length; j += 1) {
+        const a = blocks[i];
+        const b = blocks[j];
+        const yOverlap =
+          Math.min(a.max[1], b.max[1]) - Math.max(a.min[1], b.min[1]);
+        if (yOverlap <= 0) continue;
+        const xGap = Math.max(a.min[0] - b.max[0], b.min[0] - a.max[0]);
+        expect([i, j, xGap >= 0.9 || xGap < 0]).toEqual([i, j, true]);
+      }
+  });
+
+  it("is walked by a bot from the corridor door to the balcony and back", () => {
+    const c = ctx({ interiorsOpen: true });
+    /** Walks to each point in turn (steering by setting the yaw). */
+    function botTo(start: WalkerState, route: V2[]): WalkerState {
+      let s = start;
+      for (const [tx, ty] of route) {
+        let steps = 0;
+        while (Math.hypot(tx - s.x, ty - s.y) > 0.12) {
+          expect(steps++).toBeLessThan(600);
+          const yaw = Math.atan2(ty - s.y, tx - s.x);
+          s = stepWalker(
+            { ...s, yaw },
+            { ...STILL, forward: 1 },
+            c,
+            WALK_DT
+          ).state;
+        }
+      }
+      return s;
+    }
+    const door: V2 = [50.4, -9.0];
+    const there: V2[] = [
+      [50.4, -9.8],
+      [50.0, -11],
+      [50.0, -14.2],
+      [49.4, -15.3],
+      [49.4, -17.0],
+    ];
+    const start: WalkerState = {
+      part: "whole",
+      area: "corridor-7",
+      x: door[0],
+      y: door[1],
+      yaw: -Math.PI / 2,
+    };
+    const out = botTo(start, there);
+    expect(out.area).toBe("balcony");
+    const back = botTo(
+      out,
+      [...there]
+        .reverse()
+        .slice(1)
+        .concat([[50.4, -9.8]])
+    );
+    expect(back.area).toBe("stateroom");
+    expect(back.y).toBeGreaterThan(-10.5);
+  });
+});
+
 describe("her room entries (the camera picker's buttons)", () => {
   const entries = interior.entries ?? [];
   const frame = toSea.night.frames[0] as unknown as SimFrame;
@@ -1073,6 +1142,33 @@ describe("her room entries (the camera picker's buttons)", () => {
       target: roomWaterTargets(spec),
     });
     expect(open.map((e) => e.id)).toEqual(entries.map((e) => e.id));
+  });
+
+  const ctx = (listDeg: number, target = roomWaterTargets(spec)) => ({
+    map,
+    spec,
+    frame: { ...frame, listDeg } as SimFrame,
+    target,
+  });
+
+  it("are hidden once she leans to 30° (closed), either way, and shown just under", () => {
+    expect(interior.closeAtHeelDeg).toBe(30);
+    for (const sign of [1, -1]) {
+      expect(openEntries(interior, ctx(sign * 29.9)).length).toBe(
+        entries.length
+      );
+      expect(openEntries(interior, ctx(sign * 30))).toEqual([]);
+      expect(openEntries(interior, ctx(sign * 36))).toEqual([]);
+    }
+  });
+
+  it("hides a room that is flooded deeper than wading, and only that one", () => {
+    const flooded = (room: Room) => (room.id === "lobby-1" ? 20 : -Infinity);
+    const ids = openEntries(interior, ctx(0, flooded)).map((e) => e.id);
+    expect(ids).toEqual(
+      entries.filter((e) => e.room !== "lobby-1").map((e) => e.id)
+    );
+    expect(ids).not.toContain("low-cabin");
   });
 });
 

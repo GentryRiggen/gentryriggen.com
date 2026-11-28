@@ -154,6 +154,7 @@ export function liftCars(interior: InteriorMap): {
         id,
         kind: "lift-car",
         deck: stop.deck,
+        ...(stop.raiseM ? { raiseM: stop.raiseM } : {}),
         outline: carOutline(lift, stop.door),
         ceilingM: LIFT_CAR_CEILING_M,
         zone: landing.zone,

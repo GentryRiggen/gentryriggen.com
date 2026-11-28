@@ -16,6 +16,9 @@ import {
   LIST_CREAK_FROM_DEG,
   LIST_CREAK_FULL_DEG,
   LIST_CREAK_SHIPS,
+  INSIDE_CREAK_FROM_DEG,
+  INSIDE_CREAK_MIN_S,
+  INSIDE_CREAK_SPREAD_S,
   type Cue,
   type CueInput,
 } from "../cues";
@@ -400,6 +403,79 @@ describe("walking cues", () => {
       });
     run({ playing: false, now: 111 });
     expect(walkCues(played)).toEqual([]);
+  });
+});
+
+describe("sound inside her (the Concordia's rooms)", () => {
+  const listFrame = (listDeg: number) =>
+    ({ t: 0, trimDeg: 0, listDeg, power: 1 }) as SimFrame;
+  const inside = (wet: number) => ({
+    phase: "deck" as const,
+    splash: 0,
+    inside: true,
+    wet,
+  });
+  /** Plays 100 s of the walk at 5 Hz; returns the cues and the held wet. */
+  function play(
+    ship: "concordia" | "titanic",
+    listDeg: number,
+    walk: CueInput["walk"]
+  ) {
+    const played: Cue[] = [];
+    const stamps: number[] = [];
+    const s = createCueScheduler((c) => {
+      played.push(c);
+      stamps.push(now);
+    });
+    let now = 100;
+    for (; now < 200; now += 0.2)
+      s.update(
+        [],
+        [listFrame(listDeg)],
+        input({ now, ship, playing: false, walk })
+      );
+    return { played, stamps, s };
+  }
+
+  it("makes the wash bed follow how wet it is around them, only inside her", () => {
+    for (const wet of [0, 0.5, 1])
+      expect(play("concordia", 0, inside(wet)).s.bed.wet).toBeCloseTo(wet, 9);
+    expect(play("concordia", 0, inside(2)).s.bed.wet).toBe(1);
+    // On her open deck, or off the walk: none.
+    expect(
+      play("concordia", 0, { phase: "deck", splash: 0, inside: false, wet: 1 })
+        .s.bed.wet
+    ).toBe(0);
+    expect(play("concordia", 0, undefined).s.bed.wet).toBe(0);
+    // The Titanic's beds are as they were: nothing from the water inside.
+    expect(play("titanic", 0, inside(1)).s.bed.wet).toBe(0);
+  });
+
+  it("groans far off every 4 to 8 s over 15° of heel, and never under it", () => {
+    expect(INSIDE_CREAK_FROM_DEG).toBe(15);
+    const over = play("concordia", 20, inside(0));
+    const far = over.played.filter((c) => c === "creakFar");
+    const at = over.stamps.filter((_, i) => over.played[i] === "creakFar");
+    expect(far.length).toBeGreaterThanOrEqual(
+      100 / (INSIDE_CREAK_MIN_S + INSIDE_CREAK_SPREAD_S) - 1
+    );
+    expect(far.length).toBeLessThanOrEqual(100 / INSIDE_CREAK_MIN_S + 1);
+    for (let i = 1; i < at.length; i += 1) {
+      expect(at[i] - at[i - 1]).toBeGreaterThanOrEqual(
+        INSIDE_CREAK_MIN_S - 0.01
+      );
+      expect(at[i] - at[i - 1]).toBeLessThanOrEqual(
+        INSIDE_CREAK_MIN_S + INSIDE_CREAK_SPREAD_S + 0.21
+      );
+    }
+    expect(
+      play("concordia", 14.9, inside(0)).played.filter((c) => c === "creakFar")
+    ).toEqual([]);
+    // Not inside her (on her deck), and not the Titanic's rooms: none.
+    expect(
+      play("concordia", 30, { phase: "deck", splash: 0, inside: false }).played
+    ).not.toContain("creakFar");
+    expect(play("titanic", 30, inside(1)).played).not.toContain("creakFar");
   });
 });
 

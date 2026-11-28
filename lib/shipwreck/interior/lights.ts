@@ -27,10 +27,75 @@ function dip(k: number): number {
  * the depth) from 0.3 to 0.6 m, and out from 0.6 m. A dry room (no depth,
  * NaN or negative) has the ship's power.
  */
-export function roomPower(power: number, depthM: number, t = 0): number {
+export function roomPower(
+  power: number,
+  depthM: number,
+  t = 0,
+  soft = false
+): number {
   if (!(depthM >= ROOM_FLICKER_FROM_M)) return power;
   if (depthM >= ROOM_DARK_AT_M) return 0;
-  return power * dip(Math.floor(t * 6) + Math.floor(depthM * 100) * 7919);
+  // Soft (hers): slower and keyed on coarser depth, so the lamps never
+  // flash faster than about 3 Hz even while the water climbs.
+  const key = soft
+    ? Math.floor(t * SOFT_FLICKER_HZ) + Math.floor(depthM * 4) * 7919
+    : Math.floor(t * 6) + Math.floor(depthM * 100) * 7919;
+  return power * dip(key);
+}
+
+/** The slot rate of a soft room flicker (per second): 2.5 at most. */
+export const SOFT_FLICKER_HZ = 2.5;
+
+/** Her emergency flicker: none under this heel (deg)... */
+export const EMERGENCY_FLICKER_FROM_DEG = 10;
+/** ...about one dip a second from this heel on. */
+export const EMERGENCY_FLICKER_FULL_DEG = 30;
+/** The deepest a dip goes (the lamps are never black). */
+export const EMERGENCY_DIP_MIN = 0.1;
+/** A dip's length and its soft edges (s): short, never a strobe. */
+const DIP_S = 0.2;
+const DIP_EDGE_S = 0.05;
+
+function hash(k: number, salt: number): number {
+  return (((k * 2654435761 + salt * 40503) >>> 0) % 1000) / 1000;
+}
+
+/**
+ * Her emergency lights' level (see README.md "Lights inside her"): the
+ * lamps' multiplier, 1 when not dipped, while the ship's power is at the
+ * emergency level (`power ≤ emergencyLight + 0.01`); with more power it
+ * returns `power` itself (the caller has no dip to apply). From
+ * `EMERGENCY_FLICKER_FROM_DEG` of heel it dips (deterministically in `t`,
+ * s): one second at a time, a dip starts with a chance that grows from
+ * none at 10° to certain at 30° (about one a second), 0.2 s long with soft
+ * edges, at least 0.4 s from the next, so nothing flashes faster than
+ * about 3 Hz. A dip goes down to 0.1 at the deepest, never black.
+ */
+export function emergencyFlicker(
+  power: number,
+  emergencyLight: number,
+  t: number,
+  heelDeg: number
+): number {
+  if (!(power <= emergencyLight + 0.01)) return power;
+  const heel = Math.abs(heelDeg);
+  const q = Math.min(
+    1,
+    Math.max(
+      0,
+      (heel - EMERGENCY_FLICKER_FROM_DEG) /
+        (EMERGENCY_FLICKER_FULL_DEG - EMERGENCY_FLICKER_FROM_DEG)
+    )
+  );
+  if (!(q > 0) || !Number.isFinite(t)) return 1;
+  const w = Math.floor(t);
+  if (hash(w, 1) >= q) return 1;
+  // Within [0.05, 0.65] of the second: a dip never crosses into the next.
+  const u = t - w - (0.05 + 0.6 * hash(w, 2));
+  if (u < 0 || u > DIP_S) return 1;
+  const floor = EMERGENCY_DIP_MIN + 0.35 * hash(w, 3);
+  const edge = Math.min(1, u / DIP_EDGE_S, (DIP_S - u) / DIP_EDGE_S);
+  return 1 - (1 - floor) * Math.max(0, edge);
 }
 
 /** Whether the torch is on in a room with this power. */

@@ -213,6 +213,8 @@ export interface RoomEntry {
 export interface LiftStop {
   /** A name in spec.decks: the car's floor at this stop. */
   deck: string;
+  /** The landing's floor stands this far over `deck` (m): the car's too. */
+  raiseM?: number;
   /** The room the car's door opens onto (a walkable room). */
   landing: string;
   /** The door: an edge of the landing's outline and of the car's plan. */
